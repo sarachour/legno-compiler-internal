@@ -21,6 +21,8 @@ class Phasor:
         self._noise = noise
 
 
+    def __repr__(self):
+        return "%s*%s*e^(i %s t)*e^(i %s)" % (self._scf,self._magnitude,self._frequency,self._phase)
     @property
     def freq(self):
         return self._frequency
@@ -118,18 +120,30 @@ class PhasorTrain:
         for scaling_expr, phasor_list in group_by.items():
             yield scaling_expr,phasor_list
 
-    def square(self):
-        phasors = list(self)
-        
+    def max_freq(self):
+        return max(map(lambda phasor: phasor.freq, self))
 
-    def power(self):
-        group_by = {}
-        for phasor_coll in self._phasors.values():
-            for phasor in phasor_coll:
-                if not phasor.scf in group_by:
-                    group_by[phasor.scf] = 0
 
-                group_by[phasor.scf] = 
+    def min_freq(self):
+        return max(map(lambda phasor: phasor.freq, self))
+
+    def power(self,bindings=None):
+        def compute_powers():
+            for scaling_expr,phasor_list in self.group_by_scaling_expr():
+                sum_sq = sum(map(lambda phasor: phasor.magnitude**2, self))
+                weight = sum_sq/len(list(self))
+                yield scaling_expr,weight
+
+        if bindings == None:
+            return list(compute_powers())
+
+        value = 0
+        for scaling_expr,weight in compute_powers():
+            scf_value = scaling_expr.compute(bindings)
+            value += weight*(scf_value**2)
+
+        return value
+
 
     def __iter__(self):
         for ph_list in self._phasors.values():
@@ -154,13 +168,33 @@ class Signal:
     def phase(self):
         raise NotImplementedError
 
-    def snr(self):
-        signal_power = self.signal.power()
-        noise_power = self.noise.power()
+    def power(self):
+        signal_power = {}
+        noise_power = {}
+        for expr,weight in self.signal.power():
+            signal_power[expr] = weight
+
+        for expr,weight in self.noise.power():
+            noise_power[expr] = weight
+
+        for expr in (signal_power.keys() + noise_power.keys()):
+            noise_weight = noise_power[expr] if expr in noise_power else \
+                           None
+            signal_weight = signal_power[expr] if expr in signal_power else \
+                           None
+
+            yield expr,signal_weight,noise_weight
+
+    def snr(self,bindings):
+        assert(not bindings is None)
+        signal_power = self.signal.power(bindings)
+        noise_power = self.noise.power(bindings)
+        snr = signal_power/noise_power
+
         print("signal: %s" % signal_power)
         print("noise: %s" % noise_power)
+        return snr
 
-        raise NotImplementedError
 
     def timeseries(self,end,npts,bindings={}):
         t = 0.0
@@ -293,6 +327,16 @@ def plot_timeseries(name,filename,times,signal,noise):
     plt.savefig(filename)
     plt.clf()
 
+def compute_experimental_snr(signal,noise):
+    signal_power = sum(map(lambda x : x**2, signal))
+    noise_power = sum(map(lambda x : x**2, noise))
+
+    print("exp signal: %s" % signal_power)
+    print("exp noise: %s" % noise_power)
+    return signal_power/noise_power
+
+def snr_to_decibals(snr):
+    return 10*math.log(snr)
 
 def dac_explore():
     dac_input = Signal()
@@ -318,14 +362,28 @@ def dac_explore():
         plot_timeseries("hpf_output","hpf_out_%f.png" % choice['dac1'],
                         times,signal,noise)
 
+import gpkit
+
+def gpkit_expr(variables,expr):
+    if expr.op == op.Op.CONST:
+        return expr.value
+    elif expr.op == op.Op.MULT:
+        arg1 = gpkit_expr(variables,expr.arg1)
+        arg2 = gpkit_expr(variables,expr.arg2)
+        return arg1*arg2
+    elif expr.op == op.Op.VAR:
+        return variables[expr.name]
+    else:
+        raise Exception(expr)
 
 def gain_explore():
     dac_input = Signal()
     dac_input.signal.add(hz_to_rad(500),0.5,0,scf=op.Var('dac1'))
 
-    const_gains = [[2,0.5,0.25],[0.25,0.5,2]]
+    const_gains = [[2,0.5,0.25],[0.25,0.5,2],[0.5,2,0.25]]
 
-    bindings = {'dac1':2,'coeff1':1,'coeff0':1,'coeff2':1}
+    variables = ['dac1','coeff1','coeff0','coeff2']
+
     for const_gain_list in const_gains:
         dac_input = Signal()
         dac_input.signal.add(hz_to_rad(500),0.5,0,scf=op.Var('dac1'))
@@ -335,10 +393,42 @@ def gain_explore():
             new_output = xform.xform(curr_input)
             curr_input = new_output
 
-        times,signal,noise = curr_input.timeseries(1.0,1000,bindings=bindings)
+        varmap = {}
+        for variable in variables:
+            varmap[variable] = gpkit.Variable(variable)
+
+        posy = 0
+        for expr,signal_weight,noise_weight in curr_input.power():
+            gexpr = gpkit_expr(varmap,expr)
+            if not signal_weight is None:
+                posy = 1/(signal_weight*gexpr) + posy
+            if not noise_weight is None:
+                posy = noise_weight*gexpr + posy
+
+            print("expr: %s\nsignal:%s\nnoise=%s\n" % (expr,signal_weight,noise_weight))
+
+
+        cstrs = []
+        for variable in variables:
+            cstrs.append(varmap[variable] <= 100)
+
+        print(cstrs)
+        print(posy)
+        model = gpkit.Model(posy, cstrs)
+        result = model.solve(verbosity=0)
+        bindings = {}
+        for variable,value in result['variables'].items():
+            bindings[str(variable)] = value
+
+        print("{ %s }" % str(const_gain_list))
+
+        times,signal,noise = curr_input.timeseries(5.0,1000,bindings=bindings)
         plot_timeseries('gain_output','gain_out_%s.png' % str(const_gain_list),
                         times,signal,noise)
 
-        print(curr_input.snr())
+        snr_theo = curr_input.snr(bindings)
+        snr_exp = compute_experimental_snr(signal,noise)
+        print("theoretical  snr: %s" % snr_to_decibals(snr_theo))
+        print("experimental snr: %s" % snr_to_decibals(snr_exp))
 
 gain_explore()
