@@ -64,6 +64,13 @@ class Op:
         argstr = " ".join(map(lambda arg: str(arg),self._args))
         return "(%s %s)" % (Op.STRMAP[self._op],argstr)
 
+    def __eq__(self,other):
+        assert(isinstance(other,Op))
+        return str(self) == str(other)
+
+    def __hash__(self):
+        return hash(str(self))
+
     def vars(self):
         vars = []
         for arg in self._args:
