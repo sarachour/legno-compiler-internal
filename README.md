@@ -1,7 +1,6 @@
 # leto-compiler
 compilation tools for automated analog configuration generation
 
-
 **leto**: Leto is the toplevel compiler. This compiler returns a sequence of algebraically equivalent configurations of the dynamical system. Leto will eventually perform the following compiler optimizations:
 
    - uses rewrite rules to transform the dynamical system and render it more amenable to produce low-noise configurations.
@@ -18,3 +17,4 @@ compilation tools for automated analog configuration generation
 **scripts/visualize.py**: renders the extracted data as a plot.
 
 
+documentation coming soon...
