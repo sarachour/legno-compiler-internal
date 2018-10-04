@@ -19,6 +19,7 @@ def benchmark2():
                                 op.Mult(op.Const(-1.0),
                                         op.Add(term1,op.Add(term2,term3))))))
 
+    prob.compile()
     return prob
 
 def benchmark_mm():
@@ -42,6 +43,7 @@ def benchmark_mm():
     prob.bind("S",S)
     prob.bind("ES",ES)
     #prob.bind("_y", op.Emit(op.Var("y")))
+    prob.compile()
     return prob
 
 
@@ -51,12 +53,15 @@ def benchmark1():
         op.Mult(op.Var("dy1"),op.Const(-0.2)),
         op.Mult(op.Var("y"),op.Const(-0.8))
     )
-    dy1 = op.Integ(op.Var("dy2"), op.Const(-2))
-    y = op.Integ(op.Var("dy1"), op.Const(9))
+    dy1 = op.Integ(dy2, op.Const(-2),"dy1")
+    y = op.Integ(op.Var("dy1"), op.Const(9),"y")
 
-    prob.bind("dy2",dy2)
     prob.bind("dy1",dy1)
     prob.bind("y",y)
+    prob.interval("y",-1,1)
+    prob.interval("dy1",-2,2)
+    # compute fmin and fmax for each signal.
+    prob.compile()
     #prob.bind("_y", op.Emit(op.Var("y")))
     return prob
 
@@ -75,12 +80,14 @@ from chip.hcdc import board as hdacv2_board
 #from spec import board as hdacv2_board
 #import superoptimizer as superopt
 # the math problem in the example
-prob = benchmark1()
-for abs_circ in arco.compile(hdacv2_board,prob):
 
-    raw_input()
-    for idx,out_circ in enumerate(jaunt.scale(conc_circ)):
-        print(out_circ)
+def compile(board,problem):
+    for idx1,abs_circ in \
+        enumerate(arco.compile(board,problem)):
+        for idx2,scaled_circ in \
+            enumerate(jaunt.scale(conc_circ)):
+            yield idx1,idx2,scaled_circ
+
 
 #circ_name,exp_name,out_name = "damped_spring","simulate","test1"
 #circ_name,exp_name,out_name = "double_with_mult","param_sweep","test2"
@@ -89,13 +96,15 @@ for abs_circ in arco.compile(hdacv2_board,prob):
 #orig_circ = conc_bmarks.get(circ_name)
 #experiment = conc_bmarks.experiment(circ_name,exp_name)
 files = []
-for idx,circ in enumerate(jaunt.scale(orig_circ)):
+prob = benchmark1()
+for idx1,idx2,circ in compile(hdacv2_board,prob):
     srcgen.Logger.DEBUG = True
     srcgen.Logger.NATIVE = True
-    circ.name = "%s_%d" % (circ_name,idx)
+    circ.name = "%s_%d_%d" % (circ_name,idx1,idx2)
     labels,circ_cpp, circ_h = srcgen.generate(circ)
+    files = []
     files.append((labels,circ.name,circ_cpp,circ_h))
+    srcgen.write_file(experiment,files,out_name,
+                      circs=[circ])
 
 
-print(len(files))
-srcgen.write_file(experiment,files,out_name,circs=[orig_circ])

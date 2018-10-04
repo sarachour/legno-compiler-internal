@@ -2,6 +2,7 @@ import chip.props as props
 import ops.op as ops
 import gpkit
 import itertools
+import jaunt_gen_noise_circ
 
 #TODO: what is low range, high range and med range?
 #TODO: setRange: integ.in, integ.out and mult have setRange functions.
@@ -640,7 +641,6 @@ def sp_update_circuit(prob,circ,assigns):
 def cancel_signs(orig_lhs,orig_rhs):
     const1,expr1 = orig_lhs.factor_const()
     const2,expr2 = orig_rhs.factor_const()
-    
     if const1 >= 0 and const2 >= 0:
         pass
     elif const1 <= 0 and const1 <= 0:
@@ -730,16 +730,18 @@ def iter_scaled_circuits(circ):
     for choice in itertools.product(*choices):
         for (block_name,loc),scale_mode in zip(labels,choice):
             print("%s.%s = %s" % (block_name,loc,scale_mode))
-            circ.config((block_name,loc)).set_scale_mode(scale_mode)
+            circ.config((block_name,loc)) \
+                .set_scale_mode(scale_mode)
 
         yield circ
 
 def scale(circ):
-    for circ in iter_scaled_circuits(circ):
+    for orig_circ in iter_scaled_circuits(circ):
+        noise_circ = jaunt_to_noise_circ.build(orig_circ)
         prob = build_problem(circ)
-        succ,circ = solve_problem(circ,prob)
+        succ,circ = solve_problem(orig_circ,prob)
         if succ:
             print("[[SUCCESS]]")
-            yield circ
+            yield orig_circ,circ
         else:
             print("[[FAILURE]]")

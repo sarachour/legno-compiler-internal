@@ -197,8 +197,7 @@ class Board(Layer):
         dkey = self.position_string(dloc)
 
         if self.can_connect(sblk,sloc,sport,dblk,dloc,dport):
-            print("CAN CONNECT")
-            yield [(sblk,skey,sport),(dblk,dkey,dport)]
+            yield [(sblk,sloc,sport),(dblk,dloc,dport)]
 
 
         for route in nx.all_simple_paths(self._routes,

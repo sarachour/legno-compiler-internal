@@ -3,7 +3,7 @@ import chip.abs as acirc
 import sys
 
 class RouteGraph:
-    class Node:
+    class RNode:
 
         def __init__(self,graph,block,loc):
             self._graph = graph
@@ -52,7 +52,7 @@ class RouteGraph:
 
 
     def add_node(self,block_name,loc):
-        node = RouteGraph.Node(self,block_name,loc)
+        node = RouteGraph.RNode(self,block_name,loc)
         if not block_name in self._nodes_by_block:
             self._nodes_by_block[block_name] = []
 
@@ -77,37 +77,6 @@ class RouteGraph:
 
 
 
-    def can_connect(self,sblk,sloc,sport,dblk,dloc,dport):
-         snode = self.get_node(sblk,sloc)
-         dnode = self.get_node(dblk,dloc)
-         skey = snode.output_key(sport)
-         dkey = dnode.input_key(dport)
-
-         if not (skey in self._out_to_in):
-             raise Exception("node not in circuit <%s>" % skey)
-         if not (dkey in self._in_to_out):
-             raise Exception("node not in circuit <%s>" % dkey)
-
-
-         if not (dblk,dport) in self._out_to_in[skey].keys():
-             return False
-
-         return (dnode.key,dkey) in self._out_to_in[skey][(dblk,dport)]
-
-    def connect(self,sblk,sloc,sport,dblk,dloc,dport):
-        snode = self.get_node(sblk,sloc)
-        dnode = self.get_node(dblk,dloc)
-        skey = snode.output_key(sport)
-        dkey = dnode.input_key(dport)
-        if not (dblk,dport) in self._out_to_in[skey].keys():
-            self._out_to_in[skey][(dblk,dport)] = []
-
-        if not (sblk,sport) in self._in_to_out[dkey].keys():
-            self._in_to_out[dkey][(sblk,sport)] = []
-
-        self._out_to_in[skey][(dblk,dport)].append((dnode.key,dkey))
-        self._in_to_out[dkey][(sblk,sport)].append((snode.key,skey))
-
 GRAPHS = {}
 def build_instance_graph(board):
     if board.name in GRAPHS:
@@ -116,9 +85,6 @@ def build_instance_graph(board):
     graph = RouteGraph(board)
     for block,loc,metadata in board.instances():
         graph.add_node(block,loc[1:])
-
-    for (sblk,sloc,sport),(dblk,dloc,dport) in board.connections():
-        graph.connect(sblk,sloc,sport,dblk,dloc,dport)
 
     GRAPHS[board.name] = graph
     return graph
@@ -160,6 +126,17 @@ class RouteDFSContext:
     @property
     def frag_ids(self):
         return self._nodes_by_fragment_id.keys()
+
+    def in_use(self,board,block_name,loc):
+        if not block_name in self._nodes_by_block:
+            return False
+        for node in self._nodes_by_block[block_name]:
+            if board.position_string(node.loc) ==  \
+               board.position_string(loc):
+                return True
+
+        return False
+
 
     def use_node(self,node,config,namespace,fragment_id):
         if (namespace,fragment_id) in self._nodes_by_fragment_id:
@@ -305,7 +282,7 @@ def connect_conc_circ_ports(graph,state,namespace,src_frag,src_port,dest_frag,de
         state.commit()
         state.add(DFSPoolNode(srcnode,src_port,namespace,dest_frag.id))
         state.commit()
-        yield state
+        return state
         return
     else:
         dstnode = cctx.get_node_by_fragment_id(namespace,dest_frag.id)
@@ -316,7 +293,7 @@ def connect_conc_circ_ports(graph,state,namespace,src_frag,src_port,dest_frag,de
                          dstnode.block_name,dstnode.loc,dest_port):
         state.add(DFSConnNode(srcnode,src_port,dstnode,dest_port))
         state.commit()
-        yield state
+        return state
 
     else:
         # TODO: allow for gaps
@@ -324,77 +301,193 @@ def connect_conc_circ_ports(graph,state,namespace,src_frag,src_port,dest_frag,de
             (srcnode.block_name,srcnode.loc,src_port,dstnode.block_name,dstnode.loc,dest_port))
         return
 
-def traverse_abs_circuit(graph,namespace,fragment,ctx=None):
-    if isinstance(fragment,acirc.ABlockInst):
-        print("inst")
-        node = ctx.context().get_node_by_fragment_id(namespace,fragment.id)
-        if not node is None:
-            yield ctx
-            return
 
-        used_nodes = ctx.context().nodes(fragment.block.name)
-        ctx.commit()
-        for node in graph.nodes_of_block(fragment.block.name,used=used_nodes):
-            ctx_buf=[ctx.copy()]
-            ctx_buf[0].add(DFSUseNode(node,namespace,fragment.id,fragment.config))
-            ctx_buf[0].commit()
-            for source_frag in fragment.parents():
-                new_ctx_buf = []
-                for curr_ctx in ctx_buf:
-                    for new_ctx in traverse_abs_circuit(graph,namespace,
-                                                        source_frag,
-                                                        ctx=curr_ctx
-                    ):
-                        new_ctx_buf.append(new_ctx.copy())
+def are_block_instances_used(graph,ctx,lst):
+    for block,loc in lst:
+        if ctx.in_use(graph.board,block,loc):
+            return True
 
-                ctx_buf = new_ctx_buf
+    return False
 
-            for new_ctx in ctx_buf:
-                yield new_ctx
+def tac_abs_block_inst(graph,namespace,fragment,ctx=None,cutoff=1,loc=None):
+    node = ctx.context().get_node_by_fragment_id(
+        namespace,fragment.id)
+    if not node is None:
+        yield ctx
+        return
 
-            ctx.pop()
+    used_nodes = ctx.context().nodes(fragment.block.name)
+    ctx.commit()
+    for node in graph.nodes_of_block(fragment.block.name,
+                                        used=used_nodes):
+        if not loc is None and \
+           graph.board.position_string(node.loc) != graph.board.position_string(loc):
+            continue
 
-    elif isinstance(fragment,acirc.AConn):
-        print("conn")
-        parents = list(fragment.parents())
-        assert(len(parents) == 1)
-        # find other edge
-        raise Exception("TODO: build hops")
-        for curr_ctx in traverse_abs_circuit(graph,namespace,parents[0],ctx=ctx):
-            srcfrag,srcport = fragment.source
-            destfrag,destport = fragment.dest
-            for new_ctx in \
-                connect_conc_circ_ports(graph,curr_ctx,
-                                        namespace,
-                                        srcfrag,srcport,
-                                        destfrag,destport):
-                yield new_ctx
+        ctx_buf=[ctx.copy()]
+        ctx_buf[0].add(DFSUseNode(node,namespace,
+                                    fragment.id,
+                                    fragment.config))
+        ctx_buf[0].commit()
+        for source_frag in fragment.parents():
+            new_ctx_buf = []
+            for curr_ctx in ctx_buf:
+                for new_ctx in \
+                    traverse_abs_circuit(graph,
+                                            namespace,
+                                            source_frag,
+                                            ctx=curr_ctx,
+                                            cutoff=cutoff
+                ):
+                    new_ctx_buf.append(new_ctx.copy())
 
-    elif isinstance(fragment,acirc.AInput):
-        print("input")
-        assert(not fragment.source is None)
-        new_frag,output = fragment.source
-        new_namespace = fragment.label
-        for new_ctx in traverse_abs_circuit(graph,new_namespace,new_frag,ctx=ctx):
-            source_node = new_ctx.context().get_node_by_fragment_id(new_namespace,new_frag.id)
-            new_ctx.add(DFSUseNode(source_node,namespace,fragment.id))
-            new_ctx.commit()
-            yield new_ctx
-
-    elif isinstance(fragment,acirc.AJoin):
-        print("join")
-        ctx_buf = [ctx.copy()]
-        for join_frag in fragment.parents():
-                new_ctx_buf = []
-                for curr_ctx in ctx_buf:
-                    for new_ctx in traverse_abs_circuit(graph,namespace,\
-                                                    join_frag,ctx=curr_ctx):
-                        new_ctx_buf.append(new_ctx.copy())
-
-                ctx_buf = new_ctx_buf
+            ctx_buf = new_ctx_buf
 
         for new_ctx in ctx_buf:
-            raise Exception("create join operation")
+            yield new_ctx
+
+        ctx.pop()
+
+def tac_abs_conn(graph,namespace,fragment,ctx,cutoff):
+    parents = list(fragment.parents())
+    assert(len(parents) == 1)
+    # find other edge
+    srcfrag,srcport = fragment.source
+    dstfrag,dstport = fragment.dest
+    dstnode = ctx.context().get_node_by_fragment_id(namespace,dstfrag.id)
+    if isinstance(srcfrag,acirc.AInput):
+        srcfrag,srcport = srcfrag.source
+
+    if isinstance(srcfrag,acirc.ABlockInst):
+        curr_state = ctx.context()
+        count = 0
+        for srcloc in graph.board.instances_of_block(srcfrag.block.name):
+            if are_block_instances_used(graph,curr_state,
+                                        [(srcfrag.block.name,srcloc)]):
+                continue
+
+            for route in \
+                graph.board.find_routes(srcfrag.block.name,srcloc,srcport,
+                                        dstnode.block_name,dstnode.loc,dstport,
+                                        cutoff=cutoff):
+                if are_block_instances_used(graph, curr_state,
+                                            map(lambda args:(args[0],args[1]),
+                                                route[:-1])):
+                    continue
+
+                new_ctx = ctx.copy()
+                for idx,hop in enumerate(route):
+                    if idx >= len(route) - 2 or idx % 2 == 0:
+                        continue
+
+                    chop_blk,chop_loc,chop_port = hop
+                    nhop_blk,nhop_loc,nhop_port = route[idx+1]
+
+                    cnode = graph.get_node(chop_blk,chop_loc)
+                    nnode = graph.get_node(nhop_blk,nhop_loc)
+
+                    new_state = new_ctx.context()
+                    if not new_ctx.in_use(chop_blk,chop_loc):
+                        new_ctx.add(DFSUseNode(cnode,None, None, Config()))
+
+                    if not new_ctx.in_use(nhop_blk,nhop_loc):
+                        new_ctx.add(DFSUseNode(nnode,None, None, Config()))
+
+                    state.add(DFSConnNode(cnode,chop_port,nnode,nhop_port))
+                    new_ctx.commit()
+
+                print(route)
+                # actually traverse source
+                for newest_ctx in tac_abs_block_inst(graph,
+                                                     namespace,
+                                                     srcfrag,
+                                                     ctx=new_ctx,
+                                                     loc=srcloc):
+                    last_hop_blk,last_hop_loc,last_hop_port = route[-2]
+                    cnode = graph.get_node(last_hop_blk,last_hop_loc)
+                    nnode = graph.get_node(srcfrag.block.name,srcloc)
+
+                    newest_ctx.add(DFSConnNode(cnode,last_hop_port,
+                                               srcnode,srcport))
+                    newest_ctx.commit()
+                    count += 1
+                    yield newest_ctx
+
+
+        if count == 0:
+            print("src: %s\n" % (srcfrag))
+            print("dest: %s\n" % dstfrag)
+            raise Exception("no connections")
+
+    else:
+        raise Exception("unsupported source <%s>" % srcfrag.__class__.__name__)
+
+    #for curr_ctx in traverse_abs_circuit(graph,
+    #                                     namespace,
+    #                                     parents[0],
+    #                                     ctx=ctx):
+    #    srcfrag,srcport = fragment.source
+    #    destfrag,destport = fragment.dest
+    #    for new_ctx in \
+    #        connect_conc_circ_ports(graph,curr_ctx,
+    #                                namespace,
+    #                                srcfrag,srcport,
+    #                                destfrag,destport):
+    #        yield new_ctx
+
+
+def tac_abs_input(graph,namespace,fragment,ctx,cutoff):
+    assert(not fragment.source is None)
+    new_frag,output = fragment.source
+    new_namespace = fragment.label
+    for new_ctx in traverse_abs_circuit(graph,
+                                        new_namespace,
+                                        new_frag,
+                                        ctx=ctx,cutoff=cutoff):
+        source_node = new_ctx.context() \
+                                .get_node_by_fragment_id(
+                                    new_namespace,new_frag.id)
+
+        new_ctx.add(DFSUseNode(source_node,
+                                namespace,
+                                fragment.id))
+        new_ctx.commit()
+        yield new_ctx
+
+
+def tac_abs_join(graph,namespace,fragment,ctx,cutoff):
+    ctx_buf = [ctx.copy()]
+    for join_frag in fragment.parents():
+            new_ctx_buf = []
+            for curr_ctx in ctx_buf:
+                for new_ctx in traverse_abs_circuit(graph,namespace,\
+                                                    join_frag,
+                                                    ctx=curr_ctx,
+                                                    cutoff=cutoff):
+                    new_ctx_buf.append(new_ctx.copy())
+
+            ctx_buf = new_ctx_buf
+
+    for new_ctx in ctx_buf:
+        raise Exception("create join operation")
+
+
+def traverse_abs_circuit(graph,namespace,fragment,ctx=None,cutoff=1):
+    if isinstance(fragment,acirc.ABlockInst):
+        for ctx in tac_abs_block_inst(graph,namespace,fragment,ctx,cutoff):
+            yield ctx
+
+    elif isinstance(fragment,acirc.AConn):
+        for ctx in tac_abs_conn(graph,namespace,fragment,ctx,cutoff):
+            yield ctx
+
+    elif isinstance(fragment,acirc.AInput):
+        for ctx in tac_abs_input(graph,namespace,fragment,ctx,cutoff):
+            yield ctx
+
+
+    elif isinstance(fragment,acirc.AJoin):
+        tac_abs_join(graph,namespace,fragment,ctx,cutoff)
 
     else:
         raise Exception(fragment)
@@ -410,7 +503,9 @@ def build_concrete_circuit(graph,fragment_map):
     for _ in range(0,5):
         print("######")
     for result in \
-        traverse_abs_circuit(graph,namespace,fragment,ctx=RouteDFSState(fragment_map)):
+        traverse_abs_circuit(graph,namespace,fragment,
+                             ctx=RouteDFSState(fragment_map),
+                             cutoff=3):
         return result
 
     return None

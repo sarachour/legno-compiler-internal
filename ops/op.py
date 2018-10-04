@@ -1,4 +1,5 @@
 import itertools
+import math
 
 class Op:
     EQ = 0
@@ -176,13 +177,25 @@ class Emit(Op):
 
 class Integ(Op2):
 
-    def __init__(self,deriv,init_cond):
+    def __init__(self,deriv,init_cond,label=None):
         Op.__init__(self,Op.INTEG,[deriv,init_cond])
+        self._label = label
         pass
 
     @property
     def init_cond(self):
         return self.arg2
+
+    def frequency_range(self,intervals):
+        assert(not self._label is None)
+        expr = self.deriv
+        min_val,max_val = expr.interval(intervals)
+        # slew rate (dX/dt) computation for opamps
+        max_rate = max(abs(max_val),abs(min_val))
+        min_val,max_val = intervals[self._label]
+        max_range = max_val - min_val
+        max_freq = max_rate/(2.0*math.pi*max_range)
+        return (-max_freq,max_freq)
 
     @property
     def deriv(self):
@@ -253,6 +266,10 @@ class Var(Op):
     def name(self):
         return self._name
 
+    def interval(self,bindings):
+        assert(self._name in bindings)
+        return bindings[self._name]
+
     def compute(self,bindings):
         if not self._name in bindings:
             for key in bindings:
@@ -277,6 +294,9 @@ class Const(Op):
 
     def compute(self,bindings):
         return self._value
+
+    def interval(self,bindings):
+        return (self._value,self._value)
 
     @property
     def value(self):
@@ -330,6 +350,16 @@ class Mult(Op2):
 
 
 
+    def interval(self,bindings):
+        is1 = self.arg1.interval(bindings)
+        is2 = self.arg2.interval(bindings)
+        corners = []
+        for v1 in is1:
+            for v2 in is2:
+                corners.append(v1*v2)
+
+        return min(corners),max(corners)
+
     def match_op(self,expr):
         if expr.op == self._op:
             return True,False,[
@@ -358,6 +388,16 @@ class Add(Op2):
     def __init__(self,arg1,arg2):
         Op.__init__(self,Op.ADD,[arg1,arg2])
         pass
+
+    def interval(self,bindings):
+        is1 = self.arg1.interval(bindings)
+        is2 = self.arg2.interval(bindings)
+        corners = []
+        for v1 in is1:
+            for v2 in is2:
+                corners.append(v1+v2)
+
+        return min(corners),max(corners)
 
     def match_op(self,expr,enable_eq=False):
         if expr.op == self._op:
