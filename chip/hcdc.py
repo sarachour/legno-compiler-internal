@@ -281,7 +281,8 @@ def make_board():
     for chip_idx,chip in enumerate(chips):
         tiles = map(lambda i : chip.layer(i), range(0,n_tiles))
         for tile_idx,tile in enumerate(tiles):
-            slices = map(lambda i : tile.layer(i), range(0,n_slices))
+            slices = map(lambda i : tile.layer(i),
+                         range(0,n_slices))
             for slice_idx,slce in enumerate(slices):
                 layer0 = slce.layer(0)
                 layer1 = slce.layer(1)
@@ -314,7 +315,7 @@ def make_board():
                     assert(tile_idx == 3)
                     assert(slice_idx == 2 or slice_idx == 3)
 
-                    chip_base = 4 if chip_idx == 0 else 0
+                    chip_base = 4 if chip_idx == 1 else 0
                     slice_base = 2 if slice_idx == 2 else 0
 
                     hw.set_inst_meta('due_adc',

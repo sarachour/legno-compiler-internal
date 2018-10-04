@@ -197,7 +197,7 @@ def make_config(var_name,block_name,config):
             raise Exception("unexpected value for %s.%s: %s" % \
                             (var_name,port,bool_value))
 
-        value = "true" if bool_value is "pos" else "false"
+        value = "false" if bool_value is "pos" else "false"
         Logger.debug(stmts,"inv","setting <%s.%s.inv> to <%s>" % \
                      (var_name,port,value))
         stmts.append("%s->%s->setInv(%s);" % (var_name,port,value))
