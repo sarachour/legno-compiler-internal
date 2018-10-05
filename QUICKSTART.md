@@ -4,11 +4,11 @@
 
 On OSX (brew required):
 
-  brew install python3
+    brew install python3
   
 On Windows (choco required):
 
-  choco install python3
+    choco install python3
   
 Once you have python3 installed, install the following packages:
 
