@@ -20,7 +20,7 @@ To test your setup, first generate a collection of test programs with `apep.py`.
 generates parameter sweep experiments for all the analog blocks. The generated experiments are dumped into the 
 `calibrate` and `transforms` directories.
 
-  python3 apep.py
+     python3 apep.py
   
 Open one of the Arduino projects in the newly created `transforms/` directory. All of the projects in this directory
 perform a parameter sweep on one of the DACs, and then observes the DUE ADC values for both the positive and negative analog
