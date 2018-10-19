@@ -1,10 +1,10 @@
-
 class MathProg:
 
-    def __init__(self):
+    def __init__(self,name):
+        self._name = name
         self._bindings = {}
         self._intervals = {}
-        self._freqs = {}
+        self._bandwidths= {}
 
     def bind(self,var,expr):
         assert(not var in self._bindings)
@@ -24,5 +24,25 @@ class MathProg:
             assert(variable in self._intervals)
 
         for variable,expr in self._bindings.items():
-            min_freq,max_freq = expr.frequency_range(self._intervals)
-            self._freqs[variable] = (min_freq,max_freq)
+            bw = expr.bandwidth(self._intervals,self._bindings)
+            self._bandwidths[variable] = bw
+
+    @property
+    def name(self):
+        return self._name
+
+class StochMathProg:
+
+    class Distribution:
+        GAUSSIAN = 0
+
+    class Operator:
+        EQUALS = 0
+        LESS_THAN = 1
+
+    def __init__(self,name):
+        MathProg.__init__(self,name)
+        self._stoch = {}
+
+    def bind_stoch(self,var,variance,dist,op):
+        self._stoch[var] = (variance,dist,op)

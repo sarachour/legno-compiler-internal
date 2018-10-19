@@ -35,7 +35,7 @@ class ConcCirc:
                 yield block_name,loc,config
 
 
-    def use(self,block,loc):
+    def use(self,block,loc,config=None):
         if not self._board.is_block_at(block,loc):
             for block in self._board.blocks_at(loc):
                 print(block.name)
@@ -48,7 +48,8 @@ class ConcCirc:
         if locstr in self._blocks[block]:
             return
 
-        self._blocks[block][locstr] = (loc,Config())
+        config = Config() if config is None else config
+        self._blocks[block][locstr] = (loc,config)
         addr = (block,loc)
 
     def in_use(self,block_name,loc):

@@ -2,7 +2,7 @@ import chip.props as props
 import ops.op as ops
 import gpkit
 import itertools
-import jaunt_gen_noise_circ
+import compiler.jaunt_gen_noise_circ as jnoise
 
 #TODO: what is low range, high range and med range?
 #TODO: setRange: integ.in, integ.out and mult have setRange functions.

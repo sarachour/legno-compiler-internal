@@ -1,110 +1,62 @@
-from lang.prog import MathProg
-from ops import op
 from compiler import arco, jaunt
-
-def benchmark2():
-    prob = MathProg()
-
-    prob.bind("x1",op.Integ(op.Var("x2"), op.Const(0)))
-    prob.bind("x0",op.Integ(op.Var("x1"), op.Const(-1)))
-
-    term0 = op.Const(1.5*0.5)
-    term1 = op.Mult(op.Const(0.6*0.5),op.Var("x1"))
-    term2 = op.Mult(op.Var("x0"),op.Var("x0"))
-    term3 = op.Var("x0")
-
-    # compilation is performing transformations than compiling.
-    prob.bind("x2",op.Mult(op.Const(0.5),
-                        op.Add(term0,
-                                op.Mult(op.Const(-1.0),
-                                        op.Add(term1,op.Add(term2,term3))))))
-
-    prob.compile()
-    return prob
-
-def benchmark_mm():
-    prob = MathProg()
-    kf = 1e-4
-    kr = 1e-2
-    E0 = 4400
-    S0 = 6600
-    ES = op.Integ(op.Add(
-        op.Mult(op.Const(kf),
-                op.Mult(op.Var("S"),op.Var("E"))),
-        op.Mult(op.Const(-1*kr),op.Var("ES"))), op.Const(0))
-
-    E = op.Add(op.Const(E0),
-               op.Mult(op.Var("ES"), op.Const(-1)))
-
-    S = op.Add(op.Const(S0),
-               op.Mult(op.Var("ES"), op.Const(-1)))
-
-    prob.bind("E",E)
-    prob.bind("S",S)
-    prob.bind("ES",ES)
-    #prob.bind("_y", op.Emit(op.Var("y")))
-    prob.compile()
-    return prob
-
-
-def benchmark1():
-    prob = MathProg()
-    dy2 = op.Add(
-        op.Mult(op.Var("dy1"),op.Const(-0.2)),
-        op.Mult(op.Var("y"),op.Const(-0.8))
-    )
-    dy1 = op.Integ(dy2, op.Const(-2),"dy1")
-    y = op.Integ(op.Var("dy1"), op.Const(9),"y")
-
-    prob.bind("dy1",dy1)
-    prob.bind("y",y)
-    prob.interval("y",-1,1)
-    prob.interval("dy1",-2,2)
-    # compute fmin and fmax for each signal.
-    prob.compile()
-    #prob.bind("_y", op.Emit(op.Var("y")))
-    return prob
-
-
-def benchmark0():
-    prob = MathProg()
-    prob.bind("x", op.ExtInput(op.Var("_x",constant=True)))
-    prob.bind("y", op.Mult(op.Var("x"), op.Const(2.0)))
-    #prob.bind("_y", op.Emit(op.Var("y")))
+import argparse
 
 #import conc
-from chip.hcdc import board as hdacv2_board
 #import srcgen
-#import jaunt
-#import conc_bmarks
-#from spec import board as hdacv2_board
-#import superoptimizer as superopt
-# the math problem in the example
 
 def compile(board,problem):
-    for idx1,abs_circ in \
-        enumerate(arco.compile(board,problem)):
-        for idx2,scaled_circ in \
-            enumerate(jaunt.scale(conc_circ)):
-            yield idx1,idx2,scaled_circ
-
-
-#circ_name,exp_name,out_name = "damped_spring","simulate","test1"
-#circ_name,exp_name,out_name = "double_with_mult","param_sweep","test2"
-#circ_name,exp_name,out_name = "double_with_plus","param_sweep","test4"
-#circ_name,exp_name,out_name = "in_to_out","param_sweep","test3"
-#orig_circ = conc_bmarks.get(circ_name)
-#experiment = conc_bmarks.experiment(circ_name,exp_name)
-files = []
-prob = benchmark1()
-for idx1,idx2,circ in compile(hdacv2_board,prob):
-    srcgen.Logger.DEBUG = True
-    srcgen.Logger.NATIVE = True
-    circ.name = "%s_%d_%d" % (circ_name,idx1,idx2)
-    labels,circ_cpp, circ_h = srcgen.generate(circ)
     files = []
-    files.append((labels,circ.name,circ_cpp,circ_h))
-    srcgen.write_file(experiment,files,out_name,
-                      circs=[circ])
+    prob = benchmark1()
+    for idx1,idx2,circ in compile(hdacv2_board,prob):
+        srcgen.Logger.DEBUG = True
+        srcgen.Logger.NATIVE = True
+        circ.name = "%s_%d_%d" % (circ_name,idx1,idx2)
+        labels,circ_cpp, circ_h = srcgen.generate(circ)
+        files = []
+        files.append((labels,circ.name,circ_cpp,circ_h))
+        srcgen.write_file(experiment,files,out_name,
+                        circs=[circ])
 
 
+
+parser = argparse.ArgumentParser(description='Legno compiler.')
+
+subparsers = parser.add_subparsers(dest='subparser_name',
+                                   help='compilers/compilation passes.')
+
+arco_subp = subparsers.add_parser('arco', help='generate circuit')
+arco_subp.add_argument('benchmark', type=str,help='benchmark to compile')
+arco_subp.add_argument('--xforms', type=int,default=3,
+                       help='number of abs circuits to generate.')
+arco_subp.add_argument('--abs-circuits', type=int,default=100,
+                       help='number of abs circuits to generate.')
+arco_subp.add_argument('--conc-circuits', type=str,default=3,
+                       help='number of conc circuits to generate.')
+arco_subp.add_argument('--output-dir', type=str,help='output directory to output files to.')
+
+
+
+jaunt_subp = subparsers.add_parser('jaunt', help='scale circuit parameters.')
+jaunt_subp.add_argument('benchmark', type=str,help='benchmark to compile')
+jaunt_subp.add_argument('--experiment', type=str,help='experiment to run')
+jaunt_subp.add_argument('--input-dir', type=str,help='output directory to output files to.')
+jaunt_subp.add_argument('--noise', type=str,help='perform noise analysis.')
+
+
+
+args = parser.parse_args()
+if args.subparser_name == "arco":
+    from chip.hcdc import board as hdacv2_board
+    import bmark.bmarks as bmark
+
+    problem = bmark.get_bmark(args.benchmark)
+
+    for indices,conc_circ in \
+        enumerate(arco.compile(hdacv2_board,
+                               problem,
+                               depth=args.xforms,
+                               max_abs_circs=args.abs_circuits,
+                               max_conc_circs=args.conc_circuits)):
+        print(indices)
+        print(conc_circ)
+        raw_input()

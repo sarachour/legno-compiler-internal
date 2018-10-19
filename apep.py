@@ -5,6 +5,8 @@ from chip.block import Labels
 import lang.experiment as experiments
 import gen.srcgen as srcgen
 import os
+import sys
+
 
 def boilerplate(name,loc,chip_adc=False,chip_dac=False):
     circ = ccirc.ConcCirc(board,name)
@@ -42,6 +44,15 @@ def route(circ,sblk,sloc,sport,dblk,dloc,dport):
                     (sblk,sloc,sport,dblk,dloc,dport))
     return False
 
+def gen_sig(loc):
+    circ,in_ret,out_ret = boilerplate("calib_sig_%s" % locstr,
+                loc, chip_adc=True, chip_dac=True)
+
+    exp1 = experiments.ParameterSweepExperiment(2400,100)
+    exp2 = experiments.SinFreqExperiment(100)
+    exp1.sweep("INP",0.0,1.0)
+    exp2.sweep("INP",0,1e6)
+
 # generate dac
 def gen_dac(loc):
     locstr = "_".join(map(lambda x : str(x), loc))
@@ -64,7 +75,7 @@ def gen_dac(loc):
     succ = route(circ,"tile_dac",loc,"out", \
                  ana_out_block,ana_out_loc,ana_out_port)
     if succ:
-        return exp,circ
+        return [exp1,exp2],circ
     else:
         return None
 
@@ -92,7 +103,7 @@ def generate(dacs_only=False):
             yield name,result
 
     if dacs_only:
-        return 
+        return
 
     for loc in board.instances_of_block('multiplier'):
         yield gen_mult(loc)
@@ -114,6 +125,7 @@ calib_dir = "transform"
 if not os.path.exists(calib_dir):
     os.mkdir(calib_dir)
 
+print("=== generating block characterization experiments ===")
 for file_name,(experiment,circ) in generate(dacs_only=True):
     labels,circ_cpp, circ_h = srcgen.generate(circ,recover=False)
     srcgen.write_file(experiment,
@@ -122,7 +134,8 @@ for file_name,(experiment,circ) in generate(dacs_only=True):
                       parent_dir=calib_dir,
                       circs=[circ])
 
-
+print("=> generated `transform/` directory files")
+sys.exit(0)
 calib_dir = "calibrate"
 if not os.path.exists(calib_dir):
     os.mkdir(calib_dir)

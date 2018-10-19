@@ -624,17 +624,19 @@ def setup_input_functions(conc_circ):
 
             if block_name == "tile_dac" \
                and label_type == Labels.CONST_INPUT:
-                write("value=round(%s*%e*128.0+128.0);" % (label,scf))
+                write("value=abs(round(%s*%e*256.0));" % (label,scf))
+                write("assert(value >= 0 && value <= 256.0);")
                 Logger.info(body,"input: ",println=False)
                 Logger.info(body,"%s" % label,println=False,literal=False)
                 Logger.info(body," -> ",println=False)
                 Logger.info(body,"value",literal=False)
                 write("%s->%s->setConstantCode(value);" % (fab_name,var_name))
+                write("%s->%s->out0->setInv(%s < 0.0);" % (fab_name,var_name,label))
                 #set source for constant
                 #write("%s->%s->setSource(true,false,false,false);" % \
                 #      (fab_name,var_name));
             else:
-                raise Exception("unsupported: <%s>" % block_name)
+                raise Exception("unsupported: <%s, %s, %d>" % (block_name,label,label_type))
 
             labels.add(label)
 
@@ -873,7 +875,7 @@ def gde_parameter_sweep_experiment(experiment,body,name,labels):
 
     indent = "   "
     for idx,label in enumerate(labels):
-        values = experiment.values(label)
+        values = list(experiment.values(label))
         value_str = "{%s}" % (",".join(map(lambda v : str(v), values)))
         write("float _%s[%d] = %s;" % (label,len(values),value_str))
         write("int n%d = %d;" % (idx,len(values)))

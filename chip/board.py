@@ -200,12 +200,17 @@ class Board(Layer):
             yield [(sblk,sloc,sport),(dblk,dloc,dport)]
 
 
-        for route in nx.all_simple_paths(self._routes,
+        all_routes = list(nx.all_simple_paths(self._routes,
                                          source=(sblk,skey,sport),
                                          target=(dblk,dkey,dport),
-                                         cutoff=cutoff):
-            yield list(map(lambda (b,a,p):
-                           (b,self._inst_by_position[a]['pos'],p),
+                                         cutoff=cutoff))
+
+        all_routes.sort(key=lambda route:len(route))
+        for route in all_routes:
+            yield list(map(lambda args:
+                           (args[0],
+                            self._inst_by_position[args[1]]['pos'],
+                            args[2]),
                            route))
 
     def inst(self,block_name,position):
@@ -249,7 +254,6 @@ class Board(Layer):
             return False
 
         if not dblkport in self._connections[sblkport]:
-            print(self._connections[sblkport].keys())
             return False
 
         if not (skey,dkey) in self._connections[sblkport][dblkport]:
@@ -306,18 +310,11 @@ class Board(Layer):
 
         self._connections[sblkport][dblkport][(skey,dkey)] = (spos,dpos)
 
-        if self._routes.has_node((sblkname,skey,sport)) and \
-           not self._routes.has_node((dblkname,dkey,dport)):
+        if not self._routes.has_node((dblkname,dkey,dport)):
             self._routes.add_node((dblkname,dkey,dport))
-            self._routes.add_edge((sblkname,skey,sport),
-                                  (dblkname,dkey,dport))
 
-        if not self._routes.has_node((sblkname,skey,sport)) and \
-           self._routes.has_node((dblkname,dkey,dport)):
+        if not self._routes.has_node((sblkname,skey,sport)):
             self._routes.add_node((sblkname,skey,sport))
 
-
-        if self._routes.has_node((sblkname,skey,sport)) and \
-           self._routes.has_node((dblkname,dkey,dport)):
-            self._routes.add_edge((sblkname,skey,sport),
-                                  (dblkname,dkey,dport))
+        self._routes.add_edge((sblkname,skey,sport),
+                              (dblkname,dkey,dport))

@@ -1,5 +1,5 @@
-import props
-import units
+import chip.props as props
+import chip.units as units
 import ops.op as ops
 from chip.block import Block
 from chip.board import Board

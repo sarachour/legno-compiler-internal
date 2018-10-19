@@ -27,7 +27,7 @@ def xform_expr(ast,rules,max_xforms=3):
 
     for sel_inputs in itertools.product(*inputs_space):
         n_xforms = sum(map(lambda tup: tup[0], sel_inputs))
-        new_inputs = map(lambda tup: tup[1], sel_inputs)
+        new_inputs = list(map(lambda tup: tup[1], sel_inputs))
         if n_xforms > max_xforms:
             pass
 
@@ -246,6 +246,16 @@ def build_tree_from_levels(board,levels,block,input_tree=False):
     return free_ports,blocks[0][0],par_port
 
 
+def input_level_combos(level_inputs,sources):
+    input_ports = []
+    for level,inputs in level_inputs.items():
+        input_ports += inputs
+
+    for combo in itertools.permutations(input_ports,len(sources)):
+        assigns = list(zip(combo,sources))
+        yield assigns
+
+
 def to_abs_circ(board,ast):
     if ast.op == aexpr.AOp.INTEG:
         for deriv,deriv_output in to_abs_circ(board,ast.input(0)):
@@ -271,20 +281,31 @@ def to_abs_circ(board,ast):
                 enumerate_tree(multiplier,len(ast.inputs),
                                permute_input=True):
 
-                new_inputs = list(map(lambda inp: list(to_abs_circ(board,inp)), \
-                                 ast.inputs))
+                new_inputs = list(map(lambda inp: \
+                                      list(to_abs_circ(board,inp)), \
+                                      ast.inputs))
 
-                for combo in itertools.product(new_inputs):
+                for _combo in itertools.product(new_inputs):
+                    combo = _combo[0]
                     free_ports,out_block,out_port = \
                         build_tree_from_levels(board,
                                                levels,
                                                multiplier,
                                                input_tree=True
                         )
-                    raise Exception("TODO: route inputs")
-                    yield out_block,out_port
 
-            raise NotImplementedError
+                    for assigns in input_level_combos(free_ports,combo):
+                        out_block_c = out_block.copy()
+                        for (_dstblk,dstport),(_srcblk,srcport) in assigns:
+                            dstblk = _dstblk.copy()
+                            srcblk = _srcblk.copy()
+                            acirc.ANode.connect(srcblk,srcport, \
+                                                dstblk,dstport)
+
+                        print("found: %s" % out_block_c)
+                        input()
+                        yield out_block_c,out_port
+
 
     elif ast.op == aexpr.AOp.CPROD and ast.input.op == aexpr.AOp.CONST:
         node = acirc.ANode.make_node(board,"tile_dac")
@@ -315,6 +336,7 @@ def to_abs_circ(board,ast):
             join = acirc.AJoin()
             for node,out in combo:
                 nnode = node.copy()
+                assert(not nnode is None)
                 acirc.ANode.connect(nnode,out,join,"in")
 
             yield join,"out"
@@ -357,11 +379,13 @@ def copy_signal(board,node,output,n_copies,label,max_fanouts):
             for port_node,port in ports:
                 port_node.config.set_label(port,label)
 
-        acirc.ANode.connect(node.copy(),output,c_node,c_output)
+        new_node = node.copy()
+        acirc.ANode.connect(new_node,output,c_node,c_output)
         yield free_ports,c_node,c_output
 
 
-def route_signals(fracs,sources,stubs):
+# var_map,source_map
+def route_signals(sources,stubs):
     var_choices = {}
     var_sources = {}
 
@@ -405,7 +429,7 @@ def route_signals(fracs,sources,stubs):
             indexes[(var_name,level)] += 1
 
         if not invalid:
-            yield zip(outputs,all_stubs)
+            yield list(zip(outputs,all_stubs))
 
     raise NotImplementedError
 
@@ -423,7 +447,7 @@ def count_var_refs(frags):
 
     return refs,stubs
 
-def compile(board,prob,depth=3,max_circs=100):
+def compile(board,prob,depth=3,max_abs_circs=100,max_conc_circs=1):
     permute = {}
     rules = get_rules()
     for var,expr in prob.bindings():
@@ -442,7 +466,7 @@ def compile(board,prob,depth=3,max_circs=100):
             raise Exception("cannot model one of the variables")
 
     num_circs = 0
-    while num_circs < max_circs:
+    while num_circs < max_abs_circs:
         frag_map = sample(permute)
         frags = map(lambda args: args[0], frag_map.values())
         refs,stubs = count_var_refs(frag_map)
@@ -495,14 +519,29 @@ def compile(board,prob,depth=3,max_circs=100):
             source_map = dict(zip(variables,
                                   map(lambda args: args[0],choice)))
 
+            n_conc = 0;
+            refs,stubs = count_var_refs(var_map)
             for mapping_idx,mapping in \
-                enumerate(route_signals(var_map,source_map,stubs)):
+                enumerate(route_signals(source_map,stubs)):
+
+                if n_conc == max_conc_circs:
+                    print("-> done")
+                    break
 
                 for (node,output), input_stub in mapping:
                     input_stub.set_source(node,output)
 
-                index = [num_circs,choice_idx,mapping_idx]
-                abs_circ = arco_route.route(board,var_map)
-                yield abs_circ,index
+                for (n,o),inp in mapping:
+                    in_varmap = False
+                    for e,_ in var_map.values():
+                        in_varmap = in_varmap or e.contains(inp)
+                    assert(in_varmap)
+
+
+                idx= [num_circs,choice_idx,mapping_idx]
+                basename =  prob.name+ "_".join(map(lambda i:str(i),idx))
+                for idx_j,conc_circ in enumerate(arco_route.route(basename,board,var_map)):
+                    yield idx+[idx_j],conc_circ
+                    n_conc += 1
 
 

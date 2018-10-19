@@ -86,6 +86,9 @@ class Op:
         else:
             return False,False,None
 
+    def bandwidth(self,intervals,bindings):
+        raise NotImplementedError("unknown bandwidth <%s>" % (str(self)))
+
     def match(self,expr):
         def is_consistent(assignments):
             bnds = {}
@@ -186,16 +189,14 @@ class Integ(Op2):
     def init_cond(self):
         return self.arg2
 
-    def frequency_range(self,intervals):
-        assert(not self._label is None)
+    def bandwidth(self,intervals,bindings):
         expr = self.deriv
-        min_val,max_val = expr.interval(intervals)
-        # slew rate (dX/dt) computation for opamps
-        max_rate = max(abs(max_val),abs(min_val))
-        min_val,max_val = intervals[self._label]
-        max_range = max_val - min_val
-        max_freq = max_rate/(2.0*math.pi*max_range)
-        return (-max_freq,max_freq)
+        min_val,max_val = self.deriv.interval(intervals)
+        tau,time_su = 1.0,1.0
+        # time required to raise 1 unit
+        rise_time = (tau*time_su)/(max_val-min_val)
+        bandwidth = 0.35/rise_time
+        return bandwidth
 
     @property
     def deriv(self):
@@ -270,6 +271,10 @@ class Var(Op):
         assert(self._name in bindings)
         return bindings[self._name]
 
+    def bandwidth(self,intervals,bindings):
+        new_b = dict(filter(lambda el: el[0] != self._name, bindings.items()))
+        return bindings[self._name].bandwidth(intervals,new_b)
+
     def compute(self,bindings):
         if not self._name in bindings:
             for key in bindings:
@@ -297,6 +302,9 @@ class Const(Op):
 
     def interval(self,bindings):
         return (self._value,self._value)
+
+    def bandwidth(self,intervals,bindings):
+        return 0.0
 
     @property
     def value(self):
@@ -360,6 +368,19 @@ class Mult(Op2):
 
         return min(corners),max(corners)
 
+    def bandwidth(self,intervals,bindings):
+        if self.arg1.op == Op.CONST:
+            value = abs(self.arg1.value)
+            f2 = self.arg2.bandwidth(intervals,bindings)
+            return f2*value
+
+        elif self.arg2.op == Op.CONST:
+            value = abs(self.arg2.value)
+            f2 = self.arg1.bandwidth(intervals,bindings)
+            return f2*value
+
+        else:
+            raise Exception("cannot compute bandwidth of nonlinear fxn: <%s>" % self)
     def match_op(self,expr):
         if expr.op == self._op:
             return True,False,[
@@ -398,6 +419,11 @@ class Add(Op2):
                 corners.append(v1+v2)
 
         return min(corners),max(corners)
+
+    def bandwidth(self,intervals,bindings):
+        bandwidth1 = self.arg1.bandwidth(intervals,bindings)
+        bandwidth2 = self.arg2.bandwidth(intervals,bindings)
+        return max(bandwidth1,bandwidth2)
 
     def match_op(self,expr,enable_eq=False):
         if expr.op == self._op:
