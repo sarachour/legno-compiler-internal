@@ -14,6 +14,12 @@ class RouteGraph:
             self._inputs = graph.board.block(block).inputs
             self._outputs = graph.board.block(block).outputs
             self._passthrough = (graph.board.block(block).type == Block.BUS)
+            self._config = None
+
+        @property
+        def config(self):
+            assert(not self._config is None)
+            return self._config
 
         @property
         def loc(self):
@@ -353,6 +359,38 @@ def tac_abs_block_inst(graph,namespace,fragment,ctx=None,cutoff=1,loc=None):
 
         ctx.pop()
 
+def tac_collect_sources(graph,namespace,frag,port):
+    sources = []
+    if isinstance(frag,acirc.AInput):
+        if frag.source is None:
+            raise Exception("input isn't routed: <%s>" % srcfrag)
+        srcfrag,srcport = frag.source
+        sources += tac_collect_sources(graph,namespace,srcfrag,srcport)
+
+    elif isinstance(frag,acirc.AJoin):
+        for parent in frag.parents():
+            assert(isinstance(parent,acirc.AConn))
+            srcfrag,srcport = parent.source
+            if isinstance(srcfrag,acirc.ABlockInst):
+                sources.append((srcfrag,srcport))
+            elif isinstance(srcfrag,acirc.AJoin):
+                sources += tac_collect_sources(graph,
+                                               namespace,
+                                               srcfrag,
+                                               srcport)
+
+            else:
+                print(srcfrag)
+                raise NotImplementedError
+
+    elif isinstance(frag,acirc.ABlockInst):
+        sources.append((frag,port))
+
+    else:
+        raise NotImplementedError
+
+    return sources
+
 def tac_abs_conn(graph,namespace,fragment,ctx,cutoff):
     parents = list(fragment.parents())
     assert(len(parents) == 1)
@@ -360,28 +398,13 @@ def tac_abs_conn(graph,namespace,fragment,ctx,cutoff):
     srcfrag,srcport = fragment.source
     dstfrag,dstport = fragment.dest
     dstnode = ctx.context().get_node_by_fragment_id(namespace,dstfrag.id)
-    sources = []
-    if isinstance(srcfrag,acirc.AInput):
-        if srcfrag.source is None:
-            raise Exception("input isn't routed: <%s>" % srcfrag)
-        srcfrag,srcport = srcfrag.source
-        assert(isinstance(srcfrag,acirc.ABlockInst))
-        sources.append((srcfrag,srcport))
-
-    elif isinstance(srcfrag,acirc.AJoin):
-        for parent in srcfrag.parents():
-            assert(isinstance(parent,acirc.AConn))
-            srcfrag,srcport = parent.source
-            assert(isinstance(srcfrag,acirc.ABlockInst))
-            sources.append((srcfrag,srcport))
-
-    elif isinstance(srcfrag,acirc.ABlockInst):
-        sources.append((srcfrag,srcport))
+    sources = tac_collect_sources(graph,namespace,srcfrag,srcport)
 
 
     curr_state = ctx.context()
     sources_locs = list(map(lambda arg:
-                            list(graph.board.instances_of_block(arg[0].block.name)),
+                            list(graph.board.instances_of_block(
+                                arg[0].block.name)),
                             sources))
     count = 0
     for srclocs in map(lambda q:list(q),itertools.product(*sources_locs)):
@@ -512,15 +535,12 @@ def traverse_abs_circuit(graph,namespace,fragment,ctx=None,cutoff=1):
 
 
 def build_concrete_circuit(name,graph,fragment_map):
-    print(fragment_map.keys())
     namespace = list(fragment_map.keys())[0]
     fragment = fragment_map[namespace]
     for var,frag in fragment_map.items():
         print("=== %s ===" % var)
         print(frag)
 
-    for _ in range(0,2):
-        print("######")
     for idx,result in \
         enumerate(traverse_abs_circuit(graph,namespace,fragment,
                              ctx=RouteDFSState(fragment_map),
@@ -544,7 +564,8 @@ def route(basename,board,_fragment_map):
                             _fragment_map.items()))
     for frag in fragment_map.values():
         frag.enumerate()
-    sys.setrecursionlimit(1000)
+    #sys.setrecursionlimit(1000)
     graph = build_instance_graph(board)
+    print('--- concrete circuit ---')
     for conc_circ in build_concrete_circuit(basename,graph,fragment_map):
         yield conc_circ

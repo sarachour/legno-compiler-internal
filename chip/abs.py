@@ -125,7 +125,7 @@ class ANode:
 
     def copy(self):
         engine = ANode.CopyCtx()
-        return self._copy(engine)
+        return self._copy(engine),engine
 
 class AInput(ANode):
 

@@ -159,7 +159,7 @@ def distribute_consts(ast,const=None):
 
     elif ast.op == aexpr.AOp.VAR:
         if not const is None:
-            yield AGain(const, ast)
+            yield aexpr.AGain(const, ast)
         else:
             yield ast
 
@@ -285,8 +285,7 @@ def to_abs_circ(board,ast):
                                       list(to_abs_circ(board,inp)), \
                                       ast.inputs))
 
-                for _combo in itertools.product(new_inputs):
-                    combo = _combo[0]
+                for combo in itertools.product(*new_inputs):
                     free_ports,out_block,out_port = \
                         build_tree_from_levels(board,
                                                levels,
@@ -295,15 +294,12 @@ def to_abs_circ(board,ast):
                         )
 
                     for assigns in input_level_combos(free_ports,combo):
-                        out_block_c = out_block.copy()
+                        out_block_c,copier = out_block.copy()
                         for (_dstblk,dstport),(_srcblk,srcport) in assigns:
-                            dstblk = _dstblk.copy()
-                            srcblk = _srcblk.copy()
+                            dstblk = copier.get(_dstblk)
+                            srcblk,_ = _srcblk.copy()
                             acirc.ANode.connect(srcblk,srcport, \
                                                 dstblk,dstport)
-
-                        print("found: %s" % out_block_c)
-                        input()
                         yield out_block_c,out_port
 
 
@@ -335,7 +331,7 @@ def to_abs_circ(board,ast):
         for combo in itertools.product(*new_inputs):
             join = acirc.AJoin()
             for node,out in combo:
-                nnode = node.copy()
+                nnode,_ = node.copy()
                 assert(not nnode is None)
                 acirc.ANode.connect(nnode,out,join,"in")
 
@@ -379,7 +375,7 @@ def copy_signal(board,node,output,n_copies,label,max_fanouts):
             for port_node,port in ports:
                 port_node.config.set_label(port,label)
 
-        new_node = node.copy()
+        new_node,_ = node.copy()
         acirc.ANode.connect(new_node,output,c_node,c_output)
         yield free_ports,c_node,c_output
 
@@ -540,7 +536,10 @@ def compile(board,prob,depth=3,max_abs_circs=100,max_conc_circs=1):
 
                 idx= [num_circs,choice_idx,mapping_idx]
                 basename =  prob.name+ "_".join(map(lambda i:str(i),idx))
-                for idx_j,conc_circ in enumerate(arco_route.route(basename,board,var_map)):
+                print("-- Routing ---")
+                for idx_j,conc_circ in enumerate(arco_route.route(basename,
+                                                                  board,
+                                                                  var_map)):
                     yield idx+[idx_j],conc_circ
                     n_conc += 1
 
