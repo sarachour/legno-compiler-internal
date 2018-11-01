@@ -3,6 +3,7 @@ import chip.block as block
 
 
 class ANode:
+    _IDENT = 0;
 
     class CopyCtx:
 
@@ -10,7 +11,7 @@ class ANode:
             self._map = {}
 
         def get(self,node):
-            return self._map[hash(node)]
+            return self._map[node.id]
 
         def register(self,node,new_node):
             assert(not new_node is None)
@@ -18,19 +19,19 @@ class ANode:
                 return False
 
             new_node._id = node._id
-            self._map[hash(node)] = new_node
+            self._map[node.id] = new_node
             return True
 
         def copy(self,node):
-            if hash(node) in self._map:
-                return self._map[hash(node)]
+            if node.id in self._map:
+                return self._map[node.id]
 
             else:
                 new_node = node._copy(self)
                 if not self.register(node,new_node):
                     return self.get(node)
 
-            nn = self._map[hash(node)]
+            nn = self._map[node.id]
             assert(not nn is None)
             assert(str(nn) == str(node))
             return nn
@@ -39,11 +40,13 @@ class ANode:
         self._children = []
         self._parents = []
         self._node_cache = set([self])
-        self._id = None
+        self._id = ANode._IDENT
+        ANode._IDENT += 1
 
     @property
     def id(self):
         return self._id
+
 
     def contains(self,n):
         return n in self.nodes()
@@ -60,10 +63,6 @@ class ANode:
                     yield node
 
         return set(helper(self))
-
-    def enumerate(self):
-        for idx,node in enumerate(self.nodes()):
-            node._id = idx
 
     def get_by_id(self,ident):
         for node in self.nodes():
@@ -127,6 +126,12 @@ class ANode:
         engine = ANode.CopyCtx()
         return self._copy(engine),engine
 
+    def __repr__(self):
+        return self.to_str()
+
+    def to_str(self,internal_id=False):
+        return "%d." % self._internal_id if internal_id else ""
+
 class AInput(ANode):
 
     def __init__(self,name):
@@ -165,13 +170,16 @@ class AInput(ANode):
 
         return node
 
-    def __repr__(self):
+    def to_str(self,internal_id=False):
+        st = ANode.to_str(internal_id)
         if self._source is None:
-            return "@%s <= NULL" % self._name
+            st += "@%s <= NULL" % self._name
         else:
-            return "@%s <= %s.%s" % (self._name,
+            st += "@%s <= %s.%s" % (self._name,
                                      self._source[0].name,
-                                     self._source[1])
+                                    self._source[1])
+
+        return st
 
 class AJoin(ANode):
 
@@ -235,7 +243,6 @@ class AConn(ANode):
 
         self.add_child(self._dst_node)
 
-        
     def _copy(self,eng):
         conn = AConn(None,self._src_port,None,self._dst_port)
         success = eng.register(self,conn)
@@ -264,9 +271,11 @@ class AConn(ANode):
             return "%d.=" % (self._id)
 
 
-    def __repr__(self):
-        return "(%s %s %s %s)" % \
+    def to_str(self,internal_id=False):
+        st = ANode.to_str(self,internal_id)
+        st += "(%s %s %s %s)" % \
             (self.name,self._dst_port,self._src_port, self._src_node)
+        return st
 
 
 class ABlockInst(ANode):
@@ -311,9 +320,11 @@ class ABlockInst(ANode):
     def output_used(self,output):
         return output in self._used
 
-    def __repr__(self):
+    def to_str(self,internal_id=False):
+        st = ANode.to_str(self,internal_id)
         argstr = " ".join(map(lambda p: str(p), self._parents))
-        return "(%s %s)" % (self.name,argstr)
+        st += "(%s %s)" % (self.name,argstr)
+        return st
 
 class AbsCirc:
 

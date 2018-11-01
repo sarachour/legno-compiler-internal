@@ -1,10 +1,16 @@
 import itertools
 import chip.abs as acirc
+import chip.props as prop
 import compiler.arco_route as arco_route
 from compiler.arco_rules import get_rules
 import compiler.arco_data as aexpr
 import random
 import math
+import logging
+
+#logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('arco')
 
 # returns number of rules applied, new_ast
 def xform_expr(ast,rules,max_xforms=3):
@@ -178,9 +184,10 @@ def distribute_consts(ast,const=None):
         raise Exception(ast)
 
 
-def enumerate_tree(block,n,max_blocks=None,permute_input=False):
-    nels = len(block.inputs) if permute_input \
-    else len(block.outputs)
+def enumerate_tree(block,n,max_blocks=None,mode='default',
+                   permute_input=False,prop=prop.CURRENT):
+    nels = len(block.by_property(prop,mode,block.inputs)) if permute_input \
+       else len(block.by_property(prop,mode,block.outputs))
 
     def count_free(levels):
         cnt = 0
@@ -212,38 +219,63 @@ def enumerate_tree(block,n,max_blocks=None,permute_input=False):
 
             yield counts
 
-def build_tree_from_levels(board,levels,block,input_tree=False):
+def build_tree_from_levels(board,levels,block,
+                           input_tree=False,
+                           mode='default',
+                           prop=None):
     blocks = []
     free_ports = {}
-    par_ports = block.outputs if input_tree \
-                        else block.inputs
+
+    par_ports = block.by_property(prop,mode,block.outputs) if input_tree \
+       else block.by_property(prop,mode,block.inputs)
+
     assert(len(par_ports) == 1)
     par_port = par_ports[0]
-    child_ports = block.inputs if input_tree \
-                  else block.outputs
 
+    child_ports = block.by_property(prop,mode,block.inputs) if input_tree \
+                  else block.by_property(prop,mode,block.outputs)
+
+    # build all the nodes for each level, and all of the inputs, outputs
+    nodes = {}
+    parents = {}
+    children = {}
     for level_idx,n_nodes in enumerate(levels):
-        blevel = []
-        llports = []
+        nodes[level_idx] = []
+        parents[level_idx] = []
+        children[level_idx] = []
         for idx in range(0,n_nodes):
             node = acirc.ANode.make_node(board,block.name)
-            blevel.append(node)
+            nodes[level_idx].append(node)
+            parents[level_idx].append((node,par_port))
+
             for port in child_ports:
-                llports.append((node,port))
+                children[level_idx].append((node,port))
 
-            if idx > 0:
-                llnode,llport = llports[0]
-                llports = llports[1:]
+    # connect nodes across levels
+    for level_idx,n_nodes in enumerate(levels):
+        if level_idx == 0:
+            free_ports[level_idx] = children[level_idx]
+        else:
+            offset = 0;
+            last_level_idx = level_idx - 1
+            for par_node in nodes[last_level_idx]:
+                ch_node,ch_port = children[level_idx][offset]
                 if input_tree:
-                    acirc.ANode.connect(node,par_port,llnode,llport)
+                    acirc.ANode.connect(
+                        par_node,par_port,
+                        ch_node,ch_port
+                    )
                 else:
-                    acirc.ANode.connect(llnode,llport,node,par_port)
+                    acirc.ANode.connect(
+                        ch_node,ch_port,
+                        par_node,par_port
+                    )
+                offset += 1
 
-        blocks.append(blevel)
-        for node,port in llports:
-            free_ports[level_idx] = llports
+            free_ports[level_idx] = children[level_idx][offset:]
 
-    return free_ports,blocks[0][0],par_port
+
+    return free_ports,nodes[len(levels)-1][0],par_port
 
 
 def input_level_combos(level_inputs,sources):
@@ -279,7 +311,9 @@ def to_abs_circ(board,ast):
             multiplier = board.block("multiplier")
             for levels in \
                 enumerate_tree(multiplier,len(ast.inputs),
-                               permute_input=True):
+                               mode='default',
+                               permute_input=True,
+                               prop=prop.CURRENT):
 
                 new_inputs = list(map(lambda inp: \
                                       list(to_abs_circ(board,inp)), \
@@ -290,7 +324,9 @@ def to_abs_circ(board,ast):
                         build_tree_from_levels(board,
                                                levels,
                                                multiplier,
-                                               input_tree=True
+                                               input_tree=True,
+                                               mode='default',
+                                               prop=prop.CURRENT
                         )
 
                     for assigns in input_level_combos(free_ports,combo):
@@ -367,9 +403,11 @@ def copy_signal(board,node,output,n_copies,label,max_fanouts):
                                  max_blocks=max_fanouts,
                                  permute_input=False):
         free_ports,c_node,c_output = build_tree_from_levels(board,
-                                                        levels,
-                                                        fanout,
-                                                        input_tree=False
+                                                            levels,
+                                                            fanout,
+                                                            input_tree=False,
+                                                            mode='default',
+                                                            prop=prop.CURRENT
         )
         for level,ports in free_ports.items():
             for port_node,port in ports:
@@ -400,8 +438,8 @@ def route_signals(sources,stubs):
     for var_name,stubs in stubs.items():
         for stub in stubs:
             selection = []
-            for choice in set(var_choices[stub.name]):
-                selection.append((stub.name,choice))
+            for choice in set(var_choices[stub.label]):
+                selection.append((stub.label,choice))
 
             choices.append(selection)
             all_stubs.append(stub)
@@ -427,7 +465,6 @@ def route_signals(sources,stubs):
         if not invalid:
             yield list(zip(outputs,all_stubs))
 
-    raise NotImplementedError
 
 
 def count_var_refs(frags):
@@ -438,10 +475,18 @@ def count_var_refs(frags):
         for stub in filter(lambda n: isinstance(n,acirc.AInput),
                           frag.nodes()):
 
-            stubs[stub.name].append(stub)
-            refs[stub.name] += 1
+            if not stub.label in stubs:
+                print("=== stub keys ===")
+                for key in stubs:
+                    print("  %s" % key)
+                raise Exception("<%s> of type <%s> not in stubs" % \
+                                (stub.label,stub.__class__.__name__))
+
+            stubs[stub.label].append(stub)
+            refs[stub.label] += 1
 
     return refs,stubs
+
 
 def compile(board,prob,depth=3,max_abs_circs=100,max_conc_circs=1):
     permute = {}
@@ -455,11 +500,11 @@ def compile(board,prob,depth=3,max_abs_circs=100,max_conc_circs=1):
                     if acirc.AbsCirc.feasible(board,[node]):
                         permute[var].append((node,output))
 
-    print("--- Fragments ---")
+    logger.info("--- Fragments ---")
     for var,frags in permute.items():
-        print("%s: %d" % (var,len(frags)))
+        logger.info("%s: %d" % (var,len(frags)))
         if len(frags) == 0:
-            raise Exception("cannot model one of the variables")
+            raise Exception("cannot model variable <%s>" % var)
 
     num_circs = 0
     while num_circs < max_abs_circs:
@@ -468,7 +513,7 @@ def compile(board,prob,depth=3,max_abs_circs=100,max_conc_circs=1):
         refs,stubs = count_var_refs(frag_map)
 
         if not acirc.AbsCirc.feasible(board,frags):
-            print("> not feasible")
+            logger.warn("> not feasible")
             continue
 
 
@@ -492,17 +537,17 @@ def compile(board,prob,depth=3,max_abs_circs=100,max_conc_circs=1):
                     subcs[var_name].append((sources,cnode,coutput))
 
             if len(subcs[var_name]) == 0:
-                print("> no fanout scheme: %s" % (var_name))
+                logger.warn("> no fanout scheme: %s" % (var_name))
                 skip_circuit = True
                 break
 
         if skip_circuit:
             continue
 
-        print("<< circuit <%d> >>" % num_circs)
-        print("--- Fan outs ---")
+        logger.info("<< circuit <%d> >>" % num_circs)
+        logger.info("--- Fan outs ---")
         for var,frags in subcs.items():
-            print("%s: %d" % (var,len(frags)))
+            logger.info("%s: %d" % (var,len(frags)))
 
         variables = subcs.keys()
         choices = list(map(lambda var: subcs[var],variables))
@@ -521,7 +566,7 @@ def compile(board,prob,depth=3,max_abs_circs=100,max_conc_circs=1):
                 enumerate(route_signals(source_map,stubs)):
 
                 if n_conc == max_conc_circs:
-                    print("-> done")
+                    logger.info("-> done")
                     break
 
                 for (node,output), input_stub in mapping:
@@ -536,11 +581,12 @@ def compile(board,prob,depth=3,max_abs_circs=100,max_conc_circs=1):
 
                 idx= [num_circs,choice_idx,mapping_idx]
                 basename =  prob.name+ "_".join(map(lambda i:str(i),idx))
-                print("-- Routing ---")
                 for idx_j,conc_circ in enumerate(arco_route.route(basename,
                                                                   board,
                                                                   var_map)):
                     yield idx+[idx_j],conc_circ
                     n_conc += 1
 
+                    if n_conc > max_conc_circs:
+                        break
 

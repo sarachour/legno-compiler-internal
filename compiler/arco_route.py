@@ -3,7 +3,8 @@ import chip.abs as acirc
 import chip.conc as ccirc
 import sys
 import itertools
-
+import logging
+logger = logging.getLogger('arco_route')
 class RouteGraph:
     class RNode:
 
@@ -16,9 +17,13 @@ class RouteGraph:
             self._passthrough = (graph.board.block(block).type == Block.BUS)
             self._config = None
 
+        def set_config(self,c):
+            assert(not c is None)
+            self._config = c
         @property
         def config(self):
-            assert(not self._config is None)
+            if (self._config is None):
+                raise Exception("no configuration: %s" % str(self))
             return self._config
 
         @property
@@ -31,7 +36,7 @@ class RouteGraph:
 
         @property
         def key(self):
-            return "%s%s" % (self._block,str(self._loc))
+            return "%s.%s" % (self._block,self._loc)
 
         def input_key(self,inp):
             return "I.%s.%s" % (self.key,inp)
@@ -58,6 +63,7 @@ class RouteGraph:
 
 
     def add_node(self,block_name,loc):
+        assert(isinstance(loc,str))
         node = RouteGraph.RNode(self,block_name,loc)
         if not block_name in self._nodes_by_block:
             self._nodes_by_block[block_name] = []
@@ -67,14 +73,18 @@ class RouteGraph:
 
     def get_node(self,block_name,loc):
         node = RouteGraph.RNode(self,block_name,loc)
+        if not node.key in self._nodes:
+            for key in self._nodes.keys():
+                logger.info(key)
+            raise Exception("no node <%s>" % node.key)
         return self._nodes[node.key]
 
     def nodes_of_block(self,block_name,used=[]):
+        used_keys = list(map(lambda node: node.key, used))
         for node_key in self._nodes_by_block[block_name]:
             node = self._nodes[node_key]
-            if not node.key in used:
+            if not node.key in used_keys:
                 yield node
-
 
 
 
@@ -85,7 +95,7 @@ def build_instance_graph(board):
 
     graph = RouteGraph(board)
     for block,loc,metadata in board.instances():
-        graph.add_node(block,loc[1:])
+        graph.add_node(block,loc)
 
     GRAPHS[board.name] = graph
     return graph
@@ -102,21 +112,14 @@ class RouteDFSContext:
     def __init__(self):
         self._nodes_by_block = {}
         self._nodes_by_fragment_id = {}
-        self._pools_by_fragment_id = {}
         self._conns = {}
 
-    def get_pool_by_fragment_id(self,namespace,pool):
-        if not (namespace,pool) in self._pools_by_fragment_id:
+
+    def get_node_by_fragment(self,namespace,frag):
+        if not (namespace,frag.id) in self._nodes_by_fragment_id:
             return None
 
-        return self._pools_by_fragment_id[(namespace,pool)]
-
-
-    def get_node_by_fragment_id(self,namespace,frag):
-        if not (namespace,frag) in self._nodes_by_fragment_id:
-            return None
-
-        return self._nodes_by_fragment_id[(namespace,frag)]
+        return self._nodes_by_fragment_id[(namespace,frag.id)]
 
 
     def nodes(self):
@@ -126,7 +129,7 @@ class RouteDFSContext:
 
     def conns(self):
         for n1,p1,n2,p2 in self._conns.values():
-            yield n1,p2,n2,p2
+            yield n1,p1,n2,p2
 
     def nodes_of_block(self,block):
         if not block in self._nodes_by_block:
@@ -142,62 +145,52 @@ class RouteDFSContext:
         if not block_name in self._nodes_by_block:
             return False
         for node in self._nodes_by_block[block_name]:
-            if board.position_string(node.loc) ==  \
-               board.position_string(loc):
+            if node.loc == loc:
                 return True
 
         return False
 
 
-    def use_node(self,node,config,namespace,fragment_id):
-        if (namespace,fragment_id) in self._nodes_by_fragment_id:
+    def use_node(self,node,config,namespace,fragment):
+        if (namespace,fragment.id) in self._nodes_by_fragment_id:
             raise Exception ("%s.%d already in context" % (namespace,fragment_id))
 
-        self._nodes_by_fragment_id[(namespace,fragment_id)] = node
+        node.set_config(config)
+        self._nodes_by_fragment_id[(namespace,fragment.id)] = node
         if not node.block_name in self._nodes_by_block:
             self._nodes_by_block[node.block_name] = []
 
         self._nodes_by_block[node.block_name].append(node)
 
     def conn_node(self,node1,port1,node2,port2):
-        assert(not node1.output_key(port1) in self._conns)
+        if (node1.output_key(port1) in self._conns):
+            _,_,old_node2,old_port2 = self._conns[node1.output_key(port1)]
+            print("src:  %s.%s" % (node1,port1))
+            print("new-dest: %s.%s" % (node2,port2))
+            print("old-dest: %s.%s" % (old_node2,old_port2))
+            raise Exception("<%s,%s> already connected." % (node1,port1))
         self._conns[node1.output_key(port1)] = (node1,port1,node2,port2)
 
-    def add_to_pool(self,node,port,pool_ns,pool_id):
-        if (not (pool_ns,pool_id) in self._pools_by_fragment_id):
-            self._pools_by_fragment_id[(pool_ns,pool_id)] = []
-
-        self._pools_by_fragment_id[(pool_ns,pool_id)].append((node,port))
-
-class DFSPoolNode(DFSAction):
-
-    def __init__(self,node,port,namespace,frag_id):
-        DFSAction.__init__(self)
-        self._namespace = namespace
-        self._frag_id = frag_id
-        self._node = node
-        self._port = port
-
-
-    def apply(self,ctx):
-        ctx.add_to_pool(self._node,self._port,self._namespace,self._frag_id)
-
-
+    
 class DFSUseNode(DFSAction):
 
-    def __init__(self,node,namespace,frag_id,config=None):
+    def __init__(self,node,namespace,frag,config):
+        assert(not isinstance(frag,int))
         DFSAction.__init__(self)
         self._namespace = namespace
-        self._frag_id = frag_id
+        self._frag  = frag
         self._node = node
+        assert(not config is None)
         self._config = config
 
 
     def apply(self,ctx):
-        ctx.use_node(self._node,self._config,self._namespace,self._frag_id)
+        ctx.use_node(self._node,self._config,self._namespace,self._frag)
 
     def __repr__(self):
-        return "%s [%s.%d]" % (self._node,self._namespace,self._frag_id)
+        if self._frag.id is None:
+            raise Exception("fragment has no id <%s>" % self._frag)
+        return "%s [%s.%d]" % (self._node,self._namespace,self._frag.id)
 
 class DFSConnNode(DFSAction):
 
@@ -208,8 +201,10 @@ class DFSConnNode(DFSAction):
         self._p2 = port2
 
     def apply(self,ctx):
-        ctx.conn_node(self._n1,self._p2,self._n2,self._p2)
+        ctx.conn_node(self._n1,self._p1,self._n2,self._p2)
 
+    def __repr__(self):
+        return "(%s.%s)->(%s.%s)" % (self._n1,self._p1,self._n2,self._p2)
 class DFSState:
     def __init__(self):
         self._stack = []
@@ -239,7 +234,7 @@ class DFSState:
         self._frame = []
 
     def pop(self):
-        self._stack = self._stack[1:]
+        self._stack = self._stack[:-1]
 
     def new_ctx(self):
         raise NotImplementedError
@@ -257,8 +252,8 @@ class DFSState:
         rep = ""
         for frame in self._stack:
             for op in frame:
-                rep += str(op) + "\t"
-            rep += "\n"
+                rep += str(op) + "\n"
+            rep += "-----\n"
         return rep
 
 
@@ -276,94 +271,57 @@ class RouteDFSState(DFSState):
     def new_ctx(self):
         return RouteDFSContext()
 
-def connect_conc_circ_ports(graph,state,namespace,src_frag,src_port,dest_frag,dest_port):
-    cctx = state.context()
-    if isinstance(src_frag,acirc.AInput):
-        srcnode = cctx.get_node_by_fragment_id(namespace,src_frag.id)
-        src_port = src_frag.source[1]
-    elif isinstance(src_frag,acirc.AJoin):
-        srcpool = cctx.get_pool_by_fragment_id(namespace,src_frag.id)
-        for node,port in srcpool:
-            raise Exception("build context")
-
-    else:
-        srcnode = cctx.get_node_by_fragment_id(namespace,src_frag.id)
-
-    if isinstance(dest_frag,acirc.AJoin):
-        state.commit()
-        state.add(DFSPoolNode(srcnode,src_port,namespace,dest_frag.id))
-        state.commit()
-        return state
-        return
-    else:
-        dstnode = cctx.get_node_by_fragment_id(namespace,dest_frag.id)
-
-    assert(not dstnode is None)
-    assert(not srcnode is None)
-    if graph.can_connect(srcnode.block_name,srcnode.loc,src_port,
-                         dstnode.block_name,dstnode.loc,dest_port):
-        state.add(DFSConnNode(srcnode,src_port,dstnode,dest_port))
-        state.commit()
-        return state
-
-    else:
-        # TODO: allow for gaps
-        print("cannot connec %s%s.%s - %s%s.%s" %
-            (srcnode.block_name,srcnode.loc,src_port,dstnode.block_name,dstnode.loc,dest_port))
-        return
 
 
-def are_block_instances_used(graph,ctx,lst):
-    for block,loc in lst:
-        if ctx.in_use(graph.board,block,loc):
-            return True
+def tac_iterate_over_sources(graph,namespace,ctx, src_list,cutoff=1):
+        if len(src_list) == 0:
+            yield ctx
+        else:
+            src_frag = src_list[0]
+            for new_ctx in \
+                traverse_abs_circuit(graph,
+                                     namespace,
+                                     src_frag,
+                                     ctx=ctx,
+                                     cutoff=cutoff):
+                for very_new_ctx in tac_iterate_over_sources(graph,
+                                                             namespace,
+                                                             new_ctx,
+                                                             src_list[1:],
+                                                             cutoff):
+                    yield very_new_ctx
 
-    return False
+def tac_abs_block_inst(graph,namespace,fragment,ctx=None,cutoff=1):
+    node = ctx.context().get_node_by_fragment(
+        namespace,fragment)
 
-def tac_abs_block_inst(graph,namespace,fragment,ctx=None,cutoff=1,loc=None):
-    node = ctx.context().get_node_by_fragment_id(
-        namespace,fragment.id)
     if not node is None:
         yield ctx
         return
 
     used_nodes = ctx.context().nodes_of_block(fragment.block.name)
-    ctx.commit()
-    for node in graph.nodes_of_block(fragment.block.name,
-                                        used=used_nodes):
-        if not loc is None and \
-           graph.board.position_string(node.loc) != graph.board.position_string(loc):
-            continue
+    free_nodes = list(graph.nodes_of_block(fragment.block.name,
+                                           used=used_nodes))
 
-        ctx_buf=[ctx.copy()]
-        ctx_buf[0].add(DFSUseNode(node,namespace,
-                                    fragment.id,
+    for node in free_nodes:
+        base_ctx=ctx.copy()
+        base_ctx.add(DFSUseNode(node,namespace,
+                                    fragment,
                                     fragment.config))
-        ctx_buf[0].commit()
-        for source_frag in fragment.parents():
-            new_ctx_buf = []
-            for curr_ctx in ctx_buf:
-                for new_ctx in \
-                    traverse_abs_circuit(graph,
-                                            namespace,
-                                            source_frag,
-                                            ctx=curr_ctx,
-                                            cutoff=cutoff
-                ):
-                    new_ctx_buf.append(new_ctx.copy())
-
-            ctx_buf = new_ctx_buf
-
-        for new_ctx in ctx_buf:
+        base_ctx.commit()
+        for new_ctx in tac_iterate_over_sources(graph,namespace,base_ctx,
+                                        list(fragment.parents()),
+                                        cutoff):
             yield new_ctx
 
-        ctx.pop()
+        #ctx.pop()
+
 
 def tac_collect_sources(graph,namespace,frag,port):
     sources = []
     if isinstance(frag,acirc.AInput):
         if frag.source is None:
-            raise Exception("input isn't routed: <%s>" % srcfrag)
+            raise Exception("input isn't routed: <%s>" % frag)
         srcfrag,srcport = frag.source
         sources += tac_collect_sources(graph,namespace,srcfrag,srcport)
 
@@ -380,7 +338,7 @@ def tac_collect_sources(graph,namespace,frag,port):
                                                srcport)
 
             else:
-                print(srcfrag)
+                logger.info(srcfrag)
                 raise NotImplementedError
 
     elif isinstance(frag,acirc.ABlockInst):
@@ -391,92 +349,127 @@ def tac_collect_sources(graph,namespace,frag,port):
 
     return sources
 
+def create_instance_set_identifier(route):
+    if len(route) == 0:
+        return "@",[]
+
+    ident_arr = list(set(map(lambda args: "%s:%s:%s" % args, route)))
+    ident_arr.sort()
+    raise NotImplementedError
+
 def tac_abs_conn(graph,namespace,fragment,ctx,cutoff):
     parents = list(fragment.parents())
     assert(len(parents) == 1)
     # find other edge
-    srcfrag,srcport = fragment.source
+    srcfrag_start,srcport_start= fragment.source
     dstfrag,dstport = fragment.dest
-    dstnode = ctx.context().get_node_by_fragment_id(namespace,dstfrag.id)
-    sources = tac_collect_sources(graph,namespace,srcfrag,srcport)
+    sources = tac_collect_sources(graph,namespace, \
+                                  srcfrag_start, \
+                                  srcport_start)
 
+    logger.debug("[dst] block=%s, port=%s" % (dstfrag,dstport))
 
     curr_state = ctx.context()
     sources_locs = list(map(lambda arg:
                             list(graph.board.instances_of_block(
                                 arg[0].block.name)),
                             sources))
+
     count = 0
-    for srclocs in map(lambda q:list(q),itertools.product(*sources_locs)):
-        used_comps = list(map(lambda args: (args[0][0].block.name,args[1]),
-            zip(sources,srclocs)))
+    unusable_routes = []
+    source_frags = list(map(lambda src: src[0], sources))
+    source_ports = list(map(lambda src: src[1], sources))
+    print("sources: %s" % str(sources))
 
-        if are_block_instances_used(graph,curr_state,used_comps):
+    for endpt_ctx in tac_iterate_over_sources(graph,
+                                              namespace,
+                                              ctx,source_frags,
+                                              cutoff):
+
+        # compute nodes for endponts
+        state = endpt_ctx.context()
+        srcnodes = map(lambda srcfrag : \
+                       state.get_node_by_fragment(namespace,srcfrag),
+                       source_frags)
+        dstnode = state.get_node_by_fragment(namespace,dstfrag)
+
+        # compute all routes, given endpoints
+        all_routes = []
+        print("sources: %s" % str(sources))
+        for srcnode,srcport in zip(srcnodes,source_ports):
+            print(srcnode,srcport)
+            print(dstnode,dstport)
+            routes = list(graph.board.find_routes(
+                srcnode.block_name,srcnode.loc,srcport,
+                dstnode.block_name,dstnode.loc,dstport,
+                cutoff=cutoff
+            ))
+            all_routes.append(routes)
+
+        # compute all combinations of routes
+        routes_by_inst_set = {}
+        for route_coll in itertools.product(*all_routes):
+            key,instcoll = create_instance_set_identifier(route_coll[0][1:-1])
+            if key is None:
                 continue
 
-        srcroutes = list(map(lambda args: \
-                             list(graph.board.find_routes(
-                                 args[0][0].block.name,args[1],args[0][1],
-                                 dstnode.block_name,dstnode.loc,dstport,
-                                 cutoff=cutoff
-                             )), zip(sources,srclocs)))
+            if not key in routes_by_inst_set:
+                routes_by_inst_set[key] = {'routesets':[],'instcoll':instcoll}
+            routes_by_inst_set[key]['routesets'].append(route_coll[0])
+            assert(len(instcoll) == 0)
+        # add intermediate instances.
+        for _,data in routes_by_inst_set.items():
+            instances = data['instcoll']
+            endpt_ctx.commit()
+            for index,(block,loc) in enumerate(instances):
+                node = graph.get_node(blk,loc)
+                # no namespace or fragment id
+                endpt_ctx.add(DFSUseNode(node,
+                                         None, None,
+                                         Config()))
 
+            endpt_ctx.commit()
+            for alln_ctx in \
+                tac_iterate_over_sources(graph,
+                                         namespace,
+                                         endpt_ctx,
+                                         instances,
+                                         cutoff):
+                routes = data['routesets']
+                for route in routes:
+                    last_block,last_loc,last_port = \
+                            srcnode.block_name, srcnode.loc, srcport
+                    route_ctx = alln_ctx.copy()
+                    for block,loc,port in route[1:]:
+                        if not (block == last_block and loc == last_loc):
+                            curr_node = graph.get_node(block,loc)
+                            last_node = graph.get_node(last_block,last_loc)
+                            route_ctx.add(
+                                DFSConnNode(last_node,last_port,
+                                            curr_node,port))
 
-        for chosen_routes in map(lambda q: list(q),
-                                 itertools.product(*srcroutes)):
-            used_comps = []
-            for route in chosen_routes:
-                for name,loc,port in route[:-1]:
-                    used_comps.append((name,loc))
+                        last_block,last_loc,last_port = \
+                                                        block,loc,port
 
-            if are_block_instances_used(graph,curr_state,used_comps):
-                continue
-
-            new_ctx = ctx.copy()
-            for route in chosen_routes:
-                for idx,hop in enumerate(route):
-                    if idx >= len(route) - 2 or idx % 2 == 0:
-                        continue
-
-                    chop_blk,chop_loc,chop_port = hop
-                    nhop_blk,nhop_loc,nhop_port = route[idx+1]
-
-                    cnode = graph.get_node(chop_blk,chop_loc)
-                    nnode = graph.get_node(nhop_blk,nhop_loc)
-
-                    new_state = new_ctx.context()
-                    if not new_ctx.in_use(chop_blk,chop_loc):
-                        new_ctx.add(DFSUseNode(cnode,None, None, Config()))
-
-                    if not new_ctx.in_use(nhop_blk,nhop_loc):
-                        new_ctx.add(DFSUseNode(nnode,None, None, Config()))
-
-                    state.add(DFSConnNode(cnode,chop_port,nnode,nhop_port))
-                    new_ctx.commit()
-
-
-            for (frag,port),loc,route in zip(sources,srclocs,chosen_routes):
-                # actually traverse source
-                for newest_ctx in tac_abs_block_inst(graph,
-                                                     namespace,
-                                                     frag,
-                                                     ctx=new_ctx,
-                                                     loc=loc):
-                    last_hop_blk,last_hop_loc,last_hop_port = route[-2]
-                    last_hop_node = graph.get_node(last_hop_blk,last_hop_loc[1:])
-                    node = graph.get_node(frag.block.name,loc[1:])
-
-                    newest_ctx.add(DFSConnNode(last_hop_node,last_hop_port,
-                                               node,port))
-                    newest_ctx.commit()
+                    print("<< route >>")
+                    print(route)
+                    print("<< context>>")
+                    print(route_ctx)
+                    route_ctx.commit()
+                    route_ctx.context()
+                    yield route_ctx
                     count += 1
-                    yield newest_ctx
 
 
     if count == 0:
-        print("src: %s\n" % (srcfrag))
-        print("dest: %s\n" % dstfrag)
-        raise Exception("no connections")
+        print("---- unusable routes ----")
+        for route in unusable_routes:
+            print(route)
+        print("----       ***      ----")
+        logger.warning("src: %s" % (srcfrag))
+        logger.warning("dest: %s" % dstfrag)
+        logger.warning("no connections")
+        input("<press enter to continue>")
 
 
     #for curr_ctx in traverse_abs_circuit(graph,
@@ -502,12 +495,12 @@ def tac_abs_input(graph,namespace,fragment,ctx,cutoff):
                                         new_frag,
                                         ctx=ctx,cutoff=cutoff):
         source_node = new_ctx.context() \
-                                .get_node_by_fragment_id(
-                                    new_namespace,new_frag.id)
+                                .get_node_by_fragment(
+                                    new_namespace,new_frag)
 
         new_ctx.add(DFSUseNode(source_node,
                                 namespace,
-                                fragment.id))
+                                fragment))
         new_ctx.commit()
         yield new_ctx
 
@@ -538,8 +531,8 @@ def build_concrete_circuit(name,graph,fragment_map):
     namespace = list(fragment_map.keys())[0]
     fragment = fragment_map[namespace]
     for var,frag in fragment_map.items():
-        print("=== %s ===" % var)
-        print(frag)
+        logger.info("=== %s ===" % var)
+        logger.info(frag)
 
     for idx,result in \
         enumerate(traverse_abs_circuit(graph,namespace,fragment,
@@ -551,10 +544,10 @@ def build_concrete_circuit(name,graph,fragment_map):
             circ.use(node.block_name,node.loc,config=node.config)
 
         for n1,p1,n2,p2 in state.conns():
-            circ.conn(n1.block_name,n1.loc,n1.port,
-                      n2.block_name,n2.loc,n2.port)
+            circ.conn(n1.block_name,n1.loc,p1,
+                      n2.block_name,n2.loc,p2)
 
-        yield ccirc
+        yield circ
 
     return
 
@@ -562,10 +555,8 @@ def build_concrete_circuit(name,graph,fragment_map):
 def route(basename,board,_fragment_map):
     fragment_map = dict(map(lambda args: (args[0],args[1][0]),
                             _fragment_map.items()))
-    for frag in fragment_map.values():
-        frag.enumerate()
     #sys.setrecursionlimit(1000)
     graph = build_instance_graph(board)
-    print('--- concrete circuit ---')
+    logger.info('--- concrete circuit ---')
     for conc_circ in build_concrete_circuit(basename,graph,fragment_map):
         yield conc_circ

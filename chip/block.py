@@ -6,6 +6,17 @@ class Labels:
     DYNAMIC_INPUT = 1;
     OUTPUT = 2
 
+    @staticmethod
+    def to_str(idx):
+        if idx == Labels.CONST_INPUT:
+            return "const-inp"
+        elif idx == Labels.DYNAMIC_INPUT:
+            return "dyn-inp"
+        elif idx == Labels.OUTPUT:
+            return "out"
+        else:
+            raise Exception("unknown label ident <%d>" % idx)
+
 class Config:
 
     def __init__(self):
@@ -13,6 +24,20 @@ class Config:
         self._scale_mode = "default"
         self._dacs = {}
         self._labels = {}
+
+    def to_json(self):
+        cfg = {}
+        cfg['compute-mode'] = self._mode
+        cfg['scale-mode'] = self._mode
+        cfg['dacs'] = {}
+        cfg['labels'] = {}
+        for dac,value in self._dacs.items():
+            cfg['dacs'][dac] = value
+
+        for port,label in self._labels.items():
+            cfg['labels'][port] = label
+
+        return cfg
 
     @property
     def scale_mode(self):
@@ -58,9 +83,13 @@ class Config:
     def label_type(self,port):
         return self._labels[port][2]
 
+    def values(self):
+        for dac,value in self._dacs.items():
+            yield dac,value
+
     def labels(self):
-        for port,data in self._labels.items():
-            yield port,data
+        for port,(name,scf,kind) in self._labels.items():
+            yield port,name,scf,kind
 
     def scf(self,port):
         return self._labels[port][1]
@@ -84,6 +113,7 @@ class Block:
     GENERAL = 2
     COPIER = 3
     BUS = 4
+
 
     def __init__(self,name,type=None):
         self._name = name
@@ -186,6 +216,15 @@ class Block:
     @property
     def inputs(self):
         return self._inputs
+
+    def by_property(self,sel_prop,mode,ports):
+        def _fn():
+            for port in ports:
+                prop = self._sigmap[port]
+                if sel_prop == prop:
+                    yield port
+
+        return list(_fn())
 
     def copies(self,mode,port):
         mode = "default" if mode is None else mode

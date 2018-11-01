@@ -251,13 +251,25 @@ def connect_adj_list(hw,block1,block2,adjlist):
                 inprop= block2.signals(inport)
                 if outprop == inprop:
                     if not do_invert:
-                        hw.conn(block1.name,loc1,outport,
-                                block2.name,loc2,inport)
+                        hw.conn(block1.name,
+                                hw.position_string(loc1),
+                                outport,
+                                block2.name,
+                                hw.position_string(loc2),
+                                inport)
                     else:
-                         hw.conn(block1.name,loc1,outport,
-                                 'conn_inv',loc1,'in')
-                         hw.conn('conn_inv',loc1,'out',
-                                 block2.name,loc2,inport)
+                         hw.conn(block1.name,
+                                 hw.position_string(loc1),
+                                 outport,
+                                 'conn_inv',
+                                 hw.position_string(loc1),
+                                 'in')
+                         hw.conn('conn_inv',
+                                 hw.position_string(loc1),
+                                 'out',
+                                 block2.name,
+                                 hw.position_string(loc2),
+                                 inport)
 
 
 def make_board():
@@ -319,12 +331,12 @@ def make_board():
                     slice_base = 2 if slice_idx == 2 else 0
 
                     hw.set_inst_meta('due_adc',
-                                slce.position,
+                                hw.position_string(slce.position),
                                 "chan_pos",
                                 chip_base+slice_base+0)
 
                     hw.set_inst_meta('due_adc',
-                                slce.position,
+                                hw.position_string(slce.position),
                                 "chan_neg",
                                 chip_base+slice_base+1)
 

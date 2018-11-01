@@ -25,7 +25,7 @@ class Layer:
         return layer
 
     @staticmethod
-    def position_string(position):
+    def _position_string(position):
         return "(%s)" % \
             (",".join(map(lambda idx: str(idx), position)))
 
@@ -70,12 +70,18 @@ class Board(Layer):
         Layer.__init__(self,self,name)
         self._name = name
         self._mode = mode
+        self._key_to_pos = {}
         self._blocks = {}
+
+        # accessors
         self._inst_by_block = {}
         self._inst_by_position = {}
+        self._inst_to_meta = {}
+
+        # connections
+        self._metadata = {}
         self._connections = {}
         self._routes = nx.DiGraph()
-        self._metadata = {}
         self._freeze_insts = False
 
     def freeze_instances(self):
@@ -96,22 +102,26 @@ class Board(Layer):
     def has_block(self,name):
         return name in self._blocks
 
+    def key_to_loc(self,key):
+        return self._key_to_pos[key]
+
     def num_blocks(self,name):
         return len(self._inst_by_block[name])
 
     def instances(self):
         for blk,locs in self._inst_by_block.items():
-            for loc,meta in locs.values():
+            for loc in locs:
+                meta = self._inst_to_meta[(blk,loc)]
                 yield blk,loc,meta
 
     def instances_of_block(self,blk):
         if not blk in self._inst_by_block:
             for oblk in self._inst_by_block.keys():
-                print(oblk)
+                logger.info(oblk)
             raise Exception("no instances <%s>" % blk)
 
         for loc in self._inst_by_block[blk]:
-            yield self._inst_by_position[loc]['pos']
+            yield loc
 
     @property
     def mode(self):
@@ -124,15 +134,14 @@ class Board(Layer):
         return self._metadata[key]
 
     def set_inst_meta(self,block_name,pos,key,value):
-        posstr = Layer.position_string(pos)
-        _,meta = self._inst_by_block[block_name][posstr]
-        assert(not key in meta)
+        assert(isinstance(pos,str))
+        meta = self._inst_to_meta[(block_name,pos)]
         meta[key] = value
 
-    def inst_meta(self,block_name,pos,key):
-        posstr = self.position_string(pos)
+    def inst_meta(self,block_name,posstr,key):
+        assert(isinstance(posstr,str))
 
-        if not posstr in self._inst_by_block[block_name]:
+        if not pos in self._inst_by_block[block_name]:
             for key in self._inst_by_block[block_name].keys():
                 print(key)
 
@@ -161,23 +170,21 @@ class Board(Layer):
             return True
 
         if block in self._inst_by_block:
-            for loc,_ in self._inst_by_block[block].values():
+            for lockey in self._inst_by_block[block]:
+                loc = self.key_to_loc(lockey)
                 if is_prefixed(scope.position,loc):
-                    yield loc[1:]
+                    yield self.position_string(loc)
 
         else:
             return
 
 
-    def is_block_at(self,block,position):
-        if position[0] == self._name:
-            posstr = Layer.position_string(position)
-        else:
-            posstr = Layer.position_string([self._name] + position)
+    def is_block_at(self,block,posstr):
+        assert(isinstance(posstr,str))
         if not posstr in self._inst_by_position:
             raise Exception("unknown position: %s" % posstr)
 
-        elif block in self._inst_by_position[posstr]['blocks']:
+        elif block in self._inst_by_position[posstr]:
             return True
 
         else:
@@ -185,19 +192,30 @@ class Board(Layer):
 
 
     def position_string(self,position):
+        assert(not isinstance(position,str))
         if position[0] == self._name:
-            posstr = Layer.position_string(position)
+            posstr = Layer._position_string(position)
         else:
-            posstr = Layer.position_string([self._name]+position)
+            posstr = Layer._position_string([self._name]+position)
 
         return posstr
 
-    def find_routes(self,sblk,sloc,sport,dblk,dloc,dport,cutoff=3):
-        skey = self.position_string(sloc)
-        dkey = self.position_string(dloc)
+    def find_routes(self,sblk,skey,sport,dblk,dkey,dport,cutoff=3):
+        assert(isinstance(skey,str))
+        assert(isinstance(dkey,str))
 
-        if self.can_connect(sblk,sloc,sport,dblk,dloc,dport):
-            yield [(sblk,sloc,sport),(dblk,dloc,dport)]
+        if self.can_connect(sblk,skey,sport,dblk,dkey,dport):
+            yield [(sblk,skey,sport),(dblk,dkey,dport)]
+
+        assert(skey in self._key_to_pos)
+        assert(dkey in self._key_to_pos)
+        if not self._routes.has_node((sblk,skey,sport)):
+            raise Exception("source <%s.%s.%s> not in board" % \
+                            (sblk,skey,sport))
+
+        if not self._routes.has_node((dblk,dkey,dport)):
+            raise Exception("dest <%s.%s.%s> not in board" % \
+                            (dblk,dkey,dport))
 
 
         all_routes = list(nx.all_simple_paths(self._routes,
@@ -209,26 +227,28 @@ class Board(Layer):
         for route in all_routes:
             yield list(map(lambda args:
                            (args[0],
-                            self._inst_by_position[args[1]]['pos'],
+                            args[1],
                             args[2]),
                            route))
 
-    def inst(self,block_name,position):
+    def inst(self,block_name,_position):
         assert(not self._freeze_insts)
         if not block_name in self._inst_by_block:
-            self._inst_by_block[block_name] = {}
+            self._inst_by_block[block_name] = []
 
-        key = self.position_string(position)
+        key = self.position_string(_position)
         if not key in self._inst_by_position:
-            self._inst_by_position[key] = {'pos':position,'blocks':[]}
+            self._inst_by_position[key] = []
 
         if(key in self._inst_by_block[block_name]):
             raise Exception("block <%s> already in position <%s>" % \
                             (block_name,key))
-        assert(not block_name in self._inst_by_position[key]['blocks'])
+        assert(not block_name in self._inst_by_position[key])
 
-        self._inst_by_block[block_name][key] = (position,{})
-        self._inst_by_position[key]['blocks'].append(block_name)
+        self._key_to_pos[key] = _position
+        self._inst_by_block[block_name].append(key)
+        self._inst_by_position[key].append(block_name)
+        self._inst_to_meta[(block_name,key)] = {}
         block = self.block(block_name)
         if block.type == Block.BUS:
             assert(len(block.inputs) == 1)
@@ -239,15 +259,14 @@ class Board(Layer):
             self._routes.add_edge((block_name,key,block.inputs[0]),
                                   (block_name,key,block.outputs[0]))
 
-    def blocks_at(self,position):
-        key = Layer.position_string([self._name] + position)
-        for block_name in self._inst_by_position[key]['blocks']:
+    def blocks_at(self,key):
+        assert(isinstance(key,str))
+        for block_name in self._inst_by_position[key]:
             yield self._blocks[block_name]
 
-    def can_connect(self,sblk,spos,sport,dblk,dpos,dport):
-        skey = self.position_string(spos)
-        dkey = self.position_string(dpos)
-
+    def can_connect(self,sblk,skey,sport,dblk,dkey,dport):
+        assert(isinstance(skey,str))
+        assert(isinstance(dkey,str))
         sblkport = (sblk,sport)
         dblkport = (dblk,dport)
         if not sblkport in self._connections:
@@ -262,9 +281,9 @@ class Board(Layer):
         return True
 
 
-    def inverts_signal(self,sblk,spos,sport,dblk,dpos,dport):
-        skey = self.position_string(spos)
-        dkey = self.position_string(dpos)
+    def inverts_signal(self,sblk,skey,sport,dblk,dkey,dport):
+        assert(isinstance(skey,str))
+        assert(isinstance(dkey,str))
         _,_,invert = self._connections[(sblk,sport)][(dblk,dport)][(skey,dkey)]
         return invert
 
@@ -274,10 +293,12 @@ class Board(Layer):
                 for spos,dpos in self._connections[(sblk,sport)][(dblk,dport)].values():
                     yield (sblk,spos,sport),(dblk,dpos,dport)
 
-    def conn(self,sblkname,spos,sport,dblkname,dpos,dport):
+    def conn(self,sblkname,skey,sport,dblkname,dkey,dport):
         assert(self._freeze_insts)
-        skey = self.position_string(spos)
-        dkey = self.position_string(dpos)
+        assert(isinstance(skey,str))
+        assert(isinstance(dkey,str))
+        assert(skey in self._key_to_pos)
+        assert(dkey in self._key_to_pos)
         if not skey in self._inst_by_block[sblkname]:
             print(self._inst_by_block[sblkname].keys())
             raise Exception("<%s> not in list of defined instances for <%s>"
@@ -306,9 +327,9 @@ class Board(Layer):
             self._connections[sblkport] = {}
 
         if not dblkport in self._connections[sblkport]:
-            self._connections[sblkport][dblkport] = {}
+            self._connections[sblkport][dblkport] = []
 
-        self._connections[sblkport][dblkport][(skey,dkey)] = (spos,dpos)
+        self._connections[sblkport][dblkport].append((skey,dkey))
 
         if not self._routes.has_node((dblkname,dkey,dport)):
             self._routes.add_node((dblkname,dkey,dport))

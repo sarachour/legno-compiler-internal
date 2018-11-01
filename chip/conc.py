@@ -1,4 +1,6 @@
 from chip.block import Config, Labels
+import json
+import os
 
 class ConcCirc:
 
@@ -6,7 +8,7 @@ class ConcCirc:
         self._board = board
         self.name = name
         self._tau = 1.0
-        self._blocks = {}
+        self._configs= {}
         self._conns = {}
         self._intervals = {}
 
@@ -30,8 +32,8 @@ class ConcCirc:
         return self._board
 
     def instances(self):
-        for block_name in self._blocks:
-            for loc,config in self._blocks[block_name].values():
+        for block_name in self._configs:
+            for loc,config in self._configs[block_name].items():
                 yield block_name,loc,config
 
 
@@ -41,23 +43,23 @@ class ConcCirc:
                 print(block.name)
             raise Exception("no block <%s> at that location.")
 
-        if not block in self._blocks:
-            self._blocks[block] = {}
+        if not block in self._configs:
+            self._configs[block] = {}
 
-        locstr = self.board.position_string(loc)
-        if locstr in self._blocks[block]:
+        assert(isinstance(loc,str))
+        if loc in self._configs[block]:
+            assert(config is None)
             return
 
         config = Config() if config is None else config
-        self._blocks[block][locstr] = (loc,config)
+        self._configs[block][loc] = config
         addr = (block,loc)
 
     def in_use(self,block_name,loc):
-        if not block_name in self._blocks:
+        if not block_name in self._configs:
             return False
 
-        addrstr = self.board.position_string(loc)
-        if not addrstr in self._blocks[block_name]:
+        if not loc in self._configs[block_name]:
             return False
 
         return True
@@ -89,30 +91,144 @@ class ConcCirc:
 
     def conn(self,block1,loc1,port1,block2,loc2,port2):
         if not self.in_use(block1,loc1):
-            raise Exception("block <%s> not in use" % (addr1str))
+            raise Exception("block <%s.%s> not in use" % (block1,loc1))
 
         if not self.in_use(block2,loc2):
-            raise Exception("block <%s> not in use" % (addr2str))
+            raise Exception("block <%s.%s> not in use" % (block1,loc1))
 
 
         if not self._board.can_connect(block1,loc1,port1,
                                        block2,loc2,port2):
-            raise Exception("cannot connect <%s.%s> to <%s.%s>" % \
-                            (addr1,port1,addr2,port2))
+            raise Exception("cannot connect <%s.%s.%s> to <%s.%s.%s>" % \
+                            (block1,loc1,port1,block2,loc2,port2))
 
 
-        addr1 = self.board.position_string(loc1)
-        addr2 = self.board.position_string(loc2)
-        if not (block2,addr2,port2) in self._conns:
-            self._conns[(block2,addr2,port2)] = {}
+        assert(not (block1,loc1,port1) in self._conns)
 
-        self._conns[(block2,addr2,port2)][(block1,addr1,port1)] \
-            = (block1,loc1,port1,block2,loc2,port2)
+        self._conns[(block1,loc1,port1)] = (block2,loc2,port2)
 
 
     def config(self,block,loc):
-        addr = self.board.position_string(loc)
-        return self._blocks[block][addr][1]
+        return self._configs[block][loc]
 
     def check(self):
         return self
+
+    def to_json(self):
+        data_struct = {'insts': [], 'conns':[]}
+        for block,locs in self._configs.items():
+            for loc,cfg in locs.items():
+                inst = {'block':block,'loc':loc, \
+                        'board':self._board.name}
+                inst['config'] = cfg.to_json()
+                data_struct['insts'].append(inst)
+
+        for (src_block,src_loc,src_port), \
+            (dst_block,dst_loc,dst_port) in self._conns.items():
+            conn = {
+                'source':{'block':src_block,'loc':src_loc,'port':src_port},
+                'dest':{'block':dst_block,'loc':dst_loc,'port':dst_port}
+            }
+            data_struct['conns'].append(conn)
+
+        return data_struct
+
+    def write_circuit(self,filename):
+        data = self.to_json()
+        with open(filename,'w') as fh:
+            strdata = json.dumps(data)
+            fh.write(strdata)
+
+
+    def _build_dot_data_structures(self):
+        from_id = {}
+        to_id = {}
+        conns = []
+        index = 0
+        for block_name,locs in self._configs.items():
+            for loc,config in locs.items():
+                block_index = index;
+                blk = self._board.block(block_name)
+                to_id[block_index] = {
+                    'block_name':block_name,
+                    'block_loc':loc,
+                    'block_config':config,
+                    'inputs': blk.inputs,
+                    'outputs': blk.outputs
+                }
+                index += 1;
+                for idx,inp in enumerate(blk.inputs):
+                    from_id[(block_name,loc,inp)] = (block_index,"i%d" % idx)
+
+                for idx,out in enumerate(blk.outputs):
+                    from_id[(block_name,loc,out)] = (block_index,"o%d" % idx)
+
+
+        for (sb,sl,sp),(db,dl,dp) in self._conns.items():
+            idx1 = from_id[(sb,sl,sp)]
+            idx2 = from_id[(db,dl,dp)]
+            conns.append((idx1,idx2))
+
+        return to_id,from_id,conns
+
+    def write_graph(self,filename,write_png=False):
+        to_id,from_id,conns = self._build_dot_data_structures()
+        stmts = []
+        varfn = lambda idx : "N%d" % idx
+        value_idx = 0;
+        label_idx = 0;
+        labelfn = lambda : "L%d" % label_idx
+        valuefn = lambda : "V%d" % value_idx
+
+        def q(stmt):
+            stmts.append(stmt)
+
+        q('node [shape=record];')
+        for idx,blkdata in to_id.items():
+            print(blkdata)
+            inp_label = "|".join(map(
+                lambda args: "<i%d> %s" % (args[0],args[1]),
+                enumerate(blkdata['inputs'])))
+            out_label = "|".join(map(
+                lambda args: "<o%d> %s" % (args[0],args[1]),
+                enumerate(blkdata['outputs'])))
+            blk_label = "%s|%s" % (blkdata['block_name'],blkdata['block_loc'])
+            cfg = blkdata['block_config']
+            mode_label = "cm-m:%s|sc-m:%s" % (cfg.mode, cfg.scale_mode)
+            label = "{{%s}|{%s}|{%s}|{%s}}}" %  \
+                    (inp_label,blk_label,mode_label,out_label)
+            st = "%s [label=\"%s\"]" % (varfn(idx),label)
+            q(st)
+
+            for port,math_label,scf,kind in cfg.labels():
+
+                kind = Labels.to_str(kind)
+                label = "%s %s*%s" % (kind,math_label,scf)
+                st = "%s [label=\"%s\"]" % (labelfn(),label)
+                q(st)
+                st = "%s:%s -> %s" % (varfn(idx),port,labelfn())
+                q(st)
+                label_idx += 1
+
+            for port,value in cfg.values():
+                st = "%s [label=\"%s\"]" % (valuefn(),value)
+                q(st)
+                st = "%s -> %s:%s" % (valuefn(),varfn(idx),port)
+                q(st)
+                value_idx += 1
+
+                vnode = valuefn(value_idx)
+
+        for (src,h1),(dst,h2) in conns:
+            q("%s:%s -> %s:%s" % (varfn(src),h1,varfn(dst),h2))
+
+        prog = "digraph circuit {\n%s\n}" % ("\n".join(stmts))
+        with open(filename,'w') as fh:
+            fh.write(prog)
+
+        if write_png:
+            assert(".dot" in filename)
+            basename = filename.split(".dot")[0]
+            imgname = "%s.png" % basename
+            cmd = "dot -Tpng %s -o %s" % (filename,imgname)
+            os.system(cmd)
