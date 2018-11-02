@@ -1,191 +1,188 @@
 #include "math.h"
 #include "Experiment.h"
 #include "Arduino.h"
+#include "IO.h"
+#include <assert.h>
 
-void clear_data(int * WF, int N){
-  for(int t=0; t < N; t+= 1){
-     WF[t] = 0;
+namespace experiment {
+
+volatile int IDX;
+int N;
+int N_OSC;
+const float DELAY_TIME_US= 10.0;
+volatile int SDA_VAL = LOW;
+experiment_t* EXPERIMENT;
+Fabric* FABRIC;
+
+
+inline void save_adc_value(experiment_t * expr, byte index){
+   expr->adc_pos[index][IDX] = ADC->ADC_CDR[0+(index<<1)];
+   expr->adc_neg[index][IDX] = ADC->ADC_CDR[1+(index<<1)];
+}
+inline void write_dac0_value(experiment_t * expr){
+  analogWrite(DAC0, expr->dac[0][IDX]); 
+}
+inline void write_dac1_value(experiment_t * expr){
+  analogWrite(DAC1, expr->dac[1][IDX]); 
+}
+inline void _toggle_SDA(){
+  SDA_VAL = SDA_VAL == HIGH ? LOW : HIGH;
+  digitalWrite(SDA,SDA_VAL);
+}
+inline void drive_sda_clock(){
+   if(IDX % N_OSC == 0 or IDX >= N){
+      _toggle_SDA();
   }
 }
-
-void _write_to_array(int * WF, int idx, int value){
-    WF[idx] += (int) (value*2048 + 2048);
-    if(WF[idx] > 4096){
-        WF[idx] = 4096;
-    }
-    if(value < 0){
-        WF[idx] = 0;
-    }
-    
-}
-
-void build_sin(int * WF, int N, float freq,float phase,float ampl){
-  float scf = 1.0/((float)N)*2.0*3.14*10;
-  for(int t=0; t < N; t += 1){
-     float value = ampl*sin(freq*((float)t)*scf + phase);
-     _write_to_array(WF,t,value);
+void _update_wave(){
+  for(int idx = 0; idx < 4; idx+=1){
+    save_adc_value(EXPERIMENT,idx);
   }
-}
-
-void build_const(int * WF, int N, float ampl){
-  for(int t=0; t < N; t += 1){
-     float value = ampl;
-     _write_to_array(WF,t,value);
-  }
-}
-
-void build_linear(int * WF, int N, float M, float B, float MIN, float MAX){
-  for(int t=0; t < N; t += 1){
-     float value = M*t+B;
-     if(value > MAX){
-        value = MAX;
-     }
-     if(value < MIN){
-        value = MIN;
-     }
-     _write_to_array(WF,t,value);
-  }
-}
-
-wfspec_t* sig_get_unused(wfspec_t * subsigs, int n_sigs){
-  for(int idx = 0; idx < n_sigs; idx+= 1){
-      if(subsigs[idx].type == wftype_t::NONE){
-        return &subsigs[idx];
+  write_dac0_value(EXPERIMENT);  
+  write_dac1_value(EXPERIMENT);
+  drive_sda_clock();
+  if(IDX >= N){
+      Timer3.detachInterrupt();
+      if(EXPERIMENT->use_analog_chip){
+        circ::finish(FABRIC);
       }
+      return;
   }
+  // increment index
+  IDX += 1;
+}
+
+void attach_interrupts(experiment_t * experiment, Fabric * fab){
+  FABRIC = fab;
+  EXPERIMENT = experiment;
+  Timer3.attachInterrupt(_update_wave);
+
+}
+
+void setup_experiment() {
+  pinMode(SDA, OUTPUT);
+  // put your setup code here, to run once:
+  analogWriteResolution(12);  // set the analog output resolution to 12 bit (4096 levels)
+  Serial.print("external trigger: ");
+  Serial.println(SDA);
+  
+}
+
+// maximum number of samples per acquire.
+#define OSC_SAMPLES 100000
+
+
+void set_dac_value(experiment_t * expr, byte dac_id,int sample,float data){
+   unsigned short value = (short) (value*2048 + 2048);
+   expr->dac[dac_id][sample] = value;
+}
+void enable_adc(experiment_t * expr, byte adc_id){
+  expr->use_adc[adc_id] = true;
+}
+void enable_oscilloscope(experiment_t * expr, byte adc_id){
+  expr->use_osc = true;
+}
+void enable_dac(experiment_t * expr, byte dac_id){
+  expr->use_dac[dac_id] = true;
+}
+short* get_adc_values(experiment_t * expr, byte adc_id, int& num_samples){
   return NULL;
 }
-void sig_add_sin(wfspec_t * subsigs, int n_sigs, float freq, float phase, float ampl){
-  wfspec_t * sig = sig_get_unused(subsigs,n_sigs);
-  sig->type = wftype_t::SIN;
-  sig->data.sind.freq = freq;
-  sig->data.sind.phase = phase;
-  sig->data.sind.ampl = ampl;
-}
-
-void sig_add_const(wfspec_t * subsigs, int n_sigs, float value){
-  wfspec_t * sig = sig_get_unused(subsigs,n_sigs);
-  sig->type = wftype_t::CONST;
-  sig->data.constd.value = value;
-}
-
-void sig_add_linear(wfspec_t * subsigs, int n_sigs, float slope, float offset){
-  wfspec_t * sig = sig_get_unused(subsigs,n_sigs);
-  sig->type = wftype_t::LINEAR;
-  sig->data.lind.slope = slope;
-  sig->data.lind.offset = offset;
-}
-
-void _normalize_experiment_helper(wfspec_t * spec, int n){
-  float max_value = 0.0;
-  for(int idx=0; idx < n; idx += 1){
-     switch(spec[idx].type){
-        case wftype::NONE:
-          break;
-        case wftype::CONST:
-          max_value += spec[idx].data.constd.value;
-          break;
-        case wftype::SIN:
-          max_value += spec[idx].data.sind.ampl;
-          break;
-        case wftype::LINEAR:
-          max_value += max(abs(spec[idx].data.lind.min_value),
-                           abs(spec[idx].data.lind.max_value));
-          break;
-         
-     }
+void reset_experiment(experiment_t * expr){
+  expr->use_analog_chip = true;
+  expr->n_adc_samples = 0;
+  for(int idx = 0; idx < 2; idx+=1 ){
+    expr->use_dac[idx] = false;
+    expr->n_dac_samples[idx] = 0;
   }
-
-   for(int idx=0; idx < n; idx += 1){
-     switch(spec[idx].type){
-        case wftype::NONE:
-          break;
-        case wftype::CONST:
-         spec[idx].data.constd.value /= max_value;
-          break;
-        case wftype::SIN:
-          spec[idx].data.sind.ampl /= max_value;
-          break;
-        case wftype::LINEAR:
-          spec[idx].data.lind.min_value /= max_value;
-          spec[idx].data.lind.max_value /= max_value;
-          break;
-         
-     }
+  for(int idx = 0; idx < 4; idx+=1 ){
+    expr->use_adc[idx] = false;
+  }
+  expr->use_osc = false;
+  for(int i=0; i < MAX_SIZE; i+=1){
+    for(int idx=0; idx < 4; idx +=1){
+      expr->adc_pos[idx][i] = 0;
+      expr->adc_neg[idx][i] = 0;
+    }
+    for(int idx=0; idx < 2; idx +=1){
+      expr->dac[idx][i] = 0;
+    }
   }
 }
-bool _has_signal(wfspec_t * spec, int n){
-  for(int idx=0; idx < n; idx += 1){
-      switch(spec[idx].type){
-        case wftype::NONE:
-          break;
-        default:
-          return true;
-      }
+void run_experiment(experiment_t * expr, Fabric * fab){
+  IDX = 0;
+  N = expr->n_adc_samples;
+  N_OSC = OSC_SAMPLES/DELAY_TIME_US;
+  // trigger the start of the experiment
+  attach_interrupts(expr,fab);
+  if(expr->use_analog_chip){
+    circ::finalize_config(fab);
+    _toggle_SDA();
+    circ::execute(fab);
   }
-  return false;
-  
-}
-int count_signals(experiment_t * exp){
-   int count = 0;
-   if(_has_signal(exp->sig1,NUM_SUBSIGS)){
-      count += 1;
-   }
-   if(_has_signal(exp->sig1,NUM_SUBSIGS)){
-      count += 1;
-   }
-   return count;
-}
-void normalize_experiment(experiment_t * exp){
-  float max_ampl_1 = 0.0;
-  float max_ampl_2 = 0.0;
-  _normalize_experiment_helper(exp->sig1, NUM_SUBSIGS);
-  _normalize_experiment_helper(exp->sig2, NUM_SUBSIGS);
-  
+  else{
+    _toggle_SDA();
+  }
+  Timer3.start(DELAY_TIME_US);
+  while(IDX < N){
+      delayMicroseconds(1000);
+  }
+  Timer3.detachInterrupt();
+  Serial.println("::done::");
 }
 
-void compile_experiment(experiment_t * exp){
-  normalize_experiment(exp);
-  int n = count_signals(exp);
-  exp->num_signals = n;
-}
-void init_experiment(experiment_t * exp){
-  exp->num_signals = 0;
-  for(int idx=0; idx < NUM_SUBSIGS; idx+=1){
-     exp->sig1[idx].type = wftype_t::NONE;
-     exp->sig2[idx].type = wftype_t::NONE;
-    
-  }
-  
-}
-void write_signal(int * WF, int N, wfspec_t * subsigs, int n_sigs){
-  clear_data(WF,N);
-  for(int idx = 0; idx < n_sigs; idx += 1){
-      wfspec_t * sig = &subsigs[idx];
-      switch(sig->type){
-        case wftype_t::LINEAR:
-          build_linear(WF,N,sig->data.lind.slope,
-                       sig->data.lind.offset);
-          break;
-        case wftype_t::CONST:
-          build_const(WF,N,sig->data.constd.value);
-          break;
-        case wftype_t::SIN:
-          Serial.println("sin");
-          build_sin(WF,N,sig->data.sind.freq,
-          sig->data.sind.phase,
-          sig->data.sind.ampl);
-          break;
-        case wftype_t::NONE:
-          break;
-        default:
-          Serial.print("unknown: ");
-          Serial.println(sig->type);
-          break;
-      }
+
+void exec_command(experiment_t* expr, Fabric * fab, cmd_t& cmd){
+  float data[4096];
+  int n;
+  switch(cmd.type){
+    case cmd_type_t::RESET:
+      reset_experiment(expr);
+      break;
+    case cmd_type_t::RUN:
+      run_experiment(expr,fab);
+      break;
+    case cmd_type_t::USE_ANALOG_CHIP:
+      enable_analog_chip(expr);
+      break;
+    case cmd_type_t::USE_DAC:
+      enable_dac(expr,cmd.args[0]);
+      break;
+    case cmd_type_t::USE_ADC:
+      enable_adc(expr,cmd.args[0]);
+      break;
+    case cmd_type_t::USE_OSC:
+      enable_oscilloscope(expr);
+      break;
+    case cmd_type_t::SET_N_ADC_SAMPLES:
+      expr->n_adc_samples = cmd.args[0];
+      break;
       
+    case cmd_type_t::SET_DAC_VALUES:
+      assert(cmd.args[1] <= 4096);
+      read_floats(data,cmd.args[1]);
+      for(int idx = 0; idx < cmd.args[1]; idx+=1){
+        set_dac_value(expr, cmd.args[0], idx + cmd.args[2], data[idx]);
+      }
+      if(cmd.args[2] + cmd.args[1] > expr->n_dac_samples[cmd.args[0]]){
+        expr->n_dac_samples[cmd.args[0]] = cmd.args[2] + cmd.args[1];
+      }
+      break;
+
+    case cmd_type_t::GET_ADC_VALUES:
+      Serial.println("> TODO: implement");
+      break;
   }
 }
 
+
+void print_command(cmd_t& cmd){
+  switch(cmd.type){
+    default:
+      Serial.println("<unimpl>");
+  }
+}
+
+}
 
 
