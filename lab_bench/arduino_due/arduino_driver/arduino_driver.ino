@@ -12,6 +12,16 @@ typedef enum cmd_type {
 } cmd_type_t;
 
 
+typedef union cmd_data {
+  experiment::cmd_t exp_cmd;
+  circ::cmd_t circ_cmd;
+} cmd_data_t;
+
+typedef struct cmd_{
+  cmd_type_t type;
+  cmd_data_t data;
+} cmd_t;
+
 void setup() {
   Serial.begin(115200);
   Serial.flush();
@@ -20,20 +30,17 @@ void setup() {
 }
 
 void loop() {
-  cmd_type_t cmd_type = (cmd_type_t) read_byte();
-  circ::cmd_t circ_cmd;
-  experiment::cmd_t exp_cmd;
+  cmd_t cmd;
+  read_bytes((byte *) &cmd,sizeof(cmd_t));
   
-  switch(cmd_type){
+  switch(cmd.type){
     case cmd_type_t::CIRC_CMD:
       Serial.println("circuit command");
-      read_bytes((byte*) &circ_cmd, sizeof(circ::cmd_t));
-      circ::print_command(circ_cmd);
+      circ::print_command(cmd.data.circ_cmd);
       break;
     case cmd_type_t::EXPERIMENT_CMD:
       Serial.println("experiment command");
-      read_bytes((byte*) &exp_cmd, sizeof(experiment::cmd_t));
-      experiment::print_command(exp_cmd);
+      experiment::print_command(cmd.data.exp_cmd);
       break;
   }
   

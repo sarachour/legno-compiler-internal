@@ -12,7 +12,7 @@ On Windows (choco required):
   
 Once you have python3 installed, install the following packages:
 
-  pip3 install gpkit more-itertools matplotlib scikit-learn scipy numpy pyserial networkx construct
+  pip3 install gpkit more-itertools matplotlib scikit-learn scipy numpy pyserial networkx construct parsec
 
 ## Testing your setup
 

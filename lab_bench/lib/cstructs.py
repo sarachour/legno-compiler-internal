@@ -1,4 +1,4 @@
-from enums import BlockType,ExprCmdType,CircCmdType
+from lib.enums import BlockType,ExpCmdType,CircCmdType,CmdType
 import construct as cstruct
 
 def block_type_t():
@@ -71,7 +71,8 @@ def circ_loc_idx2_t():
 def circ_use_integ_t():
     return cstruct.Struct(
         loc=circ_loc_t(),
-        idx=cstruct.Byte
+        value=cstruct.Byte,
+        inv=cstruct.Flag
     )
 
 def circ_use_dac_t():
@@ -128,3 +129,22 @@ def experiment_cmd_t():
             type=typ,
             args=cstruct.Array(4,cstruct.Int)
         )
+
+def cmd_type_t():
+    kwargs = {
+        CmdType.CIRC_CMD.name:0,
+        CmdType.EXPERIMENT_CMD.name:1
+    }
+    return cstruct.Enum(cstruct.Byte,**kwargs)
+
+def cmd_data_t():
+    return cstruct.Union(None,
+        exp_cmd=experiment_cmd_t(),
+        circ_cmd=circ_cmd_t()
+    )
+
+def cmd_t():
+    return cstruct.Struct(
+        type=cmd_type_t(),
+        data=cmd_data_t()
+    )
