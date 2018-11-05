@@ -1,0 +1,8 @@
+use_dac 0 0 0 + 0.1
+mkconn dac 0 0 0 tile 0 0 0 0
+mkconn tile 0 0 0 0 chip_output 0 3 2
+use_chip
+use_osc
+set_samples 100000
+run
+get_osc_values differential signal.csv

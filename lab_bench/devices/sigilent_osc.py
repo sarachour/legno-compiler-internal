@@ -41,12 +41,12 @@ class Sigilent1020XEOscilloscope:
         ROLL = 5;
 
     def __init__(self,ipaddr,port):
-        self._sock = SocketConnect(ipaddr,port)
         self._ip = ipaddr
         self._port = port
         self._channels = [1,2]
 
     def setup(self):
+        self._sock = SocketConnect(self._ip,self._port)
         self.query("CHDR OFF")
 
     def _recvall(self):

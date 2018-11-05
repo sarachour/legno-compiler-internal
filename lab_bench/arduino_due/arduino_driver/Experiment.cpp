@@ -79,7 +79,7 @@ void set_dac_value(experiment_t * expr, byte dac_id,int sample,float data){
 void enable_adc(experiment_t * expr, byte adc_id){
   expr->use_adc[adc_id] = true;
 }
-void enable_oscilloscope(experiment_t * expr, byte adc_id){
+void enable_oscilloscope(experiment_t * expr){
   expr->use_osc = true;
 }
 void enable_dac(experiment_t * expr, byte dac_id){
