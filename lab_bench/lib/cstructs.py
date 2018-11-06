@@ -12,7 +12,7 @@ def block_type_t():
         BlockType.FANOUT.name:6,
         BlockType.LUT.name:7
     }
-    return cstruct.Enum(cstruct.Byte,**kwargs)
+    return cstruct.Enum(cstruct.Int8ul,**kwargs)
 
 def experiment_cmd_type_t():
     kwargs = {
@@ -26,7 +26,7 @@ def experiment_cmd_type_t():
         ExpCmdType.USE_OSC.name:7,
         ExpCmdType.RUN.name:8
     }
-    return cstruct.Enum(cstruct.Byte,**kwargs)
+    return cstruct.Enum(cstruct.Int8ul,**kwargs)
 
 
 def circ_cmd_type():
@@ -45,33 +45,33 @@ def circ_cmd_type():
         CircCmdType.BREAK.name:11,
         CircCmdType.CALIBRATE.name:12
     }
-    return cstruct.Enum(cstruct.Byte,
+    return cstruct.Enum(cstruct.Int8ul,
                         **kwargs)
 
 
 def circ_loc_t():
     return cstruct.Struct(
-        chip=cstruct.Byte,
-        tile=cstruct.Byte,
-        slice=cstruct.Byte
+        chip=cstruct.Int8ul,
+        tile=cstruct.Int8ul,
+        slice=cstruct.Int8ul
     )
 
 def circ_loc_idx1_t():
     return cstruct.Struct(
         loc=circ_loc_t(),
-        idx=cstruct.Int
+        idx=cstruct.Int8ul
     )
 
 def circ_loc_idx2_t():
     return cstruct.Struct(
         idxloc=circ_loc_idx1_t(),
-        idx2=cstruct.Int
+        idx2=cstruct.Int8ul
     )
 
 def circ_use_integ_t():
     return cstruct.Struct(
         loc=circ_loc_t(),
-        value=cstruct.Byte,
+        value=cstruct.Int8ul,
         inv=cstruct.Flag
     )
 
@@ -86,7 +86,7 @@ def circ_use_mult_t():
     return cstruct.Struct(
         loc=circ_loc_idx1_t(),
         use_coeff=cstruct.Flag,
-        coeff=cstruct.Byte,
+        coeff=cstruct.Int8ul,
         inv=cstruct.Flag
     )
 
@@ -125,9 +125,9 @@ def circ_cmd_t():
 
 def experiment_cmd_t():
         typ = experiment_cmd_type_t()
-        return cstruct.Struct(
+        return cstruct.AlignedStruct(4,
             type=typ,
-            args=cstruct.Array(4,cstruct.Int)
+            args=cstruct.Array(3,cstruct.Int32ul)
         )
 
 def cmd_type_t():
@@ -135,7 +135,7 @@ def cmd_type_t():
         CmdType.CIRC_CMD.name:0,
         CmdType.EXPERIMENT_CMD.name:1
     }
-    return cstruct.Enum(cstruct.Byte,**kwargs)
+    return cstruct.Enum(cstruct.Int8ul,**kwargs)
 
 def cmd_data_t():
     return cstruct.Union(None,
@@ -144,7 +144,7 @@ def cmd_data_t():
     )
 
 def cmd_t():
-    return cstruct.Struct(
+    return cstruct.AlignedStruct(4,
         type=cmd_type_t(),
         data=cmd_data_t()
     )

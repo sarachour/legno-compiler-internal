@@ -1,4 +1,5 @@
 import lib.cstructs as cstructs
+import time
 
 class Command:
 
@@ -38,7 +39,14 @@ class ArduinoCommand(Command):
 
     def write_to_arduino(self,state,cdata):
         if not state.dummy:
-            state.arduino.write(cdata)
+            print("execute: %s [%d]" % (self,len(cdata)))
+            # twenty bytes
+            state.arduino.listen()
+            state.arduino.write_bytes(cdata)
+            state.arduino.write_newline()
+            line = state.arduino.process()
+            print(line)
+            input("continue")
 
     def execute_command(self,state):
         print(self)

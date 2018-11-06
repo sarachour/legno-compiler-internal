@@ -30,19 +30,32 @@ void setup() {
 }
 
 void loop() {
-  cmd_t cmd;
-  read_bytes((byte *) &cmd,sizeof(cmd_t));
+  if(read_mode()){
+    Serial.println("::process::");
+    cmd_t cmd;
+    read_bytes((byte *) &cmd,sizeof(cmd_t));
   
-  switch(cmd.type){
-    case cmd_type_t::CIRC_CMD:
-      Serial.println("circuit command");
-      circ::print_command(cmd.data.circ_cmd);
-      break;
-    case cmd_type_t::EXPERIMENT_CMD:
-      Serial.println("experiment command");
-      experiment::print_command(cmd.data.exp_cmd);
-      break;
+    switch(cmd.type){
+      case cmd_type_t::CIRC_CMD:
+        circ::print_command(cmd.data.circ_cmd);
+        break;
+      case cmd_type_t::EXPERIMENT_CMD:
+        experiment::print_command(cmd.data.exp_cmd);
+        break;
+      default:
+        Serial.println("unknown...");
+        break;
+    }
+    reset();
   }
+  else{
+    Serial.print(write_pos());
+    Serial.println("::listen::");
+    listen();
+    delay(300);
+  }
+  
+  
   
 }
 

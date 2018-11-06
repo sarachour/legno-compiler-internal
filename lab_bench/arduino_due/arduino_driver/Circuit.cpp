@@ -271,7 +271,8 @@ void exec_command(Fabric * fab, cmd_t& cmd){
 void print_command(cmd_t& cmd){
   switch(cmd.type){
     default:
-      Serial.println("<unimpl>");
+      Serial.print(cmd.type);
+      Serial.println(" <unimpl circuit>");
   }
 }
 

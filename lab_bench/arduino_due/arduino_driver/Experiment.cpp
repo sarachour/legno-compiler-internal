@@ -63,8 +63,8 @@ void setup_experiment() {
   pinMode(SDA, OUTPUT);
   // put your setup code here, to run once:
   analogWriteResolution(12);  // set the analog output resolution to 12 bit (4096 levels)
-  Serial.print("external trigger: ");
-  Serial.println(SDA);
+  //Serial.print("external trigger: ");
+  //Serial.println(SDA);
   
 }
 
@@ -178,8 +178,33 @@ void exec_command(experiment_t* expr, Fabric * fab, cmd_t& cmd){
 
 void print_command(cmd_t& cmd){
   switch(cmd.type){
+    case cmd_type_t::SET_N_ADC_SAMPLES:
+      Serial.print("set_samples ");
+      Serial.println(cmd.args[0]);
+      break;
+      
+    case cmd_type_t::USE_OSC:
+      Serial.println("use_osc");
+      break;
+
+    case cmd_type_t::USE_DAC:
+      Serial.print("use_dac ");
+      Serial.println(cmd.args[0]);
+      break;
+
+    case cmd_type_t::USE_ADC:
+      Serial.print("use_adc ");
+      Serial.println(cmd.args[0]);
+      break;
+
+    case cmd_type_t::USE_ANALOG_CHIP:
+      Serial.println("use_analog_chip");
+      break;
+      
     default:
-      Serial.println("<unimpl>");
+      Serial.print(cmd.type);
+      Serial.println(" <unimpl experiment>");
+      break;
   }
 }
 

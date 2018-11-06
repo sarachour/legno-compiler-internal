@@ -1,4 +1,6 @@
 import serial
+import time
+
 class ArduinoDue:
 
     def __init__(self,native=True):
@@ -17,8 +19,7 @@ class ArduinoDue:
     def open(self):
         print("%s:%s" % (self._serial_port,self._baud_rate))
         self._comm= serial.Serial(self._serial_port, self._baud_rate)
-        self._comm.flushInput()
-        self._comm.flushOutput()
+        self.flush()
         return True
 
     def readline(self):
@@ -37,12 +38,38 @@ class ArduinoDue:
         msg = "%s\r\n" % string
         self.write(msg)
 
+    def write_newline(self):
+        self.write("\r\n")
+
+    def flush(self):
+        self._comm.flushInput()
+        self._comm.flushOutput()
+
     def write_bytes(self,byts):
         isinstance(byts,bytearray)
-        self._comm.write(byts)
+        nbytes = self._comm.write(byts)
+        print("wrote %d bytes" % nbytes)
+        self._comm.flush()
 
     def write(self,msg):
-        self._comm.write(msg.encode())
+        self.write_bytes(msg.encode())
+
+    def process(self):
+        found_process = False
+        while True:
+            line = self.readline()
+            print("   [%s]" % line)
+            if "::process::" in line:
+                found_process = True
+
+            elif found_process:
+                return line
+
+    def listen(self):
+        while True:
+            line = self.readline()
+            if "::listen::" in line:
+                return True
 
     def synchronize(self):
         data = self.readline()

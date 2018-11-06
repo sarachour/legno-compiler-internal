@@ -1,4 +1,4 @@
-set_samples 100000
+set_samples 10000
 use_due_dac 0
 set_due_dac_values 0 0.8*math.sin(1000.0*t)
 use_osc

@@ -5,12 +5,14 @@ from devices.arduino_due import ArduinoDue
 from devices.sigilent_osc import Sigilent1020XEOscilloscope
 
 from lib.command import ArduinoCommand
+import time
 
 class State:
 
     def __init__(self,osc_ip,osc_port,ard_native,validate=False):
         self.arduino = ArduinoDue(native=ard_native)
-        self.oscilloscope = Sigilent1020XEOscilloscope(osc_ip,osc_port)
+        self.oscilloscope = Sigilent1020XEOscilloscope(
+            osc_ip, osc_port)
         self.prog = [];
         self.use_osc = False;
         self.use_adc = False;
@@ -19,7 +21,14 @@ class State:
         self.TIME_BETWEEN_SAMPLES = 3.0*1e-6
         self.dummy = validate
 
+    def close(self):
+        self.arduino.close()
+        self.oscilloscope.close()
+
     def initialize(self):
+        if self.dummy:
+            return
+
         print("-> setup oscilloscope")
         self.oscilloscope.setup()
         print("-> setup arduino")
@@ -65,6 +74,11 @@ class State:
 
 
 def execute(state,line):
+    if line.startswith("#"):
+        print(line)
+        print("<comment, skipping..>")
+        return
+
     command_obj = cmd.parse(line)
     if command_obj is None:
         print("<unknown command: %s>" % line)
@@ -120,7 +134,19 @@ args = parser.parse_args()
 state = State(args.ip,args.port,
               ard_native=args.native,
               validate=args.validate)
-if args.script == None:
-    main_stdout(state)
-else:
-    main_script(state,args.script)
+
+state.initialize()
+if not args.validate and (args.ip is None):
+    raise Exception("must include ip address of oscilloscope")
+
+try:
+    if args.script == None:
+        main_stdout(state)
+    else:
+        main_script(state,args.script)
+
+except Exception as e:
+    print("<< closing devices >>")
+    state.close()
+    raise e
+

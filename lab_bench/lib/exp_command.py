@@ -53,7 +53,7 @@ class UseDueDACCmd(ArduinoCommand):
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.USE_DAC.name,
-            'args':[self._dac_id,0,0,0]
+            'args':[self._dac_id,0,0]
         })
 
 
@@ -114,12 +114,12 @@ class SetDueDACValuesCmd(ArduinoCommand):
     def execute_arduino(self,state,buf,offset):
         data_header = build_exp_ctype({
             'type':enums.ExpCmdType.SET_DAC_VALUES.name,
-            'args':[self.dac_id,len(buf),offset,0]
+            'args':[self.dac_id,len(buf),offset]
         })
 
         data_t = construct.Sequence(self._c_type,
                            construct.Array(len(buf),
-                                           construct.Float32b))
+                                           construct.Float32l))
 
         byts = data_t.build([data_header,buf])
         self.write_to_arduino(state,byts)
@@ -128,7 +128,7 @@ class SetDueDACValuesCmd(ArduinoCommand):
     def execute(self,state):
         n = state.n_samples
         buf = []
-        chunksize = 4096
+        chunksize = 128
         delta = state.TIME_BETWEEN_SAMPLES
         offset = 0
         for idx in range(0,n):
@@ -243,7 +243,7 @@ class SetNumADCSamplesCmd(ArduinoCommand):
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.SET_N_ADC_SAMPLES.name,
-            'args':[self._n_samples,0,0,0]
+            'args':[self._n_samples,0,0]
         })
 
 
@@ -292,7 +292,7 @@ class UseAnalogChipCmd(ArduinoCommand):
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.USE_ANALOG_CHIP.name,
-            'args':[0,0,0,0]
+            'args':[0,0,0]
         })
 
 
@@ -357,7 +357,7 @@ class UseOscilloscopeCmd(ArduinoCommand):
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.USE_OSC.name,
-            'args':[0,0,0,0]
+            'args':[0,0,0]
         })
 
 
@@ -395,7 +395,7 @@ class RunCmd(ArduinoCommand):
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.RUN.name,
-            'args':[0,0,0,0]
+            'args':[0,0,0]
         })
 
 

@@ -96,8 +96,8 @@ typedef union cmddata {
 } cmd_data_t;
 
 typedef struct cmd {
-  cmd_data_t data;
   cmd_type_t type;
+  cmd_data_t data;
 } cmd_t;
 
 void commit_config(Fabric * fab);
