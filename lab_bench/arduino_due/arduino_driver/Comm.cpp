@@ -1,7 +1,7 @@
 #include "Comm.h"
 #include <Arduino.h>
 
-#define BUFSIZ 5024
+#define BUFSIZ 1024
 byte INBUF[BUFSIZ];
 int WPOS=0;
 int RPOS=0;
@@ -20,6 +20,7 @@ int write_pos(){
 }
 void listen(){
   if(DONE){
+    Serial.println("<found endline>");
     return;
   }
   while(Serial.available() > 0){
@@ -29,13 +30,18 @@ void listen(){
     if(recv == '\n' and INBUF[WPOS-2] == '\r'){
       DONE = true;
       RPOS = 0;
+      WPOS -= 2;
       return;
     }
   }
 }
-void get_input(uint8_t* buf, int n_bytes){
+
+void* get_data_ptr(int offset){
+   return &INBUF[offset];
+}
+int get_input(uint8_t* buf, int n_bytes){
   if(not DONE){
-    return;
+    return -1;
   }
   int siz = WPOS - RPOS < n_bytes ? WPOS - RPOS : n_bytes;
   for(int idx=0; idx < siz; idx += 1){
@@ -46,6 +52,7 @@ void get_input(uint8_t* buf, int n_bytes){
     DONE = false;
     WPOS = 0;
   }
+  return siz;
 
 }
 void discard_input(int n_bytes){
@@ -62,12 +69,12 @@ void discard_input(int n_bytes){
 
 
 
-void read_floats(float * data, int n){
-  get_input((byte *) data, n/4);
+int read_floats(float * data, int n){
+  return get_input((byte *) data, n*4);
 }
 
-void read_bytes(uint8_t * data, int n){
-  get_input(data, n);
+int read_bytes(uint8_t * data, int n){
+  return get_input(data, n);
 }
 
 void discard_bytes(int n){

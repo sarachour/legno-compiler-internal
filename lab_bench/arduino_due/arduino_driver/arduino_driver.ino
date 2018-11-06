@@ -8,17 +8,19 @@ Fabric * fabric;
 
 typedef enum cmd_type {
     CIRC_CMD,
-    EXPERIMENT_CMD
+    EXPERIMENT_CMD,
+    FLUSH_CMD
 } cmd_type_t;
 
 
 typedef union cmd_data {
   experiment::cmd_t exp_cmd;
   circ::cmd_t circ_cmd;
+  char flush_cmd;
 } cmd_data_t;
 
 typedef struct cmd_{
-  cmd_type_t type;
+  uint8_t type;
   cmd_data_t data;
 } cmd_t;
 
@@ -31,19 +33,32 @@ void setup() {
 
 void loop() {
   if(read_mode()){
-    Serial.println("::process::");
     cmd_t cmd;
-    read_bytes((byte *) &cmd,sizeof(cmd_t));
-  
+    int nbytes = read_bytes((byte *) &cmd,sizeof(cmd_t));
+    float * inbuf = NULL;
+    Serial.print(nbytes);
+    Serial.print("/");
+    Serial.print(sizeof(cmd_t));
+    Serial.print("  ");
+    for(int idx=0; idx < nbytes; idx += 1){
+      Serial.print(((byte*) &cmd)[idx]);
+      Serial.print(",");
+    }
+    Serial.println("::process::");
     switch(cmd.type){
       case cmd_type_t::CIRC_CMD:
         circ::print_command(cmd.data.circ_cmd);
         break;
       case cmd_type_t::EXPERIMENT_CMD:
-        experiment::print_command(cmd.data.exp_cmd);
+        inbuf = (float*) get_data_ptr(nbytes);
+        experiment::print_command(cmd.data.exp_cmd,inbuf);
+        break;
+      case cmd_type_t::FLUSH_CMD:
+        Serial.println("::flush::");
         break;
       default:
-        Serial.println("unknown...");
+        Serial.print(cmd.type);
+        Serial.println(" <unknown>");
         break;
     }
     reset();
@@ -52,7 +67,7 @@ void loop() {
     Serial.print(write_pos());
     Serial.println("::listen::");
     listen();
-    delay(300);
+    delay(30);
   }
   
   

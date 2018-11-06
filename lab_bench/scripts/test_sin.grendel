@@ -1,6 +1,9 @@
 set_samples 10000
 use_due_dac 0
+use_due_adc 0
+use_due_adc 1
 set_due_dac_values 0 0.8*math.sin(1000.0*t)
 use_osc
 run
 get_osc_values direct data.csv
+get_adc_values direct data2.csv

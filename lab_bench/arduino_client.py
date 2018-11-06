@@ -4,7 +4,7 @@ import argparse
 from devices.arduino_due import ArduinoDue
 from devices.sigilent_osc import Sigilent1020XEOscilloscope
 
-from lib.command import ArduinoCommand
+from lib.base_command import FlushCommand, ArduinoCommand
 import time
 
 class State:
@@ -33,6 +33,9 @@ class State:
         self.oscilloscope.setup()
         print("-> setup arduino")
         self.arduino.open()
+        flush_cmd = FlushCommand()
+        while not flush_cmd.execute(self):
+            continue
 
     def enqueue(self,stmt):
         if stmt.test():

@@ -132,7 +132,7 @@ void run_experiment(experiment_t * expr, Fabric * fab){
 }
 
 
-void exec_command(experiment_t* expr, Fabric * fab, cmd_t& cmd){
+void exec_command(experiment_t* expr, Fabric * fab, cmd_t& cmd, float * inbuf){
   float data[4096];
   int n;
   switch(cmd.type){
@@ -176,7 +176,7 @@ void exec_command(experiment_t* expr, Fabric * fab, cmd_t& cmd){
 }
 
 
-void print_command(cmd_t& cmd){
+void print_command(cmd_t& cmd, float* inbuf){
   switch(cmd.type){
     case cmd_type_t::SET_N_ADC_SAMPLES:
       Serial.print("set_samples ");
@@ -200,9 +200,29 @@ void print_command(cmd_t& cmd){
     case cmd_type_t::USE_ANALOG_CHIP:
       Serial.println("use_analog_chip");
       break;
+
+    case cmd_type_t::SET_DAC_VALUES:
+      Serial.print("set_dac_values dac_id=");
+      Serial.print(cmd.args[0]);
+      Serial.print(" nels=");
+      Serial.print(cmd.args[1]);
+      Serial.print(" offset=");
+      Serial.print(cmd.args[2]);
+      Serial.print(" [");
+      for(int i=0; i < cmd.args[1]; i++){
+        Serial.print(inbuf[i]);
+        Serial.print(" ");
+      }
+      Serial.println("]");
       
     default:
       Serial.print(cmd.type);
+      Serial.print(" ");
+      Serial.print(cmd.args[0]);
+      Serial.print(" ");
+      Serial.print(cmd.args[1]);
+      Serial.print(" ");
+      Serial.print(cmd.args[2]);
       Serial.println(" <unimpl experiment>");
       break;
   }

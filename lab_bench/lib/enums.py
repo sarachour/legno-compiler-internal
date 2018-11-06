@@ -42,4 +42,4 @@ class ExpCmdType(Enum):
 class CmdType(Enum):
     CIRC_CMD = 'circ_cmd';
     EXPERIMENT_CMD = 'exp_cmd';
-
+    FLUSH_CMD = 'flush_cmd';

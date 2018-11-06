@@ -37,8 +37,8 @@ typedef enum cmd_type {
 
 
 typedef struct cmd {
-  cmd_type_t type;
-  int args[3];
+  uint16_t type;
+  uint32_t args[3];
 } cmd_t;
 
 void setup_experiment();
@@ -49,7 +49,7 @@ void enable_analog_chip(experiment_t * expr);
 void reset_experiment(experiment_t * expr);
 void enable_dac(experiment_t * expr, byte dac_id);
 short* get_adc_values(experiment_t * expr, byte adc_id, int& num_samples);
-void exec_command(experiment_t * expr, cmd_t cmd);
-void print_command(cmd_t& cmd);
+void exec_command(experiment_t * expr, cmd_t cmd, float* inbuf);
+void print_command(cmd_t& cmd, float* inbuf);
 }
 #endif

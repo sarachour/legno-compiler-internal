@@ -47,7 +47,10 @@ class ArduinoDue:
 
     def write_bytes(self,byts):
         isinstance(byts,bytearray)
-        nbytes = self._comm.write(byts)
+        nbytes = 0;
+        for i in range(0,len(byts), 32):
+            nbytes += self._comm.write(byts[i:i+32])
+            time.sleep(0.01)
         print("wrote %d bytes" % nbytes)
         self._comm.flush()
 
@@ -58,7 +61,6 @@ class ArduinoDue:
         found_process = False
         while True:
             line = self.readline()
-            print("   [%s]" % line)
             if "::process::" in line:
                 found_process = True
 

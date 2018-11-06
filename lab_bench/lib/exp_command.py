@@ -13,6 +13,8 @@ def build_exp_ctype(exp_data):
         }
     }
 
+
+
 class ResetCmd(ArduinoCommand):
 
     def __init__(self):
@@ -95,7 +97,7 @@ class SetDueDACValuesCmd(ArduinoCommand):
 
     @staticmethod
     def desc():
-        return "set the dac values (up to 4096)."
+        return "set the dac values to an expression."
 
 
     @staticmethod
@@ -108,39 +110,40 @@ class SetDueDACValuesCmd(ArduinoCommand):
             return None
 
         dacid = int(args[0])
-        expr = args[1]
+        expr = " ".join(args[1:])
         return SetDueDACValuesCmd(dacid,expr)
 
-    def execute_arduino(self,state,buf,offset):
+    def execute_write_op(self,state,buf,offset):
         data_header = build_exp_ctype({
             'type':enums.ExpCmdType.SET_DAC_VALUES.name,
             'args':[self.dac_id,len(buf),offset]
         })
 
-        data_t = construct.Sequence(self._c_type,
-                           construct.Array(len(buf),
-                                           construct.Float32l))
-
-        byts = data_t.build([data_header,buf])
-        self.write_to_arduino(state,byts)
+        data_header_t = self._c_type
+        data_body_t = construct.Array(len(buf),
+                                      construct.Float32l)
+        byts_h = data_header_t.build(data_header)
+        byts_d = data_body_t.build(buf)
+        self.write_to_arduino(state,byts_h + byts_d)
 
 
     def execute(self,state):
         n = state.n_samples
         buf = []
-        chunksize = 128
+        chunksize_bytes = 1000;
+        chunksize_floats = chunksize_bytes/4
         delta = state.TIME_BETWEEN_SAMPLES
         offset = 0
         for idx in range(0,n):
             args = {'t':idx*delta,'math':math}
             value = eval(self.pyexpr,args)
             buf.append(value)
-            if len(buf) == chunksize:
-                self.execute_arduino(state,buf,offset)
+            if len(buf) == chunksize_floats:
+                self.execute_write_op(state,buf,offset)
                 buf = []
                 offset += len(buf)
 
-        self.execute_arduino(state,buf,offset)
+        self.execute_write_op(state,buf,offset)
 
 
     def __repr__(self):

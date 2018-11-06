@@ -1,5 +1,6 @@
 import lib.cstructs as cstructs
 import time
+import lib.enums as enums
 
 class Command:
 
@@ -17,12 +18,18 @@ class Command:
     def error_msg(self):
         return self._msg
 
+    def process_response(self,resp):
+        return resp
+
     def execute(self,state):
         if self._success:
-            self.execute_command(state)
+            resp = self.execute_command(state)
+            if not resp is None:
+                return self.process_response(resp)
         else:
             print("[error]" % self._msg)
-            return
+
+        return None
 
     def tostr(self):
         raise NotImplementedError
@@ -45,11 +52,37 @@ class ArduinoCommand(Command):
             state.arduino.write_bytes(cdata)
             state.arduino.write_newline()
             line = state.arduino.process()
-            print(line)
-            input("continue")
+            return line
+
+        return None
 
     def execute_command(self,state):
-        print(self)
         data = self.build_ctype()
         cdata = self._c_type.build(data)
-        self.write_to_arduino(state,cdata)
+        print("cmd: %s" % self)
+        rep = ""
+        for byt in cdata:
+            rep += str(int(byt)) + " "
+        print("bytes: %s" % rep)
+        return self.write_to_arduino(state,cdata)
+
+class FlushCommand(ArduinoCommand):
+    def __init__(self):
+        ArduinoCommand.__init__(self);
+
+    def build_ctype(self):
+        return {
+            'type':enums.CmdType.FLUSH_CMD.name,
+            'data': {
+                'flush_cmd':255
+            }
+        }
+
+
+    def process_response(self,resp):
+        print(resp)
+        if not resp is None and \
+           "::flush::" in resp:
+            return True
+        return False
+

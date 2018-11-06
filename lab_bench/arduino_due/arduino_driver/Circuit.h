@@ -96,7 +96,7 @@ typedef union cmddata {
 } cmd_data_t;
 
 typedef struct cmd {
-  cmd_type_t type;
+  uint8_t type;
   cmd_data_t data;
 } cmd_t;
 
