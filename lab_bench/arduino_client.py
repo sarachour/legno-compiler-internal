@@ -15,12 +15,47 @@ class State:
             self.oscilloscope = Sigilent1020XEOscilloscope(
                 osc_ip, osc_port)
         self.prog = [];
+
+        ## State committed to chip
         self.use_osc = False;
-        self.use_adc = False;
-        self.use_analog_chip = False;
-        self.n_samples = 0
+
+        self._use_adc = {};
+        self._use_dac = {}
+        self.use_analog_chip = None;
+        self.n_samples = None;
+        self.reset();
+
         self.TIME_BETWEEN_SAMPLES = 3.0*1e-6
         self.dummy = validate
+
+    def reset(self):
+        self.use_analog_chip = False;
+        self.n_samples = 0
+
+        for adc_id in range(0,4):
+            self._use_adc[adc_id] = False
+
+        self._use_dac = {}
+        for dac_id in range(0,2):
+            self._use_dac[dac_id] = False
+
+    def use_dac(self,dac_id):
+        self._use_dac[dac_id] = True
+
+    def use_adc(self,adc_id):
+        self._use_adc[adc_id] = True
+
+    def adcs_in_use(self):
+        for adc_id,in_use in self._use_adc.items():
+            if in_use:
+                yield adc_id
+
+    def dacs_in_use(self):
+        for dac_id,in_use in self._use_dac.items():
+            if in_use:
+                yield dac_id
+
+
 
     def close(self):
         if not self.dummy:
@@ -86,7 +121,7 @@ def execute(state,line):
 
     command_obj = cmd.parse(line)
     if command_obj is None:
-        print("<unknown command: %s>" % line)
+        print("<unknown command: (%s)>" % line)
         return False
 
     if not command_obj.test():
@@ -111,6 +146,8 @@ def main_stdout(state):
         line = input("ardc>> ")
         if line == "quit":
             sys.exit(0)
+        elif line.strip() == "":
+            continue
 
         execute(state,line)
 
@@ -118,7 +155,11 @@ def main_stdout(state):
 def main_script(state,filename):
     with open(filename,'r') as fh:
         for idx,line in enumerate(fh):
-            print("loc: %d" % idx)
+            print("ardc>> %s" % line.strip())
+            if line == "quit":
+                sys.exit(0)
+            elif line.strip() == "":
+                continue
             if not (execute(state,line.strip())):
                 sys.exit(1)
 

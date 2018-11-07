@@ -5,4 +5,5 @@ use_chip
 use_osc
 set_samples 100000
 run
-get_osc_values differential signal.csv
+get_osc_values differential osc_signal.csv
+get_due_adc_values differential adc_signal.csv

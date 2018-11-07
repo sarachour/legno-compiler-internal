@@ -10,9 +10,6 @@ CIRCUIT COMMANDS
 ###################
 '''
 
-
-
-
 COMMANDS = [
     # dac/adc commands
     UseDACCmd,
@@ -32,6 +29,8 @@ COMMANDS = [
     GetOscValuesCmd,
     GetDueADCValuesCmd
 ]
+
+
 def parse(line):
     args = line.strip().split()
     if len(args) == 0:
@@ -45,7 +44,6 @@ def parse(line):
     if args[0] == 'help':
         for cmd in COMMANDS:
             print("%s: %s" % (cmd.name(),cmd.desc()))
-
 
     return None
 

@@ -4,6 +4,7 @@ import lib.enums as enums
 from lib.base_command import Command,ArduinoCommand
 import math
 import construct
+import matplotlib.pyplot as plt
 
 def build_exp_ctype(exp_data):
     return {
@@ -28,37 +29,125 @@ class ResetCmd(ArduinoCommand):
     def desc():
         return "reset any set flags, values and buffers."
 
-class UseDueADCCmd(ArduinoCommand):
+    def build_ctype(self):
+        return build_exp_ctype({
+            'type':enums.ExpCmdType.RESET.name,
+            'args':[0,0,0]
+        })
 
-    def __init__(self):
+
+    def execute(self,state):
+        state.reset()
+        ArduinoCommand.execute(self,state)
+
+
+    @staticmethod
+    def parse(args):
+        if len(args) != 0:
+            print("usage: %s" % (ResetCmd.name()))
+            return None
+
+        return ResetCmd()
+
+    def __repr__(self):
+        return "reset"
+
+class UseDueADCCmd(ArduinoCommand):
+    def __init__(self,adc_no):
         ArduinoCommand.__init__(self)
+        self._adc_id = adc_no
 
     @staticmethod
     def name():
-        return 'use_due_adc'
+        return "use_due_adc"
+
+    @staticmethod
+    def desc():
+        return "use the arduino's analog to digital converter."
+
+    def build_ctype(self):
+        return build_exp_ctype({
+            'type':enums.ExpCmdType.USE_ADC.name,
+            'args':[self._adc_id,0,0]
+        })
+
+
+    @staticmethod
+    def parse(args):
+        line = " ".join(args)
+        result = parselib.parse("{arduino_adc:d}",line)
+        if result is None:
+            print("usage: %s <arduino_adc_id>" % (SetNumADCSamplesCmd.name()))
+            return None
+
+        return UseDueADCCmd(result['arduino_adc'])
+
+    def execute(self,state):
+        state.use_adc(self._adc_id)
+        ArduinoCommand.execute(self,state)
+
+    def __repr__(self):
+        return "use_due_adc %d" % self._adc_id
+
+
+
+class GetDueADCValuesCmd(ArduinoCommand):
+
+    def __init__(self,filename,differential=True):
+        ArduinoCommand.__init__(self)
+        self._filename = filename
+        self._differential = differential
+
+    @staticmethod
+    def name():
+        return 'get_due_adc_values'
 
     @staticmethod
     def desc():
         return "use the arduino's analog to digital converter."
 
 
-    def execute_read_op(self,state,n,offset):
+    def execute_read_op(self,state,adc_id,n,offset):
         data_header = build_exp_ctype({
             'type':enums.ExpCmdType.GET_ADC_VALUES.name,
-            'args':[self.dac_id,n,offset]
+            'args':[adc_id,n,offset]
         })
 
         data_header_t = self._c_type
         byts = data_header_t.build(data_header)
         line = self.write_to_arduino(state,byts)
+        data_pos = []
+        data_neg = []
+        if state.dummy:
+            return range(0,n),range(-n,0)
+        else:
+            return data_pos,data_neg
+
+    @staticmethod
+    def parse(args):
+        line = " ".join(args)
+        types = ['differential','direct']
+        result = parselib.parse("{type} {filename}",line)
+        if result is None:
+            print("usage: %s <differential|direct> <filename>" % (GetDueADCValuesCmd.name()))
+            return None
+
+        if not result['type'] in types:
+            print("usage: %s <differential|direct> <filename>" % (GetDueADCValuesCmd.name()))
+            return None
+
+        is_diff = result['type'] == 'differential'
+        return GetDueADCValuesCmd(result['filename'],
+                               differential=is_diff)
+
 
     def plot_data(self,filename,data):
-        time = data['times']
-        for adc_id in data.keys():
+        time = data['time']
+        for adc_id in data['adcs'].keys():
             pos = data['adcs'][adc_id]['pos']
             neg = data['adcs'][adc_id]['neg']
-            plt.plot(time,pos,label="%d-pos" % pos)
-            plt.plot(time,neg,label="%d-neg" % neg)
+            plt.plot(time,pos,label="%d-pos" % adc_id)
+            plt.plot(time,neg,label="%d-neg" % adc_id)
 
         plt.savefig(filename)
         plt.clf()
@@ -67,7 +156,7 @@ class UseDueADCCmd(ArduinoCommand):
         n = state.n_samples
         buf = []
         chunksize_bytes = 1000;
-        chunksize_shorts = chunksize_bytes/2
+        chunksize_shorts = int(chunksize_bytes/2)
 
         data = {}
         data['time'] = range(0,n)
@@ -76,7 +165,8 @@ class UseDueADCCmd(ArduinoCommand):
             data_p = []
             data_n = []
             for offset in range(0,n,chunksize_shorts):
-                datum_p,datum_n = self.execute_read_op(adc_id,
+                datum_p,datum_n = self.execute_read_op(state,
+                                     adc_id,
                                      chunksize_shorts,
                                      offset)
                 data_p += datum_p
@@ -96,13 +186,6 @@ class UseDueDACCmd(ArduinoCommand):
 
 
 
-    def build_ctype(self):
-        return build_exp_ctype({
-            'type':enums.ExpCmdType.USE_DAC.name,
-            'args':[self._dac_id,0,0]
-        })
-
-
     @staticmethod
     def name():
         return 'use_due_dac'
@@ -111,12 +194,25 @@ class UseDueDACCmd(ArduinoCommand):
     def desc():
         return "use the arduino's digital to analog converter (time varying signal)."
 
+
+    def build_ctype(self):
+        return build_exp_ctype({
+            'type':enums.ExpCmdType.USE_DAC.name,
+            'args':[self._dac_id,0,0]
+        })
+
+
+    def execute(self,state):
+        state.use_dac(self._dac_id)
+        ArduinoCommand.execute(self,state)
+
+
     @staticmethod
     def parse(args):
         line = " ".join(args)
         result = parselib.parse("{arduino_dac:d}",line)
         if result is None:
-            print("usage: %s <arduino_dac_id>" % (SetNumADCSamplesCmd.name()))
+            print("usage: %s <arduino_dac_id>" % (UseDueDACCmd.name()))
             return None
 
         return UseDueDACCmd(result['arduino_dac'])
@@ -306,41 +402,6 @@ class GetOscValuesCmd(Command):
 
     def __repr__(self):
         return "get_osc_values %s" % (self._filename)
-
-
-class GetDueADCValuesCmd(ArduinoCommand):
-
-    def __init__(self,filename):
-        ArduinoCommand.__init__(self)
-        self._filename = filename
-
-    @staticmethod
-    def name():
-        return 'get_due_adc_values'
-
-
-    @staticmethod
-    def desc():
-        return "get the values read from an adc (up to 4096)."
-
-
-    @staticmethod
-    def parse(args):
-        line = " ".join(args)
-        result = parselib.parse("{filename:w}",line)
-        if result is None:
-            print("usage: %s <filename>" % (GetADCValuesCmd.name()))
-            return None
-
-        return GetADCValuesCmd(result['filename'])
-
-
-    def build_ctype(self):
-        return build_exp_ctype({
-            'type':enums.ExpCmdType.SET_N_ADC_SAMPLES.name,
-            'args':[self._n_samples,0,0]
-        })
-
 
 
 class SetNumADCSamplesCmd(ArduinoCommand):

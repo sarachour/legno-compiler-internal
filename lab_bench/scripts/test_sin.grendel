@@ -6,4 +6,6 @@ set_due_dac_values 0 0.8*math.sin(1000.0*t)
 use_osc
 run
 get_osc_values direct data.csv
-get_adc_values direct data2.csv
+get_due_adc_values direct data2.csv
+reset
+
