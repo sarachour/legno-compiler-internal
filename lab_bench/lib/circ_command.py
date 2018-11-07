@@ -60,14 +60,16 @@ def parse_pattern_block(args,n_outs,n_consts,name,index=False):
     cmd = "{chip:d} {tile:d} {slice:d} "
     if index:
         cmd += "{index:d} "
-    cmd += ' '.join(map(lambda idx: "{sign%d}" % idx,
+    cmd += ''.join(map(lambda idx: "{sign%d:W} " % idx,
                         range(0,n_outs)))
-    cmd += ' '.join(map(lambda idx: "{value%d:g}" % idx,
+    cmd += ''.join(map(lambda idx: "{value%d:g} " % idx,
                         range(0,n_consts)))
 
+    cmd = cmd.strip()
     result = parselib.parse(cmd,line)
     if result is None:
-        print("usage: %s %s" % (name,cmd))
+        print("usage: <%s:%s>" % (name,cmd))
+        print("line: <%s>" % line)
         return None
 
     result = dict(result.named.items())
@@ -149,16 +151,16 @@ class AnalogChipCommand(ArduinoCommand):
             or (block == enums.BlockType.TILE.value) \
             or (block == enums.BlockType.MULT.value):
             indices = {
-                enums.BlockType.FANOUT: range(0,2),
-                enums.BlockType.MULT: range(0,2),
-                enums.BlockType.TILE: range(0,4)
+                enums.BlockType.FANOUT.value: range(0,2),
+                enums.BlockType.MULT.value: range(0,2),
+                enums.BlockType.TILE.value: range(0,4)
             }
             if loc.index is None:
                 self.fail("expected index <%s>" % block)
 
-            if not loc.index in indices[block]:
-                self.fail("index <%s> must be from indices <%s>" %\
-                          (block,indices))
+            elif not loc.index in indices[block]:
+                self.fail("block <%s> index <%d> must be from indices <%s>" %\
+                          (block,loc.index,indices[block]))
 
         elif not enums.BlockType(block) is None:
            if not loc.index is None:
@@ -245,26 +247,25 @@ class DisableCmd(AnalogChipCommand):
 
 
     def parse(args):
+        print(" ".join(args[1:]))
         result1 = parse_pattern_block(args[1:],0,0,
-                                      DisableCmd.name(),
+                                      "disable %s" % args[0],
                                       index=True)
         result2 = parse_pattern_block(args[1:],0,0,
-                                      DisableCmd.name(),
+                                      "disable %s" % args[0],
                                       index=False)
 
         if not result1 is None:
             return DisableCmd(args[0],
-                              result['block'],
-                              result['chip'],
-                              result['tile'],
-                              result['slice'],
-                              result['index'])
-        elif not result2 is None:
+                              result1['chip'],
+                              result1['tile'],
+                              result1['slice'],
+                              result1['index'])
+        if not result2 is None:
             return DisableCmd(args[0],
-                              result['block'],
-                              result['chip'],
-                              result['tile'],
-                              result['slice'])
+                              result2['chip'],
+                              result2['tile'],
+                              result2['slice'])
 
     def __repr__(self):
         return "disable %s.%s" % (self._loc,self._block)
@@ -281,7 +282,7 @@ class CalibrateCmd(AnalogChipCommand):
 
     @staticmethod
     def name():
-        return 'calib'
+        return 'calibrate'
 
     @staticmethod
     def desc():
@@ -412,9 +413,6 @@ class UseIntegCmd(UseCommand):
         if value < 0.0 or value > 1.0:
             self.fail("value not in [0,1]: %s" % value)
 
-        if not loc.index is None:
-            self.fail("integ has no index <%d>" % loc.index)
-
         self._value = value
         self._inv = inv
 
@@ -453,10 +451,14 @@ class UseFanoutCmd(UseCommand):
     def __init__(self,chip,tile,slice,index,
                  inv0=False,inv1=False,inv2=False):
         UseCommand.__init__(self,
-                            enums.BlockType.FANOUT,
+                            enums.BlockType.FANOUT.value,
                             CircLoc(chip,tile,slice,index))
 
         self._inv = [inv0,inv1,inv2]
+
+    @staticmethod
+    def name():
+        return 'use_fanout'
 
     @staticmethod
     def desc():
@@ -478,11 +480,6 @@ class UseFanoutCmd(UseCommand):
                 inv2=result['sign2']
             )
 
-    @staticmethod
-    def name():
-        return 'use_fan'
-
-
     def __repr__(self):
         st = UseCommand.__repr__(self)
         st + " integ invs=%d" % (self._invs)
@@ -496,13 +493,13 @@ class UseMultCmd(UseCommand):
     def __init__(self,chip,tile,slice,index,
                  coeff=0,use_coeff=False,inv=False):
         UseCommand.__init__(self,
-                            enums.BlockType.MULT,
+                            enums.BlockType.MULT.value,
                             CircLoc(chip,tile,slice,index))
 
-        if value < 0.0 or value > 1.0:
+        if coeff < 0.0 or coeff > 1.0:
             self.fail("value not in [0,1]: %s" % value)
 
-        self._value = value
+        self._coeff = coeff
         self._inv = inv
 
     @staticmethod
@@ -521,14 +518,14 @@ class UseMultCmd(UseCommand):
                                       index=True)
 
         if not result1 is None:
-            return UseMultCmd(result['chip'],result['tile'],
-                              result['slice'],result['index'],
+            return UseMultCmd(result1['chip'],result1['tile'],
+                              result1['slice'],result1['index'],
                               use_coeff=True,
-                              coeff=result['value0'],
-                              inv=result['sign0'])
+                              coeff=result1['value0'],
+                              inv=result1['sign0'])
         elif not result2 is None:
-             return UseMultCmd(result['chip'],result['tile'],
-                              result['slice'],result['index'],
+             return UseMultCmd(result2['chip'],result2['tile'],
+                              result2['slice'],result2['index'],
                               use_coeff=False, coeff=0,
                               inv=result['sign0'])
 

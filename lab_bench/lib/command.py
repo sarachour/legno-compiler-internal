@@ -17,6 +17,10 @@ COMMANDS = [
     UseMultCmd,
     UseFanoutCmd,
     MakeConnCmd,
+    DisableCmd,
+    MakeConnCmd,
+    BreakConnCmd,
+    CalibrateCmd,
     # experiment commands
     ResetCmd,
     RunCmd,
