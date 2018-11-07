@@ -23,7 +23,6 @@ typedef enum cmd_type {
     USE_FANOUT,
     USE_INTEG,
     USE_LUT,
-    SET_N_ADC_SAMPLES,
     /*disable components*/
     DISABLE_DAC,
     DISABLE_MULT,
@@ -78,9 +77,9 @@ typedef struct use_fanout {
 } cmd_use_fanout_t;
 
 typedef struct connection {
-   block_type_t src_blk;
+   uint8_t src_blk;
    circ_loc_idx2_t src_loc;
-   block_type_t dst_blk;
+   uint8_t dst_blk;
    circ_loc_idx2_t dst_loc;
 } cmd_connection_t;
 

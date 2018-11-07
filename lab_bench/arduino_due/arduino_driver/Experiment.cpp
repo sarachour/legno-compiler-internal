@@ -85,8 +85,14 @@ void enable_oscilloscope(experiment_t * expr){
 void enable_dac(experiment_t * expr, byte dac_id){
   expr->use_dac[dac_id] = true;
 }
-short* get_adc_values(experiment_t * expr, byte adc_id, int& num_samples){
-  return NULL;
+void print_adc_values(experiment_t * expr, int adc_id, int nels, int offset){
+  int n = nels ? nels + offset < expr->n_adc_samples : expr->n_adc_samples - (nels+offset);
+  Serial.print(n);
+  for(int idx=offset; idx<offset+n; idx+=1){
+    Serial.print(expr->adc_pos[adc_id][idx]);
+    Serial.print(expr->adc_neg[adc_id][idx]);
+  }
+  Serial.println("");
 }
 void reset_experiment(experiment_t * expr){
   expr->use_analog_chip = true;
@@ -170,7 +176,7 @@ void exec_command(experiment_t* expr, Fabric * fab, cmd_t& cmd, float * inbuf){
       break;
 
     case cmd_type_t::GET_ADC_VALUES:
-      Serial.println("> TODO: implement");
+      print_adc_values(expr,cmd.args[0],cmd.args[1],cmd.args[2]);
       break;
   }
 }
@@ -201,6 +207,15 @@ void print_command(cmd_t& cmd, float* inbuf){
       Serial.println("use_analog_chip");
       break;
 
+    case cmd_type_t::GET_ADC_VALUES:
+      Serial.print("get_adc_values adc_id=");
+      Serial.print(cmd.args[0]);
+      Serial.print(" nels=");
+      Serial.print(cmd.args[1]);
+      Serial.print(" offset=");
+      Serial.println(cmd.args[2]);
+       break;
+       
     case cmd_type_t::SET_DAC_VALUES:
       Serial.print("set_dac_values dac_id=");
       Serial.print(cmd.args[0]);
@@ -214,6 +229,12 @@ void print_command(cmd_t& cmd, float* inbuf){
         Serial.print(" ");
       }
       Serial.println("]");
+
+    case cmd_type_t::RESET:
+      Serial.println("reset");
+
+    case cmd_type_t::RUN:
+      Serial.println("run");
       
     default:
       Serial.print(cmd.type);

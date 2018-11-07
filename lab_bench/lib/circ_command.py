@@ -145,10 +145,20 @@ class AnalogChipCommand(ArduinoCommand):
            not loc.index in range(0,2):
             self.fail("unknown index <%s>" % loc.index)
 
-        if (block == enums.BlockType.FANOUT.value \
-            or block == enums.BlockType.TILE.value):
+        if (block == enums.BlockType.FANOUT.value) \
+            or (block == enums.BlockType.TILE.value) \
+            or (block == enums.BlockType.MULT.value):
+            indices = {
+                enums.BlockType.FANOUT: range(0,2),
+                enums.BlockType.MULT: range(0,2),
+                enums.BlockType.TILE: range(0,4)
+            }
             if loc.index is None:
                 self.fail("expected index <%s>" % block)
+
+            if not loc.index in indices[block]:
+                self.fail("index <%s> must be from indices <%s>" %\
+                          (block,indices))
 
         elif not enums.BlockType(block) is None:
            if not loc.index is None:

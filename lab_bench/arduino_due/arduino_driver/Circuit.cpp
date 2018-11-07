@@ -45,7 +45,7 @@ Fabric::Chip::Tile::Slice::Fanout* get_fanout(Fabric * fab, circ_loc_idx1_t& loc
   return fanout;
 }
 
-Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab, block_type_t& btype, circ_loc_idx2_t loc){
+Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab, uint8_t& btype, circ_loc_idx2_t loc){
   switch(btype){
     case DAC:
       Serial.println("dac has no input port");
@@ -93,7 +93,7 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab,
 }
 
 
-Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_output_port(Fabric * fab, block_type_t& btype, circ_loc_idx2_t loc){
+Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_output_port(Fabric * fab, uint8_t& btype, circ_loc_idx2_t loc){
   switch(btype){
     case DAC:
       Serial.println("dac has no input port");
@@ -268,11 +268,177 @@ void exec_command(Fabric * fab, cmd_t& cmd){
 }
 
 
+void print_loc(circ_loc_t& loc){
+  Serial.print(loc.chip);
+  Serial.print(":");
+  Serial.print(loc.tile);
+  Serial.print(":");
+  Serial.print(loc.slice);
+}
+
+void print_idx_loc(circ_loc_idx1_t& loc){
+  print_loc(loc.loc);
+  Serial.print(":");
+  Serial.print(loc.idx);
+}
+
+
+void print_port_loc(circ_loc_idx2_t& loc){
+  print_idx_loc(loc.idxloc);
+  Serial.print("[");
+  Serial.print(loc.idx2);
+  Serial.print("]");
+}
+
+void print_block(uint8_t type){
+  switch(type){
+    case block_type::DAC:
+      Serial.print("dac");
+      break;
+      
+    case block_type::CHIP_INPUT:
+      Serial.print("chip_in");
+      break;
+      
+    case block_type::CHIP_OUTPUT:
+      Serial.print("chip_out");
+      break;
+
+    case block_type::TILE:
+      Serial.print("tile");
+      break;
+
+    case block_type::MULT:
+      Serial.print("mult");
+      break;
+
+    case block_type::INTEG:
+      Serial.print("integ");
+      break;
+
+    case block_type::FANOUT:
+      Serial.print("fanout");
+      break;
+
+    case block_type::LUT:
+      Serial.print("lut");
+      break;
+
+    default:
+      Serial.print("unknown<");
+      Serial.print(type);
+      Serial.print(">");
+      break;
+  }
+  
+}
 void print_command(cmd_t& cmd){
   switch(cmd.type){
-    default:
-      Serial.print(cmd.type);
-      Serial.println(" <unimpl circuit>");
+      case cmd_type_t::USE_FANOUT:
+        Serial.print("use dac ");
+        print_idx_loc(cmd.data.fanout.loc);
+        Serial.print(" inv[0]=");
+        Serial.print(cmd.data.fanout.inv[0] ? "yes" : "no");
+        Serial.print(" inv[1]=");
+        Serial.print(cmd.data.fanout.inv[1] ? "yes" : "no");
+        Serial.print(" inv[2]=");
+        Serial.print(cmd.data.fanout.inv[2] ? "yes" : "no");
+        break;
+
+      case cmd_type_t::USE_MULT:
+        Serial.print("use mult ");
+        print_idx_loc(cmd.data.mult.loc);
+        if(cmd.data.mult.use_coeff){
+          Serial.print(" gain coeff=");
+          Serial.print(cmd.data.mult.coeff);
+        }
+        else{
+          Serial.print(" mult");
+        }
+        Serial.print(" inv=");
+        Serial.print(cmd.data.mult.inv ? "yes" : "no");
+        break;
+        
+      case cmd_type_t::USE_DAC:
+        Serial.print("use dac ");
+        print_loc(cmd.data.dac.loc);
+        Serial.print(" ic=");
+        Serial.print(cmd.data.dac.value);
+        Serial.print(" inv=");
+        Serial.print(cmd.data.dac.inv ? "yes" : "no");
+        break;
+        
+      case cmd_type_t::USE_INTEG:
+        Serial.print("use integ ");
+        print_loc(cmd.data.integ.loc);
+        Serial.print(" ic=");
+        Serial.print(cmd.data.integ.value);
+        Serial.print(" inv=");
+        Serial.print(cmd.data.integ.inv ? "yes" : "no");
+        break;
+        
+      case cmd_type_t::USE_LUT:
+        Serial.print("use lut ");
+        print_loc(cmd.data.circ_loc);
+        break;
+        
+      case cmd_type_t::DISABLE_DAC:
+        Serial.print("disable dac ");
+        print_loc(cmd.data.circ_loc);
+        break;
+        
+      case cmd_type_t::DISABLE_MULT:
+        Serial.print("disable mult ");
+        print_loc(cmd.data.circ_loc);
+        break;
+        
+      case cmd_type_t::DISABLE_INTEG:
+        Serial.print("disable integ ");
+        print_loc(cmd.data.circ_loc);
+        break;
+        
+      case cmd_type_t::DISABLE_FANOUT:
+        Serial.print("disable fanout ");
+        print_idx_loc(cmd.data.circ_loc_idx1);
+        break;
+        
+      case cmd_type_t::DISABLE_LUT:
+        Serial.print("disable lut ");
+        print_loc(cmd.data.circ_loc);
+        break;
+        
+      case cmd_type_t::CONNECT:
+        Serial.print("conn ");
+        print_block(cmd.data.conn.src_blk);
+        Serial.print(" ");
+        print_port_loc(cmd.data.conn.src_loc);
+        Serial.print("<->");
+        print_block(cmd.data.conn.dst_blk);
+        Serial.print(" ");
+        print_port_loc(cmd.data.conn.dst_loc);
+        break;
+        
+      case cmd_type_t::BREAK:
+        Serial.print("break ");
+        print_block(cmd.data.conn.src_blk);
+        Serial.print(" ");
+        print_port_loc(cmd.data.conn.src_loc);
+        Serial.print("<->");
+        print_block(cmd.data.conn.dst_blk);
+        Serial.print(" ");
+        print_port_loc(cmd.data.conn.dst_loc);
+        break;
+        
+      case cmd_type_t::CALIBRATE:
+        Serial.print("calibrate ");
+        print_loc(cmd.data.circ_loc);
+        Serial.println("");
+        break;
+
+      default:
+        Serial.print(cmd.type);
+        Serial.println(" <unimpl circuit>");
+        break;
   }
 }
 

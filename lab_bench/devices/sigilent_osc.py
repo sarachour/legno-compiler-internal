@@ -13,7 +13,6 @@ logging.basicConfig()
 logger = logging.getLogger('osc')
 logger.setLevel(logging.INFO)
 
-
 # use python 2
 def SocketConnect(ipaddr,port):
     try:
@@ -32,6 +31,11 @@ def SocketConnect(ipaddr,port):
     return s
 
 class Sigilent1020XEOscilloscope:
+    class Channels:
+        ACHAN1 = "C1",
+        ACHAN2 = "C2",
+        EXT = "D1"
+
     class Status:
         READY = 0;
         TRIGGERED = 1;
@@ -43,7 +47,24 @@ class Sigilent1020XEOscilloscope:
     def __init__(self,ipaddr,port):
         self._ip = ipaddr
         self._port = port
-        self._channels = [1,2]
+        self._channels = [
+            Sigilent1020XEOscilloscope.Channels.ACHAN1,
+            Sigilent1020XEOscilloscope.Channels.ACHAN2,
+            Sigilent1020XEOscilloscope.Channels.EXT
+        ]
+        self._prop_cache = None
+
+    def flush_cache(self):
+        self._prop_cache = None
+
+    def analog_channel(self,idx):
+        if idx == 0:
+            return Sigilent1020XEOscilloscope.ACHAN1
+        elif idx == 1:
+            return Sigilent1020XEOscilloscope.ACHAN2
+
+    def ext_channel(self):
+        return Sigilent1020XEOscilloscope.EXT
 
     def setup(self):
         self._sock = SocketConnect(self._ip,self._port)
@@ -138,7 +159,7 @@ class Sigilent1020XEOscilloscope:
     def get_n_samples(self,channel_no):
         assert(isinstance(channel_no,int))
         assert(channel_no in self._channels)
-        cmd = 'SANU? C%d' % channel_no
+        cmd = 'SANU? %d' % channel_no
         result = self.query(cmd)
         args = self._validate("SANU",result)
         npts,unit = self._extract_number_and_unit(args[0])
@@ -167,7 +188,7 @@ class Sigilent1020XEOscilloscope:
 
     def get_voltage_scale(self,channel_no):
         assert(channel_no in self._channels)
-        cmd = 'C%d:VDIV?' % channel_no
+        cmd = '%s:VDIV?' % channel_no
         result = self.query(cmd)
         args = self._validate("VDIV",result)
         tc = float(args[0])
@@ -190,7 +211,7 @@ class Sigilent1020XEOscilloscope:
 
     def get_voltage_offset(self,channel_no):
         assert(channel_no in self._channels)
-        cmd = "C%d:OFST?" % channel_no
+        cmd = "%s:OFST?" % channel_no
         result = self.query(cmd)
         args = self._validate("OFST",result)
         off = float(args[0])
@@ -208,6 +229,9 @@ class Sigilent1020XEOscilloscope:
         return result
 
     def get_properties(self):
+        if not self._prop_cache is None:
+            return self._prop_cache
+
         ident = self.get_identifier()
         status = self.get_sample_status()
         rate = self.get_sample_rate()
@@ -216,12 +240,12 @@ class Sigilent1020XEOscilloscope:
         samples = {}
         volt_scale = {}
         offset = {}
-        for idx,channel_no in enumerate([1,2]):
+        for channel_no in self._channels:
             samples[channel_no] = self.get_n_samples(channel_no)
             volt_scale[channel_no] = self.get_voltage_scale(channel_no)
             offset[channel_no] = self.get_voltage_offset(channel_no)
 
-        return {
+        self._prop_cache = {
             'identifier': ident,
             'status': status,
             'sample_rate': rate,
@@ -231,6 +255,7 @@ class Sigilent1020XEOscilloscope:
             'voltage_scale':volt_scale,
             'voltage_offset':offset
         }
+        return self._prop_cache
 
     channels = [1,2]
     def acquire(self):
@@ -244,8 +269,8 @@ class Sigilent1020XEOscilloscope:
         self.write("STOP")
 
     def waveform(self,channel_no,voltage_scale=1.0,time_scale=1.0,voltage_offset=0.0):
-        assert(isinstance(channel_no,int))
-        cmd = "C%d:WF? DAT2" % channel_no
+        assert(channel in self._channels)
+        cmd = "%s:WF? DAT2" % channel_no
         resp = self.query(cmd,decode=None)
         print("<response>")
         code_idx = None

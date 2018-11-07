@@ -33,7 +33,6 @@ class UseDueADCCmd(ArduinoCommand):
     def __init__(self):
         ArduinoCommand.__init__(self)
 
-
     @staticmethod
     def name():
         return 'use_due_adc'
@@ -42,6 +41,51 @@ class UseDueADCCmd(ArduinoCommand):
     def desc():
         return "use the arduino's analog to digital converter."
 
+
+    def execute_read_op(self,state,n,offset):
+        data_header = build_exp_ctype({
+            'type':enums.ExpCmdType.GET_ADC_VALUES.name,
+            'args':[self.dac_id,n,offset]
+        })
+
+        data_header_t = self._c_type
+        byts = data_header_t.build(data_header)
+        line = self.write_to_arduino(state,byts)
+
+    def plot_data(self,filename,data):
+        time = data['times']
+        for adc_id in data.keys():
+            pos = data['adcs'][adc_id]['pos']
+            neg = data['adcs'][adc_id]['neg']
+            plt.plot(time,pos,label="%d-pos" % pos)
+            plt.plot(time,neg,label="%d-neg" % neg)
+
+        plt.savefig(filename)
+        plt.clf()
+
+    def execute(self,state):
+        n = state.n_samples
+        buf = []
+        chunksize_bytes = 1000;
+        chunksize_shorts = chunksize_bytes/2
+
+        data = {}
+        data['time'] = range(0,n)
+        data['adcs'] = {}
+        for adc_id in state.adcs_in_use():
+            data_p = []
+            data_n = []
+            for offset in range(0,n,chunksize_shorts):
+                datum_p,datum_n = self.execute_read_op(adc_id,
+                                     chunksize_shorts,
+                                     offset)
+                data_p += datum_p
+                data_n += datum_n
+
+            data['adcs'][adc_id] = {'pos':data_p,'neg':data_n}
+
+        self.plot_data("adc_data.png",data)
+        return data
 
 
 class UseDueDACCmd(ArduinoCommand):
@@ -184,21 +228,80 @@ class GetOscValuesCmd(Command):
         return GetOscValuesCmd(result['filename'],
                                differential=is_diff)
 
+    def process_data(self,chan1,chan2,clock):
+        clk_t,clk_v = clock
+        threshold = (max(clk_v) + min(clk_v))/2.0
+        is_high = lambda q: q > threshold
+        times = []
+        print("threshhold=%s" % threshold)
+        clk_dir = is_high(clk_v[0])
+        print("-> finding clock changes")
+        for time,value in zip(clk_t,clk_v):
+            curr_clk_dir = is_high(value)
+            if curr_clk_dir != clk_dir:
+                times.append(time)
+                clk_dir = curr_clk_dir
+        print("times: %s" % times)
+        start_time = times[0]
+        end_time = times[-1]
+        print("-> computing signal from t=[%s,%s]" % \
+              (start_time,end_time))
+        if chan2 is None:
+            times,values = chan2
+        else:
+            values = []
+            times = []
+            for (ch1_t,ch1_v),(ch2_t,ch2_v) in zip(chan1,chan2):
+                assert(ch1_t == ch2_t)
+                if ch1_t < start_time or ch1_t > end_time:
+                    continue
+
+                values.append[ch1_v - ch2_v]
+                times.append(ch1_t)
+
+        return times,values
+
+    def plot_data(self,filename,chan1,chan2,clock):
+        ch1_t,ch1_v = chan1
+        plt.plot(ch1_t,ch1_v,label="chan1")
+        if not chan2 is None:
+            ch2_t,ch2_v = chan2
+            plt.plot(ch2_t,ch2_v,label="chan2")
+
+        clk_t,clk_v = clock
+        plt.plot(clk_t,clk_v,label="clk")
+        plt.savefig(filename)
+        plt.clk()
+        input()
+
     def execute(self,state):
         if not self.dummy:
             props = osc.get_properties()
-            ch1 = state.oscilloscope.waveform(1,
+            chan = state.oscilloscope.analog_channel(0)
+            ch1 = state.oscilloscope.waveform(chan,
                 voltage_scale=props['voltage_scale'][channel_no],
                 time_scale=props['time_scale'],
-                voltage_offset=props['voltage_offset'][channel_no])
+                voltage_offset=props['voltage_offset'][channel_no]
+            )
 
+            if self._differential:
+                chan = state.oscilloscope.analog_channel(1)
+                ch2 = state.oscilloscope.waveform(
+                    state.oscilloscope.analog_channel(1),
+                    voltage_scale=props['voltage_scale'][chan],
+                    time_scale=props['time_scale'],
+                    voltage_offset=props['voltage_offset'][chan]
+                )
 
-            ch2 = state.oscilloscope.waveform(2,
-                voltage_scale=props['voltage_scale'][channel_no],
+            chan = state.oscilloscope.digital(1)
+            clk = state.oscilloscope.waveform(
+                state.oscilloscope.ext_channel(),
+                voltage_scale=props['voltage_scale'][chan],
                 time_scale=props['time_scale'],
-                voltage_offset=props['voltage_offset'][channel_no])
-
-            clk = state.oscilloscope.digital(1)
+                voltage_offset=props['voltage_offset'][chan]
+            )
+            self.plot_data(self,"debug.png",ch1,ch2,clk)
+            return self.process_data(ch1,ch2,clk)
 
 
     def __repr__(self):
@@ -230,6 +333,13 @@ class GetDueADCValuesCmd(ArduinoCommand):
             return None
 
         return GetADCValuesCmd(result['filename'])
+
+
+    def build_ctype(self):
+        return build_exp_ctype({
+            'type':enums.ExpCmdType.SET_N_ADC_SAMPLES.name,
+            'args':[self._n_samples,0,0]
+        })
 
 
 

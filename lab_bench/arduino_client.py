@@ -10,9 +10,10 @@ import time
 class State:
 
     def __init__(self,osc_ip,osc_port,ard_native,validate=False):
-        self.arduino = ArduinoDue(native=ard_native)
-        self.oscilloscope = Sigilent1020XEOscilloscope(
-            osc_ip, osc_port)
+        if not validate:
+            self.arduino = ArduinoDue(native=ard_native)
+            self.oscilloscope = Sigilent1020XEOscilloscope(
+                osc_ip, osc_port)
         self.prog = [];
         self.use_osc = False;
         self.use_adc = False;
@@ -22,8 +23,9 @@ class State:
         self.dummy = validate
 
     def close(self):
-        self.arduino.close()
-        self.oscilloscope.close()
+        if not self.dummy:
+            self.arduino.close()
+            self.oscilloscope.close()
 
     def initialize(self):
         if self.dummy:
