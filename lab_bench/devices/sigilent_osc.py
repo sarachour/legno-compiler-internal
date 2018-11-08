@@ -5,13 +5,24 @@ import argparse
 import time
 import wave # https://docs.python.org/2/library/wave.html
 
-import visa # https://pyvisa.readthedocs.io
-
+from enum import Enum
 
 logging.basicConfig()
 
 logger = logging.getLogger('osc')
 logger.setLevel(logging.INFO)
+
+def extract_number_and_unit(st):
+    for i,c in enumerate(st):
+        if not c.isdigit() and \
+                not c == '.' and \
+                not c == 'E' and\
+                not c == '-':
+            break
+    print(st)
+    number = float(st[:i])
+    unit = st[i:]
+    return number,unit
 
 # use python 2
 def SocketConnect(ipaddr,port):
@@ -30,28 +41,159 @@ def SocketConnect(ipaddr,port):
 
     return s
 
+def pairwise(arr):
+    for idx in range(0,len(arr)-1,2):
+        yield arr[idx],arr[idx+1]
+
+class HoldType(Enum):
+        TIME = "TI"
+        OFF = "OFF"
+        PULSE_SMALLER = "PS"
+        PULSE_LARGER = "PL"
+        PULSE_IN_RANGE = "P2"
+        PULSE_OUT_OF_RANGE = "P1"
+        INTERVAL_SMALLER = "IS"
+        INTERVAL_LARGER = "IL"
+        INTERVAL_IN_RANGE = "I2"
+        INTERVAL_OUT_OF_RANGE = "I1"
+
+class HoldRule:
+
+    def __init__(self,hold_type,value1,value2=None):
+            self._hold_type = hold_type
+            self._value1 = value1
+            self._value2 = value2
+    
+    def to_cmd(self):
+        cmd = "HT,%s,HV,%ss" % (self._hold_type.value,self._value1)
+        if not self._value2 is None:
+            cmd += ",HV2,%ss" % self._value2
+        return cmd
+
+    @staticmethod
+    def build(holdtype,value1,value2):
+        if holdtype == HoldType.TIME:
+            return HRTime(value1)
+        elif holdtype == HoldType.OFF:
+           return HROff()
+        else:
+            raise Exception("unhandled: %s" % holdtype)
+
+class HRTime(HoldRule):
+
+    def __init__(self,value):
+        HoldRule.__init__(self,HoldType.TIME,value,None)
+        self._time = value
+
+    def __repr__(self):
+        return "t>%s" % self._time
+
+
+class HROff(HoldRule):
+
+    def __init__(self):
+        HoldRule__init__(self,HoldType.OFF,0.0,None)
+        pass
+
+    def __repr__(self):
+        return "off"
+
+class TriggerType(Enum):
+    EDGE = "EDGE"
+
+class TriggerSlopeType(Enum):
+    FALLING_EDGE = "NEG"
+    RISING_EDGE = "POS"
+    ALTERNATING_EDGES = "WINDOW"
+
+class Trigger:
+    def __init__(self,trigger_type,source,hold_rule,
+                 min_voltage=None,
+                 which_edge=None):
+        self.trigger_type = trigger_type
+        self.source = source
+        self.when = hold_rule
+        self.min_voltage = min_voltage
+        self.which_edge = which_edge
+
+    def to_cmds(self):
+        yield "TRIG_SELECT %s,SR,%s,%s" % \
+            (self.trigger_type.value,
+             self.source.value,
+             self.when.to_cmd())
+
+        if not self.which_edge is None:
+            yield "TRIG_SLOPE %s" % self.which_edge.value
+
+        if not self.min_voltage is None:
+            yield "TRIG_LEVEL %s" % self.min_voltage
+
+    @staticmethod
+    def build(args):
+        scaling = {'ms':1e-3,'s':1.0}
+        trigger_type = TriggerType(args[0])
+        props = dict(pairwise(args[1:]))
+        # TI:time (OFF or TI)
+        # HT:hold type
+        # HV:hold value
+        # SR:source
+        chan = Sigilent1020XEOscilloscope.Channels(props['SR'])
+        ht = HoldType(props['HT'])
+        hv,unit = extract_number_and_unit(props['HV'])
+        value = float(hv)*1e-3*scaling[unit]
+        if 'HV2' in props:
+            hv2,unit2 = extract_number_and_unit(props['HV2'])
+            value2 = float(hv2)*1e-3*scaling[unit2]
+        else:
+            value2 = None
+
+        hold_rule = HoldRule.build(ht,value,value2)
+        return Trigger(trigger_type,chan,hold_rule)
+
+    def __repr__(self):
+        return "trigger[%s](%s) when=%s which_edge=%s min-volt=%s" % \
+            (self.trigger_type.name,
+             self.source,
+             self.when,
+             self.which_edge,
+             self.min_voltage)
+
+
+class TriggerModeType(Enum):
+    AUTO = "AUTO";
+    NORM = "NORM";
+    SINGLE = "SINGLE";
+    STOP = "STOP"
+
 class Sigilent1020XEOscilloscope:
-    class Channels:
+    class Channels(Enum):
         ACHAN1 = "C1",
         ACHAN2 = "C2",
-        EXT = "D1"
+        DIG1 = "D1",
+        EXT = "EX"
+        EXT5 = "EX5"
+        LINE = "LINE"
 
-    class Status:
-        READY = 0;
-        TRIGGERED = 1;
-        STOP = 2;
-        AUTO = 3;
-        ARM = 4;
-        ROLL = 5;
+    class OscStatus(Enum):
+        READY = "Ready";
+        TRIGGERED = "Trig'd";
+        STOP = "Stop";
+        AUTO = "Auto";
+        ARM = "Arm";
+        ROLL = "Roll";
+
 
     def __init__(self,ipaddr,port):
         self._ip = ipaddr
         self._port = port
-        self._channels = [
+        self._analog_channels = [
             Sigilent1020XEOscilloscope.Channels.ACHAN1,
             Sigilent1020XEOscilloscope.Channels.ACHAN2,
+        ]
+        self._digital_channels = [
             Sigilent1020XEOscilloscope.Channels.EXT
         ]
+        self._channels = self._analog_channels + self._digital_channels
         self._prop_cache = None
 
     def flush_cache(self):
@@ -59,12 +201,69 @@ class Sigilent1020XEOscilloscope:
 
     def analog_channel(self,idx):
         if idx == 0:
-            return Sigilent1020XEOscilloscope.ACHAN1
+            return Sigilent1020XEOscilloscope.Channels.ACHAN1
         elif idx == 1:
-            return Sigilent1020XEOscilloscope.ACHAN2
+            return Sigilent1020XEOscilloscope.Channels.ACHAN2
+
+        else:
+            raise Exception("unknown analog channel.")
+
+    def get_trigger(self):
+        cmd = "TRIG_SELECT?"
+        result = self.query(cmd)
+        tokens = result.split(",")
+        trig = Trigger.build(tokens)
+
+        cmd = "%s:TRIG_LEVEL?" % (trig.source.value)
+        result = self.query(cmd)
+        trig.min_voltage = float(result.strip())
+
+        cmd = "%s:TRIG_SLOPE?" % (trig.source.value)
+        result = self.query(cmd)
+        trig.which_edge = TriggerSlopeType(result.strip())
+        return trig
+
+    def get_trigger_mode(self):
+        cmd = "TRIG_MODE?"
+        result = self.query(cmd)
+        status = TriggerModeType(result.strip())
+        return status
+
+    def set_trigger_mode(self,mode):
+        cmd = "TRIG_MODE %s" % mode.value
+        self.write(cmd)
+
+    def get_history_frame_time(self):
+        cmd = "FTIM?"
+        resp = self.query(cmd)
+        print(resp)
+
+    def set_history_frame(self,idx):
+        cmd = "FRAM %d" % idx
+        self.write(cmd)
+
+    def set_trigger(self,trigger):
+        assert(isinstance(trigger,Trigger))
+        for cmd in trigger.to_cmds():
+            result = self.write(cmd)
+        return
+
+    def set_history_mode(self,enable):
+        cmd = "HSMD %s" % ("ON" if enable else "OFF")
+        self.write(cmd)
+
+    def get_history_mode(self):
+        cmd = "HSMD?"
+        result = self.query(cmd)
+        if result == "ON":
+            return True
+        elif result == "OFF":
+            return False
+        else:
+            raise Exception("unexpected response <%s>" % result)
 
     def ext_channel(self):
-        return Sigilent1020XEOscilloscope.EXT
+        return Sigilent1020XEOscilloscope.Channels.EXT
 
     def setup(self):
         self._sock = SocketConnect(self._ip,self._port)
@@ -121,18 +320,6 @@ class Sigilent1020XEOscilloscope:
     def get_identifier(self):
         return self.query("*IDN?")
 
-    def _extract_number_and_unit(self,st):
-        for i,c in enumerate(st):
-            if not c.isdigit() and \
-                    not c == '.' and \
-                    not c == 'E' and\
-                    not c == '-':
-                break
-        print(st)
-        number = float(st[:i])
-        unit = st[i:]
-        return number,unit
-
     def _validate(self,cmd,result):
         args = result.strip().split()
         return args
@@ -141,25 +328,14 @@ class Sigilent1020XEOscilloscope:
         cmd = "SAST?"
         result = self.query(cmd)
         args = self._validate("SAST",result)
-        if args[0] == "Trig'd":
-            return Sigilent1020XEOscilloscope.Status.TRIGGERED
-        elif args[0] == 'Ready':
-            return Sigilent1020XEOscilloscope.Status.READY
-        elif args[0] == 'Stop':
-            return Sigilent1020XEOscilloscope.Status.STOP
-        elif args[0] == 'Auto':
-            return Sigilent1020XEOscilloscope.Status.AUTO
-        elif args[0] == 'Arm':
-            return Sigilent1020XEOscilloscope.Status.ARM
-        elif args[0] == 'Roll':
-            return Sigilent1020XEOscilloscope.Status.ROLL
-        else:
+        status = Sigilent1020XEOscilloscope.OscStatus(args[0])
+        if status is None:
             raise Exception("unknown status <%s>" % args[0])
+        return status
 
     def get_n_samples(self,channel_no):
-        assert(isinstance(channel_no,int))
         assert(channel_no in self._channels)
-        cmd = 'SANU? %d' % channel_no
+        cmd = 'SANU? %s' % channel_no
         result = self.query(cmd)
         args = self._validate("SANU",result)
         npts,unit = self._extract_number_and_unit(args[0])
@@ -173,7 +349,7 @@ class Sigilent1020XEOscilloscope:
 
 
     def get_sample_rate(self):
-        cmd = 'SARA?' 
+        cmd = 'SARA?'
         result = self.query(cmd)
         args = self._validate("SARA",result)
         rate,unit = self._extract_number_and_unit(args[0])
@@ -240,7 +416,7 @@ class Sigilent1020XEOscilloscope:
         samples = {}
         volt_scale = {}
         offset = {}
-        for channel_no in self._channels:
+        for channel_no in self._analog_channels:
             samples[channel_no] = self.get_n_samples(channel_no)
             volt_scale[channel_no] = self.get_voltage_scale(channel_no)
             offset[channel_no] = self.get_voltage_offset(channel_no)
@@ -268,9 +444,22 @@ class Sigilent1020XEOscilloscope:
     def stop(self):
         self.write("STOP")
 
-    def waveform(self,channel_no,voltage_scale=1.0,time_scale=1.0,voltage_offset=0.0):
+
+    def auto(self):
+        self.write("AUTO")
+
+    def set_history_list_open(self,v):
+        cmd = "HSLST %s" % ("ON" if v else "OFF")
+        self.write(cmd)
+
+    def is_history_list_open(self):
+        cmd = "HSLST?"
+        resp = self.query(cmd)
+        return True if resp == "ON" else False
+
+    def waveform(self,channel,voltage_scale=1.0,time_scale=1.0,voltage_offset=0.0):
         assert(channel in self._channels)
-        cmd = "%s:WF? DAT2" % channel_no
+        cmd = "%s:WF? DAT2" % channel
         resp = self.query(cmd,decode=None)
         print("<response>")
         code_idx = None

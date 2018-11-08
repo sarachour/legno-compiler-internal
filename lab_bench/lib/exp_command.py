@@ -371,13 +371,15 @@ class GetOscValuesCmd(Command):
         input()
 
     def execute(self,state):
-        if not self.dummy:
-            props = osc.get_properties()
+        if not state.dummy:
+            props = state.oscilloscope.get_properties()
             chan = state.oscilloscope.analog_channel(0)
+
+
             ch1 = state.oscilloscope.waveform(chan,
-                voltage_scale=props['voltage_scale'][channel_no],
+                voltage_scale=props['voltage_scale'][chan],
                 time_scale=props['time_scale'],
-                voltage_offset=props['voltage_offset'][channel_no]
+                voltage_offset=props['voltage_offset'][chan]
             )
 
             if self._differential:
@@ -449,6 +451,43 @@ class SetNumADCSamplesCmd(ArduinoCommand):
     def __repr__(self):
         return "n_samples %d" % self._n_samples
 
+
+class ComputeOffsetsCmd(ArduinoCommand):
+
+    def __init__(self):
+        ArduinoCommand.__init__(self)
+
+    @staticmethod
+    def name():
+        return 'compute_offsets'
+
+    @staticmethod
+    def desc():
+        return "compute the offsets for the data buffer. Must be completed before writing data to dacs/execution."
+
+
+    def build_ctype(self):
+        return build_exp_ctype({
+            'type':enums.ExpCmdType.COMPUTE_OFFSETS.name,
+            'args':[0,0,0]
+        })
+
+
+    def execute(self,state):
+        ArduinoCommand.execute(self,state)
+
+    @staticmethod
+    def parse(args):
+        if len(args) > 0:
+            print("usage: %s" % ComputeOffsetsCmd.name())
+            return None
+
+        return UseAnalogChipCmd()
+
+    def __repr__(self):
+        return self.name()
+
+
 class UseAnalogChipCmd(ArduinoCommand):
 
     def __init__(self):
@@ -477,7 +516,7 @@ class UseAnalogChipCmd(ArduinoCommand):
     @staticmethod
     def parse(args):
         if len(args) > 0:
-            print("usage: %s" % UseAnalogChipCmd.run())
+            print("usage: %s" % UseAnalogChipCmd.name())
             return None
 
         return UseAnalogChipCmd()

@@ -4,22 +4,24 @@
 #include "Circuit.h"
 #include "math.h"
 
-# define MAX_SIZE 10000
+# define MAX_ADCS 4
+# define MAX_DACS 2
+# define MAX_SIZE 32000
 
 namespace experiment {
   
 typedef struct experiment_data {
-  int n_dac_samples[2];
-  int n_adc_samples;
+  int n_samples;
+  int max_samples;
+  int adc_offsets[MAX_ADCS];
+  int dac_offsets[MAX_DACS];
   bool use_osc;
-  bool use_adc[4];
-  bool use_dac[2];
+  bool compute_offsets;
+  bool use_adc[MAX_ADCS];
+  bool use_dac[MAX_DACS];
   bool use_analog_chip;
   // input data
-  short dac[2][MAX_SIZE];
-  // adc output data
-  short adc_pos[4][MAX_SIZE];
-  short adc_neg[4][MAX_SIZE];
+  short databuf[MAX_SIZE];
 
 } experiment_t;
 
@@ -32,7 +34,8 @@ typedef enum cmd_type {
   USE_DAC,
   USE_ADC,
   USE_OSC,
-  RUN
+  RUN,
+  COMPUTE_OFFSETS
 } cmd_type_t;
 
 
@@ -49,7 +52,7 @@ void enable_analog_chip(experiment_t * expr);
 void reset_experiment(experiment_t * expr);
 void enable_dac(experiment_t * expr, byte dac_id);
 short* get_adc_values(experiment_t * expr, byte adc_id, int& num_samples);
-void exec_command(experiment_t * expr, cmd_t cmd, float* inbuf);
+void exec_command(experiment_t * expr, Fabric * fab, cmd_t& cmd, float* inbuf);
 void print_command(cmd_t& cmd, float* inbuf);
 }
 #endif

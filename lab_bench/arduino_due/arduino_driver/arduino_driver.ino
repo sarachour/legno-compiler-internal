@@ -4,7 +4,7 @@
 #include "Circuit.h"
 
 experiment::experiment_t this_experiment;
-Fabric * fabric;
+Fabric * this_fabric;
 
 typedef enum cmd_type {
     CIRC_CMD,
@@ -52,6 +52,7 @@ void loop() {
       case cmd_type_t::EXPERIMENT_CMD:
         inbuf = (float*) get_data_ptr(nbytes);
         experiment::print_command(cmd.data.exp_cmd,inbuf);
+        experiment::exec_command(&this_experiment,this_fabric,cmd.data.exp_cmd,inbuf);
         break;
       case cmd_type_t::FLUSH_CMD:
         Serial.println("::flush::");

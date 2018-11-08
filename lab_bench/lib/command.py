@@ -17,10 +17,10 @@ COMMANDS = [
     UseMultCmd,
     UseFanoutCmd,
     MakeConnCmd,
-    DisableCmd,
+    #DisableCmd,
     MakeConnCmd,
-    BreakConnCmd,
-    CalibrateCmd,
+    #BreakConnCmd,
+    #CalibrateCmd,
     # experiment commands
     ResetCmd,
     RunCmd,
@@ -31,7 +31,10 @@ COMMANDS = [
     SetNumADCSamplesCmd,
     SetDueDACValuesCmd,
     GetOscValuesCmd,
-    GetDueADCValuesCmd
+    GetDueADCValuesCmd,
+    ComputeOffsetsCmd
+    # virtual commands
+    #SaveDueDACValuesCmd,
 ]
 
 

@@ -432,14 +432,14 @@ void print_command(cmd_t& cmd){
       case cmd_type_t::CALIBRATE:
         Serial.print("calibrate ");
         print_loc(cmd.data.circ_loc);
-        Serial.println("");
         break;
 
       default:
         Serial.print(cmd.type);
-        Serial.println(" <unimpl circuit>");
+        Serial.print(" <unimpl circuit>");
         break;
   }
+  Serial.println("");
 }
 
 

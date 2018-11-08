@@ -39,7 +39,6 @@ class ArduinoCommand(Command):
     def __init__(self,typ=cstructs.cmd_t()):
         Command.__init__(self)
         self._c_type = typ
-        self.dummy = True
 
     def build_ctype(self):
         raise NotImplementedError
@@ -59,12 +58,13 @@ class ArduinoCommand(Command):
     def execute_command(self,state):
         data = self.build_ctype()
         cdata = self._c_type.build(data)
-        print("cmd: %s" % self)
         rep = ""
         for byt in cdata:
             rep += str(int(byt)) + " "
         print("bytes: %s" % rep)
-        return self.write_to_arduino(state,cdata)
+        resp = self.write_to_arduino(state,cdata)
+        print("resp:> %s" % resp)
+        return resp
 
 class FlushCommand(ArduinoCommand):
     def __init__(self):
@@ -80,7 +80,7 @@ class FlushCommand(ArduinoCommand):
 
 
     def process_response(self,resp):
-        print(resp)
+        print("resp:> %s" % resp)
         if not resp is None and \
            "::flush::" in resp:
             return True

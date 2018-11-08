@@ -35,7 +35,7 @@ def parse_pattern_conn(args,name):
     for dst in dst_cmds:
         for src in src_cmds:
             if result is None:
-                cmd = dst + " " + src
+                cmd = src + " " + dst
                 result = parselib.parse(cmd,line)
 
     if result is None:
@@ -123,9 +123,24 @@ class CircPortLoc:
         self.loc = CircLoc(chip,tile,slice,index)
         self.port = port
 
+    def build_ctype(self):
+        if self.loc.index is None:
+            loc = CircLoc(self.loc.chip,
+                          self.loc.tile,
+                          self.loc.slice,
+                          0)
+        else:
+            loc = self.loc
+
+        port = self.port if not self.port is None else 0
+        return {
+            'idxloc':loc.build_ctype(),
+            'idx2':port
+        }
+
 
     def __repr__(self):
-        return str(self.loc) + "." + self.port
+        return "%s[%s]" % (self.loc,self.port)
 
 
 
@@ -147,13 +162,13 @@ class AnalogChipCommand(ArduinoCommand):
            not loc.index in range(0,2):
             self.fail("unknown index <%s>" % loc.index)
 
-        if (block == enums.BlockType.FANOUT.value) \
-            or (block == enums.BlockType.TILE.value) \
-            or (block == enums.BlockType.MULT.value):
+        if (block == enums.BlockType.FANOUT) \
+            or (block == enums.BlockType.TILE) \
+            or (block == enums.BlockType.MULT):
             indices = {
-                enums.BlockType.FANOUT.value: range(0,2),
-                enums.BlockType.MULT.value: range(0,2),
-                enums.BlockType.TILE.value: range(0,4)
+                enums.BlockType.FANOUT: range(0,2),
+                enums.BlockType.MULT: range(0,2),
+                enums.BlockType.TILE: range(0,4)
             }
             if loc.index is None:
                 self.fail("expected index <%s>" % block)
@@ -162,7 +177,7 @@ class AnalogChipCommand(ArduinoCommand):
                 self.fail("block <%s> index <%d> must be from indices <%s>" %\
                           (block,loc.index,indices[block]))
 
-        elif not enums.BlockType(block) is None:
+        elif not block is None:
            if not loc.index is None:
                self.fail("expected no index <%s> <%d>" %\
                          (block,loc.index))
@@ -182,14 +197,14 @@ class AnalogChipCommand(ArduinoCommand):
         raise Exception("cannot directly execute analog chip command")
 
     def apply(self,state):
-        ArduinoCommand.execute_command(self,state)
+        return ArduinoCommand.execute_command(self,state)
 
 
 class DisableCmd(AnalogChipCommand):
 
     def __init__(self,block,chip,tile,slice,index=None):
         AnalogChipCommand.__init__(self)
-        self._block = block;
+        self._block = enums.BlockType(block);
         self._loc = CircLoc(chip,tile,slice,index)
         self.test_loc(self._block,self._loc)
 
@@ -217,7 +232,7 @@ class DisableCmd(AnalogChipCommand):
             return build_circ_ctype({
                 'type':enums.CircCmdType.DISABLE_MULT.name,
                 'data':{
-                    'circ_loc':self._loc.build_ctype()
+                    'circ_loc_idx1':self._loc.build_ctype()
                 }
             })
         elif self._block == enums.BlockType.FANOUT:
@@ -247,7 +262,6 @@ class DisableCmd(AnalogChipCommand):
 
 
     def parse(args):
-        print(" ".join(args[1:]))
         result1 = parse_pattern_block(args[1:],0,0,
                                       "disable %s" % args[0],
                                       index=True)
@@ -381,11 +395,7 @@ class UseDACCmd(UseCommand):
             'type':enums.CircCmdType.USE_DAC.name,
             'data':{
                 'dac':{
-                    'loc':{
-                        'chip':self._loc.chip,
-                        'tile':self._loc.tile,
-                        'slice':self._loc.slice
-                    },
+                    'loc':self._loc.build_ctype(),
                     'value':float_to_byte(self._value),
                     'inv':self._inv
                 }
@@ -437,6 +447,18 @@ class UseIntegCmd(UseCommand):
     def name():
         return 'use_integ'
 
+    def build_ctype(self):
+        return build_circ_ctype({
+            'type':enums.CircCmdType.USE_INTEG.name,
+            'data':{
+                'integ':{
+                    'loc':self._loc.build_ctype(),
+                    'value':float_to_byte(self._value),
+                    'inv':self._inv
+                }
+            }
+        })
+
     def __repr__(self):
         st = UseCommand.__repr__(self)
         st + " integ %s inv=%d" % (self._value,self._inv)
@@ -451,7 +473,7 @@ class UseFanoutCmd(UseCommand):
     def __init__(self,chip,tile,slice,index,
                  inv0=False,inv1=False,inv2=False):
         UseCommand.__init__(self,
-                            enums.BlockType.FANOUT.value,
+                            enums.BlockType.FANOUT,
                             CircLoc(chip,tile,slice,index))
 
         self._inv = [inv0,inv1,inv2]
@@ -463,6 +485,18 @@ class UseFanoutCmd(UseCommand):
     @staticmethod
     def desc():
         return "use a fanout block on the hdacv2 board"
+
+
+    def build_ctype(self):
+        return build_circ_ctype({
+            'type':enums.CircCmdType.USE_FANOUT.name,
+            'data':{
+                'fanout':{
+                    'loc':self._loc.build_ctype(),
+                    'inv':self._inv
+                }
+            }
+        })
 
 
     @staticmethod
@@ -482,7 +516,7 @@ class UseFanoutCmd(UseCommand):
 
     def __repr__(self):
         st = UseCommand.__repr__(self)
-        st + " integ invs=%d" % (self._invs)
+        st + " fanout invs=%s" % (self._inv)
         return st
 
 
@@ -493,7 +527,7 @@ class UseMultCmd(UseCommand):
     def __init__(self,chip,tile,slice,index,
                  coeff=0,use_coeff=False,inv=False):
         UseCommand.__init__(self,
-                            enums.BlockType.MULT.value,
+                            enums.BlockType.MULT,
                             CircLoc(chip,tile,slice,index))
 
         if coeff < 0.0 or coeff > 1.0:
@@ -501,10 +535,24 @@ class UseMultCmd(UseCommand):
 
         self._coeff = coeff
         self._inv = inv
+        self._use_coeff = use_coeff
 
     @staticmethod
     def desc():
         return "use a multiplier block on the hdacv2 board"
+
+    def build_ctype(self):
+        return build_circ_ctype({
+            'type':enums.CircCmdType.USE_MULT.name,
+            'data':{
+                'mult':{
+                    'loc':self._loc.build_ctype(),
+                    'use_coeff':self._use_coeff,
+                    'coeff':float_to_byte(self._coeff),
+                    'inv':self._inv
+                }
+            }
+        })
 
 
     @staticmethod
@@ -538,7 +586,14 @@ class UseMultCmd(UseCommand):
 
     def __repr__(self):
         st = UseCommand.__repr__(self)
-        st += " mult %s inv=%s" % (self._value,self._inv)
+        if self._use_coeff:
+            st += " mult gain coeff=%s inv=%s" % (self._coeff,
+                                             self._inv)
+        else:
+            assert(coeff is None)
+            st += " mult prod inv=%s" % (self._coeff,
+                                             self._inv)
+
         return st
 
 
@@ -548,23 +603,35 @@ class ConnectionCmd(AnalogChipCommand):
                  dst_blk,dst_loc,
                  make_conn=True):
         AnalogChipCommand.__init__(self)
-        assert(isinstance(src_loc,CircPortLoc))
-        self._src_blk = src_blk;
+        assert(not src_loc is None and \
+               isinstance(src_loc,CircPortLoc))
+        self._src_blk = enums.BlockType(src_blk);
         self._src_loc = src_loc;
         self.test_loc(self._src_blk, self._src_loc.loc)
-        assert(isinstance(dst_loc,CircPortLoc))
-        self._dst_blk = dst_blk;
+        assert(not src_loc is None and \
+               isinstance(dst_loc,CircPortLoc))
+        self._dst_blk = enums.BlockType(dst_blk);
         self._dst_loc = dst_loc;
         self.test_loc(self._dst_blk, self._dst_loc.loc)
 
+    def build_ctype(self):
+        return {
+            'src_blk':self._src_blk.name,
+            'src_loc':self._src_loc.build_ctype(),
+            'dst_blk':self._dst_blk.name,
+            'dst_loc':self._dst_loc.build_ctype()
+        }
+
     def __repr__(self):
-        return "conn %s.%s <-> %s.%s" % (self._src_blk,self._src_loc,
-                                         self._dst_blk,self_dst_loc)
+        return "conn %s.%s <-> %s.%s" % (self._src_blk,
+                                         self._src_loc,
+                                         self._dst_blk,
+                                         self._dst_loc)
 class BreakConnCmd(ConnectionCmd):
 
     def __init__(self,src_blk,src_loc,
                  dst_blk,dst_loc):
-        ConnectionCmd.__init__(src_blk,src_loc,
+        ConnectionCmd.__init__(self,src_blk,src_loc,
                                dst_blk,dst_loc,True)
 
     def disable(self):
@@ -578,6 +645,16 @@ class BreakConnCmd(ConnectionCmd):
     def desc():
         return "make a connection on the hdacv2 board"
 
+    def build_ctype(self):
+        data = ConnectionCmd.build_ctype(self)
+        return build_circ_ctype({
+            'type':enums.CircCmdType.BREAK.name,
+            'data':{
+                'conn':data
+            }
+        })
+
+
     @staticmethod
     def parse(args):
         result = parse_pattern_conn(args,BreakConnCmd.name())
@@ -590,25 +667,27 @@ class BreakConnCmd(ConnectionCmd):
                                  result['dindex'])
 
 
-            return ConnectionCmd(
+            return BrkConnCmd(
                 result['sblk'],srcloc,
-                result['dblk'],dstloc,
-                make_conn=False)
+                result['dblk'],dstloc)
 
 
 
     def __repr__(self):
         return "break %s" % (ConnectionCmd.__repr__(self))
 
+
+
+
+
+
+
 class MakeConnCmd(ConnectionCmd):
 
     def __init__(self,src_blk,src_loc,
                  dst_blk,dst_loc):
-        ConnectionCmd.__init__(src_blk,src_loc,
+        ConnectionCmd.__init__(self,src_blk,src_loc,
                                dst_blk,dst_loc,True)
-
-    def configure(self):
-        return self
 
     @staticmethod
     def name():
@@ -616,7 +695,17 @@ class MakeConnCmd(ConnectionCmd):
 
     @staticmethod
     def desc():
-        return "break a connection on the hdacv2 board"
+        return "make a connection on the hdacv2 board"
+
+    def build_ctype(self):
+        data = ConnectionCmd.build_ctype(self)
+        return build_circ_ctype({
+            'type':enums.CircCmdType.CONNECT.name,
+            'data':{
+                'conn':data
+            }
+        })
+
 
     @staticmethod
     def parse(args):
@@ -630,14 +719,16 @@ class MakeConnCmd(ConnectionCmd):
                                  result['dindex'])
 
 
-            return ConnectionCmd(
+            return MakeConnCmd(
                 result['sblk'],srcloc,
-                result['dblk'],dstloc,
-                make_conn=True)
+                result['dblk'],dstloc)
 
 
-    def break_conn(self):
-        return BreakConnectionCmd(self._src_blk,self._src_loc,
+    def configure(self):
+        return self
+
+    def disable(self):
+        return BreakConnCmd(self._src_blk,self._src_loc,
                              self._dst_blk,self._dst_loc)
 
 

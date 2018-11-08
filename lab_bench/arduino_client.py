@@ -2,7 +2,8 @@ import lib.command as cmd
 import sys
 import argparse
 from devices.arduino_due import ArduinoDue
-from devices.sigilent_osc import Sigilent1020XEOscilloscope
+from devices.sigilent_osc import Sigilent1020XEOscilloscope 
+import devices.sigilent_osc as osclib
 
 from lib.base_command import FlushCommand, ArduinoCommand
 import time
@@ -76,6 +77,7 @@ class State:
 
     def enqueue(self,stmt):
         if stmt.test():
+            print("[enq] %s" % stmt)
             self.prog.append(stmt)
         else:
             print("[error] " + stmt.error_msg())
@@ -106,6 +108,7 @@ class State:
 
         for stmt in self.prog:
             if isinstance(stmt, cmd.AnalogChipCommand):
+                print("[config] %s" % stmt)
                 config_stmt = stmt.configure()
                 if not config_stmt is None:
                     yield config_stmt
@@ -181,9 +184,29 @@ state = State(args.ip,args.port,
               ard_native=args.native,
               validate=args.validate)
 
-state.initialize()
 if not args.validate and (args.ip is None):
     raise Exception("must include ip address of oscilloscope")
+
+state.initialize()
+hist_mode = state.oscilloscope.get_history_mode()
+print("history mode: %s" % hist_mode)
+trig_mode = state.oscilloscope.get_trigger_mode()
+print("trigger mode: %s" % trig_mode)
+trig_setting = state.oscilloscope.get_trigger()
+print("trigger setting: %s" % trig_setting)
+input("configure trigger?")
+new_trigger = osclib.Trigger(osclib.TriggerType.EDGE,
+                      state.oscilloscope.ext_channel(),
+                      osclib.HRTime(4.24e-10),
+                      min_voltage=0.068,
+                      which_edge=osclib.TriggerSlopeType.ALTERNATING_EDGES
+)
+state.oscilloscope.auto()
+state.oscilloscope.set_trigger(new_trigger)
+state.oscilloscope.set_trigger_mode(osclib.TriggerModeType.NORM)
+state.oscilloscope.set_history_mode(True)
+print()
+sys.exit(0)
 
 try:
     if args.script == None:

@@ -24,7 +24,8 @@ def experiment_cmd_type_t():
         ExpCmdType.USE_DAC.name:5,
         ExpCmdType.USE_ADC.name:6,
         ExpCmdType.USE_OSC.name:7,
-        ExpCmdType.RUN.name:8
+        ExpCmdType.RUN.name:8,
+        ExpCmdType.COMPUTE_OFFSETS.name:9
     }
     return cstruct.Enum(cstruct.Int16ul,**kwargs)
 
@@ -50,58 +51,58 @@ def circ_cmd_type():
 
 
 def circ_loc_t():
-    return cstruct.AlignedStruct(4,
-        chip=cstruct.Int8ul,
-        tile=cstruct.Int8ul,
-        slice=cstruct.Int8ul
+    return cstruct.Struct(
+        "chip"/cstruct.Int8ul,
+        "tile"/cstruct.Int8ul,
+        "slice"/cstruct.Int8ul
     )
 
 def circ_loc_idx1_t():
-    return cstruct.AlignedStruct(4,
-        loc=circ_loc_t(),
-        idx=cstruct.Int8ul
+    return cstruct.Struct(
+        "loc"/circ_loc_t(),
+        "idx"/cstruct.Int8ul
     )
 
 def circ_loc_idx2_t():
-    return cstruct.AlignedStruct(4,
-        idxloc=circ_loc_idx1_t(),
-        idx2=cstruct.Int8ul
+    return cstruct.Struct(
+        "idxloc" / circ_loc_idx1_t(),
+        "idx2" / cstruct.Int8ul
     )
 
 def circ_use_integ_t():
     return cstruct.AlignedStruct(4,
-        loc=circ_loc_t(),
-        value=cstruct.Int8ul,
-        inv=cstruct.Flag
+        "loc" / circ_loc_t(),
+        "value" / cstruct.Int8ul,
+        "inv" / cstruct.Flag
     )
 
 def circ_use_dac_t():
     return cstruct.AlignedStruct(4,
-        loc=circ_loc_t(),
-        value=cstruct.Byte,
-        inv=cstruct.Flag
+        "loc" / circ_loc_t(),
+        "value" / cstruct.Int8ul,
+        "inv" / cstruct.Flag
     )
 
 def circ_use_mult_t():
     return cstruct.AlignedStruct(4,
-        loc=circ_loc_idx1_t(),
-        use_coeff=cstruct.Flag,
-        coeff=cstruct.Int8ul,
-        inv=cstruct.Flag
+        "loc" / circ_loc_idx1_t(),
+        "use_coeff" / cstruct.Flag,
+        "coeff" / cstruct.Int8ul,
+        "inv" / cstruct.Flag
     )
 
 def circ_use_fanout_t():
     return cstruct.AlignedStruct(4,
-        loc=circ_loc_idx1_t(),
-        inv=cstruct.Array(3,cstruct.Flag)
+        "loc" / circ_loc_idx1_t(),
+        "inv" / cstruct.Array(3,cstruct.Flag)
     )
 
 def circ_connection_t():
-    return cstruct.AlignedStruct(4,
-        src_blk=block_type_t(),
-        src_loc=circ_loc_idx2_t(),
-        dst_blk=block_type_t(),
-        dst_loc=circ_loc_idx2_t()
+    return cstruct.Struct(
+        "src_blk" / block_type_t(),
+        "src_loc" / circ_loc_idx2_t(),
+        "dst_blk" / block_type_t(),
+        "dst_loc" / circ_loc_idx2_t()
     )
 
 

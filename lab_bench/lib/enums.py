@@ -38,6 +38,7 @@ class ExpCmdType(Enum):
     USE_ADC = 'use_ard_adc';
     USE_OSC = 'use_osc';
     RUN = 'run';
+    COMPUTE_OFFSETS = 'compute_offsets';
 
 class CmdType(Enum):
     CIRC_CMD = 'circ_cmd';
