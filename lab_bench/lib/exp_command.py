@@ -621,6 +621,16 @@ class RunCmd(ArduinoCommand):
             stmt.apply(state)
 
         if state.use_osc and not state.dummy:
+            edge_trigger = osclib.Trigger(osclib.TriggerType.EDGE,
+                                state.oscilloscope.ext_channel(),
+                                osclib.HRTime(80e-10),
+                                min_voltage=0.068,
+                                which_edge=osclib
+                                          .TriggerSlopeType
+                                          .ALTERNATING_EDGES)
+            state.oscilloscope.set_trigger(edge_trigger)
+            state.oscilloscope.set_trigger_mode(osclib.TriggerModeType.NORM)
+            state.oscilloscope.set_history_mode(True)
             props = state.oscilloscope.get_properties()
             print("== oscilloscope properties")
             for key,val in props.items():
