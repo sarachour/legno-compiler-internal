@@ -1,6 +1,7 @@
 *.pyc
 calibrate
 transform
+outputs
 *.json
 *.png
 .#*.py
