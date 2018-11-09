@@ -28,7 +28,7 @@ class Config:
     def to_json(self):
         cfg = {}
         cfg['compute-mode'] = self._mode
-        cfg['scale-mode'] = self._mode
+        cfg['scale-mode'] = self._scale_mode
         cfg['dacs'] = {}
         cfg['labels'] = {}
         for dac,value in self._dacs.items():
@@ -37,6 +37,14 @@ class Config:
         for port,label in self._labels.items():
             cfg['labels'][port] = label
 
+        return cfg
+
+    def copy(self):
+        cfg = Config()
+        cfg._mode = self._mode
+        cfg._scale_mode = self._scale_mode
+        cfg._dacs = dict(self._dacs)
+        cfg._labels = dict(self._labels)
         return cfg
 
     @property
@@ -94,17 +102,24 @@ class Config:
     def scf(self,port):
         return self._labels[port][1]
 
-    def __repr__(self):
+    def to_str(self,delim="\n"):
         s = ""
-        s += "comp-mode: %s\n" % self._mode
-        s += "scale-mode: %s\n" % self._scale_mode
+        s += "comp-mode: %s" % self._mode
+        s += delim
+        s += "scale-mode: %s" % self._scale_mode
+        s += delim
         for v,e in self._dacs.items():
-            s += "%s: %s\n" % (v,e)
+            s += "%s: %s" % (v,e)
+            s += delim
 
         for l,(n,scf,k) in self._labels.items():
-            s += "%s: lbl=%s scf=%s kind=%s\n" % (l,n,scf,k)
+            s += "%s:[lbl=%s,scf=%s,kind=%s]" % (l,n,scf,k)
+            s += delim
 
         return s
+
+    def __repr__(self):
+        return self.to_str()
 
 class Block:
 

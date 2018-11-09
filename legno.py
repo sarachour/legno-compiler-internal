@@ -1,10 +1,12 @@
 from compiler import arco, jaunt
 import argparse
 import os
+import time
 
 #import conc
 #import srcgen
 
+# TODO: in concrete specification, connection is made to same dest.
 def compile(board,problem):
     files = []
     prob = benchmark1()
@@ -31,7 +33,7 @@ arco_subp.add_argument('--xforms', type=int,default=3,
                        help='number of abs circuits to generate.')
 arco_subp.add_argument('--abs-circuits', type=int,default=100,
                        help='number of abs circuits to generate.')
-arco_subp.add_argument('--conc-circuits', type=str,default=3,
+arco_subp.add_argument('--conc-circuits', type=int,default=3,
                        help='number of conc circuits to generate.')
 arco_subp.add_argument('--output-dir', type=str,default='circs',
                        help='output directory to output files to.')
@@ -47,6 +49,13 @@ jaunt_subp.add_argument('--noise', type=str,help='perform noise analysis.')
 
 args = parser.parse_args()
 
+OUTDIR = "outputs"
+
+if not os.path.exists(OUTDIR):
+    os.mkdir(OUTDIR)
+
+if not os.path.exists("%s/%s" % (OUTDIR,args.output_dir)):
+    os.mkdir("%s/%s" % (OUTDIR,args.output_dir))
 
 if args.subparser_name == "arco":
     from chip.hcdc import board as hdacv2_board
@@ -57,7 +66,7 @@ if args.subparser_name == "arco":
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    for indices,conc_circ in \
+    for indices,conc_circ,abs_circ in \
         arco.compile(hdacv2_board,
                                problem,
                                depth=args.xforms,
@@ -66,7 +75,8 @@ if args.subparser_name == "arco":
         index_str = "_".join(map(lambda ind : str(ind),indices))
         circ_file= "%s_%s.circ" % (args.benchmark,index_str)
         dot_file = "%s_%s.dot" % (args.benchmark,index_str)
-        filedir = "%s/%s" % (args.output_dir,circ_file)
+        filedir = "%s/%s/%s" % (OUTDIR,args.output_dir,circ_file)
         conc_circ.write_circuit(filedir)
-        filedir = "%s/%s" % (args.output_dir,dot_file)
+        filedir = "%s/%s/%s" % (OUTDIR,args.output_dir,dot_file)
         conc_circ.write_graph(filedir,write_png=True)
+        time.sleep(1)

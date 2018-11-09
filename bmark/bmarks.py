@@ -75,10 +75,11 @@ def benchmark1(experiment=None):
 
 
 def benchmark0(experiment=None):
-    prob = MathProg()
-    prob.bind("x", op.ExtInput(op.Var("_x",constant=True)))
+    prob = MathProg("bmark0")
+    prob.read("x")
+    prob.emit("y")
     prob.bind("y", op.Mult(op.Var("x"), op.Const(2.0)))
-    #prob.bind("_y", op.Emit(op.Var("y")))
+    return prob
 
 _BMARKS = {
     'bmark0' : benchmark0,

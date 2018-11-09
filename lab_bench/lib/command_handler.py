@@ -1,10 +1,11 @@
 import lib.command as cmd
+import sys
 
 def execute(state,line):
     if line.startswith("#"):
         print(line)
         print("<comment, skipping..>")
-        return
+        return True
 
     command_obj = cmd.parse(line)
     if command_obj is None:

@@ -293,6 +293,7 @@ class ABlockInst(ANode):
 
     def _copy(self,eng):
         blk = ABlockInst(self._block)
+        blk.config = self.config.copy()
         success = eng.register(self,blk)
         if not success:
             return eng.get(self)
@@ -323,7 +324,7 @@ class ABlockInst(ANode):
     def to_str(self,internal_id=False):
         st = ANode.to_str(self,internal_id)
         argstr = " ".join(map(lambda p: str(p), self._parents))
-        st += "(%s %s)" % (self.name,argstr)
+        st += "(%s {%s} %s)" % (self.name,self.config.to_str(","),argstr)
         return st
 
 class AbsCirc:

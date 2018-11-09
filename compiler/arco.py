@@ -584,7 +584,7 @@ def compile(board,prob,depth=3,max_abs_circs=100,max_conc_circs=1):
                 for idx_j,conc_circ in enumerate(arco_route.route(basename,
                                                                   board,
                                                                   var_map)):
-                    yield idx+[idx_j],conc_circ
+                    yield idx+[idx_j],conc_circ,var_map
                     n_conc += 1
 
                     if n_conc > max_conc_circs:

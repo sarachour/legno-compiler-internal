@@ -1,0 +1,9 @@
+*.pyc
+calibrate
+transform
+*.json
+*.png
+.#*.py
+
+
+

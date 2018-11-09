@@ -19,7 +19,6 @@ def extract_number_and_unit(st):
                 not c == 'E' and\
                 not c == '-':
             break
-    print(st)
     number = float(st[:i])
     unit = st[i:]
     return number,unit
@@ -169,7 +168,6 @@ class Sigilent1020XEOscilloscope:
     class Channels(Enum):
         ACHAN1 = "C1",
         ACHAN2 = "C2",
-        DIG1 = "D1",
         EXT = "EX"
         EXT5 = "EX5"
         LINE = "LINE"
@@ -211,6 +209,9 @@ class Sigilent1020XEOscilloscope:
     def get_trigger(self):
         cmd = "TRIG_SELECT?"
         result = self.query(cmd)
+        if ">>" in result:
+            result = result.split(">>")[-1].strip()
+
         tokens = result.split(",")
         trig = Trigger.build(tokens)
 
@@ -333,12 +334,12 @@ class Sigilent1020XEOscilloscope:
             raise Exception("unknown status <%s>" % args[0])
         return status
 
-    def get_n_samples(self,channel_no):
-        assert(channel_no in self._channels)
-        cmd = 'SANU? %s' % channel_no
+    def get_n_samples(self,channel):
+        assert(channel in self._channels)
+        cmd = 'SANU? %s' % channel.value
         result = self.query(cmd)
         args = self._validate("SANU",result)
-        npts,unit = self._extract_number_and_unit(args[0])
+        npts,unit = extract_number_and_unit(args[0])
         if unit == 'Mpts':
             return int(npts)*1e6
         if unit == 'kpts':
@@ -352,7 +353,7 @@ class Sigilent1020XEOscilloscope:
         cmd = 'SARA?'
         result = self.query(cmd)
         args = self._validate("SARA",result)
-        rate,unit = self._extract_number_and_unit(args[0])
+        rate,unit = extract_number_and_unit(args[0])
         if unit == 'Sa/s':
             return rate
         elif unit == "GSa/s":
@@ -362,9 +363,9 @@ class Sigilent1020XEOscilloscope:
         else:
             raise Exception("unknown unit <%s>" % unit)
 
-    def get_voltage_scale(self,channel_no):
-        assert(channel_no in self._channels)
-        cmd = '%s:VDIV?' % channel_no
+    def get_voltage_scale(self,channel):
+        assert(channel in self._channels)
+        cmd = '%s:VDIV?' % channel.value
         result = self.query(cmd)
         args = self._validate("VDIV",result)
         tc = float(args[0])
@@ -385,9 +386,9 @@ class Sigilent1020XEOscilloscope:
         cmd = "WFSU TYPE,%d" % (0 if not all_points_in_memory else 1)
         result = self.write(cmd)
 
-    def get_voltage_offset(self,channel_no):
-        assert(channel_no in self._channels)
-        cmd = "%s:OFST?" % channel_no
+    def get_voltage_offset(self,channel):
+        assert(channel in self._channels)
+        cmd = "%s:OFST?" % channel.value
         result = self.query(cmd)
         args = self._validate("OFST",result)
         off = float(args[0])
@@ -416,10 +417,10 @@ class Sigilent1020XEOscilloscope:
         samples = {}
         volt_scale = {}
         offset = {}
-        for channel_no in self._analog_channels:
-            samples[channel_no] = self.get_n_samples(channel_no)
-            volt_scale[channel_no] = self.get_voltage_scale(channel_no)
-            offset[channel_no] = self.get_voltage_offset(channel_no)
+        for channel in self._analog_channels:
+            samples[channel.name] = self.get_n_samples(channel)
+            volt_scale[channel.name] = self.get_voltage_scale(channel)
+            offset[channel.name] = self.get_voltage_offset(channel)
 
         self._prop_cache = {
             'identifier': ident,
@@ -433,7 +434,6 @@ class Sigilent1020XEOscilloscope:
         }
         return self._prop_cache
 
-    channels = [1,2]
     def acquire(self):
         resp = self.query("INR?")
         print(resp)
@@ -459,9 +459,8 @@ class Sigilent1020XEOscilloscope:
 
     def waveform(self,channel,voltage_scale=1.0,time_scale=1.0,voltage_offset=0.0):
         assert(channel in self._channels)
-        cmd = "%s:WF? DAT2" % channel
+        cmd = "%s:WF? DAT2" % channel.value
         resp = self.query(cmd,decode=None)
-        print("<response>")
         code_idx = None
         for idx,byte in enumerate(resp):
             chrs = chr(byte)

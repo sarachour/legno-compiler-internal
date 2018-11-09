@@ -13,7 +13,6 @@ class Op:
     CONST = 8
     VAR = 9
     POW = 10
-    EMIT = 11
     STRMAP = {
         EQ: "=",
         MULT: "*",
@@ -25,8 +24,7 @@ class Op:
         SQUARE: "pow2",
         CONST: "const",
         VAR: "var",
-        POW: "pow",
-        EMIT: "emit"
+        POW: "pow"
     }
 
     def __init__(self,op,args):
@@ -172,11 +170,6 @@ class BaseExpOp(Op):
     def exponent(self):
         return self._args[1]
 
-
-class Emit(Op):
-
-    def __init__(self,expr):
-        Op.__init__(self,Op.EMIT,[expr])
 
 class Integ(Op2):
 

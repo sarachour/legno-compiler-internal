@@ -5,6 +5,7 @@ from lib.base_command import Command,ArduinoCommand
 import math
 import construct
 import matplotlib.pyplot as plt
+import devices.sigilent_osc as osclib
 
 def build_exp_ctype(exp_data):
     return {
@@ -324,7 +325,7 @@ class GetOscValuesCmd(Command):
         return GetOscValuesCmd(result['filename'],
                                differential=is_diff)
 
-    def process_data(self,chan1,chan2,clock):
+    def process_data(self,chan1,chan2):
         clk_t,clk_v = clock
         threshold = (max(clk_v) + min(clk_v))/2.0
         is_high = lambda q: q > threshold
@@ -357,18 +358,17 @@ class GetOscValuesCmd(Command):
 
         return times,values
 
-    def plot_data(self,filename,chan1,chan2,clock):
+    def plot_data(self,filename,chan1,chan2):
         ch1_t,ch1_v = chan1
-        plt.plot(ch1_t,ch1_v,label="chan1")
+        plt.scatter(ch1_t,ch1_v,label="chan1")
         if not chan2 is None:
             ch2_t,ch2_v = chan2
-            plt.plot(ch2_t,ch2_v,label="chan2")
+            plt.scatter(ch2_t,ch2_v,label="chan2")
 
-        clk_t,clk_v = clock
-        plt.plot(clk_t,clk_v,label="clk")
+        print("-> plotting")
         plt.savefig(filename)
-        plt.clk()
-        input()
+        print("-> plotted")
+        plt.clf()
 
     def execute(self,state):
         if not state.dummy:
@@ -377,29 +377,23 @@ class GetOscValuesCmd(Command):
 
 
             ch1 = state.oscilloscope.waveform(chan,
-                voltage_scale=props['voltage_scale'][chan],
+                voltage_scale=props['voltage_scale'][chan.name],
                 time_scale=props['time_scale'],
-                voltage_offset=props['voltage_offset'][chan]
+                voltage_offset=props['voltage_offset'][chan.name]
             )
 
+            ch2 = None
             if self._differential:
                 chan = state.oscilloscope.analog_channel(1)
                 ch2 = state.oscilloscope.waveform(
                     state.oscilloscope.analog_channel(1),
-                    voltage_scale=props['voltage_scale'][chan],
+                    voltage_scale=props['voltage_scale'][chan.name],
                     time_scale=props['time_scale'],
-                    voltage_offset=props['voltage_offset'][chan]
+                    voltage_offset=props['voltage_offset'][chan.name]
                 )
 
-            chan = state.oscilloscope.digital(1)
-            clk = state.oscilloscope.waveform(
-                state.oscilloscope.ext_channel(),
-                voltage_scale=props['voltage_scale'][chan],
-                time_scale=props['time_scale'],
-                voltage_offset=props['voltage_offset'][chan]
-            )
-            self.plot_data(self,"debug.png",ch1,ch2,clk)
-            return self.process_data(ch1,ch2,clk)
+            self.plot_data("debug.png",ch1,ch2)
+            return self.process_data(ch1,ch2)
 
 
     def __repr__(self):
@@ -482,7 +476,7 @@ class ComputeOffsetsCmd(ArduinoCommand):
             print("usage: %s" % ComputeOffsetsCmd.name())
             return None
 
-        return UseAnalogChipCmd()
+        return ComputeOffsetsCmd()
 
     def __repr__(self):
         return self.name()
@@ -623,24 +617,31 @@ class RunCmd(ArduinoCommand):
         if state.use_osc and not state.dummy:
             edge_trigger = osclib.Trigger(osclib.TriggerType.EDGE,
                                 state.oscilloscope.ext_channel(),
-                                osclib.HRTime(80e-10),
-                                min_voltage=0.068,
+                                osclib.HRTime(80e-7),
+                                min_voltage=0.080,
                                 which_edge=osclib
                                           .TriggerSlopeType
                                           .ALTERNATING_EDGES)
             state.oscilloscope.set_trigger(edge_trigger)
             state.oscilloscope.set_trigger_mode(osclib.TriggerModeType.NORM)
-            state.oscilloscope.set_history_mode(True)
+
+            trig = state.oscilloscope.get_trigger()
+            print("trigger: %s" % trig)
+            #state.oscilloscope.set_history_mode(True)
             props = state.oscilloscope.get_properties()
             print("== oscilloscope properties")
             for key,val in props.items():
                 print("%s : %s" % (key,val))
 
-        #input("<press enter to start>")
-        ArduinoCommand.execute(self,state)
 
-        if state.use_osc and not state.dummy:
-            state.oscilloscope.acquire()
+        input("<press enter to start>")
+        line = ArduinoCommand.execute(self,state)
+        while line is None or not "::done::" in line:
+            print("resp:> %s" % line)
+            line = state.arduino.readline()
+        print("resp:> %s" % line)
+        print("<done>")
+        input("<press enter to continue>")
 
         for stmt in state.teardown_chip():
             stmt.apply(state)

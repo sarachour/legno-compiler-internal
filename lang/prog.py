@@ -5,6 +5,14 @@ class MathProg:
         self._bindings = {}
         self._intervals = {}
         self._bandwidths= {}
+        self._emit = []
+        self._read = []
+
+    def read(self,var):
+        self._read.append(var)
+
+    def emit(self,var):
+        self._emit.append(var)
 
     def bind(self,var,expr):
         assert(not var in self._bindings)

@@ -136,7 +136,7 @@ class ConcCirc:
     def write_circuit(self,filename):
         data = self.to_json()
         with open(filename,'w') as fh:
-            strdata = json.dumps(data)
+            strdata = json.dumps(data,indent=4)
             fh.write(strdata)
 
 
@@ -217,7 +217,7 @@ class ConcCirc:
                 q(st)
                 value_idx += 1
 
-                vnode = valuefn(value_idx)
+                vnode = valuefn()
 
         for (src,h1),(dst,h2) in conns:
             q("%s:%s -> %s:%s" % (varfn(src),h1,varfn(dst),h2))

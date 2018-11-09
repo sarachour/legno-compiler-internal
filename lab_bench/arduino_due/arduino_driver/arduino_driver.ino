@@ -36,14 +36,6 @@ void loop() {
     cmd_t cmd;
     int nbytes = read_bytes((byte *) &cmd,sizeof(cmd_t));
     float * inbuf = NULL;
-    Serial.print(nbytes);
-    Serial.print("/");
-    Serial.print(sizeof(cmd_t));
-    Serial.print("  ");
-    for(int idx=0; idx < nbytes; idx += 1){
-      Serial.print(((byte*) &cmd)[idx]);
-      Serial.print(",");
-    }
     Serial.println("::process::");
     switch(cmd.type){
       case cmd_type_t::CIRC_CMD:
