@@ -1,7 +1,9 @@
-set_samples 500
+#set_samples 500
+set_samples 5000
 use_due_dac 0
 compute_offsets
 set_due_dac_values 0 0.8*math.sin(100000.0*t)
+#set_due_dac_values 0 0.5*math.cos(100000.0*t)+0.5*math.sin(100000.0*t+23000)
 use_osc
 run
 get_osc_values direct data.csv

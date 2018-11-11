@@ -79,6 +79,24 @@ class FlushCommand(ArduinoCommand):
         }
 
 
+    def write_to_arduino(self,state,cdata):
+        if not state.dummy:
+            print("execute: %s [%d]" % (self,len(cdata)))
+            # twenty bytes
+            found_process = False
+            while True:
+                state.arduino.listen()
+                state.arduino.write_bytes(cdata)
+                state.arduino.write_newline()
+                time.sleep(0.5)
+                if state.arduino.reads_available():
+                    line = state.arduino.try_process()
+                    if not line is None:
+                        return line
+
+        return None
+
+
     def process_response(self,resp):
         print("resp:> %s" % resp)
         if not resp is None and \

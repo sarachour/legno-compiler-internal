@@ -2,8 +2,10 @@ import sys
 import logging
 import socket
 import argparse
+import select
 import time
-import wave # https://docs.python.org/2/library/wave.html
+import struct
+import datetime
 
 from enum import Enum
 
@@ -193,6 +195,7 @@ class Sigilent1020XEOscilloscope:
         ]
         self._channels = self._analog_channels + self._digital_channels
         self._prop_cache = None
+        self._buf = bytearray([])
 
     def flush_cache(self):
         self._prop_cache = None
@@ -236,8 +239,28 @@ class Sigilent1020XEOscilloscope:
 
     def get_history_frame_time(self):
         cmd = "FTIM?"
+        resp = self.query(cmd,decode=None)
+        # hour: 8 bits
+        # minute: 8 bits
+        # second: 8 bits
+        # microsecond: 48 bits
+        # total :64 bits
+        hour = int(resp[1])
+        minute = int(resp[2])
+        second = int(resp[3]) % 100
+        bytarr = resp[4:]
+        pad = bytearray([0]*(4-len(bytarr)))
+        microsec = struct.unpack("<L", pad+bytarr)[0]
+        print("%s:%s:%s.%s" % (hour,minute,second,microsec))
+        total_seconds = hour*60*60 + minute*60 + second + microsec*10e-6
+        if total_seconds == 0:
+            return None
+        return total_seconds
+
+    def get_history_frame(self):
+        cmd = "FRAM?"
         resp = self.query(cmd)
-        print(resp)
+        return int(resp)
 
     def set_history_frame(self,idx):
         cmd = "FRAM %d" % idx
@@ -268,28 +291,37 @@ class Sigilent1020XEOscilloscope:
 
     def setup(self):
         self._sock = SocketConnect(self._ip,self._port)
-        self.query("CHDR OFF")
+        self.write("CHDR OFF")
 
-    def _recvall(self):
+
+    def _flush(self):
+        readable, writable, exceptional = select.select([self._sock],
+                                                        [],
+                                                        [],
+                                                        1.0)
+        if readable:
+            data = self._sock.recv(1024)
+        else:
+            return
+
+    def _recvall(self,eom=b'\n'):
         total_data=[];
-        data=''
-        eom=b'\n'
-        while True:
-            data=self._sock.recv(4096)
+        data=self._buf
+        self._buf = bytearray([])
+        done = False
+        while not done:
             if eom in data:
-                seg = data[:data.find(eom)]
+                eom_idx = data.find(eom)
+                assert(eom_idx >= 0)
+                seg = data[:eom_idx]
+                self._buf = data[eom_idx+len(eom):]
                 total_data.append(seg)
-                break
+                done = True
+                continue
+            else:
+                total_data.append(data)
 
-            total_data.append(data)
-            if len(total_data) > 1:
-                #check if end_of_data was split
-                last_pair=total_data[-2]+total_data[-1]
-                if eom in last_pair:
-                    total_data[-2]=last_pair[:last_pair.find(eom)]
-                    total_data.pop()
-                    break
-
+            data=self._sock.recv(4096)
 
         ba = bytearray([])
         for datum in total_data:
@@ -307,12 +339,14 @@ class Sigilent1020XEOscilloscope:
             time.sleep(0.1)
         except socket.error:
             #Send failed
+            print(socket.error)
             print ('send failed <%s>' % cmd)
             sys.exit()
 
-    def query(self,cmd,decode='UTF-8'):
+    def query(self,cmd,decode='UTF-8',eom=b'\n\r>>'):
+        self._flush()
         self.write(cmd)
-        reply = self._recvall()
+        reply = self._recvall(eom=eom)
         if not decode is None:
             return reply.decode(decode)
         else:
@@ -363,7 +397,7 @@ class Sigilent1020XEOscilloscope:
         else:
             raise Exception("unknown unit <%s>" % unit)
 
-    def get_voltage_scale(self,channel):
+    def get_volts_per_division(self,channel):
         assert(channel in self._channels)
         cmd = '%s:VDIV?' % channel.value
         result = self.query(cmd)
@@ -371,9 +405,11 @@ class Sigilent1020XEOscilloscope:
         tc = float(args[0])
         return tc
 
-    def get_time_constant(self):
+    # get time constant 
+    def get_seconds_per_division(self):
         cmd = 'TDIV?' 
         result = self.query(cmd)
+        # seconds per division.
         args = self._validate("TDIV",result)
         tc = float(args[0])
         return tc
@@ -408,28 +444,27 @@ class Sigilent1020XEOscilloscope:
     def get_properties(self):
         if not self._prop_cache is None:
             return self._prop_cache
-
         ident = self.get_identifier()
         status = self.get_sample_status()
         rate = self.get_sample_rate()
-        time_const = self.get_time_constant()
+        sec_per_div = self.get_seconds_per_division()
         channels = self._channels
         samples = {}
         volt_scale = {}
         offset = {}
         for channel in self._analog_channels:
             samples[channel.name] = self.get_n_samples(channel)
-            volt_scale[channel.name] = self.get_voltage_scale(channel)
+            volt_scale[channel.name] = self.get_volts_per_division(channel)
             offset[channel.name] = self.get_voltage_offset(channel)
 
         self._prop_cache = {
             'identifier': ident,
             'status': status,
-            'sample_rate': rate,
-            'time_scale':time_const,
+            'sampling_rate': rate,
+            'seconds_per_division':sec_per_div,
             'channels':channels,
             'n_samples':samples,
-            'voltage_scale':volt_scale,
+            'volts_per_division':volt_scale,
             'voltage_offset':offset
         }
         return self._prop_cache
@@ -455,10 +490,20 @@ class Sigilent1020XEOscilloscope:
     def is_history_list_open(self):
         cmd = "HSLST?"
         resp = self.query(cmd)
-        return True if resp == "ON" else False
+        return True if "ON" in resp else False
 
-    def waveform(self,channel,voltage_scale=1.0,time_scale=1.0,voltage_offset=0.0):
+    def waveform(self,channel):
         assert(channel in self._channels)
+        props = self.get_properties()
+        #NHDIV = 14
+        #NVDIV = 8
+        NHDIV = 14
+        NVDIV=25
+        tdiv = props['seconds_per_division']
+        sara = props['sampling_rate']
+        vdiv = props['volts_per_division'][channel.name]
+        voff = props['voltage_offset'][channel.name]
+
         cmd = "%s:WF? DAT2" % channel.value
         resp = self.query(cmd,decode=None)
         code_idx = None
@@ -476,14 +521,75 @@ class Sigilent1020XEOscilloscope:
         data_size = int(resp[idx+2:idx_start])
         data_ba = resp[idx_start:idx_start+data_size]
 
-        times = map(lambda i: i*time_scale,
-                    range(0,len(data_ba)))
-        values = map(lambda b:
-                     b*voltage_scale/25.0-voltage_offset, \
-                     data_ba)
+        times = []
+        volts = []
+        for idx,value in enumerate(data_ba):
+            if value > 127:
+                value -= 255
+
+            volt = value/NVDIV*vdiv-voff
+            time = -tdiv*NHDIV/2.0+idx*(1.0/sara)
+            volts.append(volt)
+            times.append(time)
 
 
-        return list(times),list(values)
+        return list(times),list(volts)
+
+
+    def full_waveform(self,channel):
+        curr_frame = 1
+        start_time = None
+        done = False
+        abs_times = []
+        abs_values = []
+        self.set_history_mode(True)
+        self.set_history_list_open(True)
+        assert(self.is_history_list_open())
+        print("-> build frames")
+        dataframes = []
+        while not done:
+            self.set_history_frame(curr_frame)
+            read_frame = self.get_history_frame()
+            if read_frame != curr_frame:
+                done = True
+                continue
+
+            curr_time = self.get_history_frame_time()
+            if start_time is None:
+                start_time = curr_time
+
+            assert(not curr_time is None)
+            delta = curr_time - start_time
+            times,values = self.waveform(channel)
+            dataframes.append((curr_frame,delta,times,values))
+            curr_frame += 1
+
+        self.set_history_list_open(False)
+        print("-> build data")
+        times = []
+        values = []
+        for frame_idx,delta,dfr_times,dfr_values in dataframes:
+            min_time = min(dfr_times)
+            if frame_idx == 1:
+                filt = list(filter(lambda pair: pair[0] >= 0.0,
+                       zip(dfr_times,dfr_values)))
+                offset = delta
+
+            elif frame_idx == len(dataframes):
+                filt = list(filter(lambda pair: pair[0] <= 0.0,
+                       zip(dfr_times,dfr_values)))
+                offset = delta + abs(min_time)
+
+            else:
+                filt = list(zip(dfr_times,dfr_values))
+                offset = delta + abs(min_time)
+
+            if frame_idx == 1 or frame_idx == 2:
+                times += list(map(lambda pair: pair[0] + offset, filt))
+                values += list(map(lambda pair: pair[1], filt))
+
+        print("-> return data")
+        return times,values
 
     def screendump(self,filename):
         cmd = "SCDP"

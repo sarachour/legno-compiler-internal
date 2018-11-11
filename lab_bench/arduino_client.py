@@ -2,6 +2,7 @@ from lib.command_handler import main_stdout, main_script
 from lib.state import State
 import argparse
 import sys
+import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--native", action='store_true',help="use native mode for arduino DUE.")
@@ -15,7 +16,6 @@ parser.add_argument("--validate", action='store_true', help="validate script")
 
 args = parser.parse_args()
 
-
 state = State(args.ip,args.port,
               ard_native=args.native,
               validate=args.validate)
@@ -24,6 +24,7 @@ if not args.validate and (args.ip is None):
     raise Exception("must include ip address of oscilloscope")
 
 state.initialize()
+
 try:
     if args.script == None:
         main_stdout(state)

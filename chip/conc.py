@@ -114,6 +114,13 @@ class ConcCirc:
     def check(self):
         return self
 
+    @staticmethod
+    def from_json(text):
+        obj = json.loads(text)
+        print(obj)
+        raise Exception("implement me")
+
+
     def to_json(self):
         data_struct = {'insts': [], 'conns':[]}
         for block,locs in self._configs.items():

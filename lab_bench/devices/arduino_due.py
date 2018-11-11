@@ -26,6 +26,9 @@ class ArduinoDue:
         line_bytes = self._comm.readline()
         return line_bytes.decode('utf-8')
 
+    def reads_available(self):
+        return self._comm.in_waiting > 0
+
     def try_readline(self):
         if self._comm.in_waiting > 0:
             line = self.readline()
@@ -56,6 +59,20 @@ class ArduinoDue:
 
     def write(self,msg):
         self.write_bytes(msg.encode())
+
+    def try_process(self):
+        found_process = False
+        while True:
+            line = self.try_readline()
+            if line is None:
+                return None
+
+            if "::process::" in line:
+                found_process = True
+
+            elif found_process:
+                return line
+
 
     def process(self):
         found_process = False

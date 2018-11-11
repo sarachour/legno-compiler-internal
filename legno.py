@@ -1,4 +1,6 @@
 from compiler import arco, jaunt
+from chip.conc import ConcCirc
+
 import argparse
 import os
 import time
@@ -42,20 +44,22 @@ arco_subp.add_argument('--output-dir', type=str,default='circs',
 
 jaunt_subp = subparsers.add_parser('jaunt', help='scale circuit parameters.')
 jaunt_subp.add_argument('benchmark', type=str,help='benchmark to compile')
-jaunt_subp.add_argument('--experiment', type=str,help='experiment to run')
 jaunt_subp.add_argument('--input-dir', type=str,help='output directory to output files to.')
 jaunt_subp.add_argument('--noise', type=str,help='perform noise analysis.')
+jaunt_subp.add_argument('--output-dir', type=str,default='circs',                       help='output directory to output files to.')
 
+gren_subp = subparsers.add_parser('gen_grendel', help='generate grendel.')
+gren_subp.add_argument('benchmark', type=str,help='benchmark to compile')
+gren_subp.add_argument('--input-dir', type=str,help='output directory to output files to.')
+gren_subp.add_argument('--output-dir', type=str,default='circs',                       help='output directory to output files to.')
+gren_subp.add_argument('--experiment', type=str,default='circs',                       help='output directory to output files to.')
 
 args = parser.parse_args()
 
 OUTDIR = "outputs"
 
-if not os.path.exists(OUTDIR):
-    os.mkdir(OUTDIR)
-
-if not os.path.exists("%s/%s" % (OUTDIR,args.output_dir)):
-    os.mkdir("%s/%s" % (OUTDIR,args.output_dir))
+if not os.path.exists(args.output_dir):
+    os.mkdirs(args.output_dir)
 
 if args.subparser_name == "arco":
     from chip.hcdc import board as hdacv2_board
@@ -80,3 +84,24 @@ if args.subparser_name == "arco":
         filedir = "%s/%s/%s" % (OUTDIR,args.output_dir,dot_file)
         conc_circ.write_graph(filedir,write_png=True)
         time.sleep(1)
+
+elif args.subparser_name == "jaunt":
+    for dirname, subdirlist, filelist in os.walk(args.input_dir):
+        for fname in filelist:
+            if fname.endswith('.circ'):
+                print('%s' % fname)
+                with open("%s/%s" % (dirname,fname),'r') as fh:
+                    text = fh.read()
+                    ccirc = conccirc.from_json(text)
+                    print(ccirc)
+                    raise Exception("generate jaunt")
+
+elif args.subparse_name = "gen":
+    for dirname, subdirlist, filelist in os.walk(args.input_dir):
+        for fname in filelist:
+            if fname.endswith('.circ'):
+                print('%s' % fname)
+                with open("%s/%s" % (dirname,fname),'r') as fh:
+                    text = fh.read()
+                    ccirc = conccirc.from_json(text)
+                    raise Exception("generate grendel")

@@ -6,6 +6,7 @@ import math
 import construct
 import matplotlib.pyplot as plt
 import devices.sigilent_osc as osclib
+import time
 
 def build_exp_ctype(exp_data):
     return {
@@ -360,10 +361,10 @@ class GetOscValuesCmd(Command):
 
     def plot_data(self,filename,chan1,chan2):
         ch1_t,ch1_v = chan1
-        plt.scatter(ch1_t,ch1_v,label="chan1")
+        plt.scatter(ch1_t,ch1_v,label="chan1",s=1.0)
         if not chan2 is None:
             ch2_t,ch2_v = chan2
-            plt.scatter(ch2_t,ch2_v,label="chan2")
+            plt.scatter(ch2_t,ch2_v,label="chan2",s=1.0)
 
         print("-> plotting")
         plt.savefig(filename)
@@ -376,21 +377,12 @@ class GetOscValuesCmd(Command):
             chan = state.oscilloscope.analog_channel(0)
 
 
-            ch1 = state.oscilloscope.waveform(chan,
-                voltage_scale=props['voltage_scale'][chan.name],
-                time_scale=props['time_scale'],
-                voltage_offset=props['voltage_offset'][chan.name]
-            )
+            ch1 = state.oscilloscope.full_waveform(chan)
 
             ch2 = None
             if self._differential:
                 chan = state.oscilloscope.analog_channel(1)
-                ch2 = state.oscilloscope.waveform(
-                    state.oscilloscope.analog_channel(1),
-                    voltage_scale=props['voltage_scale'][chan.name],
-                    time_scale=props['time_scale'],
-                    voltage_offset=props['voltage_offset'][chan.name]
-                )
+                ch2 = state.oscilloscope.full_waveform(chan)
 
             self.plot_data("debug.png",ch1,ch2)
             return self.process_data(ch1,ch2)
@@ -633,15 +625,15 @@ class RunCmd(ArduinoCommand):
             for key,val in props.items():
                 print("%s : %s" % (key,val))
 
-
-        input("<press enter to start>")
+        time.sleep(0.5)
+        #input("<press enter to start>")
         line = ArduinoCommand.execute(self,state)
         while line is None or not "::done::" in line:
             print("resp:> %s" % line)
             line = state.arduino.readline()
         print("resp:> %s" % line)
         print("<done>")
-        input("<press enter to continue>")
+        #input("<press enter to continue>")
 
         for stmt in state.teardown_chip():
             stmt.apply(state)

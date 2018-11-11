@@ -64,13 +64,26 @@ class State:
         if self.dummy:
             return
 
-        print("[[ setup oscilloscope ]]")
-        self.oscilloscope.setup()
-        print("[[ setup arduino ]]")
-        self.arduino.open()
-        flush_cmd = FlushCommand()
-        while not flush_cmd.execute(self):
-            continue
+        try:
+            print("[[ setup oscilloscope ]]")
+            self.oscilloscope.setup()
+        except Exception as e:
+            print("[ERROR] %s" % e)
+            print("[[no oscilloscope]]")
+            self.oscilloscope = None
+
+        try:
+            print("[[ setup arduino ]]")
+            self.arduino.open()
+        except Exception as e:
+            print("[ERROR] %s" % e)
+            print("[[no arduino]]")
+            self.arduino = None
+
+        if not self.arduino is None:
+            flush_cmd = FlushCommand()
+            while not flush_cmd.execute(self):
+                continue
 
     def enqueue(self,stmt):
         if stmt.test():
