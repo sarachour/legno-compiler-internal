@@ -44,13 +44,12 @@ class State:
             assert(len(time) == len(times))
 
         values = []
-        print(self.ref_func)
+        print("reference: %s" % self.ref_func)
         for idx,time in enumerate(times):
             args = {}
             for input_id,_,value in self.input_data():
                 args['inp%d' % input_id] = value[idx]
             args['t'] = time
-            print(args)
             result = eval(self.ref_func,args)
             values.append(result)
 

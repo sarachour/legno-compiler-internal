@@ -7,6 +7,7 @@ import construct
 import matplotlib.pyplot as plt
 import devices.sigilent_osc as osclib
 import time
+import json
 
 def build_exp_ctype(exp_data):
     return {
@@ -423,10 +424,39 @@ class GetOscValuesCmd(Command):
         return GetOscValuesCmd(result['filename'],
                                differential=is_diff)
 
-    def process_data(self,state,chan1,chan2):
-        print("TODO: process data")
+    def process_data(self,state,filename,chan1,chan2):
+        data = {}
+        for ident,inp_t,inp_v in state.input_data():
+            data['input%d' % ident] = {
+                'time':inp_t,
+                'value':inp_v,
+                'index':ident,
+                'type':'input'
+            }
+        ref_t,ref_v = state.reference_data()
+        data['reference'] = {
+            'time': ref_t,
+            'value': ref_v,
+            'type': 'reference'
+        }
+        if self._differential:
+            raise Exception("cannot handle differential signals..")
 
+        else:
+            out_t,out_v = chan1
+
+        data['output'] = {
+            'time': out_t,
+            'value': out_v,
+            'type': 'output'
+        }
+        with open(filename,'w') as fh:
+            strdata = json.dumps(data,indent=4)
+            fh.write(strdata)
+
+        print("<wrote file>")
     def plot_data(self,state,filename,chan1,chan2):
+        print("-> plotting")
         ch1_t,ch1_v = chan1
         for ident,time,value in state.input_data():
             plt.scatter(time,value,label="input_%s" % ident,s=1.0)
@@ -439,7 +469,6 @@ class GetOscValuesCmd(Command):
         ref_t,ref_v = state.reference_data()
         plt.scatter(ref_t,ref_v,label="ref",s=1.0)
         plt.legend()
-        print("-> plotting")
         plt.savefig(filename)
         print("-> plotted")
         plt.clf()
@@ -457,8 +486,9 @@ class GetOscValuesCmd(Command):
                 chan = state.oscilloscope.analog_channel(1)
                 ch2 = state.oscilloscope.full_waveform(chan)
 
-            self.plot_data(state,"debug.png",ch1,ch2)
-            return self.process_data(state,ch1,ch2)
+            #imagename = self._filename.split(".")[0] + ".png"
+            #self.plot_data(state,imagename,ch1,ch2)
+            return self.process_data(state,self._filename,ch1,ch2)
 
 
     def __repr__(self):
