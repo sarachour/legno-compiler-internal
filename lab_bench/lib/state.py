@@ -21,15 +21,51 @@ class State:
         self._use_dac = {}
         self.use_analog_chip = None;
         self.n_samples = None;
+        self.inputs = {}
+        self.time_between_samples_ms = None;
+        self.ref_func = None;
         self.reset();
 
-        self.TIME_BETWEEN_SAMPLES = 3.0*1e-6
         self.dummy = validate
+
+    def write_input(self,input_id,time_ms,value):
+        if not input_id in self.inputs:
+            self.inputs[input_id] = {'time':[],'value':[]}
+        self.inputs[input_id]['time'].append(time_ms/1000.0)
+        self.inputs[input_id]['value'].append(value)
+
+    def reference_data(self):
+        if self.ref_func is None:
+            return [],[]
+
+        times = None
+        for input_id,time,value in self.input_data():
+            times = times if not times is None else time
+            assert(len(time) == len(times))
+
+        values = []
+        print(self.ref_func)
+        for idx,time in enumerate(times):
+            args = {}
+            for input_id,_,value in self.input_data():
+                args['inp%d' % input_id] = value[idx]
+            args['t'] = time
+            print(args)
+            result = eval(self.ref_func,args)
+            values.append(result)
+
+
+        return times,values
+
+    def input_data(self):
+        for input_id,data in self.inputs.items():
+            yield input_id,data['time'],data['value']
 
     def reset(self):
         self.use_analog_chip = False;
         self.n_samples = 0
-
+        self.ref_func = None
+        self.inputs = {}
         for adc_id in range(0,4):
             self._use_adc[adc_id] = False
 

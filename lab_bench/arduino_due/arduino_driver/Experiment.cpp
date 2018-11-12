@@ -14,8 +14,6 @@ const float DELAY_TIME_US= 10.0;
 volatile int SDA_VAL = LOW;
 experiment_t* EXPERIMENT;
 Fabric* FABRIC;
-// maximum number of samples per acquire.
-#define OSC_SAMPLES 1000
 
 
 inline void save_adc0_value(experiment_t * expr, int idx){
@@ -52,6 +50,15 @@ inline void drive_sda_clock(int idx){
 }
 void _update_wave(){
   int idx = IDX;
+  IDX += 1;
+  
+  //if(EXPERIMENT->use_dac[0])
+    write_dac0_value(EXPERIMENT,idx);  
+
+  /*
+  if(EXPERIMENT->use_dac[1])
+    write_dac1_value(EXPERIMENT,idx);
+    
   if(EXPERIMENT->use_adc[0])
     save_adc0_value(EXPERIMENT,idx);
   
@@ -63,15 +70,12 @@ void _update_wave(){
   
   if(EXPERIMENT->use_adc[3])
     save_adc3_value(EXPERIMENT,idx);
-    
-  if(EXPERIMENT->use_dac[0])
-    write_dac0_value(EXPERIMENT,idx);  
-    
-  if(EXPERIMENT->use_dac[1])
-    write_dac1_value(EXPERIMENT,idx);
+  */
     
   drive_sda_clock(idx);
-  IDX = idx+1;
+  if(idx >= N){
+    Timer3.detachInterrupt();
+  }
   // increment index
 }
 
@@ -158,7 +162,7 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   }
   IDX = 0;
   N = expr->n_samples;
-  N_OSC = OSC_SAMPLES/DELAY_TIME_US;
+  N_OSC = expr->osc_samples;
   FABRIC = fab;
   EXPERIMENT = expr;
   Serial.print(N_OSC);
@@ -174,14 +178,13 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   }
   else{
   }
-  //Timer3.attachInterrupt(_update_wave);
-  //Timer3.start(DELAY_TIME_US);
+  Timer3.attachInterrupt(_update_wave);
   _toggle_SDA();
+  Timer3.start(DELAY_TIME_US);
   while(IDX < N){
-    _update_wave();
-    delay(2);
+    Serial.println("waiting...");
+    delay(500);
   }
-  _toggle_SDA();
   //Timer3.detachInterrupt();
   if(EXPERIMENT->use_analog_chip){
         //circ::finish(FABRIC);
@@ -191,13 +194,18 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   Serial.println("::done::");
 }
 
-void set_n_samples(experiment_t * expr, int n){
-  if(expr->compute_offsets){
-      expr->n_samples = n <= expr->max_samples ? n : expr->max_samples;
+void set_sim_time(experiment_t * expr, float sim_time, float frame_time){
+  // TODO: compute number of samples and osc clock
+  float time_between_samples = DELAY_TIME_US/1000.0;
+  int osc_samples = frame_time/time_between_samples;
+  int sim_samples = sim_time/time_between_samples;
+  if(expr -> compute_offsets){
+      expr->n_samples = sim_samples <= expr->max_samples ? sim_samples : expr->max_samples;
   }
   else{
-      expr->n_samples = n;
+    expr->n_samples = sim_samples;
   }
+  expr->osc_samples = osc_samples;
 }
 
 void set_dac_values(experiment_t* expr, float * inbuf, int dac_id, int n, int offset){
@@ -223,27 +231,35 @@ void exec_command(experiment_t* expr, Fabric* fab, cmd_t& cmd, float * inbuf){
       enable_analog_chip(expr);
       break;
     case cmd_type_t::USE_DAC:
-      enable_dac(expr,cmd.args[0]);
+      enable_dac(expr,cmd.args.ints[0]);
       break;
     case cmd_type_t::USE_ADC:
-      enable_adc(expr,cmd.args[0]);
+      enable_adc(expr,cmd.args.ints[0]);
       break;
     case cmd_type_t::USE_OSC:
       enable_oscilloscope(expr);
       break;
-    case cmd_type_t::SET_N_ADC_SAMPLES:
-      set_n_samples(expr,cmd.args[0]);
+    case cmd_type_t::SET_SIM_TIME:
+      set_sim_time(expr,cmd.args.floats[0],cmd.args.floats[1]);
       break;
 
     case cmd_type_t::COMPUTE_OFFSETS:
       compute_offsets(expr);
       break;
     case cmd_type_t::SET_DAC_VALUES:
-      set_dac_values(expr,inbuf,cmd.args[0],cmd.args[1],cmd.args[2]);
+      set_dac_values(expr,inbuf,cmd.args.ints[0],cmd.args.ints[1],cmd.args.ints[2]);
       break;
 
     case cmd_type_t::GET_ADC_VALUES:
-      print_adc_values(expr,cmd.args[0],cmd.args[1],cmd.args[2]);
+      print_adc_values(expr,cmd.args.ints[0],cmd.args.ints[1],cmd.args.ints[2]);
+      break;
+
+    case cmd_type_t::GET_TIME_BETWEEN_SAMPLES:
+      Serial.println(DELAY_TIME_US/1000.0);
+      break;
+      
+    case cmd_type_t::GET_NUM_SAMPLES:
+      Serial.println(expr->n_samples);
       break;
   }
 }
@@ -251,9 +267,11 @@ void exec_command(experiment_t* expr, Fabric* fab, cmd_t& cmd, float * inbuf){
 
 void print_command(cmd_t& cmd, float* inbuf){
   switch(cmd.type){
-    case cmd_type_t::SET_N_ADC_SAMPLES:
-      Serial.print("set_samples ");
-      Serial.println(cmd.args[0]);
+    case cmd_type_t::SET_SIM_TIME:
+      Serial.print("set_sim_time sim=");
+      Serial.print(cmd.args.floats[0]);
+      Serial.print(" osc=");
+      Serial.println(cmd.args.floats[1]);
       break;
       
     case cmd_type_t::USE_OSC:
@@ -262,12 +280,12 @@ void print_command(cmd_t& cmd, float* inbuf){
 
     case cmd_type_t::USE_DAC:
       Serial.print("use_dac ");
-      Serial.println(cmd.args[0]);
+      Serial.println(cmd.args.ints[0]);
       break;
 
     case cmd_type_t::USE_ADC:
       Serial.print("use_adc ");
-      Serial.println(cmd.args[0]);
+      Serial.println(cmd.args.ints[0]);
       break;
 
     case cmd_type_t::USE_ANALOG_CHIP:
@@ -277,25 +295,33 @@ void print_command(cmd_t& cmd, float* inbuf){
     case cmd_type_t::COMPUTE_OFFSETS:
       Serial.println("compute_offsets");
       break;
+
+    case cmd_type_t::GET_NUM_SAMPLES:
+      Serial.println("get_num_samples");
+      break;
+      
+    case cmd_type_t::GET_TIME_BETWEEN_SAMPLES:
+      Serial.println("get_time_between_samples");
+      break;
       
     case cmd_type_t::GET_ADC_VALUES:
       Serial.print("get_adc_values adc_id=");
-      Serial.print(cmd.args[0]);
+      Serial.print(cmd.args.ints[0]);
       Serial.print(" nels=");
-      Serial.print(cmd.args[1]);
+      Serial.print(cmd.args.ints[1]);
       Serial.print(" offset=");
-      Serial.println(cmd.args[2]);
+      Serial.println(cmd.args.ints[2]);
       break;
-       
+
     case cmd_type_t::SET_DAC_VALUES:
       Serial.print("set_dac_values dac_id=");
-      Serial.print(cmd.args[0]);
+      Serial.print(cmd.args.ints[0]);
       Serial.print(" nels=");
-      Serial.print(cmd.args[1]);
+      Serial.print(cmd.args.ints[1]);
       Serial.print(" offset=");
-      Serial.print(cmd.args[2]);
+      Serial.print(cmd.args.ints[2]);
       Serial.print(" [");
-      for(int i=0; i < cmd.args[1]; i++){
+      for(int i=0; i < cmd.args.ints[1]; i++){
         Serial.print(inbuf[i]);
         Serial.print(" ");
       }
@@ -313,11 +339,11 @@ void print_command(cmd_t& cmd, float* inbuf){
     default:
       Serial.print(cmd.type);
       Serial.print(" ");
-      Serial.print(cmd.args[0]);
+      Serial.print(cmd.args.ints[0]);
       Serial.print(" ");
-      Serial.print(cmd.args[1]);
+      Serial.print(cmd.args.ints[1]);
       Serial.print(" ");
-      Serial.print(cmd.args[2]);
+      Serial.print(cmd.args.ints[2]);
       Serial.println(" <unimpl experiment>");
       break;
   }

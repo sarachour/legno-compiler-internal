@@ -34,7 +34,9 @@ class ResetCmd(ArduinoCommand):
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.RESET.name,
-            'args':[0,0,0]
+            'args':{
+                'ints':[0,0,0]
+            }
         })
 
 
@@ -70,7 +72,9 @@ class UseDueADCCmd(ArduinoCommand):
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.USE_ADC.name,
-            'args':[self._adc_id,0,0]
+            'args':{
+                'ints':[self._adc_id,0,0]
+            }
         })
 
 
@@ -92,6 +96,91 @@ class UseDueADCCmd(ArduinoCommand):
         return "use_due_adc %d" % self._adc_id
 
 
+class GetTimeBetweenSamplesCmd(ArduinoCommand):
+
+    def __init__(self):
+        ArduinoCommand.__init__(self)
+
+    @staticmethod
+    def name():
+        return 'get_time_between_samples'
+
+    @staticmethod
+    def desc():
+        return "get the time between samples"
+
+
+
+    @staticmethod
+    def parse(args):
+        if len(args) > 0:
+            print("usage: %s" % GetTimeBetweenSamplesCmd.name())
+            return None
+
+        return GetTimeBetweenSamplesCmd()
+
+
+    def build_ctype(self):
+        return build_exp_ctype({
+            'type':enums.ExpCmdType.GET_TIME_BETWEEN_SAMPLES.name,
+            'args':{
+                'ints':[0,0,0]
+            }
+        })
+
+
+    def execute(self,state):
+        line = ArduinoCommand.execute(self,state)
+        print(">> %s" % line)
+        resp = state.arduino.readline()
+        tb_samples = float(resp.strip())
+        state.time_between_samples_ms = tb_samples
+        print("time-between-samples: %s" % tb_samples)
+        return tb_samples
+
+
+class GetNumSamplesCmd(ArduinoCommand):
+
+    def __init__(self):
+        ArduinoCommand.__init__(self)
+
+    @staticmethod
+    def name():
+        return 'get_num_samples'
+
+    @staticmethod
+    def desc():
+        return "get the number of samples"
+
+
+
+    @staticmethod
+    def parse(args):
+        if len(args) > 0:
+            print("usage: %s" % GetNumSamplesCmd.name())
+            return None
+
+        return GetNumSamplesCmd()
+
+
+    def build_ctype(self):
+        return build_exp_ctype({
+            'type':enums.ExpCmdType.GET_NUM_SAMPLES.name,
+            'args':{
+                'ints':[0,0,0]
+            }
+        })
+
+
+    def execute(self,state):
+        line = ArduinoCommand.execute(self,state)
+        print(">> %s" % line)
+        resp = state.arduino.readline()
+        n_samples = int(resp.strip())
+        state.n_samples = n_samples
+        print("num-samples: %s" % n_samples)
+        return n_samples
+
 
 class GetDueADCValuesCmd(ArduinoCommand):
 
@@ -112,7 +201,9 @@ class GetDueADCValuesCmd(ArduinoCommand):
     def execute_read_op(self,state,adc_id,n,offset):
         data_header = build_exp_ctype({
             'type':enums.ExpCmdType.GET_ADC_VALUES.name,
-            'args':[adc_id,n,offset]
+            'args':{
+                'ints':[adc_id,n,offset]
+            }
         })
 
         data_header_t = self._c_type
@@ -200,7 +291,9 @@ class UseDueDACCmd(ArduinoCommand):
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.USE_DAC.name,
-            'args':[self._dac_id,0,0]
+            'args':{
+                'ints':[self._dac_id,0,0]
+            }
         })
 
 
@@ -258,7 +351,9 @@ class SetDueDACValuesCmd(ArduinoCommand):
     def execute_write_op(self,state,buf,offset):
         data_header = build_exp_ctype({
             'type':enums.ExpCmdType.SET_DAC_VALUES.name,
-            'args':[self.dac_id,len(buf),offset]
+            'args':{
+                'ints':[self.dac_id,len(buf),offset]
+            }
         })
 
         data_header_t = self._c_type
@@ -266,7 +361,7 @@ class SetDueDACValuesCmd(ArduinoCommand):
                                       construct.Float32l)
         byts_h = data_header_t.build(data_header)
         byts_d = data_body_t.build(buf)
-        self.write_to_arduino(state,byts_h + byts_d)
+        return self.write_to_arduino(state,byts_h + byts_d)
 
 
     def execute(self,state):
@@ -274,16 +369,18 @@ class SetDueDACValuesCmd(ArduinoCommand):
         buf = []
         chunksize_bytes = 1000;
         chunksize_floats = chunksize_bytes/4
-        delta = state.TIME_BETWEEN_SAMPLES
+        delta = state.time_between_samples_ms
         offset = 0
         for idx in range(0,n):
             args = {'t':idx*delta,'math':math}
             value = eval(self.pyexpr,args)
             buf.append(value)
+            state.write_input(self.dac_id,idx*delta,value)
             if len(buf) == chunksize_floats:
-                self.execute_write_op(state,buf,offset)
-                buf = []
+                line = self.execute_write_op(state,buf,offset)
+                print('  >> %s' % line)
                 offset += len(buf)
+                buf = []
 
         self.execute_write_op(state,buf,offset)
 
@@ -326,46 +423,22 @@ class GetOscValuesCmd(Command):
         return GetOscValuesCmd(result['filename'],
                                differential=is_diff)
 
-    def process_data(self,chan1,chan2):
-        clk_t,clk_v = clock
-        threshold = (max(clk_v) + min(clk_v))/2.0
-        is_high = lambda q: q > threshold
-        times = []
-        print("threshhold=%s" % threshold)
-        clk_dir = is_high(clk_v[0])
-        print("-> finding clock changes")
-        for time,value in zip(clk_t,clk_v):
-            curr_clk_dir = is_high(value)
-            if curr_clk_dir != clk_dir:
-                times.append(time)
-                clk_dir = curr_clk_dir
-        print("times: %s" % times)
-        start_time = times[0]
-        end_time = times[-1]
-        print("-> computing signal from t=[%s,%s]" % \
-              (start_time,end_time))
-        if chan2 is None:
-            times,values = chan2
-        else:
-            values = []
-            times = []
-            for (ch1_t,ch1_v),(ch2_t,ch2_v) in zip(chan1,chan2):
-                assert(ch1_t == ch2_t)
-                if ch1_t < start_time or ch1_t > end_time:
-                    continue
+    def process_data(self,state,chan1,chan2):
+        print("TODO: process data")
 
-                values.append[ch1_v - ch2_v]
-                times.append(ch1_t)
-
-        return times,values
-
-    def plot_data(self,filename,chan1,chan2):
+    def plot_data(self,state,filename,chan1,chan2):
         ch1_t,ch1_v = chan1
+        for ident,time,value in state.input_data():
+            plt.scatter(time,value,label="input_%s" % ident,s=1.0)
+
         plt.scatter(ch1_t,ch1_v,label="chan1",s=1.0)
         if not chan2 is None:
             ch2_t,ch2_v = chan2
             plt.scatter(ch2_t,ch2_v,label="chan2",s=1.0)
 
+        ref_t,ref_v = state.reference_data()
+        plt.scatter(ref_t,ref_v,label="ref",s=1.0)
+        plt.legend()
         print("-> plotting")
         plt.savefig(filename)
         print("-> plotted")
@@ -384,48 +457,68 @@ class GetOscValuesCmd(Command):
                 chan = state.oscilloscope.analog_channel(1)
                 ch2 = state.oscilloscope.full_waveform(chan)
 
-            self.plot_data("debug.png",ch1,ch2)
-            return self.process_data(ch1,ch2)
+            self.plot_data(state,"debug.png",ch1,ch2)
+            return self.process_data(state,ch1,ch2)
 
 
     def __repr__(self):
         return "get_osc_values %s" % (self._filename)
 
 
-class SetNumADCSamplesCmd(ArduinoCommand):
+class SetSimTimeCmd(ArduinoCommand):
 
-    def __init__(self,n_samples):
+    def __init__(self,sim_time,frame_time=None):
         ArduinoCommand.__init__(self)
-        if(n_samples <= 0):
-            self.fail("unknown number of samples: %s" % n_samples)
+        if(sim_time <= 0):
+            self.fail("invalid simulation time: %s" % n_samples)
 
-        self._n_samples = n_samples
+        self._sim_time = sim_time
+        self._frame_time = sim_time if frame_time is None else frame_time
 
 
     def build_ctype(self):
         return build_exp_ctype({
-            'type':enums.ExpCmdType.SET_N_ADC_SAMPLES.name,
-            'args':[self._n_samples,0,0]
+            'type':enums.ExpCmdType.SET_SIM_TIME.name,
+            'args':{
+                'floats':[self._sim_time,self._frame_time,0]
+            }
         })
 
 
     @staticmethod
     def name():
-        return 'set_samples'
+        return 'set_sim_time'
 
     @staticmethod
     def parse(args):
         line = " ".join(args)
-        result = parselib.parse("{nsamples:d}",line)
+        result = parselib.parse("{simtime_ms:f}",line)
         if result is None:
-            print("usage: %s <# samples>" % (SetNumADCSamplesCmd.name()))
+            print("usage: %s <# samples>" % (SetSimTimeCmd.name()))
             return None
 
-        return SetNumADCSamplesCmd(result['nsamples'])
+        return SetSimTimeCmd(result['simtime_ms'])
 
+
+    def configure_oscilloscope(self,state,time_ms):
+        time_sec = time_ms/1000.0
+        frame_sec = time_sec
+        # TODO: multiple segments of high sample rate.
+        time_per_div = float(time_sec) / state.oscilloscope.TIME_DIVISIONS
+        trig_delay = time_per_div * float(state.oscilloscope.TIME_DIVISIONS/2.0)
+        print("sec/div %s" % time_per_div)
+        print("sec: %s" % time_sec)
+        print("delay: %s" % trig_delay)
+        state.oscilloscope.set_seconds_per_division(time_per_div)
+        state.oscilloscope.set_trigger_delay(trig_delay)
+        return frame_sec
 
     def execute(self,state):
-        state.n_samples = self._n_samples
+        state.sim_time = self._sim_time
+        if not state.dummy:
+            frame_time_sec = self.configure_oscilloscope(state,self._sim_time)
+            self._frame_time = frame_time_sec*1000.0
+
         ArduinoCommand.execute(self,state)
 
 
@@ -435,7 +528,7 @@ class SetNumADCSamplesCmd(ArduinoCommand):
         return "set the number of samples to record (max 10000)"
 
     def __repr__(self):
-        return "n_samples %d" % self._n_samples
+        return "sim_time %d" % self._sim_time
 
 
 class ComputeOffsetsCmd(ArduinoCommand):
@@ -455,7 +548,9 @@ class ComputeOffsetsCmd(ArduinoCommand):
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.COMPUTE_OFFSETS.name,
-            'args':[0,0,0]
+            'args':{
+                'ints':[0,0,0]
+            }
         })
 
 
@@ -491,7 +586,9 @@ class UseAnalogChipCmd(ArduinoCommand):
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.USE_ANALOG_CHIP.name,
-            'args':[0,0,0]
+            'args':{
+                'ints':[0,0,0]
+            }
         })
 
 
@@ -548,7 +645,7 @@ class UseOscilloscopeCmd(ArduinoCommand):
     @staticmethod
     def parse(args):
         if len(args) > 0:
-            print("usage: %s" % UseOscilloscopeCmd.run())
+            print("usage: %s" % UseOscilloscopeCmd.name())
             return None
 
         return UseOscilloscopeCmd()
@@ -556,7 +653,9 @@ class UseOscilloscopeCmd(ArduinoCommand):
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.USE_OSC.name,
-            'args':[0,0,0]
+            'args':{
+                'ints':[0,0,0]
+            }
         })
 
 
@@ -594,7 +693,9 @@ class RunCmd(ArduinoCommand):
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.RUN.name,
-            'args':[0,0,0]
+            'args':{
+                'ints':[0,0,0]
+            }
         })
 
 
@@ -628,12 +729,13 @@ class RunCmd(ArduinoCommand):
         time.sleep(0.5)
         #input("<press enter to start>")
         line = ArduinoCommand.execute(self,state)
-        while line is None or not "::done::" in line:
+        if not state.dummy:
+            while line is None or not "::done::" in line:
+                print("resp:> %s" % line)
+                line = state.arduino.readline()
             print("resp:> %s" % line)
-            line = state.arduino.readline()
-        print("resp:> %s" % line)
-        print("<done>")
-        #input("<press enter to continue>")
+            print("<done>")
+            #input("<press enter to continue>")
 
         for stmt in state.teardown_chip():
             stmt.apply(state)

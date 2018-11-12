@@ -14,6 +14,11 @@ logging.basicConfig()
 logger = logging.getLogger('osc')
 logger.setLevel(logging.INFO)
 
+class RoundMode(Enum):
+    UP = "up"
+    DOWN = "down"
+    NEAREST = "nearest"
+
 def extract_number_and_unit(st):
     for i,c in enumerate(st):
         if not c.isdigit() and \
@@ -24,6 +29,30 @@ def extract_number_and_unit(st):
     number = float(st[:i])
     unit = st[i:]
     return number,unit
+
+def find_closest(array,value,round_mode):
+    sel_value = None
+    if round_mode == RoundMode.NEAREST:
+        dist,sel_value = min(map(lambda cv: (abs(cv-value),cv), array), \
+                             key=lambda pair:pair[0])
+
+
+    elif round_mode == RoundMode.UP:
+        s_array = sorted(array)
+        for curr_val in array:
+            if curr_val >= value and sel_value is None:
+                sel_value = curr_val
+        dist = -1
+
+    elif round_mode == RoundMode.DOWN:
+        s_array = sorted(array,reverse=True)
+        for curr_val in array:
+            if curr_val >= value and sel_value is None:
+                sel_value = curr_val
+        dist = -1
+
+    print(dist,sel_value,value)
+    return sel_value
 
 # use python 2
 def SocketConnect(ipaddr,port):
@@ -196,6 +225,8 @@ class Sigilent1020XEOscilloscope:
         self._channels = self._analog_channels + self._digital_channels
         self._prop_cache = None
         self._buf = bytearray([])
+        self.TIME_DIVISIONS = 14
+        self.VALUE_DIVISIONS = 8
 
     def flush_cache(self):
         self._prop_cache = None
@@ -359,6 +390,11 @@ class Sigilent1020XEOscilloscope:
         args = result.strip().split()
         return args
 
+    def get_trigger_delay(self):
+        cmd = "TRDL?"
+        result = self.query(cmd)
+        return float(result)
+
     def get_sample_status(self):
         cmd = "SAST?"
         result = self.query(cmd)
@@ -376,12 +412,91 @@ class Sigilent1020XEOscilloscope:
         npts,unit = extract_number_and_unit(args[0])
         if unit == 'Mpts':
             return int(npts)*1e6
-        if unit == 'kpts':
+        elif unit == 'kpts':
             return int(npts)*1e3
+        elif unit  == "pts":
+            return int(npts)
         else:
             raise Exception("<%s> unknown unit <%s>" % \
                     (args[0],unit))
 
+
+    def set_trigger_delay(self,time_s):
+        if time_s >= 1.0 or time_s == 0:
+            time = time_s
+            unit = "S"
+        elif time_s >= 1.0e-3:
+            time = time_s*1.0e3
+            unit = "MS"
+        elif time_s > 1e-6:
+            time = time_s*1.0e6
+            unit = "US"
+        elif time_s > 1e-9:
+            time = time_s*1.0e9
+            unit = "NS"
+        else:
+            raise Exception("time <%s> unsupportd" % time_s)
+
+        cmd = "TRDL %s%s" % (time,unit)
+        self.write(cmd)
+        self.flush_cache()
+
+
+    def set_seconds_per_division(self,time_s,round_mode=RoundMode.UP):
+
+        times = []
+        for scale in [1e-9,1e-6,1e-3]:
+            for val in [1,2,5,10,20,50,100,200,500]:
+                times.append(val*scale)
+
+        for val in [1,2,5,10,20,50,100]:
+            times.append(val)
+
+        time_s = find_closest(times,time_s,round_mode)
+
+        unit = None
+        if time_s >= 1.0:
+            time = time_s
+            unit = "S"
+        elif time_s >= 1.0e-3:
+            time = time_s*1.0e3
+            unit = "MS"
+        elif time_s > 1e-6:
+            time = time_s*1.0e6
+            unit = "US"
+        elif time_s > 1e-9:
+            time = time_s*1.0e9
+            unit = "NS"
+
+        cmd = "TDIV %s%s" % (time,unit)
+        self.write(cmd)
+        self.flush_cache()
+
+    def get_memory_size(self):
+        cmd = "MSIZ?"
+        resp = self.query(cmd)
+        value,unit = extract_number_and_unit(resp)
+        if unit == "K":
+            return value*1000
+        elif unit == "M":
+            return value*10e6
+
+    def set_memory_size(self,amt_kb,round_mode=RoundMode.UP):
+        unit = None
+        if amt_kb > 1e3:
+            amt = amt_kb/1.0e3
+            unit = "M"
+        else:
+            amt = amt_kb
+            unit = "K"
+
+        sizes = {}
+        sizes['K'] = [7,14,70,140,700]
+        sizes['M'] = [1.4,7,14]
+        amt = find_closest(sizes[unit],amt,round_mode)
+        cmd = "MSIZ %s" % amt
+        self.flush_cache()
+        self.write(cmd)
 
     def get_sample_rate(self):
         cmd = 'SARA?'
@@ -405,9 +520,9 @@ class Sigilent1020XEOscilloscope:
         tc = float(args[0])
         return tc
 
-    # get time constant 
+    # get time constant
     def get_seconds_per_division(self):
-        cmd = 'TDIV?' 
+        cmd = 'TDIV?'
         result = self.query(cmd)
         # seconds per division.
         args = self._validate("TDIV",result)
@@ -445,9 +560,11 @@ class Sigilent1020XEOscilloscope:
         if not self._prop_cache is None:
             return self._prop_cache
         ident = self.get_identifier()
+        msiz = self.get_memory_size()
         status = self.get_sample_status()
         rate = self.get_sample_rate()
         sec_per_div = self.get_seconds_per_division()
+        trig_delay = self.get_trigger_delay()
         channels = self._channels
         samples = {}
         volt_scale = {}
@@ -460,7 +577,9 @@ class Sigilent1020XEOscilloscope:
         self._prop_cache = {
             'identifier': ident,
             'status': status,
+            'trig_delay': trig_delay,
             'sampling_rate': rate,
+            'memory_bytes': msiz,
             'seconds_per_division':sec_per_div,
             'channels':channels,
             'n_samples':samples,
@@ -570,25 +689,11 @@ class Sigilent1020XEOscilloscope:
         values = []
         for frame_idx,delta,dfr_times,dfr_values in dataframes:
             min_time = min(dfr_times)
-            if frame_idx == 1:
-                filt = list(filter(lambda pair: pair[0] >= 0.0,
-                       zip(dfr_times,dfr_values)))
-                offset = delta
+            offset = delta + abs(min_time)
+            times += list(map(lambda time: time + offset, dfr_times))
+            values += dfr_values
 
-            elif frame_idx == len(dataframes):
-                filt = list(filter(lambda pair: pair[0] <= 0.0,
-                       zip(dfr_times,dfr_values)))
-                offset = delta + abs(min_time)
-
-            else:
-                filt = list(zip(dfr_times,dfr_values))
-                offset = delta + abs(min_time)
-
-            if frame_idx == 1 or frame_idx == 2:
-                times += list(map(lambda pair: pair[0] + offset, filt))
-                values += list(map(lambda pair: pair[1], filt))
-
-        print("-> return data")
+        print("-> returning data")
         return times,values
 
     def screendump(self,filename):

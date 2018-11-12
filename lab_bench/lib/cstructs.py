@@ -20,12 +20,14 @@ def experiment_cmd_type_t():
         ExpCmdType.SET_DAC_VALUES.name:1,
         ExpCmdType.GET_ADC_VALUES.name:2,
         ExpCmdType.USE_ANALOG_CHIP.name:3,
-        ExpCmdType.SET_N_ADC_SAMPLES.name:4,
+        ExpCmdType.SET_SIM_TIME.name:4,
         ExpCmdType.USE_DAC.name:5,
         ExpCmdType.USE_ADC.name:6,
         ExpCmdType.USE_OSC.name:7,
         ExpCmdType.RUN.name:8,
-        ExpCmdType.COMPUTE_OFFSETS.name:9
+        ExpCmdType.COMPUTE_OFFSETS.name:9,
+        ExpCmdType.GET_NUM_SAMPLES.name:10,
+        ExpCmdType.GET_TIME_BETWEEN_SAMPLES.name:11,
     }
     return cstruct.Enum(cstruct.Int16ul,**kwargs)
 
@@ -124,11 +126,17 @@ def circ_cmd_t():
             "data" / circ_cmd_data()
         )
 
+def exp_cmd_args_t():
+    return cstruct.Union(None,
+        floats=cstruct.Array(3,cstruct.Float32l),
+        ints=cstruct.Array(3,cstruct.Int32ul)
+    )
+
 def experiment_cmd_t():
         typ = experiment_cmd_type_t()
         return cstruct.AlignedStruct(4,
             "type" / typ,
-            "args" / cstruct.Array(3,cstruct.Int32ul)
+            "args" / exp_cmd_args_t()
         )
 
 def cmd_type_t():
@@ -145,6 +153,7 @@ def cmd_data_t():
         "circ_cmd" / circ_cmd_t(),
         "flush_cmd" / cstruct.Int8ul
     )
+
 
 def cmd_t():
     return cstruct.AlignedStruct(4,

@@ -14,6 +14,7 @@ namespace experiment {
 typedef struct experiment_data {
   int n_samples;
   int max_samples;
+  int osc_samples;
   int adc_offsets[MAX_ADCS];
   int dac_offsets[MAX_DACS];
   bool use_osc;
@@ -31,18 +32,23 @@ typedef enum cmd_type {
   SET_DAC_VALUES,
   GET_ADC_VALUES,
   USE_ANALOG_CHIP,
-  SET_N_ADC_SAMPLES,
+  SET_SIM_TIME,
   USE_DAC,
   USE_ADC,
   USE_OSC,
   RUN,
-  COMPUTE_OFFSETS
+  COMPUTE_OFFSETS,
+  GET_NUM_SAMPLES,
+  GET_TIME_BETWEEN_SAMPLES
 } cmd_type_t;
 
-
+typedef union args {
+  float floats[3];
+  uint32_t ints[3];
+} args_t;
 typedef struct cmd {
   uint16_t type;
-  uint32_t args[3];
+  args_t args;
 } cmd_t;
 
 void setup_experiment();

@@ -3,6 +3,7 @@ import lib.cstructs as cstructs
 import lib.enums as enums
 from lib.exp_command import *
 from lib.circ_command import *
+from lib.virt_command import *
 
 '''
 ###################
@@ -28,13 +29,15 @@ COMMANDS = [
     UseDueDACCmd,
     UseDueADCCmd,
     UseAnalogChipCmd,
-    SetNumADCSamplesCmd,
+    SetSimTimeCmd,
     SetDueDACValuesCmd,
     GetOscValuesCmd,
     GetDueADCValuesCmd,
-    ComputeOffsetsCmd
+    ComputeOffsetsCmd,
+    GetNumSamplesCmd,
+    GetTimeBetweenSamplesCmd,
     # virtual commands
-    #SaveDueDACValuesCmd,
+    SetReferenceFunction
 ]
 
 

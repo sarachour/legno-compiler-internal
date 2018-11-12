@@ -33,12 +33,14 @@ class ExpCmdType(Enum):
     GET_ADC_VALUES = 'get_adc_values';
     GET_OSC_VALUES = 'get_osc_values';
     USE_ANALOG_CHIP = 'use_analog_chip';
-    SET_N_ADC_SAMPLES = 'set_n_adc_samples';
+    SET_SIM_TIME= 'set_sim_time';
     USE_DAC = 'use_ard_dac';
     USE_ADC = 'use_ard_adc';
     USE_OSC = 'use_osc';
     RUN = 'run';
     COMPUTE_OFFSETS = 'compute_offsets';
+    GET_NUM_SAMPLES = 'get_num_samples';
+    GET_TIME_BETWEEN_SAMPLES = 'get_time_between_samples';
 
 class CmdType(Enum):
     CIRC_CMD = 'circ_cmd';

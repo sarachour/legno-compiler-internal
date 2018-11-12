@@ -1,11 +1,14 @@
 #set_samples 500
-set_samples 5000
+# simulation time in milliseconds
+set_ref_func inp0+1.5
+set_sim_time 10.0
+get_num_samples
+get_time_between_samples
 use_due_dac 0
-compute_offsets
-set_due_dac_values 0 0.8*math.sin(100000.0*t)
-#set_due_dac_values 0 0.5*math.cos(100000.0*t)+0.5*math.sin(100000.0*t+23000)
 use_osc
+compute_offsets
+set_due_dac_values 0 1.0*math.sin(1.59*t)
 run
 get_osc_values direct data.csv
 get_due_adc_values direct data2.csv
-
+reset
