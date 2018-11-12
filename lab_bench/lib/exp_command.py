@@ -396,6 +396,7 @@ class GetOscValuesCmd(Command):
         ArduinoCommand.__init__(self)
         self._filename = filename
         self._differential = differential
+        self._save_image = False
 
     @staticmethod
     def name():
@@ -486,8 +487,9 @@ class GetOscValuesCmd(Command):
                 chan = state.oscilloscope.analog_channel(1)
                 ch2 = state.oscilloscope.full_waveform(chan)
 
-            #imagename = self._filename.split(".")[0] + ".png"
-            #self.plot_data(state,imagename,ch1,ch2)
+            if self._save_image:
+                imagename = self._filename.split(".")[0] + ".png"
+                self.plot_data(state,imagename,ch1,ch2)
             return self.process_data(state,self._filename,ch1,ch2)
 
 
