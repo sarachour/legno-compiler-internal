@@ -9,6 +9,5 @@ use_osc
 compute_offsets
 set_due_dac_values 0 1.0*math.sin(1.59*t)
 run
-get_osc_values direct data.json
-get_due_adc_values direct data2.json
+get_osc_values differential data.json
 reset

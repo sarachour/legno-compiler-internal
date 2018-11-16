@@ -115,11 +115,7 @@ class EmpiricalData:
         plt.clf()
 
     @staticmethod
-    def read(filename):
-        data = None
-        with open(filename,'r') as fh:
-            data = json.loads(fh.read())
-
+    def from_json(data):
         assert(not data is None)
         empd = EmpiricalData()
         for key,datum in data.items():
@@ -132,6 +128,14 @@ class EmpiricalData:
                 empd.set_reference(datum['time'],datum['value'])
 
         return empd
+
+    @staticmethod
+    def read(filename):
+        data = None
+        with open(filename,'r') as fh:
+            data = json.loads(fh.read())
+
+        return EmpiricalData.from_json(data)
 
     def align(self,npts=1000):
         def mse(x,y,offset):

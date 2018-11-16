@@ -456,11 +456,12 @@ class GetOscValuesCmd(Command):
             'value': out_v,
             'type': 'output'
         }
+        print("<writing file>")
         with open(filename,'w') as fh:
             strdata = json.dumps(data,indent=4)
             fh.write(strdata)
-
         print("<wrote file>")
+
     def plot_data(self,state,filename,chan1,chan2):
         print("-> plotting")
         ch1_t,ch1_v = chan1
