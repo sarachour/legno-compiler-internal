@@ -182,10 +182,11 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   _toggle_SDA();
   Timer3.start(DELAY_TIME_US);
   while(IDX < N){
-    Serial.println("waiting...");
+    Serial.print("waiting idx=");
+    Serial.println(IDX);
     delay(500);
   }
-  //Timer3.detachInterrupt();
+  Timer3.stop();
   if(EXPERIMENT->use_analog_chip){
         //circ::finish(FABRIC);
   }
@@ -215,7 +216,8 @@ void set_dac_values(experiment_t* expr, float * inbuf, int dac_id, int n, int of
   }
   int buf_idx = offset + expr->dac_offsets[dac_id];
   for(int idx = 0; idx < n; idx+=1){
-      unsigned short value = (short) (inbuf[idx]*2048+2048);
+      // 4096, zero at 2047
+      unsigned short value = (short) (inbuf[idx]*2048+2047);
       expr->databuf[buf_idx + idx] = value;
   }
 }

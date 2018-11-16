@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import devices.sigilent_osc as osclib
 import time
 import json
+import numpy as np
 
 def build_exp_ctype(exp_data):
     return {
@@ -84,7 +85,7 @@ class UseDueADCCmd(ArduinoCommand):
         line = " ".join(args)
         result = parselib.parse("{arduino_adc:d}",line)
         if result is None:
-            print("usage: %s <arduino_adc_id>" % (SetNumADCSamplesCmd.name()))
+            print("usage: %s <arduino_adc_id>" % (UseDueADCCmd.name()))
             return None
 
         return UseDueADCCmd(result['arduino_adc'])
@@ -441,7 +442,11 @@ class GetOscValuesCmd(Command):
             'type': 'reference'
         }
         if self._differential:
-            raise Exception("cannot handle differential signals..")
+            out_t1,out_v1 = chan1
+            out_t2,out_v2 = chan2
+            out_v = list(np.subtract(out_v1,out_v2))
+            assert(all(np.equal(out_t1,out_t2)))
+            out_t = out_t1
 
         else:
             out_t,out_v = chan1

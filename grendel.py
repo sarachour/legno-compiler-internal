@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import shutil
 
 sys.path.insert(0,os.path.abspath("lab_bench"))
 
@@ -22,50 +23,89 @@ def boilerplate_osc(prog,sim_time,ref_fun,dacs):
 
     q('compute_offsets')
 
-def test_dac_on_input(dac_id,input_fn,num_trials=5):
+def test_vdiv_on_input(dac_id,input_fn,num_trials=1):
     prog = []
+    outfiles = []
     def q(stmt):
         prog.append(stmt)
 
-    boilerplate_osc(prog,20.0,"inp0+1.5",[dac_id])
+    boilerplate_osc(prog,10.0,"inp0+1.625",[dac_id])
+    q('set_due_dac_values %d %s' % (dac_id,input_fn))
+    q('run')
+    for trial in range(0,num_trials):
+        q('get_osc_values differential data%d.json' % trial)
+        q('run')
+        outfiles.append("data%d" % trial)
+
+    q('reset')
+    return outfiles,prog
+
+
+def test_dac_on_input(dac_id,input_fn,num_trials=1):
+    prog = []
+    outfiles = []
+    def q(stmt):
+        prog.append(stmt)
+
+    boilerplate_osc(prog,10.0,"inp0+1.625",[dac_id])
     q('set_due_dac_values %d %s' % (dac_id,input_fn))
     q('run')
     for trial in range(0,num_trials):
         q('get_osc_values direct data%d.json' % trial)
+        q('run')
+        outfiles.append("data%d" % trial)
 
     q('reset')
-    return prog
+    return outfiles,prog
 
-def exec_prog(state,blockid,index,prog):
-    outdir = "outputs/grendel/%s/%s/" % (blockid,index)
-
-
+def exec_prog(state,blockid,index,prog,outfiles):
+    outdir = "outputs/grendel/%s/%s" % (blockid,index)
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
     scriptfile = "%s/prog.grendel" % outdir
     with open(scriptfile,'w') as fh:
-        fh.write("\n".join(prog))
+        srccode = "\n".join(prog)
+        print(srccode)
+        fh.write(srccode)
 
+    input("<run experiment>")
     lab_handler.main_script(state,scriptfile)
 
-    for dirname, subdirlist, filelist in os.walk(outdir):
-        for fname in filelist:
-            if fname.endswith('json'):
-                print(fname)
+    for outfile in outfiles:
+        json_file = "%s.json" % outfile
+        png_file = "%s.png" % outfile
+        if os.path.isfile(json_file):
+            shutil.move(json_file, "%s/%s" % (outdir,json_file))
+        if os.path.isfile(png_file):
+            shutil.move(png_file, "%s/%s" % (outdir,png_file))
 
+        print("-> moving %s" % outfile)
 
-
-def due_dac_runner(state,dac_id):
+def vdiv_runner(state,dac_id):
     inputs = [
-        "0", "1",
+        "0", "1", "-1",
         "1.0*math.sin(1.0*t)",
         "1.0*math.sin(10.0*t)",
         "1.0*math.sin(100.0*t)",
         "0.2*math.sin(1.0*t)"
     ]
     for index,input_sig in enumerate(inputs):
-        exec_prog(state,"dac[0]",index,test_dac_on_input(dac_id,input_sig))
+        outfiles,prog = test_vdiv_on_input(dac_id,input_sig)
+        exec_prog(state,"vdiv[0]",index,prog,outfiles)
+
+
+def due_dac_runner(state,dac_id):
+    inputs = [
+        "0", "1", "-1",
+        "1.0*math.sin(1.0*t)",
+        "1.0*math.sin(10.0*t)",
+        "1.0*math.sin(100.0*t)",
+        "0.2*math.sin(1.0*t)"
+    ]
+    for index,input_sig in enumerate(inputs):
+        outfiles,prog = test_dac_on_input(dac_id,input_sig)
+        exec_prog(state,"dac[0]",index,prog,outfiles)
 
 
 
@@ -95,12 +135,34 @@ def main():
     args = parser.parse_args()
 
     state = lab_state.State(args.ip,args.port,
-                  ard_native=args.native,
-                  validate=True)
+                  ard_native=args.native)
 
+    state.initialize()
 
+    dac_setup_message = """
+    DAC Experiment Setup Instructions:
+    1. Make sure you set voltage threshhold for the clock to 100mV
+    2. Clip the EXT signal probe to the SDA port and the ground probe to Arduino GND
+    3. Clip the CH1 signal probe to DAC0/1 and the ground probe to Arduino ground
+    """
+
+    vdiv_setup_message = """
+    VDiv circuit Setup Instructions:
+    0. When the chip is off, connect breadboard voltage to 3.3V voltage source from Arduino Due, and the ground lead to the GND pin in the Arduino Due.
+    1. Make sure you set voltage threshhold for the clock to 100mV
+    2. Clip the EXT signal probe to the SDA port and the ground probe to Arduino GND
+    3. Clip the CH1 signal probe to the purple wire on the breadboard and the ground probe to breadboard  GND. (left pair for VDIV0, right pair for VDIV1)
+    4. Clip the CH2 signal probe to the gray wire on the breadboard and the ground probe to breadboard  GND.
+    """
     if args.subparser_name == "due_dac":
+        print(dac_setup_message)
+        input("<i'm ready!>")
         due_dac_runner(state,args.dac_id)
+    elif args.subparser_name == "vdiv":
+        print(vdiv_setup_message)
+        input("<i'm ready!>")
+        vdiv_runner(state,args.dac_id)
+
     else:
         raise Exception("unhandled: %s" % args.subparser_name)
 

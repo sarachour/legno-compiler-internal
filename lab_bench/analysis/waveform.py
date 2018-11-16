@@ -61,9 +61,9 @@ class EmpiricalData:
                 t=times)
             return rstimes,rsvals
 
-        def difference(self,other,npts=100000):
-            t1,v1 = self.resample(npts)
-            t2,v2 = other.resample(npts)
+        def difference(self,other,npts=1e6):
+            t1,v1 = self.resample(int(npts))
+            t2,v2 = other.resample(int(npts))
             vsub = list(map(lambda args: args[0]-args[1],
                             zip(v1,v2)))
             return EmpiricalData.TimeSeries(t1,vsub)
@@ -71,8 +71,8 @@ class EmpiricalData:
         def plot_series(self):
             plt.plot(self.times,self.values)
 
-        def fft(self,basename=None,npts=100000):
-            t,x = self.resample(npts)
+        def fft(self,basename=None,npts=1e6):
+            t,x = self.resample(int(npts))
             timestep = np.mean(np.diff(t))
             N = len(t)
             vf = 2.0/N*scipy.fftpack.fft(x)
@@ -114,6 +114,25 @@ class EmpiricalData:
         plt.savefig(figname)
         plt.clf()
 
+    @staticmethod
+    def read(filename):
+        data = None
+        with open(filename,'r') as fh:
+            data = json.loads(fh.read())
+
+        assert(not data is None)
+        empd = EmpiricalData()
+        for key,datum in data.items():
+            typ = EmpiricalDatumType(datum['type'])
+            if typ == EmpiricalDatumType.INPUT:
+                empd.set_input(datum['index'],datum['time'],datum['value'])
+            elif typ == EmpiricalDatumType.OUTPUT:
+                empd.set_output(datum['time'],datum['value'])
+            elif typ == EmpiricalDatumType.REFERENCE:
+                empd.set_reference(datum['time'],datum['value'])
+
+        return empd
+
     def align(self,npts=1000):
         def mse(x,y,offset):
             error = sum(map(lambda val: val**2, x[:offset]))
@@ -151,43 +170,3 @@ class EmpiricalDatumType(Enum):
     INPUT = "input"
     REFERENCE = "reference"
     OUTPUT = "output"
-
-def read(filename):
-    data = None
-    with open(filename,'r') as fh:
-        data = json.loads(fh.read())
-    
-    assert(not data is None)
-    empd = EmpiricalData()
-    for key,datum in data.items():
-        typ = EmpiricalDatumType(datum['type'])
-        if typ == EmpiricalDatumType.INPUT:
-            empd.set_input(datum['index'],datum['time'],datum['value'])
-        elif typ == EmpiricalDatumType.OUTPUT:
-            empd.set_output(datum['time'],datum['value'])
-        elif typ == EmpiricalDatumType.REFERENCE:
-            empd.set_reference(datum['time'],datum['value'])
-
-    return empd
-
-def example():
-    print("=== Read Data ===")
-    empdata=read('lab_bench/data.json')
-    print("=== Align Signals ===")
-    empdata.align()
-    empdata.plot('aligned.png')
-
-    sig_f = empdata.reference.fft()
-    sig_f.plot("reference")
-
-    out_f = empdata.output.fft()
-    out_f.plot("output")
-
-    print("=== Generate Noise ===")
-    noise = empdata.output.difference(empdata.reference)
-    plt.clf()
-    noise.plot_series()
-    plt.savefig('noise.png')
-    print("=== Noise Frequencies ===")
-    noise_f = noise.fft()
-    noise_f.plot("noise")
