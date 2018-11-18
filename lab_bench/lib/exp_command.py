@@ -391,10 +391,76 @@ class SetDueDACValuesCmd(ArduinoCommand):
         return "set_due_dac_values %d %s" % (self.dac_id,self.pyexpr)
 
 
+class SetOscVoltageRangeCmd(Command):
+
+    def __init__(self,minval,maxval,differential,
+                 minval_low=None,maxval_low=None):
+        Command.__init__(self)
+        self._min_voltage = minval
+        self._max_voltage = maxval
+        self._differential = differential
+        self._min_voltage_low = minval_low
+        self._max_voltage_low = maxval_low
+
+
+    @staticmethod
+    def name():
+        return 'set_volt_ranges'
+
+
+    @staticmethod
+    def desc():
+        return "set the ranges of the voltages read from the oscilloscope."
+
+
+    @staticmethod
+    def parse(args):
+        if len(args) == 0:
+            print("usage: [differential|direct] ...")
+            return
+
+        line = " ".join(args[1:])
+        if args[0] == "differential":
+            result = parselib.parse("%s {minval_low:f} {maxval_low:f} {minval_high:f} {maxval_high:f}" % SetOscVoltageRangeCmd.name(),line)
+            if result is None:
+                print(("usage: differential <low-minval> <low-maxval> "+
+                      "<hi-minval> <hi-maxval>") % SetOscVoltageRangeCmd.name())
+                return None
+            return SetOscVoltageRange(result['minval'],result['maxval_hi'],
+                                      differential=True,
+                                      result['minval_low'],
+                                      result['maxval_low'])
+
+        elif args[0] == "direct":
+            result = parselib.parse("{minval:f} {maxval:f}")
+            if result is None:
+                print("usage: direct <minval> <maxval>")
+                return None
+
+            return SetOscVoltageRange(result['minval'],result['maxval'],
+                                      differential=False)
+
+    def set_channel(self,chan,minv,maxv):
+        vdivs = self.oscilloscope.VALUE_DIVISIONS
+        volt_offset = (minv+maxv)/2.0
+        volts_per_div = (maxv - minv)/vdivs
+        state.oscilloscope \
+            .set_voltage_offset(chan,volt_offset)
+        state.oscilloscope \
+             .set_volts_per_division(chan,volts_per_div)
+
+    def execute(self,state):
+        self.set_channel(state.oscilloscope.analog_channel(0),
+                         self._min_voltage,self._max_voltage)
+        if self._differential:
+            self.set_channel(state.oscilloscope.analog_channel(0),
+                             self._min_voltage_low,self._max_voltage_low)
+
+
 class GetOscValuesCmd(Command):
 
     def __init__(self,filename,differential=True):
-        ArduinoCommand.__init__(self)
+        Command.__init__(self)
         self._filename = filename
         self._differential = differential
         self._save_image = False
