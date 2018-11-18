@@ -1,5 +1,6 @@
 #set_samples 500
 # simulation time in milliseconds
+set_volt_ranges direct 0.0 2.7
 set_ref_func inp0+1.625
 set_sim_time 10.0
 get_num_samples

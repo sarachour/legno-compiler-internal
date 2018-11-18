@@ -421,15 +421,16 @@ class SetOscVoltageRangeCmd(Command):
 
         line = " ".join(args[1:])
         if args[0] == "differential":
-            result = parselib.parse("%s {minval_low:f} {maxval_low:f} {minval_high:f} {maxval_high:f}" % SetOscVoltageRangeCmd.name(),line)
+            result = parselib.parse("{minval_low:f} {maxval_low:f} {minval_high:f} {maxval_high:f}",line)
             if result is None:
-                print(("usage: differential <low-minval> <low-maxval> "+
+                print(("usage: %s differential <low-minval> <low-maxval> "+
                       "<hi-minval> <hi-maxval>") % SetOscVoltageRangeCmd.name())
                 return None
-            return SetOscVoltageRange(result['minval'],result['maxval_hi'],
+            return SetOscVoltageRangeCmd(result['minval_high'],
+                                         result['maxval_high'],
                                       differential=True,
-                                      result['minval_low'],
-                                      result['maxval_low'])
+                                      minval_low=result['minval_low'],
+                                      maxval_low=result['maxval_low'])
 
         elif args[0] == "direct":
             result = parselib.parse("{minval:f} {maxval:f}")
@@ -437,7 +438,7 @@ class SetOscVoltageRangeCmd(Command):
                 print("usage: direct <minval> <maxval>")
                 return None
 
-            return SetOscVoltageRange(result['minval'],result['maxval'],
+            return SetOscVoltageRangeCmd(result['minval'],result['maxval'],
                                       differential=False)
 
     def set_channel(self,chan,minv,maxv):

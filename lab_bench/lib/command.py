@@ -31,11 +31,13 @@ COMMANDS = [
     UseAnalogChipCmd,
     SetSimTimeCmd,
     SetDueDACValuesCmd,
-    GetOscValuesCmd,
     GetDueADCValuesCmd,
     ComputeOffsetsCmd,
     GetNumSamplesCmd,
     GetTimeBetweenSamplesCmd,
+    # oscilloscope commands
+    GetOscValuesCmd,
+    SetOscVoltageRangeCmd,
     # virtual commands
     SetReferenceFunction
 ]
