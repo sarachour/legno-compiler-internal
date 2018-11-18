@@ -5,6 +5,7 @@ outputs
 *.json
 *.png
 .#*.py
+.DS_STORE
 
 
 
