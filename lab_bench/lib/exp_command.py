@@ -441,9 +441,9 @@ class SetOscVoltageRangeCmd(Command):
             return SetOscVoltageRangeCmd(result['minval'],result['maxval'],
                                       differential=False)
 
-    def set_channel(self,chan,minv,maxv):
-        vdivs = self.oscilloscope.VALUE_DIVISIONS
-        volt_offset = (minv+maxv)/2.0
+    def set_channel(self,state,chan,minv,maxv):
+        vdivs = state.oscilloscope.VALUE_DIVISIONS
+        volt_offset = -(minv+maxv)/2.0
         volts_per_div = (maxv - minv)/vdivs
         state.oscilloscope \
             .set_voltage_offset(chan,volt_offset)
@@ -451,10 +451,10 @@ class SetOscVoltageRangeCmd(Command):
              .set_volts_per_division(chan,volts_per_div)
 
     def execute(self,state):
-        self.set_channel(state.oscilloscope.analog_channel(0),
+        self.set_channel(state,state.oscilloscope.analog_channel(0),
                          self._min_voltage,self._max_voltage)
         if self._differential:
-            self.set_channel(state.oscilloscope.analog_channel(0),
+            self.set_channel(state,state.oscilloscope.analog_channel(1),
                              self._min_voltage_low,self._max_voltage_low)
 
 

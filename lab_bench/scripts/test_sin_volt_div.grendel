@@ -1,7 +1,7 @@
 #set_samples 500
 # simulation time in milliseconds
-set_volt_ranges differential 0.0 0.05 0.0 0.025
-set_ref_func inp0+1.625
+set_volt_ranges differential 0.0 0.080 0.0 0.080
+set_ref_func inp0*0.030
 set_sim_time 10.0
 get_num_samples
 get_time_between_samples

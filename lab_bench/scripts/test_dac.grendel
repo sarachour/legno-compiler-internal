@@ -1,10 +1,14 @@
+set_volt_ranges differential 0.0 0.080 0.0 0.080
+set_ref_func inp0*0.030
 calibrate 0 0 0
+set_sim_time 10.0
+get_num_samples
+get_time_between_samples
+use_osc
+compute_offsets
+use_chip
 use_dac 0 0 0 + 0.1
 mkconn dac 0 0 0 tile 0 0 0 0
 mkconn tile 0 0 0 0 chip_output 0 3 2
-use_chip
-use_osc
-set_samples 100000
 run
 get_osc_values differential osc_signal.csv
-get_due_adc_values differential adc_signal.csv

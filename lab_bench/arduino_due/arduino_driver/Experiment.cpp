@@ -15,29 +15,43 @@ volatile int SDA_VAL = LOW;
 experiment_t* EXPERIMENT;
 Fabric* FABRIC;
 
+short BITMASK_ONE[] = {0x0000,0xffff};
+short BITMASK_ZERO[] = {0xffff, 0x0000};
 
+inline void store_value(experiment_t * expr,uint32_t offset, int short value){
+  uint32_t align_offset = offset >> 1;
+  uint32_t mask_offset = offset & 0x1;
+  expr->databuf[align_offset].e1 = (value & BITMASK_ZERO[mask_offset]) | 
+    (expr->databuf[align_offset].e1 & BITMASK_ONE[mask_offset]);
+  expr->databuf[align_offset].e2 = (value & BITMASK_ONE[mask_offset]) | 
+    (expr->databuf[align_offset].e2 & BITMASK_ZERO[mask_offset]);
+}
+short get_value(experiment_t * expr,uint32_t offset){
+  uint32_t align_offset = offset >> 1;
+  uint32_t mask_offset = offset & 0x1;
+  short value =  (expr->databuf[align_offset].e1 & BITMASK_ZERO[mask_offset]) | 
+    (expr->databuf[align_offset].e2 & BITMASK_ONE[mask_offset]);
+  return value;
+  
+}
 inline void save_adc0_value(experiment_t * expr, int idx){
-  short value = ADC->ADC_CDR[6] - ADC->ADC_CDR[7];
-  expr->databuf[expr->adc_offsets[0]+idx] = value;
+  store_value(expr,expr->adc_offsets[0] + idx, ADC->ADC_CDR[6] - ADC->ADC_CDR[7]);
 }
 inline void save_adc1_value(experiment_t * expr, int idx){
-  short value = ADC->ADC_CDR[4] - ADC->ADC_CDR[5];
-  expr->databuf[expr->adc_offsets[1]+idx] = value;
+  store_value(expr,expr->adc_offsets[1] + idx, ADC->ADC_CDR[4] - ADC->ADC_CDR[5]);
 }
 inline void save_adc2_value(experiment_t * expr, int idx){
-  short value = ADC->ADC_CDR[2] - ADC->ADC_CDR[3];
-  expr->databuf[expr->adc_offsets[2]+idx] = value;
+  store_value(expr,expr->adc_offsets[2] + idx, ADC->ADC_CDR[2] - ADC->ADC_CDR[3]);
 }
 inline void save_adc3_value(experiment_t * expr, int idx){
-  short value = ADC->ADC_CDR[0] - ADC->ADC_CDR[1];
-  expr->databuf[expr->adc_offsets[3]+idx] = value;
+  store_value(expr,expr->adc_offsets[3] + idx, ADC->ADC_CDR[0] - ADC->ADC_CDR[1]);
 }
 
 inline void write_dac0_value(experiment_t * expr, int idx){
-  analogWrite(DAC0, expr->databuf[expr->dac_offsets[0] + idx]); 
+  analogWrite(DAC0, get_value(expr,expr->dac_offsets[0] + idx)); 
 }
 inline void write_dac1_value(experiment_t * expr, int idx){
-  analogWrite(DAC1, expr->databuf[expr->dac_offsets[1] + idx]); 
+  analogWrite(DAC1, get_value(expr,expr->dac_offsets[1] + idx)); 
 }
 inline void _toggle_SDA(){
   SDA_VAL = SDA_VAL == HIGH ? LOW : HIGH;
@@ -110,7 +124,8 @@ void print_adc_values(experiment_t * expr, int adc_id, int nels, int offset){
   int adc_offset = expr->adc_offsets[adc_id];
   if(adc_offset >= 0 and expr->compute_offsets){
     for(int idx=offset; idx<offset+n; idx+=1){
-      Serial.print(expr->databuf[adc_offset+idx]);
+      Serial.print(expr->databuf[adc_offset+idx].e1);
+      Serial.print(expr->databuf[adc_offset+idx].e2);
     }
   }
   Serial.println("");
@@ -217,8 +232,8 @@ void set_dac_values(experiment_t* expr, float * inbuf, int dac_id, int n, int of
   int buf_idx = offset + expr->dac_offsets[dac_id];
   for(int idx = 0; idx < n; idx+=1){
       // 4096, zero at 2047
-      unsigned short value = (short) (inbuf[idx]*2048+2047);
-      expr->databuf[buf_idx + idx] = value;
+      unsigned short value = (short) (inbuf[idx]*2048+2047) & 0xfff;
+      store_value(expr,buf_idx + idx, value);
   }
 }
 void exec_command(experiment_t* expr, Fabric* fab, cmd_t& cmd, float * inbuf){

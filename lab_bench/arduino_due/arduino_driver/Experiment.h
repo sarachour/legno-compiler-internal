@@ -7,10 +7,15 @@
 # define MAX_ADCS 4
 # define MAX_DACS 2
 // max value is 32000
-# define MAX_SIZE 2000
+# define MAX_SIZE 4053
 
 namespace experiment {
-  
+
+typedef struct _datapair {
+  unsigned int e1: 12;
+  unsigned int e2: 12;
+} datapair_t;
+
 typedef struct experiment_data {
   int n_samples;
   int max_samples;
@@ -23,7 +28,7 @@ typedef struct experiment_data {
   bool use_dac[MAX_DACS];
   bool use_analog_chip;
   // input data
-  short databuf[MAX_SIZE];
+  datapair_t databuf[MAX_SIZE/3];
 
 } experiment_t;
 

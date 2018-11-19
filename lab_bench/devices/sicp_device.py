@@ -1,3 +1,23 @@
+import socket
+import time
+import select
+import sys
+
+def SocketConnect(ipaddr,port):
+    try:
+        #create an AF_INET, STREAM socket (TCP)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    except socket.error:
+        print ('Failed to create socket.')
+        sys.exit();
+    try:
+        #Connect to remote server
+        s.connect((ipaddr, port))
+    except socket.error:
+        print ('failed to connect to ip ' + ipaddr)
+        sys.exit(1)
+
+    return s
 
 class SICPDevice:
 
@@ -8,6 +28,10 @@ class SICPDevice:
 
     def setup(self):
         self._sock = SocketConnect(self._ip,self._port)
+
+    def close(self):
+        self._sock.close()
+        time.sleep(1)
 
     def _flush(self):
         readable, writable, exceptional = select.select([self._sock],
