@@ -1,5 +1,6 @@
 import serial
 import time
+import re
 
 class ArduinoDue:
 
@@ -24,7 +25,8 @@ class ArduinoDue:
 
     def readline(self):
         line_bytes = self._comm.readline()
-        return line_bytes.decode('utf-8')
+        line_valid_bytes = bytearray(filter(lambda b: b<128, line_bytes))
+        return line_valid_bytes.decode('utf-8')
 
     def reads_available(self):
         return self._comm.in_waiting > 0
@@ -66,7 +68,6 @@ class ArduinoDue:
             line = self.try_readline()
             if line is None:
                 return None
-
             if "::process::" in line:
                 found_process = True
 
@@ -75,14 +76,15 @@ class ArduinoDue:
 
 
     def process(self):
-        found_process = False
         while True:
             line = self.readline()
-            if "::process::" in line:
-                found_process = True
 
-            elif found_process:
-                return line
+            if "::process::" in line:
+                return True
+
+
+            if not "::listen::" in line:
+                print(line)
 
     def listen(self):
         while True:

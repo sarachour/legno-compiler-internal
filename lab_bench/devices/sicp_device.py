@@ -43,7 +43,7 @@ class SICPDevice:
         else:
             return
 
-    def _recvall(self,eom=b'\n'):
+    def _recvall(self,eom=b'\n',timeout_sec=3):
         total_data=[];
         data=self._buf
         self._buf = bytearray([])
@@ -60,7 +60,11 @@ class SICPDevice:
             else:
                 total_data.append(data)
 
-            data=self._sock.recv(4096)
+            ready = select.select([self._sock], [], [], timeout_sec)
+            if ready[0]:
+                data=self._sock.recv(4096)
+            else:
+                return None
 
         ba = bytearray([])
         for datum in total_data:
@@ -82,10 +86,13 @@ class SICPDevice:
             print ('send failed <%s>' % cmd)
             sys.exit()
 
-    def query(self,cmd,decode='UTF-8',eom=b'\n\r>>'):
-        self._flush()
-        self.write(cmd)
-        reply = self._recvall(eom=eom)
+    def query(self,cmd,decode='UTF-8',eom=b'\n\r>>',timeout_sec=3):
+        reply = None
+        while reply is None:
+            self._flush()
+            self.write(cmd)
+            reply = self._recvall(eom=eom,timeout_sec=3)
+
         if not decode is None:
             return reply.decode(decode)
         else:

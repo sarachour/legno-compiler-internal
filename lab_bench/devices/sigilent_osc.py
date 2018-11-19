@@ -1,23 +1,17 @@
 import sys
 import logging
-import socket
 import argparse
-import select
-import time
 import struct
 import datetime
 from devices.sicp_device import SICPDevice
 from enum import Enum
+import lib.util as util
 
 logging.basicConfig()
 
 logger = logging.getLogger('osc')
 logger.setLevel(logging.INFO)
 
-class RoundMode(Enum):
-    UP = "up"
-    DOWN = "down"
-    NEAREST = "nearest"
 
 def extract_number_and_unit(st):
     for i,c in enumerate(st):
@@ -30,47 +24,8 @@ def extract_number_and_unit(st):
     unit = st[i:]
     return number,unit
 
-def find_closest(array,value,round_mode):
-    sel_value = None
-    if round_mode == RoundMode.NEAREST:
-        dist,sel_value = min(map(lambda cv: (abs(cv-value),cv), array), \
-                             key=lambda pair:pair[0])
-
-
-    elif round_mode == RoundMode.UP:
-        s_array = sorted(array)
-        for curr_val in array:
-            if curr_val >= value and sel_value is None:
-                sel_value = curr_val
-        dist = -1
-
-    elif round_mode == RoundMode.DOWN:
-        s_array = sorted(array,reverse=True)
-        for curr_val in array:
-            if curr_val >= value and sel_value is None:
-                sel_value = curr_val
-        dist = -1
-
-    print(dist,sel_value,value)
-    return sel_value
 
 # use python 2
-def SocketConnect(ipaddr,port):
-    try:
-        #create an AF_INET, STREAM socket (TCP)
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    except socket.error:
-        print ('Failed to create socket.')
-        sys.exit();
-    try:
-        #Connect to remote server
-        s.connect((ipaddr, port))
-    except socket.error:
-        print ('failed to connect to ip ' + ipaddr)
-        sys.exit(1)
-
-    return s
-
 def pairwise(arr):
     for idx in range(0,len(arr)-1,2):
         yield arr[idx],arr[idx+1]
@@ -95,9 +50,9 @@ class HoldRule:
             self._value2 = value2
     
     def to_cmd(self):
-        cmd = "HT,%s,HV,%ss" % (self._hold_type.value,self._value1)
+        cmd = "HT,%s,HV,%sS" % (self._hold_type.value,self._value1)
         if not self._value2 is None:
-            cmd += ",HV2,%ss" % self._value2
+            cmd += ",HV2,%sS" % self._value2
         return cmd
 
     @staticmethod
@@ -147,16 +102,18 @@ class Trigger:
         self.which_edge = which_edge
 
     def to_cmds(self):
-        yield "TRIG_SELECT %s,SR,%s,%s" % \
+        yield "TRSE %s,SR,%s,%s" % \
             (self.trigger_type.value,
              self.source.value,
              self.when.to_cmd())
 
         if not self.which_edge is None:
-            yield "TRIG_SLOPE %s" % self.which_edge.value
+            yield "TRSL %s" % self.which_edge.value
 
         if not self.min_voltage is None:
-            yield "TRIG_LEVEL %s" % self.min_voltage
+            yield "%s:TRLV %s" % \
+                (self.source.value,
+                 self.min_voltage)
 
     @staticmethod
     def build(args):
@@ -197,8 +154,8 @@ class TriggerModeType(Enum):
 
 class Sigilent1020XEOscilloscope(SICPDevice):
     class Channels(Enum):
-        ACHAN1 = "C1",
-        ACHAN2 = "C2",
+        ACHAN1 = "C1"
+        ACHAN2 = "C2"
         EXT = "EX"
         EXT5 = "EX5"
         LINE = "LINE"
@@ -239,7 +196,7 @@ class Sigilent1020XEOscilloscope(SICPDevice):
             raise Exception("unknown analog channel.")
 
     def get_trigger(self):
-        cmd = "TRIG_SELECT?"
+        cmd = "TRSE?"
         result = self.query(cmd)
         if ">>" in result:
             result = result.split(">>")[-1].strip()
@@ -247,23 +204,23 @@ class Sigilent1020XEOscilloscope(SICPDevice):
         tokens = result.split(",")
         trig = Trigger.build(tokens)
 
-        cmd = "%s:TRIG_LEVEL?" % (trig.source.value)
+        cmd = "%s:TRLV?" % (trig.source.value)
         result = self.query(cmd)
         trig.min_voltage = float(result.strip())
 
-        cmd = "%s:TRIG_SLOPE?" % (trig.source.value)
+        cmd = "%s:TRSL?" % (trig.source.value)
         result = self.query(cmd)
         trig.which_edge = TriggerSlopeType(result.strip())
         return trig
 
     def get_trigger_mode(self):
-        cmd = "TRIG_MODE?"
+        cmd = "TRMD?"
         result = self.query(cmd)
         status = TriggerModeType(result.strip())
         return status
 
     def set_trigger_mode(self,mode):
-        cmd = "TRIG_MODE %s" % mode.value
+        cmd = "TRMD %s" % mode.value
         self.write(cmd)
 
     def get_history_frame_time(self):
@@ -327,6 +284,17 @@ class Sigilent1020XEOscilloscope(SICPDevice):
         args = result.strip().split()
         return args
 
+    def set_trigger_level(self,amt):
+        cmd = "TRLV %fV" % amt
+        self.write(cmd)
+
+
+    def get_trigger_level(self):
+        cmd = "TRLV?"
+        result = self.query(cmd)
+        return float(result)
+
+
     def get_trigger_delay(self):
         cmd = "TRDL?"
         result = self.query(cmd)
@@ -379,7 +347,7 @@ class Sigilent1020XEOscilloscope(SICPDevice):
         self.flush_cache()
 
 
-    def set_seconds_per_division(self,time_s,round_mode=RoundMode.UP):
+    def set_seconds_per_division(self,time_s,round_mode=util.RoundMode.UP):
 
         times = []
         for scale in [1e-9,1e-6,1e-3]:
@@ -389,7 +357,7 @@ class Sigilent1020XEOscilloscope(SICPDevice):
         for val in [1,2,5,10,20,50,100]:
             times.append(val)
 
-        time_s = find_closest(times,time_s,round_mode)
+        _,time_s = util.find_closest(times,time_s,round_mode)
 
         unit = None
         if time_s >= 1.0:
@@ -418,7 +386,7 @@ class Sigilent1020XEOscilloscope(SICPDevice):
         elif unit == "M":
             return value*10e6
 
-    def set_memory_size(self,amt_kb,round_mode=RoundMode.UP):
+    def set_memory_size(self,amt_kb,round_mode=util.RoundMode.UP):
         unit = None
         if amt_kb > 1e3:
             amt = amt_kb/1.0e3
@@ -430,7 +398,7 @@ class Sigilent1020XEOscilloscope(SICPDevice):
         sizes = {}
         sizes['K'] = [7,14,70,140,700]
         sizes['M'] = [1.4,7,14]
-        amt = find_closest(sizes[unit],amt,round_mode)
+        _,amt = util.find_closest(sizes[unit],amt,round_mode)
         cmd = "MSIZ %s" % amt
         self.flush_cache()
         self.write(cmd)
@@ -572,7 +540,7 @@ class Sigilent1020XEOscilloscope(SICPDevice):
         voff = props['voltage_offset'][channel.name]
 
         cmd = "%s:WF? DAT2" % channel.value
-        resp = self.query(cmd,decode=None)
+        resp = self.query(cmd,decode=None,timeout_sec=180)
         code_idx = None
         for idx,byte in enumerate(resp):
             chrs = chr(byte)
@@ -649,7 +617,3 @@ class Sigilent1020XEOscilloscope(SICPDevice):
         result = self.query(cmd)
         with open(filename,'wb') as fh:
             fh.write(result)
-
-    def close(self):
-        self._sock.close()
-        time.sleep(1)

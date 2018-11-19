@@ -2,6 +2,7 @@
 #include "Experiment.h"
 #include "Comm.h"
 #include "Circuit.h"
+#include "assert.h"
 
 experiment::experiment_t this_experiment;
 Fabric * this_fabric;
@@ -25,6 +26,7 @@ typedef struct cmd_{
 } cmd_t;
 
 void setup() {
+  this_fabric = circ::setup_board();
   Serial.begin(115200);
   Serial.flush();
   experiment::setup_experiment();
@@ -39,12 +41,15 @@ void loop() {
     Serial.println("::process::");
     switch(cmd.type){
       case cmd_type_t::CIRC_CMD:
+        assert(this_fabric != NULL);
         circ::print_command(cmd.data.circ_cmd);
+        circ::exec_command(this_fabric,cmd.data.circ_cmd);
         break;
       case cmd_type_t::EXPERIMENT_CMD:
         inbuf = (float*) get_data_ptr(nbytes);
         experiment::print_command(cmd.data.exp_cmd,inbuf);
         experiment::exec_command(&this_experiment,this_fabric,cmd.data.exp_cmd,inbuf);
+        // in the event the fabric has not been initialized, initialize it
         break;
       case cmd_type_t::FLUSH_CMD:
         Serial.println("::flush::");

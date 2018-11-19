@@ -139,7 +139,7 @@ void compute_offsets(experiment_t * expr){
   for(int i=0; i < MAX_DACS; i+= 1){
     n_segs += expr->use_dac[i] ? 1 : 0;
   }
-  expr->max_samples = MAX_SIZE / n_segs;
+  expr->max_samples = n_segs == 0 ? expr->n_samples : MAX_SIZE/n_segs;
   int seg_idx = 0;
   for(int i=0; i < MAX_ADCS; i += 1){
     expr->adc_offsets[i] = seg_idx*expr->max_samples;
@@ -184,12 +184,10 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   Serial.print("/");
   Serial.println(N);
   // trigger the start of the experiment
-  //Timer3.detachInterrupt();
-  //attach_interrupts(expr,fab);
   if(expr->use_analog_chip){
-    //circ::commit_config(fab);
-    //circ::finalize_config(fab);
-    //circ::execute(fab);
+    circ::commit_config(fab);
+    circ::finalize_config(fab);
+    circ::execute(fab);
   }
   else{
   }
@@ -203,7 +201,7 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   }
   Timer3.stop();
   if(EXPERIMENT->use_analog_chip){
-        //circ::finish(FABRIC);
+        circ::finish(fab);
   }
   analogWrite(DAC0, 0); 
   analogWrite(DAC1, 0); 

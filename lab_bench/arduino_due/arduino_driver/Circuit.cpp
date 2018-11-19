@@ -3,6 +3,8 @@
 #include "Circuit.h"
 #include <assert.h>
 
+char HCDC_DEMO_BOARD = 4;
+
 namespace circ {
   
 Fabric::Chip::Tile::Slice* get_slice(Fabric * fab, circ_loc_t& loc){
@@ -45,7 +47,7 @@ Fabric::Chip::Tile::Slice::Fanout* get_fanout(Fabric * fab, circ_loc_idx1_t& loc
   return fanout;
 }
 
-Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab, uint8_t& btype, circ_loc_idx2_t loc){
+Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab, uint8_t& btype, circ_loc_idx2_t& loc){
   switch(btype){
     case DAC:
       Serial.println("dac has no input port");
@@ -56,8 +58,10 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab,
        switch(loc.idx2){
          case 0:
            return get_mult(fab,loc.idxloc)->in0;
+           break;
          case 1:
            return get_mult(fab,loc.idxloc)->in1;
+           break;
         default:
            Serial.println("unknown mult input");
            exit(1);
@@ -75,10 +79,12 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab,
         
    case FANOUT:
         return get_fanout(fab,loc.idxloc)->in0;
+        break;
         
    case CHIP_OUTPUT:
         return get_slice(fab,loc.idxloc.loc)->chipOutput->in0;
-
+        break;
+        
    case CHIP_INPUT:
         Serial.println("no input port for chip_input");
         exit(1);
@@ -93,11 +99,10 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab,
 }
 
 
-Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_output_port(Fabric * fab, uint8_t& btype, circ_loc_idx2_t loc){
+Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_output_port(Fabric * fab, uint8_t& btype, circ_loc_idx2_t& loc){
   switch(btype){
     case DAC:
-      Serial.println("dac has no input port");
-      exit(1);
+      return get_slice(fab,loc.idxloc.loc)->dac->out0; 
       break;
 
     case MULT:
@@ -152,15 +157,15 @@ void commit_config(Fabric * fab){
    fab->cfgCommit();
 }
 
-inline void finalize_config(Fabric * fab){
+void finalize_config(Fabric * fab){
   fab->cfgStop();
 }
 
-inline void execute(Fabric * fab){
+void execute(Fabric * fab){
   fab->execStart();
 }
 
-inline void finish(Fabric * fab){
+void finish(Fabric * fab){
   fab->execStop();
 }
 
@@ -175,6 +180,7 @@ void exec_command(Fabric * fab, cmd_t& cmd){
   cmd_use_fanout_t fod;
   cmd_use_integ_t integd;
   cmd_connection_t connd;
+  Fabric::Chip::Tile::Slice* slice;
   Fabric::Chip::Tile::Slice::Dac* dac;
   Fabric::Chip::Tile::Slice::Multiplier * mult;
   Fabric::Chip::Tile::Slice::Fanout * fanout;
@@ -190,55 +196,73 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         dac->setEnable(true);
         dac->out0->setInv(dacd.inv);
         dac->setConstantCode(dacd.value);
+        Serial.println("enabled dac");
         break;
 
       case cmd_type_t::USE_MULT:
+        /*
         multd = cmd.data.mult;
         mult = get_mult(fab,multd.loc);
         mult->setEnable(true);
         mult->out0->setInv(multd.inv);
         mult->setVga(multd.use_coeff); 
         mult->setGainCode(multd.coeff);
+        */
+        Serial.println("enabled mult");
         break;
 
       case cmd_type_t::USE_FANOUT:
+        /*
         fod = cmd.data.fanout;
         fanout = get_fanout(fab,fod.loc);
         fanout->setEnable(true);
         fanout->out0->setInv(fod.inv[0]);
         fanout->out1->setInv(fod.inv[1]);
         fanout->out2->setInv(fod.inv[2]);
+        */
+        Serial.println("enabled fanout");
         break;
 
     case cmd_type_t::USE_INTEG:
+        /*
         integd = cmd.data.integ;
         integ = get_slice(fab,integd.loc)->integrator;
         integ->setEnable(true);
         integ->out0->setInv(integd.inv);
         integ->setInitial(integd.value);
+        */
+        Serial.println("enabled integ");
         break;
         
     case cmd_type_t::DISABLE_DAC:
         dac = get_slice(fab,cmd.data.circ_loc)->dac;
         dac->setEnable(false);
+        Serial.println("disabled dac");
         break;
 
     case cmd_type_t::DISABLE_MULT:
+        /*
         multd = cmd.data.mult;
         mult = get_mult(fab,multd.loc);
         mult->setEnable(false);
+        */
+        Serial.println("disabled mult");
         break;
 
     case cmd_type_t::DISABLE_FANOUT:
+        /*
         fod = cmd.data.fanout;
         fanout = get_fanout(fab,fod.loc);
         fanout->setEnable(false);
+        */
+        Serial.println("disabled fanout");
         break;
 
     case cmd_type_t::DISABLE_INTEG:
-        integd = cmd.data.integ;
+        /*integd = cmd.data.integ;
         integ = get_slice(fab,integd.loc)->integrator;
-        integ->setEnable(false);    
+        integ->setEnable(false);*/ 
+        Serial.println("disabled integ");
         break;
 
     case cmd_type_t::CONNECT:
@@ -246,6 +270,7 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         src = get_output_port(fab,connd.src_blk,connd.src_loc);
         dst = get_input_port(fab,connd.dst_blk,connd.dst_loc);
         Fabric::Chip::Connection(src,dst).setConn();
+        Serial.println("connected");
         break;
 
     case cmd_type_t::BREAK:
@@ -253,10 +278,13 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         src = get_output_port(fab,connd.src_blk,connd.src_loc);
         dst = get_input_port(fab,connd.dst_blk,connd.dst_loc);
         Fabric::Chip::Connection(src,dst).brkConn();
+        Serial.println("disconnected");
         break;
         
     case cmd_type_t::CALIBRATE:
-        assert(get_slice(fab,cmd.data.circ_loc)->calibrate());
+        slice = get_slice(fab,cmd.data.circ_loc);
+        assert(slice->calibrate());
+        Serial.println("calibrated");
         break;
         
     default:
@@ -362,7 +390,7 @@ void print_command(cmd_t& cmd){
       case cmd_type_t::USE_DAC:
         Serial.print("use dac ");
         print_loc(cmd.data.dac.loc);
-        Serial.print(" ic=");
+        Serial.print(" val=");
         Serial.print(cmd.data.dac.value);
         Serial.print(" inv=");
         Serial.print(cmd.data.dac.inv ? "yes" : "no");

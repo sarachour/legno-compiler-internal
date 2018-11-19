@@ -2,7 +2,7 @@ import parse as parselib
 import lib.cstructs as cstructs
 import lib.enums as enums
 from lib.exp_command import *
-from lib.circ_command import *
+from lib.chip_command import *
 from lib.virt_command import *
 
 '''
@@ -22,7 +22,7 @@ COMMANDS = [
     MakeConnCmd,
     #BreakConnCmd,
     #CalibrateCmd,
-    # experiment commands
+    # experiment commands dispatched to microcontroller
     ResetCmd,
     RunCmd,
     UseOscilloscopeCmd,
@@ -35,7 +35,7 @@ COMMANDS = [
     ComputeOffsetsCmd,
     GetNumSamplesCmd,
     GetTimeBetweenSamplesCmd,
-    # oscilloscope commands
+    # oscilloscope-only commands
     GetOscValuesCmd,
     SetOscVoltageRangeCmd,
     # virtual commands

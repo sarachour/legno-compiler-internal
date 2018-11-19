@@ -2,6 +2,8 @@ import parse as parselib
 import lib.cstructs as cstructs
 import lib.enums as enums
 from lib.base_command import Command,ArduinoCommand
+import lib.util as util
+import numpy as np
 
 def build_circ_ctype(circ_data):
     return {
@@ -11,9 +13,20 @@ def build_circ_ctype(circ_data):
         }
     }
 
+def signed_float_to_byte(fvalue):
+    assert(fvalue <= 1.0 and fvalue <= 1.0)
+    value = int((fvalue+1.0)/2.0*255)
+    assert(value >= 0 and value <= 255)
+    return value
+
 def float_to_byte(fvalue):
     assert(fvalue >= 0.0 and fvalue <= 1.0)
-    return int(fvalue*255)
+    value = int(fvalue*255)
+    assert(value >= 0 and value <= 255)
+    return value
+
+def bool_to_int(boolval):
+    return 1 if boolval else 0
 
 def parse_pattern_conn(args,name):
     line = " ".join(args)
@@ -54,14 +67,14 @@ def parse_pattern_conn(args,name):
 
     return result
 
-def parse_pattern_block(args,n_outs,n_consts,name,index=False):
+def parse_pattern_block(args,n_signs,n_consts,name,index=False):
     line = " ".join(args)
     signd = {'+':False,'-':True}
     cmd = "{chip:d} {tile:d} {slice:d} "
     if index:
         cmd += "{index:d} "
     cmd += ''.join(map(lambda idx: "{sign%d:W} " % idx,
-                        range(0,n_outs)))
+                        range(0,n_signs)))
     cmd += ''.join(map(lambda idx: "{value%d:g} " % idx,
                         range(0,n_consts)))
 
@@ -73,7 +86,7 @@ def parse_pattern_block(args,n_outs,n_consts,name,index=False):
         return None
 
     result = dict(result.named.items())
-    for idx in range(0,n_outs):
+    for idx in range(0,n_signs):
         key = 'sign%d' % idx
         if not result[key] in signd:
             print("unknown sign: <%s>" % result[key])
@@ -91,6 +104,19 @@ class CircLoc:
         self.tile = tile;
         self.slice = slice;
         self.index = index;
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def __eq__(self,other):
+        if isinstance(other,CircLoc):
+            return self.chip == other.chip \
+                and self.tile == other.tile \
+                and self.slice == other.slice \
+                and self.index == other.index
+        else:
+            return False
+
 
     def build_ctype(self):
         if self.index is None:
@@ -138,9 +164,18 @@ class CircPortLoc:
             'idx2':port
         }
 
+    def __hash__(self):
+        return hash(str(self))
+
+
+    def __eq__(self,other):
+        if isinstance(other,CircPortLoc):
+            return self.loc == other.loc and self.port == other.port
+        else:
+            return False
 
     def __repr__(self):
-        return "%s[%s]" % (self.loc,self.port)
+        return "port(%s,%s)" % (self.loc,self.port)
 
 
 
@@ -197,8 +232,11 @@ class AnalogChipCommand(ArduinoCommand):
         raise Exception("cannot directly execute analog chip command")
 
     def apply(self,state):
-        return ArduinoCommand.execute_command(self,state)
-
+        resp = ArduinoCommand.execute_command(self,state)
+        print("...")
+        line = state.arduino.readline()
+        print("resp> %s" % line)
+        return resp
 
 class DisableCmd(AnalogChipCommand):
 
@@ -210,6 +248,13 @@ class DisableCmd(AnalogChipCommand):
 
     def disable():
         return self
+
+    def __eq__(self,other):
+        if isinstance(other,DisableCmd):
+            return self._loc == other._loc and \
+                self._block.name == other._block.name
+        else:
+            return False
 
     @staticmethod
     def name():
@@ -253,7 +298,7 @@ class DisableCmd(AnalogChipCommand):
             return build_circ_ctype({
                 'type':enums.CircCmdType.DISABLE_LUT.name,
                 'data':{
-                    'circ_loc':self._loc.build_ctype()
+                    'circ_loc':self._loc.build
                 }
             })
         else:
@@ -315,6 +360,19 @@ class CalibrateCmd(AnalogChipCommand):
         })
 
 
+    def __hash__(self):
+        return hash(self._loc)
+
+    def __eq__(self,other):
+        if isinstance(other,CalibrateCmd):
+            return self._loc == other._loc
+        else:
+            return False
+
+    def apply(self,state):
+        resp = AnalogChipCommand.apply(self,state)
+        
+
     @staticmethod
     def parse(args):
         line = " ".join(args)
@@ -357,20 +415,40 @@ class UseCommand(AnalogChipCommand):
         return "use(%s,%s)" % (self._loc,self._block)
 
 class UseDACCmd(UseCommand):
+    #POS_BUF = np.arange(0.75,-0.8,-(0.8+0.75)/256)
+    #NEG_BUF = np.arange(-0.8,0.8,(0.8+0.8)/256)
+    POS_BUF = np.arange(0.9375,-1.0,-(1.9375)/256)
+    NEG_BUF = np.arange(-1.0,1.0,(2.0)/256)
 
 
-    def __init__(self,chip,tile,slice,value,inv=False):
+
+    def __init__(self,chip,tile,slice,value):
         UseCommand.__init__(self,
                             enums.BlockType.DAC,
                             CircLoc(chip,tile,slice))
 
-        if value < 0.0 or value > 1.0:
+        if value < -1.0 or value > 1.0:
             self.fail("value not in [0,1]: %s" % value)
         if not self._loc.index is None:
             self.fail("dac has no index <%d>" % loc.index)
 
         self._value = value
-        self._inv = inv
+        self._inv = False
+
+        pos_dist,pos_near_val = util.find_closest(UseDACCmd.POS_BUF, \
+                                          value,util.RoundMode.NEAREST)
+        neg_dist,neg_near_val = util.find_closest(UseDACCmd.NEG_BUF, \
+                                          value,util.RoundMode.NEAREST)
+        self._value = value
+        if pos_dist <= neg_dist:
+            self._inv = False
+            self._code = int(np.where(UseDACCmd.POS_BUF == pos_near_val)[0])
+        else:
+            self._inv = True
+            self._code = int(np.where(UseDACCmd.NEG_BUF == neg_near_val)[0])
+
+        print("%f := %s, %s" % (value,self._inv,self._value))
+
 
     @staticmethod
     def desc():
@@ -379,24 +457,27 @@ class UseDACCmd(UseCommand):
 
     @staticmethod
     def parse(args):
-        result = parse_pattern_block(args,1,1,
+        result = parse_pattern_block(args,0,1,
                                      UseDACCmd.name())
         if not result is None:
             return UseDACCmd(
                 result['chip'],
                 result['tile'],
                 result['slice'],
-                result['value0'],
-                inv=result['sign0']
+                result['value0']
             )
 
     def build_ctype(self):
+        # inverting flips the sign for some wacky reason, given the byte
+        # representation is signed
         return build_circ_ctype({
             'type':enums.CircCmdType.USE_DAC.name,
             'data':{
                 'dac':{
                     'loc':self._loc.build_ctype(),
-                    'value':float_to_byte(self._value),
+                    'value':self._code,
+                    # for whatever screwy reason, with inversion disabled
+                    # 255=-1.0 and 0=1.0
                     'inv':self._inv
                 }
             }
@@ -408,7 +489,8 @@ class UseDACCmd(UseCommand):
 
     def __repr__(self):
         st = UseCommand.__repr__(self)
-        st + " dac %s inv=%d" % (self._value,self._inv)
+        st += " dac %s code=%s inv=%s" % \
+              (self._value,self._code,self._inv)
         return st
 
 

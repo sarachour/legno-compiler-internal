@@ -36,44 +36,44 @@ typedef enum cmd_type {
 } cmd_type_t;
 
 typedef struct circ_loc {
-  byte chip;
-  byte tile;
-  byte slice;
+  uint8_t chip;
+  uint8_t tile;
+  uint8_t slice;
 } circ_loc_t;
 
 typedef struct circ_loc_idx1 {
    circ_loc_t loc;
-   byte idx;
+   uint8_t idx;
 } circ_loc_idx1_t;
 
 typedef struct circ_loc_idx2 {
   circ_loc_idx1_t idxloc;
-  byte idx2;
+  uint8_t idx2;
 } circ_loc_idx2_t;
 
 typedef struct use_integ {
    circ_loc_t loc;
-   byte value;
-   bool inv;
+   uint8_t value;
+   uint8_t inv;
 } cmd_use_integ_t;
 
 
 typedef struct use_dac {
    circ_loc_t loc;
-   byte value;
-   bool inv;
+   uint8_t value;
+   uint8_t inv;
 } cmd_use_dac_t;
 
 typedef struct use_mult {
   circ_loc_idx1_t loc;
-  bool use_coeff;
-  byte coeff;
-  bool inv;
+  uint8_t use_coeff;
+  uint8_t coeff;
+  uint8_t inv;
 } cmd_use_mult_t;
 
 typedef struct use_fanout {
   circ_loc_idx1_t loc;
-  bool inv[3];
+  uint8_t inv[3];
 } cmd_use_fanout_t;
 
 typedef struct connection {
@@ -106,7 +106,7 @@ void execute(Fabric * fab);
 void finish(Fabric * fab);
 
 void print_command(cmd_t& cmd);
-void exec_command(Fabric * fab, cmd_t cmd);
+void exec_command(Fabric * fab, cmd_t& cmd);
 
 }
 #endif CIRCUIT_H

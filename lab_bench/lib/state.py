@@ -1,9 +1,11 @@
 from devices.arduino_due import ArduinoDue
-from devices.sigilent_osc import Sigilent1020XEOscilloscope 
+from devices.sigilent_osc import Sigilent1020XEOscilloscope
 import devices.sigilent_osc as osclib
 
 from lib.base_command import FlushCommand, ArduinoCommand
+from lib.chip_command import AnalogChipCommand
 import time
+import numpy as np
 
 class State:
 
@@ -25,7 +27,7 @@ class State:
         self.time_between_samples_ms = None;
         self.ref_func = None;
         self.reset();
-
+        self.sim_time = None
         self.dummy = validate
 
     def write_input(self,input_id,time_ms,value):
@@ -45,6 +47,10 @@ class State:
 
         values = []
         print("reference: %s" % self.ref_func)
+        if times is None:
+            times = list(np.arange(0,self.sim_time*0.001,
+                                   self.time_between_samples_ms*0.001))
+
         for idx,time in enumerate(times):
             args = {}
             for input_id,_,value in self.input_data():
@@ -61,6 +67,7 @@ class State:
             yield input_id,data['time'],data['value']
 
     def reset(self):
+        self.prog = []
         self.use_analog_chip = False;
         self.n_samples = 0
         self.ref_func = None
@@ -131,18 +138,22 @@ class State:
         if not self.use_analog_chip:
             return
 
+        calibs = []
         for stmt in self.prog:
-            if isinstance(stmt, cmd.AnalogChipCommand):
+            if isinstance(stmt, AnalogChipCommand):
                 calib_stmt = stmt.calibrate()
                 if not calib_stmt is None:
-                    yield calib_stmt
+                    calibs.append(calib_stmt)
+
+        for calib in set(calibs):
+            yield calib
 
     def teardown_chip(self):
         if not self.use_analog_chip:
             return
 
         for stmt in self.prog:
-            if isinstance(stmt, cmd.AnalogChipCommand):
+            if isinstance(stmt, AnalogChipCommand):
                 dis_stmt = stmt.disable()
                 if not dis_stmt is None:
                     yield dis_stmt
@@ -152,7 +163,7 @@ class State:
             return
 
         for stmt in self.prog:
-            if isinstance(stmt, cmd.AnalogChipCommand):
+            if isinstance(stmt, AnalogChipCommand):
                 print("[config] %s" % stmt)
                 config_stmt = stmt.configure()
                 if not config_stmt is None:

@@ -50,8 +50,8 @@ class ArduinoCommand(Command):
             state.arduino.listen()
             state.arduino.write_bytes(cdata)
             state.arduino.write_newline()
-            line = state.arduino.process()
-            return line
+            state.arduino.process()
+            return state.arduino.readline()
 
         return None
 

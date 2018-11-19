@@ -56,13 +56,13 @@ def circ_loc_t():
     return cstruct.Struct(
         "chip"/cstruct.Int8ul,
         "tile"/cstruct.Int8ul,
-        "slice"/cstruct.Int8ul
+        "slice"/cstruct.Int8ul,
     )
 
 def circ_loc_idx1_t():
     return cstruct.Struct(
         "loc"/circ_loc_t(),
-        "idx"/cstruct.Int8ul
+        "idx"/cstruct.Int8ul,
     )
 
 def circ_loc_idx2_t():
@@ -72,31 +72,31 @@ def circ_loc_idx2_t():
     )
 
 def circ_use_integ_t():
-    return cstruct.AlignedStruct(4,
+    return cstruct.Struct(
         "loc" / circ_loc_t(),
         "value" / cstruct.Int8ul,
-        "inv" / cstruct.Flag
+        "inv" / cstruct.Int8ul
     )
 
 def circ_use_dac_t():
-    return cstruct.AlignedStruct(4,
+    return cstruct.Struct(
         "loc" / circ_loc_t(),
         "value" / cstruct.Int8ul,
-        "inv" / cstruct.Flag
+        "inv" / cstruct.Int8ul
     )
 
 def circ_use_mult_t():
-    return cstruct.AlignedStruct(4,
+    return cstruct.Struct(
         "loc" / circ_loc_idx1_t(),
-        "use_coeff" / cstruct.Flag,
+        "use_coeff" / cstruct.Int8ul,
         "coeff" / cstruct.Int8ul,
-        "inv" / cstruct.Flag
+        "inv" / cstruct.Int8ul
     )
 
 def circ_use_fanout_t():
-    return cstruct.AlignedStruct(4,
+    return cstruct.Struct(
         "loc" / circ_loc_idx1_t(),
-        "inv" / cstruct.Array(3,cstruct.Flag)
+        "inv" / cstruct.Array(3,cstruct.Int8ul)
     )
 
 def circ_connection_t():

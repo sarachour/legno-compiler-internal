@@ -29,7 +29,8 @@ def test_vdiv_on_input(dac_id,input_fn,num_trials=1):
     def q(stmt):
         prog.append(stmt)
 
-    boilerplate_osc(prog,10.0,"inp0+1.625",[dac_id])
+    boilerplate_osc(prog,10.0,"inp0*0.030",[dac_id])
+    q('set_volt_ranges differential 0.0 0.080 0.0 0.080')
     q('set_due_dac_values %d %s' % (dac_id,input_fn))
     q('run')
     for trial in range(0,num_trials):
@@ -47,7 +48,8 @@ def test_dac_on_input(dac_id,input_fn,num_trials=1):
     def q(stmt):
         prog.append(stmt)
 
-    boilerplate_osc(prog,10.0,"inp0+1.625",[dac_id])
+    boilerplate_osc(prog,10.0,"inp0*1.1+1.65",[dac_id])
+    q('set_volt_ranges direct 0.55 2.75')
     q('set_due_dac_values %d %s' % (dac_id,input_fn))
     q('run')
     for trial in range(0,num_trials):
@@ -62,6 +64,15 @@ def exec_prog(state,blockid,index,prog,outfiles):
     outdir = "outputs/grendel/%s/%s" % (blockid,index)
     if not os.path.exists(outdir):
         os.makedirs(outdir)
+
+    rerun = False
+    for outfile in outfiles:
+        if not os.path.isfile('%s/%s.json' % (outdir,outfile)):
+            rerun = True
+
+    if not rerun:
+        print("-> files exist. skipping %s input %d" % (blockid,index))
+        return
 
     scriptfile = "%s/prog.grendel" % outdir
     with open(scriptfile,'w') as fh:
@@ -84,20 +95,28 @@ def exec_prog(state,blockid,index,prog,outfiles):
 
 def vdiv_runner(state,dac_id):
     inputs = [
-        "0", "1", "-1",
+        "0", "1", "-0.98",
         "1.0*math.sin(1.0*t)",
         "1.0*math.sin(10.0*t)",
-        "1.0*math.sin(100.0*t)",
-        "0.2*math.sin(1.0*t)"
+        "1.0*math.sin(50.0*t)",
+        "0.3*math.sin(1.0*t)",
+        "0.5","0.25",
+        "1.0*math.cos(1.0*t**2)",
+        "0.3*math.sin(t+0.2)+0.7*math.cos(t)"
     ]
-    for index,input_sig in enumerate(inputs):
-        outfiles,prog = test_vdiv_on_input(dac_id,input_sig)
+    def gen_files(inputs):
+        for index,input_sig in enumerate(inputs):
+            outfiles,prog = test_vdiv_on_input(dac_id,input_sig,5)
+            yield index,prog,outfiles
+
+    targets = list(gen_files(inputs))
+    for index,prog,outfiles in targets:
         exec_prog(state,"vdiv[0]",index,prog,outfiles)
 
 
 def due_dac_runner(state,dac_id):
     inputs = [
-        "0", "1", "-1",
+        "0", "1", "-0.98", "0.5", "-0.5",
         "1.0*math.sin(1.0*t)",
         "1.0*math.sin(10.0*t)",
         "1.0*math.sin(100.0*t)",

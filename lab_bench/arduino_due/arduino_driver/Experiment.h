@@ -7,7 +7,8 @@
 # define MAX_ADCS 4
 # define MAX_DACS 2
 // max value is 32000
-# define MAX_SIZE 4053
+//# define MAX_SIZE 4053
+# define MAX_SIZE 3753
 
 namespace experiment {
 
