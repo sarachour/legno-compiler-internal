@@ -25,7 +25,7 @@ def float_to_byte(fvalue):
     assert(value >= 0 and value <= 255)
     return value
 
-def bool_to_int(boolval):
+def bool_POSto_int(boolval):
     return 1 if boolval else 0
 
 def parse_pattern_conn(args,name):
@@ -232,6 +232,9 @@ class AnalogChipCommand(ArduinoCommand):
         raise Exception("cannot directly execute analog chip command")
 
     def apply(self,state):
+        if state.dummy:
+            return
+
         resp = ArduinoCommand.execute_command(self,state)
         print("...")
         line = state.arduino.readline()
@@ -414,13 +417,44 @@ class UseCommand(AnalogChipCommand):
     def __repr__(self):
         return "use(%s,%s)" % (self._loc,self._block)
 
-class UseDACCmd(UseCommand):
+class ConstVal:
     #POS_BUF = np.arange(0.75,-0.8,-(0.8+0.75)/256)
     #NEG_BUF = np.arange(-0.8,0.8,(0.8+0.8)/256)
     POS_BUF = np.arange(0.9375,-1.0,-(1.9375)/256)
     NEG_BUF = np.arange(-1.0,1.0,(2.0)/256)
 
+    @staticmethod
+    def POS_get_closest(value):
+        pos_dist,pos_near_val = util.find_closest(ConstVal.POS_BUF, \
+                                          value,util.RoundMode.NEAREST)
+        code = int(np.where(ConstVal.POS_BUF == pos_near_val)[0])
+        return pos_near_val,code
 
+    @staticmethod
+    def NEG_get_closest(value):
+        neg_dist,neg_near_val = util.find_closest(ConstVal.NEG_BUF, \
+                                          value,util.RoundMode.NEAREST)
+        code = int(np.where(ConstVal.NEG_BUF == neg_near_val)[0])
+        return neg_near_val,code
+
+
+    @staticmethod
+    def get_closest(value):
+        pos_dist,pos_near_val = util.find_closest(ConstVal.POS_BUF, \
+                                          value,util.RoundMode.NEAREST)
+        neg_dist,neg_near_val = util.find_closest(ConstVal.NEG_BUF, \
+                                          value,util.RoundMode.NEAREST)
+        if pos_dist <= neg_dist:
+            inv = False
+            code = int(np.where(ConstVal.POS_BUF == pos_near_val)[0])
+            near_val = pos_near_val
+        else:
+            inv = True
+            code = int(np.where(ConstVal.NEG_BUF == neg_near_val)[0])
+            near_val = neg_near_val
+        return near_val,inv,code
+
+class UseDACCmd(UseCommand):
 
     def __init__(self,chip,tile,slice,value):
         UseCommand.__init__(self,
@@ -432,20 +466,8 @@ class UseDACCmd(UseCommand):
         if not self._loc.index is None:
             self.fail("dac has no index <%d>" % loc.index)
 
-        self._value = value
-        self._inv = False
+        self._value,self._inv,self._code = ConstVal.get_closest(value)
 
-        pos_dist,pos_near_val = util.find_closest(UseDACCmd.POS_BUF, \
-                                          value,util.RoundMode.NEAREST)
-        neg_dist,neg_near_val = util.find_closest(UseDACCmd.NEG_BUF, \
-                                          value,util.RoundMode.NEAREST)
-        self._value = value
-        if pos_dist <= neg_dist:
-            self._inv = False
-            self._code = int(np.where(UseDACCmd.POS_BUF == pos_near_val)[0])
-        else:
-            self._inv = True
-            self._code = int(np.where(UseDACCmd.NEG_BUF == neg_near_val)[0])
 
         print("%f := %s, %s" % (value,self._inv,self._value))
 
@@ -607,17 +629,21 @@ class UseMultCmd(UseCommand):
 
 
     def __init__(self,chip,tile,slice,index,
-                 coeff=0,use_coeff=False,inv=False):
+                 coeff=0,use_coeff=False):
         UseCommand.__init__(self,
                             enums.BlockType.MULT,
                             CircLoc(chip,tile,slice,index))
 
-        if coeff < 0.0 or coeff > 1.0:
-            self.fail("value not in [0,1]: %s" % value)
+        if coeff < -1.0 or coeff > 1.0:
+            self.fail("value not in [-1,1]: %s" % coeff)
 
-        self._coeff = coeff
-        self._inv = inv
         self._use_coeff = use_coeff
+        if use_coeff:
+            self._coeff,self._code = ConstVal.NEG_get_closest(coeff)
+        else:
+            self._code = 0
+            self._coeff = coeff
+
 
     @staticmethod
     def desc():
@@ -630,8 +656,8 @@ class UseMultCmd(UseCommand):
                 'mult':{
                     'loc':self._loc.build_ctype(),
                     'use_coeff':self._use_coeff,
-                    'coeff':float_to_byte(self._coeff),
-                    'inv':self._inv
+                    'coeff':self._code,
+                    'inv':False
                 }
             }
         })
@@ -639,11 +665,11 @@ class UseMultCmd(UseCommand):
 
     @staticmethod
     def parse(args):
-        result1 = parse_pattern_block(args,1,1,
+        result1 = parse_pattern_block(args,0,1,
                                       UseMultCmd.name(),
                                      index=True)
 
-        result2 = parse_pattern_block(args,1,0,
+        result2 = parse_pattern_block(args,0,0,
                                       UseMultCmd.name(),
                                       index=True)
 
@@ -651,13 +677,11 @@ class UseMultCmd(UseCommand):
             return UseMultCmd(result1['chip'],result1['tile'],
                               result1['slice'],result1['index'],
                               use_coeff=True,
-                              coeff=result1['value0'],
-                              inv=result1['sign0'])
+                              coeff=result1['value0'])
         elif not result2 is None:
              return UseMultCmd(result2['chip'],result2['tile'],
                               result2['slice'],result2['index'],
-                              use_coeff=False, coeff=0,
-                              inv=result['sign0'])
+                              use_coeff=False, coeff=0)
 
         else:
             return None
@@ -669,12 +693,10 @@ class UseMultCmd(UseCommand):
     def __repr__(self):
         st = UseCommand.__repr__(self)
         if self._use_coeff:
-            st += " mult gain coeff=%s inv=%s" % (self._coeff,
-                                             self._inv)
+            st += " mult gain coeff=%s [%d]" % (self._coeff,
+                                                       self._code)
         else:
-            assert(coeff is None)
-            st += " mult prod inv=%s" % (self._coeff,
-                                             self._inv)
+            st += " mult prod"
 
         return st
 

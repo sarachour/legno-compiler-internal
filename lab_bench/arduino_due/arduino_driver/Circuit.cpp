@@ -200,14 +200,13 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         break;
 
       case cmd_type_t::USE_MULT:
-        /*
+        // multiplier doesn't actually support inversion
+        // multiplier uses dac from same row.
         multd = cmd.data.mult;
         mult = get_mult(fab,multd.loc);
-        mult->setEnable(true);
-        mult->out0->setInv(multd.inv);
-        mult->setVga(multd.use_coeff); 
         mult->setGainCode(multd.coeff);
-        */
+        mult->setVga(multd.use_coeff); 
+        mult->setEnable(true);
         Serial.println("enabled mult");
         break;
 
@@ -241,11 +240,9 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         break;
 
     case cmd_type_t::DISABLE_MULT:
-        /*
         multd = cmd.data.mult;
         mult = get_mult(fab,multd.loc);
         mult->setEnable(false);
-        */
         Serial.println("disabled mult");
         break;
 

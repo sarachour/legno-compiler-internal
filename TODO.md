@@ -45,3 +45,10 @@
 2. Use oscilloscope to quantify DAC noise
 3. Use DUE ADCs to quantify DUE ADC noise
 
+
+# Hardware Model Errata
+
+ - Cannot use DAC in same slice if mult is in use.
+ - Multiplier does not support signal inversion
+ - Constant value is two sided for DAC and ADC. Flipping DAC flips sign, but doesn't confer any benefits computationally.
+ - 

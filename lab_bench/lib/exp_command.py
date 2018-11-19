@@ -134,6 +134,9 @@ class GetTimeBetweenSamplesCmd(ArduinoCommand):
     def execute(self,state):
         line = ArduinoCommand.execute(self,state)
         print(">> %s" % line)
+        if state.dummy:
+            return;
+
         resp = state.arduino.readline()
         tb_samples = float(resp.strip())
         state.time_between_samples_ms = tb_samples
@@ -175,6 +178,9 @@ class GetNumSamplesCmd(ArduinoCommand):
 
 
     def execute(self,state):
+        if state.dummy:
+            return
+
         line = ArduinoCommand.execute(self,state)
         print(">> %s" % line)
         resp = state.arduino.readline()
@@ -451,6 +457,9 @@ class SetOscVoltageRangeCmd(Command):
              .set_volts_per_division(chan,volts_per_div)
 
     def execute(self,state):
+        if state.dummy:
+            return
+
         self.set_channel(state,state.oscilloscope.analog_channel(0),
                          self._min_voltage,self._max_voltage)
         if self._differential:

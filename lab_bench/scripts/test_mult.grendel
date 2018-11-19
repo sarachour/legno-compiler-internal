@@ -1,0 +1,19 @@
+set_volt_ranges differential 0.0 2.4 0.0 2.4
+# 0.8 times dac value
+set_ref_func -0.2
+set_sim_time 10.0
+get_num_samples
+get_time_between_samples
+use_osc
+compute_offsets
+use_chip
+# weird caveat, if you cannot use a dac on the same slice
+# as the multiplier if the multiplier is using a coefficient.
+use_dac 0 0 1 -0.5
+use_mult 0 0 0 0 0.5
+mkconn dac 0 0 1 mult 0 0 0 0 port 0
+mkconn mult 0 0 0 0 tile 0 0 0 0
+mkconn tile 0 0 0 0 chip_output 0 3 2
+run
+get_osc_values differential data_dac.json
+reset
