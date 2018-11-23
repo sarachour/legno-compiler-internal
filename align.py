@@ -19,12 +19,22 @@ def generate_plots(rootdir,filename):
 
     print("[align signals]")
     dataset.align()
-    dataset.output.trim(1e-4)
-    dataset.reference.trim(1e-4)
-    print("delay: %s" % dataset.phase_delay)
+    print("delay1: %s" % dataset.phase_delay)
+    dataset.align()
+    print("delay2: %s" % dataset.phase_delay)
+    #dataset.output.trim(1e-4)
+    #dataset.reference.trim(1e-4)
     print("[plot aligned signals]")
     dataset.plot('%s/align.png' % outdir)
 
+    print("[compute noise]")
+    noise = dataset.output.difference(dataset.reference)
+    noise.trim(1e-4)
+    print("[plot noise]")
+    noise.plot_series()
+    plt.savefig('%s/noise.png' % outdir)
+    plt.clf()
+    #input("<continue>")
 
     print("[reference fft]")
     sig_f = dataset.reference.fft()
@@ -38,12 +48,6 @@ def generate_plots(rootdir,filename):
     out_f.plot("%s/out_fft" % outdir)
     sig_f.write("%s/both.json" % outdir)
 
-    print("[compute noise]")
-    noise = dataset.output.difference(dataset.reference)
-    print("[plot noise]")
-    plt.clf()
-    noise.plot_series()
-    plt.savefig('%s/noise.png' % outdir)
     print("=== Noise Frequencies ===")
     print("[noise fft]")
     noise_f = noise.fft()
@@ -51,6 +55,7 @@ def generate_plots(rootdir,filename):
     noise_f.plot("%s/noise_fft" % outdir)
     print("[noise fft write]")
     noise_f.write("%s/noise.json" % outdir)
+    return
 
 if len(sys.argv) < 2:
     print("usage: test_analysis <dir>")
