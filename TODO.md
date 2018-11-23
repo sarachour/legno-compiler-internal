@@ -35,15 +35,19 @@
 
 # Chip / Voltage Divider 
 
-1. Improve noise characteristics of voltage divider.
+1. Improve noise characteristics of voltage divider. DONE
 
-2. Derive reference function for voltage divider from schematic description.
+2. Derive reference function for voltage divider from schematic description. DONE
+
+3. Bayesian Inference
 
 # Chip / Constant DAC
 
-1. Flash configurations for reading DAC values.
+1. Flash configurations for reading DAC values. DONE
 2. Use oscilloscope to quantify DAC noise
 3. Use DUE ADCs to quantify DUE ADC noise
+4. Flash configurations for reading multiplier. DONE
+5. Flash 
 
 
 # Hardware Model Errata

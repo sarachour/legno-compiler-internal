@@ -89,6 +89,8 @@ void _update_wave(){
   drive_sda_clock(idx);
   if(idx >= N){
     Timer3.detachInterrupt();
+    analogWrite(DAC0, 0); 
+    analogWrite(DAC1, 0);
   }
   // increment index
 }
@@ -183,6 +185,10 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   Serial.print(N_OSC);
   Serial.print("/");
   Serial.println(N);
+  // clear dacs
+  analogWrite(DAC0, 0); 
+  analogWrite(DAC1, 0); 
+  delay(10);
   // trigger the start of the experiment
   if(expr->use_analog_chip){
     circ::commit_config(fab);
