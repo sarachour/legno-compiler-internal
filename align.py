@@ -2,60 +2,30 @@ import sys
 import lab_bench.analysis.waveform as wf
 import matplotlib.pyplot as plt
 import os
+import shutil
 
 def generate_plots(rootdir,filename):
     basename = filename.split(".json")[0]
 
     outdir = "%s/%s" % (rootdir,basename)
-    if not os.path.exists(outdir):
-        os.makedirs(outdir)
-
-    print("[reading data]")
+    if os.path.exists(outdir):
+        shutil.rmtree(outdir)
+    os.makedirs(outdir)
+    print("-> read waveforms")
     filedir = "%s/%s" % (rootdir,filename)
     dataset = wf.EmpiricalData.read(filedir)
 
-    print("[plot timeseries]")
     dataset.plot('%s/orig.png' % outdir)
 
-    print("[align signals]")
+    print("-> align waveforms")
     dataset.align()
-    print("delay1: %s" % dataset.phase_delay)
-    dataset.align()
-    print("delay2: %s" % dataset.phase_delay)
-    #dataset.output.trim(1e-4)
-    #dataset.reference.trim(1e-4)
-    print("[plot aligned signals]")
+    delay,score = dataset.align()
     dataset.plot('%s/align.png' % outdir)
 
-    print("[compute noise]")
-    noise = dataset.output.difference(dataset.reference)
-    noise.trim(1e-4)
-    print("[plot noise]")
-    noise.plot_series()
-    plt.savefig('%s/noise.png' % outdir)
-    plt.clf()
-    #input("<continue>")
-
-    print("[reference fft]")
-    sig_f = dataset.reference.fft()
-    print("[plotting]")
-    sig_f.plot("%s/ref_fft" % outdir)
-    sig_f.write("%s/signal.json" % outdir)
-
-    print("[output fft]")
-    out_f = dataset.output.fft()
-    print("[plotting]")
-    out_f.plot("%s/out_fft" % outdir)
-    sig_f.write("%s/both.json" % outdir)
-
-    print("=== Noise Frequencies ===")
-    print("[noise fft]")
-    noise_f = noise.fft()
-    print("[noise fft plot]")
-    noise_f.plot("%s/noise_fft" % outdir)
-    print("[noise fft write]")
-    noise_f.write("%s/noise.json" % outdir)
-    return
+    fds = wf.FreqDataset.from_aligned_time_dataset(-delay,score,dataset)
+    fds.write("%s/freqdp.json" % outdir)
+    #dataset.output.trim(1e-4)
+    #dataset.reference.trim(1e-4)
 
 if len(sys.argv) < 2:
     print("usage: test_analysis <dir>")
@@ -64,6 +34,7 @@ if len(sys.argv) < 2:
 path = sys.argv[1]
 for path, subdirs, files in os.walk(path):
     for filename in files:
-        if filename.endswith(".json") == True and "data" in filename:
-            print("==== %s/%s ====" % (path,filename))
+        if filename.endswith(".json") == True \
+           and "data" in filename:
+            print("-> %s/%s" % (path,filename))
             generate_plots(path,filename)

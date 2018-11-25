@@ -15,16 +15,68 @@ class FrequencyData:
         assert(len(freqs) == len(phasors))
         self._freqs = freqs
         self._phasors = phasors
-        selector = [np.absolute(x) > cutoff for x in phasors]
+        # real function, so symmetric about frequency
+        selector = [np.absolute(x) > cutoff and f >= 0 \
+                    for f,x in zip(freqs,phasors)]
         self._freqs = list(itertools.compress(freqs, selector))
         self._phasors = list(itertools.compress(phasors,selector))
 
-    def write(self,filename):
-        data = {'freqs':list(self._freqs),
+
+    @property
+    def fmax(self):
+        return max(self._freqs)
+
+    @property
+    def fmin(self):
+        return max(self._freqs)
+
+    def phasors(self):
+        for freq,ph in zip(self._freqs,self._phasors):
+            yield freq,ph.real,ph.imag
+
+    @staticmethod
+    def from_json(data):
+        freqs = data['freqs']
+        phasors = list(map(lambda d: complex(d[0],d[1]),zip(data['ampl'],data['phase'])))
+        return FrequencyData(freqs,phasors)
+
+    def between(self,fmin,fmax):
+        selector = [x >= fmin and x <= fmax \
+                    for x in self._freqs]
+        freqs = list(itertools.compress(self._freqs,selector))
+        phasors = list(itertools.compress(self._phasors,selector))
+        return freqs,phasors
+
+    def average(self,fmin,fmax):
+        freqs,phasors = self.between(fmin,fmax)
+        if len(freqs) == 0:
+            return 0,0
+
+        ampl = sum(map(lambda phasor: phasor.real,phasors))/len(freqs)
+        phase = sum(map(lambda phasor: phasor.imag,phasors))/len(freqs)
+        return ampl,phase
+
+
+    def bounds(self,fmin,fmax):
+        freqs,phasors = self.between(fmin,fmax)
+        if len(freqs) == 0:
+            return (0,0),(0,0)
+
+        ampls = list(map(lambda phasor: phasor.real,phasors))
+        phases = list(map(lambda phasor: phasor.imag,phasors))
+        ampl_b = min(ampls),max(ampls)
+        phase_b = min(phases),max(phases)
+        return ampl_b,phase_b
+
+
+    def to_json(self):
+        return {'freqs':list(self._freqs),
                 'ampl':list(np.real(self._phasors)),
                 'phase':list(np.imag(self._phasors))}
+
+    def write(self,filename):
         with open(filename,'w') as fh:
-            fh.write(json.dumps(data))
+            fh.write(json.dumps(self.to_json()))
 
     def plot(self,basename):
         def stem_plot(filename,axname,x,y,do_log=False):
@@ -43,6 +95,95 @@ class FrequencyData:
                   self._freqs,np.imag(self._phasors))
 
         plt.clf()
+
+class FreqDataset:
+    def __init__(self,delay,confidence):
+        self._delay = delay
+        self._confidence = confidence
+        self.inputs = {}
+        self.output = None
+        self.noise = None
+
+
+
+    def fmax(self):
+        fmax= None
+        for datum in [self.output,self.noise]\
+            +list(self.inputs.values()):
+            if fmax is None:
+                fmax = datum.fmax
+            fmax = max(fmax,self.output.fmax)
+
+        return fmax
+
+
+
+    def fmin(self):
+        fmin = None
+        for datum in [self.output,self.noise]\
+            +list(self.inputs.values()):
+            if fmin is None:
+                fmin = datum.fmin
+            fmin = min(fmin,self.output.fmin)
+
+        return fmin
+
+    @property
+    def confidence(self):
+        return self._confidence
+
+    @property
+    def delay(self):
+        return self._delay
+
+    @staticmethod
+    def from_aligned_time_dataset(delay,confidence,dataset,trim=1e-4):
+        print("delay:%s, confidence:%s" % (delay,confidence))
+        ds = FreqDataset(delay,confidence)
+        ds.noise = dataset.output\
+                          .difference(dataset.reference)\
+                          .trim(trim).fft()
+        ds.output = dataset.reference.trim(trim).fft()
+        for index,inp in dataset.inputs.items():
+            inp_fft = inp.trim(trim).fft()
+            ds.inputs[index] = inp_fft
+
+        return ds
+
+    @staticmethod
+    def from_json(data):
+        ds = FreqDataset(float(data['align']['delay']), \
+                         float(data['align']['confidence'])
+        )
+        ds.output = FrequencyData.from_json(data['output'])
+        ds.noise = FrequencyData.from_json(data['noise'])
+        for index,inp in data['inputs'].items():
+            ds.inputs[int(index)] = FrequencyData.from_json(data['inputs'][index])
+
+        return ds
+
+    def read(filename):
+        with open(filename,'r') as fh:
+            return FreqDataset.from_json(json.loads(fh.read()))
+
+
+    def to_json(self):
+        inputs = dict(map(lambda args : (args[0],args[1].to_json()),
+                          self.inputs.items()))
+        return {
+            'output': self.output.to_json(),
+            'noise': self.noise.to_json(),
+            'inputs': inputs,
+            'align': {
+                'delay': self._delay,
+                'confidence':self._confidence
+            }
+        }
+
+    def write(self,filename):
+        with open(filename,'w') as fh:
+            data = self.to_json()
+            fh.write(json.dumps(data))
 
 class TimeSeries:
         def __init__(self,time,value):
@@ -99,7 +240,6 @@ class TimeSeries:
                 self._copy_on_write()
                 delta = self.time_delta()
                 pad_time = max_time-self.max_time()
-                print("pad: %s" % pad_time)
                 npts = int(np.round(pad_time/delta))
                 self.pad_samples(npts,value=value)
 
@@ -151,6 +291,7 @@ class TimeSeries:
             self.truncate_after(max_time)
             self.shift(-min_time)
             assert(len(self.values) == len(self.times))
+            return self
 
         def resample(self,npts):
             n = len(self.times)
@@ -193,12 +334,6 @@ class TimeSeries:
                             zip(my_ts.values,other_ts.values)))
 
             result = TimeSeries(my_ts.times,vsub)
-            result.plot_series("a-b")
-            my_ts.plot_series("a")
-            other_ts.plot_series("b")
-            plt.legend()
-            plt.savefig("testdiff.png")
-            plt.clf()
             return result
 
         def plot_series(self,label="series"):
@@ -209,8 +344,8 @@ class TimeSeries:
             timestep = ts.time_delta()
             vf = 2.0/ts.n()*scipy.fftpack.fft(ts.values)
             tf = np.fft.fftfreq(ts.n(), d=timestep)
-            print("#phasors: %d" % len(vf))
-            print("#freqs: %d" % len(tf))
+            #print("#phasors: %d" % len(vf))
+            #print("#freqs: %d" % len(tf))
             return FrequencyData(tf,vf)
 
 class EmpiricalData:
@@ -224,6 +359,11 @@ class EmpiricalData:
     @property
     def output(self):
         return self._output
+
+    @property
+    def inputs(self):
+        return self._inputs
+
 
     @property
     def reference(self):
@@ -244,8 +384,12 @@ class EmpiricalData:
 
 
     def plot(self,figname):
-        self._output.plot_series()
-        self._reference.plot_series()
+        plt.clf()
+        for lb,inp in self._inputs.items():
+            inp.plot_series("inp[%s]" % lb)
+        self._output.plot_series("out")
+        self._reference.plot_series("ref")
+        plt.legend()
         plt.savefig(figname)
         plt.clf()
 
@@ -273,12 +417,6 @@ class EmpiricalData:
         return EmpiricalData.from_json(data)
 
     def align(self,n=1000):
-        def plot_series(filename,out_ts,ref_ts):
-            out_ts.plot_series()
-            ref_ts.plot_series()
-            plt.savefig(filename)
-            plt.clf()
-
         def do_align(npts,trim=0):
             max_time = max(self._output.max_time(),
                            self._reference.max_time())
@@ -294,25 +432,29 @@ class EmpiricalData:
 
             dx_out= out_ts.time_delta()
             dx_ref= ref_ts.time_delta()
-            plot_series("test.png",out_ts,ref_ts)
             correlations= scipy.signal.correlate(ref_ts.values,
                                                  out_ts.values,'full')
             index = np.argmax(correlations)
             shift = (dx_out*(index-npts))
-            print("shift: %s" % shift)
             out_ts.shift(shift)
-            plot_series("test2.png",out_ts,ref_ts)
-            return dx_out,shift
+            return dx_out,shift,correlations[index]
 
-        delta_x,shift = do_align(n)
+        delta_x,shift,best_corr = do_align(n)
         self.phase_delay += shift
-        self.output.shift(shift)
-        self.output.truncate_before(0)
-        self.output.truncate_after(self.reference.max_time())
+        max_time = self.reference.max_time()
+        for sig in list(self.inputs.values()) + [self.output]:
+            sig.shift(shift)
+            sig.truncate_before(0)
+            sig.truncate_after(max_time)
+        return self.phase_delay,best_corr
 
     def trim(self,amt):
         self.output.trim(amt)
         self.reference.trim(amt)
+        for sig in self.inputs.values():
+            sig.trim(amt)
+
+        return self
 
 class EmpiricalDatumType(Enum):
     INPUT = "input"
