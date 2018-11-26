@@ -5,7 +5,12 @@ import numpy as np
 import math
 import pymc3 as pm
 import sklearn.cluster as skclust
+import matplotlib.pyplot as plt
+from theano.printing import pydotprint
+from moira.db import ExperimentDB
+
 print('Running on PyMC3 v{}'.format(pm.__version__))
+
 
 class FeatureVectorSet:
 
@@ -24,12 +29,17 @@ class FeatureVectorSet:
 
     @staticmethod
     def cluster(data,n):
+        def angle(u,v):
+            c = np.dot(u,v)/(np.linalg.norm(u)*np.linalg.norm(v))
+            angle = np.arccos(np.clip(c, -1, 1))
+            return angle
+
         fmax = max(map(lambda datum: datum.fmax(),data))
         fmin = min(map(lambda datum: datum.fmin(),data))
 
         points = []
         for datum in data:
-            for freq in [datum.noise,datum.output]:
+            for freq in [datum.output]:
                 for f,a,p in freq.phasors():
                     points.append([f,a,p])
 
@@ -40,18 +50,40 @@ class FeatureVectorSet:
         freqs = []
         last_freq = fmin
         for index in range(1,n):
-            mid_freq = (centers[index-1][0]+centers[index][0])/2
+            midpoint = (centers[index-1] + centers[index])/2.0
+            slope = (centers[index] - centers[index-1])
+            mid_corner = [midpoint[0],0,0]
+            # side
+            x = np.linalg.norm(midpoint-mid_corner)
+            # angle
+            a = angle(slope,[1,0,0])
+            y = x*np.tan(a)
+            print("point1: %s" % centers[index-1])
+            print("point2: %s" % centers[index])
+            print("midpoint: %s" % midpoint)
+            print("x=%s, y=%s, a=%s" % (x,y,a))
+            vect = [midpoint[0]-y,0,0]
+            dist1 = (np.linalg.norm(vect-centers[index-1]))
+            dist2 = (np.linalg.norm(vect-centers[index]))
+            print("dist1: %s" % dist1)
+            print("dist2: %s" % dist2)
+            assert(abs(dist1-dist2) <= 1e-5)
+            mid_freq = vect[0]
             freqs.append((last_freq,mid_freq))
             last_freq = mid_freq
 
         freqs.append((last_freq,fmax))
-        print(freqs)
         return freqs
 
     def __init__(self,data,n=30):
         self._freqs = FeatureVectorSet.cluster(data,n)
         self._data = data
         self._n = n
+
+    @property
+    def freqs(self):
+        for fmin,fmax in self._freqs:
+            yield fmin,fmax
 
     def shape(self):
         return (len(self._data),self._n)
@@ -110,45 +142,90 @@ def infer_phase_delay_model(data):
     print("phase: N(%s,%s)" % (mean,std))
 
 def infer_noise_model(data):
-    def linear_model(dim,state,obs):
+    NITERS = 100000
+    def report_loss(loss,filename):
+        plt.clf()
+        plt.plot(loss.hist)
+        plt.savefig(filename)
+        plt.clf()
+
+    def compute_error(values):
+        mean = np.mean(values,axis=0)
+        std = np.std(values,axis=0)
+        error = list(map(lambda args: args[1]/abs(args[0]), \
+                         zip(mean,std)))
+        return error
+
+    def report_model(fv,model):
+        print("==== MODEL =====")
+        trace = model.sample(10000)
+        data = None
+        for datum in trace:
+            if data is None:
+                data = dict(map(lambda k: (k,[]), datum.keys()))
+            for key,value in datum.items():
+                data[key].append(value)
+
+        print("=== Alpha ===")
+        alpha_err = compute_error(data['alpha'])
+        print("=== Beta ===")
+        beta_err = compute_error(data['beta'])
+        print("=== Sigma ===")
+        sigma_err = compute_error(data['sigma'])
+
+        for (fmin,fmax),alpha,beta,sigma in \
+            zip(fv.freqs,alpha_err,beta_err,sigma_err):
+            print("[%s,%s]\t| %s |\t %s + %s*freq + %s*" % \
+                  (fmin,fmax,alpha+beta+sigma,alpha,beta,sigma))
+
+
+    def linear_model(state,obs):
+        n,dim = fv.shape()
         model = pm.Model()
         with model:
             alpha = pm.Normal('alpha', mu=0, sd=10, shape=(dim))
             beta = pm.Normal('beta', mu=0, sd=10, shape=(dim))
             mu = beta*state + alpha
             sigma = pm.HalfNormal('sigma', sd=1, shape=(dim))
-            Y_obs = pm.Normal('Y_obs', mu=mu, sd=sigma, observed=obs)
-            loss = pm.fit()
+            Y_obs = pm.Normal('Y_obs', mu=mu, sd=sigma, observed=obs, \
+                              total_size=(n,dim))
+            # write model
+            pydotprint(model.logpt)
+            loss = pm.fit(n=NITERS)
             return model,loss
 
     print("-> creating feature vector information")
     fv = FeatureVectorSet(data,n=100)
     print("-> creating model")
-    n,dim = fv.shape()
     state_ampl_mat,state_phase_mat = fv.matrix(lambda d: [d.output])
     obs_ampl_mat,obs_phase_mat = fv.matrix(lambda d: [d.noise])
     print("=== Ampl ===")
-    ampl_model,ampl_loss = linear_model(dim,state_ampl_mat,obs_ampl_mat)
-    print(ampl_loss)
+    ampl_model,ampl_loss = linear_model(state_ampl_mat,obs_ampl_mat)
+    print("loss: %s" % ampl_loss)
+    print("model: %s" % ampl_model)
+    report_loss(ampl_loss,'ampl_loss.png')
+    report_model(fv,ampl_loss)
     print("=== Phase ===")
-    phase_model,phase_loss = linear_model(dim,state_phase_mat,obs_phase_mat)
-    print(phase_loss)
+    phase_model,phase_loss = linear_model(state_phase_mat,obs_phase_mat)
+    print("loss: %s" % phase_loss)
+    print("model: %s" % phase_model)
+    report_loss(phase_loss,'phase_loss.png')
+    report_model(fv,phase_loss)
 
-def main():
-    data = []
-    path = sys.argv[1]
-    for path, subdirs, files in os.walk(path):
-        for filename in files:
-            if filename.endswith(".json") == True and "freqdp" in filename:
-                print("-> %s/%s" % (path,filename))
-                filepath = "%s/%s" % (path,filename)
-                fds = wf.FreqDataset.read(filepath)
-                print(fds.delay)
-                data.append(fds)
+def execute(model):
+    data = {}
+    for ident,trials,inputs,output in \
+        model.db.get_by_status(ExperimentDB.Status.ALIGNED):
+        for trial in trials:
+            filepath = model.db.freq_file(ident,trial)
+            fds = wf.FreqDataset.read(filepath)
+            data[ident,trial] = fds
+
+    if len(data.keys()) == 0:
+        return
 
     good_data = reject_outliers(data,2)
     print("%d -> %d" % (len(data),len(good_data)))
     infer_phase_delay_model(good_data)
     infer_noise_model(good_data)
-
-main()
+    # should save to model file.
