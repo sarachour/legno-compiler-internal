@@ -90,9 +90,9 @@ class ExperimentDB:
         for ident,(inputs,outputs) in args.items():
             yield ident,trials[ident],inputs,outputs
 
-    def update_status(self,ident,trial,status):
+    def set_status(self,ident,trial,status):
         q = tdb.Query()
-        db.update({'status':status},
+        self._db.update({'status':status.name},
                   q.ident == ident and q.trial == trial)
 
     def script_file(self,ident):
@@ -107,7 +107,7 @@ class ExperimentDB:
         return ExperimentDB.FREQ_DIR+ "/%s_%s.json" % (ident,trial)
 
     def plot_file(self,ident,trial,tag):
-        return ExperimentDB.FREQ_DIR+ "/%s_%s_%s.png" % (ident,trial,tag)
+        return ExperimentDB.PLOT_DIR+ "/%s_%s_%s.png" % (ident,trial,tag)
 
     def model_file(self,round_no):
         return ExperimentDB.MODEL_DIR+ "/model_%s.json" % (round_no)

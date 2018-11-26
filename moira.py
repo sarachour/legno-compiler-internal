@@ -59,34 +59,13 @@ def main():
     state = lab_state.State(args.ip,args.port,
                   ard_native=args.native)
 
-    state.initialize()
-
-    dac_setup_message = """
-    DAC Experiment Setup Instructions:
-    1. Make sure you set voltage threshhold for the clock to 100mV
-    2. Clip the EXT signal probe to the SDA port and the ground probe to Arduino GND
-    3. Clip the CH1 signal probe to DAC0/1 and the ground probe to Arduino ground
-    """
-
-    vdiv_setup_message = """
-    VDiv circuit Setup Instructions:
-    0. When the chip is off, connect breadboard voltage to 3.3V voltage source from Arduino Due, and the ground lead to the GND pin in the Arduino Due.
-    1. Make sure you set voltage threshhold for the clock to 100mV
-    2. Clip the EXT signal probe to the SDA port and the ground probe to Arduino GND
-    3. Clip the CH1 signal probe to the purple wire on the breadboard and the ground probe to breadboard  GND. (left pair for VDIV0, right pair for VDIV1)
-    4. Clip the CH2 signal probe to the gray wire on the breadboard and the ground probe to breadboard  GND.
-    """
 
     mgr = modellib.build_manager()
     if args.subparser_name == "due_dac":
-        print(dac_setup_message)
-        input("<i'm ready!>")
-        model = mgr.get('dac%d' % args.dac_id)
+        model = mgr.get('due_dac%d' % args.dac_id)
         loop(state,model,args.sim_time)
 
     elif args.subparser_name == "vdiv":
-        print(vdiv_setup_message)
-        input("<i'm ready!>")
         model = mgr.get('vdiv%d' % args.dac_id)
         loop(state,model,args.sim_time)
 

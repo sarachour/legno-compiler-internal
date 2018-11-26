@@ -11,16 +11,18 @@ from scipy.ndimage.filters import gaussian_filter
 
 class FrequencyData:
 
-    def __init__(self,freqs,phasors,cutoff=1e-8):
+    def __init__(self,freqs,phasors,cutoff=1e-8,power=False):
         assert(len(freqs) == len(phasors))
-        self._freqs = freqs
-        self._phasors = phasors
         # real function, so symmetric about frequency
         selector = [np.absolute(x) > cutoff and f >= 0 \
                     for f,x in zip(freqs,phasors)]
         self._freqs = list(itertools.compress(freqs, selector))
-        self._phasors = list(itertools.compress(phasors,selector))
-
+        if power:
+            self._phasors = list(itertools.compress(
+                map(lambda num: complex(abs(num.real),num.imag),phasors)
+                    ,selector))
+        else:
+            self._phasors = list(itertools.compress(phasors,selector))
 
     @property
     def fmax(self):
@@ -28,7 +30,16 @@ class FrequencyData:
 
     @property
     def fmin(self):
-        return max(self._freqs)
+        return min(self._freqs)
+
+    def freqs(self):
+        return self._freqs
+
+    def amplitudes(self):
+        return map(lambda x: x.real, self._phasors)
+
+    def phases(self):
+        return map(lambda x: x.imag, self._phasors)
 
     def phasors(self):
         for freq,ph in zip(self._freqs,self._phasors):
@@ -78,7 +89,7 @@ class FrequencyData:
         with open(filename,'w') as fh:
             fh.write(json.dumps(self.to_json()))
 
-    def plot(self,basename):
+    def plot(self,amplfile,phasefile):
         def stem_plot(filename,axname,x,y,do_log=False):
             fig, ax = plt.subplots()
             if len(x) > 0:
@@ -89,9 +100,9 @@ class FrequencyData:
             ax.set_ylabel('%s (log(dB))' % axname)
             fig.savefig(filename)
 
-        stem_plot("%s_ampl.png" % basename,"Amplitude",
+        stem_plot(amplfile,"Amplitude",
                   self._freqs,np.real(self._phasors))
-        stem_plot("%s_phase.png" % basename,"Phase",
+        stem_plot(phasefile,"Phase",
                   self._freqs,np.imag(self._phasors))
 
         plt.clf()
@@ -383,10 +394,11 @@ class EmpiricalData:
         self._inputs[index] = TimeSeries(time,value)
 
 
-    def plot(self,figname):
+    def plot(self,figname,show_input=False):
         plt.clf()
-        for lb,inp in self._inputs.items():
-            inp.plot_series("inp[%s]" % lb)
+        if show_input:
+            for lb,inp in self._inputs.items():
+                inp.plot_series("inp[%s]" % lb)
         self._output.plot_series("out")
         self._reference.plot_series("ref")
         plt.legend()
@@ -442,7 +454,7 @@ class EmpiricalData:
         delta_x,shift,best_corr = do_align(n)
         self.phase_delay += shift
         max_time = self.reference.max_time()
-        for sig in list(self.inputs.values()) + [self.output]:
+        for sig in [self.output]:
             sig.shift(shift)
             sig.truncate_before(0)
             sig.truncate_after(max_time)

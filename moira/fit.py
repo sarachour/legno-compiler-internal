@@ -5,9 +5,12 @@ import numpy as np
 import math
 import pymc3 as pm
 import sklearn.cluster as skclust
+import scipy
 import matplotlib.pyplot as plt
 from theano.printing import pydotprint
 from moira.db import ExperimentDB
+import itertools
+from rdp import rdp
 
 print('Running on PyMC3 v{}'.format(pm.__version__))
 
@@ -15,11 +18,46 @@ print('Running on PyMC3 v{}'.format(pm.__version__))
 class FeatureVectorSet:
 
     @staticmethod
+    def hilbert(data,n):
+        def min_pts(freqs,vals):
+            fn = np.imag(scipy.signal.hilbert(vals))
+            fn_min = rdp(list(zip(freqs,fn)),epsilon=0.002)
+            return list(map(lambda x: x[0], fn_min))
+
+        fmax = max(map(lambda datum: datum.fmax(),data))
+        fmin = min(map(lambda datum: datum.fmin(),data))
+
+        print("-> minifying point envelope")
+        pts = []
+        for datum in data:
+            for freq in [datum.output,datum.noise]:
+                pts += min_pts(freq.freqs(),list(freq.amplitudes()))
+                pts += min_pts(freq.freqs(),list(freq.phases()))
+                # transformed signal is imaginary
+
+        print("-> finding minimal bins")
+        np_pts = np.array(pts).reshape(-1,1)
+        kmeans = skclust.KMeans(n_clusters=n)
+        kmeans.fit(np_pts)
+        centers = list(set(map(lambda c: c[0],kmeans.cluster_centers_)))
+        centers.sort()
+
+        freqs = []
+        last_freq = fmin
+        for index in range(1,len(centers)):
+            midpt = (centers[index-1]+centers[index])/2
+            freqs.append((last_freq,midpt))
+            last_freq = midpt
+
+        print(freqs)
+        return freqs
+
+    @staticmethod
     def uniform(data,n):
         fmax = max(map(lambda datum: datum.fmax(),data))
         fmin = min(map(lambda datum: datum.fmin(),data))
         fs = np.arange(fmin,fmax, \
-                       (fmax-fmin)/self._n)
+                       (fmax-fmin)/n)
         # frequency bin
         freqs = []
         for idx in range(1,n):
@@ -39,7 +77,7 @@ class FeatureVectorSet:
 
         points = []
         for datum in data:
-            for freq in [datum.output]:
+            for freq in [datum.output,datum.noise]:
                 for f,a,p in freq.phasors():
                     points.append([f,a,p])
 
@@ -53,20 +91,18 @@ class FeatureVectorSet:
             midpoint = (centers[index-1] + centers[index])/2.0
             slope = (centers[index] - centers[index-1])
             mid_corner = [midpoint[0],0,0]
+            # see phone for geometry of determining where to
+            # put the cutoff for the bin border between two centroids.
             # side
             x = np.linalg.norm(midpoint-mid_corner)
             # angle
             a = angle(slope,[1,0,0])
             y = x*np.tan(a)
-            print("point1: %s" % centers[index-1])
-            print("point2: %s" % centers[index])
-            print("midpoint: %s" % midpoint)
-            print("x=%s, y=%s, a=%s" % (x,y,a))
+            if y > 0:
+                print("[%s,%s] correction=%s" % (centers[index-1],centers[index],y))
             vect = [midpoint[0]-y,0,0]
             dist1 = (np.linalg.norm(vect-centers[index-1]))
             dist2 = (np.linalg.norm(vect-centers[index]))
-            print("dist1: %s" % dist1)
-            print("dist2: %s" % dist2)
             assert(abs(dist1-dist2) <= 1e-5)
             mid_freq = vect[0]
             freqs.append((last_freq,mid_freq))
@@ -75,8 +111,8 @@ class FeatureVectorSet:
         freqs.append((last_freq,fmax))
         return freqs
 
-    def __init__(self,data,n=30):
-        self._freqs = FeatureVectorSet.cluster(data,n)
+    def __init__(self,data,n=100):
+        self._freqs = FeatureVectorSet.hilbert(data,n)
         self._data = data
         self._n = n
 
@@ -121,14 +157,15 @@ class FeatureVectorSet:
 
         return np.array(ampl_mat),np.array(phase_mat)
 
-def reject_outliers(data,stdevs=2):
+def reject_outliers(dataset,stdevs=2):
+    data = list(dataset.values())
     delays = list(map(lambda ds: ds.delay,data))
     median = np.median(delays)
     deviation = list(map(lambda delay: abs(delay - median), delays))
-    median_deviation = np.median(deviation)
+    median_deviation = np.mean(deviation)
     thresh = deviation/median_deviation if median_deviation else 0
-    return list(filter(lambda ds: abs(ds.delay-median)/median_deviation<stdevs,
-                       data))
+    return list(filter(lambda ds: abs(ds[1].delay-median)/median_deviation<stdevs,
+                       dataset.items()))
 
 # for vdiv: 0 and 3 are issues
 # observation: low frequency signals are easy to align. maybe start with that
@@ -215,7 +252,9 @@ def infer_noise_model(data):
 def execute(model):
     data = {}
     for ident,trials,inputs,output in \
-        model.db.get_by_status(ExperimentDB.Status.ALIGNED):
+        itertools.chain(\
+                        model.db.get_by_status(ExperimentDB.Status.ALIGNED),
+                        model.db.get_by_status(ExperimentDB.Status.USED)):
         for trial in trials:
             filepath = model.db.freq_file(ident,trial)
             fds = wf.FreqDataset.read(filepath)
@@ -224,7 +263,11 @@ def execute(model):
     if len(data.keys()) == 0:
         return
 
-    good_data = reject_outliers(data,2)
+    good_data = []
+    for (ident,trial),datum in reject_outliers(data,2):
+        model.db.set_status(ident,trial,ExperimentDB.Status.USED)
+        good_data.append(datum)
+
     print("%d -> %d" % (len(data),len(good_data)))
     infer_phase_delay_model(good_data)
     infer_noise_model(good_data)

@@ -77,7 +77,7 @@ def build_manager():
                        lambda name: 'get_osc_values differential %s' % name)
     mgr.register(am)
 
-    am = AnalyticalModel('dac0',1,1)
+    am = AnalyticalModel('due_dac0',1,1)
     am.scriptgen.bind_expr(0,'inp0*1.1 + 1.65')
     am.scriptgen.bind_iface(0,lambda f: "set_due_dac_values 0 %s" % f)
     am.scriptgen.set_prog(0,
