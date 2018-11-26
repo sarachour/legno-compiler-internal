@@ -89,22 +89,36 @@ class FrequencyData:
         with open(filename,'w') as fh:
             fh.write(json.dumps(self.to_json()))
 
-    def plot(self,amplfile,phasefile):
-        def stem_plot(filename,axname,x,y,do_log=False):
+    def plot_figure(self,do_log_x=False,do_log_y=False):
+        def stem_plot(axname,x,y,do_log_x=False,do_log_y=False):
             fig, ax = plt.subplots()
             if len(x) > 0:
                 ax.stem(x,y,markerfmt=' ')
-                if do_log:
+                if do_log_y:
                     ax.set_yscale('log')
-            ax.set_xlabel('Frequency (Hz)')
-            ax.set_ylabel('%s (log(dB))' % axname)
-            fig.savefig(filename)
+                    ax.set_ylabel('%s (log(dB))' % axname)
+                else:
+                    ax.set_ylabel('%s (dB)' % axname)
 
-        stem_plot(amplfile,"Amplitude",
-                  self._freqs,np.real(self._phasors))
-        stem_plot(phasefile,"Phase",
-                  self._freqs,np.imag(self._phasors))
+                if do_log_x:
+                    ax.set_xscale('log')
+                    ax.set_xlabel('Frequency (log(Hz))')
+                else:
+                    ax.set_xlabel('Frequency (Hz)')
+            return fig,ax
 
+
+        aplt = stem_plot("Amplitude",
+                         self._freqs,np.real(self._phasors),do_log_x,do_log_y)
+        pplt = stem_plot("Phase",
+                         self._freqs,np.imag(self._phasors),do_log_x,do_log_y)
+
+        return aplt,pplt
+
+    def plot(self,amplfile,phasefile):
+        (afig,aax),(pfig,pax) = self.plot_figure()
+        afig.savefig(amplfile)
+        pfig.savefig(phasefile)
         plt.clf()
 
 class FreqDataset:

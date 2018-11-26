@@ -6,6 +6,7 @@ import moira.model as modellib
 import moira.drive as driver
 import moira.align as align
 import moira.fit as modelfit
+import moira.inpgen as inpgen
 
 sys.path.insert(0,os.path.abspath("lab_bench"))
 
@@ -28,7 +29,7 @@ def loop(state,model,sim_time):
     driver.execute(state,model,sim_time)
     align.execute(model)
     modelfit.execute(model)
-
+    inpgen.execute(model)
 
 def main():
     parser = argparse.ArgumentParser()

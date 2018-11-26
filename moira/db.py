@@ -33,8 +33,8 @@ class ExperimentDB:
         if not os.path.exists(ExperimentDB.PLOT_DIR):
             os.makedirs(ExperimentDB.PLOT_DIR)
 
-        if not os.path.exists(ExperimentDB.PLOT_DIR):
-            os.makedirs(ExperimentDB.PLOT_DIR)
+        if not os.path.exists(ExperimentDB.MODEL_DIR):
+            os.makedirs(ExperimentDB.MODEL_DIR)
 
         path = ExperimentDB.ROOT_DIR+"/%s.json" % name
         self._db = tdb.TinyDB(path)
@@ -109,8 +109,16 @@ class ExperimentDB:
     def plot_file(self,ident,trial,tag):
         return ExperimentDB.PLOT_DIR+ "/%s_%s_%s.png" % (ident,trial,tag)
 
+    def model_graph(self,round_no,tag):
+        return ExperimentDB.MODEL_DIR+ "/%s_model_%s_%s.png" % (self._name,round_no,tag)
+
+
     def model_file(self,round_no):
-        return ExperimentDB.MODEL_DIR+ "/model_%s.json" % (round_no)
+        return ExperimentDB.MODEL_DIR+ "/%s_model_%s.json" % (self._name,round_no)
+
+    def has_file(self,filepath):
+        return os.path.exists(filepath)
+
 
 
 
