@@ -7,6 +7,57 @@ import json
 import itertools
 import pickle
 
+# No frequency Scaling
+#Af_0_mu 0.00602086901757
+#Gv_0_mu -0.00484821499378
+#Gv_0_sig 0.0966582304726
+#Bv_0_mu -9.80952957186e-06
+#Bv_0_sig 0.000229343134554
+
+class NoiseStump:
+
+    def __init__(self,
+                 fmin, \
+                 fmax, \
+                 freq_scale, \
+                 uncorr_bias, \
+                 uncorr_noise, \
+                 sig_corr_bias=0, \
+                 sig_corr_noise=0, \
+                 freq_corr_bias=0,
+                 freq_corr_noise=0):
+        self._freq_low = fmin
+        self._freq_high = fmax
+        self._freq_scale = freq_scale
+        self._epsilon = 1.0
+        self._signal_corr = (sig_corr_bias,sig_corr_noise)
+        #self._freq_corr = (freq_corr_bias,freq_corr_noise)
+        self._freq_corr = (freq_corr_bias,freq_corr_noise)
+        self._uncorr = (uncorr_bias,uncorr_noise)
+
+    def dist(self,sig_freqs,sig_vals,noise_freq):
+        selector = [abs(self._freq_scale*freq - noise_freq) < self._epsilon \
+                    for freq in sig_freqs]
+        sig = sum(itertools.compress(sig_vals,selector))
+        mu1,var1 = self._signal_corr
+        mu2,var2 = self._freq_corr
+        mu3,var3 = self._uncorr
+        flow,fhigh = self._freq_low,self._freq_high
+        mu = mu1*sig + mu2*(noise_freq-flow)/(fhigh-flow) + mu3
+        var = var1*sig + var2*noise_freq + var3
+        return scipy.stats.norm(mu,var)
+
+    def generate(self,sig_freqs,sig_vals,noise_freq):
+        dist = self.dist(sig_freqs,sig_vals,noise_freq)
+        return dist.sample()
+
+    def likelihood(self,sig_freqs,sig_vals,noise_freq,noise_ampl):
+        dist = self.dist(sig_freqs,sig_vals,noise_freq)
+        return dist.pdf(noise_ampl)
+
+
+
+
 def to_narray(header,data,nsamples_sig=1000,nsamples_noise=1000):
     def closest_index(freqs,freq):
         for idx,cfreq in enumerate(freqs):
@@ -69,18 +120,23 @@ def read_data(filename):
     return header,data
 
 def freq_slice(header,data,fmin,fmax):
+    new_data = []
     for datum in data:
         fn_i= header.index('Fn')
         vn_i= header.index('Vn')
+        fs_i= header.index('Fs')
+        vs_i= header.index('Vs')
+
         selector = [freq <= fmax and freq >= fmin \
                     for freq in datum[fn_i]]
-        f = list(itertools.compress(datum[fn_i], selector))
-        v = list(itertools.compress(datum[vn_i], selector))
-        datum[fn_i] = f
-        datum[vn_i] = v
+        new_datum = [None]*4
+        new_datum[fn_i] = list(itertools.compress(datum[fn_i], selector))
+        new_datum[vn_i] = list(itertools.compress(datum[vn_i], selector))
+        new_datum[fs_i] = datum[fs_i]
+        new_datum[vs_i] = datum[vs_i]
+        new_data.append(new_datum)
 
-
-    return header,data
+    return new_data
 
 def gen_pfun_params(idx,pref,positive=False,freq_shift=None):
         params = {}
@@ -90,13 +146,13 @@ def gen_pfun_params(idx,pref,positive=False,freq_shift=None):
             params['Af'] = freq_shift
 
         if not positive:
-            params['Gv'] = pm.Cauchy('Gv_%d_%s' % (idx,pref),0.0,0.5)
-            params['Av'] = pm.Cauchy('Av_%d_%s' % (idx,pref),0.0,0.5)
-            params['Bv'] = pm.Normal('Bv_%d_%s' % (idx,pref),0.0,0.5)
+            params['Gv'] = pm.Cauchy('Gv_%d_%s' % (idx,pref),0.0,5e-1)
+            #params['Av'] = pm.Cauchy('Av_%d_%s' % (idx,pref),0.0,1e-4)
+            params['Bv'] = pm.Normal('Bv_%d_%s' % (idx,pref),0.0,5e-1)
         else:
-            params['Gv'] = pm.HalfCauchy('Gv_%d_%s' % (idx,pref),0.1)
-            params['Av'] = pm.HalfCauchy('Av_%d_%s' % (idx,pref),0.1)
-            params['Bv'] = pm.HalfNormal('Bv_%d_%s' % (idx,pref),0.4)
+            params['Gv'] = pm.HalfCauchy('Gv_%d_%s' % (idx,pref),1e-1)
+            #params['Av'] = pm.HalfCauchy('Av_%d_%s' % (idx,pref),1e-5)
+            params['Bv'] = pm.HalfNormal('Bv_%d_%s' % (idx,pref),4e-1)
 
         return params
 
@@ -133,7 +189,7 @@ def gen_free_params():
     var = gen_pfun_params(0,'sig',positive=True,freq_shift=mu['Af'])
     return mu,var
 
-def gen_model_stump(pars,Fn,Fs,Vs,positive=False):
+def gen_model_stump(pars,Fn,Fs,Vs,freq_min=0.0,freq_max=1.0,positive=False):
     print_shape = theano.printing.Print('vector', attrs = [ 'shape' ])
     print_vector = theano.printing.Print('vector')
     epsilon = theano.tensor.constant(1.0)
@@ -153,10 +209,12 @@ def gen_model_stump(pars,Fn,Fs,Vs,positive=False):
             Vs_vect,
             0.0
         ), axis=2)
-    if positive:
-        LINFXN = pars['Av']*Fn+pars['Bv'] + pars['Gv']*abs(SIG)
-    else:
-        LINFXN = pars['Av']*Fn+pars['Bv'] + pars['Gv']*SIG
+
+    LINFXN = pars['Bv']
+    #fmin = theano.tensor.constant(freq_min)
+    #fdist = theano.tensor.constant(freq_max-freq_min)
+    #LINFXN += pars['Av']*(Fn-fmin)/(fdist)
+    LINFXN += pars['Gv']*(abs(SIG) if positive else SIG)
     return LINFXN
 
 
@@ -172,11 +230,15 @@ def generate_variables(n,m_sig,m_noise):
     vs['Vn']= theano.shared(vals_vn.astype(float))
     return vs
 
-def generate_single_stump_model(n,m_sig,m_noise):
+def generate_single_stump_model(freq_min,freq_max,n,m_sig,m_noise):
     mupars,varpars = gen_free_params()
     vs = generate_variables(n,m_sig,m_noise)
-    mean = gen_model_stump(mupars,vs['Fn'],vs['Fs'],vs['Vs'])
-    variance = gen_model_stump(varpars,vs['Fn'],vs['Fs'],vs['Vs'],positive=True)
+    mean = gen_model_stump(mupars,vs['Fn'],vs['Fs'],vs['Vs'],
+                           freq_min=freq_min,
+                           freq_max=freq_max)
+    variance = gen_model_stump(varpars,vs['Fn'],vs['Fs'],vs['Vs'],
+                               freq_min=freq_min,
+                               freq_max=freq_max,positive=True)
 
     return vs,pm.Normal("NoiseModel",
                         mean,
@@ -209,30 +271,30 @@ def generate_bin_model(nbins,n,m_sig,m_noise):
                         sum(varis),
                         observed=vs['Vn'])
 
-def plot_stats(trace):
+def plot_stats(basename,trace):
     ax = pm.plot_posterior(trace)
     fig = plt.gcf() # to get the current figure...
-    fig.savefig('posterior.png')
+    fig.savefig('%s_posterior.png' % basename)
     plt.cla()
 
     ax = pm.densityplot(trace)
     fig = plt.gcf() # to get the current figure...
-    fig.savefig('density.png')
+    fig.savefig('%s_density.png' % basename)
     plt.cla()
 
     ax = pm.energyplot(trace)
     fig = plt.gcf() # to get the current figure...
-    fig.savefig('energy.png')
+    fig.savefig('%s_energy.png' % basename)
     plt.cla()
 
     ax = pm.autocorrplot(trace)
     fig = plt.gcf() # to get the current figure...
-    fig.savefig('autocorr.png')
+    fig.savefig('%s_autocorr.png' % basename)
     plt.cla()
 
     ax = pm.traceplot(trace)
     fig = plt.gcf() # to get the current figure...
-    fig.savefig('traceplot.png')
+    fig.savefig('%s_traceplot.png' % basename)
     plt.cla()
 
 def print_params(params):
@@ -249,42 +311,7 @@ def test_model(model):
             if np.isinf(log_prob):
                 raise Exception("found infinite log prob with test point.")
 
-class NoiseStump:
-
-    def __init__(self,freq_scale, \
-                 sig_corr_bias, \
-                 sig_corr_noise, \
-                 freq_corr_bias,
-                 freq_corr_noise,
-                 uncorr_bias, \
-                 uncorr_noise):
-        self._freq_scale = freq_scale
-        self._epsilon = 4
-        self._signal_corr = (sig_corr_bias,sig_corr_noise)
-        self._freq_corr = (freq_corr_bias,freq_corr_noise)
-        self._uncorr = (uncorr_bias,uncorr_noise)
-
-    def dist(self,sig_freqs,sig_vals,noise_freq):
-        selector = [abs(self._freq_scale*freq - noise_freq) < self._epsilon \
-                    for freq in sig_freqs]
-        sig = sum(itertools.compress(sig_vals,selector))
-        mu1,var1 = self._signal_corr
-        mu2,var2 = self._freq_corr
-        mu3,var3 = self._uncorr
-        mu = mu1*sig + mu2*noise_freq + mu3
-        var = var1*sig + var2*noise_freq + var3
-        return scipy.stats.norm(mu,var)
-
-    def generate(self,sig_freqs,sig_vals,noise_freq):
-        dist = self.dist(sig_freqs,sig_vals,noise_freq)
-        return dist.sample()
-
-    def likelihood(self,sig_freqs,sig_vals,noise_freq,noise_ampl):
-        dist = self.dist(sig_freqs,sig_vals,noise_freq)
-        return dist.pdf(noise_ampl)
-
-
-def evaluate_model(model_name,header,data):
+def evaluate_model(model_name,fmin,fmax,header,data):
     network,trace = load_model(model_name)
     with network as model:
         def get_param(name):
@@ -293,26 +320,43 @@ def evaluate_model(model_name,header,data):
             return pval
 
         idx = 0
-        stump = NoiseStump(
+        stump = NoiseStump(fmin,fmax,
             freq_scale=get_param('Af_%d_mu' % idx),
             sig_corr_bias=get_param('Gv_%d_mu' % idx),
             sig_corr_noise=get_param('Gv_%d_sig' % idx),
-            freq_corr_bias=get_param('Av_%d_mu' % idx),
-            freq_corr_noise=get_param('Av_%d_sig' % idx),
+            #freq_corr_bias=get_param('Av_%d_mu' % idx),
+            #freq_corr_noise=get_param('Av_%d_sig' % idx),
             uncorr_bias=get_param('Bv_%d_mu' % idx),
             uncorr_noise=get_param('Bv_%d_sig' % idx)
         )
 
-    for datum in data:
+    fig,(sub_dist,sub_prob) = plt.subplots(2,1)
+    sub_dist.set_title('predicted distribution')
+    sub_prob.set_title('predicted probability')
+    print("=== Evaluating Model on Holdout Data")
+    for idx,datum in enumerate(data):
+        print(" -> datum %d" % idx)
         Fs = datum[header.index('Fs')]
         Vs = datum[header.index('Vs')]
         Fn = datum[header.index('Fn')]
         Vn = datum[header.index('Vn')]
-        for freq,val in zip(Fn,Vn):
-            prob = stump.likelihood(Fs,Vs,freq,val)
-            print("%s=%s :: %s" % (freq,val,prob))
+        dists = list(map(lambda freq: stump.dist(Fs,Vs,freq), Fn))
+        means = list(map(lambda dist: dist.mean(), dists))
+        variances = list(map(lambda dist: dist.var(), dists))
+        probs = list(map(lambda tup: min(1.0,tup[1].pdf(tup[0])), zip(Vn,dists)))
+        ub = list(map(lambda tup: tup[0]+tup[1], zip(means,variances)))
+        lb = list(map(lambda tup: tup[0]-tup[1], zip(means,variances)))
+        sub_dist.scatter(Fn,means,alpha=0.5,s=0.7,color='red')
+        sub_dist.scatter(Fn,ub,alpha=0.5,s=0.7,color='blue')
+        sub_dist.scatter(Fn,lb,alpha=0.5,s=0.7,color='blue')
+        sub_dist.scatter(Fn,Vn,alpha=0.5,s=0.7,color='black')
+        sub_prob.scatter(Fn,probs,alpha=0.5,s=0.5)
 
-        input()
+    fig.savefig('%s_evaluation.png' % model_name)
+    plt.close(fig)
+    plt.clf()
+    plt.cla()
+
 
 def trace_to_stump(trace,idx):
     freq_scale = 'Af_%d_mu' % idx
@@ -333,16 +377,17 @@ def load_model(model_name):
 
     return network,trace
 
-def gen_model(data,n,m_sig,m_noise,model_name,approximate=False):
+def gen_model(data,fmin,fmax, \
+              n,m_sig,m_noise,model_name,approximate=False):
     with pm.Model() as model:
 
         #vs,gm = generate_binned_model(1,n,m_sig,m_noise)
-        vs,gm = generate_single_stump_model(n,m_sig,m_noise)
+        vs,gm = generate_single_stump_model(fmin,fmax,n,m_sig,m_noise)
         print('--- model generated ---')
         for key in vs:
             print("%s = %s" % (key,data[key]))
             vs[key].set_value(data[key])
-        test_model(model)
+        #test_model(model)
         print('--- values set ---')
         params = pm.find_MAP()
         print('--- initial ---')
@@ -350,10 +395,11 @@ def gen_model(data,n,m_sig,m_noise,model_name,approximate=False):
         if approximate:
             print("--- approximate ---")
             inference = pm.ADVI()
-            niters = 50000
+            #niters = 50000
+            niters = 20000
             approx = pm.fit(niters,method=inference)
             plt.plot(approx.hist)
-            plt.savefig('loss.png')
+            plt.savefig('%s_loss.png' % model_name)
             plt.clf()
             trace = approx.sample()
         else:
@@ -361,25 +407,42 @@ def gen_model(data,n,m_sig,m_noise,model_name,approximate=False):
 
         save_model(model_name,trace,model)
         print(trace)
-        plot_stats(trace)
+        plot_stats(model_name,trace)
 
-train = False
+train = True
 corners = [0,400,1700]
-fmin = 1700
-fmax=  10000
+#fmin,fmax = 1700,10000
+#fmin,fmax = 0,1000
+#fmin,fmax = 0,50
+#fmin,fmax = 0,500000
+fmin,fmax = 0,100000
+nmodels = 2500
+fbin_size= (fmax-fmin)/nmodels
+
 nsamps_sig = 100
 nsamps_noise = 100
-model_name = "model_%d_%d" % (fmin,fmax)
-if train:
-    print("=== Read File ===")
-    header,data = read_data('ampl_mean_train.json')
-    header,data = freq_slice(header,data,fmin,fmax)
-    data,n = to_narray(header,data,nsamps_sig,nsamps_noise)
-    print("=== Generated Model===")
-    gen_model(data,n,nsamps_sig,nsamps_noise,
+print("=== Read Test Data ===")
+train_header,train_data = read_data('ampl_mean_train.json')
+print("=== Read Train Data ===")
+#test_header,test_data = read_data('ampl_mean_test.json')
+test_header,test_data = read_data('ampl_mean_train.json')
+for model_idx in range(0,nmodels):
+    c_fmin = fbin_size*model_idx
+    c_fmax = fbin_size*(model_idx+1)
+
+    print("=== Model %d [%f,%f] ===" % (model_idx,c_fmin,c_fmax))
+    c_train_data = freq_slice(train_header,train_data,c_fmin,c_fmax)
+    c_test_data = freq_slice(test_header,test_data,c_fmin,c_fmax)
+    #assert(len(c_test_data[0][test_header.index('Fn')]) > 0)
+    c_train_data,c_train_n = to_narray(train_header,c_train_data, \
+                                       nsamps_sig, \
+                                       nsamps_noise)
+
+    model_name = "model_%d" % model_idx
+    gen_model(c_train_data,c_fmin,c_fmax,
+              c_train_n,nsamps_sig,nsamps_noise,
               model_name=model_name, \
               approximate=True)
-else:
-    header,data = read_data('ampl_mean_test.json')
-    header,data = freq_slice(header,data,fmin,fmax)
-    evaluate_model(model_name,header,data)
+
+    evaluate_model(model_name,c_fmin,c_fmax,
+                   test_header,c_test_data)
