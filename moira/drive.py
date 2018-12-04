@@ -36,29 +36,26 @@ def emit_prompt(model):
 # execute script on inputs
 def execute(state,model,sim_time):
     initialized = False
-    for ident,trials,inputs,output in \
+    for ident,trials,round_no,inputs,output,_ in \
         model.db.get_by_status(ExperimentDB.Status.PENDING):
         if not initialized:
             emit_prompt(model)
             state.initialize()
             initialized = True
 
-        print(ident,trials,inputs,output)
         outfiles = list(map(lambda trial: \
                             model.db.timeseries_file(ident,trial), trials))
 
-        prog = model.scriptgen.generate(sim_time,inputs,output,outfiles)
-        scriptfile = model.db.script_file(ident)
-        with open(scriptfile,'w') as fh:
-            srccode = "\n".join(prog)
-            print(srccode)
-            fh.write(srccode)
+        for trial, prog in zip(trials, \
+                        model.scriptgen.generate(sim_time,inputs,output,outfiles)):
+            scriptfile = model.db.script_file(ident,trial)
+            with open(scriptfile,'w') as fh:
+                srccode = "\n".join(prog)
+                fh.write(srccode)
+            lab_handler.main_script(state,scriptfile)
 
-        #input("<run experiment>")
-        #lab_handler.main_script(state,scriptfile)
-
-        for trial in trials:
-            model.db.set_status(ident,trial,ExperimentDB.Status.RAN)
+            if model.db.has_file(model.db.timeseries_file(ident,trial)):
+                model.db.set_status(ident,trial,ExperimentDB.Status.RAN)
 
     if initialized:
         state.close()

@@ -12,24 +12,13 @@ sys.path.insert(0,os.path.abspath("lab_bench"))
 
 import lab_bench.lib.state as lab_state
 
-def populate(model):
-    cand_inps = [
-        '1.0*math.sin(1.0*t)'
-    ]
-    for idx in range(0,model.n_outputs):
-        inputs = ['1.0*math.sin(1.0*t)']*model.n_inputs
-        model.db.insert(0,inputs,idx,10,model=None)
 
 def loop(state,model,sim_time):
-    if model.db.is_empty():
-        print("-> populating model")
-        populate(model)
-
-
+    print(model.db)
+    #inpgen.execute(model)
     driver.execute(state,model,sim_time)
     align.execute(model)
     modelfit.execute(model)
-    inpgen.execute(model)
 
 def main():
     parser = argparse.ArgumentParser()

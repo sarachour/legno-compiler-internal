@@ -22,6 +22,7 @@ class ScriptGenerator:
         def q(stmt):
             prog.append(stmt)
 
+        q('reset')
         q('set_ref_func %s' % self._rels[out])
         q('set_sim_time %f' % sim_time)
         q('get_num_samples')
@@ -36,8 +37,9 @@ class ScriptGenerator:
         for path in paths:
             q('run')
             q(getter(path))
+            yield prog
+            prog = []
 
-        q('reset')
         return prog
 
 class AnalyticalModel:
