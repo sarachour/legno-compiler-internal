@@ -26,8 +26,9 @@ def experiment_cmd_type_t():
         ExpCmdType.USE_OSC.name:7,
         ExpCmdType.RUN.name:8,
         ExpCmdType.COMPUTE_OFFSETS.name:9,
-        ExpCmdType.GET_NUM_SAMPLES.name:10,
+        ExpCmdType.GET_NUM_DAC_SAMPLES.name:10,
         ExpCmdType.GET_TIME_BETWEEN_SAMPLES.name:11,
+        ExpCmdType.GET_NUM_ADC_SAMPLES.name:12
     }
     return cstruct.Enum(cstruct.Int16ul,**kwargs)
 

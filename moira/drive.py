@@ -34,9 +34,9 @@ def emit_prompt(model):
         input("<i'm ready!>")
 
 # execute script on inputs
-def execute(state,model,sim_time):
+def execute(state,model):
     initialized = False
-    for ident,trials,round_no,inputs,output,_ in \
+    for ident,trials,round_no,period,num_periods,inputs,output,_ in \
         model.db.get_by_status(ExperimentDB.Status.PENDING):
         if not initialized:
             emit_prompt(model)
@@ -44,17 +44,24 @@ def execute(state,model,sim_time):
             initialized = True
 
         outfiles = list(map(lambda trial: \
-                            model.db.timeseries_file(ident,trial), trials))
+                            model.db.paths.timeseries_file(ident,trial), trials))
 
+        sim_time = period*num_periods
         for trial, prog in zip(trials, \
-                        model.scriptgen.generate(sim_time,inputs,output,outfiles)):
-            scriptfile = model.db.script_file(ident,trial)
+                        model.scriptgen.generate(sim_time,period, \
+                                                 inputs,output,outfiles)):
+
+            if model.db.paths.has_file(model.db.paths.timeseries_file(ident,trial)):
+                model.db.set_status(ident,trial,ExperimentDB.Status.RAN)
+
+
+            scriptfile = model.db.paths.script_file(ident,trial)
             with open(scriptfile,'w') as fh:
                 srccode = "\n".join(prog)
                 fh.write(srccode)
             lab_handler.main_script(state,scriptfile)
 
-            if model.db.has_file(model.db.timeseries_file(ident,trial)):
+            if model.db.paths.has_file(model.db.paths.timeseries_file(ident,trial)):
                 model.db.set_status(ident,trial,ExperimentDB.Status.RAN)
 
     if initialized:

@@ -9,6 +9,7 @@ import devices.sigilent_osc as osclib
 import time
 import json
 import numpy as np
+import analysis.waveform as waveform
 
 def build_exp_ctype(exp_data):
     return {
@@ -139,19 +140,19 @@ class GetTimeBetweenSamplesCmd(ArduinoCommand):
 
         resp = state.arduino.readline()
         tb_samples = float(resp.strip())
-        state.time_between_samples_ms = tb_samples
+        state.time_between_samples_s = tb_samples*0.001
         print("time-between-samples: %s" % tb_samples)
         return tb_samples
 
 
-class GetNumSamplesCmd(ArduinoCommand):
+class GetNumADCSamplesCmd(ArduinoCommand):
 
     def __init__(self):
         ArduinoCommand.__init__(self)
 
     @staticmethod
     def name():
-        return 'get_num_samples'
+        return 'get_num_adc_samples'
 
     @staticmethod
     def desc():
@@ -162,15 +163,15 @@ class GetNumSamplesCmd(ArduinoCommand):
     @staticmethod
     def parse(args):
         if len(args) > 0:
-            print("usage: %s" % GetNumSamplesCmd.name())
+            print("usage: %s" % GetNumADCSamplesCmd.name())
             return None
 
-        return GetNumSamplesCmd()
+        return GetNumADCSamplesCmd()
 
 
     def build_ctype(self):
         return build_exp_ctype({
-            'type':enums.ExpCmdType.GET_NUM_SAMPLES.name,
+            'type':enums.ExpCmdType.GET_NUM_ADC_SAMPLES.name,
             'args':{
                 'ints':[0,0,0]
             }
@@ -185,8 +186,54 @@ class GetNumSamplesCmd(ArduinoCommand):
         print(">> %s" % line)
         resp = state.arduino.readline()
         n_samples = int(resp.strip())
-        state.n_samples = n_samples
-        print("num-samples: %s" % n_samples)
+        state.n_adc_samples = n_samples
+        print("num-adc-samples: %s" % n_samples)
+        return n_samples
+
+
+class GetNumDACSamplesCmd(ArduinoCommand):
+
+    def __init__(self):
+        ArduinoCommand.__init__(self)
+
+    @staticmethod
+    def name():
+        return 'get_num_dac_samples'
+
+    @staticmethod
+    def desc():
+        return "get the number of samples"
+
+
+
+    @staticmethod
+    def parse(args):
+        if len(args) > 0:
+            print("usage: %s" % GetNumDACSamplesCmd.name())
+            return None
+
+        return GetNumDACSamplesCmd()
+
+
+    def build_ctype(self):
+        return build_exp_ctype({
+            'type':enums.ExpCmdType.GET_NUM_DAC_SAMPLES.name,
+            'args':{
+                'ints':[0,0,0]
+            }
+        })
+
+
+    def execute(self,state):
+        if state.dummy:
+            return
+
+        line = ArduinoCommand.execute(self,state)
+        print(">> %s" % line)
+        resp = state.arduino.readline()
+        n_samples = int(resp.strip())
+        state.n_dac_samples = n_samples
+        print("num-dac-samples: %s" % n_samples)
         return n_samples
 
 
@@ -254,7 +301,7 @@ class GetDueADCValuesCmd(ArduinoCommand):
         plt.clf()
 
     def execute(self,state):
-        n = state.n_samples
+        n = state.n_adc_samples
         buf = []
         chunksize_bytes = 1000;
         chunksize_shorts = int(chunksize_bytes/2)
@@ -373,22 +420,28 @@ class SetDueDACValuesCmd(ArduinoCommand):
 
 
     def execute(self,state):
-        n = state.n_samples
+        n = state.n_dac_samples
         buf = []
         chunksize_bytes = 1000;
         chunksize_floats = chunksize_bytes/4
-        delta = state.time_between_samples_ms
+        # delta in seconds
+        delta = state.time_between_samples_s
         offset = 0
         for idx in range(0,n):
             args = {'t':idx*delta,'math':math}
             value = eval(self.pyexpr,args)
             buf.append(value)
-            state.write_input(self.dac_id,idx*delta,value)
             if len(buf) == chunksize_floats:
                 line = self.execute_write_op(state,buf,offset)
                 print('  >> %s' % line)
                 offset += len(buf)
                 buf = []
+
+        n_ref_samples = state.n_dac_samples*int(state.sim_time/state.period)
+        for idx in range(0,n_ref_samples):
+            args = {'t':idx*delta,'math':math}
+            value = eval(self.pyexpr,args)
+            state.write_input(self.dac_id,idx*delta,value)
 
         self.execute_write_op(state,buf,offset)
 
@@ -504,19 +557,14 @@ class GetOscValuesCmd(Command):
 
     def process_data(self,state,filename,chan1,chan2):
         data = {}
+        data = waveform.TimeSeriesSet(state.sim_time)
         for ident,inp_t,inp_v in state.input_data():
-            data['input%d' % ident] = {
-                'time':inp_t,
-                'value':inp_v,
-                'index':ident,
-                'type':'input'
-            }
+            data.set_input(ident,inp_t,inp_v)
+
         ref_t,ref_v = state.reference_data()
-        data['reference'] = {
-            'time': ref_t,
-            'value': ref_v,
-            'type': 'reference'
-        }
+        data.set_reference(ref_t,ref_v)
+
+        # compute differential or direct
         if self._differential:
             out_t1,out_v1 = chan1
             out_t2,out_v2 = chan2
@@ -527,14 +575,14 @@ class GetOscValuesCmd(Command):
         else:
             out_t,out_v = chan1
 
-        data['output'] = {
-            'time': out_t,
-            'value': out_v,
-            'type': 'output'
-        }
+        data.set_output(out_t,out_v)
+        theo_time_per_div = float(state.sim_time) / state.oscilloscope.TIME_DIVISIONS
+        act_time_per_div = state.oscilloscope\
+                                .closest_seconds_per_division(theo_time_per_div)
+        # the oscilloscope leaves two divisions of buffer room for whatever reason.
         print("<writing file>")
         with open(filename,'w') as fh:
-            strdata = json.dumps(data,indent=4)
+            strdata = json.dumps(data.to_json(),indent=4)
             fh.write(strdata)
         print("<wrote file>")
 
@@ -581,20 +629,23 @@ class GetOscValuesCmd(Command):
 
 class SetSimTimeCmd(ArduinoCommand):
 
-    def __init__(self,sim_time,frame_time=None):
+    def __init__(self,sim_time,period,frame_time=None):
         ArduinoCommand.__init__(self)
         if(sim_time <= 0):
             self.fail("invalid simulation time: %s" % n_samples)
 
         self._sim_time = sim_time
-        self._frame_time = sim_time if frame_time is None else frame_time
+        self._period = period
+        self._frame_time = (sim_time if frame_time is None else frame_time)
 
 
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.SET_SIM_TIME.name,
             'args':{
-                'floats':[self._sim_time,self._frame_time,0]
+                'floats':[self._sim_time*1000.0,
+                          self._period*1000.0,
+                          self._frame_time*1000.0]
             }
         })
 
@@ -606,32 +657,35 @@ class SetSimTimeCmd(ArduinoCommand):
     @staticmethod
     def parse(args):
         line = " ".join(args)
-        result = parselib.parse("{simtime_ms:f}",line)
+        result = parselib.parse("{simtime_s:f} {period_s:f}",line)
         if result is None:
             print("usage: %s <# samples>" % (SetSimTimeCmd.name()))
             return None
 
-        return SetSimTimeCmd(result['simtime_ms'])
+        return SetSimTimeCmd(result['simtime_s'],result['period_s'])
 
 
-    def configure_oscilloscope(self,state,time_ms):
-        time_sec = time_ms/1000.0
+    def configure_oscilloscope(self,state,time_sec):
         frame_sec = time_sec
         # TODO: multiple segments of high sample rate.
-        time_per_div = float(time_sec) / state.oscilloscope.TIME_DIVISIONS
-        trig_delay = time_per_div * float(state.oscilloscope.TIME_DIVISIONS/2.0)
-        print("sec/div %s" % time_per_div)
+        theo_time_per_div = float(time_sec) / state.oscilloscope.TIME_DIVISIONS
+        act_time_per_div = state.oscilloscope \
+                                .closest_seconds_per_division(theo_time_per_div)
+        trig_delay = act_time_per_div * (float(state.oscilloscope.TIME_DIVISIONS/2.0))
+        print("desired sec/div %s" % theo_time_per_div)
+        print("actual sec/div %s" % act_time_per_div)
         print("sec: %s" % time_sec)
         print("delay: %s" % trig_delay)
-        state.oscilloscope.set_seconds_per_division(time_per_div)
+        state.oscilloscope.set_seconds_per_division(theo_time_per_div)
         state.oscilloscope.set_trigger_delay(trig_delay)
         return frame_sec
 
     def execute(self,state):
         state.sim_time = self._sim_time
+        state.period = self._period
         if not state.dummy:
             frame_time_sec = self.configure_oscilloscope(state,self._sim_time)
-            self._frame_time = frame_time_sec*1000.0
+            self._frame_time = frame_time_sec
 
         ArduinoCommand.execute(self,state)
 

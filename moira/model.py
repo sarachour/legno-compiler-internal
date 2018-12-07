@@ -17,15 +17,16 @@ class ScriptGenerator:
     def set_prog(self,idx,preamble,getter):
         self._prog[idx] = (preamble,getter)
 
-    def generate(self,sim_time,ins,out,paths):
+    def generate(self,sim_time,input_period,ins,out,paths):
         prog = []
         def q(stmt):
             prog.append(stmt)
 
         q('reset')
         q('set_ref_func %s' % self._rels[out])
-        q('set_sim_time %f' % sim_time)
-        q('get_num_samples')
+        q('set_sim_time %f %f' % (sim_time,input_period))
+        q('get_num_adc_samples')
+        q('get_num_dac_samples')
         q('get_time_between_samples')
         q('use_osc')
         preamble,getter = self._prog[out]

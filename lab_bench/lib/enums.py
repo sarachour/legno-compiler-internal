@@ -39,7 +39,8 @@ class ExpCmdType(Enum):
     USE_OSC = 'use_osc';
     RUN = 'run';
     COMPUTE_OFFSETS = 'compute_offsets';
-    GET_NUM_SAMPLES = 'get_num_samples';
+    GET_NUM_DAC_SAMPLES = 'get_num_dac_samples';
+    GET_NUM_ADC_SAMPLES = 'get_num_adc_samples';
     GET_TIME_BETWEEN_SAMPLES = 'get_time_between_samples';
 
 class CmdType(Enum):

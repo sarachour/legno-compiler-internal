@@ -18,9 +18,10 @@ typedef struct _datapair {
 } datapair_t;
 
 typedef struct experiment_data {
-  int n_samples;
-  int max_samples;
+  int dac_samples;
+  int adc_samples;
   int osc_samples;
+  int total_samples;
   int adc_offsets[MAX_ADCS];
   int dac_offsets[MAX_DACS];
   bool use_osc;
@@ -44,8 +45,9 @@ typedef enum cmd_type {
   USE_OSC,
   RUN,
   COMPUTE_OFFSETS,
-  GET_NUM_SAMPLES,
-  GET_TIME_BETWEEN_SAMPLES
+  GET_NUM_DAC_SAMPLES,
+  GET_TIME_BETWEEN_SAMPLES,
+  GET_NUM_ADC_SAMPLES
 } cmd_type_t;
 
 typedef union args {

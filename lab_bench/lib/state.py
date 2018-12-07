@@ -22,18 +22,20 @@ class State:
         self._use_adc = {};
         self._use_dac = {}
         self.use_analog_chip = None;
-        self.n_samples = None;
         self.inputs = {}
-        self.time_between_samples_ms = None;
+        self.n_dac_samples = None;
+        self.n_adc_samples = None;
+        self.time_between_samples_s = None;
         self.ref_func = None;
         self.reset();
         self.sim_time = None
+        self.period = None
         self.dummy = validate
 
     def write_input(self,input_id,time_ms,value):
         if not input_id in self.inputs:
             self.inputs[input_id] = {'time':[],'value':[]}
-        self.inputs[input_id]['time'].append(time_ms/1000.0)
+        self.inputs[input_id]['time'].append(time_ms)
         self.inputs[input_id]['value'].append(value)
 
     def reference_data(self):
@@ -48,8 +50,8 @@ class State:
         values = []
         print("reference: %s" % self.ref_func)
         if times is None:
-            times = list(np.arange(0,self.sim_time*0.001,
-                                   self.time_between_samples_ms*0.001))
+            times = list(np.arange(0,self.sim_time,
+                                   self.time_between_samples_s))
 
         for idx,time in enumerate(times):
             args = {}

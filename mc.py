@@ -83,10 +83,13 @@ def to_narray(header,data,nsamples_sig=1000,nsamples_noise=1000):
             freqs = [0]
             vals = [0]
         freq_min,freq_max = min(freqs),max(freqs)
+        n = len(freqs)
+        indices = np.random.choice(range(0,n),size=n,replace=False)
         samp_freqs = np.random.uniform(freq_min,freq_max,size=nsamples)
         indices = list(map(lambda f: closest_index(freqs,f),samp_freqs))
-        buf[freq_key] += list(map(lambda i: freqs[i], indices))
-        buf[val_key] += list(map(lambda i: vals[i], indices))
+        pad = nsamples - len(indices)
+        buf[freq_key] += list(map(lambda i: freqs[i], indices))+([freqs[-1]]*pad)
+        buf[val_key] += list(map(lambda i: vals[i], indices))+([0]*pad)
 
     buf= {}
 
@@ -113,7 +116,7 @@ def read_data(filename):
             args = json.loads(line.strip())
             datum = []
             for i in range(0,4):
-                datum.append(args[i])
+                datum.append(np.abs(args[i]))
 
             data.append(np.array(datum))
 
@@ -140,11 +143,6 @@ def freq_slice(header,data,fmin,fmax):
 
 def gen_pfun_params(idx,pref,positive=False,freq_shift=None):
         params = {}
-        if freq_shift == None:
-            params['Af'] = pm.HalfNormal('Af_%d_%s' % (idx,pref),0.01)
-        else:
-            params['Af'] = freq_shift
-
         if not positive:
             params['Gv'] = pm.Cauchy('Gv_%d_%s' % (idx,pref),0.0,5e-1)
             #params['Av'] = pm.Cauchy('Av_%d_%s' % (idx,pref),0.0,1e-4)
@@ -160,11 +158,8 @@ def gen_binned_params(fmax,n):
     last_cutoff = 0
     params = {'mu':{},'var':{},'n':{}}
     for idx in range(0,n):
-        Af = pm.HalfNormal('Af_%d' % (idx),0.01)
         params['mu'][idx] = gen_pfun_params(idx,'mu',positive=False)
-        params['var'][idx] = gen_pfun_params(idx,'sigma',positive=True, \
-                                             freq_shift=params['mu']['Af'])
-        var['Af'] = var
+        params['var'][idx] = gen_pfun_params(idx,'sigma',positive=True)
         if idx == 0:
             params['n'][idx] = pm.Uniform("N_%d" % idx,0,fmax)
         else:
@@ -186,7 +181,7 @@ def gen_binned_params(fmax,n):
 
 def gen_free_params():
     mu = gen_pfun_params(0,'mu',positive=False)
-    var = gen_pfun_params(0,'sig',positive=True,freq_shift=mu['Af'])
+    var = gen_pfun_params(0,'sig',positive=True)
     return mu,var
 
 def gen_model_stump(pars,Fn,Fs,Vs,freq_min=0.0,freq_max=1.0,positive=False):
@@ -197,15 +192,10 @@ def gen_model_stump(pars,Fn,Fs,Vs,freq_min=0.0,freq_max=1.0,positive=False):
     Fs_vect = theano.tensor.reshape(Fs,(Fs.shape[0],one,Fs.shape[1]))
     Vs_vect = theano.tensor.reshape(Vs,(Vs.shape[0],one,Vs.shape[1]))
     Fn_vect = theano.tensor.reshape(Fn,(Fn.shape[0],Fn.shape[1],one))
-    #print_shape(Fs_vect)
-    #print_shape(Vs_vect)
-    #print_shape(Fn_vect)
-    G = pars['Af']*Fn_vect
-
     # broadcast Fs over Fn
     SIG = pm.math.sum(
         pm.math.switch(
-            pm.math.le(abs(Fs_vect-G), epsilon),
+            pm.math.le(abs(Fn_vect-Fs_vect), epsilon),
             Vs_vect,
             0.0
         ), axis=2)
@@ -319,13 +309,14 @@ def evaluate_model(model_name,fmin,fmax,header,data):
             print(name,pval)
             return pval
 
+        #freq_scale=get_param('Af_%d_mu' % idx),
+        #freq_corr_bias=get_param('Av_%d_mu' % idx),
+        #freq_corr_noise=get_param('Av_%d_sig' % idx),
         idx = 0
         stump = NoiseStump(fmin,fmax,
-            freq_scale=get_param('Af_%d_mu' % idx),
+            freq_scale=0.0,
             sig_corr_bias=get_param('Gv_%d_mu' % idx),
             sig_corr_noise=get_param('Gv_%d_sig' % idx),
-            #freq_corr_bias=get_param('Av_%d_mu' % idx),
-            #freq_corr_noise=get_param('Av_%d_sig' % idx),
             uncorr_bias=get_param('Bv_%d_mu' % idx),
             uncorr_noise=get_param('Bv_%d_sig' % idx)
         )

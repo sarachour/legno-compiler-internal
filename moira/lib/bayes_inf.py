@@ -15,6 +15,9 @@ class BayesianModel:
         self._variances = {}
         self._parameters = {}
 
+    def phase_model(self):
+        return self._phase['mean'],self._phase['stdev']
+
     def variances(self):
         for (fmin,fmax),snr in self._variances.items():
             yield fmin,fmax,snr

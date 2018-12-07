@@ -1,6 +1,6 @@
 set_volt_ranges differential 0.0 0.080 0.0 0.080
 set_ref_func inp0*0.030
-set_sim_time 0.01 0.01
+set_sim_time 0.1 0.01
 get_num_adc_samples
 get_num_dac_samples
 get_time_between_samples

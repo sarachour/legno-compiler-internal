@@ -346,9 +346,7 @@ class Sigilent1020XEOscilloscope(SICPDevice):
         self.write(cmd)
         self.flush_cache()
 
-
-    def set_seconds_per_division(self,time_s,round_mode=util.RoundMode.UP):
-
+    def closest_seconds_per_division(self,time_s,round_mode=util.RoundMode.UP):
         times = []
         for scale in [1e-9,1e-6,1e-3]:
             for val in [1,2,5,10,20,50,100,200,500]:
@@ -358,7 +356,10 @@ class Sigilent1020XEOscilloscope(SICPDevice):
             times.append(val)
 
         _,time_s = util.find_closest(times,time_s,round_mode)
+        return time_s
 
+    def set_seconds_per_division(self,time_s,round_mode=util.RoundMode.UP):
+        time_s = self.closest_seconds_per_division(time_s,round_mode)
         unit = None
         if time_s >= 1.0:
             time = time_s
@@ -376,6 +377,7 @@ class Sigilent1020XEOscilloscope(SICPDevice):
         cmd = "TDIV %s%s" % (time,unit)
         self.write(cmd)
         self.flush_cache()
+        return time_s
 
     def get_memory_size(self):
         cmd = "MSIZ?"

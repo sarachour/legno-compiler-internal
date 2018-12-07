@@ -33,7 +33,8 @@ COMMANDS = [
     SetDueDACValuesCmd,
     GetDueADCValuesCmd,
     ComputeOffsetsCmd,
-    GetNumSamplesCmd,
+    GetNumADCSamplesCmd,
+    GetNumDACSamplesCmd,
     GetTimeBetweenSamplesCmd,
     # oscilloscope-only commands
     GetOscValuesCmd,

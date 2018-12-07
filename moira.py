@@ -15,8 +15,8 @@ import lab_bench.lib.state as lab_state
 
 def loop(state,model,sim_time):
     print(model.db)
-    #inpgen.execute(model)
-    driver.execute(state,model,sim_time)
+    inpgen.execute(model)
+    driver.execute(state,model)
     align.execute(model)
     modelfit.execute(model)
 
