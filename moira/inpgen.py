@@ -43,12 +43,11 @@ def execute(model):
 
     print("round no: %s" % round_no)
     if round_no == None:
-        sin_signal(model,ampl=1.0,freq_hz=100.0,phase=0.0,round_no=0,model_no=None,trials=5,n_cycles=1)
+        sin_signal(model,ampl=1.0,freq_hz=500.0,phase=0.0,round_no=0,model_no=None,trials=5,n_cycles=20)
+        sin_signal(model,ampl=0.3,freq_hz=500.0,phase=0.0,round_no=0,model_no=None,trials=5,n_cycles=20)
+
         sin_signal(model,ampl=1.0,freq_hz=100.0,phase=0.0,round_no=0,model_no=None,trials=5,n_cycles=20)
-        sin_signal(model,ampl=0.3,freq_hz=100.0,phase=0.0,round_no=0,model_no=None,trials=5,n_cycles=1)
         sin_signal(model,ampl=0.3,freq_hz=100.0,phase=0.0,round_no=0,model_no=None,trials=5,n_cycles=20)
-        #sin_signal(model,0.5,1.0,0.0,round_no=0,model_no=None)
-        #sin_signal(model,1.0,2.0,0.0,round_no=0,model_no=None)
     elif round_no == 0:
         print("burn-in: dc signals")
         raise Exception("unknown")

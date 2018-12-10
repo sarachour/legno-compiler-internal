@@ -40,6 +40,12 @@ class Window:
         assert(len(new_values) == len(values))
         return new_values
 
+    def to_json(self):
+        return {
+            'name':self.name(),
+            'params':{}
+        }
+
 class HannWindow(Window):
 
     def __init__(self):
@@ -50,6 +56,10 @@ class HannWindow(Window):
     def name():
         return 'hann'
 
+    def to_json(self):
+        data = Window.to_json(self)
+        return data
+
     def func(self,n,N):
         return 0.5*(1.0-math.cos(2*math.pi*float(n)/N))
 
@@ -59,6 +69,11 @@ class PlanckTukeyWindow(Window):
         Window.__init__(self,PlanckTukeyWindow.name())
         self._alpha = alpha
         pass
+
+    def to_json(self):
+        data = Window.to_json(self)
+        data['params']['alpha'] = self._alpha
+        return data
 
     @staticmethod
     def name():
@@ -131,6 +146,9 @@ class FrequencyData:
         self._freqs = list(itertools.compress(freqs, selector))
         self._phasors = list(itertools.compress(phasors,selector))
         self.cutoff(-200)
+
+    def set_bias(self,bias):
+        self._bias = bias
 
     def num_samples(self):
         return self._num_samples
@@ -263,7 +281,7 @@ class FrequencyData:
                 'ampl':list(np.real(self._phasors)),
                 'phase':list(np.imag(self._phasors)),
                 'properties': {
-                    'n_samples':self._samples,
+                    'n_samples':self._num_samples,
                     'padding':self._padding,
                     'bias': self._bias,
                     'is_autopower': self._autopower,
@@ -333,7 +351,7 @@ class FrequencyData:
             plt.cla()
         if not phasefile is None:
             fig,ax = self.plot_figure(False,do_log_x,do_log_y)
-            fig = savefig(phasefile)
+            fig.savefig(phasefile)
             plt.clf()
             plt.cla()
 

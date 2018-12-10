@@ -11,40 +11,30 @@ import numpy as np
 import multiprocessing
 
 
-def apply_align_model(align,dataset):
-    dataset.output.time_shift(align.delay)
+def apply_time_xform_model(xform,dataset):
+    dataset.output.time_shift(xform.delay)
     dataset.output.truncate_before(0)
     dataset.output.truncate_after(dataset.reference.max_time())
 
-def xform_apply_model(sig_xform,paths,ident,trial):
-    print("-> [%s:%d] read align model" % (ident,trial))
-    align = wf.TimeXform.read(paths.time_xform_file(ident,trial))
-    print("-> [%s:%d] read waveforms" % (ident,trial))
-    filedir = paths.timeseries_file(ident,trial)
-    dataset = wf.TimeSeriesSet.read(filedir)
-    print("-> [%s:%s] apply alignment" % (ident,trial))
-    apply_align_model(align,dataset)
-    print("[%s:%s] apply nonlinearity function" % (ident,trial))
-    dataset.reference.apply_signal_xform(sig_xform)
-    print("[%s:%s] plot transformed signals" % (ident,trial))
-    dataset.plot(paths.plot_file(ident,trial,'disto'))
-    print("[%s:%s] write model" % (ident,trial))
-    sig_xform.write(paths.signal_xform_file(ident,trial))
-
-
-def fft_compute_freq(paths,ident,trial):
+def apply_signal_xform_model(dataset,paths,ident,trial):
     print("-> [%s:%d] read time xform model" % (ident,trial))
     time_xform = wf.TimeXform.read(paths.time_xform_file(ident,trial))
     print("-> [%s:%d] read signal xform model" % (ident,trial))
     sig_xform = wf.SignalXform.read(paths.signal_xform_file(ident,trial))
+    print("-> [%s:%s] apply time xform model" % (ident,trial))
+    apply_time_xform_model(time_xform,dataset)
+    print("[%s:%s] apply signal xform model" % (ident,trial))
+    dataset.reference.apply_signal_xform(sig_xform)
+    return time_xform,sig_xform
+
+def fft_compute_freq(paths,ident,trial):
     print("-> [%s:%d] read waveforms" % (ident,trial))
     filedir = paths.timeseries_file(ident,trial)
     dataset = wf.TimeSeriesSet.read(filedir)
-    print("-> [%s:%s] apply alignment" % (ident,trial))
-    apply_align_model(time_xform,dataset)
-    print("[%s:%s] apply nonlinearity function" % (ident,trial))
-    dataset.reference.apply_signal_xform(sig_xform)
-    npts = 4000000
+    orig_ref = dataset.reference.copy()
+    npts = 1000000
+    time_xform,sig_xform = \
+        apply_signal_xform_model(dataset,paths,ident,trial)
     ref,out = wf.TimeSeries.synchronize_time_deltas(dataset.reference,
                                                     dataset.output,
                                                     npts=npts)
@@ -54,9 +44,12 @@ def fft_compute_freq(paths,ident,trial):
     print("-> [%s:%d] compute noise" % (ident,trial))
     noise = dataset.output\
                    .difference(dataset.reference)
+    _,bias,new_values = noise.detrend('constant')
+    noise.set_values(new_values)
 
     print("-> [%s:%d] unapply xform" % (ident,trial))
-    dataset.reference.unapply_signal_xform(sig_xform)
+    orig_ref = orig_ref.resample(ref.n())
+    dataset.set_reference(orig_ref.times,orig_ref.values)
     print("-> [%s:%d] plot signals" % (ident,trial))
     dataset.set_noise(noise.times,noise.values)
     dataset.plot(paths.plot_file(ident,trial,'fft'))
@@ -67,39 +60,53 @@ def fft_compute_freq(paths,ident,trial):
 
     #print("start=%s, end=%s" % (t_start,t_end))
     print("-> [%s:%d] fourier transform" % (ident,trial))
-    window = None
     #window = fq.get_window('planck-tukey', {'alpha':0.1})
     window = fq.get_window('hann',{})
-    trend = 'constant'
     fds = fq.FreqDataset. \
-          from_aligned_time_dataset(dataset,window,trend)
+          from_aligned_time_dataset(dataset,window,trend=None)
     fds.set_time_transform(time_xform)
     fds.set_signal_transform(sig_xform)
-    
+    fds.noise().set_bias(bias)
+    print("bias: %s" % bias)
+    print("-> [%s:%d] print stats" % (ident,trial))
+    auto_noise = fds.noise().autopower()
+    auto_output = fds.output().autopower()
     print("=== orig time domain ===")
     print("noise power: %s" % dataset.noise.power())
     print("signal power: %s" % dataset.reference.power())
     print("\=== frequency domain ===")
     print("noise power: %s" % fds.noise().power())
-    print("noise autopower: %s" % fds.noise().autopower().power())
+    print("noise autopower: %s" % auto_noise.power())
     print("signal power: %s" % fds.output().power())
+    print("signal autopower: %s" % auto_output.power())
     print("\n")
-    print("-> [%s:%d] plot output spectrogram" % (ident,trial))
-    fds.output().plot(
-        paths.plot_file(ident,trial,'output_ampl'),
-        #paths.plot_file(ident,trial,'output_phase'),
+    print("-> [%s:%d] plot output autopower" % (ident,trial))
+    auto_output.plot(
+        paths.plot_file(ident,trial,'output_mag_auto'),
         None,
         do_log_x=True,do_log_y=False
     )
+    print("-> [%s:%d] plot output spectrogram" % (ident,trial))
+    fds.output().plot(
+        paths.plot_file(ident,trial,'output_mag'),
+        paths.plot_file(ident,trial,'output_phase'),
+        do_log_x=True,do_log_y=False
+    )
+    print("-> [%s:%d] plot noise autopower" % (ident,trial))
+    auto_noise.plot(
+        paths.plot_file(ident,trial,'noise_mag_auto'),
+        None,
+        do_log_x=True,do_log_y=False
+    )
+    
     print("-> [%s:%d] plot noise spectrogram" % (ident,trial))
     fds.noise().plot(
-        paths.plot_file(ident,trial,'noise_ampl'),
-        #paths.plot_file(ident,trial,'noise_phase'),
-        None,
+        paths.plot_file(ident,trial,'noise_mag'),
+        paths.plot_file(ident,trial,'noise_phase'),
         do_log_x=True,do_log_y=False
     )
     #raise Exception("TODO: clip minimum frequency, since we can't measure.")
-    #fds.write(paths.freq_file(ident,trial))
+    fds.write(paths.freq_file(ident,trial))
 
 
 
