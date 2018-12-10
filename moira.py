@@ -4,8 +4,10 @@ import sys
 import shutil
 import moira.model as modellib
 import moira.drive as driver
-import moira.align as align
-import moira.fit as modelfit
+import moira.time_fit as time_fit
+import moira.signal_fit as signal_fit
+import moira.fft_gen as fft_gen
+import moira.noise_fit as noise_fit
 import moira.inpgen as inpgen
 
 sys.path.insert(0,os.path.abspath("lab_bench"))
@@ -17,8 +19,10 @@ def loop(state,model,sim_time):
     print(model.db)
     inpgen.execute(model)
     driver.execute(state,model)
-    align.execute(model)
-    modelfit.execute(model)
+    time_fit.execute(model)
+    signal_fit.execute(model)
+    fft_gen.execute(model)
+    noise_fit.execute(model)
 
 def main():
     parser = argparse.ArgumentParser()

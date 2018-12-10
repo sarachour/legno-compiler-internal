@@ -38,11 +38,11 @@ class ExperimentPathHandler:
         return ExperimentPathHandler.TIME_DIR+ "/%s_%s.json" % (ident,trial)
 
 
-    def align_file(self,ident,trial):
-        return ExperimentPathHandler.FREQ_DIR+ "/align_%s_%s.json" % (ident,trial)
+    def time_xform_file(self,ident,trial):
+        return ExperimentPathHandler.MODEL_DIR+ "/xf_time_%s_%s.json" % (ident,trial)
 
-    def xform_file(self,ident,trial):
-        return ExperimentPathHandler.FREQ_DIR+ "/xform_%s_%s.json" % (ident,trial)
+    def signal_xform_file(self,ident,trial):
+        return ExperimentPathHandler.MODEL_DIR+ "/xf_sig_%s_%s.json" % (ident,trial)
 
     def freq_file(self,ident,trial):
         return ExperimentPathHandler.FREQ_DIR+ "/freq_%s_%s.json" % (ident,trial)
