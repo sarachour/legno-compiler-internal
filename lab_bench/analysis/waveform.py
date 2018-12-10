@@ -9,13 +9,84 @@ import itertools
 import math
 from scipy.ndimage.filters import gaussian_filter
 import lab_bench.analysis.freq as fq
-import pandas
-import fractions
+import fastdtw
+from scipy.spatial.distance import euclidean
+
+class TimeXform:
+        def __init__(self,offset,warp=1.0):
+            self._delay = offset
+            self._warp = warp
+
+        def set_warp(self,warp):
+            self._warp = warp
+
+        @property
+        def delay(self):
+            return self._delay
+
+        def to_json(self):
+            return {
+                    'delay':self._delay,
+                    'warp': self._warp
+            }
+
+        def write(self,name):
+            with open(name,'w') as fh:
+                strdata = json.dumps(self.to_json())
+                fh.write(strdata)
+
+        @staticmethod
+        def read(name):
+            with open(name,'r') as fh:
+                data = json.loads(fh.read())
+                return TimeXform(data['delay'],data['warp'])
+
+class SignalXform:
+
+        def __init__(self,params):
+            self._params = params
+
+
+        @staticmethod
+        def param_names():
+            return ['nonlin','bias']
+
+        @staticmethod
+        def compute(x,nonlin,bias):
+            return x+nonlin*x + bias
+
+        @staticmethod
+        def uncompute(x,nonlin,bias):
+            # y = x*(nonlin+1) + bias
+            # y-bias = x*(nonlin+1)
+            return (x-bias)/(1.0+nonlin)
+
+
+        def apply(self,x):
+            return SignalXform.compute(x,**self._params)
+
+        def unapply(self,x):
+            return SignalXform.uncompute(x,**self._params)
+
+        def to_json(self):
+            return self._params
+
+        def write(self,name):
+            with open(name,'w') as fh:
+                strdata = json.dumps(self.to_json())
+                fh.write(strdata)
+
+        @staticmethod
+        def read(name):
+            with open(name,'r') as fh:
+                data = json.loads(fh.read())
+                return SignalXform(data)
 
 class TimeSeries:
         def __init__(self,time,value):
             self._times = time;
             self._values = value;
+            assert(len(self._times) == len(self._values))
             self._start_index = 0;
             self._end_index = len(time)-1
             self._time_shift = 0.0;
@@ -142,6 +213,27 @@ class TimeSeries:
             ts._value_shift = self._value_shift
             return ts
 
+        def fill_outliers_quartile(self,m=2,window=1000):
+            q1 = np.percentile(self.values, m)
+            median = np.percentile(self.values, 50)
+            q3 = np.percentile(self.values, 100-m)
+            pars = {'rejected':0}
+            def fill_value(args):
+                i,v = args
+                if v < q1 or v > q3:
+                    pars['rejected'] += 1
+                    l = max(0,i-window/2)
+                    u = min(len(self._values),i+window/2)
+                    med = np.random.choice(self._values[l:u])
+                    return med
+                else:
+                    return v
+
+            values = list(map(fill_value, enumerate(self._values)))
+            print("# rejected: %d" % pars['rejected'])
+            return TimeSeries(list(self.times),list(values))
+
+
         def reject_outliers(self, m=2):
             q1 = np.percentile(self.values, m)
             median = np.percentile(self.values, 50)
@@ -208,6 +300,7 @@ class TimeSeries:
             index = self.find_last_index(self._times,
                                          lambda x: x+time_shift<=max_time,
                                          si,ei)
+            self._end_index = index
             #self.times = self.times[:index+1]
             #self.values = self.values[:index+1]
 
@@ -228,11 +321,6 @@ class TimeSeries:
         def resample_fft(self,npts):
             self._copy_on_write()
             n = self.length()
-            mod_v = 64
-            if n%mod_v > 0:
-                _,last_v = self.ith(-1)
-                self.pad_samples(mod_v-n%mod_v,last_v)
-
             print("-> resampling [%d]" % npts)
             rsvals,rstimes = scipy.signal.resample( \
                 self.values,npts,t=self.times)
@@ -240,68 +328,50 @@ class TimeSeries:
             return TimeSeries(rstimes,rsvals)
 
         def resample(self,npts):
+            if npts == self.n():
+                return self.copy()
             return self.resample_fft(npts)
 
         @staticmethod
-        def align_samples(s1,s2,npts,total_time,s1_value,s2_value):
-            assert(not total_time is None)
-            assert(not s1_value is None)
-            targ_delta = total_time/float(npts)
-            n1 = int(s1.time_range()/targ_delta)
-            n2 = int(s2.time_range()/targ_delta)
+        def synchronize_time_deltas(s1,s2,npts=None):
+            npts = max(s1.n(),s2.n()) if npts is None else npts
+            max_time = s1.max_time() if s1.n() > s2.n() else \
+                       s2.max_time()
+            print("max_time: %s,%s,%s" % (s1.max_time(),s2.max_time(),max_time))
+            print("npts: %s,%s,%s" % (s1.n(),s2.n(),npts))
+            targ_delta = max_time/float(npts)
+            n1 = int(round(s1.time_range()/targ_delta))
+            n2 = int(round(s2.time_range()/targ_delta))
             s1_ts = s1.copy().resample(n1)
-            if s1_ts.n() < npts:
-                   s1_ts.pad_samples(npts-s1_ts.n(),value=s1_value)
-            elif s1_ts.n() > npts:
-                   s1_ts._end_index -= int(s1_ts.n() - npts)
-
             s2_ts = s2.copy().resample(n2)
-            if s2_ts.n() < npts:
-                   s2_ts.pad_samples(npts-s2_ts.n(),value=s2_value)
-            elif s2_ts.n() > npts:
-                   s2_ts._end_index -= int(s2_ts.n() - npts)
 
-            print(s1_ts.time_delta(), targ_delta)
-            print(s2_ts.time_delta(), targ_delta)
-            assert(abs(s1_ts.time_delta() - targ_delta) < targ_delta*1e-1)
-            assert(abs(s2_ts.time_delta() - targ_delta) < targ_delta*1e-1)
-            assert(s1_ts.n() == s2_ts.n())
+            s1._check_time_delta(targ_delta)
+            s2._check_time_delta(targ_delta)
             return s1_ts,s2_ts
 
-        def difference(self,other,npts=1e4):
-            if self.max_time() != other.max_time():
-                max_time = min(self.max_time(),
-                               other.max_time())
+        def _check_time_delta(self,targ):
+            thresh=1e-1
+            return abs(self.time_delta() - targ < targ*thresh)
 
-                _,my_last_val = self.ith(-1)
-                _,other_last_val = other.ith(-1)
-                my_ts,other_ts = TimeSeries.align_samples(self,
-                                                    other,
-                                                    npts,
-                                                    max_time,
-                                                    my_last_val,
-                                                    other_last_val)
+        def difference(self,other):
+            assert(self._check_time_delta(other.time_delta()))
+            values = list(map(lambda args: args[0]-args[1],
+                              zip(self.values,other.values)))
 
-            else:
-                my_ts = self
-                other_ts = other
-
-            vsub = map(lambda args: args[0]-args[1],
-                       zip(my_ts.values,other_ts.values))
-
-            act_max_time = min(self.max_time(),other.max_time())
-            result = TimeSeries(list(my_ts.times),list(vsub))
-            # trim resulting signal
-            result.truncate_after(act_max_time)
+            times = list(self.times) \
+                    if self.n() < other.n() \
+                    else list(other.times)
+            print(len(values),len(times))
+            result = TimeSeries(list(times),list(values))
             return result
 
         def plot_series(self,label="series"):
             plt.plot(list(self.times),list(self.values),label=label)
 
-        def detrend(self,constant='constant'):
+        def detrend(self,trend='constant'):
             Npts = self.n()
             # matrix A
-            if not constant:
+            if  trend == 'linear':
                 A = np.ones((Npts, 2), float)
                 # random coefficients
                 A[:, 0] = self.times
@@ -309,74 +379,137 @@ class TimeSeries:
                 new_values = self.values - np.dot(A, coef)
                 m,b = coef
                 return m,b,new_values
-            else:
+            elif trend == 'constant':
                 bias = np.mean(self.values)
                 new_values = self.values - bias
-                return 0,bias,new_values
-
-        def preprocess_signal_for_fft(self,trend=False):
-            dt = self.time_delta()
-            n = self.n()
-            # multiply signal by half-cosine
-            hcos_freq = 1.0/(dt*n*2)*2*math.pi
-            hcos_offset = math.pi/2.0
-            if trend == 'constant' or trend == 'linear':
-                    slope,bias,values = self.detrend(constant=trend)
+                return 1.0,bias,new_values
             else:
-                    slope,bias,values = 1.0,0.0,self._values
+                return 1.0,0.0,self.values
 
-            values = list(map(lambda t: t[1]*math.cos(hcos_freq*dt*t[0]+hcos_offset),
-                              enumerate(values)))
-            # pad with n zeroes.
-            values += [0.0]*n
-            return slope,bias,range(0,2*n)*dt,values
+        def apply_signal_xform(self,xform):
+            self._values = list(map(xform.apply, self._values))
 
-        def fft(self,trend='constant'):
+        def unapply_signal_xform(self,xform):
+            self._values = list(map(xform.unapply, self._values))
+
+
+        def find_nonlinearity(self,targ_ts,m=None):
+            assert(self._check_time_delta(targ_ts.time_delta()))
+            n = min(self.n(),targ_ts.n())
+            v1 = self.values[:n]
+            v2 = targ_ts.values[:n]
+            if not m is None:
+                # outlier detect big errors
+                error = list(map(lambda q : q[1] - q[0], zip(v2,v1)))
+                q1 = np.percentile(error, m)
+                median = np.percentile(error, 50)
+                q3 = np.percentile(error, 100-m)
+                selector = [q1 <= v and q3 >= v for v in error]
+                v1 = list(itertools.compress(v1,selector))
+                v2 = list(itertools.compress(v2,selector))
+
+
+            parnames = SignalXform.param_names()
+            init = np.random.uniform(size=len(parnames))
+            pars,pcov = scipy.optimize.curve_fit(SignalXform.compute, \
+                                                 v1,v2,p0=init)
+            for name,value in (zip(parnames,pars)):
+                print("%s=%s" % (name,value))
+            print(pcov)
+            perr = np.sqrt(np.diag(pcov))
+            print(perr)
+            return SignalXform(dict(zip(parnames,pars)))
+
+        def find_time_warp(self,targ_ts):
+            ds1 = list(zip(self.times,self.values))
+            ds2 = list(zip(self.times,self.values))
+            distance,path = fastdtw.fastdtw(ds1,ds2,dist=euclidean)
+            print(path)
+            input("<continue>")
+            print(distance)
+            input("<continue>")
+
+        def preprocess_signal_for_fft(self,trend=None,window=None,pad=True):
             dt = self.time_delta()
-            slope,bias,values = self.detrend(constant=trend)
+            values = self.values
+            n = self.n()
+            if not window is None:
+                    values = window.apply(values,dt)
+            else:
+                    values = list(values)
+            # pad with n zeroes.
+            slope,bias,values = self.detrend(trend=trend)
 
+            if pad:
+                times = np.linspace(0.0,dt*n*2,n*2)
+                pad = [0.0]*n
+                values = list(values) + pad
+                assert(len(values) == len(times))
+            else:
+                times = np.linspace(0.0,dt*n,n)
+
+            return slope,bias,n,times,values
+
+        def fft(self,window=None,trend='constant',autopower=True):
+            dt = self.time_delta()
+            slope,bias,padding,times,values = \
+                self.preprocess_signal_for_fft(trend,window)
             phasors =scipy.fftpack.fft(values)
-            freqs = np.linspace(0.0,1/(2.0*dt),self.n())
-            print(len(freqs),len(phasors))
-            #freqs = np.fft.rfftfreq(len(values),dt)
+            freqs = scipy.fftpack.fftfreq(len(times), d=dt)
+            n = len(freqs) - padding
+            reg_phasors = math.sqrt(1.0/n)*phasors
+
+            print("freqs: [%s,%s]" % (min(freqs),max(freqs)))
             print("#delta: %f" % dt)
-            print("#trend: %f*t+%f" % (slope,bias))
             print("#phasors: %d" % len(phasors))
             print("#freqs: %d" % len(freqs))
-            return fq.FrequencyData(freqs,phasors,bias=bias,time_scale=dt)
+            print("bias: %s" % bias)
+            return fq.FrequencyData(freqs,reg_phasors,\
+                                    time_scale=dt, \
+                                    num_samples=n, \
+                                    bias=bias, \
+                                    padding=padding,window=window)
 
         @staticmethod
-        def correlate(_s1,_s2,npts):
-            max_time = min(_s1.max_time(),
-                           _s2.max_time())
+        def correlate(s1,s2,window=None):
+            max_time = min(s1.max_time(),
+                           s2.max_time())
+            assert(s1._check_time_delta(s2.time_delta()))
 
-            # align samples with different sampling rate.
-            s1,s2= TimeSeries.align_samples(_s1,
-                                            _s2,
-                                            npts/2,
-                                            max_time,
-                                            0.0,
-                                            0.0)
-
-            s1_dt = s1.time_delta()
-            s2_dt = s2.time_delta()
-            assert(abs(s2_dt - s1_dt) < min(s1_dt,s2_dt)*1e-1)
             def index_to_shift(index):
                     return (index-npts)*dx_out
 
-            #_,_,s1_times,s1_values = s1.preprocess_signal_for_fft(trend='const')
-            #_,_,s2_times,s2_values = s2.preprocess_signal_for_fft(trend='const')
-            s1_times,s1_values = s1.times,s1.values
-            s2_times,s2_values = s2.times,s2.values
+            _,_,_,s1_times,s1_values = \
+                s1.preprocess_signal_for_fft(\
+                                             window=window,
+                                             trend='const',
+                                             pad=False)
+            _,_,_,s2_times,s2_values = \
+                s2.preprocess_signal_for_fft(\
+                                             window=window,
+                                             trend='const',
+                                             pad=False)
+            TimeSeries(s1.times,s1.values).plot_series()
+            TimeSeries(s2.times,s2.values).plot_series()
+            plt.savefig('frame_o.png')
+            plt.cla()
+
+            s1_dt = TimeSeries(s1_times,s1_values).time_delta()
+            print(len(s2_values),len(s1_values))
+            n = len(s2_values)
+            correlations= scipy.signal.correlate(s1_values,
+                                                 s2_values,'full')
+            print(len(s1_values),len(s2_values),len(correlations))
+            offsets = list(map(lambda i : (i - n)*s1_dt,\
+                               range(0,len(correlations))))
+
             TimeSeries(s1_times,s1_values).plot_series()
             TimeSeries(s2_times,s2_values).plot_series()
             plt.savefig('frame.png')
             plt.cla()
-            assert(len(s1_values) == len(s2_values))
-            ncorr = len(s1_values)
-            correlations= scipy.signal.correlate(s1_values,
-                                                 s2_values,'full')
-            offsets = list(map(lambda i : (i - ncorr)*s1_dt, range(0,ncorr+1)))
+            plt.plot(offsets,correlations)
+            plt.savefig('corr.png')
+            plt.cla()
             return correlations,offsets
 
 class TimeSeriesSet:
@@ -384,9 +517,14 @@ class TimeSeriesSet:
     def __init__(self,simulation_time,phase_delay=0):
         self._inputs = {}
         self._output = None
+        self._noise = None
         self._reference = None
         self.phase_delay = phase_delay
         self.simulation_time = simulation_time
+
+    @property
+    def noise(self):
+        return self._noise
 
     @property
     def output(self):
@@ -403,6 +541,9 @@ class TimeSeriesSet:
     def input(self,index):
         return self._inputs[index]
 
+    def set_noise(self,time,value):
+        self._noise = TimeSeries(time,value)
+
     def set_output(self,time,value):
         self._output = TimeSeries(time,value)
 
@@ -418,8 +559,12 @@ class TimeSeriesSet:
         if show_input:
             for lb,inp in self._inputs.items():
                 inp.plot_series("inp[%s]" % lb)
-        self._output.plot_series("out")
-        self._reference.plot_series("ref")
+        if not self._output is None:
+                self._output.plot_series("out")
+        if not self._reference is None:
+                self._reference.plot_series("ref")
+        if not self._noise is None:
+                self._noise.plot_series('noise')
         plt.legend()
         plt.savefig(figname)
         plt.clf()
@@ -459,7 +604,7 @@ class TimeSeriesSet:
         return TimeSeriesSet.from_json(data)
 
 
-    def align(self,n=10000,correlation_rank=1):
+    def align(self,window=None,correlation_rank=1):
         def compute_weight(phase_dist,npts,dt,index):
             shift = dt*(index-npts) + self.phase_delay
             prob = min(1.0,phase_dist.pdf(-shift))
@@ -471,7 +616,7 @@ class TimeSeriesSet:
                 out.time_shift(shift)
                 out.truncate_before(0.0)
                 out.truncate_after(max_time)
-                noise = out.difference(self.reference,npts=n)
+                noise = out.difference(self.reference)
                 out.plot_series()
                 noise.plot_series()
                 self._reference.plot_series()
@@ -480,54 +625,35 @@ class TimeSeriesSet:
                 noise_power = noise.power()
                 return noise_power
 
-        def do_align(npts,trim=0):
-            '''
-            max_time = max(self._output.max_time(),
-                           self._reference.max_time())
 
-            _,pad_value = self._output.ith(-1)
-            out_ts,ref_ts = TimeSeries.align_samples(self._output,
-                                          self._reference,
-                                          npts,
-                                          max_time*2.0,
-                                          pad_value,
-                                          pad_value)
+        correlations,offsets = TimeSeries.correlate(self._reference,\
+                                                    self._output, \
+                                                    window)
+        # top items
+        if correlation_rank == 0:
+                print("[[ performing correlating alignment ]]")
+                index = np.argmax(correlations)
+                print("index=%d, score=%f, shift=%f" % (index,\
+                                                        correlations[index], \
+                                                        offsets[index]))
+        else:
+                print("performing cross-checking alignment")
+                indices = np.argsort(correlations)[-correlation_rank:]
+                errors = []
+                for i,index in enumerate(indices):
+                        shift = offsets[index]
+                        power = compute_timeseries_error(shift)
+                        print("[%s/%s] index=%d score=%f shift=%f, power=%f" % \
+                                (i+1,len(indices),index,correlations[index],\
+                                 shift, \
+                                 power))
+                        errors.append(power)
 
-            dx_out= out_ts.time_delta()
-            def index_to_shift(index):
-                    return (index-npts)*dx_out
+                min_idx = np.argmin(errors)
+                index = indices[min_idx]
 
-            correlations= scipy.signal.correlate(ref_ts.values,
-                                                 out_ts.values,'full')
+        shift = offsets[index]
 
-            '''
-            correlations,offsets = TimeSeries.correlate(self._reference,self._output,npts)
-            # top items
-            if correlation_rank == 0:
-                    print("[[ performing correlating alignment ]]")
-                    index = np.argmax(correlations)
-                    print("index=%d, score=%f, shift=%f" % (index,\
-                                                            correlations[index], \
-                                                            offsets[index]))
-            else:
-                    print("performing cross-checking alignment")
-                    indices = np.argsort(correlations)[-correlation_rank:]
-                    errors = []
-                    for i,index in enumerate(indices):
-                            shift = offsets[index]
-                            power = compute_timeseries_error(shift)
-                            print("[%s/%s] index=%d score=%f shift=%f, power=%f" % \
-                                  (i+1,len(indices),index,correlations[index],shift,power))
-                            errors.append(power)
-
-                    min_idx = np.argmin(errors)
-                    index = indices[min_idx]
-
-            shift = offsets[index]
-            return shift,correlations[index]
-
-
-        shift,best_corr = do_align(n)
         self.phase_delay += shift
         max_time = self.reference.max_time()
         for sig in [self.output]:
@@ -536,7 +662,7 @@ class TimeSeriesSet:
             sig.truncate_after(max_time)
 
 
-        return self.phase_delay,best_corr
+        return TimeXform(self.phase_delay)
 
     def trim(self,lo,hi):
         self.output.trim(lo,hi)

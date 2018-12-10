@@ -38,8 +38,14 @@ class ExperimentPathHandler:
         return ExperimentPathHandler.TIME_DIR+ "/%s_%s.json" % (ident,trial)
 
 
+    def align_file(self,ident,trial):
+        return ExperimentPathHandler.FREQ_DIR+ "/align_%s_%s.json" % (ident,trial)
+
+    def xform_file(self,ident,trial):
+        return ExperimentPathHandler.FREQ_DIR+ "/xform_%s_%s.json" % (ident,trial)
+
     def freq_file(self,ident,trial):
-        return ExperimentPathHandler.FREQ_DIR+ "/%s_%s.json" % (ident,trial)
+        return ExperimentPathHandler.FREQ_DIR+ "/freq_%s_%s.json" % (ident,trial)
 
     def plot_file(self,ident,trial,tag):
         return ExperimentPathHandler.PLOT_DIR+ "/%s_%s_%s.png" % (ident,trial,tag)
@@ -62,6 +68,8 @@ class ExperimentDB:
         PENDING = "pending",
         RAN = "ran"
         ALIGNED = "aligned"
+        XFORMED = "xformed"
+        FFTED = "ffted"
         USED = "used"
 
 
@@ -114,6 +122,13 @@ class ExperimentDB:
 
         return max(map(lambda d: d['round'],self._db.all()))
 
+    def all(self):
+        for result in self._db.all():
+            yield result['ident'],result['trial'],result['status'],result['round'], \
+                result['period'],result['num_periods'],result['inputs'], \
+                result['output'],result['model_id']
+
+
     def get_by_status(self,status):
         q = tdb.Query()
         results = self._db.search(q.status == status.name)
@@ -132,8 +147,12 @@ class ExperimentDB:
                                      result['model_id'],
                                      result['round'])
 
-        for ident,(period,num_periods,inputs,outputs,model_id,round_id) in args.items():
-            yield ident,trials[ident],round_id,period,num_periods,inputs,outputs,model_id
+        keys = list(args.keys())
+        keys.sort()
+        for ident in keys:
+            period,num_periods,inputs,outputs,model_id,round_id = args[ident]
+            yield ident,trials[ident],round_id,\
+                period,num_periods,inputs,outputs,model_id
 
     def set_status(self,ident,trial,status):
         q = tdb.Query()

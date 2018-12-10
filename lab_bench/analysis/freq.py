@@ -3,12 +3,106 @@ import numpy as np
 import matplotlib.pyplot as plt
 import itertools
 import scipy
+import math
+import matplotlib.collections as mcoll
 
 class Phasor:
     def __init__(self,ampl,phase):
         self._ampl = ampl
         self._phase = phase
 
+
+class Window:
+
+    def __init__(self,name):
+        self._name = name
+
+    def name(self):
+        return self._name
+
+    def func(self,n,N):
+        raise Exception("override me")
+
+    def apply(self,values,dt):
+        n = len(values)
+        new_values = list(map(lambda t: t[1]*self.func(t[0],n),
+                              enumerate(values)))
+        assert(len(new_values) == len(values))
+        return new_values
+
+    def unapply(self,values,dt):
+        def div(ampl,coeff):
+            return ampl if coeff <= 1e-10 else ampl/coeff
+
+        n = len(values)
+        new_values = list(map(lambda t: div(t[1],self.func(t[0],n)),
+                              enumerate(values)))
+        assert(len(new_values) == len(values))
+        return new_values
+
+class HannWindow(Window):
+
+    def __init__(self):
+        Window.__init__(self,HannWindow.name())
+        pass
+
+    @staticmethod
+    def name():
+        return 'hann'
+
+    def func(self,n,N):
+        return 0.5*(1.0-math.cos(2*math.pi*float(n)/N))
+
+class PlanckTukeyWindow(Window):
+
+    def __init__(self,alpha):
+        Window.__init__(self,PlanckTukeyWindow.name())
+        self._alpha = alpha
+        pass
+
+    @staticmethod
+    def name():
+        return "planck-tukey"
+
+    def func(self,n,N):
+        alpha = self._alpha
+        lb = alpha*(N-1)/2.0
+        ub = (1-alpha/2.0)*(N-1)
+        if 0 <= n <= lb:
+            inner = 2.0*n/(alpha*(N-1)) - 1
+            return 0.5*(1.0 + math.cos(math.pi*inner))
+        elif lb <= n <= ub:
+            return 1.0
+        else:
+            inner = 2*n/(alpha*(N-1)) - 2.0/alpha + 1.0
+            return 0.5*(1.0 + math.cos(math.pi*inner))
+'''
+    def func(self,n,N):
+        epsilon = self._epsilon
+        print(n,N)
+
+        lb = (epsilon)*N
+        ub = (1-epsilon)*N
+        if lb <= n  and n <= ub:
+            return 1.0
+        elif n < lb:
+            z_plus = 2*epsilon*(1/(1+(2*n/(N)-1)) + 1/(1-2*epsilon+(2*n/(N)-1)))
+            return 1/(z_plus+1)
+        elif ub < n :
+            z_minus = 2*epsilon*(1/(1-(2*n/(N)-1)) + 1/(1-2*epsilon-(2*n/(N)-1)))
+            return 1/(z_minus+1)
+'''
+
+def get_window(name,kwargs):
+    windows = [
+        HannWindow,
+        PlanckTukeyWindow
+    ]
+    for win in windows:
+        if win.name() == name:
+            return win(**kwargs)
+
+    return None
 
 def db(ampl):
     return 20 * log10(ampl)
@@ -22,21 +116,24 @@ def nearest_index(x,v):
 
 class FrequencyData:
 
-    def __init__(self,freqs,phasors,bias=0.0,time_scale=1.0):
+    def __init__(self,freqs,phasors,num_samples=None,bias=0.0, \
+                 window=None,padding=0,time_scale=1.0,autopower=False):
         assert(len(freqs) == len(phasors))
         # real function, so symmetric about frequency
-        #selector = [f >= 0 \
-        #            for f,x in zip(freqs,phasors)]
-        selector = [True for f,x in zip(freqs,phasors)]
+        selector = [f >= 0 for f,x in zip(freqs,phasors)]
         self._time_scale = time_scale
-        self._n_samples = len(freqs)
+        # transform applied to signal
+        self._num_samples = len(freqs) if num_samples is None else num_samples
+        self._window = window
+        self._padding = padding
         self._bias = bias
+        self._autopower = autopower
         self._freqs = list(itertools.compress(freqs, selector))
         self._phasors = list(itertools.compress(phasors,selector))
         self.cutoff(-200)
 
     def num_samples(self):
-        return self._n_samples
+        return self._num_samples
 
     def cutoff(self,db=-40):
         cutoff_ampl = db_to_ampl(db)
@@ -53,7 +150,8 @@ class FrequencyData:
 
     @staticmethod
     def from_phase_ampl(freqs,phase,ampl):
-        return FrequencyData(freqs,map(lambda tup: complex(tup[0],tup[1]), zip(ampl,phase)))
+        return FrequencyData(freqs,map(lambda tup: complex(tup[0],tup[1]), \
+                                       zip(ampl,phase)))
 
     @property
     def fmax(self):
@@ -66,10 +164,30 @@ class FrequencyData:
     def freqs(self):
         return self._freqs
 
+    def copy(self):
+        return FrequencyData(freqs=self._freqs,
+                             phasors=self._phasors,
+                             num_samples=self._num_samples,
+                             bias=self._bias,
+                             window=self._window,
+                             padding=self._padding,
+                             time_scale=self._time_scale,
+                             autopower=True)
+
+    def autopower(self):
+        fd = self.copy()
+        fd._phasors = np.conj(self._phasors)*self._phasors
+        fd._bias = self._bias**2
+        return fd
+
     def power(self):
-        freq_power = self._bias**2
-        freq_power += sum(map(lambda q : abs(q**2), self._phasors))
-        return freq_power/self.num_samples()
+        if self._autopower:
+            freq_power = self._bias
+            freq_power += sum(map(lambda q : abs(q), self._phasors))
+        else:
+            freq_power = self._bias**2
+            freq_power += sum(map(lambda q : abs(q**2), self._phasors))
+        return freq_power
 
     def amplitudes(self):
         return map(lambda x: x.real, self._phasors)
@@ -84,16 +202,24 @@ class FrequencyData:
     def inv_fft(self):
         import lab_bench.analysis.waveform as wf
         dt = self._time_scale
-        freqs = np.linspace(0.0,1/(2.0*dt),self.num_samples())
-        times = np.linspace(0.0, dt,self.num_samples())
-        phasors = [complex(0.0)]*self.num_samples()
+        n = self.num_samples()
+        freqs = np.linspace(0.0,1/(2.0*dt),n)
+        times = np.linspace(0.0, dt*n,n)
+        phasors = [complex(0.0)]*n
         print("-> build frequency buffer [%d]" % self.num_samples())
         # y(j) = (x * exp(2*pi*sqrt(-1)*j*np.arange(n)/n)).mean()
         for freq,ampl,phase in self.phasors():
             index = abs(freqs-freq).argmin()
             phasors[index] += complex(ampl,phase)
 
+        # take inverse fft
         values = scipy.fftpack.ifft(phasors)
+        # remove padding
+        if self._padding > 0:
+            values = values[:-self._padding]
+            times = times[:-self._padding]
+        # invert window
+        values = self._window.unapply(values,dt)
         return wf.TimeSeries(times,np.real(values))
 
     @staticmethod
@@ -136,72 +262,93 @@ class FrequencyData:
         return {'freqs':list(self._freqs),
                 'ampl':list(np.real(self._phasors)),
                 'phase':list(np.imag(self._phasors)),
-                'bias':self._bias,
-                'time_scale':self._time_scale}
+                'properties': {
+                    'n_samples':self._samples,
+                    'padding':self._padding,
+                    'bias': self._bias,
+                    'is_autopower': self._autopower,
+                    'window':self._window.to_json() if not self._window is None else None,
+                    'time_scale':self._time_scale}
+                },
 
     def write(self,filename):
         with open(filename,'w') as fh:
             fh.write(json.dumps(self.to_json()))
 
-    def plot_figure(self,plot_ampl,n=20000,do_log_x=False,do_log_y=False):
-        def stem_plot(axname,x,y,n=1000,do_log_x=False,do_log_y=False):
+    def plot_figure(self,plot_ampl,do_log_x=False,do_log_y=False):
+        def custom_stem(ax,x,y):
+            ax.axhline(min(x),max(x),0, color='r')
+            ax.vlines(x, 0, y, color='b')
+            ax.set_ylim([1.05*min(-1e-6,min(y)), 1.05*max(y)])
+
+        def symlog(_x,thresh=10.0):
+            x = np.array(_x)
+            conds = [
+                x > thresh,
+                x < -thresh,
+                (x <= -thresh)*(x >= thresh),
+            ]
+            lambdas = [
+                lambda el: np.log10(el),
+                lambda el: -1*np.log10(el),
+                lambda el: el
+
+            ]
+            return np.piecewise(x,conds,lambdas)
+
+        def stem_plot(axname,x,y,do_log_x=False,do_log_y=False):
             fig, ax = plt.subplots()
-            min_x,max_x = min(x),max(x)
-            if len(x) < n:
-                x_new = x
-                y_new = y
+            if do_log_x:
+                x = symlog(x)
+            if do_log_y:
+                y = symlog(y)
+
+            custom_stem(ax,x,y)
+            if do_log_y:
+               ax.set_ylabel('%s (log(V))' % axname)
             else:
-                xsel = np.random.uniform(min_x,max_x,size=int(n))
-                indices = list(map(lambda value: nearest_index(x,value),xsel))
-                x_new = list(map(lambda idx: x[idx], indices))
-                y_new = list(map(lambda idx: y[idx], indices))
-                assert(len(x_new) == n)
-                assert(len(y_new) == n)
+                ax.set_ylabel('%s (V)' % axname)
 
-            if len(x) > 0:
-                ax.stem(x_new,y_new,markerfmt=' ')
-                if do_log_y:
-                    ax.set_yscale('symlog')
-                    ax.set_ylabel('%s (log(value))' % axname)
-                else:
-                    ax.set_ylabel('%s (value)' % axname)
-
-                if do_log_x:
-                    ax.set_xscale('log')
-                    ax.set_xlabel('Frequency (log(Hz))')
-                else:
-                    ax.set_xlabel('Frequency (Hz)')
+            if do_log_x:
+                ax.set_xlabel('Frequency (log(Hz))')
+            else:
+                ax.set_xlabel('Frequency (Hz)')
 
             return fig,ax
 
-
         if plot_ampl:
             pl = stem_plot("Amplitude",
-                            self._freqs,np.real(self._phasors),n,do_log_x,do_log_y)
+                            self._freqs,np.real(self._phasors),do_log_x,do_log_y)
         else:
             pl = stem_plot("Phase",
-                            self._freqs,np.imag(self._phasors),n,do_log_x,do_log_y)
+                            self._freqs,np.imag(self._phasors),do_log_x,do_log_y)
 
         return pl
 
-    def plot(self,amplfile,phasefile,n=20000,do_log_x=False,do_log_y=False):
+    def plot(self,amplfile,phasefile,do_log_x=False,do_log_y=False):
         if not amplfile is None:
-            (afig,aax) = self.plot_figure(True,n,do_log_x,do_log_y)
-            afig.savefig(amplfile)
-            plt.close(afig)
+            fig,ax = self.plot_figure(True,do_log_x,do_log_y)
+            fig.savefig(amplfile)
             plt.clf()
             plt.cla()
         if not phasefile is None:
-            (pfig,pax) = self.plot_figure(False,n,do_log_x,do_log_y)
-            pfig.savefig(phasefile)
-            plt.close(pfig)
+            fig,ax = self.plot_figure(False,do_log_x,do_log_y)
+            fig = savefig(phasefile)
             plt.clf()
             plt.cla()
 
 class FreqDataset:
-    def __init__(self,delay):
-        self._delay = delay
+    def __init__(self):
         self.signals = {}
+        self.time_transform = None
+        self.signal_transform = None
+
+    def set_time_transform(self,xform):
+        self.time_transform = xform
+
+    def set_signal_transform(self,xform):
+        self.signal_transform = xform
+
 
     def noise(self,name=""):
         return self.signals['nz(%s)' % name]
@@ -245,7 +392,7 @@ class FreqDataset:
 
     def fmin(self):
         fmin= None
-        for datum in self.signals.values():
+        for datum in self.signals.values()<= 1e-10:
             if fmin is None:
                 fmin = datum.fmin
             fmin = min(fmin,datum.fmin)
@@ -262,18 +409,16 @@ class FreqDataset:
         return self._delay
 
     @staticmethod
-    def from_aligned_time_dataset(delay,dataset,n=10000,percent_outliers_reject=2.0):
-        ds = FreqDataset(delay)
-        noise = dataset.output\
-                       .difference(dataset.reference,n)\
-                       .reject_outliers(m=percent_outliers_reject)
-        ds.add_noise(data=noise.fft())
-
-        ds.add_output(data=dataset.reference.resample(n).fft())
+    def from_aligned_time_dataset(dataset,window,trend):
+        ds = FreqDataset()
+        ds.add_noise(data=dataset.noise.fft(window=window,trend=trend))
+        ds.add_output(data=dataset.reference.fft(window=window,\
+                                                 trend=trend))
         for index,inp in dataset.inputs.items():
-            ds.add_input(index, data=inp.resample(n).fft())
+            ds.add_input(index, data=inp.fft(window=window, \
+                                             trend=trend))
 
-        return noise,ds
+        return ds
 
     @staticmethod
     def from_json(data):
@@ -294,7 +439,10 @@ class FreqDataset:
                           self.signals.items()))
         return {
             'signals': signals,
-            'delay': self._delay,
+            'transforms':{
+                'time':self.time_transform.to_json(),
+                'signal':self.signal_transform.to_json()
+            }
         }
 
     def write(self,filename):

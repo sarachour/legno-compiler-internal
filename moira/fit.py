@@ -93,7 +93,7 @@ def execute(model):
     trial_dict = {}
     for ident,trials,this_round_no,period,n_periods,inputs,output,model_id in \
         itertools.chain(\
-            model.db.get_by_status(ExperimentDB.Status.ALIGNED),
+            model.db.get_by_status(ExperimentDB.Status.FFTED),
             model.db.get_by_status(ExperimentDB.Status.USED)):
         burn_in = this_round_no < 1 and False
 

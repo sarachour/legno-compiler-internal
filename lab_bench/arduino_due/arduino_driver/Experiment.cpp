@@ -259,7 +259,7 @@ void set_dac_values(experiment_t* expr, float * inbuf, int dac_id, int n, int of
   int buf_idx = offset + expr->dac_offsets[dac_id];
   for(int idx = 0; idx < n; idx+=1){
       // 4096, zero at 2047
-      unsigned short value = (short) (inbuf[idx]*2048+2047) & 0xfff;
+      unsigned short value = (unsigned short) (inbuf[idx]*2047+2048) & 0xfff;
       store_value(expr,buf_idx + idx, value);
   }
 }
