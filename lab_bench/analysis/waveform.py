@@ -361,7 +361,6 @@ class TimeSeries:
             times = list(self.times) \
                     if self.n() < other.n() \
                     else list(other.times)
-            print(len(values),len(times))
             result = TimeSeries(list(times),list(values))
             return result
 
@@ -415,9 +414,8 @@ class TimeSeries:
                                                  v1,v2,p0=init)
             for name,value in (zip(parnames,pars)):
                 print("%s=%s" % (name,value))
-            print(pcov)
             perr = np.sqrt(np.diag(pcov))
-            print(perr)
+            raise Exception("[FIXME] this is outdated. please debug.")
             return SignalXform(dict(zip(parnames,pars)))
 
         def find_time_warp(self,targ_ts):
@@ -425,9 +423,8 @@ class TimeSeries:
             ds2 = list(zip(self.times,self.values))
             distance,path = fastdtw.fastdtw(ds1,ds2,dist=euclidean)
             print(path)
-            input("<continue>")
             print(distance)
-            input("<continue>")
+            raise Exception("[FIXME] this is outdated. please debug.")
 
         def preprocess_signal_for_fft(self,trend=None,window=None,pad=True):
             dt = self.time_delta()
