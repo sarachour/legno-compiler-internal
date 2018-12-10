@@ -122,7 +122,7 @@ def execute(model):
                 if model.db.paths.has_file(model.db.paths.freq_file(ident,trial)):
                     model.db.set_status(ident,trial, \
                                             ExperimentDB.Status.FFTED)
-                elif model.db.paths.has_file(model.db.paths.signal_xform_file(ident_trial)):
+                elif model.db.paths.has_file(model.db.paths.signal_xform_file(ident,trial)):
                         model.db.set_status(ident,trial, \
                                             ExperimentDB.Status.XFORMED)
 
