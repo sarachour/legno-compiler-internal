@@ -148,6 +148,13 @@ class SignalDependentNoiseModel:
     def apply(self,freq,signal):
         raise Exception("unimplemented")
 
+    def apply_all(self,f,xs):
+        xps = []
+        for x in xs:
+            xps.append(self.apply(f,x))
+
+        return np.concatenate(xps)
+
     def param(self,name):
         assert(not self._params[name] is None)
         return self._params[name]
@@ -160,87 +167,102 @@ class SignalDependentNoiseModel:
 
     def set_params(self,pars):
         for k in self._params.keys():
-            assert(k in pars)
+            if not (k in pars):
+                raise Exception("%s not in pars" % k)
             self._params[k] = pars[k]
 
     def fit(self,freq,fs,fn,pn,pv):
         def underfit(x,xpred):
-            return np.where(x > xpred, (x-xpred)**2, (2*x+xpred)**2)
+            normv = max(x)
+            return np.where(x > xpred, (x-xpred)**2, (1.5*(xpred-x))**2)/normv
 
         self.set_params(dict(zip(pn,pv)))
         fn_pred = self.apply(freq,fs)
         return underfit(fn,fn_pred)
 
+    def subtract(self,freq,fs,fn):
+        new_fn = fn - self.apply(freq,fs)
+        overapprox = sum(filter(lambda v: v < 0.0, new_fn))
+        new_fn_pos = np.where(new_fn > 0.0, new_fn, 0.0)
+        return overapprox,new_fn_pos
+
 class MultExpSignalModel(SignalDependentNoiseModel):
 
     def __init__(self):
-        SignalDependentNoiseModel.__init__(self,['c', 'n'])
+        SignalDependentNoiseModel.__init__(self,['a','b','n'])
+
+    def initial(self):
+        return [0.0,1.0,1.5]
 
     def apply(self,f,x):
-        c = self.param('c')
+        # s(f)*(x**n)
+        a = self.param('a')
+        b = self.param('b')
         n = self.param('n')
-        return c*(x**n)
+        c = a*f + b
+        xp = c*x**n
+        return xp
+
 
 def subtractive_analysis(model):
-    def under(x,xpred):
-        return np.where(x > xpred, (x-xpred)**2, (2*x+xpred)**2)
-
-    def model_scale(freqs,fs,slope,power):
-         fn_pred = slope*(fs**power)
-         return fn_pred
-
-    def fit_scale(freqs,fs,fn,slope,offset):
-        fn_pred = model_scale(freqs,fs,slope,offset)
-        return under(fn,fn_pred)
-
     def compute_function(x,fs,vs):
         d_s = np.interp(x,fs,np.real(vs))
-        #fxn_s = scipy.signal.hilbert(d_s)
-        return np.real(d_s)
+        fxn_s = scipy.signal.hilbert(d_s)
+        return np.real(fxn_s)
 
     print("--- read dataset ---")
-    data = read_dataset('dataset_train_one.json')
-    print("--- analyze data ---")
-    for fs,vs,fn,vn in zip(data['Fs'],data['As'], \
-                           data['Fn'],data['An']):
+    data = read_dataset('dataset_train.json')
+    print("--- compute frequency range ---")
+    min_f = min(map(lambda freqs: min(freqs), data['Fn']+data['Fs']))
+    max_f = max(map(lambda freqs: max(freqs), data['Fn']+data['Fs']))
+    n = 100000
+    log_freqs = np.linspace(np.log10(min_f),\
+                            np.log10(max_f),\
+                            n)
+    freqs = np.array(list(map(lambda lf: 10**lf, log_freqs)))
+    print("--- compute dataset ---")
+    signals = list(map(lambda t: compute_function(freqs,t[0],t[1]), \
+                       zip(data['Fs'],data['As'])))
+    noises = list(map(lambda t: compute_function(freqs,t[0],t[1]), \
+    zip(data['Fn'],data['An'])))
+    noises_flat = np.concatenate(noises)
 
-        print("compute range")
-        max_f = max(max(fs),max(fn))
-        min_f = min(min(fs),min(fn))
-        print("compute log freqs")
-        log_freqs = np.linspace(np.log10(min_f),\
-                                np.log10(max_f),\
-                                1000000)
-        print("compute freqs")
-        freqs = np.array(list(map(lambda lf: 10**lf, log_freqs)))
-        print("compute signal envelope")
-        fxn_s = compute_function(freqs,fs,vs)
-        print("compute noise envelope")
-        fxn_n = compute_function(freqs,fn,vn)
-        print("plot")
-        plt.semilogx(freqs,fxn_s)
-        plt.savefig('hilbert_signal.png')
-        plt.cla()
-        plt.semilogx(freqs,fxn_n)
-        plt.savefig('hilbert_noise.png')
-        plt.cla()
-        print("optimizing")
-        model = MultExpSignalModel()
-        parnames = model.param_names()
-        result = scipy.optimize.least_squares(lambda parvalues: \
-                                            model.fit(freqs,fxn_s,fxn_n,parnames,parvalues),
-                                              model.initial())
+    model = MultExpSignalModel()
+    parnames = model.param_names()
+    def model_apply(args,*params):
+        model.set_params(dict(zip(parnames,params)))
+        return model.apply_all(args[0],args[1])
 
-        model.set_params(dict(zip(parnames,result.x)))
-        print("cost: %s" % result.cost)
-        print("optimality: %s" % result.optimality)
-        print("plotting")
-        plt.semilogx(freqs, fxn_n, 'b-', label='data')
-        plt.semilogx(freqs, model.apply(freqs,fxn_s), 'r-',
-                     label='fit')
-        plt.savefig('hilbert_fit.png')
-        plt.cla()
-        input('-------')
+    print("--- begin iterative fit---")
+    for _ in range(0,15):
+        print("---- optimize mult-exp---")
+        results = []
+        result,_ = scipy.optimize.curve_fit(model_apply,[freqs,signals],\
+                                          noises_flat,\
+                                          p0=model.initial())
+
+        for i,(sig,noise) in enumerate(zip(signals,noises)):
+            print("=== %d/%d ===" % (i,len(signals)))
+            print(result)
+            model.set_params(dict(zip(parnames,result)))
+            plt.loglog(freqs, sig, 'b-', label='data')
+            plt.savefig('hilbert_signal.png')
+            plt.cla()
+
+            plt.loglog(freqs, noise, 'b-', label='data')
+            plt.loglog(freqs, model.apply(freqs,sig), 'r-',
+                         label='fit')
+            plt.savefig('hilbert_fit.png')
+            plt.cla()
+            error, new_vn = model.subtract(freqs,sig,noise)
+            noises[i] = new_vn
+            print("overapprox error: %s" % error)
+            plt.loglog(freqs,new_vn)
+            plt.savefig('hilbert_new_noise.png')
+            plt.cla()
+            input('<continue>')
+
+
 
 def execute(model):
     #build_dataset(model)
