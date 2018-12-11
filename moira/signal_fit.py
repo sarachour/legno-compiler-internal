@@ -39,12 +39,12 @@ def apply_signal_xform_model(sig_xform,paths,ident,trial):
 
 
 def xform_build_dataset(paths,ident,trial):
-    print("-> [%s:%d] read align model" % (ident,trial))
+    print("-> [%s:%d] read time xform" % (ident,trial))
     align = wf.TimeXform.read(paths.time_xform_file(ident,trial))
     print("-> [%s:%d] read waveforms" % (ident,trial))
     filedir = paths.timeseries_file(ident,trial)
     dataset = wf.TimeSeriesSet.read(filedir)
-    print("-> [%s:%s] apply alignment" % (ident,trial))
+    print("-> [%s:%s] apply time xform" % (ident,trial))
     apply_time_xform_model(align,dataset)
     npts = 200000
     ref,out = wf.TimeSeries.synchronize_time_deltas(dataset.reference,
@@ -52,7 +52,7 @@ def xform_build_dataset(paths,ident,trial):
                                                     npts=npts)
     dataset.set_reference(ref.times,ref.values)
     dataset.set_output(out.times,out.values)
-    print("-> [%s:%d] plot aligned waveforms" % (ident,trial))
+    print("-> [%s:%d] plot time-xformed waveforms" % (ident,trial))
     #dataset.plot(paths.plot_file(ident,trial,'align'))
 
     n = min(dataset.reference.n(), dataset.output.n())

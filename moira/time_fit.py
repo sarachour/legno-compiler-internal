@@ -48,7 +48,7 @@ def align_signal(paths,ident,trial):
     print("[%s:%s] [DISABLED] find time warp function" % (ident,trial))
     #dataset.reference.find_time_warp(dataset.output)
 
-    print("-> [%s:%d] plot aligned waveforms" % (ident,trial))
+    print("-> [%s:%d] plot time-xformed waveforms" % (ident,trial))
     dataset.plot(paths.plot_file(ident,trial,'align'))
     time_xform.write(paths.time_xform_file(ident,trial))
 

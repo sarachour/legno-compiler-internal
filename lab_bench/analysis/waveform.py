@@ -29,6 +29,9 @@ class TimeXform:
                     'delay':self._delay,
                     'warp': self._warp
             }
+        @staticmethod
+        def from_json(data):
+            return TimeXform(data['delay'],data['warp'])
 
         def write(self,name):
             with open(name,'w') as fh:
@@ -39,8 +42,7 @@ class TimeXform:
         def read(name):
             with open(name,'r') as fh:
                 data = json.loads(fh.read())
-                return TimeXform(data['delay'],data['warp'])
-
+                return TimeXform.from_json(data)
 class SignalXform:
 
         class Segment:
@@ -103,9 +105,12 @@ class SignalXform:
                          self._beta,
                          self._error)
 
-        def __init__(self):
+        def __init__(self,bias=0.0):
             self._segments = []
+            self._bias = bias
 
+        def set_bias(self, b):
+            self._bias = b
         @property
         def segments(self):
             for seg in self._segments:
@@ -129,19 +134,35 @@ class SignalXform:
             return seg
 
         def error(self,x):
-            segs = list(filter(lambda seg: seg.contains(x), self._segments))
+            segs = list(filter(lambda seg: seg.contains(x), \
+                               self._segments))
             assert(len(segs) == 1)
             return segs[0].apply(x)
 
 
         def apply(self,x):
-            segs = list(filter(lambda seg: seg.contains(x), self._segments))
+            segs = list(filter(lambda seg: seg.contains(x), \
+                               self._segments))
             assert(len(segs) == 1)
-            return x+segs[0].apply(x)
+            return x+segs[0].apply(x)+self._bias
 
         def to_json(self):
-            segj = list(map(lambda seg: seg.to_json(), self._segments))
-            return segj
+            segj = list(map(lambda seg: seg.to_json(), \
+                            self._segments))
+            return {
+                    'segments':segj,
+                    'bias':self._bias
+            }
+
+        @staticmethod
+        def from_json(data):
+            xform = SignalXform(bias=data['bias'])
+            for seg_json in data['segments']:
+                    seg = SignalXform.Segment\
+                                     .from_json(seg_json)
+                    xform._segments.append(seg)
+
+            return xform
 
         def write(self,name):
             with open(name,'w') as fh:
@@ -152,13 +173,7 @@ class SignalXform:
         def read(name):
             with open(name,'r') as fh:
                 data = json.loads(fh.read())
-                xform = SignalXform()
-                for seg_json in data:
-                        seg = SignalXform.Segment\
-                                         .from_json(seg_json)
-                        xform._segments.append(seg)
-
-                return xform
+                return SignalXform.from_json(data)
 
         def __repr__(self):
             r = ""
@@ -548,8 +563,8 @@ class TimeSeries:
             return fq.FrequencyData(freqs,reg_phasors,\
                                     time_scale=dt, \
                                     num_samples=n, \
-                                    bias=bias, \
-                                    padding=padding,window=window)
+                                    padding=padding,\
+                                    window=window)
 
         @staticmethod
         def correlate(s1,s2,window=None):

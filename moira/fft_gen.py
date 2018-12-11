@@ -65,9 +65,12 @@ def fft_compute_freq(paths,ident,trial):
     fds = fq.FreqDataset. \
           from_aligned_time_dataset(dataset,window,trend=None)
     fds.set_time_transform(time_xform)
-    fds.set_signal_transform(sig_xform)
-    fds.noise().set_bias(bias)
+    print("-> [%s:%d] update signal xform with bias term" % \
+          (ident,trial))
     print("bias: %s" % bias)
+    fds.set_signal_transform(sig_xform)
+    sig_xform.set_bias(bias)
+    sig_xform.write(paths.signal_xform_file(ident,trial))
     print("-> [%s:%d] print stats" % (ident,trial))
     auto_noise = fds.noise().autopower()
     auto_output = fds.output().autopower()

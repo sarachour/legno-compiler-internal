@@ -131,7 +131,7 @@ def nearest_index(x,v):
 
 class FrequencyData:
 
-    def __init__(self,freqs,phasors,num_samples=None,bias=0.0, \
+    def __init__(self,freqs,phasors,num_samples=None, \
                  window=None,padding=0,time_scale=1.0,autopower=False):
         assert(len(freqs) == len(phasors))
         # real function, so symmetric about frequency
@@ -141,14 +141,11 @@ class FrequencyData:
         self._num_samples = len(freqs) if num_samples is None else num_samples
         self._window = window
         self._padding = padding
-        self._bias = bias
         self._autopower = autopower
         self._freqs = list(itertools.compress(freqs, selector))
         self._phasors = list(itertools.compress(phasors,selector))
         self.cutoff(-200)
 
-    def set_bias(self,bias):
-        self._bias = bias
 
     def num_samples(self):
         return self._num_samples
@@ -179,32 +176,32 @@ class FrequencyData:
     def fmin(self):
         return min(self._freqs)
 
+    @property
     def freqs(self):
         return self._freqs
 
-    def copy(self):
+    def copy(self,autopower=False):
         return FrequencyData(freqs=self._freqs,
                              phasors=self._phasors,
                              num_samples=self._num_samples,
-                             bias=self._bias,
                              window=self._window,
                              padding=self._padding,
                              time_scale=self._time_scale,
-                             autopower=True)
+                             autopower=autopower)
 
     def autopower(self):
-        fd = self.copy()
+        fd = self.copy(autopower=True)
         fd._phasors = np.conj(self._phasors)*self._phasors
-        fd._bias = self._bias**2
         return fd
+
+    def normalize(self):
+        self.autopower()
 
     def power(self):
         if self._autopower:
-            freq_power = self._bias
-            freq_power += sum(map(lambda q : abs(q), self._phasors))
+            freq_power = sum(map(lambda q : abs(q), self._phasors))
         else:
-            freq_power = self._bias**2
-            freq_power += sum(map(lambda q : abs(q**2), self._phasors))
+            freq_power = sum(map(lambda q : abs(q**2), self._phasors))
         return freq_power
 
     def amplitudes(self):
@@ -213,9 +210,10 @@ class FrequencyData:
     def phases(self):
         return map(lambda x: x.imag, self._phasors)
 
+    @property
     def phasors(self):
-        for freq,ph in zip(self._freqs,self._phasors):
-            yield freq,ph.real,ph.imag
+        for ph in self._phasors:
+            yield ph
 
     def inv_fft(self):
         import lab_bench.analysis.waveform as wf
@@ -226,9 +224,9 @@ class FrequencyData:
         phasors = [complex(0.0)]*n
         print("-> build frequency buffer [%d]" % self.num_samples())
         # y(j) = (x * exp(2*pi*sqrt(-1)*j*np.arange(n)/n)).mean()
-        for freq,ampl,phase in self.phasors():
+        for freq,phasor in zip(self.freqs,self.phasors):
             index = abs(freqs-freq).argmin()
-            phasors[index] += complex(ampl,phase)
+            phasors[index] += phasor
 
         # take inverse fft
         values = scipy.fftpack.ifft(phasors)
@@ -283,9 +281,9 @@ class FrequencyData:
                 'properties': {
                     'n_samples':self._num_samples,
                     'padding':self._padding,
-                    'bias': self._bias,
                     'is_autopower': self._autopower,
-                    'window':self._window.to_json() if not self._window is None else None,
+                    'window':self._window.to_json() if not \
+                    self._window is None else None,
                     'time_scale':self._time_scale}
                 },
 
@@ -440,10 +438,19 @@ class FreqDataset:
 
     @staticmethod
     def from_json(data):
-        ds = FreqDataset(float(data['delay']))
+        import lab_bench.analysis.waveform as wf
+        ds = FreqDataset()
         for key,inp in data['signals'].items():
-            datum = data['signals'][key]
+            datum = data['signals'][key][0]
             ds.signals[key] = FrequencyData.from_json(datum)
+        if not data['transforms']['time'] is None:
+            ds.set_time_transform(wf.TimeXform.from_json(
+                data['transforms']['time']
+            ))
+        if not data['transforms']['signal'] is None:
+             ds.set_signal_transform(wf.SignalXform.from_json(
+                data['transforms']['signal']
+            ))
 
         return ds
 
