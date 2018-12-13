@@ -1,49 +1,52 @@
 import json
 
+# TODO: characterize black-box model
+
+class LinearNoiseModel:
+
+    def __init__(self,freqs,slopes,intercepts,errors):
+        self._freqs = freqs
+        self._slopes = slopes
+        self._nsigs = len(slopes)
+        self._offsets = intercepts
+        self._errors = errors
+
+    def to_json(self):
+        slopes = {}
+        for i in range(0,self._nsigs):
+            slopes[i] = list(self._slopes[i])
+
+        return {
+            'type': 'linear',
+            'freqs':list(self._freqs),
+            'slopes': slopes,
+            'offsets': list(self._offsets),
+            'errors': list(self._errors)
+        }
+
+    def write(self,filename):
+        with open(filename,'w') as fh:
+            fh.write(json.dumps(self.to_json()))
+
+
 class BlackBoxModel:
+    class XformModel:
+        def __init__(self,xform,uncertainty):
+            self._xform = xform
+            self._uncertainty = uncertainty
 
     def __init__(self):
         self._phase = None
         self._freqs = None
         self._parameters = {}
 
-    def phase_model(self):
-        return self._phase['mean'],self._phase['stdev']
-
-    def add_noise_model(self,freqs):
-        self._freqs = freqs
-
-    def add_parameter(self,param,mean,stdev):
-             self._parameters[param] = {'mean':list(mean),
-                                       'stdev':list(stdev)}
-
-    def add_phase_model(self,mean,std):
-        self._phase = {
-            'mean':mean,'stdev':std
-        }
 
     def to_json(self):
-        return {
-            'phase_model':{'mean':self._phase['mean'],
-                           'stdev':self._phase['stdev']},
-            'noise_model':{
-                'freqs':self._freqs,
-                'params': self._parameters
-            }
-        }
+        return {}
 
     @staticmethod
     def from_json(obj):
         bmod = BlackBoxModel()
-        bmod.add_noise_model(obj['noise_model']['freqs'])
-        bmod.add_phase_model( \
-                              obj['phase_model']['mean'],
-                              obj['phase_model']['stdev']
-        )
-
-        for param,data in obj['noise_model']['params'].items():
-            bmod.add_parameter(param,data['mean'],data['stdev'])
-
         return bmod
 
     @staticmethod

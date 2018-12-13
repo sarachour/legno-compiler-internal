@@ -212,8 +212,7 @@ class FrequencyData:
 
     @property
     def phasors(self):
-        for ph in self._phasors:
-            yield ph
+        return self._phasors
 
     def inv_fft(self):
         import lab_bench.analysis.waveform as wf

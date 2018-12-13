@@ -44,6 +44,9 @@ class ExperimentPathHandler:
     def signal_xform_file(self,ident,trial):
         return ExperimentPathHandler.MODEL_DIR+ "/xf_sig_%s_%s.json" % (ident,trial)
 
+    def noise_file(self,ident,trial):
+        return ExperimentPathHandler.MODEL_DIR + "/noise_%s_%s.json" % (ident,trial)
+
     def freq_file(self,ident,trial):
         return ExperimentPathHandler.FREQ_DIR+ "/freq_%s_%s.json" % (ident,trial)
 
@@ -70,7 +73,7 @@ class ExperimentDB:
         ALIGNED = "aligned"
         XFORMED = "xformed"
         FFTED = "ffted"
-        USED = "used"
+        DENOISED = "denoised"
 
 
     def __init__(self,name):
