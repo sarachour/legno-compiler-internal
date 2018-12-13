@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import os
 import shutil
 from moira.db import ExperimentDB
-from moira.lib.bbmodel import BlackBoxModel
 import scipy
 import numpy as np
 import json

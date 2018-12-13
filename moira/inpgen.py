@@ -2,7 +2,7 @@ from moira.lib.bayes_inf import BayesianModel
 import numpy as np
 import itertools
 from moira.db import ExperimentDB
-from moira.lib.bbmodel import BlackBoxModel
+from moira.lib.blackbox import BlackBoxModel
 import math
 
 def sin_signal(model,ampl,freq_hz,phase,round_no,model_no,trials=10,n_cycles=1):

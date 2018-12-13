@@ -1,7 +1,5 @@
-import json
 import numpy as np
-
-# TODO: characterize black-box model
+import json
 
 class GaussDist:
     def __init__(self,mu,sigma):
@@ -16,6 +14,9 @@ class GaussDist:
         sigma = np.std(values)
         return GaussDist(mu,sigma)
 
+    def ith(self,i):
+        return GaussDist(self._mu[i],self._sigma[i])
+
     def to_json(self):
         return {
             'dist':'normal',
@@ -26,7 +27,32 @@ class GaussDist:
     def __repr__(self):
         return "N(%s,%s)" % (self._mu,self._sigma)
 
-class TimeXformModel:
+class MultiGaussDist:
+
+    def __init__(self,mus,sigmas):
+        self._mus = np.array(mus)
+        self._sigmas = np.array(sigmas)
+        self._n = len(mus)
+
+
+    def from_samples(values):
+        if len(values) == 0:
+            return GaussDist(0.0,0.0)
+
+        mus = list(map(lambda vs: np.mean(vs), values))
+        sigmas = list(map(lambda vs: np.std(vs), values))
+        return MultiGaussDist(mus,sigmas)
+
+
+    def to_json(self):
+        return {
+          'dist': 'multi-normal',
+          'mu': list(self._mus),
+          'sigma': list(self._sigmas),
+          'n':self._n
+        }
+
+class StochTimeXform:
     def __init__(self,delays,warps):
         if isinstance(delays, GaussDist):
             self._delay = delays
@@ -47,23 +73,23 @@ class TimeXformModel:
     def __repr__(self):
         return "delay=%s, warp=%s" % (self._delay,self._warp)
 
-class SignalXformModel:
-    class Segment:
+class StochSignalXform:
+    class StochSegment:
 
         # m*x + b + N(mu,sig)
-        def __init__(self,lb,ub,slope,intercept,biases):
+        def __init__(self,lb,ub,slope,offset,biases):
             self._lower_bound = lb
             self._upper_bound = ub
             self._slope = slope
-            self._intercept = intercept
+            self._offset = offset
             if isinstance(biases, GaussDist):
                 self._bias = biases
             else:
                 self._bias = GaussDist.from_samples(biases)
 
         @staticmethod
-        def from_xform_segment(seg,biases):
-            return SignalXformModel.Segment(
+        def from_deterministic_model(seg,biases):
+            return StochSignalXform.StochSegment(
                 seg.lower_bound,
                 seg.upper_bound,
                 seg.alpha,
@@ -73,11 +99,11 @@ class SignalXformModel:
 
         @staticmethod
         def from_json(data):
-            seg = SignalXformModel.Segment(
+            seg = SignalXformModel.StochSegment(
                 lb=data['lower_bound'],
                 ub=data['upper_bound'],
                 slope=data['slope'],
-                intercept=data['intecept'],
+                offset=data['offset'],
                 biases=GaussDist.from_json(data['bias'])
             )
             return seg
@@ -86,7 +112,7 @@ class SignalXformModel:
         def to_json(self):
             return {
                 'slope':self._slope,
-                'intercept':self._intercept,
+                'offset':self._offset,
                 'bias':self._bias.to_json(),
                 'lower_bound':self._lower_bound,
                 'upper_bound':self._upper_bound
@@ -97,14 +123,14 @@ class SignalXformModel:
             return "[%s,%s]\t\t%s*x+%s+%s" % \
                 (self._lower_bound,self._upper_bound,\
                  self._slope,
-                 self._intercept,\
+                 self._offset,\
                  self._bias)
 
     def __init__(self):
         self._segments = []
 
     def add_segment(self,seg):
-        assert(isinstance(seg,SignalXformModel.Segment))
+        assert(isinstance(seg,StochSignalXform.StochSegment))
         self._segments.append(seg)
 
 
@@ -134,61 +160,38 @@ class SignalXformModel:
 
         return r
 
-class LinearNoiseModel:
+class StochLinNoiseXformModel:
 
-    def __init__(self,freqs,slopes,intercepts,errors):
-        self._freqs = freqs
-        self._slopes = slopes
-        self._nsigs = len(slopes)
-        self._offsets = intercepts
-        self._errors = errors
+    def __init__(self,freqs,slopes,offsets,samples):
+         self._freqs = freqs
+         self._slopes = slopes
+         self._offsets = offsets
+         if isinstance(samples,MultiGaussDist):
+             self._rvs = samples
+         else:
+             self._rvs = MultiGaussDist.from_samples(samples)
+
+    def stumps(self):
+        for i,(freq,slope,offset,mu,std) in \
+            enumerate(zip(self._freqs,
+                self._slopes,
+                self._offsets)):
+            yield freq,slope,offset,self._rvs.ith(i)
+
+    @staticmethod
+    def from_deterministic_model(det_mod,errors):
+        return StochLinNoiseXformModel(
+            det_mod.freqs,
+            det_mod.slopes(0),
+            det_mod.offsets,
+            errors
+        )
+
 
     def to_json(self):
-        slopes = {}
-        for i in range(0,self._nsigs):
-            slopes[i] = list(self._slopes[i])
-
         return {
-            'type': 'linear',
             'freqs':list(self._freqs),
-            'slopes': slopes,
-            'offsets': list(self._offsets),
-            'errors': list(self._errors)
+            'slopes':list(self._slopes),
+            'offsets':list(self._offsets),
+            'rvs':self._rvs.to_json()
         }
-
-    def write(self,filename):
-        with open(filename,'w') as fh:
-            fh.write(json.dumps(self.to_json()))
-
-
-class BlackBoxModel:
-    class XformModel:
-        def __init__(self,xform,uncertainty):
-            self._xform = xform
-            self._uncertainty = uncertainty
-
-    def __init__(self):
-        self._phase = None
-        self._freqs = None
-        self._parameters = {}
-
-
-    def to_json(self):
-        return {}
-
-    @staticmethod
-    def from_json(obj):
-        bmod = BlackBoxModel()
-        return bmod
-
-    @staticmethod
-    def read(filename):
-        with open(filename,'r') as fh:
-            obj = json.loads(fh.read())
-            return BlackBoxModel.from_json(obj)
-
-    def write(self,filename):
-        jsonobj = self.to_json()
-        jsonstr = json.dumps(jsonobj)
-        with open(filename,'w') as fh:
-            fh.write(jsonstr)

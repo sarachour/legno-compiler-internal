@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import itertools
 import scipy
 import math
+import lab_bench.analysis.det_xform as dx
 import matplotlib.collections as mcoll
 
 class Phasor:
@@ -443,11 +444,11 @@ class FreqDataset:
             datum = data['signals'][key][0]
             ds.signals[key] = FrequencyData.from_json(datum)
         if not data['transforms']['time'] is None:
-            ds.set_time_transform(wf.TimeXform.from_json(
+            ds.set_time_transform(dx.DetTimeXform.from_json(
                 data['transforms']['time']
             ))
         if not data['transforms']['signal'] is None:
-             ds.set_signal_transform(wf.SignalXform.from_json(
+             ds.set_signal_transform(dx.DetSignalXform.from_json(
                 data['transforms']['signal']
             ))
 

@@ -1,6 +1,6 @@
 import itertools
 from moira.db import ExperimentDB
-from moira.lib.bbmodel import LinearNoiseModel
+from lab_bench.analysis.det_xform import DetLinNoiseXformModel
 import lab_bench.analysis.waveform as wf
 import lab_bench.analysis.freq as fq
 import random

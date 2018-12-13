@@ -12,7 +12,7 @@ import lab_bench.analysis.freq as fq
 import fastdtw
 from scipy.spatial.distance import euclidean
 
-class TimeXform:
+class DetTimeXform:
         def __init__(self,offset,warp=1.0):
             self._delay = offset
             self._warp = warp
@@ -48,7 +48,7 @@ class TimeXform:
             with open(name,'r') as fh:
                 data = json.loads(fh.read())
                 return TimeXform.from_json(data)
-class SignalXform:
+class DetSignalXform:
 
         class Segment:
              def __init__(self,l,u,a,b,error=0.0):
