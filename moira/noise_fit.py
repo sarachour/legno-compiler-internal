@@ -138,22 +138,20 @@ def compute_power_dataset(freqs,ampls,lb,ub):
 
     return powers
 
-class SignalDependentNoiseModel:
+class NoiseModel:
 
-    def __init__(self,param_names):
+    def __init__(self,name,param_names):
+        self._name = name
         self._params = dict(map(lambda name: (name,None), \
                                 param_names))
         self._param_names = param_names
 
-    def apply(self,freq,signal):
-        raise Exception("unimplemented")
+    @property
+    def name(self):
+        return self._name
 
-    def apply_all(self,f,xs):
-        xps = []
-        for x in xs:
-            xps.append(self.apply(f,x))
-
-        return np.concatenate(xps)
+    def params(self):
+        return self._params.items()
 
     def param(self,name):
         assert(not self._params[name] is None)
@@ -171,14 +169,46 @@ class SignalDependentNoiseModel:
                 raise Exception("%s not in pars" % k)
             self._params[k] = pars[k]
 
-    def fit(self,freq,fs,fn,pn,pv):
-        def underfit(x,xpred):
-            normv = max(x)
-            return np.where(x > xpred, (x-xpred)**2, (1.5*(xpred-x))**2)/normv
+class UncorrelatedNoiseModel(NoiseModel):
+    def __init__(self,name,param_names):
+        NoiseModel.__init__(self,name,param_names)
+        self._params = dict(map(lambda name: (name,None), \
+                                param_names))
+        self._param_names = param_names
 
-        self.set_params(dict(zip(pn,pv)))
-        fn_pred = self.apply(freq,fs)
-        return underfit(fn,fn_pred)
+    def apply(self,freq):
+        raise Exception("unimplemented")
+
+    def apply_all(self,f,n):
+        xps = []
+        xp = self.apply(f)
+        for _ in range(0,n):
+            xps.append(xp)
+
+        result = np.concatenate(xps)
+        print(result.shape)
+        return result
+
+    def subtract(self,freq,fn):
+        new_fn = fn - self.apply(freq)
+        overapprox = sum(filter(lambda v: v < 0.0, new_fn))
+        new_fn_pos = np.where(new_fn > 0.0, new_fn, 0.0)
+        return overapprox,new_fn_pos
+
+class SignalDependentNoiseModel(NoiseModel):
+
+    def __init__(self,name,param_names):
+        NoiseModel.__init__(self,name,param_names)
+
+    def apply(self,freq,signal):
+        raise Exception("unimplemented")
+
+    def apply_all(self,f,xs):
+        xps = []
+        for x in xs:
+            xps.append(self.apply(f,x))
+
+        return np.concatenate(xps)
 
     def subtract(self,freq,fs,fn):
         new_fn = fn - self.apply(freq,fs)
@@ -188,30 +218,70 @@ class SignalDependentNoiseModel:
 
 class MultExpSignalModel(SignalDependentNoiseModel):
 
-    def __init__(self):
-        SignalDependentNoiseModel.__init__(self,['a','b','n'])
+    def __init__(self,degree=1):
+        params = []
+        self.degree = degree
+        for i in range(0,degree):
+            params.append('a%d' % i)
+            params.append('b%d' % i)
+            params.append('c%d' % i)
 
-    def initial(self):
-        return [0.0,1.0,1.5]
+        SignalDependentNoiseModel.__init__(self,'mult-exp-sig',params)
 
     def apply(self,f,x):
-        # s(f)*(x**n)
-        a = self.param('a')
-        b = self.param('b')
-        n = self.param('n')
-        c = a*f + b
-        xp = c*x**n
+        # (a*f+b)*(x)
+        i=0
+        a = self.param('a%d' % i)
+        b = self.param('b%d' % i)
+        c = self.param('c%d' % i)
+        xp = a*x + b*f + c
         return xp
 
+class RecBiasModel(UncorrelatedNoiseModel):
 
-def subtractive_analysis(model):
+    def __init__(self):
+        UncorrelatedNoiseModel.__init__(self,'rec-bias',['a','b','c'])
+
+    def apply(self,f):
+        a = self.param('a')
+        b = self.param('b')
+        c = self.param('c')
+        pred  = b*1.0/f + a*f
+        return pred
+
+def xform(sigs,fn):
+    for sig in sigs:
+        yield fn(sig)
+
+def debug_plots(model,freqs,sig,noise,new_noise):
+    plt.loglog(freqs, sig, 'b-', label='sig')
+    plt.loglog(freqs, noise, 'b-', label='noise')
+    plt.legend()
+    plt.savefig('hilbert_signal.png')
+    plt.cla()
+
+    plt.loglog(freqs, noise, 'b-', label='data')
+    if isinstance(model,UncorrelatedNoiseModel):
+        noise_pred = model.apply(freqs)
+    else:
+        noise_pred = model.apply(freqs,sig)
+    plt.loglog(freqs, noise_pred, 'r-', label='fit')
+    plt.savefig('hilbert_fit.png')
+    plt.cla()
+    plt.loglog(freqs,new_noise)
+    plt.savefig('hilbert_new_noise.png')
+    plt.cla()
+    input("<continue>")
+
+def preprocess_data(model):
     def compute_function(x,fs,vs):
-        d_s = np.interp(x,fs,np.real(vs))
-        fxn_s = scipy.signal.hilbert(d_s)
+        fxn_s = np.interp(x,fs,np.real(vs))
+        #fxn_s = scipy.signal.hilbert(d_s)
         return np.real(fxn_s)
 
     print("--- read dataset ---")
     data = read_dataset('dataset_train.json')
+
     print("--- compute frequency range ---")
     min_f = min(map(lambda freqs: min(freqs), data['Fn']+data['Fs']))
     max_f = max(map(lambda freqs: max(freqs), data['Fn']+data['Fs']))
@@ -221,50 +291,216 @@ def subtractive_analysis(model):
                             n)
     freqs = np.array(list(map(lambda lf: 10**lf, log_freqs)))
     print("--- compute dataset ---")
-    signals = list(map(lambda t: compute_function(freqs,t[0],t[1]), \
-                       zip(data['Fs'],data['As'])))
-    noises = list(map(lambda t: compute_function(freqs,t[0],t[1]), \
-    zip(data['Fn'],data['An'])))
-    noises_flat = np.concatenate(noises)
+    signals = np.array(list(map(lambda t: compute_function(freqs,t[0],t[1]), \
+                                zip(data['Fs'],data['As']))))
+    noises = np.array(list(map(lambda t: compute_function(freqs,t[0],t[1]), \
+                               zip(data['Fn'],data['An']))))
+    return freqs,signals,noises
 
-    model = MultExpSignalModel()
-    parnames = model.param_names()
-    def model_apply(args,*params):
-        model.set_params(dict(zip(parnames,params)))
-        return model.apply_all(args[0],args[1])
+class ValueGridSegment:
 
+    def __init__(self,n=3):
+        self.n = n
+        return
+
+    def bins(self,min_val,max_val,log=True):
+        n = self.n
+        if log:
+            min_val = max(1e-20,min_val)
+            log_vals= np.linspace(np.log10(min_val),\
+                                  np.log10(max_val),\
+                                  n)
+            vals = np.array(list(map(lambda lf: 10**lf, log_vals)))
+        else:
+            vals= np.linspace(min_val,max_val,n)
+
+        for i in range(0,len(vals)-1):
+            yield vals[i],vals[i+1]
+
+    def get_indices(self,low,high,data):
+        inds = []
+        n = 0
+        for i in range(0,len(data)):
+            subinds = list(filter(lambda j : data[i][j] >= low \
+                                  and data[i][j] <= high, \
+                               range(0,len(data[i]))
+            ))
+            n += len(subinds)
+            inds.append(subinds)
+
+        return n,inds
+
+    def apply_indices(self,data,inds):
+        new_data = []
+        for i in range(0,len(data)):
+            if len(inds[i]) > 0:
+                new_datum = list(map(lambda x: data[i][x], inds[i]))
+            else:
+                new_datum = []
+            new_data.append(np.array(new_datum))
+
+        return np.array(new_data)
+
+    def set_indices(self,data,inds,new_data):
+        for i,subarr in enumerate(inds):
+            for sj,j in enumerate(subarr):
+                data[i][j] = new_data[i][sj]
+
+    def segment(self,freqs,signal,noise,log=True):
+        for low,hi in self.bins(np.amin(signal),np.amax(signal)):
+            n,idxs = self.get_indices(low,hi,signal)
+            sub_freqs = self.apply_indices(freqs,idxs)
+            sub_signals = self.apply_indices(signal,idxs)
+            sub_noise = self.apply_indices(noise,idxs)
+            yield n,(low,hi),idxs,sub_freqs,sub_signals,sub_noise
+
+def subtractive_analysis(model):
+    _freqs,signals,noises = preprocess_data(model)
+    n = len(signals)
+    freqs = np.array([_freqs]*n)
     print("--- begin iterative fit---")
-    for _ in range(0,15):
-        print("---- optimize mult-exp---")
+    sig_models = [
+        MultExpSignalModel(),
+    ]
+    seg_models = [
+        ValueGridSegment()
+    ]
+    uncorr_models = [
+        RecBiasModel()
+    ]
+    for model in sig_models:
+        parnames = model.param_names()
+        def model_apply(args,*params):
+            model.set_params(dict(zip(parnames,params)))
+            return model.apply(args[0],args[1])
+
+        for seg in seg_models:
+            for nels,binv,inds,freq_i,signal_i,noise_i in \
+                seg.segment(freqs,signals,noises):
+                if nels < 100*n:
+                    continue
+
+                print("==== BIN %s ====" % str(binv))
+                Fi = np.concatenate(freq_i)
+                Si = np.concatenate(signal_i)
+                Ni = np.concatenate(noise_i)
+                result,_ = scipy.optimize.curve_fit(model_apply,[Fi,Si],Ni, \
+                                                    p0=model.initial())
+
+                for j,(freq_i_j,signal_i_j,noise_i_j) in \
+                    enumerate(zip(freq_i,signal_i,noise_i)):
+                    print("=== %d/%d ===" % (j,len(signal_i)))
+                    for pname,pval in model.params():
+                        print("%s = %s" % (pname,pval))
+                        print("----------")
+                    error, noise_i_j_new = model.subtract(np.array(freq_i_j),signal_i_j,noise_i_j)
+                    print("overapprox error: %s" % error)
+                    debug_plots(model,freq_i_j,signal_i_j,noise_i_j,noise_i_j_new)
+                    noise_i[j] = noise_i_j_new
+
+                seg.set_indices(noises,inds,noise_i)
+'''
+    for model in uncorr_models:
+        parnames = model.param_names()
+        def model_apply(freqs,*params):
+            model.set_params(dict(zip(parnames,params)))
+            return model.apply_all(freqs,len(noises))
+
+        print("---- optimize %s ---" % model.name)
         results = []
-        result,_ = scipy.optimize.curve_fit(model_apply,[freqs,signals],\
+        xformed_signals = list(xform(signals, lambda x: x))
+        parvalues,_ = scipy.optimize.curve_fit(model_apply,freqs,\
                                           noises_flat,\
                                           p0=model.initial())
 
-        for i,(sig,noise) in enumerate(zip(signals,noises)):
+        for i,(sig,noise) in enumerate(zip(xformed_signals,noises)):
             print("=== %d/%d ===" % (i,len(signals)))
-            print(result)
-            model.set_params(dict(zip(parnames,result)))
-            plt.loglog(freqs, sig, 'b-', label='data')
-            plt.savefig('hilbert_signal.png')
-            plt.cla()
-
-            plt.loglog(freqs, noise, 'b-', label='data')
-            plt.loglog(freqs, model.apply(freqs,sig), 'r-',
-                         label='fit')
-            plt.savefig('hilbert_fit.png')
-            plt.cla()
-            error, new_vn = model.subtract(freqs,sig,noise)
-            noises[i] = new_vn
+            model.set_params(dict(zip(parnames,parvalues)))
+            for pname,pval in model.params():
+                print("%s = %s" % (pname,pval))
+            print("----------")
+            error, new_noise = model.subtract(freqs,noise)
             print("overapprox error: %s" % error)
-            plt.loglog(freqs,new_vn)
-            plt.savefig('hilbert_new_noise.png')
-            plt.cla()
-            input('<continue>')
+            debug_plots(model,freqs,sig,noise,new_noise)
+            noises[i] = new_vn
+'''
 
+from GPyOpt.methods import BayesianOptimization
+import GPyOpt
+
+def multi_linear(model):
+    freqs,signals,noises = preprocess_data(model)
+    n = len(signals)
+    nf = len(freqs)
+    nsigs = 1
+    S = np.zeros((n,nsigs))
+    N = np.zeros(n).reshape(-1,1)
+    def update_slice(j):
+        for i in range(0,n):
+            S[i][0] = signals[i][j]
+            N[i][0] = noises[i][j]
+
+        return S,N
+
+    M = np.zeros((nsigs,nf))
+    B = np.zeros(nf)
+    E = np.zeros(nf)
+    print("--- begin iterative fit---")
+    for i in range(0,len(freqs)):
+        if i % 1000 == 0:
+            print("-> %d" % i)
+
+        update_slice(i)
+        regr = linear_model.LinearRegression()
+        regr.fit(S,N)
+        N_pred = regr.predict(S)
+        error = mean_squared_error(N, N_pred)
+        for k in range(0,nsigs):
+            M[k][i] = regr.coef_[0][k]
+        B[i] = regr.intercept_[0]
+        E[i] = error
+
+    for i in range(0,nsigs):
+        plt.loglog(freqs,M[i],label='slope')
+        plt.savefig('coeff_m%d.png' % i)
+        plt.cla()
+
+    plt.loglog(freqs,B,label='intercept')
+    plt.savefig('coeff_b.png')
+    plt.cla()
+
+    plt.loglog(freqs,E,label='error')
+    plt.savefig('error.png')
+    plt.cla()
+
+    for idx,(signal,noise) in enumerate(zip(signals,noises)):
+        N_pred = M[0]*signal+B
+        plt.loglog(freqs,noise,label='obs')
+        plt.loglog(freqs,N_pred,label='pred',alpha=0.5)
+        plt.savefig('pred_%d.png' % idx)
+        plt.cla()
+
+    slopes = {}
+    for i in range(0,nsigs):
+        slopes[i] = list(M[i])
+    data = {
+        'slope':slopes,
+        'intercept':list(B),
+        'error':list(E),
+        'freqs':list(freqs)
+    }
+    with open('noise_model.json', 'w') as fh:
+        fh.write(json.dumps(data))
+
+
+def fit_symbolic(model):
+    with open('noise_model.json', 'r') as fh:
+        precise_model = json.loads(fh.read())
 
 
 def execute(model):
     #build_dataset(model)
-    subtractive_analysis(model)
+    #multi_linear(model)
+    fit_symbolic(model)
+    #subtractive_analysis(model)
     raise Exception("stop here")
