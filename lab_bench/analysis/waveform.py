@@ -21,6 +21,11 @@ class TimeXform:
             self._warp = warp
 
         @property
+        def warp(self):
+            return self._warp
+
+
+        @property
         def delay(self):
             return self._delay
 
@@ -55,6 +60,14 @@ class SignalXform:
 
              def set_error(self,e):
                 self._error = e
+
+             @property
+             def alpha(self):
+                return self._alpha
+
+             @property
+             def beta(self):
+                return self._beta
 
              @property
              def lower_bound(self):
@@ -116,6 +129,13 @@ class SignalXform:
             for seg in self._segments:
                 yield seg
 
+        @property
+        def num_segments(self):
+            return len(self._segments)
+
+        def get_segment_by_id(self,idx):
+                return self._segments[idx]
+
         def _non_overlapping(self,l,u):
             for seg in self._segments:
                 if not l is None and \
@@ -139,6 +159,15 @@ class SignalXform:
             assert(len(segs) == 1)
             return segs[0].apply(x)
 
+
+        def get_segment_id(self,x):
+            inds = list(filter(lambda i: self._segments[i].contains(x), \
+                               range(0,self.num_segments)))
+            assert(len(inds) == 1)
+            return inds[0]
+
+        def apply_segment_by_id(self,i,x):
+            return x + seg[i].apply(x)+self._bias
 
         def apply(self,x):
             segs = list(filter(lambda seg: seg.contains(x), \
