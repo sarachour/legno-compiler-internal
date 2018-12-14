@@ -1,5 +1,52 @@
 import numpy as np
 import json
+from sklearn import datasets, linear_model
+from sklearn.metrics import mean_squared_error, r2_score
+import matplotlib.pyplot as plt
+#The following constant was computed in maxima 5.35.1 using 64 bigfloat digits of precision
+import math
+
+
+def sigfig( x, sigfigs ):
+  __logBase10of2 = 3.010299956639811952137388947244e-1
+  """
+  Rounds the value(s) in x to the number of significant figures in sigfigs.
+
+  Restrictions:
+  sigfigs must be an integer type and store a positive value.
+  x must be a real value or an array like object containing only \
+  real values.
+  """
+  if not ( type(sigfigs) is int or np.issubdtype(sigfigs, np.integer)):
+      raise TypeError( "RoundToSigFigs: sigfigs must be an integer." )
+
+  if not np.all(np.isreal( x )):
+      raise TypeError( "RoundToSigFigs: all x must be real." )
+
+  if sigfigs <= 0:
+      raise ValueError( "RoundtoSigFigs: sigfigs must be positive." )
+
+  xsgn = np.sign(x)
+  absx = xsgn * x
+  mantissas, binaryExponents = np.frexp( absx )
+
+  decimalExponents = __logBase10of2 * binaryExponents
+  intParts = np.floor(decimalExponents)
+
+  mantissas *= 10.0**(decimalExponents - intParts)
+
+  if type(mantissas) is float or np.issctype(np.dtype(mantissas)):
+      if mantissas < 1.0:
+          mantissas *= 10.0
+
+  elif np.issubdtype(mantissas, np.ndarray):
+      fixmsk = mantissas < 1.0
+      mantissas[fixmsk] *= 10.0
+
+  return xsgn * np.around( mantissas, decimals=sigfigs - 1 ) \
+    * 10.0**intParts
+
+
 
 class DetTimeXform:
         def __init__(self,offset,warp=1.0):
@@ -39,209 +86,138 @@ class DetTimeXform:
                 return DetTimeXform.from_json(data)
 
 
+class DetLinearModel:
 
-class DetSignalXform:
-
-        class Segment:
-             def __init__(self,l,u,a,b,error=0.0):
-                self._lower_bound = l
-                self._upper_bound = u
-                self._alpha = a
-                self._beta = b
-                self._error = error
-
-             def set_error(self,e):
-                self._error = e
-
-             @property
-             def alpha(self):
-                return self._alpha
-
-             @property
-             def beta(self):
-                return self._beta
-
-             @property
-             def lower_bound(self):
-                return self._lower_bound
-
-             @property
-             def upper_bound(self):
-                return self._upper_bound
-
-             def contains(self,x):
-                lb,ub =self._lower_bound,self._upper_bound
-                if lb is None:
-                   return x < ub
-                if ub is None:
-                   return lb <= x
-                else:
-                   return lb <= x and ub > x
-
-
-             def apply(self,x):
-                return self._alpha*x+self._beta
-
-             @staticmethod
-             def from_json(data):
-                seg = DetSignalXform.Segment(
-                        l=data['lower_bound'],
-                        u=data['upper_bound'],
-                        a=data['alpha'],
-                        b=data['beta'],
-                        error=data['error']
-                )
-                return seg
-
-             def to_json(self):
-                return {
-                        'alpha':self._alpha,
-                        'beta':self._beta,
-                        'error':self._error,
-                        'lower_bound':self._lower_bound,
-                        'upper_bound':self._upper_bound
-                }
-
-             def __repr__(self):
-                return "[%s,%s] %s*x+%s {%s}" % \
-                        (self._lower_bound,
-                         self._upper_bound,
-                         self._alpha,
-                         self._beta,
-                         self._error)
-
-        def __init__(self,bias=0.0):
-            self._segments = []
-            self._bias = bias
-
-        def set_bias(self, b):
-            self._bias = b
-        @property
-        def segments(self):
-            for seg in self._segments:
-                yield seg
-
-        @property
-        def num_segments(self):
-            return len(self._segments)
-
-        def get_segment_by_id(self,idx):
-                return self._segments[idx]
-
-        def _non_overlapping(self,l,u):
-            for seg in self._segments:
-                if not l is None and \
-                   seg.contains(l):
-                    return False
-                if not u is None and \
-                   seg.contains(u):
-                    return False
-
-            return True
-
-        def add_segment(self,lower,upper,alpha,beta):
-            assert(self._non_overlapping(lower,upper))
-            seg = DetSignalXform.Segment(lower,upper,alpha,beta)
-            self._segments.append(seg)
-            return seg
-
-        def error(self,x):
-            segs = list(filter(lambda seg: seg.contains(x), \
-                               self._segments))
-            assert(len(segs) == 1)
-            return segs[0].apply(x)
-
-
-        def get_segment_id(self,x):
-            inds = list(filter(lambda i: self._segments[i].contains(x), \
-                               range(0,self.num_segments)))
-            assert(len(inds) == 1)
-            return inds[0]
-
-        def apply_segment_by_id(self,i,x):
-            return x + seg[i].apply(x)+self._bias
-
-        def apply(self,x):
-            segs = list(filter(lambda seg: seg.contains(x), \
-                               self._segments))
-            assert(len(segs) == 1)
-            return x+segs[0].apply(x)+self._bias
-
-        def to_json(self):
-            segj = list(map(lambda seg: seg.to_json(), \
-                            self._segments))
-            return {
-                    'segments':segj,
-                    'bias':self._bias
-            }
-
-        @staticmethod
-        def from_json(data):
-            xform = DetSignalXform(bias=data['bias'])
-            for seg_json in data['segments']:
-                    seg = DetSignalXform.Segment\
-                                     .from_json(seg_json)
-                    xform._segments.append(seg)
-
-            return xform
-
-        def write(self,name):
-            with open(name,'w') as fh:
-                strdata = json.dumps(self.to_json())
-                fh.write(strdata)
-
-        @staticmethod
-        def read(name):
-            with open(name,'r') as fh:
-                data = json.loads(fh.read())
-                return DetSignalXform.from_json(data)
-
-        def __repr__(self):
-            r = ""
-            for seg in self._segments:
-                r += "%s\n" % seg
-            return r
-
-
-
-
-
-class DetLinNoiseXformModel:
-
-    def __init__(self,freqs,slopes,offsets,errors):
-        self._freqs = freqs
-        self._slopes = slopes
+    def __init__(self,locs,slopes,offsets,num_samples):
+        self._locs= np.array(locs)
+        self._slopes = np.array(slopes)
         self._nsigs = len(slopes)
-        self._offsets = offsets
-        self._errors = errors
+        self._nsamps = num_samples
+        self._offsets = np.array(offsets)
 
-    def slopes(self,i):
+    def slope(self,i):
         return self._slopes[i]
 
-
     @property
-    def offsets(self):
+    def offset(self):
         return self._offsets
 
+    def find_nearest_index(self,value):
+        array = self._locs
+        idx = np.searchsorted(array, value, side="left")
+        if idx > 0 and (idx == len(array) or \
+                        math.fabs(value - array[idx-1]) \
+                        < math.fabs(value - array[idx])):
+          return idx-1
+        else:
+          return idx
+
     @property
-    def freqs(self):
-        return self._freqs
+    def num_samples(self):
+        return self._nsamps
+
+
+    @property
+    def locs(self):
+        return self._locs
+
+    def apply_one(self,i,value):
+        raise NotImplementedError
 
     def apply(self,values):
-        return self._slopes[0]*values + self._offsets
+        raise NotImplementedError
+
+    def apply2(self,dlocs,values):
+        inds = map(lambda v: self.find_nearest_index(v),dlocs)
+        return np.array(list(
+          map(lambda args: self.apply_one(*args), zip(inds,values))
+        ))
 
     def to_json(self):
         slopes = {}
         for i in range(0,self._nsigs):
             slopes[i] = list(self._slopes[i])
 
-        return {
+        data = {
             'type': 'linear',
-            'freqs':list(self._freqs),
+            'locs':list(self._locs),
             'slopes': slopes,
-            'offsets': list(self._offsets),
-            'errors': list(self._errors)
+            'num_samples': list( \
+                                 map(lambda i:int(i),
+                                     self._nsamps)),
+            'offsets': list(self._offsets)
         }
+        return data
+
+    @staticmethod
+    def fit(dlocs,dep_vars,observations,nsigs):
+        locs = sorted(set(dlocs))
+        nlocs = len(locs)
+        b_dep_variables = list(map(lambda _ : [], range(0,nlocs)))
+        b_obs_variables = list(map(lambda _ : [], range(0,nlocs)))
+        for dloc,dep_var,obs in \
+            zip(dlocs,dep_vars,observations):
+            dist = (locs-dloc)**2
+            idx = np.argmin(dist)
+            b_dep_variables[idx].append(dep_var)
+            b_obs_variables[idx].append(obs)
+
+        M = np.zeros((nsigs,nlocs),dtype=float)
+        B = np.zeros(nlocs,dtype=float)
+        N = np.zeros(nlocs,dtype=int)
+
+        for idx in range(0,nlocs):
+          v = locs[idx]
+          xs = b_dep_variables[idx]
+          ys = b_obs_variables[idx]
+          if len(xs) == 0:
+            continue
+
+          N[idx] = len(ys)
+          if nsigs == 0:
+            coeff = np.mean(ys)
+            B[idx] = coeff
+
+          else:
+            regr = linear_model.LinearRegression()
+            regr.fit(xs,ys)
+            ys_pred = regr.predict(xs)
+            error = mean_squared_error(ys, ys_pred)
+            print("%s] %s*x+%s, %s {%s}" % (v,regr.coef_,\
+                                            regr.intercept_,\
+                                            error,len(ys)))
+            for k in range(0,nsigs):
+              M[k][idx] = regr.coef_[k]
+
+            B[idx] = regr.intercept_
+
+        return locs,M,B,N
+
+    def plot_num_samples(self,filename):
+        plt.plot(self.locs,self.num_samples,linewidth=1)
+        plt.savefig(filename)
+        plt.cla()
+
+    def plot_slope(self,filename,i):
+        if self._nsigs == 0:
+          plt.savefig(filename)
+          plt.cla()
+          return
+
+        plt.plot(self.locs,self.slope(i),linewidth=1)
+        plt.savefig(filename)
+        plt.cla()
+
+    def plot_offset(self,filename):
+        plt.plot(self.locs,self.offset,linewidth=1)
+        plt.savefig(filename)
+        plt.cla()
+
+
+    def predict(self,dlocs,values):
+      observation_pred = self.apply2(dlocs,values)
+      return observation_pred
+
 
     @staticmethod
     def from_json(data):
@@ -249,13 +225,12 @@ class DetLinNoiseXformModel:
         slopes = []
         for i in range(0,nsigs):
             slopes.append( \
-                np.array(data['slopes'][str(i)])
+                data['slopes'][str(i)]
             )
 
-        freqs = np.array(data['freqs'])
-        offsets = np.array(data['offsets'])
-        errors = np.array(data['errors'])
-        return DetLinNoiseXformModel(freqs,slopes,offsets,errors)
+        freqs = data['locs']
+        offsets = data['offsets']
+        return DetLinearXformModel(freqs,slopes,offsets)
 
     def write(self,filename):
         with open(filename,'w') as fh:
@@ -264,4 +239,39 @@ class DetLinNoiseXformModel:
     @staticmethod
     def read(filename):
         with open(filename,'r') as fh:
-            return DetLinNoiseXformModel.from_json(json.loads(fh.read()))
+            return DetLinearModel.from_json(json.loads(fh.read()))
+
+class DetNoiseModel(DetLinearModel):
+
+    def __init__(self,freqs,slopes,offsets):
+        self.__init__(freqs,slopes,offsets)
+
+    @property
+    def freqs(self):
+        return self.locs
+
+    def apply_one(self,i,v):
+        return self.slope(0)[i]*v + self.offsets[i]
+
+    def apply(self,v):
+        return self.slope(0)*v + self.offsets
+
+
+
+class DetSignalXform(DetLinearModel):
+
+    def __init__(self,freqs,slopes,offsets,nsamps):
+        DetLinearModel.__init__(self,freqs,slopes,offsets,nsamps)
+
+    @property
+    def freqs(self):
+        return self.locs
+
+    def apply_one(self,i,v):
+        pred = self.offset[i] + v
+        return pred
+
+    def apply(self,v):
+        return self.offset + v
+
+

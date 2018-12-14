@@ -1,10 +1,13 @@
 import numpy as np
 import json
+import scipy
+import scipy.stats
 
 class GaussDist:
     def __init__(self,mu,sigma):
         self._mu = mu
         self._sigma = sigma
+        self._dist = scipy.stats.norm(mu,sigma)
 
     def from_samples(values):
         if len(values) == 0:
@@ -17,12 +20,22 @@ class GaussDist:
     def ith(self,i):
         return GaussDist(self._mu[i],self._sigma[i])
 
+    def pdf(self,value):
+        prob = self._dist.pdf(value)
+        return 1.0 if prob > 1.0 else prob
+
     def to_json(self):
         return {
             'dist':'normal',
             'mu':self._mu,
             'sigma':self._sigma
         }
+
+    @staticmethod
+    def from_json(data):
+        assert(data['dist'] == 'normal')
+        return GaussDist(data['mu'],data['sigma'])
+
 
     def __repr__(self):
         return "N(%s,%s)" % (self._mu,self._sigma)
@@ -49,8 +62,12 @@ class MultiGaussDist:
           'dist': 'multi-normal',
           'mu': list(self._mus),
           'sigma': list(self._sigmas),
-          'n':self._n
         }
+
+    @staticmethod
+    def from_json(data):
+        assert(data['dist'] == 'multi-normal')
+        return MultiGaussDist(data['mu'],data['sigma'])
 
 class StochTimeXform:
     def __init__(self,delays,warps):
@@ -63,6 +80,17 @@ class StochTimeXform:
             self._warp = warps
         else:
             self._warp = GaussDist.from_samples(abs(np.array(warps)))
+
+    @property
+    def delay(self):
+        return self._delay
+
+    @staticmethod
+    def from_json(data):
+        return StochTimeXform(
+          GaussDist.from_json(data['delay']),
+          GaussDist.from_json(data['warp'])
+        )
 
     def to_json(self):
         return {
@@ -99,7 +127,7 @@ class StochSignalXform:
 
         @staticmethod
         def from_json(data):
-            seg = SignalXformModel.StochSegment(
+            seg = StochSignalXform.StochSegment(
                 lb=data['lower_bound'],
                 ub=data['upper_bound'],
                 slope=data['slope'],
@@ -144,9 +172,9 @@ class StochSignalXform:
 
     @staticmethod
     def from_json(data):
-        xform = SignalXformModel()
+        xform = StochSignalXform()
         for seg_json in data['segments']:
-            seg = SignalXformModel.Segment\
+            seg = StochSignalXform.StochSegment\
                                     .from_json(seg_json)
             xform._segments.append(seg)
 
@@ -195,3 +223,12 @@ class StochLinNoiseXformModel:
             'offsets':list(self._offsets),
             'rvs':self._rvs.to_json()
         }
+
+    @staticmethod
+    def from_json(data):
+      return StochLinNoiseXformModel(
+        freqs=np.array(data['freqs']),
+        slopes=np.array(data['slopes']),
+        offsets=np.array(data['offsets']),
+        samples=MultiGaussDist.from_json(data['rvs'])
+      )

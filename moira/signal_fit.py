@@ -2,18 +2,14 @@ import sys
 import lab_bench.analysis.waveform as wf
 import lab_bench.analysis.freq as fq
 import matplotlib.pyplot as plt
+import lab_bench.analysis.det_xform as dx
 import os
 import shutil
 from moira.db import ExperimentDB
 import scipy
 import numpy as np
 import json
-import pymc3
-import theano
-import pickle
-import pwlf
-import sklearn
-
+import itertools
 
 def apply_time_xform_model(align,dataset):
     dataset.output.time_shift(align.delay)
@@ -21,14 +17,18 @@ def apply_time_xform_model(align,dataset):
     dataset.output.truncate_after(dataset.reference.max_time())
 
 
-def apply_signal_xform_model(sig_xform,paths,ident,trial):
+def apply_signal_xform_model(model,sig_xform,ident,trial):
+    paths = model.db.paths
     print("-> [%s:%d] read time xform model" % (ident,trial))
-    align = wf.TimeXform.read(paths.time_xform_file(ident,trial))
+    align = dx.DetTimeXform.read(paths.time_xform_file(ident,trial))
     print("-> [%s:%d] read waveforms" % (ident,trial))
     filedir = paths.timeseries_file(ident,trial)
     dataset = wf.TimeSeriesSet.read(filedir)
     print("-> [%s:%s] apply time transform" % (ident,trial))
     apply_time_xform_model(align,dataset)
+
+    sig_xform.plot_offset(paths.plot_file(ident,trial,'offset'))
+    sig_xform.plot_num_samples(paths.plot_file(ident,trial,'nsamps'))
     print("[%s:%s] apply signal transform" % (ident,trial))
     dataset.reference.apply_signal_xform(sig_xform)
     print("[%s:%s] plot transformed signals" % (ident,trial))
@@ -37,139 +37,120 @@ def apply_signal_xform_model(sig_xform,paths,ident,trial):
     sig_xform.write(paths.signal_xform_file(ident,trial))
 
 
-def xform_build_dataset(paths,ident,trial):
+def xform_build_dataset(model,ident,trial):
+    paths = model.db.paths
     print("-> [%s:%d] read time xform" % (ident,trial))
-    align = wf.TimeXform.read(paths.time_xform_file(ident,trial))
+    align = dx.DetTimeXform.read(paths.time_xform_file(ident,trial))
     print("-> [%s:%d] read waveforms" % (ident,trial))
     filedir = paths.timeseries_file(ident,trial)
     dataset = wf.TimeSeriesSet.read(filedir)
     print("-> [%s:%s] apply time xform" % (ident,trial))
     apply_time_xform_model(align,dataset)
-    npts = 200000
+    print("-> [%s:%s] synchronize time xform" % (ident,trial))
+    npts = 500000
     ref,out = wf.TimeSeries.synchronize_time_deltas(dataset.reference,
                                                     dataset.output,
                                                     npts=npts)
     dataset.set_reference(ref.times,ref.values)
     dataset.set_output(out.times,out.values)
     print("-> [%s:%d] plot time-xformed waveforms" % (ident,trial))
-    #dataset.plot(paths.plot_file(ident,trial,'align'))
+    dataset.plot(paths.plot_file(ident,trial,'align'))
 
     n = min(dataset.reference.n(), dataset.output.n())
     nsamps = 10000
     print("-> computed dataset size %s" % n)
     indices = np.random.choice(range(0,n),size=nsamps)
-    xs = list(map(lambda i: dataset.reference.ith(i)[1], indices))
+    xs = list(map(lambda i: [dataset.reference.ith(i)[1]], indices))
     ys = list(map(lambda i: dataset.output.ith(i)[1], indices))
     return xs,ys
 ''
 
 
-def xform_fit_prepare_dataset(data):
-    def sort(x,y):
-        inds = np.argsort(x)
-        xn = list(map(lambda i : x[i], inds))
-        en = list(map(lambda i : y[i]-x[i], inds))
-        yn = list(map(lambda i : y[i], inds))
-        return xn,yn,en
+def xform_fit_dataset(data):
+    def build_round_dataset(data,round_no):
+        ls = []
+        xs = []
+        ys = []
+        for i in range(0,round_no+1):
+            ls += data[i]['X']
+            xs += list(map(lambda _ : [], range(len(data[i]['X']))))
+            ys += list(map(lambda args: args[0]-args[1], \
+                           zip(data[i]['Y'],data[i]['X'])))
 
-    xtrain,xtest,ytrain,ytest = sklearn.model_selection\
-                                       .train_test_split(data['X'],data['Y'])
-    return sort(xtrain,ytrain),sort(xtest,ytest)
+        #xtrain,xtest,ytrain,ytest = sklearn.model_selection\
+        #                                    .train_test_split(xs,ys)
+        #return xtrain,ytrain,xtest,ytest
+        return np.array(ls),np.array(xs),np.array(ys)
 
-def xform_fit_build_sig_xform_from_linsegs(_breaks,pwl_model):
-    print("-> build signal xform")
-    breaks = list(_breaks)
-    slopes = pwl_model.slopes
-    ys= pwl_model.predict(breaks)
-    # set end breaks to undefined
-    xform = wf.SignalXform()
-    for idx in range(0,len(breaks)-1):
-        x0,x1 = breaks[idx],breaks[idx+1]
-        m = slopes[idx]
-        y0 = ys[idx]
-        b = y0-m*x0
-        l = x0 if idx > 0 else None
-        u = x1 if idx + 1 < len(breaks)-1 else None
-        xform.add_segment(l,u,m,b)
+    nbins = 10000
+    xform_models = {}
+    for round_no in data.keys():
+        print("=== Fit Round %d ==" % round_no)
+        print("-> computing dataset")
+        ls,xs,ys=build_round_dataset(data,round_no)
+        xdim = len(xs[0])
+        ls_trunc = list(map(lambda x: dx.sigfig(x,3),ls.reshape(-1)))
+        print("-> fitting model")
+        locs,slopes,offsets,nsamps = dx.DetSignalXform.fit(
+                                                           ls_trunc,
+                                                           xs,
+                                                           ys, xdim)
 
+        xform = dx.DetSignalXform(locs,slopes,offsets,nsamps)
+        xform_models[round_no] = xform
 
-    return xform
-
-def xform_fit_dataset(nsegs,data):
-    print("-> computing test and train")
-    (xs,ys,es),(xt,yt,et)=xform_fit_prepare_dataset(data)
-    print("-> performing fit")
-    pwl_model = pwlf.PiecewiseLinFit(xs,es)
-    breaks = pwl_model.fit(nsegs)
-    xform = xform_fit_build_sig_xform_from_linsegs(breaks,pwl_model)
-    print(xform)
-    xform.to_json()
-    print("-> testing on holdout data")
-    for seg in xform.segments:
-        inds = list(map(lambda i : seg.contains(xt[i]),
-                        range(0,len(xt))))
-        xt_s = list(map(lambda i: xt[i],inds))
-        et_s = list(map(lambda i: et[i],inds))
-        etpred_s = list(map(lambda i: xform.error(xt[i]),inds))
-        sumsq_err = sum(map(lambda t: (t[0]-t[1])**2,
-                            zip(et_s,etpred_s)))
-        seg.set_error(sumsq_err)
-        print(seg)
-        print("error:%s" % sumsq_err)
-        print("-------")
-
-    et_pred = list(map(lambda el: xform.error(el), xt))
-    plt.plot(xt, et, marker=' ',label = 'data',linewidth=0.1)
-    plt.plot(xt,et_pred,marker=' ',label='fit')
-    plt.legend()
-    plt.savefig('predictions.png')
-
-    return xform
+    return xform_models
 
 def execute(model):
     def compute_xformable_experiments():
+        # downgrade xformed,ffted and dnoised to aligned, if we're
+        # missing an xform file
         for ident,trials,round_no,period,n_cycles,\
             inputs,output,model_id in \
-            model.db.get_by_status(ExperimentDB.Status.XFORMED):
+                model.db.get_by_status(ExperimentDB.Status.ALIGNED):
             for trial in trials:
-                if not model.db.paths.has_file(model.db.paths.signal_xform_file(ident,trial)):
-                    model.db.set_status(ident,trial, \
-                                        ExperimentDB.Status.ALIGNED)
+                yield ident,trial,round_no
 
-        for ident,trials,round_no,period,n_cycles,\
-            inputs,output,model_id in \
-            model.db.get_by_status(ExperimentDB.Status.ALIGNED):
-            for trial in trials:
-                if model.db.paths.has_file(model.db.paths.signal_xform_file(ident,trial)):
-                    model.db.set_status(ident,trial, \
-                                        ExperimentDB.Status.XFORMED)
-                    continue
-
-
-                yield model.db.paths,ident,trial,period,period*n_cycles
-
-    def compute_aligned_experiments():
+    def compute_time_xformed_experiments():
         for ident,trial,_,round_no,period,n_cycles,\
             inputs,output,model_id in \
             model.db.all():
-            if model.db.paths.has_file(model.db.paths.time_xform_file(ident,trial)):
-                yield model.db.paths,ident,trial,period,period*n_cycles
+            if model.db.paths.has_file(model.db.paths \
+                                       .time_xform_file(ident,trial)):
 
-    experiments = list(compute_xformable_experiments())
-    if len(experiments) == 0:
+                yield ident,trial,round_no
+
+    n_pending = len(list(itertools.chain( \
+        model.db.get_by_status(ExperimentDB.Status.PENDING),
+        model.db.get_by_status(ExperimentDB.Status.RAN)
+    )))
+
+    if n_pending > 0:
+        print("cannot model. experiments pending..")
         return
 
-    xs, ys = [],[]
-    for db,ident,trial,period,sim_time in compute_aligned_experiments():
-        print("====  DATUM %s / %d ==== "% (ident,trial))
-        x,y = xform_build_dataset(db,ident,trial)
-        xs += x
-        ys += y
+    data_experiments = list(compute_time_xformed_experiments())
+    update_experiments = list(compute_xformable_experiments())
+    if len(update_experiments) == 0:
+        return
+
+    data = {}
+    for ident,trial,round_no in data_experiments:
+        print("====  DATUM [%d] %s / %d ==== "% (round_no,ident,trial))
+        x,y = xform_build_dataset(model,ident,trial)
+        if not round_no in data:
+            data[round_no] = {'X':[],'Y':[]}
+
+        data[round_no]['X'] += x
+        data[round_no]['Y'] += y
 
     print("==== FIT PIECEWISE MODEL ===")
-    xform = xform_fit_dataset(8,{'X':xs,'Y':ys})
-    for db,ident,trial,period,sim_time in experiments:
+    xforms = xform_fit_dataset(data)
+    for ident,trial,round_no in update_experiments:
+        if not round_no in xforms:
+            continue
         print("====  XFORM %s / %d ==== "% (ident,trial))
-        apply_signal_xform_model(xform,db,ident,trial)
+        apply_signal_xform_model(model, \
+                                 xforms[round_no],ident,trial)
         model.db.set_status(ident,trial, \
                             ExperimentDB.Status.XFORMED)

@@ -293,6 +293,8 @@ class FrequencyData:
 
     def plot_figure(self,plot_ampl,do_log_x=False,do_log_y=False):
         def custom_stem(ax,x,y):
+            if len(x) == 0:
+                return
             ax.axhline(min(x),max(x),0, color='r')
             ax.vlines(x, 0, y, color='b')
             ax.set_ylim([1.05*min(-1e-6,min(y)), 1.05*max(y)])

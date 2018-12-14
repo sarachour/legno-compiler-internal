@@ -81,6 +81,7 @@ class ExperimentDB:
         self.paths = ExperimentPathHandler(name)
         path = self.paths.database_file(name)
         self._db = tdb.TinyDB(path)
+        self._update()
 
     def to_ident(self,inputs,output,round_no,num_periods):
         strep=self._name
@@ -124,6 +125,32 @@ class ExperimentDB:
             return None
 
         return max(map(lambda d: d['round'],self._db.all()))
+
+    def _update(self):
+        updates = []
+        for result in self._db.all():
+            ident,trial = result['ident'],result['trial']
+            has_signal_xform_file = self.paths.has_file(\
+                self.paths.signal_xform_file(ident,trial))
+            has_time_xform_file = self.paths.has_file(\
+                self.paths.time_xform_file(ident,trial))
+            has_noise_file = self.paths.has_file(\
+                self.paths.noise_file(ident,trial))
+            has_timeseries_file = self.paths.has_file(\
+                self.paths.timeseries_file(ident,trial))
+
+            if not has_timeseries_file:
+                updates.append((ident,trial,ExperimentDB.Status.PENDING))
+            elif not has_time_xform_file:
+                updates.append((ident,trial,ExperimentDB.Status.RAN))
+
+            elif not has_signal_xform_file:
+                updates.append((ident,trial,ExperimentDB.Status.ALIGNED))
+            elif not has_noise_file:
+                updates.append((ident,trial,ExperimentDB.Status.XFORMED))
+
+        for ident,trial,status in updates:
+            self.set_status(ident,trial,status)
 
     def all(self):
         for result in self._db.all():

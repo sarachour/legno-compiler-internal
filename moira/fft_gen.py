@@ -1,6 +1,7 @@
 import sys
 import lab_bench.analysis.waveform as wf
 import lab_bench.analysis.freq as fq
+import lab_bench.analysis.det_xform as dx
 import matplotlib.pyplot as plt
 import os
 import shutil
@@ -17,9 +18,10 @@ def apply_time_xform_model(xform,dataset):
 
 def apply_signal_xform_model(dataset,paths,ident,trial):
     print("-> [%s:%d] read time xform model" % (ident,trial))
-    time_xform = wf.TimeXform.read(paths.time_xform_file(ident,trial))
+    time_xform = dx.DetTimeXform.read(paths.time_xform_file(ident,trial))
     print("-> [%s:%d] read signal xform model" % (ident,trial))
-    sig_xform = wf.SignalXform.read(paths.signal_xform_file(ident,trial))
+    sig_xform = dx.DetSignalXform.read( \
+                                    paths.signal_xform_file(ident,trial))
     print("-> [%s:%s] apply time xform model" % (ident,trial))
     apply_time_xform_model(time_xform,dataset)
     print("[%s:%s] apply signal xform model" % (ident,trial))

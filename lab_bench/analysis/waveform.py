@@ -11,204 +11,8 @@ from scipy.ndimage.filters import gaussian_filter
 import lab_bench.analysis.freq as fq
 import fastdtw
 from scipy.spatial.distance import euclidean
+import lab_bench.analysis.det_xform as dx
 
-class DetTimeXform:
-        def __init__(self,offset,warp=1.0):
-            self._delay = offset
-            self._warp = warp
-
-        def set_warp(self,warp):
-            self._warp = warp
-
-        @property
-        def warp(self):
-            return self._warp
-
-
-        @property
-        def delay(self):
-            return self._delay
-
-        def to_json(self):
-            return {
-                    'delay':self._delay,
-                    'warp': self._warp
-            }
-        @staticmethod
-        def from_json(data):
-            return TimeXform(data['delay'],data['warp'])
-
-        def write(self,name):
-            with open(name,'w') as fh:
-                strdata = json.dumps(self.to_json())
-                fh.write(strdata)
-
-        @staticmethod
-        def read(name):
-            with open(name,'r') as fh:
-                data = json.loads(fh.read())
-                return TimeXform.from_json(data)
-class DetSignalXform:
-
-        class Segment:
-             def __init__(self,l,u,a,b,error=0.0):
-                self._lower_bound = l
-                self._upper_bound = u
-                self._alpha = a
-                self._beta = b
-                self._error = error
-
-             def set_error(self,e):
-                self._error = e
-
-             @property
-             def alpha(self):
-                return self._alpha
-
-             @property
-             def beta(self):
-                return self._beta
-
-             @property
-             def lower_bound(self):
-                return self._lower_bound
-
-             @property
-             def upper_bound(self):
-                return self._upper_bound
-
-             def contains(self,x):
-                lb,ub =self._lower_bound,self._upper_bound
-                if lb is None:
-                   return x < ub
-                if ub is None:
-                   return lb <= x
-                else:
-                   return lb <= x and ub > x
-
-
-             def apply(self,x):
-                return self._alpha*x+self._beta
-
-             @staticmethod
-             def from_json(data):
-                seg = SignalXform.Segment(
-                        l=data['lower_bound'],
-                        u=data['upper_bound'],
-                        a=data['alpha'],
-                        b=data['beta'],
-                        error=data['error']
-                )
-                return seg
-
-             def to_json(self):
-                return {
-                        'alpha':self._alpha,
-                        'beta':self._beta,
-                        'error':self._error,
-                        'lower_bound':self._lower_bound,
-                        'upper_bound':self._upper_bound
-                }
-
-             def __repr__(self):
-                return "[%s,%s] %s*x+%s {%s}" % \
-                        (self._lower_bound,
-                         self._upper_bound,
-                         self._alpha,
-                         self._beta,
-                         self._error)
-
-        def __init__(self,bias=0.0):
-            self._segments = []
-            self._bias = bias
-
-        def set_bias(self, b):
-            self._bias = b
-        @property
-        def segments(self):
-            for seg in self._segments:
-                yield seg
-
-        @property
-        def num_segments(self):
-            return len(self._segments)
-
-        def get_segment_by_id(self,idx):
-                return self._segments[idx]
-
-        def _non_overlapping(self,l,u):
-            for seg in self._segments:
-                if not l is None and \
-                   seg.contains(l):
-                    return False
-                if not u is None and \
-                   seg.contains(u):
-                    return False
-
-            return True
-
-        def add_segment(self,lower,upper,alpha,beta):
-            assert(self._non_overlapping(lower,upper))
-            seg = SignalXform.Segment(lower,upper,alpha,beta)
-            self._segments.append(seg)
-            return seg
-
-        def error(self,x):
-            segs = list(filter(lambda seg: seg.contains(x), \
-                               self._segments))
-            assert(len(segs) == 1)
-            return segs[0].apply(x)
-
-
-        def get_segment_id(self,x):
-            inds = list(filter(lambda i: self._segments[i].contains(x), \
-                               range(0,self.num_segments)))
-            assert(len(inds) == 1)
-            return inds[0]
-
-        def apply_segment_by_id(self,i,x):
-            return x + seg[i].apply(x)+self._bias
-
-        def apply(self,x):
-            segs = list(filter(lambda seg: seg.contains(x), \
-                               self._segments))
-            assert(len(segs) == 1)
-            return x+segs[0].apply(x)+self._bias
-
-        def to_json(self):
-            segj = list(map(lambda seg: seg.to_json(), \
-                            self._segments))
-            return {
-                    'segments':segj,
-                    'bias':self._bias
-            }
-
-        @staticmethod
-        def from_json(data):
-            xform = SignalXform(bias=data['bias'])
-            for seg_json in data['segments']:
-                    seg = SignalXform.Segment\
-                                     .from_json(seg_json)
-                    xform._segments.append(seg)
-
-            return xform
-
-        def write(self,name):
-            with open(name,'w') as fh:
-                strdata = json.dumps(self.to_json())
-                fh.write(strdata)
-
-        @staticmethod
-        def read(name):
-            with open(name,'r') as fh:
-                data = json.loads(fh.read())
-                return SignalXform.from_json(data)
-
-        def __repr__(self):
-            r = ""
-            for seg in self._segments:
-                r += "%s\n" % seg
-            return r
 
 class TimeSeries:
         def __init__(self,time,value):
@@ -403,15 +207,14 @@ class TimeSeries:
                                        range(si,ei+1)):
                 return idx
 
-            raise Exception("[first-index] cannot find last index for predicate[%d] in [%s,%s]" % (len(array),si,ei))
-
+            return None
 
         def find_last_index(self,array,predicate,si,ei):
             for idx in filter(lambda x: predicate(array[x]),
                                        range(ei,si,-1)):
                 return idx
 
-            raise Exception("[last-index] cannot find last index for predicate[%d] in [%s,%s]" % (len(array),si,ei))
+            return None
 
         def truncate_before(self,min_time):
             #self._copy_on_write()
@@ -421,9 +224,17 @@ class TimeSeries:
             index = self.find_first_index(self._times,\
                                           lambda x: x+time_shift>=min_time,
                                           si,ei)
-            self._start_index = index
+            if not index is None:
+                    self._start_index = index
+            else:
+                    print("[WARN] could not find samples before %s" % min_time)
             #self.times = self.times[index:]
             #self.values = self.values[index:]
+
+        def truncate_after_samples(self,n_samples):
+            shave_off = self.n() - n_samples
+            if shave_off > 0:
+                self._end_index -= shave_off
 
         def truncate_after(self,max_time):
             #self._copy_on_write()
@@ -432,7 +243,11 @@ class TimeSeries:
             index = self.find_last_index(self._times,
                                          lambda x: x+time_shift<=max_time,
                                          si,ei)
-            self._end_index = index
+            if not index is None:
+                    self._end_index = index
+            else:
+                    print("[WARN] could not find samples after %s" % max_time)
+
             #self.times = self.times[:index+1]
             #self.values = self.values[:index+1]
 
@@ -455,7 +270,8 @@ class TimeSeries:
             n = self.length()
             print("-> resampling [%d]" % npts)
             rsvals,rstimes = scipy.signal.resample( \
-                self.values,npts,t=self.times)
+                self.values,npts,
+                t=self.times)
             print("-> resampled [%d]" % npts)
             return TimeSeries(rstimes,rsvals)
 
@@ -467,9 +283,14 @@ class TimeSeries:
         @staticmethod
         def synchronize_time_deltas(s1,s2,npts=None):
             npts = max(s1.n(),s2.n()) if npts is None else npts
-            max_time = s1.max_time() if s1.n() > s2.n() else \
-                       s2.max_time()
-            print("max_time: %s,%s,%s" % (s1.max_time(),s2.max_time(),max_time))
+            if s1.time_range() > s2.time_range():
+                max_time = s1.max_time()
+            else:
+                max_time = s2.max_time()
+
+            print("max_time: %s,%s,%s" % (s1.max_time(),
+                                          s2.max_time(),
+                                          max_time))
             print("npts: %s,%s,%s" % (s1.n(),s2.n(),npts))
             targ_delta = max_time/float(npts)
             n1 = int(round(s1.time_range()/targ_delta))
@@ -496,8 +317,11 @@ class TimeSeries:
             result = TimeSeries(list(times),list(values))
             return result
 
-        def plot_series(self,label="series"):
-            plt.plot(list(self.times),list(self.values),label=label)
+        def plot_series(self,label="series",marker=' ',alpha=1.0):
+            plt.plot(list(self.times),list(self.values),
+                     marker=marker,
+                     label=label,
+                     alpha=alpha)
 
         def detrend(self,trend='constant'):
             Npts = self.n()
@@ -518,7 +342,7 @@ class TimeSeries:
                 return 1.0,0.0,self.values
 
         def apply_signal_xform(self,xform):
-            self._values = list(map(xform.apply, self._values))
+            self._values = xform.apply2(self.values,self.values)
 
         def find_nonlinearity(self,targ_ts,m=None):
             assert(self._check_time_delta(targ_ts.time_delta()))
@@ -684,10 +508,10 @@ class TimeSeriesSet:
         if show_input:
             for lb,inp in self._inputs.items():
                 inp.plot_series("inp[%s]" % lb)
-        if not self._output is None:
-                self._output.plot_series("out")
         if not self._reference is None:
-                self._reference.plot_series("ref")
+                self._reference.plot_series("ref",alpha=0.5)
+        if not self._output is None:
+                self._output.plot_series("out",alpha=0.5)
         if not self._noise is None:
                 self._noise.plot_series('noise')
         plt.legend()
@@ -729,22 +553,40 @@ class TimeSeriesSet:
         return TimeSeriesSet.from_json(data)
 
 
-    def align(self,window=None,correlation_rank=1):
+    def align(self,window=None,correlation_rank=1,index_rank=100,index_rank_method='negative'):
         def compute_weight(phase_dist,npts,dt,index):
             shift = dt*(index-npts) + self.phase_delay
             prob = min(1.0,phase_dist.pdf(-shift))
             return prob
+
+        def build_correlation_map(correlations):
+            corrmap = {}
+            for i,corr in enumerate(correlations):
+                if not corr in corrmap:
+                    corrmap[corr] = []
+
+                corrmap[corr].append(i)
+
+            return list(corrmap.keys()), corrmap
+        def score_shift(shift):
+                if index_rank_method == 'negative':
+                        return 1.0 if shift > 0 else -shift
+                elif index_rank_method == 'positive':
+                        return 1.0 if shift < 0 else shift
+                else:
+                        return shift**2
 
         def compute_timeseries_error(shift):
                 out = self.output.copy()
                 max_time = self._reference.max_time()
                 out.time_shift(shift)
                 out.truncate_before(0.0)
-                out.truncate_after(max_time)
+                out.truncate_after_samples(self.reference.n())
                 noise = out.difference(self.reference)
-                out.plot_series()
-                noise.plot_series()
-                self._reference.plot_series()
+                out.plot_series('out')
+                noise.plot_series('noise')
+                self._reference.plot_series('ref')
+                plt.legend()
                 plt.savefig('frame.png')
                 plt.clf()
                 noise_power = noise.power()
@@ -762,32 +604,44 @@ class TimeSeriesSet:
                                                         correlations[index], \
                                                         offsets[index]))
         else:
+                print("bin indices by correlation")
+                corrs,corrs_to_inds = build_correlation_map(correlations)
                 print("performing cross-checking alignment")
-                indices = np.argsort(correlations)[-correlation_rank:]
-                errors = []
-                for i,index in enumerate(indices):
-                        shift = offsets[index]
-                        power = compute_timeseries_error(shift)
-                        print("[%s/%s] index=%d score=%f shift=%f, power=%f" % \
-                                (i+1,len(indices),index,correlations[index],\
-                                 shift, \
-                                 power))
-                        errors.append(power)
+                best_corrs = np.sort(corrs)[-correlation_rank:]
+                powers = []
+                indices = []
+                for i,corr in enumerate(best_corrs):
+                        corr_indices = sorted(corrs_to_inds[corr], \
+                                         key=lambda j: score_shift(offsets[j]))
+                        for j,index in enumerate(corr_indices):
+                            if j >= index_rank:
+                                break
 
-                min_idx = np.argmin(errors)
+                            shift = offsets[index]
+                            power = compute_timeseries_error(shift)
+                            print("[%s/%s][%s/%s] index=%d score=%f shift=%f, power=%f" % \
+                                  (i+1,correlation_rank, \
+                                   j+1,index_rank, \
+                                   index,corr,\
+                                   shift, \
+                                   power))
+                            powers.append(power)
+                            indices.append(index)
+
+                min_idx = np.argmin(powers)
                 index = indices[min_idx]
 
         shift = offsets[index]
-
+        print("\n[[best shift: %s]]\n" % shift)
+        compute_timeseries_error(shift)
         self.phase_delay += shift
-        max_time = self.reference.max_time()
         for sig in [self.output]:
             sig.time_shift(shift)
-            sig.truncate_before(0)
-            sig.truncate_after(max_time)
+            sig.truncate_before(0.0)
+            sig.truncate_after_samples(self.reference.n())
 
 
-        return TimeXform(self.phase_delay)
+        return dx.DetTimeXform(self.phase_delay)
 
     def trim(self,lo,hi):
         self.output.trim(lo,hi)

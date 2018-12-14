@@ -16,20 +16,20 @@ sys.path.insert(0,os.path.abspath("lab_bench"))
 import lab_bench.lib.state as lab_state
 
 
-def loop(state,model,sim_time):
-    inpgen.execute(model)
+def loop(state,model):
     print(model.db)
-    driver.execute(state,model)
-    time_fit.execute(model)
+    #inpgen.execute(model)
+    print(model.db)
+    #driver.execute(state,model)
+    #time_fit.execute(model)
     signal_fit.execute(model)
-    fft_gen.execute(model)
-    build_bbmodel.execute(model)
+    #fft_gen.execute(model)
+    #build_bbmodel.execute(model)
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ip", type=str, help="ip address of oscilloscope.")
     parser.add_argument("--port", type=int, default=5024, help="port number of oscilloscope.")
-    parser.add_argument("--sim-time", type=float, default=10.0, help="time in milliseconds to simulate.")
     parser.add_argument("--native", action='store_true',help="use native mode for arduino DUE.")
 
     subparsers = parser.add_subparsers(dest='subparser_name',
@@ -58,11 +58,11 @@ def main():
     mgr = modellib.build_manager()
     if args.subparser_name == "due_dac":
         model = mgr.get('due_dac%d' % args.dac_id)
-        loop(state,model,args.sim_time)
+        loop(state,model)
 
     elif args.subparser_name == "vdiv":
         model = mgr.get('vdiv%d' % args.dac_id)
-        loop(state,model,args.sim_time)
+        loop(state,model)
 
     else:
         raise Exception("unhandled: %s" % args.subparser_name)

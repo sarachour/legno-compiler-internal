@@ -40,8 +40,10 @@ def align_signal(paths,ident,trial):
     print("-> [%s:%d] align waveforms" % (ident,trial))
     window = fq.get_window('planck-tukey', {'alpha':0.1})
     correlation_rank=10
+    index_rank=50
     time_xform = dataset.align(window=window, \
-                          correlation_rank=correlation_rank)
+                               correlation_rank=correlation_rank,
+                               index_rank=index_rank)
 
 
     print("[%s:%s] [DISABLED] find time warp function" % (ident,trial))
@@ -55,25 +57,8 @@ def align_signal(paths,ident,trial):
 def execute(model):
     def compute_alignable_experiments():
         for ident,trials,round_no,period,n_cycles,inputs,output,model_id in \
-            model.db.get_by_status(ExperimentDB.Status.ALIGNED):
-            for trial in trials:
-                if not model.db.paths.has_file(model.db.paths.time_xform_file(ident,trial)):
-                    model.db.set_status(ident,trial, \
-                                        ExperimentDB.Status.RAN)
-
-        for ident,trials,round_no,period,n_cycles,inputs,output,model_id in \
             model.db.get_by_status(ExperimentDB.Status.RAN):
             for trial in trials:
-                if model.db.paths.has_file(model.db.paths.time_xform_file(ident,trial)):
-                    model.db.set_status(ident,trial, \
-                                        ExperimentDB.Status.ALIGNED)
-                    continue
-
-                if not model.db.paths.has_file(model.db.paths.timeseries_file(ident,trial)):
-                    model.db.set_status(ident,trial, \
-                                    ExperimentDB.Status.PENDING)
-                    continue
-
                 yield model.db.paths,ident,trial,period,period*n_cycles
 
     experiments = list(compute_alignable_experiments())

@@ -1,6 +1,6 @@
 import itertools
 from moira.db import ExperimentDB
-from lab_bench.analysis.det_xform import DetLinNoiseXformModel
+from lab_bench.analysis.det_xform import DetNoiseModel
 import lab_bench.analysis.waveform as wf
 import lab_bench.analysis.freq as fq
 import random
@@ -87,7 +87,8 @@ def preprocess_data(data,model):
     print("--- compute freqs ---")
     freqs = np.array(list(map(lambda lf: 10**lf, log_freqs)))
     print("--- compute signals ---")
-    signals = np.array(list(map(lambda t: compute_function(freqs,t[0],t[1]), \
+    signals = np.array(list(map(lambda t: compute_function(freqs,\
+                                                           t[0],t[1]), \
                                 zip(data['Fs'],data['As']))))
     print("--- compute noise ---")
     noises = np.array(list(map(lambda t: compute_function(freqs,t[0],t[1]), \
@@ -96,6 +97,9 @@ def preprocess_data(data,model):
 
 def multi_linear(data,model):
     freqs,signals,noises = preprocess_data(data,model)
+
+    dx.DetNoiseModel.fit(freqs,signals,noises,1)
+    raise Exception("hmm.")
     n = len(signals)
     nf = len(freqs)
     nsigs = 1
@@ -150,8 +154,6 @@ def multi_linear(data,model):
 
 
 def execute(model):
-    round_no = model.db.last_round()
-
     n_pending = len(list(itertools.chain( \
         model.db.get_by_status(ExperimentDB.Status.PENDING),
         model.db.get_by_status(ExperimentDB.Status.RAN),
@@ -180,8 +182,7 @@ def execute(model):
     #fit_symbolic_curve(model)
     for ident,trials,this_round_no,period,n_periods,\
         inputs,output,model_id in \
-        itertools.chain(\
-            model.db.get_by_status(ExperimentDB.Status.FFTED)):
+            model.db.get_by_status(ExperimentDB.Status.FFTED):
         for trial in trials:
             noise_model.write(model.db.paths.noise_file(ident,trial))
             model.db.set_status(ident,trial, \
