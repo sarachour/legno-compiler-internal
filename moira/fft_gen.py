@@ -68,9 +68,7 @@ def fft_compute_freq(paths,ident,trial):
     fds.set_time_transform(time_xform)
     print("-> [%s:%d] update signal xform with bias term" % \
           (ident,trial))
-    print("bias: %s" % bias)
     fds.set_signal_transform(sig_xform)
-    sig_xform.set_bias(bias)
     sig_xform.write(paths.signal_xform_file(ident,trial))
     print("-> [%s:%d] print stats" % (ident,trial))
     auto_noise = fds.noise().autopower()
@@ -117,35 +115,8 @@ def fft_compute_freq(paths,ident,trial):
 def execute(model):
     def compute_fft_experiments():
         for ident,trials,round_no,period,n_cycles,inputs,output,model_id in \
-            model.db.get_by_status(ExperimentDB.Status.FFTED):
-            for trial in trials:
-                if not model.db.paths.has_file(model.db.paths.freq_file(ident,trial)):
-                    if not model.db.paths.has_file(model.db.paths.signal_xform_file(ident,trial)):
-                        model.db.set_status(ident,trial, \
-                                            ExperimentDB.Status.ALIGNED)
-                    else:
-                        model.db.set_status(ident,trial, \
-                                            ExperimentDB.Status.XFORMED)
-
-        for ident,trials,round_no,period,n_cycles,inputs,output,model_id in \
-            model.db.get_by_status(ExperimentDB.Status.ALIGNED):
-            for trial in trials:
-                if model.db.paths.has_file(model.db.paths.freq_file(ident,trial)):
-                    model.db.set_status(ident,trial, \
-                                            ExperimentDB.Status.FFTED)
-                elif model.db.paths.has_file(model.db.paths.signal_xform_file(ident,trial)):
-                        model.db.set_status(ident,trial, \
-                                            ExperimentDB.Status.XFORMED)
-
-        for ident,trials,round_no,period,n_cycles,inputs,output,model_id in \
             model.db.get_by_status(ExperimentDB.Status.XFORMED):
             for trial in trials:
-                if model.db.paths.has_file(model.db.paths.freq_file(ident,trial)):
-                    model.db.set_status(ident,trial, \
-                                        ExperimentDB.Status.FFTED)
-                    continue
-
-
                 yield model.db.paths,ident,trial,period,period*n_cycles
 
     for db,ident,trial,period,sim_time in compute_fft_experiments():

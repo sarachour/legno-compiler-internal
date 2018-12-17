@@ -4,8 +4,10 @@ import devices.sigilent_osc as osclib
 
 from lib.base_command import FlushCommand, ArduinoCommand
 from lib.chip_command import AnalogChipCommand
+import lib.util as util
 import time
 import numpy as np
+import math
 
 class State:
 
@@ -23,7 +25,7 @@ class State:
         self._use_dac = {}
         self.use_analog_chip = None;
         self.inputs = {}
-        self.n_dac_samples = None;
+        self.n_dac_samples= None;
         self.n_adc_samples = None;
         self.time_between_samples_s = None;
         self.ref_func = None;
@@ -54,11 +56,10 @@ class State:
                                    self.time_between_samples_s))
 
         for idx,time in enumerate(times):
-            args = {}
+            args = {'t':time,'i':idx}
             for input_id,_,value in self.input_data():
                 args['inp%d' % input_id] = value[idx]
-            args['t'] = time
-            result = eval(self.ref_func,args)
+            result = util.eval_func(self.ref_func,args)
             values.append(result)
 
 

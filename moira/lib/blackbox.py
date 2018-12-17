@@ -1,5 +1,6 @@
 import json
 import numpy as np
+import lab_bench.analysis.stoch_xform as sx
 
 # TODO: characterize black-box model
 
@@ -18,10 +19,25 @@ class BlackBoxModel:
             'noise': self._noise_model.to_json()
         }
 
+    @property
+    def time_model(self):
+        return self._time_model
+
+    @property
+    def disto_model(self):
+        return self._disto_model
+
+    @property
+    def noise_model(self):
+        return self._noise_model
 
     @staticmethod
     def from_json(obj):
-        bmod = BlackBoxModel()
+        bmod = BlackBoxModel(
+            sx.StochTimeXform.from_json(obj['time']),
+            sx.StochSignalXform.from_json(obj['disto']),
+            sx.StochLinNoiseXformModel.from_json(obj['noise'])
+        )
         return bmod
 
     @staticmethod

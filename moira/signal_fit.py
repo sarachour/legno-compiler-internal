@@ -68,58 +68,141 @@ def xform_build_dataset(model,ident,trial):
 
 def xform_fit_dataset(data):
     def build_round_dataset(data,round_no):
-        ls = []
         xs = []
         ys = []
         for i in range(0,round_no+1):
-            ls += data[i]['X']
-            xs += list(map(lambda _ : [], range(len(data[i]['X']))))
+            xs += list(data[i]['X'])
             ys += list(map(lambda args: args[0]-args[1], \
                            zip(data[i]['Y'],data[i]['X'])))
 
-        #xtrain,xtest,ytrain,ytest = sklearn.model_selection\
-        #                                    .train_test_split(xs,ys)
-        #return xtrain,ytrain,xtest,ytest
-        return np.array(ls),np.array(xs),np.array(ys)
+        return np.array(xs),np.array(ys)
 
-    nbins = 10000
+    nbins = 1000
     xform_models = {}
     for round_no in data.keys():
-        print("=== Fit Round %d ==" % round_no)
+        print("=== Fit Round %s ==" % round_no)
         print("-> computing dataset")
-        ls,xs,ys=build_round_dataset(data,round_no)
-        xdim = len(xs[0])
-        ls_trunc = list(map(lambda x: dx.sigfig(x,3),ls.reshape(-1)))
-        print("-> fitting model")
+        xs,ys=build_round_dataset(data,round_no)
+        bins = np.linspace(min(xs),max(xs),nbins)
+        print(ys)
+        ls = np.array(list(map(lambda x: \
+                               bins[dx.find_index_in_sorted_array(bins,x)], \
+                               xs.reshape(-1))))
+        print("-> fitting model [offsets only]")
         locs,slopes,offsets,nsamps = dx.DetSignalXform.fit(
-                                                           ls_trunc,
+                                                           ls,
                                                            xs,
-                                                           ys, xdim)
+                                                           ys, 0)
 
         xform = dx.DetSignalXform(locs,slopes,offsets,nsamps)
         xform_models[round_no] = xform
 
     return xform_models
 
+def compute_xformable_experiments(model):
+    # downgrade xformed,ffted and dnoised to aligned, if we're
+    # missing an xform file
+    for ident,trials,round_no,period,n_cycles,\
+        inputs,output,model_id in \
+            model.db.get_by_status(ExperimentDB.Status.ALIGNED):
+        for trial in trials:
+            yield ident,trial,round_no
+
+def compute_time_xformed_experiments(model):
+    for ident,trial,_,round_no,period,n_cycles,\
+        inputs,output,model_id in \
+        model.db.all():
+        if model.db.paths.has_file(model.db.paths \
+                                    .time_xform_file(ident,trial)):
+
+            yield ident,trial,round_no
+
+def apply_existing_signal_models(model):
+    data_experiments = list(compute_time_xformed_experiments(model))
+    update_experiments = list(compute_xformable_experiments(model))
+    if len(update_experiments) == 0:
+        return True
+
+    xforms = {}
+    for ident,trial,round_no in data_experiments:
+        signal_file = model.db.paths.signal_xform_file(ident,trial)
+        if model.db.paths.has_file(signal_file):
+            print("==== GET XFORM [%d] %s / %d ==== "% (round_no,ident,trial))
+            xforms[round_no] = dx.DetSignalXform.read(signal_file)
+
+    for ident,trial,round_no in update_experiments:
+        if not round_no in xforms:
+            continue
+        print("====  APPLY XFORM %s / %d ==== "% (ident,trial))
+        apply_signal_xform_model(model, \
+                                 xforms[round_no],ident,trial)
+        model.db.set_status(ident,trial, \
+                            ExperimentDB.Status.XFORMED)
+
+    return False
+
+def load_tmpfile(tmpfile):
+    if not tmpfile is None and \
+       os.path.exists(tmpfile):
+        with open(tmpfile,'r') as fh:
+            print("-> reading <%s>" % tmpfile)
+            data = json.loads(fh.read())
+            new_data = {}
+            for round_no,datum in data.items():
+                new_data[int(round_no)] = {}
+                new_data[int(round_no)]['X'] = np.array(datum['X'])
+                new_data[int(round_no)]['Y'] = np.array(datum['Y'])
+
+            return new_data
+    return None
+
+def save_tmpfile(tmpfile,obj):
+    if not tmpfile is None:
+        print("-> writing <%s>" % tmpfile)
+        with open(tmpfile,'w') as fh:
+            fh.write(json.dumps(obj))
+
+def remove_tmpfile(tmpfile):
+    if not tmpfile is None:
+        os.remove(tmpfile)
+
+def fit_new_signal_models(model):
+    data_experiments = list(compute_time_xformed_experiments(model))
+    update_experiments = list(compute_xformable_experiments(model))
+    tmpfile = 'data.json'
+    if len(update_experiments) == 0:
+        return
+
+    data = load_tmpfile(tmpfile)
+    if data is None:
+        data = {}
+        for ident,trial,round_no in data_experiments:
+            print("====  DATUM [%d] %s / %d ==== "% (round_no,ident,trial))
+            x,y = xform_build_dataset(model,ident,trial)
+            if not round_no in data:
+                data[round_no] = {'X':[],'Y':[]}
+
+            data[round_no]['X'] += x
+            data[round_no]['Y'] += y
+
+
+
+        save_tmpfile(tmpfile,data)
+
+    print("==== FIT XFORM ===")
+    xforms = xform_fit_dataset(data)
+    for ident,trial,round_no in update_experiments:
+        if not round_no in xforms:
+            continue
+        print("====  APPLY XFORM %s / %d ==== "% (ident,trial))
+        apply_signal_xform_model(model, \
+                                 xforms[round_no],ident,trial)
+        model.db.set_status(ident,trial, \
+                            ExperimentDB.Status.XFORMED)
+
+    remove_tmpfile(tmpfile)
+
 def execute(model):
-    def compute_xformable_experiments():
-        # downgrade xformed,ffted and dnoised to aligned, if we're
-        # missing an xform file
-        for ident,trials,round_no,period,n_cycles,\
-            inputs,output,model_id in \
-                model.db.get_by_status(ExperimentDB.Status.ALIGNED):
-            for trial in trials:
-                yield ident,trial,round_no
-
-    def compute_time_xformed_experiments():
-        for ident,trial,_,round_no,period,n_cycles,\
-            inputs,output,model_id in \
-            model.db.all():
-            if model.db.paths.has_file(model.db.paths \
-                                       .time_xform_file(ident,trial)):
-
-                yield ident,trial,round_no
-
     n_pending = len(list(itertools.chain( \
         model.db.get_by_status(ExperimentDB.Status.PENDING),
         model.db.get_by_status(ExperimentDB.Status.RAN)
@@ -129,28 +212,8 @@ def execute(model):
         print("cannot model. experiments pending..")
         return
 
-    data_experiments = list(compute_time_xformed_experiments())
-    update_experiments = list(compute_xformable_experiments())
-    if len(update_experiments) == 0:
+    if apply_existing_signal_models(model):
         return
 
-    data = {}
-    for ident,trial,round_no in data_experiments:
-        print("====  DATUM [%d] %s / %d ==== "% (round_no,ident,trial))
-        x,y = xform_build_dataset(model,ident,trial)
-        if not round_no in data:
-            data[round_no] = {'X':[],'Y':[]}
-
-        data[round_no]['X'] += x
-        data[round_no]['Y'] += y
-
-    print("==== FIT PIECEWISE MODEL ===")
-    xforms = xform_fit_dataset(data)
-    for ident,trial,round_no in update_experiments:
-        if not round_no in xforms:
-            continue
-        print("====  XFORM %s / %d ==== "% (ident,trial))
-        apply_signal_xform_model(model, \
-                                 xforms[round_no],ident,trial)
-        model.db.set_status(ident,trial, \
-                            ExperimentDB.Status.XFORMED)
+    if fit_new_signal_models(model):
+        return

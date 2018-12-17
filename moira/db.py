@@ -3,68 +3,72 @@ import os
 from enum import Enum
 
 class ExperimentPathHandler:
-    ROOT_DIR = "outputs/grendel"
-    SCRIPT_DIR = ROOT_DIR + "/scripts"
-    TIME_DIR = ROOT_DIR + "/time"
-    FREQ_DIR = ROOT_DIR + "/freq"
-    PLOT_DIR = ROOT_DIR + "/plot"
-    MODEL_DIR = ROOT_DIR + "/model"
-
     def __init__(self,name):
-        if not os.path.exists(ExperimentPathHandler.ROOT_DIR):
-            os.makedirs(ExperimentPathHandler.ROOT_DIR)
+        self.set_root_dir(name)
+        if not os.path.exists(self.ROOT_DIR):
+            os.makedirs(self.ROOT_DIR)
 
-        if not os.path.exists(ExperimentPathHandler.TIME_DIR):
-            os.makedirs(ExperimentPathHandler.TIME_DIR)
+        if not os.path.exists(self.TIME_DIR):
+            os.makedirs(self.TIME_DIR)
 
-        if not os.path.exists(ExperimentPathHandler.FREQ_DIR):
-            os.makedirs(ExperimentPathHandler.FREQ_DIR)
+        if not os.path.exists(self.FREQ_DIR):
+            os.makedirs(self.FREQ_DIR)
 
-        if not os.path.exists(ExperimentPathHandler.SCRIPT_DIR):
-            os.makedirs(ExperimentPathHandler.SCRIPT_DIR)
+        if not os.path.exists(self.SCRIPT_DIR):
+            os.makedirs(self.SCRIPT_DIR)
 
-        if not os.path.exists(ExperimentPathHandler.PLOT_DIR):
-            os.makedirs(ExperimentPathHandler.PLOT_DIR)
+        if not os.path.exists(self.PLOT_DIR):
+            os.makedirs(self.PLOT_DIR)
 
-        if not os.path.exists(ExperimentPathHandler.MODEL_DIR):
-            os.makedirs(ExperimentPathHandler.MODEL_DIR)
+        if not os.path.exists(self.MODEL_DIR):
+            os.makedirs(self.MODEL_DIR)
 
         self._name = name
 
+    def set_root_dir(self,name):
+        self.ROOT_DIR = "outputs/moira/%s" % name
+        self.SCRIPT_DIR = self.ROOT_DIR + "/scripts"
+        self.TIME_DIR = self.ROOT_DIR + "/time"
+        self.FREQ_DIR = self.ROOT_DIR + "/freq"
+        self.PLOT_DIR = self.ROOT_DIR + "/plot"
+        self.MODEL_DIR = self.ROOT_DIR + "/model"
+
+
+
     def script_file(self,ident,trial):
-        return ExperimentPathHandler.SCRIPT_DIR+ "/%s_%s.grendel" % (ident,trial)
+        return self.SCRIPT_DIR+ "/%s_%s.grendel" % (ident,trial)
 
     def timeseries_file(self,ident,trial):
-        return ExperimentPathHandler.TIME_DIR+ "/%s_%s.json" % (ident,trial)
+        return self.TIME_DIR+ "/%s_%s.json" % (ident,trial)
 
 
     def time_xform_file(self,ident,trial):
-        return ExperimentPathHandler.MODEL_DIR+ "/xf_time_%s_%s.json" % (ident,trial)
+        return self.MODEL_DIR+ "/xf_time_%s_%s.json" % (ident,trial)
 
     def signal_xform_file(self,ident,trial):
-        return ExperimentPathHandler.MODEL_DIR+ "/xf_sig_%s_%s.json" % (ident,trial)
+        return self.MODEL_DIR+ "/xf_sig_%s_%s.json" % (ident,trial)
 
     def noise_file(self,ident,trial):
-        return ExperimentPathHandler.MODEL_DIR + "/noise_%s_%s.json" % (ident,trial)
+        return self.MODEL_DIR + "/noise_%s_%s.json" % (ident,trial)
 
     def freq_file(self,ident,trial):
-        return ExperimentPathHandler.FREQ_DIR+ "/freq_%s_%s.json" % (ident,trial)
+        return self.FREQ_DIR+ "/freq_%s_%s.json" % (ident,trial)
 
     def plot_file(self,ident,trial,tag):
-        return ExperimentPathHandler.PLOT_DIR+ "/%s_%s_%s.png" % (ident,trial,tag)
+        return self.PLOT_DIR+ "/%s_%s_%s.png" % (ident,trial,tag)
 
     def model_graph(self,round_no,tag):
-        return ExperimentPathHandler.MODEL_DIR+ "/%s_model_%s_%s.png" % (self._name,round_no,tag)
+        return self.MODEL_DIR+ "/%s_model_%s_%s.png" % (self._name,round_no,tag)
 
 
     def model_file(self,round_no):
-        return ExperimentPathHandler.MODEL_DIR+ "/%s_model_%s.json" % (self._name,round_no)
+        return self.MODEL_DIR+ "/%s_model_%s.json" % (self._name,round_no)
 
     def has_file(self,filepath):
         return os.path.exists(filepath)
 
     def database_file(self,name):
-        return ExperimentPathHandler.ROOT_DIR+"/%s.json" % name
+        return self.ROOT_DIR+"/%s.json" % name
 
 class ExperimentDB:
     class Status(Enum):
@@ -120,6 +124,13 @@ class ExperimentDB:
     def is_empty(self):
         return len(self._db.all()) == 0
 
+    def rounds(self):
+        if self.is_empty():
+            return None
+
+        return set(map(lambda d: d['round'],self._db.all()))
+
+
     def last_round(self):
         if self.is_empty():
             return None
@@ -136,6 +147,9 @@ class ExperimentDB:
                 self.paths.time_xform_file(ident,trial))
             has_noise_file = self.paths.has_file(\
                 self.paths.noise_file(ident,trial))
+            has_freq_file = self.paths.has_file(\
+                self.paths.freq_file(ident,trial))
+
             has_timeseries_file = self.paths.has_file(\
                 self.paths.timeseries_file(ident,trial))
 
@@ -146,8 +160,10 @@ class ExperimentDB:
 
             elif not has_signal_xform_file:
                 updates.append((ident,trial,ExperimentDB.Status.ALIGNED))
-            elif not has_noise_file:
+            elif not has_freq_file:
                 updates.append((ident,trial,ExperimentDB.Status.XFORMED))
+            elif not has_noise_file:
+                updates.append((ident,trial,ExperimentDB.Status.FFTED))
 
         for ident,trial,status in updates:
             self.set_status(ident,trial,status)

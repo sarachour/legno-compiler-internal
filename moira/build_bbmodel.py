@@ -4,8 +4,11 @@ import lab_bench.analysis.det_xform as dx
 import lab_bench.analysis.stoch_xform as sx
 from moira.db import ExperimentDB
 import matplotlib.pyplot as plt
+import matplotlib
 from moira.lib.blackbox import BlackBoxModel
 import numpy as np
+import itertools
+
 # this consolidates all of the models to build the black box model.
 # distortion: unified model, different biases (mean offset)
 # noise: unified model, different variances
@@ -14,10 +17,18 @@ import numpy as np
 def apply_time_xform_model(align,dataset):
     dataset.output.time_shift(align.delay)
     dataset.output.truncate_before(0)
-    dataset.output.truncate_after(dataset.reference.max_time())
+    dataset.output.truncate_after(dataset.indicesreference.max_time())
 
+def get_round_data(data,round_no):
+  els = []
+  print("round data: %d" % round_no)
+  for round_id in range(0,round_no+1):
+    if round_id in data:
+      els += data[round_id]
 
-def process_noise_model(model,statistics,noise_model,ident,trial):
+  return np.concatenate(els)
+
+def process_noise_model(model,freqs,ident,trial):
   paths = model.db.paths
   filepath = model.db.paths.freq_file(ident,trial)
   freqd = fq.FreqDataset.read(filepath)
@@ -27,44 +38,114 @@ def process_noise_model(model,statistics,noise_model,ident,trial):
   signal_power = freqd.output().autopower()
 
   print("-> [%s:%d] compute values at model freqs" % (ident,trial))
-  noise_values = np.interp(noise_model.freqs, \
+  noise_values = np.interp(freqs, \
                            noise_power.freqs,\
                            np.real(noise_power.phasors))
 
-  signal_values = np.interp(noise_model.freqs, \
-                           signal_power.freqs,\
-                           np.real(signal_power.phasors))
+  if len(signal_power.phasors) == 0:
+    signal_values = np.zeros(len(freqs))
+  else:
+    signal_values = np.interp(freqs, \
+                              signal_power.freqs,\
+                              np.real(signal_power.phasors))
 
-  assert(len(statistics) == len(noise_values))
 
-  pred_noise = noise_model.apply(signal_values)
-  for idx,(n,pn) in enumerate(zip(noise_values,pred_noise)):
-    statistics[idx].append(pn-n)
+  return freqs,signal_values,noise_values
 
-def build_unified_noise_model(model,experiments):
-  for ident,trial in experiments:
+def plot_unified_noise_model(model,stoch_model,model_id,\
+                             ident,trial,f,x,y):
+  def fast_stds(idx):
+    mu = stoch_model.mean.apply_one(idx,x[idx])
+    std = stoch_model.stdev.apply_one(idx,x[idx])
+    dist = (y[idx]-mu)/std
+    return 1.0/max(dist,1.0)
+
+  print("[%s:%s] generating predictions" % (ident,trial))
+  yp = stoch_model.apply2(f,x)
+  print("[%s:%s] plotting variance model" % (ident,trial))
+  fig,axs = plt.subplots(3,sharex=True,sharey=True)
+  axs[0].loglog(f,y,label='data', alpha=0.5, color='black')
+
+  axs[1].loglog(f,yp.mu+yp.sigma,color='blue',linewidth=1.0)
+  axs[1].loglog(f,np.maximum(yp.mu-yp.sigma,min(y)),
+                label='variance',color='green',linewidth=1.0)
+
+  axs[2].loglog(f,yp.mu,label='mean',linewidth=1.0,color='red')
+  fig.savefig(model.db.paths.plot_file(ident,trial,'npred_m%d' % model_id))
+  plt.clf()
+
+
+  fig = plt.figure()
+  ax = plt.gca()
+  ax.set_facecolor('black')
+  print("[%s:%s] computing intensities" % (ident,trial))
+  cmap = matplotlib.cm.get_cmap('inferno')
+  intensities = [cmap(fast_stds(idx)) \
+                 for idx in range(0,len(f))]
+
+  print("[%s:%s] plotting likelihood model" % (ident,trial))
+  ax.set_yscale('log')
+  ax.set_xscale('log')
+  ax.scatter(f,y,c=intensities,s=0.3)
+  # Optionally add a colorbar
+  cax, _ = matplotlib.colorbar.make_axes(ax)
+  cbar = matplotlib.colorbar. \
+         ColorbarBase(cax, cmap=cmap)
+  fig.savefig(model.db.paths.plot_file(ident,trial, \
+                                       'nlik_m%d' % model_id))
+  plt.clf()
+
+
+def build_unified_noise_model(model,experiments,round_ids):
+  det_models = {}
+  stoch_models = {}
+  for round_no,ident,trial in experiments:
     filename = model.db.paths.noise_file(ident,trial)
-    noise_model = dx.DetLinNoiseXformModel.read(filename)
-    # all xforms are the same
-    break
+    noise_xform = dx.DetNoiseModel.read(filename)
+    det_models[round_no] = noise_xform
 
-  statistics = []
-  for _ in range(0,len(noise_model.freqs)):
-    statistics.append([])
+  xs,fs,ys,ls = {},{},{},{}
+  for round_no,ident,trial in experiments:
+    noise_model = det_models[round_no]
+    f,x,y = process_noise_model(model, \
+                                noise_model.freqs, \
+                                ident, \
+                                trial)
 
-  for ident,trial in experiments:
-    process_noise_model(model,statistics, \
-                             noise_model,ident,trial)
+    if not round_no in xs:
+      for dict_ in [xs,ys,fs,ls]:
+          dict_[round_no] = []
+
+    for dict_,arr in zip([xs,ys,fs,ls],
+                         [x,y,f,(ident,trial)]):
+      dict_[round_no].append(arr)
 
 
-  stoch_noise_model = \
-                      sx.StochLinNoiseXformModel\
-                             .from_deterministic_model(noise_model,
-                                                       statistics)
+  for model_id in round_ids:
+    mean_model = det_models[model_id]
+    X = get_round_data(xs, model_id).reshape(-1,1)
+    Y = get_round_data(ys, model_id).reshape(-1,1)
+    F = get_round_data(fs, model_id)
+    L = mean_model.map_locs(F)
+    YPRED = mean_model.apply2(L,X)
+    YVAR = np.sqrt((Y-YPRED)**2)
+    print("[%s] fitting variance model" % (model_id))
+    locs,M,B,N = dx.DetLinearModel.fit(L,X,YVAR,1)
+    var_model = sx.DetNoiseModelVariance(locs,M,B,N)
+    stoch_model = sx.StochLinearModel(mean_model,var_model)
+    stoch_models[model_id] = stoch_model
+    print("[%s] generating plots")
+    for round_no in round_ids:
+      for (ident,trial),f,x,y in zip(
+          ls[round_no],fs[round_no], \
+          xs[round_no],ys[round_no]):
+        plot_unified_noise_model(model,stoch_model,model_id, \
+                                 ident,trial,f,x,y)
 
-  return stoch_noise_model
+  return stoch_models
 
-def process_distortion_model(model,statistics,sig_xform,ident,trial):
+
+def process_distortion_model(model,ident,trial):
   paths = model.db.paths
   print("-> [%s:%d] read waveforms" % (ident,trial))
   time_xform = dx.DetTimeXform.read(paths.time_xform_file(ident,trial))
@@ -77,96 +158,168 @@ def process_distortion_model(model,statistics,sig_xform,ident,trial):
   ref,out = wf.TimeSeries.synchronize_time_deltas(dataset.reference,
                                                   dataset.output,
                                                   npts=npts)
-  print("-> [%s:%s] get signal transform indices" % (ident,trial))
-  indices = list(map(lambda x: sig_xform.get_segment_id(x), \
-                     ref.values))
-  print("-> [%s:%s] apply signal transform" % (ident,trial))
-  ref.apply_signal_xform(sig_xform)
-  print("-> [%s:%d] compute noise" % (ident,trial))
-  noise = out.difference(ref)
+  n = min(ref.n(),out.n())
+  ref.truncate_after_samples(n)
+  out.truncate_after_samples(n)
+  assert(out.n() == ref.n())
+  print("-> [%s:%d] compute distortion [%d]" % (ident,trial,n))
+  deltas = out.difference(ref)
+  assert(deltas.n() == ref.n())
+  assert(deltas.n() == out.n())
+  return ref.times,ref.values,deltas.values
 
 
-  print("-> [%s:%d] partition noise" % (ident,trial))
-  data = []
-  for i in range(0,sig_xform.num_segments):
-    data.append([])
-  for i,v in zip(indices,noise.values):
-    data[i].append(v)
-
-  for idx,subarr in enumerate(data):
-    print("==== %d ====" % idx)
-    print("n: %s" % len(subarr))
-    print("mu: %s" % np.mean(subarr))
-    print("std: %s" % np.std(subarr))
-    if len(subarr) > 0:
-      statistics[idx]['mu'].append(np.mean(subarr))
-      statistics[idx]['n'].append(len(subarr))
-      statistics[idx]['std'].append(np.std(subarr))
+def plot_unified_distortion_model(model,stoch_model,model_id,ident,trial,t,x,y):
+  def fast_stds(idx,m_inds,v_inds):
+    mu = stoch_model.mean.apply_one(m_inds[idx],x[idx])
+    std = stoch_model.stdev.apply_one(v_inds[idx],x[idx])
+    dist = (y[idx]-mu)/std
+    return 1.0/max(dist,1.0)
 
 
+  print("[%s:%s] generating predictions" % (ident,trial))
+  yp = stoch_model.apply2(x,x)
+  print("[%s:%s] plotting variance model" % (ident,trial))
 
-def build_unified_distortion_model(model,experiments):
-  for ident,trial in experiments:
+  fig,axs = plt.subplots(3,sharex=True,sharey=True)
+  axs[0].semilogy(t,y,label='data',linewidth=1.0,alpha=0.1,color='black')
+
+  axs[1].semilogy(t,yp.mu+yp.sigma-x,color='blue',linewidth=1.0)
+  axs[1].semilogy(t,yp.mu-yp.sigma-x,
+                label='variance',color='green',linewidth=1.0)
+
+  axs[2].semilogy(t,yp.mu-x,label='mean',linewidth=1.0,color='red')
+  fig.savefig(model.db.paths.plot_file(ident,trial,'dpred_m%d' % model_id))
+  plt.clf()
+
+  fig = plt.figure()
+  ax = plt.gca()
+  print("[%s:%s] computing intensities" % (ident,trial))
+  cmap = matplotlib.cm.get_cmap('inferno')
+  mean_indices = stoch_model.mean.map_indices(x)
+  var_indices = stoch_model.stdev.map_indices(x)
+  intensities = [ cmap(fast_stds(idx,mean_indices,var_indices)) \
+                  for idx in range(0,len(x))]
+
+  print("[%s:%s] plotting likelihood model" % (ident,trial))
+  ax.set_yscale('log')
+  ax.scatter(t,y,c=intensities)
+  cax, _ = matplotlib.colorbar.make_axes(ax)
+  cbar = matplotlib.colorbar. \
+         ColorbarBase(cax, cmap=cmap)
+  fig.savefig(model.db.paths.plot_file(ident,trial, \
+                                       'dlik_m%d' % model_id))
+  plt.clf()
+
+def build_unified_distortion_model(model,experiments,round_ids):
+  det_models = {}
+  stoch_models = {}
+  xs,ts,ys,ls = {},{},{},{}
+
+  for round_no,ident,trial in experiments:
     filename = model.db.paths.signal_xform_file(ident,trial)
     sig_xform = dx.DetSignalXform.read(filename)
-    # all xforms are the same
-    sig_xform.set_bias(0.0)
-    break
+    det_models[round_no] = sig_xform
 
-  assert(not sig_xform is None)
+  for round_no,ident,trial in experiments:
+    sig_xform = det_models[round_no]
+    t,x,y = process_distortion_model(model, ident, trial)
+    if not round_no in xs:
+      for dict_ in [xs,ys,ts,ls]:
+          dict_[round_no] = []
 
-  statistics = {}
-  for i in range(0,sig_xform.num_segments):
-    statistics[i] = {}
-    statistics[i]['mu'] = []
-    statistics[i]['std'] = []
-    statistics[i]['n'] = []
-
-  idx = 0
-  sig_xform_model = sx.StochSignalXform()
-  for ident,trial in experiments:
-    process_distortion_model(model,statistics, \
-                             sig_xform,ident,trial)
+    for dict_,arr in zip([xs,ys,ts,ls],
+                         [x,y,t,(ident,trial)]):
+      dict_[round_no].append(arr)
 
 
-  for i in statistics:
-    stat = statistics[i]
-    seg = sig_xform.get_segment_by_id(i)
-    new_seg = sx.StochSignalXform.StochSegment \
-                            .from_deterministic_model(seg,stat['mu'])
+  for model_id in round_ids:
+    if not model_id in xs:
+      continue
+    mean_model = det_models[model_id]
+    print("[%s] collect data"% (model_id))
+    D = get_round_data(xs, model_id)
+    Y = get_round_data(ys, model_id).reshape(-1,1)
+    L = mean_model.map_locs(D)
+    X = D.reshape(-1,1)
+    print("[%s] compute predictions and variance"% (model_id))
+    YPRED = mean_model.apply2(L,X)
+    YVAR = np.sqrt((Y-YPRED)**2)
+    print("[%s] fitting variance model" % (model_id))
+    locs,M,B,N = dx.DetLinearModel.fit(L,X,YVAR,0)
+    var_model = sx.DetSignalXformVariance(locs,M,B,N)
+    stoch_model = sx.StochLinearModel(mean_model,var_model)
+    stoch_models[model_id] = stoch_model
 
-    sig_xform_model.add_segment(new_seg)
+    for round_no in round_ids:
+      if not round_no in xs:
+        continue
+      for (ident,trial),t,x,y in zip(
+          ls[round_no],ts[round_no], \
+          xs[round_no],ys[round_no]):
+        plot_unified_distortion_model(model,stoch_model,model_id, \
+                                      ident,trial,t,x,y)
 
 
-  return sig_xform_model
+  return stoch_models
 
-def build_unified_time_model(model,experiments):
-  delays = []
-  warps = []
-  for ident,trial in experiments:
+def build_unified_time_model(model,experiments,round_ids):
+  delays = {}
+  warps = {}
+  stoch_models = {}
+  for round_no,ident,trial in experiments:
     filename = model.db.paths.time_xform_file(ident,trial)
     xform = dx.DetTimeXform.read(filename)
-    delays.append(xform.delay)
-    warps.append(xform.warp)
+    if not round_no in delays:
+      delays[round_no],warps[round_no] = [],[]
 
-  return sx.StochTimeXform(delays,warps)
+    delays[round_no].append([xform.delay])
+    warps[round_no].append([xform.warp])
+
+  for round_no in round_ids:
+    stoch_models[round_no] = sx.StochTimeXform(
+      get_round_data(delays,round_no), \
+      get_round_data(warps,round_no)
+    )
+
+  return stoch_models
 
 def execute(model):
-  round_no = model.db.last_round()
+    n_pending = len(list(itertools.chain( \
+        model.db.get_by_status(ExperimentDB.Status.PENDING),
+        model.db.get_by_status(ExperimentDB.Status.RAN),
+        model.db.get_by_status(ExperimentDB.Status.ALIGNED),
+        model.db.get_by_status(ExperimentDB.Status.XFORMED),
+        model.db.get_by_status(ExperimentDB.Status.FFTED)
+    )))
+
+    if n_pending > 0:
+        print("cannot model. experiments pending..")
+        return
+
   experiments = []
-  model_file = model.db.paths.model_file(round_no)
-  if model.db.paths.has_file(model_file):
-    print("model already exists")
-    return
+  round_ids = []
+  for round_id in model.db.rounds():
+    model_file = model.db.paths.model_file(round_id)
+    if not model.db.paths.has_file(model_file):
+      round_ids.append(round_id)
+
+  if len(round_ids) == 0:
+      return
 
   for ident,trials,round_no,period,n_cycles,inputs,output,model_id in \
       model.db.get_by_status(ExperimentDB.Status.DENOISED):
     for trial in trials:
-      experiments.append((ident,trial))
+      experiments.append((round_no,ident,trial))
 
-  time_model = build_unified_time_model(model,experiments)
-  bias_model = build_unified_distortion_model(model,experiments)
-  noise_model = build_unified_noise_model(model,experiments)
+  time_model = build_unified_time_model(model,experiments,round_ids)
+  bias_model = build_unified_distortion_model(model, \
+                                              experiments,round_ids)
 
-  bbmodel = BlackBoxModel(time_model,bias_model,noise_model)
-  bbmodel.write(model_file)
+  noise_model = build_unified_noise_model(model,experiments,round_ids)
+  for round_id in round_ids:
+    model_file = model.db.paths.model_file(round_id)
+    bbmodel = BlackBoxModel(time_model[round_id],
+                            bias_model[round_id],
+                            noise_model[round_id])
+    bbmodel.write(model_file)

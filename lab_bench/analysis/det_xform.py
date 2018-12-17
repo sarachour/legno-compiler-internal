@@ -7,6 +7,18 @@ import matplotlib.pyplot as plt
 import math
 
 
+def find_index_in_sorted_array(array,value):
+    idx = np.searchsorted(array, value, side="left")
+    if idx > 0 and (idx == len(array) or \
+                    math.fabs(value - array[idx-1]) \
+                    < math.fabs(value - array[idx])):
+
+      loc = idx-1
+    else:
+      loc = idx
+
+    return loc
+
 def sigfig( x, sigfigs ):
   __logBase10of2 = 3.010299956639811952137388947244e-1
   """
@@ -92,7 +104,7 @@ class DetLinearModel:
         self._locs= np.array(locs)
         self._slopes = np.array(slopes)
         self._nsigs = len(slopes)
-        self._nsamps = num_samples
+        self._nsamps = np.array(num_samples)
         self._offsets = np.array(offsets)
 
     def slope(self,i):
@@ -103,14 +115,8 @@ class DetLinearModel:
         return self._offsets
 
     def find_nearest_index(self,value):
-        array = self._locs
-        idx = np.searchsorted(array, value, side="left")
-        if idx > 0 and (idx == len(array) or \
-                        math.fabs(value - array[idx-1]) \
-                        < math.fabs(value - array[idx])):
-          return idx-1
-        else:
-          return idx
+        return find_index_in_sorted_array(self._locs,value)
+
 
     @property
     def num_samples(self):
@@ -121,11 +127,26 @@ class DetLinearModel:
     def locs(self):
         return self._locs
 
+    def map_indices(self,values):
+        return np.array(list(map(lambda v: \
+                        self.find_nearest_index(v),
+                        values)))
+
+
+    def map_locs(self,values):
+        return np.array(list(map(lambda v: \
+                        self._locs[self.find_nearest_index(v)],
+                        values)))
+
     def apply_one(self,i,value):
         raise NotImplementedError
 
     def apply(self,values):
         raise NotImplementedError
+
+    def apply2_el(self,loc,value):
+      ind = self.find_nearest_index(loc)
+      return self.apply_one(ind,value)
 
     def apply2(self,dlocs,values):
         inds = map(lambda v: self.find_nearest_index(v),dlocs)
@@ -150,28 +171,32 @@ class DetLinearModel:
         return data
 
     @staticmethod
-    def fit(dlocs,dep_vars,observations,nsigs):
-        locs = sorted(set(dlocs))
+    # round robin fitting, where each set of elements
+    # corresponds to the set of locs given.
+    def fit_rr(locs,dep_vars,observations,nsigs):
+        # locs is already a unique list
         nlocs = len(locs)
-        b_dep_variables = list(map(lambda _ : [], range(0,nlocs)))
-        b_obs_variables = list(map(lambda _ : [], range(0,nlocs)))
-        for dloc,dep_var,obs in \
-            zip(dlocs,dep_vars,observations):
-            dist = (locs-dloc)**2
-            idx = np.argmin(dist)
-            b_dep_variables[idx].append(dep_var)
-            b_obs_variables[idx].append(obs)
-
         M = np.zeros((nsigs,nlocs),dtype=float)
         B = np.zeros(nlocs,dtype=float)
         N = np.zeros(nlocs,dtype=int)
 
+        assert(len(set(locs)) == len(locs))
+
+        for dep_var in dep_vars:
+          assert(len(dep_var) == len(locs))
+
+        for obs in observations:
+          assert(len(obs) == len(locs))
+
+
         for idx in range(0,nlocs):
           v = locs[idx]
-          xs = b_dep_variables[idx]
-          ys = b_obs_variables[idx]
+          xs = list(map(lambda dv: dv[idx],dep_vars))
+          ys = list(map(lambda obs: obs[idx],observations))
           if len(xs) == 0:
             continue
+          if idx % 1000 == 0:
+            print("-> %d/%d" % (idx,nlocs))
 
           N[idx] = len(ys)
           if nsigs == 0:
@@ -183,15 +208,67 @@ class DetLinearModel:
             regr.fit(xs,ys)
             ys_pred = regr.predict(xs)
             error = mean_squared_error(ys, ys_pred)
-            print("%s] %s*x+%s, %s {%s}" % (v,regr.coef_,\
-                                            regr.intercept_,\
-                                            error,len(ys)))
             for k in range(0,nsigs):
               M[k][idx] = regr.coef_[k]
 
             B[idx] = regr.intercept_
 
         return locs,M,B,N
+
+
+    @staticmethod
+    # fitting for unordered sequence of locs, with possible dups.
+    # this is acceptable for smaller datasets
+    def fit(_locs,_dep_vars,_observations,nsigs):
+        inds = np.argsort(_locs)
+        locs = _locs[inds]
+        print(locs.shape,_locs.shape)
+        observations = _observations[inds]
+        dep_vars = _dep_vars[inds]
+        nlocs = len(np.unique(locs))
+        M = np.zeros((nsigs,nlocs),dtype=float)
+        B = np.zeros(nlocs,dtype=float)
+        L = np.zeros(nlocs,dtype=float)
+        N = np.zeros(nlocs,dtype=int)
+        i = 0
+        idx = 0
+        while idx < nlocs:
+          # get first different element. otherwise, get end of list
+          j = np.argmax(locs>locs[i]) if idx < nlocs-1 \
+              else len(locs)-1
+          xs = dep_vars[i:j]
+          ys = observations[i:j]
+
+          # update locs and N
+          L[idx] = locs[i]
+          N[idx] = len(ys)
+
+          if idx % 1000 == 0:
+            print("-> %d/%d" % (idx,nlocs))
+          i=j
+          if len(ys) == 0:
+            # no slope or offset.
+            pass
+
+          elif nsigs == 0 or len(xs) == 0:
+            # no slope
+            coeff = np.mean(ys)
+            B[idx] = coeff
+
+          else:
+            # linear model
+            regr = linear_model.LinearRegression()
+            regr.fit(xs,ys)
+            ys_pred = regr.predict(xs)
+            error = mean_squared_error(ys, ys_pred)
+            for k in range(0,nsigs):
+              M[k][idx] = regr.coef_[k]
+
+            B[idx] = regr.intercept_
+
+          idx += 1
+
+        return L,M,B,N
 
     def plot_num_samples(self,filename):
         plt.plot(self.locs,self.num_samples,linewidth=1)
@@ -220,8 +297,12 @@ class DetLinearModel:
 
 
     @staticmethod
-    def from_json(data):
-        nsigs = len(data['slopes'].keys())
+    def from_json(cls,data):
+        if not 'slopes' in data:
+            nsigs = 0
+        else:
+            nsigs = len(data['slopes'].keys())
+
         slopes = []
         for i in range(0,nsigs):
             slopes.append( \
@@ -230,31 +311,40 @@ class DetLinearModel:
 
         freqs = data['locs']
         offsets = data['offsets']
-        return DetLinearXformModel(freqs,slopes,offsets)
+        nsamps = data['num_samples']
+        return cls(freqs,slopes,offsets,nsamps)
 
     def write(self,filename):
         with open(filename,'w') as fh:
             fh.write(json.dumps(self.to_json()))
 
     @staticmethod
-    def read(filename):
+    def read(cls,filename):
         with open(filename,'r') as fh:
-            return DetLinearModel.from_json(json.loads(fh.read()))
+            return cls.from_json(json.loads(fh.read()))
 
 class DetNoiseModel(DetLinearModel):
 
-    def __init__(self,freqs,slopes,offsets):
-        self.__init__(freqs,slopes,offsets)
+    def __init__(self,freqs,slopes,offsets,nsamps):
+        DetLinearModel.__init__(self,freqs,slopes,offsets,nsamps)
+
+    @staticmethod
+    def from_json(data):
+        return DetLinearModel.from_json(DetNoiseModel,data)
+
+    @staticmethod
+    def read(filename):
+        return DetLinearModel.read(DetNoiseModel,filename)
 
     @property
     def freqs(self):
         return self.locs
 
     def apply_one(self,i,v):
-        return self.slope(0)[i]*v + self.offsets[i]
+        return self.slope(0)[i]*v + self.offset[i]
 
     def apply(self,v):
-        return self.slope(0)*v + self.offsets
+        return self.slope(0)*v + self.offset
 
 
 
@@ -263,8 +353,17 @@ class DetSignalXform(DetLinearModel):
     def __init__(self,freqs,slopes,offsets,nsamps):
         DetLinearModel.__init__(self,freqs,slopes,offsets,nsamps)
 
+    @staticmethod
+    def from_json(data):
+        return DetLinearModel.from_json(DetSignalXform,data)
+
+    @staticmethod
+    def read(filename):
+        return DetLinearModel.read(DetSignalXform,filename)
+
+
     @property
-    def freqs(self):
+    def values(self):
         return self.locs
 
     def apply_one(self,i,v):

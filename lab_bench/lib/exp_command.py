@@ -1,6 +1,7 @@
 import parse as parselib
 import lib.cstructs as cstructs
 import lib.enums as enums
+import lib.util as util
 from lib.base_command import Command,ArduinoCommand
 import math
 import construct
@@ -428,8 +429,8 @@ class SetDueDACValuesCmd(ArduinoCommand):
         delta = state.time_between_samples_s
         offset = 0
         for idx in range(0,n):
-            args = {'t':idx*delta,'math':math}
-            value = eval(self.pyexpr,args)
+            args = {'t':idx*delta,'i':idx}
+            value = util.eval_func(self.pyexpr,args)
             buf.append(value)
             if len(buf) == chunksize_floats:
                 line = self.execute_write_op(state,buf,offset)
@@ -439,8 +440,8 @@ class SetDueDACValuesCmd(ArduinoCommand):
 
         n_ref_samples = state.n_dac_samples*int(state.sim_time/state.period)
         for idx in range(0,n_ref_samples):
-            args = {'t':idx*delta,'math':math}
-            value = eval(self.pyexpr,args)
+            args = {'t':idx*delta,'i':idx}
+            value = util.eval_func(self.pyexpr,args)
             state.write_input(self.dac_id,idx*delta,value)
 
         self.execute_write_op(state,buf,offset)

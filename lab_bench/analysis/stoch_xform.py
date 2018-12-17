@@ -1,7 +1,9 @@
 import numpy as np
 import json
 import scipy
+import lab_bench.analysis.det_xform as dx
 import scipy.stats
+import itertools
 
 class GaussDist:
     def __init__(self,mu,sigma):
@@ -23,6 +25,9 @@ class GaussDist:
     def pdf(self,value):
         prob = self._dist.pdf(value)
         return 1.0 if prob > 1.0 else prob
+
+    def stds(self,value):
+      return float(value-self._mu)/self._sigma
 
     def to_json(self):
         return {
@@ -56,6 +61,13 @@ class MultiGaussDist:
         sigmas = list(map(lambda vs: np.std(vs), values))
         return MultiGaussDist(mus,sigmas)
 
+    @property
+    def mu(self):
+      return self._mus
+
+    @property
+    def sigma(self):
+      return self._sigmas
 
     def to_json(self):
         return {
@@ -101,134 +113,84 @@ class StochTimeXform:
     def __repr__(self):
         return "delay=%s, warp=%s" % (self._delay,self._warp)
 
-class StochSignalXform:
-    class StochSegment:
 
-        # m*x + b + N(mu,sig)
-        def __init__(self,lb,ub,slope,offset,biases):
-            self._lower_bound = lb
-            self._upper_bound = ub
-            self._slope = slope
-            self._offset = offset
-            if isinstance(biases, GaussDist):
-                self._bias = biases
-            else:
-                self._bias = GaussDist.from_samples(biases)
+class DetSignalXformVariance(dx.DetSignalXform):
 
-        @staticmethod
-        def from_deterministic_model(seg,biases):
-            return StochSignalXform.StochSegment(
-                seg.lower_bound,
-                seg.upper_bound,
-                seg.alpha,
-                seg.beta,
-                biases
-            )
+    def __init__(self,freqs,slopes,offsets,nsamps):
+        dx.DetSignalXform.__init__(self,freqs,slopes,offsets,nsamps)
 
-        @staticmethod
-        def from_json(data):
-            seg = StochSignalXform.StochSegment(
-                lb=data['lower_bound'],
-                ub=data['upper_bound'],
-                slope=data['slope'],
-                offset=data['offset'],
-                biases=GaussDist.from_json(data['bias'])
-            )
-            return seg
+    @staticmethod
+    def from_json(data):
+        return DetLinearModel.from_json(DetSignalXformVariance,data)
+
+    @staticmethod
+    def read(filename):
+        DetLinearModel.read(DetSignalXformVariance,filename)
+
+    def apply_one(self,i,v):
+        pred = self.offset[i]
+        return pred
+
+    def apply(self,v):
+        return self.offset
 
 
-        def to_json(self):
-            return {
-                'slope':self._slope,
-                'offset':self._offset,
-                'bias':self._bias.to_json(),
-                'lower_bound':self._lower_bound,
-                'upper_bound':self._upper_bound
-            }
+
+class DetNoiseModelVariance(dx.DetNoiseModel):
+
+    def __init__(self,freqs,slopes,offsets,nsamps):
+        dx.DetNoiseModel.__init__(self,freqs,slopes,offsets,nsamps)
+
+    @staticmethod
+    def from_json(data):
+        return DetLinearModel.from_json(DetNoiseModelVariance,data)
+
+    @staticmethod
+    def read(filename):
+        DetLinearModel.read(DetNoiseModelVariance,filename)
+
+    def apply_one(self,i,v):
+        return self.slope(0)[i]*v + self.offset[i]
+
+    def apply(self,v):
+        return self.slope(0)*v + self.offset
 
 
-        def __repr__(self):
-            return "[%s,%s]\t\t%s*x+%s+%s" % \
-                (self._lower_bound,self._upper_bound,\
-                 self._slope,
-                 self._offset,\
-                 self._bias)
 
-    def __init__(self):
-        self._segments = []
 
-    def add_segment(self,seg):
-        assert(isinstance(seg,StochSignalXform.StochSegment))
-        self._segments.append(seg)
 
+class StochLinearModel:
+
+
+    def __init__(self,mean,std):
+      self._mean = mean
+      self._stdev = std
+
+    @property
+    def mean(self):
+      return self._mean
+
+    @property
+    def stdev(self):
+      return self._stdev
+
+    def apply2(self,locs,values):
+      mean = self._mean.apply2(locs,values)
+      variance = self._stdev.apply2(locs,values)
+      return MultiGaussDist(mean,variance)
+
+    def dist(self,loc,val):
+      mu = self._mean.apply2_el(loc,val)
+      std = self._stdev.apply2_el(loc,val)
+      return GaussDist(mu,std)
 
     def to_json(self):
-        segj = list(map(lambda seg: seg.to_json(), \
-                        self._segments))
         return {
-            'type':'pwl',
-            'segments':segj,
+            'type': 'stoch-linear-model',
+            'mu':self._mean.to_json(),
+            'sigma':self._stdev.to_json()
         }
 
     @staticmethod
     def from_json(data):
-        xform = StochSignalXform()
-        for seg_json in data['segments']:
-            seg = StochSignalXform.StochSegment\
-                                    .from_json(seg_json)
-            xform._segments.append(seg)
-
-        return xform
-
-
-    def __repr__(self):
-        r = ""
-        for seg in self._segments:
-            r += "%s\n" % seg
-
-        return r
-
-class StochLinNoiseXformModel:
-
-    def __init__(self,freqs,slopes,offsets,samples):
-         self._freqs = freqs
-         self._slopes = slopes
-         self._offsets = offsets
-         if isinstance(samples,MultiGaussDist):
-             self._rvs = samples
-         else:
-             self._rvs = MultiGaussDist.from_samples(samples)
-
-    def stumps(self):
-        for i,(freq,slope,offset,mu,std) in \
-            enumerate(zip(self._freqs,
-                self._slopes,
-                self._offsets)):
-            yield freq,slope,offset,self._rvs.ith(i)
-
-    @staticmethod
-    def from_deterministic_model(det_mod,errors):
-        return StochLinNoiseXformModel(
-            det_mod.freqs,
-            det_mod.slopes(0),
-            det_mod.offsets,
-            errors
-        )
-
-
-    def to_json(self):
-        return {
-            'freqs':list(self._freqs),
-            'slopes':list(self._slopes),
-            'offsets':list(self._offsets),
-            'rvs':self._rvs.to_json()
-        }
-
-    @staticmethod
-    def from_json(data):
-      return StochLinNoiseXformModel(
-        freqs=np.array(data['freqs']),
-        slopes=np.array(data['slopes']),
-        offsets=np.array(data['offsets']),
-        samples=MultiGaussDist.from_json(data['rvs'])
-      )
+      raise Exception("implement me")

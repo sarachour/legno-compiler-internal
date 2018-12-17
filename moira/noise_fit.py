@@ -1,6 +1,6 @@
 import itertools
 from moira.db import ExperimentDB
-from lab_bench.analysis.det_xform import DetNoiseModel
+import lab_bench.analysis.det_xform as dx
 import lab_bench.analysis.waveform as wf
 import lab_bench.analysis.freq as fq
 import random
@@ -15,9 +15,9 @@ import os
 import math
 
 def get_dataset(dataset,filename=None):
-    obj = {'Fs':[],'As':[],'Fn':[],'An':[]}
+    obj = {'R':[],'Fs':[],'As':[],'Fn':[],'An':[]}
 
-    for expid,data in dataset.items():
+    for (round_id,expid),data in dataset.items():
         if data is None:
             continue
         for datum in data:
@@ -32,6 +32,7 @@ def get_dataset(dataset,filename=None):
             obj['Fn'].append(list(Fn))
             obj['As'].append(list(As))
             obj['An'].append(list(An))
+            obj['R'].append(round_id)
 
     if not filename is None:
         print("-> writing <%s>" % filename)
@@ -65,93 +66,80 @@ def build_dataset(model,filename=None):
             freqd = fq.FreqDataset.read(filepath)
             freqs.append(freqd)
 
-        data[ident] = freqs
+        data[(this_round_no,ident)] = freqs
 
     return get_dataset(data,filename)
 
 
 def preprocess_data(data,model):
     def compute_function(x,fs,vs):
+        if len(fs) == 0:
+            return np.array(list(map(
+                lambda _ : [0],
+                range(0,len(x))
+            )))
+
         fxn_s = np.interp(x,fs,np.real(vs))
         #fxn_s = scipy.signal.hilbert(d_s)
-        return np.real(fxn_s)
-
+        return np.real(fxn_s).reshape(-1,1)
 
     print("--- compute frequency range ---")
-    min_f = min(map(lambda freqs: min(freqs), data['Fn']+data['Fs']))
-    max_f = max(map(lambda freqs: max(freqs), data['Fn']+data['Fs']))
+    Fn = data['Fn']
+    Fs = data['Fs']
     n = 100000
+    min_f,max_f = 1e10,0
+    for d1,d2 in zip(Fn,Fs):
+        min_f = min([min_f]+d1+d2)
+        max_f = max([max_f]+d1+d2)
+
+    print("--- compute log freqs ---")
     log_freqs = np.linspace(np.log10(min_f),\
                             np.log10(max_f),\
                             n)
     print("--- compute freqs ---")
     freqs = np.array(list(map(lambda lf: 10**lf, log_freqs)))
-    print("--- compute signals ---")
-    signals = np.array(list(map(lambda t: compute_function(freqs,\
-                                                           t[0],t[1]), \
-                                zip(data['Fs'],data['As']))))
-    print("--- compute noise ---")
-    noises = np.array(list(map(lambda t: compute_function(freqs,t[0],t[1]), \
-                               zip(data['Fn'],data['An']))))
-    return freqs,signals,noises
 
-def multi_linear(data,model):
-    freqs,signals,noises = preprocess_data(data,model)
+    data_by_round = {}
+    for round_no in set(data['R']):
+        print("==== round %d ====" % round_no)
+        selector = [r <= round_no for r in data['R']]
+        Fs = itertools.compress(data['Fs'],selector)
+        Fn = itertools.compress(data['Fn'],selector)
+        As = itertools.compress(data['As'],selector)
+        An = itertools.compress(data['An'],selector)
+        n = len(selector)
+        print("--- compute signals ---")
+        signals = np.array(list(map(lambda args:
+                compute_function(freqs, *args), zip(Fs,As))))
+        print("signal: %s" % str(signals.shape))
+        print("--- compute noise ---")
+        noises = np.array(list(map(lambda args:
+                compute_function(freqs,*args), zip(Fn,An))))
+        round_freqs = np.tile(freqs,n)
+        print("noise: %s" % str(noises.shape))
+        data_by_round[round_no] = (signals,noises)
 
-    dx.DetNoiseModel.fit(freqs,signals,noises,1)
-    raise Exception("hmm.")
-    n = len(signals)
-    nf = len(freqs)
-    nsigs = 1
-    S = np.zeros((n,nsigs))
-    N = np.zeros(n).reshape(-1,1)
-    def update_slice(j):
-        for i in range(0,n):
-            S[i][0] = signals[i][j]
-            N[i][0] = noises[i][j]
+    return freqs,data_by_round
 
-        return S,N
+def write_noise_model(model,noise_model,ident,trial):
+    paths = model.db.paths
+    noise_model.plot_offset(paths.plot_file(ident,trial,'offset'))
+    noise_model.plot_slope(paths.plot_file(ident,trial,'slope'),0)
+    noise_model.plot_num_samples(paths.plot_file(ident,trial,'nsamps'))
 
-    M = np.zeros((nsigs,nf))
-    B = np.zeros(nf)
-    E = np.zeros(nf)
-    print("--- begin iterative fit---")
-    for i in range(0,len(freqs)):
-        if i % 1000 == 0:
-            print("-> %d" % i)
-
-        update_slice(i)
-        regr = linear_model.LinearRegression()
-        regr.fit(S,N)
-        N_pred = regr.predict(S)
-        error = mean_squared_error(N, N_pred)
-        for k in range(0,nsigs):
-            M[k][i] = regr.coef_[0][k]
-        B[i] = regr.intercept_[0]
-        E[i] = error
-
-    for i in range(0,nsigs):
-        plt.loglog(freqs,M[i],label='slope')
-        plt.savefig('coeff_m%d.png' % i)
-        plt.cla()
-
-    plt.loglog(freqs,B,label='intercept')
-    plt.savefig('coeff_b.png')
+    filepath = model.db.paths.freq_file(ident,trial)
+    freqd = fq.FreqDataset.read(filepath)
+    noise = freqd.noise().autopower()
+    output = freqd.output().autopower()
+    noise_pred = noise_model.apply2(output.freqs,np.real(output.phasors))
+    plt.loglog(noise.freqs,np.real(noise.phasors),label='data',\
+               linewidth=0.5)
+    plt.loglog(output.freqs,np.real(noise_pred),
+               label='pred',linewidth=0.5,alpha=1.0)
+    plt.legend()
+    plt.savefig(paths.plot_file(ident,trial,'noise_pred'))
     plt.cla()
-
-    plt.loglog(freqs,E,label='error')
-    plt.savefig('error.png')
-    plt.cla()
-
-    for idx,(signal,noise) in enumerate(zip(signals,noises)):
-        N_pred = M[0]*signal+B
-        plt.loglog(freqs,noise,label='obs')
-        plt.loglog(freqs,N_pred,label='pred',alpha=0.5)
-        plt.savefig('pred_%d.png' % idx)
-        plt.cla()
-
-    return LinearNoiseModel(freqs,M,B,E)
-
+    noise_model.write(model.db.paths.noise_file(ident,trial))
 
 def execute(model):
     n_pending = len(list(itertools.chain( \
@@ -169,22 +157,31 @@ def execute(model):
         model.db.get_by_status(ExperimentDB.Status.FFTED)
     )))
     if n_denoisable == 0:
-        print("no noise models to infer")
         return
 
 
-
     tmpfile = 'data.json'
-    #tmpfile = None
     data = build_dataset(model,tmpfile)
-    noise_model= multi_linear(data,model)
+    freqs,data_by_round= preprocess_data(data,model)
+    model_by_round = {}
+    print("<<< Fitting Linear Model >>>")
+    for round_no,(signals,noises) in data_by_round.items():
+        print("=== Round %d ===" % round_no)
+        locs,slopes,offsets,nsamps=dx.DetNoiseModel.fit_rr(freqs,
+                                                           signals, \
+                                                           noises,1)
+        noise_model = dx.DetNoiseModel(locs,slopes,offsets,nsamps)
+        model_by_round[round_no] = noise_model
+
     print("TODO: fit a symbolic curve to reduce complexity")
     #fit_symbolic_curve(model)
     for ident,trials,this_round_no,period,n_periods,\
         inputs,output,model_id in \
             model.db.get_by_status(ExperimentDB.Status.FFTED):
         for trial in trials:
-            noise_model.write(model.db.paths.noise_file(ident,trial))
+            write_noise_model(model,
+                              model_by_round[this_round_no],\
+                              ident,trial)
             model.db.set_status(ident,trial, \
                                 ExperimentDB.Status.DENOISED)
 

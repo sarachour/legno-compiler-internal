@@ -10,25 +10,36 @@ import moira.fft_gen as fft_gen
 import moira.noise_fit as noise_fit
 import moira.build_bbmodel as build_bbmodel
 import moira.inpgen as inpgen
+import traceback
 
 sys.path.insert(0,os.path.abspath("lab_bench"))
 
 import lab_bench.lib.state as lab_state
 
 
+def notify(email,text):
+    with open('report.txt','w') as fh:
+        fh.write(text)
+
+    cmd = 'mail -s "Moira process exited" %s < report.txt' % \
+          email
+    os.system(cmd)
+
 def loop(state,model):
     print(model.db)
-    #inpgen.execute(model)
+    inpgen.execute(model)
     print(model.db)
-    #driver.execute(state,model)
-    #time_fit.execute(model)
+    driver.execute(state,model)
+    time_fit.execute(model)
     signal_fit.execute(model)
-    #fft_gen.execute(model)
-    #build_bbmodel.execute(model)
+    fft_gen.execute(model)
+    noise_fit.execute(model)
+    build_bbmodel.execute(model)
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ip", type=str, help="ip address of oscilloscope.")
+    parser.add_argument("--email", type=str, help="email address to send notifications for.")
     parser.add_argument("--port", type=int, default=5024, help="port number of oscilloscope.")
     parser.add_argument("--native", action='store_true',help="use native mode for arduino DUE.")
 
@@ -54,19 +65,37 @@ def main():
     state = lab_state.State(args.ip,args.port,
                   ard_native=args.native)
 
+    try:
 
-    mgr = modellib.build_manager()
-    if args.subparser_name == "due_dac":
-        model = mgr.get('due_dac%d' % args.dac_id)
-        loop(state,model)
+        mgr = modellib.build_manager()
+        if args.subparser_name == "due_dac":
+            model = mgr.get('due_dac%d' % args.dac_id)
+            loop(state,model)
 
-    elif args.subparser_name == "vdiv":
-        model = mgr.get('vdiv%d' % args.dac_id)
-        loop(state,model)
+        elif args.subparser_name == "vdiv":
+            model = mgr.get('vdiv%d' % args.dac_id)
+            loop(state,model)
 
-    else:
-        raise Exception("unhandled: %s" % args.subparser_name)
+        else:
+            raise Exception("unhandled: %s" % \
+                            rgs.subparser_name)
 
+    except Exception as e:
+        msg = "=== Exception ===\n%s\n\n" % e
+        msg += "=== Trace ===\n%s\n\n" % \
+               traceback.format_exc()
+        msg += "=== Details ===\n%s\n\n" % \
+               sys.exc_info()[0]
+
+        print(msg)
+        if not args.email is None:
+            notify(args.email,msg)
+            sys.exit(1)
+
+    msg = "<<< SUCCESS >>>"
+    if not args.email is None:
+        notify(args.email,msg)
+        sys.exit(0)
 
 main()
 

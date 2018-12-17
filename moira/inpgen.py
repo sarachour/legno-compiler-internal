@@ -65,8 +65,22 @@ def dc_signal(model,value,round_no,model_no,trials=10,n_cycles=1):
                         num_periods=n_cycles,
                         model=model_no)
 
-def uniform_random_signal(model,amplitude):
-    raise Exception("unimpl")
+def random_uniform_signal(model,amplitude,master,round_no, \
+                          model_no,trials=10,n_cycles=1):
+    inp_fun = "2*%s*random_uniform(%d,i)-%s" % (amplitude, master, \
+                                               amplitude)
+    period = 0.01
+    for idx in range(0,model.n_outputs):
+        inputs = [inp_fun]*model.n_inputs
+        model.db.insert(model_no,
+                        inputs=inputs,
+                        output=idx,
+                        trials=trials,
+                        period=period,
+                        num_periods=n_cycles,
+                        model=model_no)
+
+
 
 def execute(model):
     round_no = model.db.last_round()
@@ -108,22 +122,25 @@ def execute(model):
         dc_signal(model,value=0.0,round_no=1,model_no=0,\
                   trials=5,n_cycles=20
         )
-        #dc_signal(model,0.0,round_no=1,model_no=0)
-        #dc_signal(model,1.0,round_no=1,model_no=0)
-        #dc_signal(model,-1.0,round_no=1,model_no=0)
     elif round_no == 1:
-        print("reproduce signals")
-        raise Exception("unknown")
-        #dc_signal(model,0.0,round_no=2,model_no=1)
-        #dc_signal(model,1.0,round_no=2,model_no=1)
-        #dc_signal(model,-1.0,round_no=2,model_no=1)
-        #sin_signal(model,1.0,1.0,0.0,round_no=2,model_no=1)
-        #sin_signal(model,0.5,1.0,0.0,round_no=2,model_no=1)
-        #sin_signal(model,1.0,2.0,0.0,round_no=2,model_no=1)
-
+        random_uniform_signal(model,amplitude=1.0,
+                              master=0,\
+                              round_no=round_no+1,\
+                              model_no=round_no,\
+                  trials=3,n_cycles=1
+        )
+        random_uniform_signal(model,amplitude=1.0,
+                              master=1,\
+                              round_no=round_no+1,\
+                              model_no=round_no,\
+                  trials=3,n_cycles=1
+        )
+        random_uniform_signal(model,amplitude=1.0,
+                              master=2,\
+                              round_no=round_no+1,\
+                              model_no=round_no,\
+                  trials=3,n_cycles=1
+        )
     else:
-        raise Exception("unknown")
+        raise Exception("unknown: only three rounds impl")
 
-    if not round_no is None:
-        model_file = model.db.paths.model_file(round_no)
-        bmod = BlackBoxModel.read(model_file)
