@@ -8,10 +8,10 @@ import matplotlib.pyplot as plt
 import itertools
 import math
 from scipy.ndimage.filters import gaussian_filter
-import lab_bench.analysis.freq as fq
+import analysis.freq as fq
 import fastdtw
 from scipy.spatial.distance import euclidean
-import lab_bench.analysis.det_xform as dx
+import analysis.det_xform as dx
 
 
 class TimeSeries:

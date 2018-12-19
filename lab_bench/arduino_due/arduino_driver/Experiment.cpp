@@ -71,10 +71,10 @@ void _update_wave(){
   //if(EXPERIMENT->use_dac[0])
     write_dac0_value(EXPERIMENT,idx);  
 
-  /*
   if(EXPERIMENT->use_dac[1])
     write_dac1_value(EXPERIMENT,idx);
     
+  /*
   if(EXPERIMENT->use_adc[0])
     save_adc0_value(EXPERIMENT,idx);
   

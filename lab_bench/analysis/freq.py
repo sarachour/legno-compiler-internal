@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import itertools
 import scipy
 import math
-import lab_bench.analysis.det_xform as dx
+import analysis.det_xform as dx
 import matplotlib.collections as mcoll
 
 class Phasor:
