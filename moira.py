@@ -27,14 +27,17 @@ def notify(email,text):
 
 def loop(state,model):
     print(model.db)
+    prog = True
     inpgen.execute(model)
-    print(model.db)
-    driver.execute(state,model)
-    time_fit.execute(model)
-    signal_fit.execute(model)
-    fft_gen.execute(model)
-    noise_fit.execute(model)
-    build_bbmodel.execute(model)
+    while prog:
+        prog = False
+        print(model.db)
+        prog = prog or driver.execute(state,model)
+        prog = prog or time_fit.execute(model)
+        prog = prog or signal_fit.execute(model)
+        prog = prog or fft_gen.execute(model)
+        prog = prog or noise_fit.execute(model)
+        prog = prog or build_bbmodel.execute(model)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -42,23 +45,10 @@ def main():
     parser.add_argument("--email", type=str, help="email address to send notifications for.")
     parser.add_argument("--port", type=int, default=5024, help="port number of oscilloscope.")
     parser.add_argument("--native", action='store_true',help="use native mode for arduino DUE.")
-
-    subparsers = parser.add_subparsers(dest='subparser_name',
-                                       help='blocks to exercise.')
-
-    due_dac = subparsers.add_parser('due_dac', help='profile the Arduino Due DAC')
-    due_dac.add_argument('--dac-id', type=int,default=0, help='dac id to evaluate.')
-
-    volt_div = subparsers.add_parser('vdiv', help='generate the voltage divider')
-    volt_div.add_argument('--dac-id', type=int,default=0, help='dac id to evaluate.')
+    parser.add_argument('--component', type=str,default=0, help='dac id to evaluate.')
 
 
-    hdac_v2= subparsers.add_parser('analog_chip', help='exercise a block in the chip.')
-    hdac_v2.add_argument("--block",type=str,help="block to exercise")
-    hdac_v2.add_argument("--chip", type=int,help="chip number.")
-    hdac_v2.add_argument("--tile", type=int,help="tile number.")
-    hdac_v2.add_argument("--slice", type=int,help="slice number.")
-    hdac_v2.add_argument("--index", type=int,help="index number.")
+
 
     args = parser.parse_args()
 
@@ -68,17 +58,9 @@ def main():
     try:
 
         mgr = modellib.build_manager()
-        if args.subparser_name == "due_dac":
-            model = mgr.get('due_dac%d' % args.dac_id)
-            loop(state,model)
-
-        elif args.subparser_name == "vdiv":
-            model = mgr.get('vdiv%d' % args.dac_id)
-            loop(state,model)
-
-        else:
-            raise Exception("unhandled: %s" % \
-                            rgs.subparser_name)
+        assert(not args.component is None)
+        model = mgr.get(args.component)
+        loop(state,model)
 
     except Exception as e:
         msg = "=== Exception ===\n%s\n\n" % e

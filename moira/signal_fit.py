@@ -59,9 +59,8 @@ def xform_build_dataset(model,ident,trial):
     n = min(dataset.reference.n(), dataset.output.n())
     nsamps = 10000
     print("-> computed dataset size %s" % n)
-    indices = np.random.choice(range(0,n),size=nsamps)
-    xs = list(map(lambda i: [dataset.reference.ith(i)[1]], indices))
-    ys = list(map(lambda i: dataset.output.ith(i)[1], indices))
+    xs = list(map(lambda i: [dataset.reference.ith(i)[1]], range(0,n)))
+    ys = list(map(lambda i: dataset.output.ith(i)[1], range(0,n)))
     return xs,ys
 ''
 
@@ -121,7 +120,7 @@ def apply_existing_signal_models(model):
     data_experiments = list(compute_time_xformed_experiments(model))
     update_experiments = list(compute_xformable_experiments(model))
     if len(update_experiments) == 0:
-        return True
+        return False
 
     xforms = {}
     for ident,trial,round_no in data_experiments:
@@ -139,7 +138,7 @@ def apply_existing_signal_models(model):
         model.db.set_status(ident,trial, \
                             ExperimentDB.Status.XFORMED)
 
-    return False
+    return True
 
 def load_tmpfile(tmpfile):
     if not tmpfile is None and \
@@ -171,7 +170,7 @@ def fit_new_signal_models(model):
     update_experiments = list(compute_xformable_experiments(model))
     tmpfile = 'data.json'
     if len(update_experiments) == 0:
-        return
+        return False
 
     data = load_tmpfile(tmpfile)
     if data is None:
@@ -201,6 +200,7 @@ def fit_new_signal_models(model):
                             ExperimentDB.Status.XFORMED)
 
     remove_tmpfile(tmpfile)
+    return True
 
 def execute(model):
     n_pending = len(list(itertools.chain( \
@@ -210,10 +210,12 @@ def execute(model):
 
     if n_pending > 0:
         print("cannot model. experiments pending..")
-        return
+        return False
 
-    if apply_existing_signal_models(model):
-        return
+    if not apply_existing_signal_models(model):
+        return False
 
-    if fit_new_signal_models(model):
-        return
+    if not fit_new_signal_models(model):
+        return False
+
+    return True

@@ -123,6 +123,7 @@ def preprocess_data(data,model):
 
 def write_noise_model(model,noise_model,ident,trial):
     paths = model.db.paths
+    print("[%s:%s] writing noise model" % (ident,trial))
     noise_model.plot_offset(paths.plot_file(ident,trial,'offset'))
     noise_model.plot_slope(paths.plot_file(ident,trial,'slope'),0)
     noise_model.plot_num_samples(paths.plot_file(ident,trial,'nsamps'))
@@ -157,7 +158,7 @@ def execute(model):
         model.db.get_by_status(ExperimentDB.Status.FFTED)
     )))
     if n_denoisable == 0:
-        return
+        return False
 
 
     tmpfile = 'data.json'
@@ -187,3 +188,5 @@ def execute(model):
 
     if not tmpfile is None:
         os.remove('data.json')
+
+    return True

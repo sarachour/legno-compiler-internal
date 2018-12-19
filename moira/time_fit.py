@@ -62,9 +62,14 @@ def execute(model):
                 yield model.db.paths,ident,trial,period,period*n_cycles
 
     experiments = list(compute_alignable_experiments())
+    if len(experiments) == 0:
+        return False
+
     for db,ident,trial,period,sim_time in experiments:
         print("====  ALIGN %s / %d ==== "% (ident,trial))
         align_signal(db,ident,trial)
         if model.db.paths.has_file(model.db.paths.time_xform_file(ident,trial)):
             model.db.set_status(ident,trial, \
                                 ExperimentDB.Status.ALIGNED)
+
+    return True

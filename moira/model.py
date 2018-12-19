@@ -6,7 +6,7 @@ class ScriptGenerator:
     def __init__(self):
         self._rels = {}
         self._iface = {}
-        self._prog = {}
+        self._prog = {'preamble':{},'config':{},'getter':{}}
 
     def bind_expr(self,idx,expr):
         self._rels[idx] = expr
@@ -14,8 +14,14 @@ class ScriptGenerator:
     def bind_iface(self,idx,iface):
         self._iface[idx] = (iface)
 
-    def set_prog(self,idx,preamble,getter):
-        self._prog[idx] = (preamble,getter)
+    def set_getter(self,idx,getter):
+        self._prog['getter'][idx] = getter
+
+    def set_config(self,idx,config):
+        self._prog['config'][idx] = config
+
+    def set_preamble(self,idx,preamble):
+        self._prog['preamble'][idx] = preamble
 
     def generate(self,sim_time,input_period,ins,out,paths):
         prog = []
@@ -29,13 +35,25 @@ class ScriptGenerator:
         q('get_num_dac_samples')
         q('get_time_between_samples')
         q('use_osc')
-        preamble,getter = self._prog[out]
+        preamble = self._prog['preamble'][out]
+        getter = self._prog['getter'][out]
+        config = self._prog['config'][out] \
+               if out in self._prog['config'] else None
+
         prog += preamble
         q('compute_offsets')
         for inp,iface_fn in self._iface.items():
             q(iface_fn(ins[inp]))
 
+
         for path in paths:
+            # configure chip
+            if not config is None:
+                q('use_chip')
+                for stmt in config:
+                    q(stmt)
+
+            # run experiment
             q('run')
             q(getter(path))
             yield prog
@@ -71,21 +89,48 @@ class AnalyticalModelManager:
 
 def build_manager():
     mgr = AnalyticalModelManager()
+
+    am = AnalyticalModel('adc1',1,1)
+    am.scriptgen.bind_expr(0,'inp1*0.067-0.245')
+    am.scriptgen.bind_iface(0,lambda f: "set_due_dac_values 1 %s" % f)
+    am.scriptgen.set_preamble(0,
+                       ['use_due_dac 1', 'use_osc',
+                        'set_volt_ranges differential 0.2 1.2 0.2 1.2'])
+    am.scriptgen.set_config(0,
+                       ['mkconn chip_input 0 3 3 chip_output 0 3 3'])
+    am.scriptgen.set_getter(0,
+                       lambda name: 'get_osc_values differential %s' % name)
+    mgr.register(am)
+
+    am = AnalyticalModel('vdiv1',1,1)
+    am.scriptgen.bind_expr(0,'inp1*0.030')
+    am.scriptgen.bind_iface(0,lambda f: "set_due_dac_values 1 %s" % f)
+    am.scriptgen.set_preamble(0,
+                       ['use_due_dac 1', 'use_osc',
+                        'set_volt_ranges differential 0.0 0.080 0.0 0.080'])
+    am.scriptgen.set_getter(0, \
+                            lambda name: 'get_osc_values differential %s' % name)
+    mgr.register(am)
+
+
+
     am = AnalyticalModel('vdiv0',1,1)
     am.scriptgen.bind_expr(0,'inp0*0.030')
     am.scriptgen.bind_iface(0,lambda f: "set_due_dac_values 0 %s" % f)
-    am.scriptgen.set_prog(0,
+    am.scriptgen.set_preamble(0,
                        ['use_due_dac 0', 'use_osc',
-                        'set_volt_ranges differential 0.0 0.080 0.0 0.080'],
+                        'set_volt_ranges differential 0.0 0.080 0.0 0.080'])
+    am.scriptgen.set_getter(0,
                        lambda name: 'get_osc_values differential %s' % name)
     mgr.register(am)
 
     am = AnalyticalModel('due_dac0',1,1)
     am.scriptgen.bind_expr(0,'inp0*1.1 + 1.65')
     am.scriptgen.bind_iface(0,lambda f: "set_due_dac_values 0 %s" % f)
-    am.scriptgen.set_prog(0,
+    am.scriptgen.set_preamble(0,
                        ['use_due_dac 0', 'use_osc',
-                        'set_volt_ranges direct 0.55 2.75'],
+                       'set_volt_ranges direct 0.55 2.75'])
+    am.scriptgen.set_getter(0,
                        lambda name: 'get_osc_values direct %s' % name)
     mgr.register(am)
 
