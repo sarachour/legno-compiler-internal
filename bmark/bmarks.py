@@ -56,7 +56,7 @@ from lang.prog import MathProg
 from ops import op
 
 def benchmark1(experiment=None):
-    prob = MathProg("test3")
+    prob = MathProg("spring")
     dy2 = op.Add(
         op.Mult(op.Var("dy1"),op.Const(-0.2)),
         op.Mult(op.Var("y"),op.Const(-0.8))
@@ -83,7 +83,7 @@ def benchmark0(experiment=None):
 
 _BMARKS = {
     'bmark0' : benchmark0,
-    'bmark1' : benchmark1,
+    'spring' : benchmark1,
     'bmark2' : benchmark2,
     'smmrxn' : benchmark_smmrxn,
 }

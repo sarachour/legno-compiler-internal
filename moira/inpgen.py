@@ -25,7 +25,9 @@ def sin_signal(model,ampl,freq_hz,phase,round_no,model_no,trials=10,n_cycles=1):
 def multi_sin_signal(model,ampls,freq_hzs,phases,round_no,model_no,trials=10,n_cycles=1):
 
     def inp_fun(ampl,freq_hz,phase):
-        return "%f*math.sin(%f*t+%f)" % (ampl,freq_hz*2*math.pi,phase)
+        return "%f*math.sin(%f*t+%f)" % (ampl,freq_hz*2*math.pi,pha
+# -5 mv
+# 5 mvse)
 
 
     weights = list(map(lambda a : a/sum(ampls), ampls))
@@ -93,6 +95,10 @@ def execute(model):
 
     print("round no: %s" % round_no)
     if round_no == None:
+
+        sin_signal(model,ampl=1.0,freq_hz=500.0,phase=0.0,
+                   round_no=0,model_no=None,trials=1,n_cycles=20)
+        '''
         sin_signal(model,ampl=1.0,freq_hz=500.0,phase=0.0,
                    round_no=0,model_no=None,trials=5,n_cycles=20)
         sin_signal(model,ampl=0.3,freq_hz=500.0,phase=0.0,
@@ -115,6 +121,7 @@ def execute(model):
         dc_signal(model,value=0.0,round_no=0,model_no=0,\
                   trials=5,n_cycles=20
         )
+        '''
     elif round_no == 0:
          random_periodic_signal(model,
                                 seed=0, \

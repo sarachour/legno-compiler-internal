@@ -6,13 +6,14 @@ def block_type_t():
         BlockType.DAC.name:0,
         BlockType.CHIP_INPUT.name:1,
         BlockType.CHIP_OUTPUT.name:2,
-        BlockType.TILE.name:3,
-        BlockType.MULT.name:4,
-        BlockType.INTEG.name:5,
-        BlockType.FANOUT.name:6,
-        BlockType.LUT.name:7
+        BlockType.TILE_INPUT.name:3,
+        BlockType.TILE_OUTPUT.name:4,
+        BlockType.MULT.name:5,
+        BlockType.INTEG.name:6,
+        BlockType.FANOUT.name:7,
+        BlockType.LUT.name:8
     }
-    return cstruct.Enum(cstruct.Int8ul,**kwargs)
+    return cstruct.Enum(cstruct.Int16ul,**kwargs)
 
 def experiment_cmd_type_t():
     kwargs = {
@@ -49,7 +50,7 @@ def circ_cmd_type():
         CircCmdType.BREAK.name:11,
         CircCmdType.CALIBRATE.name:12
     }
-    return cstruct.Enum(cstruct.Int8ul,
+    return cstruct.Enum(cstruct.Int16ul,
                         **kwargs)
 
 
@@ -104,6 +105,7 @@ def circ_connection_t():
     return cstruct.Struct(
         "src_blk" / block_type_t(),
         "src_loc" / circ_loc_idx2_t(),
+        cstruct.Padding(1),
         "dst_blk" / block_type_t(),
         "dst_loc" / circ_loc_idx2_t()
     )
@@ -161,3 +163,4 @@ def cmd_t():
         "type" / cmd_type_t(),
         "data" / cmd_data_t()
     )
+#

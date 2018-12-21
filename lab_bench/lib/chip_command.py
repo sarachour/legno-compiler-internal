@@ -198,12 +198,14 @@ class AnalogChipCommand(ArduinoCommand):
             self.fail("unknown index <%s>" % loc.index)
 
         if (block == enums.BlockType.FANOUT) \
-            or (block == enums.BlockType.TILE) \
+            or (block == enums.BlockType.TILE_INPUT) \
+            or (block == enums.BlockType.TILE_OUTPUT) \
             or (block == enums.BlockType.MULT):
             indices = {
                 enums.BlockType.FANOUT: range(0,2),
                 enums.BlockType.MULT: range(0,2),
-                enums.BlockType.TILE: range(0,4)
+                enums.BlockType.TILE_INPUT: range(0,4),
+                enums.BlockType.TILE_OUTPUT: range(0,4)
             }
             if loc.index is None:
                 self.fail("expected index <%s>" % block)
@@ -420,8 +422,8 @@ class UseCommand(AnalogChipCommand):
 class ConstVal:
     #POS_BUF = np.arange(0.75,-0.8,-(0.8+0.75)/256)
     #NEG_BUF = np.arange(-0.8,0.8,(0.8+0.8)/256)
-    POS_BUF = np.arange(0.9375,-1.0,-(1.9375)/256)
-    NEG_BUF = np.arange(-1.0,1.0,(2.0)/256)
+    NEG_BUF = np.arange(0.9375,-1.0,-(1.9375)/256)
+    POS_BUF = np.arange(-1.0,1.0,(2.0)/256)
 
     @staticmethod
     def POS_get_closest(value):
@@ -639,10 +641,12 @@ class UseMultCmd(UseCommand):
 
         self._use_coeff = use_coeff
         if use_coeff:
-            self._coeff,self._code = ConstVal.NEG_get_closest(coeff)
+            self._coeff,self._inv,self._code = \
+                                               ConstVal.get_closest(coeff)
         else:
             self._code = 0
             self._coeff = coeff
+            self._inv = False
 
 
     @staticmethod
@@ -657,7 +661,7 @@ class UseMultCmd(UseCommand):
                     'loc':self._loc.build_ctype(),
                     'use_coeff':self._use_coeff,
                     'coeff':self._code,
-                    'inv':False
+                    'inv':self._inv
                 }
             }
         })

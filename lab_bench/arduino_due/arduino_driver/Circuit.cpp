@@ -47,7 +47,7 @@ Fabric::Chip::Tile::Slice::Fanout* get_fanout(Fabric * fab, circ_loc_idx1_t& loc
   return fanout;
 }
 
-Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab, uint8_t& btype, circ_loc_idx2_t& loc){
+Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab, uint16_t& btype, circ_loc_idx2_t& loc){
   switch(btype){
     case DAC:
       Serial.println("dac has no input port");
@@ -72,7 +72,12 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab,
         return get_slice(fab,loc.idxloc.loc)->integrator->in0; 
         break;
         
-   case TILE:
+   case TILE_INPUT:
+        return get_slice(fab,loc.idxloc.loc)
+                ->tileInps[loc.idx2].in0;
+        break;
+        
+   case TILE_OUTPUT:
         return get_slice(fab,loc.idxloc.loc)
                 ->tileOuts[loc.idx2].in0;
         break;
@@ -99,7 +104,7 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab,
 }
 
 
-Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_output_port(Fabric * fab, uint8_t& btype, circ_loc_idx2_t& loc){
+Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_output_port(Fabric * fab, uint16_t& btype, circ_loc_idx2_t& loc){
   switch(btype){
     case DAC:
       return get_slice(fab,loc.idxloc.loc)->dac->out0; 
@@ -113,9 +118,14 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_output_port(Fabric * fab
         return get_slice(fab,loc.idxloc.loc)->integrator->in0; 
         break;
         
-   case TILE:
+   case TILE_OUTPUT:
         return get_slice(fab,loc.idxloc.loc)
-                ->tileOuts[loc.idx2].in0;
+                ->tileOuts[loc.idx2].out0;
+        break;
+
+   case TILE_INPUT:
+        return get_slice(fab,loc.idxloc.loc)
+                ->tileInps[loc.idx2].out0;
         break;
         
    case FANOUT:
@@ -139,7 +149,8 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_output_port(Fabric * fab
         
    case CHIP_INPUT:
         return get_slice(fab,loc.idxloc.loc)->chipInput->out0;
-
+        break;
+        
    case CHIP_OUTPUT:
         Serial.println("no output port for chip_output");
         exit(1);
@@ -329,10 +340,14 @@ void print_block(uint8_t type){
       Serial.print("chip_out");
       break;
 
-    case block_type::TILE:
-      Serial.print("tile");
+    case block_type::TILE_INPUT:
+      Serial.print("tile_in");
       break;
-
+    
+    case block_type::TILE_OUTPUT:
+      Serial.print("tile_out");
+      break;
+      
     case block_type::MULT:
       Serial.print("mult");
       break;

@@ -4,12 +4,13 @@ class BlockType(Enum):
     DAC = 'dac';
     CHIP_INPUT = 'chip_input';
     CHIP_OUTPUT = 'chip_output';
-    TILE = "tile"
-    MULT = "mult"
-    INTEG = "integ"
-    FANOUT = "fanout"
-    LUT = "lut"
-    NONE = "<none>"
+    TILE_INPUT = "tile_input";
+    TILE_OUTPUT = "tile_output";
+    MULT = "mult";
+    INTEG = "integ";
+    FANOUT = "fanout";
+    LUT = "lut";
+    NONE = "<none>";
 
 class CircCmdType(Enum):
     USE_DAC = 'use_dac';

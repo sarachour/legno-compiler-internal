@@ -421,14 +421,13 @@ class Sigilent1020XEOscilloscope(SICPDevice):
 
     def set_volts_per_division(self,channel,volts_per_div):
         assert(channel in self._channels)
-        cmd = '%s:VDIV %f' % (channel.value,volts_per_div)
+        cmd = '%s:VDIV %fV' % (channel.value,volts_per_div)
         self.write(cmd)
 
     def set_voltage_offset(self,channel,volts_offset):
         assert(channel in self._channels)
-        cmd = "%s:OFST %s" % (channel.value,volts_offset)
+        cmd = "%s:OFST %fV" % (channel.value,volts_offset)
         self.write(cmd)
-
     # ge
     def get_volts_per_division(self,channel):
         assert(channel in self._channels)

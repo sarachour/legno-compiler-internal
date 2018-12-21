@@ -73,24 +73,29 @@ class SICPDevice:
         return ba
 
 
-    def write(self,cmd):
+    def _write(self,cmd):
         try :
             #Send cmd string
             print("-> %s" % cmd)
             self._sock.sendall(bytes(cmd,'UTF-8'))
             self._sock.sendall(b'\n')
-            time.sleep(0.1)
         except socket.error:
             #Send failed
             print(socket.error)
             print ('send failed <%s>' % cmd)
             sys.exit()
 
+    def write(self,cmd):
+        self._flush()
+        self._write(cmd)
+        time.sleep(0.5)
+
     def query(self,cmd,decode='UTF-8',eom=b'\n\r>>',timeout_sec=3):
         reply = None
         while reply is None:
             self._flush()
-            self.write(cmd)
+            self._write(cmd)
+            time.sleep(0.1)
             reply = self._recvall(eom=eom,timeout_sec=3)
 
         if not decode is None:

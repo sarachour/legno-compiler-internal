@@ -8,7 +8,8 @@ typedef enum block_type {
   DAC,
   CHIP_INPUT,
   CHIP_OUTPUT,
-  TILE,
+  TILE_INPUT,
+  TILE_OUTPUT,
   MULT,
   INTEG,
   FANOUT,
@@ -77,9 +78,9 @@ typedef struct use_fanout {
 } cmd_use_fanout_t;
 
 typedef struct connection {
-   uint8_t src_blk;
+   uint16_t src_blk;
    circ_loc_idx2_t src_loc;
-   uint8_t dst_blk;
+   uint16_t dst_blk;
    circ_loc_idx2_t dst_loc;
 } cmd_connection_t;
 
@@ -95,7 +96,7 @@ typedef union cmddata {
 } cmd_data_t;
 
 typedef struct cmd {
-  uint8_t type;
+  uint16_t type;
   cmd_data_t data;
 } cmd_t;
 

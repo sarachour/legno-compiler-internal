@@ -16,7 +16,6 @@ sys.path.insert(0,os.path.abspath("lab_bench"))
 
 import lab_bench.lib.state as lab_state
 
-
 def notify(email,text):
     with open('report.txt','w') as fh:
         fh.write(text)
@@ -34,10 +33,10 @@ def loop(state,model):
         print(model.db)
         prog = prog or driver.execute(state,model)
         prog = prog or time_fit.execute(model)
-        prog = prog or signal_fit.execute(model)
-        prog = prog or fft_gen.execute(model)
-        prog = prog or noise_fit.execute(model)
-        prog = prog or build_bbmodel.execute(model)
+        #prog = prog or signal_fit.execute(model)
+        #prog = prog or fft_gen.execute(model)
+        #prog = prog or noise_fit.execute(model)
+        #prog = prog or build_bbmodel.execute(model)
 
 def main():
     parser = argparse.ArgumentParser()

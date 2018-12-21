@@ -421,6 +421,9 @@ class SetDueDACValuesCmd(ArduinoCommand):
 
 
     def execute(self,state):
+        if state.dummy:
+            return
+
         n = state.n_dac_samples
         buf = []
         chunksize_bytes = 1000;
@@ -513,13 +516,12 @@ class SetOscVoltageRangeCmd(Command):
     def execute(self,state):
         if state.dummy:
             return
-
-        self.set_channel(state,state.oscilloscope.analog_channel(0),
-                         self._min_voltage,self._max_voltage)
         if self._differential:
             self.set_channel(state,state.oscilloscope.analog_channel(1),
                              self._min_voltage_low,self._max_voltage_low)
 
+        self.set_channel(state,state.oscilloscope.analog_channel(0),
+                         self._min_voltage,self._max_voltage)
 
 class GetOscValuesCmd(Command):
 

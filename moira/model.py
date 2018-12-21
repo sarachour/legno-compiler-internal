@@ -46,13 +46,12 @@ class ScriptGenerator:
             q(iface_fn(ins[inp]))
 
 
-        for path in paths:
-            # configure chip
-            if not config is None:
-                q('use_chip')
-                for stmt in config:
-                    q(stmt)
+        if not config is None:
+            q('use_chip')
+            for stmt in config:
+                q(stmt)
 
+        for path in paths:
             # run experiment
             q('run')
             q(getter(path))
@@ -90,8 +89,21 @@ class AnalyticalModelManager:
 def build_manager():
     mgr = AnalyticalModelManager()
 
+    am = AnalyticalModel('adc0',1,1)
+    am.scriptgen.bind_expr(0,'inp0*0.6534')
+    am.scriptgen.bind_iface(0,lambda f: "set_due_dac_values 0 %s" % f)
+    am.scriptgen.set_preamble(0,
+                       ['use_due_dac 0', 'use_osc',
+                        'set_volt_ranges differential 0.2 1.2 0.2 1.2'])
+    am.scriptgen.set_config(0,
+                       ['mkconn chip_input 0 3 2 chip_output 0 3 2'])
+    am.scriptgen.set_getter(0,
+                       lambda name: 'get_osc_values differential %s' % name)
+    mgr.register(am)
+
+
     am = AnalyticalModel('adc1',1,1)
-    am.scriptgen.bind_expr(0,'inp1*0.067-0.245')
+    am.scriptgen.bind_expr(0,'inp1*0.6534')
     am.scriptgen.bind_iface(0,lambda f: "set_due_dac_values 1 %s" % f)
     am.scriptgen.set_preamble(0,
                        ['use_due_dac 1', 'use_osc',
@@ -102,8 +114,10 @@ def build_manager():
                        lambda name: 'get_osc_values differential %s' % name)
     mgr.register(am)
 
+    # due DAC than VDIV
+    ref = "inp%d*0.030"
     am = AnalyticalModel('vdiv1',1,1)
-    am.scriptgen.bind_expr(0,'inp1*0.030')
+    am.scriptgen.bind_expr(0,ref % 1)
     am.scriptgen.bind_iface(0,lambda f: "set_due_dac_values 1 %s" % f)
     am.scriptgen.set_preamble(0,
                        ['use_due_dac 1', 'use_osc',
@@ -115,7 +129,7 @@ def build_manager():
 
 
     am = AnalyticalModel('vdiv0',1,1)
-    am.scriptgen.bind_expr(0,'inp0*0.030')
+    am.scriptgen.bind_expr(0,ref % 0)
     am.scriptgen.bind_iface(0,lambda f: "set_due_dac_values 0 %s" % f)
     am.scriptgen.set_preamble(0,
                        ['use_due_dac 0', 'use_osc',
