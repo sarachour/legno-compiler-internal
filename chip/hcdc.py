@@ -12,6 +12,7 @@ current_integ_props = props.AnalogProperties() \
 
 
 hcdcv2_values = list(map(lambda x :x/256.0*2.0-1.0, range(0,256)))
+due_values = list(map(lambda x :x/4096.0*2.0-1.0, range(0,4096)))
 digval_props = props.DigitalProperties() \
 .set_values(hcdcv2_values) \
 .set_constant() \
@@ -25,13 +26,13 @@ digvar_props = props.DigitalProperties() \
 
 #TODO: proper conversion rate.
 due_dac_props = props.DigitalProperties() \
-.set_values(hcdcv2_values) \
+.set_values(due_values) \
 .set_sample(3,unit=units.us) \
 .check()
 
 
 due_adc_props = props.DigitalProperties() \
-.set_values(hcdcv2_values) \
+.set_values(due_values) \
 .set_sample(3,unit=units.us) \
 .check()
 
@@ -48,7 +49,7 @@ inv_conn = Block('conn_inv',type=Block.BUS) \
 
 
 chip_out = Block('chip_out',type=Block.BUS) \
-.add_outputs(props.CURRENT,["out"]) \
+.add_outputs(props.VOLTAGE,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("out",ops.Var("in")) \
 .set_prop(["out","in"], current_props) \
@@ -56,7 +57,7 @@ chip_out = Block('chip_out',type=Block.BUS) \
 
 chip_inp = Block('chip_in',type=Block.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.CURRENT,["in"]) \
+.add_inputs(props.VOLTAGE,["in"]) \
 .set_op("out",ops.Var("in")) \
 .set_prop(["out","in"], current_props) \
 .check()
@@ -326,19 +327,6 @@ def make_board():
                     adc = slce.inst('due_adc')
                     assert(tile_idx == 3)
                     assert(slice_idx == 2 or slice_idx == 3)
-
-                    chip_base = 4 if chip_idx == 1 else 0
-                    slice_base = 2 if slice_idx == 2 else 0
-
-                    hw.set_inst_meta('due_adc',
-                                hw.position_string(slce.position),
-                                "chan_pos",
-                                chip_base+slice_base+0)
-
-                    hw.set_inst_meta('due_adc',
-                                hw.position_string(slce.position),
-                                "chan_neg",
-                                chip_base+slice_base+1)
 
 
 

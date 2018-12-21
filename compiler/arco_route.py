@@ -349,6 +349,8 @@ def tac_collect_sources(graph,namespace,frag,port):
 
     return sources
 
+
+
 def create_instance_set_identifier(route):
     if len(route) == 0:
         return "@",[]
@@ -356,6 +358,9 @@ def create_instance_set_identifier(route):
     ident_arr = list(set(map(lambda args: "%s:%s:%s" % args, route)))
     ident_arr.sort()
     raise NotImplementedError
+
+
+
 
 def tac_abs_conn(graph,namespace,fragment,ctx,cutoff):
     parents = list(fragment.parents())
@@ -379,7 +384,6 @@ def tac_abs_conn(graph,namespace,fragment,ctx,cutoff):
     unusable_routes = []
     source_frags = list(map(lambda src: src[0], sources))
     source_ports = list(map(lambda src: src[1], sources))
-    print("sources: %s" % str(sources))
 
     for endpt_ctx in tac_iterate_over_sources(graph,
                                               namespace,
@@ -417,6 +421,7 @@ def tac_abs_conn(graph,namespace,fragment,ctx,cutoff):
                 routes_by_inst_set[key] = {'routesets':[],'instcoll':instcoll}
             routes_by_inst_set[key]['routesets'].append(route_coll[0])
             assert(len(instcoll) == 0)
+
         # add intermediate instances.
         for _,data in routes_by_inst_set.items():
             instances = data['instcoll']
@@ -508,6 +513,8 @@ def tac_abs_input(graph,namespace,fragment,ctx,cutoff):
 
 
 def traverse_abs_circuit(graph,namespace,fragment,ctx=None,cutoff=1):
+    print(fragment.to_str())
+    input()
     if isinstance(fragment,acirc.ABlockInst):
         for ctx in tac_abs_block_inst(graph,namespace,fragment,ctx,cutoff):
             yield ctx
@@ -526,19 +533,40 @@ def traverse_abs_circuit(graph,namespace,fragment,ctx=None,cutoff=1):
     else:
         raise Exception(fragment)
 
+def traverse_abs_circuits(graph,variables,fragment_map,ctx=None,cutoff=1):
+    next_ctx = [RouteDFSState(fragment_map)]
+    variable = variables[0]
+    print(variable,variables)
+    fragment = fragment_map[variable]
+    for result in \
+        traverse_abs_circuit(graph,variable,fragment,
+                             ctx=ctx,
+                             cutoff=cutoff):
+        if len(variables) > 1:
+            for subresult in traverse_abs_circuits(graph,
+                                                   variables[1:],
+                                                   fragment_map,
+                                                   ctx=result,
+                                                   cutoff=cutoff):
+                yield subresult
+
+        else:
+            yield result
 
 def build_concrete_circuit(name,graph,fragment_map):
-    namespace = list(fragment_map.keys())[0]
-    fragment = fragment_map[namespace]
+    variables = list(fragment_map.keys())
     for var,frag in fragment_map.items():
         logger.info("=== %s ===" % var)
         logger.info(frag)
 
     for idx,result in \
-        enumerate(traverse_abs_circuit(graph,namespace,fragment,
-                             ctx=RouteDFSState(fragment_map),
-                             cutoff=3)):
+        enumerate(traverse_abs_circuits(graph, \
+                                        variables, \
+                                        fragment_map,
+                                        ctx=RouteDFSState(fragment_map),
+                                        cutoff=3)):
         state = result.context()
+
         circ = ccirc.ConcCirc(graph.board,"%s_%d" % (name,idx))
         for node in state.nodes():
             circ.use(node.block_name,node.loc,config=node.config)

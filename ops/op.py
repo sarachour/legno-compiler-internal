@@ -13,6 +13,7 @@ class Op:
     CONST = 8
     VAR = 9
     POW = 10
+    EMIT = 11
     STRMAP = {
         EQ: "=",
         MULT: "*",
@@ -24,7 +25,8 @@ class Op:
         SQUARE: "pow2",
         CONST: "const",
         VAR: "var",
-        POW: "pow"
+        POW: "pow",
+        EMIT: "emit"
     }
 
     def __init__(self,op,args):
@@ -341,6 +343,12 @@ class Sqrt(BaseExpOp):
         return Const(0.5)
 
 
+
+class Emit(Op):
+
+    def __init__(self,node):
+        Op.__init__(self,Op.EMIT,[node])
+        pass
 
 
 class Mult(Op2):

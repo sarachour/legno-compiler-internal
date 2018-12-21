@@ -392,7 +392,7 @@ def sample(optmap):
 
 def copy_signal(board,node,output,n_copies,label,max_fanouts):
     sources = []
-    if n_copies == 1:
+    if n_copies <= 1:
         #assert(not isinstance(node,acirc.AJoin))
         sources ={0:[(node,output)]}
         yield sources,node,output
@@ -598,8 +598,7 @@ def compile(board,prob,depth=3,max_abs_circs=100,max_conc_circs=1):
 
     logger.info("--- Fragments ---")
     for var,frags in frag_node_map.items():
-        logger.info("<<%s: %d>>" % (var,len(frags)))
-
+        logger.info("====== %s: %d ====" % (var,len(frags)))
         if len(frags) == 0:
             raise Exception("cannot model variable <%s>" % var)
 
@@ -617,11 +616,6 @@ def compile(board,prob,depth=3,max_abs_circs=100,max_conc_circs=1):
 
             refs,stubs = count_var_refs(node_map)
 
-            for varname,node in node_map.items():
-                print("==== %s ====" % varname)
-                print(node.to_str())
-            print("---------")
-            input()
             n_conc = 0;
             for stub_src_index,mapping in \
                 enumerate(connect_stubs_to_sources(source_map,stubs)):
@@ -632,13 +626,12 @@ def compile(board,prob,depth=3,max_abs_circs=100,max_conc_circs=1):
 
                 compile_apply_mapping(source_map,node_map,output_map,mapping)
 
-
-
                 indices = [num_abs,fanout_index,stub_src_index,stub_src_index]
                 basename =  prob.name+ "_".join(map(lambda i:str(i),indices))
                 for route_index,conc_circ in enumerate(arco_route.route(basename,
                                                                         board,
                                                                         node_map)):
+
                     yield indices+[route_index],conc_circ
                     n_conc += 1
 

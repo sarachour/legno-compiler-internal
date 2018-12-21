@@ -55,7 +55,7 @@ def benchmark2(experiment=None):
 from lang.prog import MathProg
 from ops import op
 
-def benchmark1(experiment=None):
+def benchmark_spring(experiment=None):
     prob = MathProg("spring")
     dy2 = op.Add(
         op.Mult(op.Var("dy1"),op.Const(-0.2)),
@@ -70,7 +70,7 @@ def benchmark1(experiment=None):
     prob.interval("dy1",-2,2)
     # compute fmin and fmax for each signal.
     prob.compile()
-    #prob.bind("_y", op.Emit(op.Var("y")))
+    prob.bind("Y", op.Emit(op.Var("y")))
     return prob
 
 
@@ -83,7 +83,7 @@ def benchmark0(experiment=None):
 
 _BMARKS = {
     'bmark0' : benchmark0,
-    'spring' : benchmark1,
+    'spring' : benchmark_spring,
     'bmark2' : benchmark2,
     'smmrxn' : benchmark_smmrxn,
 }
