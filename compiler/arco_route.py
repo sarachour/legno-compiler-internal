@@ -552,11 +552,9 @@ def build_concrete_circuit(name,graph,fragment_map):
     return
 
 
-def route(basename,board,_fragment_map):
-    fragment_map = dict(map(lambda args: (args[0],args[1][0]),
-                            _fragment_map.items()))
+def route(basename,board,node_map):
     #sys.setrecursionlimit(1000)
     graph = build_instance_graph(board)
     logger.info('--- concrete circuit ---')
-    for conc_circ in build_concrete_circuit(basename,graph,fragment_map):
+    for conc_circ in build_concrete_circuit(basename,graph,node_map):
         yield conc_circ

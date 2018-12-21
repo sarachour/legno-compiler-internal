@@ -122,15 +122,36 @@ class ANode:
         assert(not node2 is None)
         conn = AConn(node1,output,node2,inp)
 
+    def subnodes(self):
+        raise Exception("produce nodes that are children here")
+
+    def header(self):
+        return self.name
+
     def copy(self):
         engine = ANode.CopyCtx()
         return self._copy(engine),engine
 
     def __repr__(self):
-        return self.to_str()
+        return self.to_str(False,prefix='(',delim=' ',postfix=')',indent='')
 
-    def to_str(self,internal_id=False):
-        return "%d." % self._internal_id if internal_id else ""
+    def to_str(self,internal_id=False,delim='\n',\
+               prefix='',postfix='',indent='  ',printed=[]):
+        subnodes = list(self.subnodes())
+        substr = ""
+        for s in subnodes:
+            if s in printed:
+                substr += prefix + indent + s.header() + delim + postfix
+            else:
+                substr += s.to_str(internal_id,
+                                   delim=delim,
+                                   prefix=prefix+indent, \
+                                   postfix=postfix,
+                                   indent=indent,
+                                   printed=printed+subnodes+[self])
+
+        ident = "%d." % self._internal_id if internal_id else ""
+        return prefix + ident + self.header() + delim + substr + postfix
 
 class AInput(ANode):
 
@@ -170,6 +191,17 @@ class AInput(ANode):
 
         return node
 
+    def header(self):
+        if self._source is None:
+            return "@%s <= NULL" % self.name
+        else:
+            return "@%s <= %s.%s" % (self.name,
+                                     self._source[0].name,
+                                    self._source[1])
+
+    def subnodes(self):
+        return []
+'''
     def to_str(self,internal_id=False):
         st = ANode.to_str(internal_id)
         if self._source is None:
@@ -180,6 +212,7 @@ class AInput(ANode):
                                     self._source[1])
 
         return st
+'''
 
 class AJoin(ANode):
 
@@ -189,9 +222,9 @@ class AJoin(ANode):
     @property
     def name(self):
         if self._id is None:
-            return "+"
+            return "join"
         else:
-            return "%d.+" % (self._id)
+            return "%d.join" % (self._id)
 
     def _copy(self,eng):
         join = AJoin()
@@ -211,9 +244,16 @@ class AJoin(ANode):
         node = AJoin()
         return node
 
+    def subnodes(self):
+        for p in self._parents:
+            yield p
+
+
+'''
     def __repr__(self):
         argstr = " ".join(map(lambda p: str(p),self._parents))
         return "(%s %s)" % (self.name,argstr)
+'''
 
 class AConn(ANode):
 
@@ -266,16 +306,28 @@ class AConn(ANode):
     @property
     def name(self):
         if self._id is None:
-            return "="
+            return "conn"
         else:
-            return "%d.=" % (self._id)
+            return "%d.conn" % (self._id)
 
 
+    def subnodes(self):
+        yield self._src_node
+
+    def header(self):
+        return "%s: %s.%s => %s.%s" % (self.name, \
+                                       self._src_node.name,
+                                       self._src_port,
+                                       self._dst_node.name,
+                                       self._dst_port)
+
+'''
     def to_str(self,internal_id=False):
         st = ANode.to_str(self,internal_id)
         st += "(%s %s %s %s)" % \
             (self.name,self._dst_port,self._src_port, self._src_node)
         return st
+'''
 
 
 class ABlockInst(ANode):
@@ -321,11 +373,20 @@ class ABlockInst(ANode):
     def output_used(self,output):
         return output in self._used
 
+    def subnodes(self):
+        for par in self._parents:
+            yield par
+
+    def header(self):
+        return "%s:{%s}" % (self.name,self.config.to_str(","))
+
+'''
     def to_str(self,internal_id=False):
         st = ANode.to_str(self,internal_id)
         argstr = " ".join(map(lambda p: str(p), self._parents))
         st += "(%s {%s} %s)" % (self.name,self.config.to_str(","),argstr)
         return st
+'''
 
 class AbsCirc:
 

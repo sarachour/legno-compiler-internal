@@ -55,9 +55,18 @@ class AOp:
     def make(self,ctor,inputs):
         return ctor(inputs)
 
+    def label(self):
+        return AOp.TOSTR[self.op]
+
+    def tostr(self,delim='\n',indent='   ',prefix=''):
+        argstr = ""
+        for inp in self._inputs:
+            inp.tostr(delim=delim,indent=indent,prefix=prefix+indent)
+        return prefix+self.label()+delim+argstr
+
     def __repr__(self):
         argstr = " ".join(map(lambda x: str(x), self._inputs))
-        return "(%s %s)" % (AOp.TOSTR[self.op],argstr)
+        return "(%s %s)" % (self.label(),argstr)
 
 class AVar(AOp):
 
@@ -75,8 +84,8 @@ class AVar(AOp):
     def vars(self):
         return [self._var]
 
-    def __repr__(self):
-        return "(%s)" % self._var
+    def label(self):
+        return str(self._var)
 
 class AConst(AOp):
 
@@ -86,8 +95,9 @@ class AConst(AOp):
     def make(self,inputs):
         return AConst()
 
-    def __repr__(self):
-        return "(#)"
+
+    def label(self):
+        return str("<#>")
 
 
 class AGain(AOp):
@@ -110,10 +120,8 @@ class AGain(AOp):
     def value(self):
         return self._value
 
-    def __repr__(self):
-        return "(%s (%s) %s)" % \
-            (AOp.TOSTR[self.op],self._value,self.input)
-
+    def label(self):
+        return AOp.TOSTR[self.op] + ":"+ str(self._value)
 
 class AProd(AOp):
 
