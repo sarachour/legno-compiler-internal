@@ -81,8 +81,10 @@ if args.subparser_name == "arco":
                                max_conc_circs=args.conc_circuits):
 
         filename = path_handler.abs_circ_file(indices)
+        print("<<< writing circuit>>>")
         conc_circ.write_circuit(filename)
         filename = path_handler.abs_graph_file(indices)
+        print("<<< writing graph >>>")
         conc_circ.write_graph(filename,write_png=True)
         time.sleep(1)
 

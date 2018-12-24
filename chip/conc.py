@@ -48,7 +48,9 @@ class ConcCirc:
 
         assert(isinstance(loc,str))
         if loc in self._configs[block]:
-            assert(config is None)
+            if not (config is None):
+                raise Exception("location with config already in system: <%s:%s>" % \
+                                (block,loc))
             return
 
         config = Config() if config is None else config

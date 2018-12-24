@@ -25,30 +25,8 @@ def benchmark_smmrxn(experiment=None):
     prob.interval("E",0,4400)
     prob.interval("S",0,6800)
     prob.interval("ES",0,4400)
-    #prob.bind("_y", op.Emit(op.Var("y")))
-    prob.compile()
-    return prob
-
-def benchmark2(experiment=None):
-    prob = MathProg("test")
-
-    term0 = op.Const(1.5*0.5)
-    term1 = op.Mult(op.Const(0.6*0.5),op.Var("x1"))
-    term2 = op.Mult(op.Var("x0"),op.Var("x0"))
-    term3 = op.Var("x0")
-
-    # compilation is performing transformations than compiling.
-    x2 = op.Mult(op.Const(0.5),
-                        op.Add(term0,
-                                op.Mult(op.Const(-1.0),
-                                        op.Add(term1,op.Add(term2,term3)))))
-
-    prob.bind("x1",op.Integ(x2, op.Const(0)))
-    prob.bind("x0",op.Integ(op.Var("x1"), op.Const(-1)))
-
-    prob.interval("x1",-100,100)
-    prob.interval("x0",-100,100)
-
+    prob.interval("enz-sub",0,4400)
+    prob.bind("enz-sub", op.Emit(op.Var("ES")))
     prob.compile()
     return prob
 
@@ -66,25 +44,32 @@ def benchmark_spring(experiment=None):
 
     prob.bind("dy1",dy1)
     prob.bind("y",y)
+    prob.interval("Y",-1,1)
     prob.interval("y",-1,1)
     prob.interval("dy1",-2,2)
     # compute fmin and fmax for each signal.
-    prob.compile()
     prob.bind("Y", op.Emit(op.Var("y")))
+    prob.compile()
     return prob
 
 
-def benchmark0(experiment=None):
-    prob = MathProg("bmark0")
-    prob.read("x")
-    prob.emit("y")
-    prob.bind("y", op.Mult(op.Var("x"), op.Const(2.0)))
+def benchmark_decay(experiment=None):
+    prob = MathProg("decay")
+    x = op.Integ(
+        op.Mult(op.Var("x"),op.Const(-0.5)), \
+        op.Const(5), \
+        'x')
+    prob.bind("x",x)
+    prob.bind("X", op.Emit(op.Var("x")))
+    prob.interval("x",0,5)
+    prob.interval("X",0,5)
+
+    prob.compile()
     return prob
 
 _BMARKS = {
-    'bmark0' : benchmark0,
+    'decay' : benchmark_decay,
     'spring' : benchmark_spring,
-    'bmark2' : benchmark2,
     'smmrxn' : benchmark_smmrxn,
 }
 

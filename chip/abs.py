@@ -252,6 +252,8 @@ class AJoin(ANode):
             yield p
 
 
+    def is_root(self):
+        return len(self._children) == 0
 '''
     def __repr__(self):
         argstr = " ".join(map(lambda p: str(p),self._parents))

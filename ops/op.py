@@ -45,6 +45,9 @@ class Op:
     def compute(self,bindings={}):
         raise NotImplementedError
 
+    def arg(self,idx):
+        return self._args[idx]
+
     @property
     def args(self):
         return self._args
@@ -350,13 +353,17 @@ class Emit(Op):
         Op.__init__(self,Op.EMIT,[node])
         pass
 
+    def bandwidth(self,intervals,bindings):
+        return self.arg(0).bandwidth(intervals,bindings)
+
+    def interval(self,bindings):
+        return self.arg(0).interval(bindings)
 
 class Mult(Op2):
 
     def __init__(self,arg1,arg2):
         Op2.__init__(self,Op.MULT,[arg1,arg2])
         pass
-
 
 
     def interval(self,bindings):
