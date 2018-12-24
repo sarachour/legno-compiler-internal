@@ -109,17 +109,30 @@ class DFSAction:
 
 class RouteDFSContext:
 
-    def __init__(self):
+    def __init__(self,state):
+        self._state = state
         self._nodes_by_block = {}
         self._nodes_by_fragment_id = {}
         self._conns = {}
-
+        self._resolved = []
 
     def get_node_by_fragment(self,namespace,frag):
         if not (namespace,frag.id) in self._nodes_by_fragment_id:
             return None
 
         return self._nodes_by_fragment_id[(namespace,frag.id)]
+
+
+    def resolve_constraint(self,cstr):
+        sns,sn,sp,dns,dn,dp = cstr
+        key = "%s.%s.%s->%s.%s.%s" % (sns,sn.id,sp,dns,dn.id,dp)
+        self._resolved.append(key)
+
+    def unresolved_constraints(self):
+        for sns,sn,sp,dns,dn,dp in self._state.constraints():
+            key = "%s.%s.%s->%s.%s.%s" % (sns,sn.id,sp,dns,dn.id,dp)
+            if not key in self._resolved:
+                yield (sns,sn,sp,dns,dn,dp)
 
 
     def nodes(self):
@@ -171,7 +184,22 @@ class RouteDFSContext:
             raise Exception("<%s,%s> already connected." % (node1,port1))
         self._conns[node1.output_key(port1)] = (node1,port1,node2,port2)
 
-    
+
+class DFSResolveConstraint(DFSAction):
+
+    def __init__(self,cstr):
+        DFSAction.__init__(self)
+        self._cstr = cstr
+
+
+    def apply(self,ctx):
+        ctx.resolve_constraint(self._cstr)
+
+    def __repr__(self):
+        return "rslv %s" % (self._cstr)
+
+
+
 class DFSUseNode(DFSAction):
 
     def __init__(self,node,namespace,frag,config):
@@ -205,6 +233,7 @@ class DFSConnNode(DFSAction):
 
     def __repr__(self):
         return "(%s.%s)->(%s.%s)" % (self._n1,self._p1,self._n2,self._p2)
+
 class DFSState:
     def __init__(self):
         self._stack = []
@@ -260,61 +289,34 @@ class DFSState:
 
 class RouteDFSState(DFSState):
 
-    def __init__(self,fragment_map):
+    def __init__(self,fragment_map,cstrs):
         DFSState.__init__(self)
         self._fragments = fragment_map
+        idents = []
+        self._cstrs = []
+        for sns,sn,sp,dns,dn,dp in cstrs:
+            key = "%s.%d.%s->%s.%d.%s" % (sns,sn.id,sp,dns,dn.id,dp)
+            if not key in idents:
+                idents.append(key)
+                self._cstrs.append((sns,sn,sp,dns,dn,dp))
+
 
     def make_new(self):
-        return RouteDFSState(self._fragments)
+        return RouteDFSState(self._fragments,self._cstrs)
 
 
     def new_ctx(self):
-        return RouteDFSContext()
+        return RouteDFSContext(self)
 
 
+    def constraints(self):
+        return self._cstrs
 
-def tac_iterate_over_sources(graph,namespace,ctx, src_list,cutoff=1):
-        if len(src_list) == 0:
-            yield ctx
-        else:
-            src_frag = src_list[0]
-            for new_ctx in \
-                traverse_abs_circuit(graph,
-                                     namespace,
-                                     src_frag,
-                                     ctx=ctx,
-                                     cutoff=cutoff):
-                for very_new_ctx in tac_iterate_over_sources(graph,
-                                                             namespace,
-                                                             new_ctx,
-                                                             src_list[1:],
-                                                             cutoff):
-                    yield very_new_ctx
+    def relevent_constraints(self,fragment):
+        for sn,sp,dn,dp in self._cstrs:
+            if sn.id == fragment.id or dn.id == fragment.id:
+                yield (sn,sp,dn,dp)
 
-def tac_abs_block_inst(graph,namespace,fragment,ctx=None,cutoff=1):
-    node = ctx.context().get_node_by_fragment(
-        namespace,fragment)
-
-    if not node is None:
-        yield ctx
-        return
-
-    used_nodes = ctx.context().nodes_of_block(fragment.block.name)
-    free_nodes = list(graph.nodes_of_block(fragment.block.name,
-                                           used=used_nodes))
-
-    for node in free_nodes:
-        base_ctx=ctx.copy()
-        base_ctx.add(DFSUseNode(node,namespace,
-                                    fragment,
-                                    fragment.config))
-        base_ctx.commit()
-        for new_ctx in tac_iterate_over_sources(graph,namespace,base_ctx,
-                                        list(fragment.parents()),
-                                        cutoff):
-            yield new_ctx
-
-        #ctx.pop()
 
 
 def tac_collect_sources(graph,namespace,frag,port):
@@ -360,137 +362,6 @@ def create_instance_set_identifier(route):
     raise NotImplementedError
 
 
-
-
-def tac_abs_conn(graph,namespace,fragment,ctx,cutoff):
-    parents = list(fragment.parents())
-    assert(len(parents) == 1)
-    # find other edge
-    srcfrag_start,srcport_start= fragment.source
-    dstfrag,dstport = fragment.dest
-    sources = tac_collect_sources(graph,namespace, \
-                                  srcfrag_start, \
-                                  srcport_start)
-
-    logger.debug("[dst] block=%s, port=%s" % (dstfrag,dstport))
-
-    curr_state = ctx.context()
-    sources_locs = list(map(lambda arg:
-                            list(graph.board.instances_of_block(
-                                arg[0].block.name)),
-                            sources))
-
-    count = 0
-    unusable_routes = []
-    source_frags = list(map(lambda src: src[0], sources))
-    source_ports = list(map(lambda src: src[1], sources))
-
-    for endpt_ctx in tac_iterate_over_sources(graph,
-                                              namespace,
-                                              ctx,source_frags,
-                                              cutoff):
-
-        # compute nodes for endponts
-        state = endpt_ctx.context()
-        srcnodes = map(lambda srcfrag : \
-                       state.get_node_by_fragment(namespace,srcfrag),
-                       source_frags)
-        dstnode = state.get_node_by_fragment(namespace,dstfrag)
-
-        # compute all routes, given endpoints
-        all_routes = []
-        print("sources: %s" % str(sources))
-        for srcnode,srcport in zip(srcnodes,source_ports):
-            print(srcnode,srcport)
-            print(dstnode,dstport)
-            routes = list(graph.board.find_routes(
-                srcnode.block_name,srcnode.loc,srcport,
-                dstnode.block_name,dstnode.loc,dstport,
-                cutoff=cutoff
-            ))
-            all_routes.append(routes)
-
-        # compute all combinations of routes
-        routes_by_inst_set = {}
-        for route_coll in itertools.product(*all_routes):
-            key,instcoll = create_instance_set_identifier(route_coll[0][1:-1])
-            if key is None:
-                continue
-
-            if not key in routes_by_inst_set:
-                routes_by_inst_set[key] = {'routesets':[],'instcoll':instcoll}
-            routes_by_inst_set[key]['routesets'].append(route_coll[0])
-            assert(len(instcoll) == 0)
-
-        # add intermediate instances.
-        for _,data in routes_by_inst_set.items():
-            instances = data['instcoll']
-            endpt_ctx.commit()
-            for index,(block,loc) in enumerate(instances):
-                node = graph.get_node(blk,loc)
-                # no namespace or fragment id
-                endpt_ctx.add(DFSUseNode(node,
-                                         None, None,
-                                         Config()))
-
-            endpt_ctx.commit()
-            for alln_ctx in \
-                tac_iterate_over_sources(graph,
-                                         namespace,
-                                         endpt_ctx,
-                                         instances,
-                                         cutoff):
-                routes = data['routesets']
-                for route in routes:
-                    last_block,last_loc,last_port = \
-                            srcnode.block_name, srcnode.loc, srcport
-                    route_ctx = alln_ctx.copy()
-                    for block,loc,port in route[1:]:
-                        if not (block == last_block and loc == last_loc):
-                            curr_node = graph.get_node(block,loc)
-                            last_node = graph.get_node(last_block,last_loc)
-                            route_ctx.add(
-                                DFSConnNode(last_node,last_port,
-                                            curr_node,port))
-
-                        last_block,last_loc,last_port = \
-                                                        block,loc,port
-
-                    print("<< route >>")
-                    print(route)
-                    print("<< context>>")
-                    print(route_ctx)
-                    route_ctx.commit()
-                    route_ctx.context()
-                    yield route_ctx
-                    count += 1
-
-
-    if count == 0:
-        print("---- unusable routes ----")
-        for route in unusable_routes:
-            print(route)
-        print("----       ***      ----")
-        logger.warning("src: %s" % (srcfrag))
-        logger.warning("dest: %s" % dstfrag)
-        logger.warning("no connections")
-        input("<press enter to continue>")
-
-
-    #for curr_ctx in traverse_abs_circuit(graph,
-    #                                     namespace,
-    #                                     parents[0],
-    #                                     ctx=ctx):
-    #    srcfrag,srcport = fragment.source
-    #    destfrag,destport = fragment.dest
-    #    for new_ctx in \
-    #        connect_conc_circ_ports(graph,curr_ctx,
-    #                                namespace,
-    #                                srcfrag,srcport,
-    #                                destfrag,destport):
-    #        yield new_ctx
-
-
 def tac_abs_input(graph,namespace,fragment,ctx,cutoff):
     assert(not fragment.source is None)
     new_frag,output = fragment.source
@@ -498,23 +369,151 @@ def tac_abs_input(graph,namespace,fragment,ctx,cutoff):
     for new_ctx in traverse_abs_circuit(graph,
                                         new_namespace,
                                         new_frag,
-                                        ctx=ctx,cutoff=cutoff):
-        source_node = new_ctx.context() \
-                                .get_node_by_fragment(
-                                    new_namespace,new_frag)
-
-        new_ctx.add(DFSUseNode(source_node,
-                                namespace,
-                                fragment))
-        new_ctx.commit()
+                                        ctx=ctx, \
+                                        cutoff=cutoff):
         yield new_ctx
+
+
+
+def tac_abs_get_resolutions(graph,ctx,cutoff):
+    choice_list = []
+    route_list = []
+    node_list = []
+    cstr_list = []
+    # compute all the valid routes
+    for cstr in ctx.context().unresolved_constraints():
+        src_ns,src_node,src_port,dest_ns,dest_node,dest_port = cstr
+        src_rnode = ctx.context().get_node_by_fragment(src_ns,src_node)
+        dest_rnode= ctx.context().get_node_by_fragment(dest_ns,dest_node)
+        if src_rnode is None or dest_rnode is None:
+            continue
+
+        routes = list(graph.board.find_routes(
+                src_rnode.block_name,src_rnode.loc,src_port,
+                dest_rnode.block_name,dest_rnode.loc,dest_port,
+                cutoff=cutoff
+        ))
+        nodes = []
+        for route in routes:
+            nodes.append([(blk,loc) for blk,loc,port in route[1:-1]])
+
+        choice_list.append(range(0,len(routes)))
+        route_list.append(routes)
+        node_list.append(nodes)
+        cstr_list.append(cstr)
+
+
+    for choices in itertools.product(*choice_list):
+        nodes = []
+        conns = []
+        for idx in range(0,len(choices)):
+            nodes += node_list[idx][choices[idx]]
+            this_route = route_list[idx][choices[idx]]
+            for i in range(0,len(this_route)-1):
+                conns.append((this_route[i], this_route[i+1]))
+
+        yield cstr_list,nodes,conns
+
+
+def tac_abs_rslv_constraints(graph,ctx,cutoff):
+    for cstrs,nodes,conns in tac_abs_get_resolutions(graph,ctx,cutoff):
+        base_ctx=ctx.copy()
+
+        for cstr in cstrs:
+            step = DFSResolveConstraint(cstr)
+            base_ctx.add(step)
+
+        for blk,loc in nodes:
+            for conn in conns:
+                print(conn)
+            raise Exception("todo: implement creating intermediate nodes")
+            step = DFSUseNode(shop_node,namespace, \
+                                 new_sfrag,new_sfrag.config)
+
+        for (sblk,sloc,sport),(dblk,dloc,dport) in conns:
+            src_node = RouteGraph.RNode(graph,sblk,sloc)
+            dest_node = RouteGraph.RNode(graph,dblk,dloc)
+            step = DFSConnNode(src_node,sport, \
+                               dest_node,dport)
+            base_ctx.add(step)
+
+        base_ctx.commit()
+        yield base_ctx
+
+
+
+def tac_abs_block_inst(graph,namespace,fragment,ctx=None,cutoff=1):
+    node = ctx.context().get_node_by_fragment(namespace,fragment)
+
+    if not node is None:
+        yield ctx
+        return
+
+    used_nodes = ctx.context().nodes_of_block(fragment.block.name)
+    free_nodes = list(graph.nodes_of_block(fragment.block.name,
+                                           used=used_nodes))
+
+    for node in free_nodes:
+        base_ctx=ctx.copy()
+        base_ctx.add(DFSUseNode(node,namespace,
+                                    fragment,
+                                    fragment.config))
+        base_ctx.commit()
+        for new_base_ctx in tac_abs_rslv_constraints(graph, ctx=base_ctx,\
+                                                 cutoff=cutoff):
+
+            for new_ctx in tac_iterate_over_sources(graph,\
+                                                    namespace,
+                                                    new_base_ctx,
+                                                    src_list=fragment.subnodes(),
+                                                    cutoff=cutoff):
+                yield new_ctx
+
+        #ctx.pop()
+
+
+def tac_abs_conn(graph,namespace,fragment,ctx,cutoff):
+    for new_ctx in tac_iterate_over_sources(graph,namespace, \
+                                        src_list=fragment.subnodes(),
+                                        ctx=ctx,\
+                                        cutoff=cutoff):
+        yield new_ctx
+
+def tac_abs_join(graph,namespace,fragment,ctx,cutoff):
+    for new_ctx in tac_iterate_over_sources(graph,namespace, \
+                                        ctx=ctx,\
+                                        src_list=fragment.subnodes(), \
+                                        cutoff=cutoff):
+        yield new_ctx
+
+'''
+resolve the join source to a node
+'''
+
+def tac_iterate_over_sources(graph,namespace,ctx, src_list,cutoff=1):
+    src_list = list(src_list)
+    if len(src_list) == 0:
+        yield ctx
+    else:
+        src_frag = src_list[0]
+        for new_ctx in \
+            traverse_abs_circuit(graph,
+                                 namespace,
+                                 src_frag,
+                                 ctx=ctx,
+                                 cutoff=cutoff):
+            for very_new_ctx in tac_iterate_over_sources(graph,
+                                                            namespace,
+                                                            new_ctx,
+                                                            src_list[1:],
+                                                            cutoff):
+                yield very_new_ctx
 
 
 
 
 def traverse_abs_circuit(graph,namespace,fragment,ctx=None,cutoff=1):
-    print(fragment.to_str())
-    input()
+    assert(isinstance(ctx,RouteDFSState))
     if isinstance(fragment,acirc.ABlockInst):
         for ctx in tac_abs_block_inst(graph,namespace,fragment,ctx,cutoff):
             yield ctx
@@ -528,15 +527,97 @@ def traverse_abs_circuit(graph,namespace,fragment,ctx=None,cutoff=1):
             yield ctx
 
     elif isinstance(fragment,acirc.AJoin):
-        raise Exception("unimpl: join")
+        for ctx in tac_abs_join(graph,namespace,fragment,ctx,cutoff):
+            yield ctx
 
     else:
         raise Exception(fragment)
 
+def der_abs_block_inst(namespace,fragment,ids):
+    for node in fragment.subnodes():
+        for cstr in derive_fragment_constraints(namespace,node,ids):
+            yield cstr
+
+def der_abs_input(namespace,fragment,ids):
+    new_frag,output = fragment.source
+    for cstr in derive_fragment_constraints(namespace,new_frag,ids):
+        yield cstr
+
+def der_abs_conn(namespace,fragment,ids,upstream=None):
+    src_node,src_port = fragment.source
+    dest_node,dest_port = fragment.dest
+    new_upstream = None
+    if isinstance(src_node,acirc.ABlockInst) and \
+       isinstance(dest_node,acirc.ABlockInst):
+        yield (namespace,src_node,src_port,namespace,dest_node,dest_port)
+
+    elif isinstance(src_node,acirc.AInput) and \
+       isinstance(dest_node,acirc.ABlockInst):
+        rslv_src_node,rslv_src_port = src_node.source
+        rslv_namespace = src_node.label
+        yield (rslv_namespace,rslv_src_node,rslv_src_port, \
+               namespace,dest_node,dest_port)
+
+    elif isinstance(src_node,acirc.AJoin) and \
+       isinstance(dest_node,acirc.ABlockInst):
+        new_upstream = (namespace,dest_node,dest_port)
+        pass
+
+    elif isinstance(src_node,acirc.ABlockInst) and \
+       isinstance(dest_node,acirc.AJoin):
+        assert(not upstream is None)
+        upstream_namespace,upstream_node,upstream_port = upstream
+        yield (namespace,src_node,src_port, \
+               upstream_namespace,upstream_node,upstream_port)
+
+    else:
+        raise Exception("implement conn: %s" % fragment)
+
+    for subnode in fragment.subnodes():
+        for cstr in derive_fragment_constraints(namespace,subnode,ids,\
+                                                upstream=new_upstream):
+            yield cstr
+
+def der_abs_join(namespace,fragment,ids,upstream=None):
+    for subnode in fragment.subnodes():
+        for cstr in derive_fragment_constraints(namespace,subnode,ids, \
+                                                upstream=upstream):
+            yield cstr
+
+
+def derive_fragment_constraints(namespace,fragment,ids,upstream=None):
+    if fragment.id in ids:
+        return
+
+    ids.append(fragment.id)
+    if isinstance(fragment,acirc.ABlockInst):
+        for cstr in der_abs_block_inst(namespace,fragment,ids):
+            yield cstr
+
+    elif isinstance(fragment,acirc.AInput):
+        for cstr in der_abs_input(namespace,fragment,ids):
+            yield cstr
+
+
+    elif isinstance(fragment,acirc.AConn):
+        for cstr in der_abs_conn(namespace,fragment,ids,upstream=upstream):
+            yield cstr
+
+    elif isinstance(fragment,acirc.AJoin):
+        for cstr in der_abs_join(namespace,fragment,ids,upstream=upstream):
+            yield cstr
+    else:
+        raise Exception("unknown: %s" % fragment)
+
+def derive_abs_circuit_constraints(fragment_map):
+
+    for variable,fragment in fragment_map.items():
+        for cstr in derive_fragment_constraints(variable,fragment,[]):
+            yield cstr
+
+
 def traverse_abs_circuits(graph,variables,fragment_map,ctx=None,cutoff=1):
-    next_ctx = [RouteDFSState(fragment_map)]
     variable = variables[0]
-    print(variable,variables)
     fragment = fragment_map[variable]
     for result in \
         traverse_abs_circuit(graph,variable,fragment,
@@ -551,19 +632,32 @@ def traverse_abs_circuits(graph,variables,fragment_map,ctx=None,cutoff=1):
                 yield subresult
 
         else:
-            yield result
+
+            for new_result in \
+                tac_abs_rslv_constraints(graph,variable,ctx,cutoff):
+                unresolved = list(new_result.context().unresolved_constraints())
+                if len(unresolved) > 0:
+                    for sn,sp,dn,dp in unresolved:
+                        print("\n=== SRC NODE ===")
+                        print(sn)
+                        print("\n=== DEST NODE ===")
+                        print(dn)
+                    raise Exception("[ERROR] still has unresolved connections.")
+
+                yield new_result
 
 def build_concrete_circuit(name,graph,fragment_map):
     variables = list(fragment_map.keys())
     for var,frag in fragment_map.items():
         logger.info("=== %s ===" % var)
-        logger.info(frag)
 
+    all_cstrs = list(derive_abs_circuit_constraints(fragment_map))
+    starting_ctx = RouteDFSState(fragment_map,all_cstrs)
     for idx,result in \
         enumerate(traverse_abs_circuits(graph, \
                                         variables, \
                                         fragment_map,
-                                        ctx=RouteDFSState(fragment_map),
+                                        ctx=starting_ctx,
                                         cutoff=3)):
         state = result.context()
 
@@ -585,4 +679,5 @@ def route(basename,board,node_map):
     graph = build_instance_graph(board)
     logger.info('--- concrete circuit ---')
     for conc_circ in build_concrete_circuit(basename,graph,node_map):
+        print("<<<< CONCRETE CIRCUIT >>>>")
         yield conc_circ

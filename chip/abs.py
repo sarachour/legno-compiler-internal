@@ -226,6 +226,9 @@ class AJoin(ANode):
         else:
             return "%d.join" % (self._id)
 
+    def dest(self):
+        return self._children[0]
+
     def _copy(self,eng):
         join = AJoin()
         success = eng.register(self,join)
