@@ -25,6 +25,17 @@ class Config:
         self._dacs = {}
         self._labels = {}
 
+    @staticmethod
+    def from_json(obj):
+        cfg = Config()
+        cfg._mode = obj['compute-mode']
+        cfg._scale_mode = obj['scale-mode']
+        for dac,value in obj['dacs'].items():
+            cfg._dacs[dac] = value
+        for port,label in obj['labels'].items():
+            cfg._labels[port] = label
+        return cfg
+
     def to_json(self):
         cfg = {}
         cfg['compute-mode'] = self._mode

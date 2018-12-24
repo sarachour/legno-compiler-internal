@@ -5,6 +5,7 @@ import argparse
 import os
 import time
 from util import paths
+import json
 
 #import conc
 #import srcgen
@@ -64,9 +65,6 @@ if args.subparser_name == "arco":
 
     problem = bmark.get_bmark(args.benchmark)
 
-    if not os.path.exists(args.output_dir):
-        os.makedirs(args.output_dir)
-
     for indices,conc_circ in \
         arco.compile(hdacv2_board,
                                problem,
@@ -83,14 +81,18 @@ if args.subparser_name == "arco":
         time.sleep(1)
 
 elif args.subparser_name == "jaunt":
+    from chip.hcdc import board as hdacv2_board
+    import bmark.bmarks as bmark
+
     circ_dir = path_handler.abs_circ_dir()
     for dirname, subdirlist, filelist in os.walk(circ_dir):
         for fname in filelist:
             if fname.endswith('.circ'):
                 print('%s' % fname)
                 with open("%s/%s" % (dirname,fname),'r') as fh:
-                    text = fh.read()
-                    ccirc = ConcCirc.from_json(text)
+                    obj = json.loads(fh.read())
+                    ccirc = ConcCirc.from_json(hdacv2_board, \
+                                               obj)
                     print(ccirc)
                     raise Exception("generate jaunt")
 

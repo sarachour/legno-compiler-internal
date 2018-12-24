@@ -117,14 +117,38 @@ class ConcCirc:
         return self
 
     @staticmethod
-    def from_json(text):
-        obj = json.loads(text)
-        print(obj)
-        raise Exception("implement me")
+    def from_json(board,obj):
+        circ = ConcCirc(board,obj['name'])
+        for inst in obj['insts']:
+            assert(inst['board'] == board.name)
+            config = Config.from_json(inst['config'])
+            block,loc = inst['block'],inst['loc']
+            circ.use(block,loc,config)
+
+        for conn in obj['conns']:
+            dest_obj = conn['dest']
+            src_obj = conn['source']
+
+            dblk = dest_obj['block']
+            dport = dest_obj['port']
+            dloc = dest_obj['loc']
+
+            sblk = src_obj['block']
+            sport = src_obj['port']
+            sloc = src_obj['loc']
+
+            circ.conn(sblk,sloc,sport, \
+                      dblk,dloc,dport)
+
+        return circ
 
 
     def to_json(self):
-        data_struct = {'insts': [], 'conns':[]}
+        data_struct = {
+            'insts': [],
+            'conns':[],
+            'name':self.name
+        }
         for block,locs in self._configs.items():
             for loc,cfg in locs.items():
                 inst = {'block':block,'loc':loc, \
