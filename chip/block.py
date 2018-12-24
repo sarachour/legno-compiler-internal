@@ -1,21 +1,10 @@
 import ops
+from enum import Enum
 
-class Labels:
-
-    CONST_INPUT = 0;
-    DYNAMIC_INPUT = 1;
-    OUTPUT = 2
-
-    @staticmethod
-    def to_str(idx):
-        if idx == Labels.CONST_INPUT:
-            return "const-inp"
-        elif idx == Labels.DYNAMIC_INPUT:
-            return "dyn-inp"
-        elif idx == Labels.OUTPUT:
-            return "out"
-        else:
-            raise Exception("unknown label ident <%d>" % idx)
+class Labels(Enum):
+    CONST_INPUT = 'const-inp';
+    DYNAMIC_INPUT = 'dyn-inp';
+    OUTPUT = 'out'
 
 class Config:
 
@@ -32,8 +21,8 @@ class Config:
         cfg._scale_mode = obj['scale-mode']
         for dac,value in obj['dacs'].items():
             cfg._dacs[dac] = value
-        for port,label in obj['labels'].items():
-            cfg._labels[port] = label
+        for port,(name,scf,kind_name) in obj['labels'].items():
+            cfg._labels[port] = (name,scf,Labels(kind_name))
         return cfg
 
     def to_json(self):
@@ -45,8 +34,8 @@ class Config:
         for dac,value in self._dacs.items():
             cfg['dacs'][dac] = value
 
-        for port,label in self._labels.items():
-            cfg['labels'][port] = label
+        for port,(name,scf,kind) in self._labels.items():
+            cfg['labels'][port] = [name,scf,kind.value]
 
         return cfg
 

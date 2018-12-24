@@ -11,6 +11,7 @@ class ConcCirc:
         self._configs= {}
         self._conns = {}
         self._intervals = {}
+        self._bandwidths = {}
 
     def set_tau(self,value):
         self._tau = value
@@ -18,6 +19,14 @@ class ConcCirc:
     @property
     def tau(self):
         return self._tau
+
+    def set_bandwidth(self,label,bandwidth):
+        self._bandwidths[label] = bandwidth
+
+    def bandwidth(self,label):
+        if not (label in self._bandwidths):
+            raise Exception("unknown bandwidth: %s" % label)
+        return self._bandwidths[label]
 
     def set_interval(self,label,lb,ub):
         self._intervals[label] = (lb,ub)
@@ -67,18 +76,22 @@ class ConcCirc:
         return True
 
     def conns_by_dest(self):
-        for dests in self._conns.values():
-            srcs = []
-            for saddr,sport,daddr,dport in dests.values():
-                sloc = self.board.position_string_to_position(saddr)
-                srcs.append((sloc,sport))
+        srcs = {}
+        for (sblock,sloc,sport), \
+            (dblock,dloc,dport) in self._conns.items():
+            if not (dblock,dloc,dport) in srcs:
+                srcs[(dblock,dloc,dport)] = []
 
-            yield daddr,dport,srcs
+            srcs[(dblock,dloc,dport)].append((sblock,sloc,sport))
+
+
+        for (dblock,dloc,dport),src_list in srcs.items():
+            yield dblock,dloc,dport,src_list
 
     def conns(self):
-        for dests in self._conns.values():
-            for sblock,sloc,sport,dblock,dloc,dport in dests.values():
-                yield sblock,sloc,sport,dblock,dloc,dport
+        for (sblock,sloc,sport), \
+            (dblock,dloc,dport) in self._conns.items():
+            yield sblock,sloc,sport,dblock,dloc,dport
 
     def has_conn(self,block1,loc1,port1,block2,loc2,port2):
         return self._board.can_connect(block1,loc1,port1,
@@ -140,6 +153,12 @@ class ConcCirc:
             circ.conn(sblk,sloc,sport, \
                       dblk,dloc,dport)
 
+        for label,(lb,ub) in obj['intervals'].items():
+            circ.set_interval(label,lb,ub)
+
+        for label,bw in obj['bandwidths'].items():
+            circ.set_bandwidth(label,bw)
+
         return circ
 
 
@@ -147,8 +166,16 @@ class ConcCirc:
         data_struct = {
             'insts': [],
             'conns':[],
+            'intervals':{},
+            'bandwidths':{},
             'name':self.name
         }
+        for label,(lb,ub) in self._intervals.items():
+            data_struct['intervals'][label] = (lb,ub)
+
+        for label,bw in self._bandwidths.items():
+            data_struct['bandwidths'][label] = bw
+
         for block,locs in self._configs.items():
             for loc,cfg in locs.items():
                 inst = {'block':block,'loc':loc, \
@@ -218,7 +245,6 @@ class ConcCirc:
 
         q('node [shape=record];')
         for idx,blkdata in to_id.items():
-            print(blkdata)
             inp_label = "|".join(map(
                 lambda args: "<i%d> %s" % (args[0],args[1]),
                 enumerate(blkdata['inputs'])))
@@ -235,7 +261,7 @@ class ConcCirc:
 
             for port,math_label,scf,kind in cfg.labels():
 
-                kind = Labels.to_str(kind)
+                kind = kind.value
                 label = "%s %s*%s" % (kind,math_label,scf)
                 st = "%s [label=\"%s\"]" % (labelfn(),label)
                 q(st)

@@ -389,10 +389,10 @@ def bp_bind_intervals(prob,circ):
     updated = True
     while updated:
         updated = False
-        for (dblk,dloc),dport,srcs in circ.conns_by_dest():
+        for dblk,dloc,dport,srcs in circ.conns_by_dest():
             src_bounds = True
             src_interval_sum = None
-            for (sblk,sloc),sport in srcs:
+            for (sblk,sloc,sport) in srcs:
                 src_bound,sinterval = prob.math_range(sblk,sport,sloc)
                 src_bounds = src_bound and src_bounds
                 if src_bound:
