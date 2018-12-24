@@ -497,7 +497,7 @@ def bp_decl_scaling_factors(prob,circ):
                 prob.eq(JVar(orig_scf),JVar(copy_scf))
 
     # set scaling factors connected by a wire equal
-    for (sblk,sloc),sport,(dblk,dloc),dport in circ.conns():
+    for sblk,sloc,sport,dblk,dloc,dport in circ.conns():
         s_scf = prob.get_scf(sblk,sport,sloc)
         d_scf = prob.get_scf(dblk,dport,dloc)
         prob.eq(JVar(s_scf),JVar(d_scf))
@@ -730,18 +730,21 @@ def iter_scaled_circuits(circ):
     for choice in itertools.product(*choices):
         for (block_name,loc),scale_mode in zip(labels,choice):
             print("%s.%s = %s" % (block_name,loc,scale_mode))
-            circ.config((block_name,loc)) \
+            circ.config(block_name,loc) \
                 .set_scale_mode(scale_mode)
 
         yield circ
 
-def scale(circ):
+def scale(circ,noise_analysis=False):
     for orig_circ in iter_scaled_circuits(circ):
-        noise_circ = jaunt_to_noise_circ.build(orig_circ)
-        prob = build_problem(circ)
+        if not noise_analysis:
+            prob = build_problem(orig_circ)
+        else:
+            raise Exception("unimplemented: noise analysis")
+
         succ,circ = solve_problem(orig_circ,prob)
         if succ:
             print("[[SUCCESS]]")
-            yield orig_circ,circ
+            yield circ
         else:
             print("[[FAILURE]]")

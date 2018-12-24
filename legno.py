@@ -91,10 +91,11 @@ elif args.subparser_name == "jaunt":
                 print('%s' % fname)
                 with open("%s/%s" % (dirname,fname),'r') as fh:
                     obj = json.loads(fh.read())
-                    ccirc = ConcCirc.from_json(hdacv2_board, \
+                    conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                obj)
-                    print(ccirc)
-                    raise Exception("generate jaunt")
+                    for scale_circ in jaunt.scale(conc_circ, \
+                                                  noise_analysis=args.noise):
+                        raise Exception("emit scaled")
 
 elif args.subparser_name == "gen":
     for dirname, subdirlist, filelist in os.walk(args.input_dir):

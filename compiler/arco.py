@@ -630,6 +630,7 @@ def compile(board,prob,depth=3,max_abs_circs=100,max_conc_circs=1):
                 basename =  prob.name+ "_".join(map(lambda i:str(i),indices))
                 for route_index,conc_circ in enumerate(arco_route.route(basename,
                                                                         board,
+                                                                        prob,
                                                                         node_map)):
 
                     yield indices+[route_index],conc_circ

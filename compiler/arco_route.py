@@ -699,7 +699,7 @@ def traverse_abs_circuits(graph,variables,fragment_map,ctx=None,cutoff=1):
                                                                    total))
                 yield new_result
 
-def build_concrete_circuit(name,graph,fragment_map):
+def build_concrete_circuit(name,graph,prob,fragment_map):
     variables = list(fragment_map.keys())
     for var,frag in fragment_map.items():
         logger.info("=== %s ===" % var)
@@ -717,9 +717,12 @@ def build_concrete_circuit(name,graph,fragment_map):
 
         circ = ccirc.ConcCirc(graph.board,"%s_%d" % (name,idx))
 
-        for n1,p1,n2,p2 in state.conns():
-            print("%s[%s].%s -> %s[%s].%s" % \
-            (n1.block_name,n1.loc,p1,n2.block_name,n2.loc,p2))
+        for variable,(lb,ub) in prob.intervals():
+            circ.set_interval(variable,lb,ub)
+
+        for variable,bw in prob.bandwidths():
+            circ.set_bandwidth(variable,bw)
+
         for node in state.nodes():
             print(node.block_name,node.loc)
             circ.use(node.block_name,node.loc,config=node.config)
@@ -733,10 +736,10 @@ def build_concrete_circuit(name,graph,fragment_map):
     return
 
 
-def route(basename,board,node_map):
+def route(basename,board,prob,node_map):
     #sys.setrecursionlimit(1000)
     graph = build_instance_graph(board)
     logger.info('--- concrete circuit ---')
-    for conc_circ in build_concrete_circuit(basename,graph,node_map):
+    for conc_circ in build_concrete_circuit(basename,graph,prob,node_map):
         print("<<<< CONCRETE CIRCUIT >>>>")
         yield conc_circ

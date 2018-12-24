@@ -19,6 +19,14 @@ class MathProg:
         assert(min_v <= max_v)
         self._intervals[v] = (min_v,max_v)
 
+    def intervals(self):
+        for v,(lb,ub) in self._intervals.items():
+            yield v,(lb,ub)
+
+    def bandwidths(self):
+        for v,bw in self._bandwidths.items():
+            yield v,bw
+
     def compile(self):
         for variable in self._bindings:
             assert(variable in self._intervals)
