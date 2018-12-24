@@ -26,43 +26,37 @@ def compile(board,problem):
 
 
 parser = argparse.ArgumentParser(description='Legno compiler.')
+parser.add_argument('benchmark', type=str,help='benchmark to compile')
+parser.add_argument('--bmark-dir', type=str,default='default',
+                       help='directory to output files to.')
+
 
 subparsers = parser.add_subparsers(dest='subparser_name',
                                    help='compilers/compilation passes.')
 
 arco_subp = subparsers.add_parser('arco', help='generate circuit')
-arco_subp.add_argument('benchmark', type=str,help='benchmark to compile')
 arco_subp.add_argument('--xforms', type=int,default=3,
                        help='number of abs circuits to generate.')
 arco_subp.add_argument('--abs-circuits', type=int,default=100,
                        help='number of abs circuits to generate.')
 arco_subp.add_argument('--conc-circuits', type=int,default=3,
                        help='number of conc circuits to generate.')
-arco_subp.add_argument('--output-dir', type=str,default='default',
-                       help='output directory to output files to.')
-
 
 
 jaunt_subp = subparsers.add_parser('jaunt', help='scale circuit parameters.')
-jaunt_subp.add_argument('benchmark', type=str,help='benchmark to compile')
-jaunt_subp.add_argument('--input-dir', type=str,help='output directory to output files to.')
 jaunt_subp.add_argument('--noise', type=str,help='perform noise analysis.')
-jaunt_subp.add_argument('--output-dir', type=str,default='circs',                       help='output directory to output files to.')
 
 gren_subp = subparsers.add_parser('gen_grendel', help='generate grendel.')
 gren_subp.add_argument('benchmark', type=str,help='benchmark to compile')
 gren_subp.add_argument('--input-dir', type=str,help='output directory to output files to.')
-gren_subp.add_argument('--output-dir', type=str,default='default',                       help='output directory to output files to.')
-gren_subp.add_argument('--experiment', type=str,default='default',                       help='output directory to output files to.')
+gren_subp.add_argument('--output-dir', type=str,default='default',
+                       help='output directory to output files to.')
+gren_subp.add_argument('--experiment', type=str,default='default',
+                       help='output directory to output files to.')
 
 args = parser.parse_args()
 
-path_handler = paths.PathHandler(args.output_dir,args.benchmark)
-OUTDIR = "outputs"
-
-if not os.path.exists(args.output_dir):
-    os.makedirs(args.output_dir)
-
+path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
 
 if args.subparser_name == "arco":
     from chip.hcdc import board as hdacv2_board
@@ -89,13 +83,14 @@ if args.subparser_name == "arco":
         time.sleep(1)
 
 elif args.subparser_name == "jaunt":
-    for dirname, subdirlist, filelist in os.walk(args.input_dir):
+    circ_dir = path_handler.abs_circ_dir()
+    for dirname, subdirlist, filelist in os.walk(circ_dir):
         for fname in filelist:
             if fname.endswith('.circ'):
                 print('%s' % fname)
                 with open("%s/%s" % (dirname,fname),'r') as fh:
                     text = fh.read()
-                    ccirc = conccirc.from_json(text)
+                    ccirc = ConcCirc.from_json(text)
                     print(ccirc)
                     raise Exception("generate jaunt")
 

@@ -34,5 +34,8 @@ class PathHandler:
         return self.ABS_CIRC_DIR+ "/%s_%s.circ" % \
           (self._bmark,index_str)
 
+    def abs_circ_dir(self):
+        return self.ABS_CIRC_DIR
+
     def has_file(self,filepath):
         return os.path.exists(filepath)
