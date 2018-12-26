@@ -75,6 +75,16 @@ class ConcCirc:
 
         return True
 
+    def get_conns_by_dest(self,tblk,tloc,tport):
+        for (sblock,sloc,sport), \
+            (dblock,dloc,dport) in self._conns.items():
+            if tblk != dblock or tloc != dloc or tport != dport:
+                continue
+
+            yield sblock,sloc,sport
+
+
+
     def conns_by_dest(self):
         srcs = {}
         for (sblock,sloc,sport), \

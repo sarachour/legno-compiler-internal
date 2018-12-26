@@ -499,6 +499,9 @@ def compile_compute_fragments(board,prob,n_xforms):
         for dist_abs_expr in distribute_consts(abs_expr):
             for n_xforms,xform_abs_expr in xform_expr(dist_abs_expr,rules):
                 for node,output in to_abs_circ(board,xform_abs_expr):
+                    if isinstance(node,acirc.ABlockInst):
+                        node.config.set_label(output,var)
+
                     if acirc.AbsCirc.feasible(board,[node]):
                         frag_node_map[var].append(node)
                         frag_output_map[var].append(output)

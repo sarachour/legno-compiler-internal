@@ -184,6 +184,10 @@ class Integ(Op2):
         pass
 
     @property
+    def label(self):
+        return self._label
+
+    @property
     def init_cond(self):
         return self.arg2
 

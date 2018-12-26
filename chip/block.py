@@ -207,6 +207,13 @@ class Block:
             self._sigmap[port] = prop
 
 
+    def get_dynamics(self,output,mode):
+        modedict = self._ops[output]
+        assert(not mode is None)
+        expr = modedict[mode]
+        return expr
+
+
     def dynamics(self,mode=None):
         for output,modedict in self._ops.items():
             if not mode is None:
