@@ -34,6 +34,13 @@ class JauntProb:
         # metavar
         self._meta = {}
         self._metavar = 0
+        self._failed = False
+
+    def fail(self):
+        self._failed = True
+
+    def failed(self):
+        return self._failed
 
     def priority(self):
         for (block_name,port,idx,handle), weight \
@@ -197,31 +204,6 @@ class JauntProb:
 
 
 
-
-def bp_compute_expr_interval(expr,assigns):
-    if expr.op == ops.Op.VAR:
-        if not expr.name in assigns:
-            raise Exception("[cannot resolve interval] <%s> not in assignment list" \
-                            % expr.name)
-
-        return assigns[expr.name]
-
-    elif expr.op == ops.Op.MULT:
-        i1 = bp_compute_expr_interval(expr.arg1,assigns)
-        i2 = bp_compute_expr_interval(expr.arg2,assigns)
-        ires = i1.mult(i2)
-        return ires
-
-    elif expr.op == ops.Op.INTEG:
-        print(assigns)
-        i1 = bp_compute_expr_interval(ops.Var(expr.label),assigns)
-        i2 = bp_compute_expr_interval(expr.init_cond)
-        ires = i1.union(i2)
-        return ires
-
-    else:
-        raise Exception("unhandled <%s>" % expr)
-
 def bp_ival_port_to_range(block,mode,port,handle=None):
     port_props = block.props(mode,port,handle=handle)
     if isinstance(port_props,props.AnalogProperties):
@@ -271,7 +253,6 @@ def bp_ival_math_label_ranges(prob,circ):
                 handle = block.get_dynamics(port,mode).toplevel()
                 lb,ub = circ.interval(label)
                 mrng = IRange(lb,ub)
-                print("%s.%s handle=%s" % (block.name,port,handle))
                 prob.set_math_range(block_name,loc,port,mrng,\
                                     handle=handle)
                 prob.set_priority(block_name,loc,port, \
@@ -318,12 +299,16 @@ def bpder_derive_output_port(prob,circ,block,config,loc,port):
 
     # find intervals for free variables
     variables = list(map(lambda v: (block.name,loc,v), expr.vars()))
+    print("-----------------")
+    print(config)
+    print("variables=%s" % variables)
     free,bound = bp_ival_hardware_classify_ports(prob, variables)
     assert(len(free) == 0)
     free,bound = bp_ival_math_classify_ports(prob, variables)
     for free_block_name,free_loc,free_port in free:
         free_block = circ.board.block(free_block_name)
-        bp_derive_intervals(prob,circ,free_block,config,\
+        bp_derive_intervals(prob,circ,free_block,\
+                            circ.config(free_block.name,free_loc),\
                             free_loc,free_port)
 
     # compute intervals
@@ -351,10 +336,12 @@ def bpder_derive_output_port(prob,circ,block,config,loc,port):
 def bpder_derive_input_port(prob,circ,block,config,loc,port):
     sources = list(circ.get_conns_by_dest(block.name,loc,port))
     free,bound = bp_ival_math_classify_ports(prob,sources)
+    print("input %s[%s].%s #srcs=%d" % (block.name,loc,port,len(sources)))
     assert(len(sources) > 0)
     for free_block_name,free_loc,free_port in free:
         free_block = circ.board.block(free_block_name)
-        bp_derive_intervals(prob,circ,free_block,config, \
+        bp_derive_intervals(prob,circ,free_block,
+                            circ.config(free_block.name,free_loc),\
                             free_loc,free_port)
 
     expr_ival = None
@@ -687,7 +674,7 @@ def cancel_signs(orig_lhs,orig_rhs):
 
 def solve_problem(circ,prob):
     TAU_MIN = 1e-6
-    failed = False
+    failed = prob.failed()
 
     variables = {}
     for scf in prob.variables():
@@ -709,7 +696,7 @@ def solve_problem(circ,prob):
             continue
 
 
-        #print("%s == %s" % (gp_lhs,gp_rhs))
+        print("%s == %s" % (gp_lhs,gp_rhs))
         constraints.append(gp_lhs == gp_rhs)
 
     for lhs,rhs in prob.ltes():
@@ -720,7 +707,7 @@ def solve_problem(circ,prob):
             failed = failed or not (gp_lhs <= gp_rhs)
             continue
 
-        #print("%s <= %s" % (gp_lhs,gp_rhs))
+        print("%s <= %s" % (gp_lhs,gp_rhs))
         constraints.append(gp_lhs <= gp_rhs)
 
     constraints.append(TAU_MIN <= variables[prob.TAU])

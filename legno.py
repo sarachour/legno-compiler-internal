@@ -88,7 +88,7 @@ elif args.subparser_name == "jaunt":
     for dirname, subdirlist, filelist in os.walk(circ_dir):
         for fname in filelist:
             if fname.endswith('.circ'):
-                print('%s' % fname)
+                print('<<<< %s >>>>' % fname)
                 with open("%s/%s" % (dirname,fname),'r') as fh:
                     obj = json.loads(fh.read())
                     conc_circ = ConcCirc.from_json(hdacv2_board, \

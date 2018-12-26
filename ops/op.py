@@ -235,7 +235,7 @@ class Integ(Op2):
         assert(not self.deriv_handle is None)
         ideriv = self.deriv.interval(bindings)
         icond = self.init_cond.interval(bindings)
-        istvar = icond.interval.widen(bindings[self.handle])
+        istvar = icond.interval.union(bindings[self.handle])
         assert(not self.handle is None)
         icomb = icond.merge(ideriv, istvar)
         icomb.bind(self.deriv_handle, ideriv.interval)
