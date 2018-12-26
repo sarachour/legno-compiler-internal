@@ -1,5 +1,6 @@
 import itertools
 import math
+import ops.interval as interval
 
 class Op:
     EQ = 0
@@ -41,6 +42,27 @@ class Op:
     @property
     def op(self):
         return self._op
+
+    @property
+    def state_vars(self):
+        stvars = {}
+        for substvars in self._args():
+            for k,v in substvars.items():
+                assert(not k in stvars)
+                stvars[k] =v
+        return stvars
+
+    def handles(self):
+        handles = []
+        for arg in self._args:
+            for handle in arg.handles():
+                assert(not handle in handles)
+                handles.append(handle)
+
+        return handles
+
+    def toplevel(self):
+        return None
 
     def compute(self,bindings={}):
         raise NotImplementedError
@@ -178,18 +200,51 @@ class BaseExpOp(Op):
 
 class Integ(Op2):
 
-    def __init__(self,deriv,init_cond,label=None):
+    def __init__(self,deriv,init_cond,handle=None):
+        assert(handle.startswith(":"))
+
         Op.__init__(self,Op.INTEG,[deriv,init_cond])
-        self._label = label
+        self._handle = handle
         pass
 
     @property
-    def label(self):
-        return self._label
+    def handle(self):
+        return self._handle
+
+    @property
+    def deriv_handle(self):
+        return self._handle+"\'"
 
     @property
     def init_cond(self):
         return self.arg2
+
+    def handles(self):
+        ch = Op.handles(self)
+        assert(not self.handle in ch and \
+               not self.handle is None)
+        ch.append(self.handle)
+        ch.append(self.deriv_handle)
+        return ch
+
+    def toplevel(self):
+        return self.handle
+
+    def interval(self,bindings):
+        assert(not self.handle is None)
+        assert(not self.deriv_handle is None)
+        ideriv = self.deriv.interval(bindings)
+        icond = self.init_cond.interval(bindings)
+        istvar = icond.interval.widen(bindings[self.handle])
+        assert(not self.handle is None)
+        icomb = icond.merge(ideriv, istvar)
+        icomb.bind(self.deriv_handle, ideriv.interval)
+        return icomb
+
+    def state_vars(self):
+        stvars = Op.state_vars(self)
+        stvars[self._handle] = self
+        return
 
     def bandwidth(self,intervals,bindings):
         expr = self.deriv
@@ -271,7 +326,7 @@ class Var(Op):
 
     def interval(self,bindings):
         assert(self._name in bindings)
-        return bindings[self._name]
+        return interval.IntervalCollection(bindings[self._name])
 
     def bandwidth(self,intervals,bindings):
         new_b = dict(filter(lambda el: el[0] != self._name, bindings.items()))
@@ -303,7 +358,9 @@ class Const(Op):
         return self._value
 
     def interval(self,bindings):
-        return (self._value,self._value)
+        return interval.IntervalCollection(
+            interval.IValue(self._value)
+        )
 
     def bandwidth(self,intervals,bindings):
         return 0.0
@@ -373,12 +430,8 @@ class Mult(Op2):
     def interval(self,bindings):
         is1 = self.arg1.interval(bindings)
         is2 = self.arg2.interval(bindings)
-        corners = []
-        for v1 in is1:
-            for v2 in is2:
-                corners.append(v1*v2)
-
-        return min(corners),max(corners)
+        return is1.merge(is2,
+                  is1.interval.mult(is2.interval))
 
     def bandwidth(self,intervals,bindings):
         if self.arg1.op == Op.CONST:
@@ -425,12 +478,9 @@ class Add(Op2):
     def interval(self,bindings):
         is1 = self.arg1.interval(bindings)
         is2 = self.arg2.interval(bindings)
-        corners = []
-        for v1 in is1:
-            for v2 in is2:
-                corners.append(v1+v2)
+        return is1.merge(is2,
+                  is1.interval.add(is2.interval))
 
-        return min(corners),max(corners)
 
     def bandwidth(self,intervals,bindings):
         bandwidth1 = self.arg1.bandwidth(intervals,bindings)

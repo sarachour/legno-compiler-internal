@@ -3,162 +3,12 @@ import ops.op as ops
 import gpkit
 import itertools
 import compiler.jaunt_gen_noise_circ as jnoise
+import ops.jop as jop
+from ops.interval import Interval, IRange, IValue
 
 #TODO: what is low range, high range and med range?
 #TODO: setRange: integ.in, integ.out and mult have setRange functions.
 #TODO: how do you set wc in the integrator? Is it through the setRange function?
-
-class Interval:
-
-    def __init__(self,lb,ub):
-        self._lower = lb
-        self._upper = ub
-
-
-    @property
-    def lower(self):
-        return self._lower
-
-    @property
-    def upper(self):
-        return self._upper
-
-    def add(self,i2):
-         vals = [
-            i2.lower+self.lower,
-            i2.upper+self.lower,
-            i2.lower+self.upper,
-            i2.upper+self.upper
-         ]
-         lb = min(vals)
-         ub = max(vals)
-         if lb == ub:
-             return IValue(lb)
-         else:
-             return IRange(lb,ub)
-
-    def mult(self,i2):
-        vals = [
-            i2.lower*self.lower,
-            i2.upper*self.lower,
-            i2.lower*self.upper,
-            i2.upper*self.upper
-        ]
-        lb = min(vals)
-        ub = max(vals)
-        if lb == ub:
-            return IValue(lb)
-        else:
-            return IRange(lb,ub)
-
-    def __repr__(self):
-        return "[%s,%s]" % (self._lower,self._upper)
-
-    def __iter__(self):
-        yield self.lower
-        yield self.upper
-
-class IValue(Interval):
-
-    def __init__(self,value):
-        self._value = value
-        Interval.__init__(self,value,value)
-
-    @property
-    def value(self):
-        return self._value
-
-    def __iter__(self):
-        yield self.lower
-
-
-    def __repr__(self):
-        return "[%s]" % self._value
-
-class IRange(Interval):
-
-    def __init__(self,min_value,max_value):
-        Interval.__init__(self,min_value,max_value)
-
-
-#TODO: refactor this
-#TODO: update gpkit
-class JOp:
-
-    MULT = 0
-    CONST = 1
-    VAR = 2
-
-    STRMAP = {
-        MULT: "*",
-        CONST: "const",
-        VAR: "var"
-    }
-    def __init__(self,op,args):
-        self._args = args
-        self._op = op
-
-
-    def factor_const(self):
-        raise NotImplementedError
-
-    def arg(self,i):
-        return self._args[i]
-
-    @property
-    def op(self):
-        return self._op
-
-    def __repr__(self):
-        argstr = " ".join(map(lambda x : str(x),self._args))
-        return "(%s %s)" % (JOp.STRMAP[self._op],argstr)
-
-class JVar(JOp):
-
-    def __init__(self,name):
-        JOp.__init__(self,JOp.VAR,[])
-        self._name = name
-
-    def factor_const(self):
-        return 1,self
-
-    @property
-    def name(self):
-        return self._name
-
-    def __repr__(self):
-        return "(var %s)" % self._name
-
-
-class JConst(JOp):
-
-    def __init__(self,value):
-        JOp.__init__(self,JOp.CONST,[])
-        self._value = value
-
-
-    def factor_const(self):
-        return self._value,JConst(1.0)
-
-    @property
-    def value(self):
-        return self._value
-
-    def __repr__(self):
-        return "(const %s)" % self._value
-
-class JMult(JOp):
-
-    def __init__(self,arg1,arg2):
-        JOp.__init__(self,JOp.MULT,[arg1,arg2])
-
-    def factor_const(self):
-        c1,x1 = self.arg(0).factor_const()
-        c2,x2 = self.arg(1).factor_const()
-        return c1*c2,JMult(x1,x2)
-
-
-
 
 class JauntProb:
 
@@ -186,10 +36,10 @@ class JauntProb:
         self._metavar = 0
 
     def priority(self):
-        for (block_name,port,idx), weight \
+        for (block_name,port,idx,handle), weight \
             in self._priority.items():
             loc = self._to_loc[block_name][idx]
-            yield block_name,port,loc,weight
+            yield block_name,port,loc,handle,weight
 
     def variables(self):
         yield JauntProb.TAU
@@ -231,71 +81,71 @@ class JauntProb:
     def _index_to_loc(self,block_name,index):
         return self._to_loc[block_name][index]
 
-    def coefficient(self,block_name,port,loc):
+    def coefficient(self,block_name,port,loc,handle=None):
         index = self._loc_to_index(block_name,loc)
-        if not (block_name,port,index) in self._to_coefficient:
+        if not (block_name,port,index,handle) in self._to_coefficient:
             return 1.0
         else:
-            return self._to_coefficient[(block_name,port,index)]
+            return self._to_coefficient[(block_name,port,index,handle)]
 
-    def set_coefficient(self,block_name,port,loc,value):
+    def set_coefficient(self,block_name,port,loc,value,handle=None):
         index = self._loc_to_index(block_name,loc)
-        self._to_coefficient[(block_name,port,index)] = value
+        self._to_coefficient[(block_name,port,index,handle)] = value
 
-    def set_hardware_range(self,block_name,loc,port,interval):
+    def set_hardware_range(self,block_name,loc,port,ival,handle=None):
         index = self._loc_to_index(block_name,loc,create=True)
-        if not (isinstance(interval,Interval)):
-            raise Exception("not interval <%s>.T<%s>" % \
-                            (interval,interval.__class__.__name__))
+        if not (isinstance(ival,Interval)):
+            raise Exception("not ival <%s>.T<%s>" % \
+                            (ival,ival.__class__.__name__))
 
-        assert(not (block_name,port,index) in self._to_hw_range)
-        self._to_hw_range[(block_name,port,index)] = interval
+        assert(not (block_name,port,index,handle) in self._to_hw_range)
+        self._to_hw_range[(block_name,port,index,handle)] = ival
 
-    def set_math_range(self,block_name,loc,port,interval):
+    def set_math_range(self,block_name,loc,port,interval,handle=None):
         index = self._loc_to_index(block_name,loc)
         if not (isinstance(interval,Interval)):
             raise Exception("not interval <%s>.T<%s>" % \
                             (interval,interval.__class__.__name__))
 
-        assert(not (block_name,port,index) in self._to_math_range)
-        self._to_math_range[(block_name,port,index)] = interval
+        assert(not (block_name,port,index,handle) in self._to_math_range)
+        self._to_math_range[(block_name,port,index,handle)] = interval
 
 
-    def has_hardware_range(self,block_name,loc,port):
+    def has_hardware_range(self,block_name,loc,port,handle=None):
         index = self._loc_to_index(block_name,loc)
-        return (block_name,port,index) in self._to_hw_range
+        return (block_name,port,index,handle) in self._to_hw_range
 
 
-    def has_math_range(self,block_name,loc,port):
+    def has_math_range(self,block_name,loc,port,handle=None):
         index = self._loc_to_index(block_name,loc)
-        return (block_name,port,index) in self._to_math_range
+        return (block_name,port,index,handle) in self._to_math_range
 
-    def set_priority(self,block_name,loc,port):
+    def set_priority(self,block_name,loc,port,handle=None):
         index = self._loc_to_index(block_name,loc)
-        self._priority[(block_name,port,index)] = 1.0
+        self._priority[(block_name,port,index,handle)] = 1.0
 
     def get_scf_info(self,scf_var):
         if not scf_var in self._from_scf:
             print(self._from_scf.keys())
             raise Exception("not scaling factor table in <%s>" % scf_var)
 
-        block_name,port,index = self._from_scf[scf_var]
+        block_name,port,index,handle = self._from_scf[scf_var]
         loc = self._index_to_loc(block_name,index)
-        return block_name,loc,port
+        return block_name,loc,port,handle
 
-    def get_scf(self,block_name,loc,port):
+    def get_scf(self,block_name,loc,port,handle=None):
         index = self._loc_to_index(block_name,loc)
-        return self._to_scf[(block_name,port,index)]
+        return self._to_scf[(block_name,port,index,handle)]
 
-    def decl_scf(self,block_name,loc,port):
+    def decl_scf(self,block_name,loc,port,handle=None):
         # create a scaling factor from the variable name
         index = self._loc_to_index(block_name,loc,create=True)
-        var_name = "SCF_%s_%d_%s" % (block_name,index,port)
+        var_name = "SCF_%s_%d_%s_%s" % (block_name,index,port,handle)
         if var_name in self._from_scf:
             return var_name
 
-        self._from_scf[var_name] = (block_name,port,index)
-        self._to_scf[(block_name,port,index)] = var_name
+        self._from_scf[var_name] = (block_name,port,index,handle)
+        self._to_scf[(block_name,port,index,handle)] = var_name
         return var_name
 
     def eq(self,v1,v2):
@@ -313,28 +163,28 @@ class JauntProb:
         self._ltes.append((v2,v1))
 
 
-    def hardware_range(self,block_name,loc,port):
+    def hardware_range(self,block_name,loc,port,handle=None):
         index = self._loc_to_index(block_name,loc)
-        key = (block_name,port,index)
+        key = (block_name,port,index,handle)
         if not key in self._to_hw_range:
             return None
         else:
             return self._to_hw_range[key]
 
-    def math_range(self,block_name,loc,port):
+    def math_range(self,block_name,loc,port,handle=None):
         index = self._loc_to_index(block_name,loc,port)
-        key = (block_name,port,index)
+        key = (block_name,port,index,handle)
         if not key in self._to_math_range:
             return None
         else:
             return self._to_math_range[key]
 
-    def math_ranges(self,block_name,loc,ports):
+    def math_ranges(self,block_name,loc,ports,handle=None):
         index = self._loc_to_index(block_name,loc)
         missing = False
         bindings = []
         for port in ports:
-            key = (block_name,port,index)
+            key = (block_name,port,index,handle)
             if key in self._to_math_range:
                 interval = self._to_math_range[key]
             else:
@@ -345,18 +195,7 @@ class JauntProb:
 
         return not missing, bindings
 
-    def check_ranges(self):
-        return_code = True
-        for block_name,port,index in self._from_scf.values():
-            if not (block_name,port,index) in self._to_math_range:
-                print("math not-mapped %s.%s[%d]" % (block_name,port,index))
-                return_code = False
 
-            if not (block_name,port,index) in self._to_hw_range:
-                print("hw not-mapped %s.%s[%d]" % (block_name,port,index))
-                return_code = False
-
-        return return_code
 
 
 def bp_compute_expr_interval(expr,assigns):
@@ -383,25 +222,33 @@ def bp_compute_expr_interval(expr,assigns):
     else:
         raise Exception("unhandled <%s>" % expr)
 
+def bp_ival_port_to_range(block,mode,port,handle=None):
+    port_props = block.props(mode,port,handle=handle)
+    if isinstance(port_props,props.AnalogProperties):
+        lb,ub,units = port_props.interval()
+        return IRange(lb,ub)
+
+    elif isinstance(port_props,props.DigitalProperties):
+        lb = min(port_props.values())
+        ub = max(port_props.values())
+        return IRange(lb,ub)
+
+    else:
+        raise Exception("unhandled <%s>" % port_props)
+
 def bp_ival_hw_port_op_ranges(prob,circ):
+
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         mode = config.mode
         for port in block.inputs + block.outputs:
-            port_props = block.props(mode,port)
-            if isinstance(port_props,props.AnalogProperties):
-                lb,ub,units = port_props.interval()
-                hrng = IRange(lb,ub)
-                prob.set_hardware_range(block_name,loc,port,hrng)
-
-            elif isinstance(port_props,props.DigitalProperties):
-                lb = min(port_props.values())
-                ub = max(port_props.values())
-                hrng = IRange(lb,ub)
-                prob.set_hardware_range(block_name,loc,port,hrng)
-
-            else:
-                raise Exception("unhandled <%s>" % port_props)
+            hwrng = bp_ival_port_to_range(block,mode,port)
+            prob.set_hardware_range(block_name,loc,port,hwrng)
+            for handle in block.handles(mode,port):
+                hwrng = bp_ival_port_to_range(block,mode,port, \
+                                              handle=handle)
+                prob.set_hardware_range(block_name,loc,port,hwrng,\
+                                        handle=handle)
 
 def bp_ival_math_dac_ranges(prob,circ):
      for block_name,loc,config in circ.instances():
@@ -417,13 +264,18 @@ def bp_ival_math_dac_ranges(prob,circ):
 def bp_ival_math_label_ranges(prob,circ):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
+        mode = config.mode
         for port in block.inputs + block.outputs:
             if config.has_label(port):
                 label = config.label(port)
+                handle = block.get_dynamics(port,mode).toplevel()
                 lb,ub = circ.interval(label)
                 mrng = IRange(lb,ub)
-                prob.set_math_range(block_name,loc,port,mrng)
-                prob.set_priority(block_name,loc,port)
+                print("%s.%s handle=%s" % (block.name,port,handle))
+                prob.set_math_range(block_name,loc,port,mrng,\
+                                    handle=handle)
+                prob.set_priority(block_name,loc,port, \
+                                  handle=handle)
 
 def bp_ival_hardware_classify_ports(prob,variables):
     bound,free = [],[]
@@ -449,36 +301,56 @@ def bp_ival_math_classify_ports(prob,variables):
     return free,bound
 
 def bpder_derive_output_port(prob,circ,block,config,loc,port):
-    if prob.has_math_range(block.name,loc,port):
-        return
-
     comp_mode = config.mode
     expr = block.get_dynamics(port,comp_mode)
+    handles = expr.handles()
+    # test to see if we have computed the interval
+    computed_interval = True
+    if not prob.has_math_range(block.name,loc,port):
+        computed_interval = False
+    for handle in handles:
+        if not prob.has_math_range(block.name,loc,port,handle=handle):
+            computed_interval = False
+
+    if computed_interval:
+        print("skipping %s" % block.name)
+        return True
+
+    # find intervals for free variables
     variables = list(map(lambda v: (block.name,loc,v), expr.vars()))
     free,bound = bp_ival_hardware_classify_ports(prob, variables)
     assert(len(free) == 0)
     free,bound = bp_ival_math_classify_ports(prob, variables)
-    print("output %s free=%s, bound=%s" % (expr,free,bound))
     for free_block_name,free_loc,free_port in free:
         free_block = circ.board.block(free_block_name)
         bp_derive_intervals(prob,circ,free_block,config,\
                             free_loc,free_port)
 
+    # compute intervals
     varmap = {}
     for var_block_name,var_loc,var_port in free+bound:
         ival = prob.math_range(var_block_name,var_loc,var_port)
         varmap[var_port] = ival
 
-    lb,ub = expr.interval(varmap)
-    expr_ival = IValue(lb,ub) if abs(lb - ub) < 1e-5 else IRange(lb,ub)
-    print("out %s[%s].%s => %s" % (block.name,loc,port,expr_ival))
-    prob.set_math_range(block.name,loc,port,expr_ival)
+    for handle in handles:
+        ival = prob.math_range(block.name, loc, port, handle=handle)
+        varmap[handle] = ival
+
+    intervals = expr.interval(varmap)
+    prob.set_math_range(block.name,loc,port,intervals.interval)
+    print("out %s[%s].%s => %s" % (block.name,loc,port,intervals.interval))
+    for handle,interval in intervals.bindings():
+        prob.set_math_range(block.name,loc,port,interval,handle=handle)
+        print("out %s[%s].%s:%s => %s" % \
+              (block.name,loc,port,handle,interval))
+
+
+
+
 
 def bpder_derive_input_port(prob,circ,block,config,loc,port):
     sources = list(circ.get_conns_by_dest(block.name,loc,port))
     free,bound = bp_ival_math_classify_ports(prob,sources)
-    print("input %s[%s].%s free=%s bound=%s" % (block.name,loc,port,
-                                                free,bound))
     assert(len(sources) > 0)
     for free_block_name,free_loc,free_port in free:
         free_block = circ.board.block(free_block_name)
@@ -493,6 +365,8 @@ def bpder_derive_input_port(prob,circ,block,config,loc,port):
 
     prob.set_math_range(block.name,loc,port,expr_ival)
     print("in %s[%s].%s => %s" % (block.name,loc,port,expr_ival))
+
+
 
 def bp_derive_intervals(prob,circ,block,config,loc,port):
     if block.is_input(port):
@@ -536,37 +410,14 @@ def bp_bind_coefficients(prob,circ):
             if scf != 1.0:
                 prob.set_coefficient(block_name,out,loc,scf)
 
-
-def bp_generate_expr_constraints(prob,block,loc,expr):
-    if expr.op == ops.Op.CONST:
-        return JConst(1.0)
-
-    elif expr.op == ops.Op.VAR:
-        port = expr.name
-        scf = prob.get_scf(block.name,loc,port)
-        return JVar(scf)
-
-    elif expr.op == ops.Op.MULT:
-        expr1 = bp_generate_expr_constraints(prob,block,loc,expr.arg1)
-        expr2 = bp_generate_expr_constraints(prob,block,loc,expr.arg2)
-        return JMult(expr1,expr2)
-
-    elif expr.op == ops.Op.INTEG:
-        ic_expr = bp_generate_expr_constraints(prob,block,loc,expr.init_cond)
-        deriv_expr = bp_generate_expr_constraints(prob,block,loc,expr.deriv)
-        prob.eq(ic_expr,deriv_expr)
-        return deriv_expr
-
-    else:
-        raise Exception("unhandled <%s>" % expr)
-
-
 def bp_decl_scaling_factors(prob,circ):
     # define scaling factors
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for output in block.outputs:
             prob.decl_scf(block_name,loc,output)
+            for handle in block.handles(config.mode,output):
+                prob.decl_scf(block_name,loc,output,handle=handle)
 
         for inp in block.inputs:
             prob.decl_scf(block_name,loc,inp)
@@ -575,48 +426,160 @@ def bp_decl_scaling_factors(prob,circ):
             for orig in block.copies(config.mode,output):
                 copy_scf = prob.get_scf(block_name,loc,output)
                 orig_scf = prob.get_scf(block_name,loc,orig)
-                prob.eq(JVar(orig_scf),JVar(copy_scf))
+                prob.eq(jop.JVar(orig_scf),jop.JVar(copy_scf))
 
     # set scaling factors connected by a wire equal
     for sblk,sloc,sport,dblk,dloc,dport in circ.conns():
         s_scf = prob.get_scf(sblk,sloc,sport)
         d_scf = prob.get_scf(dblk,dloc,dport)
-        prob.eq(JVar(s_scf),JVar(d_scf))
+        prob.eq(jop.JVar(s_scf),jop.JVar(d_scf))
 
 
+def is_zero(v):
+    return abs(v) < 1e-14
+
+
+def same_sign(v1,v2):
+    if v1 < 0 and v2 < 0:
+        return True
+    elif v1 > 0 and v2 > 0:
+        return True
+    else:
+        return False
+
+def bpgen_build_lower_bound(prob,expr,math_lower,hw_lower):
+    if is_zero(math_lower) and hw_lower <= 0:
+        return
+    elif is_zero(math_lower) and hw_lower > 0:
+        return prob.fail()
+    elif is_zero(hw_lower) and math_lower >= 0:
+        return
+    elif is_zero(hw_lower) and math_lower < 0:
+        return prob.fail()
+
+    assert(not is_zero(math_lower))
+    assert(not is_zero(hw_lower))
+
+    if same_sign(math_lower,hw_lower) and \
+       math_lower > 0 and hw_lower > 0:
+        prob.gte(jop.JMult(expr,jop.JConst(math_lower)),
+                 jop.JConst(hw_lower))
+
+    elif same_sign(math_lower,hw_lower) and \
+         math_lower < 0 and hw_lower < 0:
+        prob.lte(jop.JMult(expr,jop.JConst(-math_lower)),
+                 jop.JConst(-hw_lower))
+
+    elif not same_sign(math_lower,hw_lower) and \
+         hw_lower < 0 and math_lower > 0:
+        pass
+
+    elif not same_sign(math_upper,hw_upper) and \
+         hw_lower > 0 and math_upper < 0:
+        prob.fail()
+    else:
+        raise Exception("uncovered lb: %s %s" % (math_lower,hw_lower))
+
+
+def bpgen_build_upper_bound(prob,expr,math_upper,hw_upper):
+    if is_zero(math_upper) and hw_upper >= 0:
+        return
+
+    elif is_zero(math_upper) and hw_upper < 0:
+        return
+
+    elif is_zero(hw_upper) and math_upper <= 0:
+        return
+
+    elif is_zero(hw_upper) and math_upper > 0:
+        return prob.fail()
+
+    assert(not is_zero(math_upper))
+    assert(not is_zero(hw_upper))
+
+    if same_sign(math_upper,hw_upper) and \
+       math_upper > 0 and hw_upper > 0:
+        prob.lte(jop.JMult(expr,jop.JConst(math_upper)),
+                 jop.JConst(hw_upper))
+
+    elif same_sign(math_upper,hw_upper) and \
+         math_upper < 0 and hw_upper < 0:
+        prob.lte(jop.JMult(expr,jop.JConst(-math_upper)),
+                 jop.JConst(-hw_upper))
+
+    elif not same_sign(math_upper,hw_upper) and \
+         hw_upper > 0 and math_upper < 0:
+        pass
+
+    elif not same_sign(math_upper,hw_upper) and \
+         hw_upper < 0 and math_upper > 0:
+        prob.fail()
+    else:
+        raise Exception("uncovered lb: %s %s" % (math_lower,hw_lower))
+
+
+def bpgen_scaled_interval_constraint(prob,scale_expr,math_rng,hw_rng):
+    bpgen_build_upper_bound(prob,scale_expr, \
+                            math_rng.upper,hw_rng.upper)
+    bpgen_build_lower_bound(prob,scale_expr, \
+                            math_rng.lower,hw_rng.lower)
+
+
+def bpgen_traverse_expr(prob,block,loc,port,expr):
+    inv_tau_scfvar = jop.JVar(prob.TAU,exponent=-1)
+    if expr.op == ops.Op.CONST:
+        return JConst(1.0)
+
+    elif expr.op == ops.Op.VAR:
+        port = expr.name
+        scf = prob.get_scf(block.name,loc,port)
+        return jop.JVar(scf)
+
+    elif expr.op == ops.Op.MULT:
+        expr1 = bpgen_traverse_expr(prob,block,loc,port,expr.arg1)
+        expr2 = bpgen_traverse_expr(prob,block,loc,port,expr.arg2)
+        return jop.JMult(expr1,expr2)
+
+    elif expr.op == ops.Op.INTEG:
+        # derivative and ic are scaled simialrly
+        ic_expr = bpgen_traverse_expr(prob,block,loc,port,expr.init_cond)
+        deriv_expr = bpgen_traverse_expr(prob,block,loc,port,expr.deriv)
+        var_deriv = jop.JVar(prob.get_scf(block.name,loc,port, \
+                                          handle=expr.deriv_handle))
+        var_stvar = jop.JVar(prob.get_scf(block.name,loc,port, \
+                                          handle=expr.handle))
+
+        prob.eq(ic_expr,deriv_expr)
+        prob.eq(ic_expr,var_deriv)
+        # ranges are contained
+        mrng = prob.math_range(block.name,loc,port,expr.deriv_handle)
+        hwrng = prob.hardware_range(block.name,loc,port,expr.deriv_handle)
+        assert(not mrng is None)
+        assert(not hwrng is None)
+        bpgen_scaled_interval_constraint(prob,ic_expr,mrng,hwrng)
+        # the handles for deriv and stvar are the same
+        integ_expr = jop.JMult(inv_tau_scfvar,var_deriv)
+        prob.eq(integ_expr,var_stvar)
+        return var_stvar
+
+    else:
+        raise Exception("unhandled <%s>" % expr)
+
+
+def bpgen_traverse_dynamics(prob,block,loc,out,expr):
+  expr_scf = bpgen_traverse_expr(prob,block,loc,out,expr)
+  coeff = prob.coefficient(block.name,out,loc)
+  if coeff != 1.0:
+      expr_scf = jop.JMult(jop.JConst(coeff),expr_scf)
+
+  var_scfvar = jop.JVar(prob.get_scf(block.name,loc,out))
+  prob.eq(var_scfvar,expr_scf)
 
 def bp_generate_problem(prob,circ):
-
-    def is_negative(v1):
-        return v1 < 0.0
-    def is_positive(v2):
-        return v2 >= 0.0
-
-    def same_sign(v1,v2):
-        if v1 < 0 and v2 < 0:
-            return True
-        elif v1 >= 0 and v2 >= 0:
-            return True
-        else:
-            return False
-
-    uses_tau = False
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for out,expr in block.dynamics(mode=config.mode):
-            expr_scf = bp_generate_expr_constraints(prob,block,loc,expr)
-            coeff = prob.coefficient(block_name,out,loc)
-
-            scf_expr = expr_scf if coeff == 1.0 \
-                       else JMult(JConst(coeff),expr_scf)
-
-            out_scfvar = JVar(prob.get_scf(block_name,loc,out))
-            tau_scfvar = JVar(prob.TAU)
-            if not block.integrator(out):
-                prob.eq(out_scfvar,scf_expr)
-            else:
-                prob.eq(JMult(out_scfvar,tau_scfvar),scf_expr)
-                uses_tau = True
+            bpgen_traverse_dynamics(prob,block,loc,out,expr)
 
         for port in block.outputs + block.inputs:
             mrng = prob.math_range(block_name,loc,port)
@@ -625,48 +588,14 @@ def bp_generate_problem(prob,circ):
                 continue
 
             hwrng = prob.hardware_range(block_name,loc,port)
-            scfvar = JVar(prob.get_scf(block_name,loc,port))
-            if isinstance(mrng,IValue):
-                if same_sign(mrng.value,hwrng.lower) and \
-                   not same_sign(mrng.value,hwrng.upper):
-                    lower,upper = None,hwrng.lower
-
-                elif not same_sign(mrng.value,hwrng.lower) and \
-                     same_sign(mrng.value,hwrng.upper):
-                    lower,upper = None,hwrng.upper
-
-                else:
-                    lower,upper = hwrng.lower,hwrng.upper
-
-                if not lower is None:
-                    prob.gte(JMult(JConst(abs(mrng.value)),scfvar),\
-                            JConst(abs(lower)))
-                prob.lte(JMult(JConst(abs(mrng.value)),scfvar),\
-                        JConst(abs(upper)))
-
-            else:
-                if same_sign(mrng.lower,hwrng.lower) and \
-                  same_sign(mrng.upper,hwrng.upper):
-                    prob.lte(JMult(JConst(abs(mrng.lower)),scfvar),\
-                            JConst(abs(hwrng.lower)))
-                    prob.lte(JMult(JConst(abs(mrng.upper)),scfvar),\
-                            JConst(abs(hwrng.upper)))
+            scfvar = jop.JVar(prob.get_scf(block_name,loc,port))
+            bpgen_scaled_interval_constraint(prob,scfvar,mrng,hwrng)
 
 
-                elif is_negative(hwrng.lower) and \
-                     is_positive(mrng.lower) and \
-                     not same_sign(hwrng.lower,mrng.lower) and \
-                     same_sign(mrng.upper,hwrng.upper):
-                    prob.lte(JMult(JConst(abs(mrng.upper)),scfvar),\
-                            JConst(abs(hwrng.upper)))
-
-                else:
-                    raise Exception("unsupported intervals: math:<%s>, hw:<%s>" % \
-                    (mrng,hwrng))
-
-
-        if not uses_tau:
-            prob.eq(JVar(prob.TAU),JConst(1.0))
+    TAU_MAX = 1e6
+    TAU_MIN = 1e-6
+    prob.lte(jop.JVar(prob.TAU),jop.JConst(TAU_MAX))
+    prob.gte(jop.JVar(prob.TAU),jop.JConst(TAU_MIN))
 
 def build_problem(circ):
     prob = JauntProb()
@@ -676,7 +605,7 @@ def build_problem(circ):
     bp_decl_scaling_factors(prob,circ)
 
     # pass1: fill intervals
-    print("-> Fill Intervals")
+    print("-> Derive + Bind Intervals")
     bp_bind_intervals(prob,circ)
 
     # pass2: fill in hardware coefficients
@@ -690,15 +619,15 @@ def build_problem(circ):
     return prob
 
 def gpkit_expr(variables,expr):
-    if expr.op == JOp.VAR:
-        return variables[expr.name]
+    if expr.op == jop.JOp.VAR:
+        return variables[expr.name]**expr.exponent
 
-    elif expr.op == JOp.MULT:
+    elif expr.op == jop.JOp.MULT:
         e1 = gpkit_expr(variables,expr.arg(0))
         e2 = gpkit_expr(variables,expr.arg(1))
         return e1*e2
 
-    elif expr.op == JOp.CONST:
+    elif expr.op == jop.JOp.CONST:
         return expr.value
 
     else:
@@ -712,8 +641,8 @@ def sp_update_circuit(prob,circ,assigns):
         if variable.name == prob.TAU:
             tau = value
         else:
-            block_name,loc,port = prob.get_scf_info(variable.name)
-            bindings[(block_name,loc,port)] = value
+            block_name,loc,port,handle = prob.get_scf_info(variable.name)
+            bindings[(block_name,loc,port,handle)] = value
 
 
     circ.set_tau(tau)
@@ -722,7 +651,7 @@ def sp_update_circuit(prob,circ,assigns):
         for port in block.outputs + block.inputs:
             propobj= block.props(config.mode,port)
             if config.has_dac(port):
-                scale_factor = bindings[(block_name,loc,port)]
+                scale_factor = bindings[(block_name,loc,port,None)]
                 value = config.dac(port)
                 scaled_value = scale_factor*value
                 assert(isinstance(propobj,props.DigitalProperties))
@@ -734,7 +663,7 @@ def sp_update_circuit(prob,circ,assigns):
 
             elif config.has_label(port):
                 label = config.label(port)
-                scale_factor = bindings[(block_name,loc,port)]
+                scale_factor = bindings[(block_name,loc,port,None)]
                 config.set_scf(port,scale_factor)
                 print("%s.%s = %s" % (port,label,scale_factor))
 
@@ -752,8 +681,8 @@ def cancel_signs(orig_lhs,orig_rhs):
         print("[sign mismatch] %s OP %s" % (orig_lhs,orig_rhs))
         return False,orig_lhs,orig_rhs
 
-    new_expr1 = JMult(JConst(const1),expr1)
-    new_expr2 = JMult(JConst(const2),expr2)
+    new_expr1 = jop.JMult(jop.JConst(const1),expr1)
+    new_expr2 = jop.JMult(jop.JConst(const2),expr2)
     return True,new_expr1,new_expr2
 
 def solve_problem(circ,prob):
@@ -801,8 +730,8 @@ def solve_problem(circ,prob):
         return False,None
 
     objective = 1.0/variables["tau"]
-    for block_name,port,loc,weight in prob.priority():
-        scf = prob.get_scf(block_name,loc,port)
+    for block_name,port,loc,handle,weight in prob.priority():
+        scf = prob.get_scf(block_name,loc,port,handle=handle)
         objective += 1.0/variables[scf]
 
     model = gpkit.Model(objective,constraints)

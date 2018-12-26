@@ -143,7 +143,6 @@ class Block:
         self._modes = ['default']
         self._current_mode = 'default'
         self._propmap = {}
-        self._integ = {}
         self._copies = {}
         self._ops = {}
 
@@ -152,11 +151,6 @@ class Block:
         self._scale_modes = ['default']
         self._current_scale_mode = 'default'
         self._scale_factors = {}
-
-
-    def integrator(self,out,mode=None):
-        mode = self._current_mode if mode is None else mode
-        return self._integ[out][mode]
 
     def set_external(self):
         self._external = True
@@ -208,6 +202,9 @@ class Block:
 
 
     def get_dynamics(self,output,mode):
+        if output in self._copies:
+            output = self._copies[output][mode]
+
         modedict = self._ops[output]
         assert(not mode is None)
         expr = modedict[mode]
@@ -227,9 +224,13 @@ class Block:
     def signals(self,port):
         return self._sigmap[port]
 
-    def props(self,mode,port):
-        return self._propmap[mode][port]
+    def props(self,mode,port,handle=None):
+        return self._propmap[mode][port][handle]
 
+    def handles(self,mode,port):
+        if self.is_input(port):
+            return []
+        return self.get_dynamics(port,mode).handles()
 
     @property
     def name(self):
@@ -306,22 +307,22 @@ class Block:
         assert(not self._current_mode is None)
         if not out in self._ops:
             self._ops[out] = {}
-            self._integ[out] = {}
 
         assert(not self._current_mode in self._ops[out])
         self._ops[out][self._current_mode] = expr
-        self._integ[out][self._current_mode] = integrate
         return self
 
-    def set_prop(self,ports,properties):
+    def set_prop(self,ports,properties,handle=None):
         mode = self._current_mode
         for port in ports:
             assert(port in self._inputs or port in self._outputs)
             assert(not port in self._propmap)
             if not mode in self._propmap:
                 self._propmap[mode] = {}
+            if not port in self._propmap[mode]:
+                self._propmap[mode][port] = {}
 
-            self._propmap[mode][port] = properties
+            self._propmap[mode][port][handle] = properties
 
         return self
 
@@ -354,7 +355,6 @@ class Block:
 
                 else:
                     assert(mode in self._ops[out])
-                    assert(mode in self._integ[out])
                     expr = self._ops[out][mode]
                     inps = expr.vars()
                     for inp in inps:

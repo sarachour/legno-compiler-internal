@@ -190,10 +190,14 @@ integ = Block('integrator') \
 .add_inputs(props.CURRENT,["ic"]) \
 .add_outputs(props.CURRENT,["out"]) \
 .set_op("out",
-        ops.Integ(ops.Var("in"), ops.Var("ic")),
-        integrate=True
+        ops.Integ(ops.Var("in"), ops.Var("ic"),
+                  handle=':z'
+        )
 ) \
-.set_prop(["in","out"], current_integ_props) \
+.set_prop(["out"], current_integ_props) \
+.set_prop(["out"], current_integ_props,handle=":z") \
+.set_prop(["out"], current_props,handle=":z'") \
+.set_prop(["in"], current_props) \
 .set_prop(["ic"], digval_props)
 
 modes = []
