@@ -281,7 +281,7 @@ class JauntProb:
 
         block_name,port,index = self._from_scf[scf_var]
         loc = self._index_to_loc(block_name,index)
-        return block_name,port,loc
+        return block_name,loc,port
 
     def get_scf(self,block_name,loc,port):
         index = self._loc_to_index(block_name,loc)
@@ -543,7 +543,7 @@ def bp_generate_expr_constraints(prob,block,loc,expr):
 
     elif expr.op == ops.Op.VAR:
         port = expr.name
-        scf = prob.get_scf(block.name,port,loc)
+        scf = prob.get_scf(block.name,loc,port)
         return JVar(scf)
 
     elif expr.op == ops.Op.MULT:
@@ -566,21 +566,21 @@ def bp_decl_scaling_factors(prob,circ):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for output in block.outputs:
-            prob.decl_scf(block_name,output,loc)
+            prob.decl_scf(block_name,loc,output)
 
         for inp in block.inputs:
-            prob.decl_scf(block_name,inp,loc)
+            prob.decl_scf(block_name,loc,inp)
 
         for output in block.outputs:
             for orig in block.copies(config.mode,output):
-                copy_scf = prob.get_scf(block_name,output,loc)
-                orig_scf = prob.get_scf(block_name,orig,loc)
+                copy_scf = prob.get_scf(block_name,loc,output)
+                orig_scf = prob.get_scf(block_name,loc,orig)
                 prob.eq(JVar(orig_scf),JVar(copy_scf))
 
     # set scaling factors connected by a wire equal
     for sblk,sloc,sport,dblk,dloc,dport in circ.conns():
-        s_scf = prob.get_scf(sblk,sport,sloc)
-        d_scf = prob.get_scf(dblk,dport,dloc)
+        s_scf = prob.get_scf(sblk,sloc,sport)
+        d_scf = prob.get_scf(dblk,dloc,dport)
         prob.eq(JVar(s_scf),JVar(d_scf))
 
 
@@ -610,7 +610,7 @@ def bp_generate_problem(prob,circ):
             scf_expr = expr_scf if coeff == 1.0 \
                        else JMult(JConst(coeff),expr_scf)
 
-            out_scfvar = JVar(prob.get_scf(block_name,out,loc))
+            out_scfvar = JVar(prob.get_scf(block_name,loc,out))
             tau_scfvar = JVar(prob.TAU)
             if not block.integrator(out):
                 prob.eq(out_scfvar,scf_expr)
@@ -625,7 +625,7 @@ def bp_generate_problem(prob,circ):
                 continue
 
             hwrng = prob.hardware_range(block_name,loc,port)
-            scfvar = JVar(prob.get_scf(block_name,port,loc))
+            scfvar = JVar(prob.get_scf(block_name,loc,port))
             if isinstance(mrng,IValue):
                 if same_sign(mrng.value,hwrng.lower) and \
                    not same_sign(mrng.value,hwrng.upper):
@@ -708,12 +708,12 @@ def sp_update_circuit(prob,circ,assigns):
     bindings = {}
     tau = None
     for variable,value in assigns.items():
-        #print("%s = %s" % (variable,value))
+        print("%s = %s" % (variable,value))
         if variable.name == prob.TAU:
             tau = value
         else:
-            block_name,port,loc = prob.get_scf_info(variable.name)
-            bindings[(block_name,str(loc),port)] = value
+            block_name,loc,port = prob.get_scf_info(variable.name)
+            bindings[(block_name,loc,port)] = value
 
 
     circ.set_tau(tau)
@@ -722,21 +722,21 @@ def sp_update_circuit(prob,circ,assigns):
         for port in block.outputs + block.inputs:
             propobj= block.props(config.mode,port)
             if config.has_dac(port):
-                scale_factor = bindings[(block_name,str(loc),port)]
+                scale_factor = bindings[(block_name,loc,port)]
                 value = config.dac(port)
                 scaled_value = scale_factor*value
                 assert(isinstance(propobj,props.DigitalProperties))
                 closest_scaled_value = propobj.value(scaled_value)
                 index = propobj.index(closest_scaled_value)
-                #print("%s -> %s" %\
-                #      (scaled_value,closest_scaled_value))
+                print("%s -> %s" %\
+                      (scaled_value,closest_scaled_value))
                 config.set_dac(port,index)
 
             elif config.has_label(port):
                 label = config.label(port)
-                scale_factor = bindings[(block_name,str(loc),port)]
+                scale_factor = bindings[(block_name,loc,port)]
                 config.set_scf(port,scale_factor)
-                #print("%s.%s = %s" % (port,label,scale_factor))
+                print("%s.%s = %s" % (port,label,scale_factor))
 
     return circ
 
@@ -802,7 +802,7 @@ def solve_problem(circ,prob):
 
     objective = 1.0/variables["tau"]
     for block_name,port,loc,weight in prob.priority():
-        scf = prob.get_scf(block_name,port,loc)
+        scf = prob.get_scf(block_name,loc,port)
         objective += 1.0/variables[scf]
 
     model = gpkit.Model(objective,constraints)

@@ -22,7 +22,7 @@ class Config:
         for dac,value in obj['dacs'].items():
             cfg._dacs[dac] = value
         for port,(name,scf,kind_name) in obj['labels'].items():
-            cfg._labels[port] = (name,scf,Labels(kind_name))
+            cfg._labels[port] = [name,scf,Labels(kind_name)]
         return cfg
 
     def to_json(self):
