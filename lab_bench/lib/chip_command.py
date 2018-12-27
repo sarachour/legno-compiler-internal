@@ -25,9 +25,10 @@ def float_to_byte(fvalue):
     assert(value >= 0 and value <= 255)
     return value
 
-def bool_POSto_int(boolval):
-    return 1 if boolval else 0
-
+INV = {
+    False: "+",
+    True: "-"
+}
 def parse_pattern_conn(args,name):
     line = " ".join(args)
 
@@ -73,10 +74,14 @@ def parse_pattern_block(args,n_signs,n_consts,name,index=False):
     cmd = "{chip:d} {tile:d} {slice:d} "
     if index:
         cmd += "{index:d} "
-    cmd += ''.join(map(lambda idx: "{sign%d:W} " % idx,
-                        range(0,n_signs)))
-    cmd += ''.join(map(lambda idx: "{value%d:g} " % idx,
-                        range(0,n_consts)))
+    if n_signs > 0:
+        cmd += "sgn "
+        cmd += ''.join(map(lambda idx: "{sign%d:W} " % idx,
+                            range(0,n_signs)))
+    if n_consts > 0:
+        cmd += 'val '
+        cmd += ''.join(map(lambda idx: "{value%d:g} " % idx,
+                           range(0,n_consts)))
 
     cmd = cmd.strip()
     result = parselib.parse(cmd,line)
@@ -147,6 +152,7 @@ class CircPortLoc:
 
     def __init__(self,chip,tile,slice,port,index=None):
         self.loc = CircLoc(chip,tile,slice,index)
+        assert(isinstance(port,int) or port is None)
         self.port = port
 
     def build_ctype(self):
@@ -186,6 +192,18 @@ class AnalogChipCommand(ArduinoCommand):
     def __init__(self):
         ArduinoCommand.__init__(self,cstructs.cmd_t())
 
+    def specify_index(self,block,loc):
+        return (block == enums.BlockType.FANOUT) \
+            or (block == enums.BlockType.TILE_INPUT) \
+            or (block == enums.BlockType.TILE_OUTPUT) \
+            or (block == enums.BlockType.MULT)
+
+    def specify_output_port(self,block):
+        return (block == enums.BlockType.FANOUT)
+
+    def specify_input_port(self,block):
+        return (block == enums.BlockType.MULT)
+
     def test_loc(self,block,loc):
         if not loc.chip in range(0,2):
             self.fail("unknown chip <%d>" % loc.chip)
@@ -221,6 +239,9 @@ class AnalogChipCommand(ArduinoCommand):
 
         else:
             self.fail("not in block list <%s>" % block)
+
+
+
     def calibrate(self):
         return None
 
@@ -399,6 +420,10 @@ class UseCommand(AnalogChipCommand):
         self._loc = loc
         self._block = block
 
+    @property
+    def loc(self):
+        return self._loc
+
     def configure(self):
         return self
 
@@ -417,7 +442,7 @@ class UseCommand(AnalogChipCommand):
              self._loc.index)
 
     def __repr__(self):
-        return "use(%s,%s)" % (self._loc,self._block)
+        raise Exception("override me")
 
 class ConstVal:
     #POS_BUF = np.arange(0.75,-0.8,-(0.8+0.75)/256)
@@ -512,9 +537,10 @@ class UseDACCmd(UseCommand):
         return 'use_dac'
 
     def __repr__(self):
-        st = UseCommand.__repr__(self)
-        st += " dac %s code=%s inv=%s" % \
-              (self._value,self._code,self._inv)
+        st = "use_dac %s %s %s val %s" % \
+              (self.loc.chip,self.loc.tile, \
+               self.loc.slice,
+               self._value)
         return st
 
 
@@ -522,14 +548,14 @@ class UseDACCmd(UseCommand):
 class UseIntegCmd(UseCommand):
 
 
-    def __init__(self,chip,tile,slice,value,inv=False):
+    def __init__(self,chip,tile,slice,init_cond,inv=False):
         UseCommand.__init__(self,
                             enums.BlockType.INTEG,
                             CircLoc(chip,tile,slice))
-        if value < 0.0 or value > 1.0:
-            self.fail("value not in [0,1]: %s" % value)
+        if init_cond < 0.0 or init_cond > 1.0:
+            self.fail("init_cond not in [0,1]: %s" % init_cond)
 
-        self._value = value
+        self._init_cond = init_cond
         self._inv = inv
 
     @staticmethod
@@ -559,15 +585,18 @@ class UseIntegCmd(UseCommand):
             'data':{
                 'integ':{
                     'loc':self._loc.build_ctype(),
-                    'value':float_to_byte(self._value),
+                    'value':float_to_byte(self._init_cond),
                     'inv':self._inv
                 }
             }
         })
 
     def __repr__(self):
-        st = UseCommand.__repr__(self)
-        st + " integ %s inv=%d" % (self._value,self._inv)
+        st = "use_integ %d %d %d sgn %s val %f" % (self.loc.chip,
+                                                   self.loc.tile,
+                                                   self.loc.slice, \
+                                                   INV[self._inv],
+                                                   self._init_cond)
         return st
 
 
@@ -621,8 +650,13 @@ class UseFanoutCmd(UseCommand):
             )
 
     def __repr__(self):
-        st = UseCommand.__repr__(self)
-        st + " fanout invs=%s" % (self._inv)
+        st = "use_fanout %d %d %d %d sgn %s %s %s" % (self.loc.chip,
+                                                      self.loc.tile,
+                                                      self.loc.slice,
+                                                      self.loc.index,
+                                                      INV[self._inv[0]],
+                                                      INV[self._inv[1]],
+                                                      INV[self._inv[2]])
         return st
 
 
@@ -631,7 +665,7 @@ class UseMultCmd(UseCommand):
 
 
     def __init__(self,chip,tile,slice,index,
-                 coeff=0,use_coeff=False):
+                 coeff=0,use_coeff=False,inv=False):
         UseCommand.__init__(self,
                             enums.BlockType.MULT,
                             CircLoc(chip,tile,slice,index))
@@ -641,12 +675,13 @@ class UseMultCmd(UseCommand):
 
         self._use_coeff = use_coeff
         if use_coeff:
+            coeff = -coeff if inv else coeff
             self._coeff,self._inv,self._code = \
-                                               ConstVal.get_closest(coeff)
+                            ConstVal.get_closest(coeff)
         else:
             self._code = 0
             self._coeff = coeff
-            self._inv = False
+            self._inv = inv
 
 
     @staticmethod
@@ -669,11 +704,11 @@ class UseMultCmd(UseCommand):
 
     @staticmethod
     def parse(args):
-        result1 = parse_pattern_block(args,0,1,
+        result1 = parse_pattern_block(args,1,1,
                                       UseMultCmd.name(),
                                      index=True)
 
-        result2 = parse_pattern_block(args,0,0,
+        result2 = parse_pattern_block(args,1,0,
                                       UseMultCmd.name(),
                                       index=True)
 
@@ -683,7 +718,7 @@ class UseMultCmd(UseCommand):
                               use_coeff=True,
                               coeff=result1['value0'])
         elif not result2 is None:
-             return UseMultCmd(result2['chip'],result2['tile'],
+            return UseMultCmd(result2['chip'],result2['tile'],
                               result2['slice'],result2['index'],
                               use_coeff=False, coeff=0)
 
@@ -695,12 +730,19 @@ class UseMultCmd(UseCommand):
         return 'use_mult'
 
     def __repr__(self):
-        st = UseCommand.__repr__(self)
         if self._use_coeff:
-            st += " mult gain coeff=%s [%d]" % (self._coeff,
-                                                       self._code)
+            st = "use_mult %d %d %d %d sgn %s val %f" % (self.loc.chip,
+                                              self.loc.tile,
+                                              self.loc.slice,
+                                              self.loc.index,
+                                              INV[self._inv],
+                                              self._coeff)
         else:
-            st += " mult prod"
+            st = "use_mult %d %d %d %d sgn %s" % (self.loc.chip,
+                                              self.loc.tile,
+                                              self.loc.slice,
+                                              INV[self._inv],
+                                              self.loc.index)
 
         return st
 
@@ -729,6 +771,24 @@ class ConnectionCmd(AnalogChipCommand):
             'dst_blk':self._dst_blk.name,
             'dst_loc':self._dst_loc.build_ctype()
         }
+
+    def build_identifier(self,block,ploc,is_input=False):
+        rep = "%s %d %d %d" % (block.value,
+                               ploc.loc.chip,
+                               ploc.loc.tile,
+                               ploc.loc.slice)
+
+        if self.specify_index(block,ploc.loc):
+            rep += " %d" % ploc.loc.index
+
+        if self.specify_output_port(block) and not is_input:
+            rep += " port %d" % ploc.port
+
+        if self.specify_input_port(block) and is_input:
+            rep += " port %d" % ploc.port
+
+
+        return rep
 
     def __repr__(self):
         return "conn %s.%s <-> %s.%s" % (self._src_blk,
@@ -781,10 +841,14 @@ class BreakConnCmd(ConnectionCmd):
 
 
 
+
     def __repr__(self):
-        return "break %s" % (ConnectionCmd.__repr__(self))
+        src_rep = self.build_identifier(self._src_blk,
+                                        self._src_loc,is_input=True)
+        dest_rep = self.build_identifier(self._dest_blk,
+                                         self._dest_loc,is_input=False)
 
-
+        return "rmconn %s %s" % (src_rep,dest_rep)
 
 
 
@@ -841,4 +905,9 @@ class MakeConnCmd(ConnectionCmd):
 
 
     def __repr__(self):
-        return "make %s" % (ConnectionCmd.__repr__(self))
+        src_rep = self.build_identifier(self._src_blk,
+                                        self._src_loc,is_input=False)
+        dest_rep = self.build_identifier(self._dst_blk,
+                                         self._dst_loc,is_input=True)
+
+        return "mkconn %s %s" % (src_rep,dest_rep)

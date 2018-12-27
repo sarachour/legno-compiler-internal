@@ -1,3 +1,8 @@
+import sys
+import os
+
+sys.path.insert(0,os.path.abspath("lab_bench"))
+
 from compiler import arco, jaunt, srcgen
 from chip.conc import ConcCirc
 
@@ -6,6 +11,8 @@ import os
 import time
 from util import paths
 import json
+
+
 
 #import conc
 #import srcgen
@@ -123,4 +130,8 @@ elif args.subparser_name == "gen":
                     path_handler.conc_circ_to_args(fname)
                    conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                   obj)
-                   srcgen.generate(hdacv2_board,conc_circ)
+                   gren_file = srcgen.generate(hdacv2_board,conc_circ)
+                   filename = path_handler.grendel_file(circ_bmark, \
+                                                        circ_indices, \
+                                                        circ_scale_index)
+                   gren_file.write(filename)

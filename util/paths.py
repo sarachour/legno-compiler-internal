@@ -11,7 +11,8 @@ class PathHandler:
             self.ABS_CIRC_DIR,
             self.CONC_CIRC_DIR,
             self.CONC_GRAPH_DIR,
-            self.ABS_GRAPH_DIR
+            self.ABS_GRAPH_DIR,
+            self.GRENDEL_FILE_DIR
         ]:
           if not os.path.exists(path):
             os.makedirs(path)
@@ -26,11 +27,18 @@ class PathHandler:
         self.ABS_GRAPH_DIR = self.BMARK_DIR + "/abs-graph"
         self.CONC_CIRC_DIR = self.BMARK_DIR + "/conc-circ"
         self.CONC_GRAPH_DIR = self.BMARK_DIR + "/conc-graph"
+        self.GRENDEL_FILE_DIR = self.BMARK_DIR + "/grendel"
 
 
     def conc_graph_file(self,bmark,indices,scale_index):
       index_str = "_".join(map(lambda ind : str(ind),indices))
       return self.CONC_GRAPH_DIR+ "/%s_%s_s%s.dot" % \
+        (self._bmark,index_str,scale_index)
+
+
+    def grendel_file(self,bmark,indices,scale_index):
+      index_str = "_".join(map(lambda ind : str(ind),indices))
+      return self.GRENDEL_FILE_DIR+ "/%s_%s_s%s.grendel" % \
         (self._bmark,index_str,scale_index)
 
 

@@ -114,6 +114,8 @@ class GetTimeBetweenSamplesCmd(ArduinoCommand):
         return "get the time between samples"
 
 
+    def __repr__(self):
+        return self.name()
 
     @staticmethod
     def parse(args):
@@ -160,6 +162,8 @@ class GetNumADCSamplesCmd(ArduinoCommand):
         return "get the number of samples"
 
 
+    def __repr__(self):
+        return self.name()
 
     @staticmethod
     def parse(args):
@@ -205,6 +209,9 @@ class GetNumDACSamplesCmd(ArduinoCommand):
     def desc():
         return "get the number of samples"
 
+
+    def __repr__(self):
+        return self.name()
 
 
     @staticmethod
@@ -476,6 +483,15 @@ class SetOscVoltageRangeCmd(Command):
         return "set the ranges of the voltages read from the oscilloscope."
 
 
+    def __repr__(self):
+        if not self._differential:
+            return "set_volt_ranges direct %f %f" % \
+                (self._min_voltage,self._max_voltage)
+        else:
+            return "set_volt_ranges differential %f %f %f %f" % \
+                (self._min_voltage_low,self._max_voltage_low,
+                 self._min_voltage,self._max_voltage)
+
     @staticmethod
     def parse(args):
         if len(args) == 0:
@@ -657,6 +673,10 @@ class SetSimTimeCmd(ArduinoCommand):
     def name():
         return 'set_sim_time'
 
+    def __repr__(self):
+        return "set_sim_time %f %f" % (self._sim_time,self._period)
+
+
     @staticmethod
     def parse(args):
         line = " ".join(args)
@@ -697,9 +717,6 @@ class SetSimTimeCmd(ArduinoCommand):
     @staticmethod
     def desc():
         return "set the number of samples to record (max 10000)"
-
-    def __repr__(self):
-        return "sim_time %d" % self._sim_time
 
 
 class ComputeOffsetsCmd(ArduinoCommand):
