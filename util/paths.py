@@ -40,11 +40,20 @@ class PathHandler:
         (self._bmark,index_str,scale_index)
 
 
+    def conc_circ_to_args(self,name):
+      basename = name.split(".circ")[0]
+      args = basename.split("_")
+      bmark = args[0]
+      indices = list(map(lambda token: int(token), args[1:-1]))
+      scale_index = int(args[-1].split('s')[1])
+      return bmark,indices,scale_index
+
+
     def abs_circ_to_args(self,name):
       basename = name.split(".circ")[0]
       args = basename.split("_")
       bmark = args[0]
-      indices = list(map(lambda token: int(token), args[1]))
+      indices = list(map(lambda token: int(token), args[1:]))
       return bmark,indices
 
     def abs_graph_file(self,indices):
@@ -57,6 +66,10 @@ class PathHandler:
         index_str = "_".join(map(lambda ind : str(ind),indices))
         return self.ABS_CIRC_DIR+ "/%s_%s.circ" % \
           (self._bmark,index_str)
+
+    def conc_circ_dir(self):
+        return self.CONC_CIRC_DIR
+
 
     def abs_circ_dir(self):
         return self.ABS_CIRC_DIR

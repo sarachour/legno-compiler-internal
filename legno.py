@@ -1,4 +1,4 @@
-from compiler import arco, jaunt
+from compiler import arco, jaunt, srcgen
 from chip.conc import ConcCirc
 
 import argparse
@@ -50,13 +50,9 @@ jaunt_subp.add_argument('--scale-circuits', type=int,default=3,
                        help='number of scaled circuits to generate.')
 
 
-gren_subp = subparsers.add_parser('gen_grendel', help='generate grendel.')
-gren_subp.add_argument('benchmark', type=str,help='benchmark to compile')
-gren_subp.add_argument('--input-dir', type=str,help='output directory to output files to.')
-gren_subp.add_argument('--output-dir', type=str,default='default',
-                       help='output directory to output files to.')
+gren_subp = subparsers.add_parser('gen', help='generate grendel.')
 gren_subp.add_argument('--experiment', type=str,default='default',
-                       help='output directory to output files to.')
+                       help='experiment to run.')
 
 args = parser.parse_args()
 
@@ -113,11 +109,18 @@ elif args.subparser_name == "jaunt":
                             break
 
 elif args.subparser_name == "gen":
-    for dirname, subdirlist, filelist in os.walk(args.input_dir):
-        for fname in filelist:
-            if fname.endswith('.circ'):
-                print('%s' % fname)
-                with open("%s/%s" % (dirname,fname),'r') as fh:
-                    text = fh.read()
-                    ccirc = conccirc.from_json(text)
-                    raise Exception("generate grendel")
+   from chip.hcdc import board as hdacv2_board
+   import bmark.bmarks as bmark
+
+   circ_dir = path_handler.conc_circ_dir()
+   for dirname, subdirlist, filelist in os.walk(circ_dir):
+       for fname in filelist:
+           if fname.endswith('.circ'):
+               print('<<<< %s >>>>' % fname)
+               with open("%s/%s" % (dirname,fname),'r') as fh:
+                   obj = json.loads(fh.read())
+                   circ_bmark,circ_indices,circ_scale_index = \
+                    path_handler.conc_circ_to_args(fname)
+                   conc_circ = ConcCirc.from_json(hdacv2_board, \
+                                                  obj)
+                   srcgen.generate(hdacv2_board,conc_circ)
