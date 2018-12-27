@@ -213,17 +213,20 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   analogWrite(DAC0, 0); 
   analogWrite(DAC1, 0); 
   delay(10);
+  
+  Timer3.attachInterrupt(_update_wave);
   // trigger the start of the experiment
   if(expr->use_analog_chip){
     circ::commit_config(fab);
     circ::finalize_config(fab);
+    _toggle_SDA();
     circ::execute(fab);
+    Timer3.start(DELAY_TIME_US);
   }
   else{
+    _toggle_SDA();
+    Timer3.start(DELAY_TIME_US);
   }
-  Timer3.attachInterrupt(_update_wave);
-  Timer3.start(DELAY_TIME_US);
-  _toggle_SDA();
   while(IDX < N){
     Serial.print("waiting idx=");
     Serial.println(IDX);

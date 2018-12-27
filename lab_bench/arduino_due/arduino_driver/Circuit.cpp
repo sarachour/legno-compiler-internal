@@ -222,25 +222,21 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         break;
 
       case cmd_type_t::USE_FANOUT:
-        /*
         fod = cmd.data.fanout;
         fanout = get_fanout(fab,fod.loc);
         fanout->setEnable(true);
         fanout->out0->setInv(fod.inv[0]);
         fanout->out1->setInv(fod.inv[1]);
         fanout->out2->setInv(fod.inv[2]);
-        */
         Serial.println("enabled fanout");
         break;
 
     case cmd_type_t::USE_INTEG:
-        /*
         integd = cmd.data.integ;
         integ = get_slice(fab,integd.loc)->integrator;
         integ->setEnable(true);
         integ->out0->setInv(integd.inv);
-        integ->setInitial(integd.value);
-        */
+        integ->setInitialCode(integd.value);
         Serial.println("enabled integ");
         break;
         
@@ -375,7 +371,7 @@ void print_block(uint8_t type){
 void print_command(cmd_t& cmd){
   switch(cmd.type){
       case cmd_type_t::USE_FANOUT:
-        Serial.print("use dac ");
+        Serial.print("use fanout ");
         print_idx_loc(cmd.data.fanout.loc);
         Serial.print(" inv[0]=");
         Serial.print(cmd.data.fanout.inv[0] ? "yes" : "no");

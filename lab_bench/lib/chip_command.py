@@ -844,9 +844,9 @@ class BreakConnCmd(ConnectionCmd):
 
     def __repr__(self):
         src_rep = self.build_identifier(self._src_blk,
-                                        self._src_loc,is_input=True)
-        dest_rep = self.build_identifier(self._dest_blk,
-                                         self._dest_loc,is_input=False)
+                                        self._src_loc,is_input=False)
+        dest_rep = self.build_identifier(self._dst_blk,
+                                         self._dst_loc,is_input=True)
 
         return "rmconn %s %s" % (src_rep,dest_rep)
 

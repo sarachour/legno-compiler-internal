@@ -6,13 +6,11 @@ get_num_adc_samples
 get_num_dac_samples
 get_time_between_samples
 use_osc
-use_due_dac 0
 compute_offsets
-set_due_dac_values 0 1.000000*math.sin(652.592654*t+0.000000)
 use_chip
-use_mult 0 0 0 0 sgn + val 0.5
-mkconn chip_input 0 3 2 tile_input 0 0 0 0
-mkconn tile_input 0 0 0 0 mult 0 0 0 0 port 0
-mkconn mult 0 0 0 0 tile_output 0 0 0 0
+use_dac 0 0 0 val 0.0
+use_integ 0 0 0 sgn - val 1.0
+mkconn dac 0 0 0 integ 0 0 0
+mkconn integ 0 0 0 tile_output 0 0 0 0
 mkconn tile_output 0 0 0 0 chip_output 0 3 2
 run

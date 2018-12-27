@@ -10,9 +10,9 @@ use_due_dac 0
 compute_offsets
 set_due_dac_values 0 1.000000*math.sin(652.592654*t+0.000000)
 use_chip
-use_mult 0 0 0 0 sgn + val 0.5
+use_fanout 0 0 0 0 sgn - + - 
+mkconn tile_input 0 0 0 0 fanout 0 0 0 0 
 mkconn chip_input 0 3 2 tile_input 0 0 0 0
-mkconn tile_input 0 0 0 0 mult 0 0 0 0 port 0
-mkconn mult 0 0 0 0 tile_output 0 0 0 0
+mkconn fanout 0 0 0 0 port 1 tile_output 0 0 0 0
 mkconn tile_output 0 0 0 0 chip_output 0 3 2
 run

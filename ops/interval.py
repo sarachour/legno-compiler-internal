@@ -9,7 +9,7 @@ class Interval:
     def union(self,i2):
       lb = min(self.lower,i2.lower)
       ub = max(self.upper,i2.upper)
-      return Interval._type_infer(lb,ub)
+      return Interval.type_infer(lb,ub)
 
     @property
     def lower(self):
@@ -20,7 +20,7 @@ class Interval:
         return self._upper
 
     @staticmethod
-    def _type_infer(lb,ub):
+    def type_infer(lb,ub):
       if abs(lb - ub) < 1e-6:
         return IValue(lb)
       else:
@@ -35,7 +35,7 @@ class Interval:
          ]
          lb = min(vals)
          ub = max(vals)
-         return Interval._type_infer(lb,ub)
+         return Interval.type_infer(lb,ub)
 
     def mult(self,i2):
         vals = [
@@ -46,7 +46,7 @@ class Interval:
         ]
         lb = min(vals)
         ub = max(vals)
-        return Interval._type_infer(lb,ub)
+        return Interval.type_infer(lb,ub)
 
     def __repr__(self):
         return "[%s,%s]" % (self._lower,self._upper)
@@ -81,7 +81,9 @@ class IRange(Interval):
 class IntervalCollection:
 
   def __init__(self,ival):
-    assert(isinstance(ival, Interval))
+    if not (isinstance(ival, Interval)):
+      raise Exception("not interval: <%s>.T<%s>" % \
+                      (ival,ival.__class__.__name__))
     self._ival = ival
     self._bindings = {}
 

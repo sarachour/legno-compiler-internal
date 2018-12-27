@@ -248,7 +248,7 @@ class Integ(Op2):
 
     def bandwidth(self,intervals,bindings):
         expr = self.deriv
-        min_val,max_val = self.deriv.interval(intervals)
+        min_val,max_val = self.deriv.interval(intervals).interval
         tau,time_su = 1.0,1.0
         # time required to raise 1 unit
         rise_time = (tau*time_su)/(max_val-min_val)

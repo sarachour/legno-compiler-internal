@@ -39,16 +39,16 @@ def benchmark_spring(experiment=None):
         op.Mult(op.Var("dy1"),op.Const(-0.2)),
         op.Mult(op.Var("y"),op.Const(-0.8))
     )
-    dy1 = op.Integ(dy2, op.Const(-2),"dy1")
-    y = op.Integ(op.Var("dy1"), op.Const(9),"y")
+    dy1 = op.Integ(dy2, op.Const(-2),":z")
+    y = op.Integ(op.Var("dy1"), op.Const(9),":w")
 
     prob.bind("dy1",dy1)
     prob.bind("y",y)
+    prob.bind("Y", op.Emit(op.Var("y")))
     prob.interval("Y",-1,1)
     prob.interval("y",-1,1)
     prob.interval("dy1",-2,2)
     # compute fmin and fmax for each signal.
-    prob.bind("Y", op.Emit(op.Var("y")))
     prob.compile()
     return prob
 
