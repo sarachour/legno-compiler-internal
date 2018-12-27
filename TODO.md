@@ -1,6 +1,8 @@
 # Bugs 
 
 1. smmrxn / circuit 18. Two wires to multiplier 0.0.1.0.
+2. decay: multiplier with zero sources.
+
 # Compiler
 
 

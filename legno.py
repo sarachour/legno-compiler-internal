@@ -46,6 +46,9 @@ arco_subp.add_argument('--conc-circuits', type=int,default=3,
 
 jaunt_subp = subparsers.add_parser('jaunt', help='scale circuit parameters.')
 jaunt_subp.add_argument('--noise', type=str,help='perform noise analysis.')
+jaunt_subp.add_argument('--scale-circuits', type=int,default=3,
+                       help='number of scaled circuits to generate.')
+
 
 gren_subp = subparsers.add_parser('gen_grendel', help='generate grendel.')
 gren_subp.add_argument('benchmark', type=str,help='benchmark to compile')
@@ -91,11 +94,23 @@ elif args.subparser_name == "jaunt":
                 print('<<<< %s >>>>' % fname)
                 with open("%s/%s" % (dirname,fname),'r') as fh:
                     obj = json.loads(fh.read())
+                    circ_bmark,circ_indices = path_handler.abs_circ_to_args(fname)
                     conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                obj)
+                    n_scaled = 0
                     for scale_circ in jaunt.scale(conc_circ, \
                                                   noise_analysis=args.noise):
-                        raise Exception("emit scaled")
+                        filename = path_handler.conc_circ_file(circ_bmark,
+                                                               circ_indices,
+                                                               n_scaled)
+                        scale_circ.write_circuit(filename)
+                        filename = path_handler.conc_graph_file(circ_bmark,
+                                                                circ_indices,
+                                                                n_scaled)
+                        scale_circ.write_graph(filename,write_png=True)
+                        n_scaled += 1
+                        if n_scaled >= args.scale_circuits:
+                            break
 
 elif args.subparser_name == "gen":
     for dirname, subdirlist, filelist in os.walk(args.input_dir):

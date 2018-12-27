@@ -643,10 +643,9 @@ def sp_update_circuit(prob,circ,assigns):
                 scaled_value = scale_factor*value
                 assert(isinstance(propobj,props.DigitalProperties))
                 closest_scaled_value = propobj.value(scaled_value)
-                index = propobj.index(closest_scaled_value)
-                print("%s -> %s" %\
-                      (scaled_value,closest_scaled_value))
-                config.set_dac(port,index)
+                print("dac %s: %s -> %s -> %s" %\
+                      (port,value,scaled_value,closest_scaled_value))
+                config.set_dac(port,closest_scaled_value)
 
             elif config.has_label(port):
                 label = config.label(port)
@@ -724,16 +723,10 @@ def solve_problem(circ,prob):
     model = gpkit.Model(objective,constraints)
     try:
         sln = model.solve(verbosity=2)
-
     except RuntimeWarning:
-        sln = None
+        return None
 
-    if not sln is None:
-        upd_circ = sp_update_circuit(prob,circ,
-                                     sln['freevariables'])
-        return True,upd_circ
-    else:
-        return False,None
+    return sln
 
 
 def iter_scaled_circuits(circ):
@@ -761,9 +754,11 @@ def scale(circ,noise_analysis=False):
         else:
             raise Exception("unimplemented: noise analysis")
 
-        succ,circ = solve_problem(orig_circ,prob)
-        if succ:
-            print("[[SUCCESS]]")
-            yield circ
-        else:
+        sln = solve_problem(orig_circ,prob)
+        if sln is None:
             print("[[FAILURE]]")
+            continue
+        else:
+            sp_update_circuit(prob,circ,
+                              sln['freevariables'])
+            yield circ
