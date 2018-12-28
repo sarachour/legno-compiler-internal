@@ -14,6 +14,7 @@ import analysis.waveform as waveform
 
 def build_exp_ctype(exp_data):
     return {
+        'test':ArduinoCommand.DEBUG,
         'type':enums.CmdType.EXPERIMENT_CMD.name,
         'data': {
             'exp_cmd':exp_data
@@ -886,15 +887,7 @@ class RunCmd(ArduinoCommand):
             }
         })
 
-
-    def execute(self,state):
-        for stmt in state.calibrate_chip():
-            print(stmt)
-            stmt.apply(state)
-        for stmt in state.configure_chip():
-            print(stmt)
-            stmt.apply(state)
-
+    def _exec_setup_osc(self,state):
         if state.use_osc and not state.dummy:
             edge_trigger = osclib.Trigger(osclib.TriggerType.EDGE,
                                 state.oscilloscope.ext_channel(),
@@ -914,8 +907,7 @@ class RunCmd(ArduinoCommand):
             for key,val in props.items():
                 print("%s : %s" % (key,val))
 
-        time.sleep(0.5)
-        #input("<press enter to start>")
+    def _exec_waitfor_arduino(self,state):
         line = ArduinoCommand.execute(self,state)
         if not state.dummy:
             while line is None or not "::done::" in line:
@@ -924,6 +916,34 @@ class RunCmd(ArduinoCommand):
             print("resp:> %s" % line)
             print("<done>")
             #input("<press enter to continue>")
+
+    def _exec_print_overflows(self,state):
+        print("==== overflow summary ====")
+        for handle,oflow in state.overflows():
+            print("%s overflow=%s" % (handle,oflow))
+        print("=========")
+
+    def execute(self,state):
+        for stmt in state.calibrate_chip():
+            stmt.apply(state)
+
+        for stmt in state.configure_chip():
+            stmt.apply(state)
+
+        self._exec_setup_osc(state)
+
+        for stmt in state.preexec_chip():
+            stmt.apply(state)
+
+        self._exec_print_overflows(state)
+        time.sleep(0.5)
+        #input("<press enter to start>")
+        self._exec_waitfor_arduino(state)
+
+        for stmt in state.postexec_chip():
+            stmt.apply(state)
+
+        self._exec_print_overflows(state)
 
         for stmt in state.teardown_chip():
             stmt.apply(state)

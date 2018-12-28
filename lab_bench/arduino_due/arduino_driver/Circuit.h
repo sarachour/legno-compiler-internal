@@ -33,7 +33,9 @@ typedef enum cmd_type {
     /*connection*/
     CONNECT,
     BREAK,
-    CALIBRATE
+    CALIBRATE,
+    /*debug*/
+    GET_INTEG_STATUS
 } cmd_type_t;
 
 typedef struct circ_loc {
@@ -56,6 +58,9 @@ typedef struct use_integ {
    circ_loc_t loc;
    uint8_t value;
    uint8_t inv;
+   uint8_t in_range;
+   uint8_t out_range;
+   uint8_t debug;
 } cmd_use_integ_t;
 
 

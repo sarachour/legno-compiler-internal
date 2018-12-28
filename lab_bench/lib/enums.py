@@ -26,6 +26,7 @@ class CircCmdType(Enum):
     CONNECT = 'connect';
     BREAK = 'break';
     CALIBRATE = 'calibrate';
+    GET_INTEG_STATUS = 'get_integ_status';
 
 
 class ExpCmdType(Enum):

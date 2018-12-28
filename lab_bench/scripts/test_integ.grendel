@@ -8,9 +8,11 @@ get_time_between_samples
 use_osc
 compute_offsets
 use_chip
-use_dac 0 0 0 val 0.0
-use_integ 0 0 0 sgn - val 1.0
-mkconn dac 0 0 0 integ 0 0 0
-mkconn integ 0 0 0 tile_output 0 0 0 0
-mkconn tile_output 0 0 0 0 chip_output 0 3 2
+#use_dac 0 0 0 val 0.0
+use_integ 0 0 0 sgn - val 0.0 rng m m debug
+mkconn integ 0 0 0 integ 0 0 0
+#mkconn dac 0 0 0 integ 0 0 0
+#mkconn integ 0 0 0 tile_output 0 0 0 0
+#mkconn tile_output 0 0 0 0 chip_output 0 3 2
+get_integ_status 0 0 0
 run

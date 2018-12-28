@@ -16,6 +16,7 @@ COMMANDS = [
     UseDACCmd,
     UseIntegCmd,
     UseMultCmd,
+    GetIntegStatusCmd,
     UseFanoutCmd,
     MakeConnCmd,
     #DisableCmd,

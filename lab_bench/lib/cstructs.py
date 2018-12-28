@@ -48,7 +48,8 @@ def circ_cmd_type():
         CircCmdType.DISABLE_LUT.name:9,
         CircCmdType.CONNECT.name:10,
         CircCmdType.BREAK.name:11,
-        CircCmdType.CALIBRATE.name:12
+        CircCmdType.CALIBRATE.name:12,
+        CircCmdType.GET_INTEG_STATUS.name:13
     }
     return cstruct.Enum(cstruct.Int16ul,
                         **kwargs)
@@ -77,7 +78,10 @@ def circ_use_integ_t():
     return cstruct.Struct(
         "loc" / circ_loc_t(),
         "value" / cstruct.Int8ul,
-        "inv" / cstruct.Int8ul
+        "inv" / cstruct.Int8ul,
+        'in_range' / cstruct.Int8ul,
+        'out_range' / cstruct.Int8ul,
+        'debug' / cstruct.Int8ul
     )
 
 def circ_use_dac_t():
@@ -159,8 +163,10 @@ def cmd_data_t():
 
 
 def cmd_t():
-    return cstruct.AlignedStruct(4,
+    return cstruct.Struct(
+        "test" / cstruct.Int8ul,
         "type" / cmd_type_t(),
+        cstruct.Padding(2),
         "data" / cmd_data_t()
     )
 #

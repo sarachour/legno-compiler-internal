@@ -3,7 +3,7 @@ import time
 import lib.enums as enums
 
 class Command:
-
+    # debug =1 : don't run me
     def __init__(self):
         self._success = True
         self._msg = None
@@ -35,6 +35,9 @@ class Command:
         raise NotImplementedError
 
 class ArduinoCommand(Command):
+    # 1=only print commands
+    # 0=run commands
+    DEBUG = 0
 
     def __init__(self,typ=cstructs.cmd_t()):
         Command.__init__(self)
@@ -72,6 +75,7 @@ class FlushCommand(ArduinoCommand):
 
     def build_ctype(self):
         return {
+            'test':ArduinoCommand.DEBUG,
             'type':enums.CmdType.FLUSH_CMD.name,
             'data': {
                 'flush_cmd':255

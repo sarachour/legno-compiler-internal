@@ -1,3 +1,5 @@
+from ops.interval import Interval
+
 class MathProg:
 
     def __init__(self,name):
@@ -17,11 +19,11 @@ class MathProg:
 
     def interval(self,v,min_v,max_v):
         assert(min_v <= max_v)
-        self._intervals[v] = (min_v,max_v)
+        self._intervals[v] = Interval.type_infer(min_v,max_v)
 
     def intervals(self):
-        for v,(lb,ub) in self._intervals.items():
-            yield v,(lb,ub)
+        for v,ival in self._intervals.items():
+            yield v,ival
 
     def bandwidths(self):
         for v,bw in self._bandwidths.items():

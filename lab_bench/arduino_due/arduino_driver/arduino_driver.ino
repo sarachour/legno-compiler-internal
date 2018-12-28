@@ -21,6 +21,7 @@ typedef union cmd_data {
 } cmd_data_t;
 
 typedef struct cmd_{
+  uint8_t test;
   uint8_t type;
   cmd_data_t data;
 } cmd_t;
@@ -38,17 +39,32 @@ void loop() {
     cmd_t cmd;
     int nbytes = read_bytes((byte *) &cmd,sizeof(cmd_t));
     float * inbuf = NULL;
+    bool debug = cmd.test == 0 ? false : true;
     Serial.println("::process::");
     switch(cmd.type){
       case cmd_type_t::CIRC_CMD:
         assert(this_fabric != NULL);
-        circ::print_command(cmd.data.circ_cmd);
-        circ::exec_command(this_fabric,cmd.data.circ_cmd);
+        if(!debug){
+          circ::exec_command(this_fabric,cmd.data.circ_cmd);
+          circ::print_command(cmd.data.circ_cmd);
+        }
+        else{
+          Serial.print("DEBUG:");
+          circ::print_command(cmd.data.circ_cmd);
+          Serial.println(0);
+        }
         break;
       case cmd_type_t::EXPERIMENT_CMD:
         inbuf = (float*) get_data_ptr(nbytes);
-        experiment::print_command(cmd.data.exp_cmd,inbuf);
-        experiment::exec_command(&this_experiment,this_fabric,cmd.data.exp_cmd,inbuf);
+        if(!debug){
+          experiment::print_command(cmd.data.exp_cmd,inbuf);
+          experiment::exec_command(&this_experiment,this_fabric,cmd.data.exp_cmd,inbuf);
+        }
+        else{
+          Serial.print("DEBUG:");
+          experiment::print_command(cmd.data.exp_cmd,inbuf);
+          Serial.println(0);
+        }
         // in the event the fabric has not been initialized, initialize it
         break;
       case cmd_type_t::FLUSH_CMD:

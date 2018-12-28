@@ -23,16 +23,26 @@ class State:
 
         self._use_adc = {};
         self._use_dac = {}
+        self._overflow = {}
         self.use_analog_chip = None;
         self.inputs = {}
         self.n_dac_samples= None;
         self.n_adc_samples = None;
         self.time_between_samples_s = None;
         self.ref_func = None;
+
+
         self.reset();
         self.sim_time = None
         self.period = None
         self.dummy = validate
+
+    def set_overflow(self,handle,oflow):
+        self._overflow[handle] = oflow
+
+    def overflows(self):
+        for handle,oflow in self._overflow.items():
+            yield handle,oflow
 
     def write_input(self,input_id,time_ms,value):
         if not input_id in self.inputs:
@@ -150,6 +160,36 @@ class State:
 
         for calib in set(calibs):
             yield calib
+
+    def preexec_chip(self):
+        if not self.use_analog_chip:
+            return
+
+        hooks = []
+        for stmt in self.prog:
+            if isinstance(stmt, AnalogChipCommand):
+                hook_stmt = stmt.preexec()
+                if not hook_stmt is None:
+                    hooks.append(hook_stmt)
+
+        for hook in set(hooks):
+            yield hook
+
+
+    def postexec_chip(self):
+        if not self.use_analog_chip:
+            return
+
+        hooks = []
+        for stmt in self.prog:
+            if isinstance(stmt, AnalogChipCommand):
+                hook_stmt = stmt.postexec()
+                if not hook_stmt is None:
+                    hooks.append(hook_stmt)
+
+        for hook in set(hooks):
+            yield hook
+
 
     def teardown_chip(self):
         if not self.use_analog_chip:

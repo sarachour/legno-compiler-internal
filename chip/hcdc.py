@@ -4,6 +4,34 @@ import ops.op as ops
 from chip.block import Block
 from chip.board import Board
 
+
+def mult_scale_modes():
+   labels = ['inp0_ival','scf','out_ival']
+   raise Exception("todo: mult scale")
+
+
+def integ_scale_modes():
+   labels = ['inp_ival','scf','out_ival']
+   ivals = {
+        'mGainMRng': [(-2,2),1.0,(-2,2)],
+        'mGainLRng': [(-2,2),1.0,(-0.2,0.2)],
+        'mGainHRng': [(-20,20),1.0, (-20,20)],
+        'hGainHRng': [(-2,2),10.0,(-20,20)],
+        'hGainMRng': [(-0.2,0.2),10.0,(-2,2)],
+        'lGainLRng': [(-2,2),0.1,(-0.2,0.2)],
+        'lGainMRng': [(20,20),0.1,(-2,2)]
+   }
+   labels = ['inp.loRange','inp.HiRange','out.LoRange','out.HiRange']
+   {
+       'mGainMRng': (False,False,False,False),
+       'mGainLRng': (True,False,True,False),
+       'mGainHRng': (False,True,False,True),
+       'hGainHRng': (False,False,False,True),
+       'hGainMRng': (True,False,False,False)
+       'lGainLRng': (False,False,True,False),
+       'lGainMRng': (False,True,False,False)
+   }
+
 current_props = props.AnalogProperties() \
 .set_interval(-1.0,1.0,unit=units.uA)
 

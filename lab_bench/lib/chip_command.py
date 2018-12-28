@@ -4,9 +4,26 @@ import lib.enums as enums
 from lib.base_command import Command,ArduinoCommand
 import lib.util as util
 import numpy as np
+from enum import Enum
+
+class PortRangeType(Enum):
+    MED = 'medium'
+    HIGH = 'high'
+    LOW = 'low'
+
+    def code(self):
+        if self == PortRangeType.MED:
+            return 1
+        elif self == PortRangeType.LOW:
+            return 0
+        elif self == PortRangeType.HIGH:
+            return 2
+        else:
+            raise Exception("unknown")
 
 def build_circ_ctype(circ_data):
     return {
+        'test':ArduinoCommand.DEBUG,
         'type':enums.CmdType.CIRC_CMD.name,
         'data': {
             'circ_cmd':circ_data
@@ -68,20 +85,36 @@ def parse_pattern_conn(args,name):
 
     return result
 
-def parse_pattern_block(args,n_signs,n_consts,name,index=False):
+def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
+                        name,index=False,debug=False):
     line = " ".join(args)
-    signd = {'+':False,'-':True}
-    cmd = "{chip:d} {tile:d} {slice:d} "
+    SIGND = {'+':False,'-':True}
+    DEBUG = {'debug':True,'prod':False}
+    RANGED = {
+        'm':PortRangeType.MED,
+        'l':PortRangeType.LOW,
+        'h':PortRangeType.HIGH
+    }
+    cmd = "{chip:d} {tile:d} {slice:d}"
     if index:
-        cmd += "{index:d} "
+        cmd += " {index:d}"
     if n_signs > 0:
-        cmd += "sgn "
-        cmd += ''.join(map(lambda idx: "{sign%d:W} " % idx,
+        cmd += " sgn "
+        cmd += ' '.join(map(lambda idx: "{sign%d:W}" % idx,
                             range(0,n_signs)))
     if n_consts > 0:
-        cmd += 'val '
-        cmd += ''.join(map(lambda idx: "{value%d:g} " % idx,
+        cmd += ' val '
+        cmd += ' '.join(map(lambda idx: "{value%d:g}" % idx,
                            range(0,n_consts)))
+
+    if n_range_codes > 0:
+        cmd += ' rng '
+        cmd += ' '.join(map(lambda idx: "{range%d:w}" % idx,
+                           range(0,n_range_codes)))
+
+
+    if debug:
+        cmd += " {debug:w}"
 
     cmd = cmd.strip()
     result = parselib.parse(cmd,line)
@@ -93,11 +126,22 @@ def parse_pattern_block(args,n_signs,n_consts,name,index=False):
     result = dict(result.named.items())
     for idx in range(0,n_signs):
         key = 'sign%d' % idx
-        if not result[key] in signd:
+        if not result[key] in SIGND:
             print("unknown sign: <%s>" % result[key])
             return None
 
-        result[key] = signd[result[key]]
+        result[key] = SIGND[result[key]]
+
+    for idx in range(0,n_range_codes):
+        key = 'range%d' % idx
+        if not result[key] in RANGED:
+            print("unknown sign: <%s>" % result[key])
+            return None
+
+        result[key] = RANGED[result[key]]
+
+    if debug:
+        result['debug'] = DEBUG[result['debug']]
 
     return result
 
@@ -184,11 +228,8 @@ class CircPortLoc:
         return "port(%s,%s)" % (self.loc,self.port)
 
 
-
 class AnalogChipCommand(ArduinoCommand):
-    CALIBRATE = 0;
-    CONFIGURE = 1;
-    TEARDOWN = 2;
+
     def __init__(self):
         ArduinoCommand.__init__(self,cstructs.cmd_t())
 
@@ -240,7 +281,11 @@ class AnalogChipCommand(ArduinoCommand):
         else:
             self.fail("not in block list <%s>" % block)
 
+    def preexec(self):
+        return None
 
+    def postexec(self):
+        return None
 
     def calibrate(self):
         return None
@@ -333,10 +378,10 @@ class DisableCmd(AnalogChipCommand):
 
 
     def parse(args):
-        result1 = parse_pattern_block(args[1:],0,0,
+        result1 = parse_pattern_block(args[1:],0,0,0,
                                       "disable %s" % args[0],
                                       index=True)
-        result2 = parse_pattern_block(args[1:],0,0,
+        result2 = parse_pattern_block(args[1:],0,0,0,
                                       "disable %s" % args[0],
                                       index=False)
 
@@ -397,12 +442,11 @@ class CalibrateCmd(AnalogChipCommand):
 
     def apply(self,state):
         resp = AnalogChipCommand.apply(self,state)
-        
 
     @staticmethod
     def parse(args):
         line = " ".join(args)
-        result = parse_pattern_block(args,0,0,
+        result = parse_pattern_block(args,0,0,0,
                                       CalibrateCmd.name(),
                                       index=False)
         return CalibrateCmd(result['chip'],result['tile'],
@@ -506,7 +550,7 @@ class UseDACCmd(UseCommand):
 
     @staticmethod
     def parse(args):
-        result = parse_pattern_block(args,0,1,
+        result = parse_pattern_block(args,0,1,0,
                                      UseDACCmd.name())
         if not result is None:
             return UseDACCmd(
@@ -544,11 +588,76 @@ class UseDACCmd(UseCommand):
         return st
 
 
+class GetIntegStatusCmd(AnalogChipCommand):
+    def __init__(self,chip,tile,slice):
+        AnalogChipCommand.__init__(self)
+        self._loc = CircLoc(chip,tile,slice)
+
+    @property
+    def loc(self):
+        return self._loc
+
+    @staticmethod
+    def name():
+        return 'get_integ_status'
+
+    @staticmethod
+    def parse(args):
+        result = parse_pattern_block(args,0,0,0,
+                                     GetIntegStatusCmd.name(),
+                                     debug=False)
+        if not result is None:
+            return GetIntegStatusCmd(
+                result['chip'],
+                result['tile'],
+                result['slice']
+            )
+
+
+    def preexec(self):
+        return self
+
+    def postexec(self):
+        return self
+
+    def build_ctype(self):
+        # inverting flips the sign for some wacky reason, given the byte
+        # representation is signed
+        return build_circ_ctype({
+            'type':enums.CircCmdType.GET_INTEG_STATUS.name,
+            'data':{
+                'circ_loc':self._loc.build_ctype()
+            }
+        })
+
+    def apply(self,state):
+        if state.dummy:
+            return
+
+        handle = "integ.%s" % self.loc
+        resp = ArduinoCommand.execute_command(self,state)
+        oflow_val = int(state.arduino.readline())
+        oflow = True if oflow_val == 1 else False
+        state.set_overflow(handle, oflow)
+        return resp
+
+
+
+    def __repr__(self):
+        st = "get_integ_status %s %s %s" % \
+              (self.loc.chip,self.loc.tile, \
+               self.loc.slice)
+        return st
+
+
 
 class UseIntegCmd(UseCommand):
 
 
-    def __init__(self,chip,tile,slice,init_cond,inv=False):
+    def __init__(self,chip,tile,slice,init_cond,inv=False, \
+                 in_range=PortRangeType.MED, \
+                 out_range=PortRangeType.MED,
+                 debug=False):
         UseCommand.__init__(self,
                             enums.BlockType.INTEG,
                             CircLoc(chip,tile,slice))
@@ -557,6 +666,17 @@ class UseIntegCmd(UseCommand):
 
         self._init_cond = init_cond
         self._inv = inv
+        if in_range == PortRangeType.HIGH and \
+           out_range == PortRangeType.LOW:
+            raise Exception("incompatible: high input and low output")
+        elif in_range == PortRangeType.LOW and \
+             out_range == PortRangeType.HIGH:
+            raise Exception("incompatible: high input and low output")
+
+        self._in_range = in_range
+        self._out_range = out_range
+        self._debug = debug
+
 
     @staticmethod
     def desc():
@@ -565,14 +685,19 @@ class UseIntegCmd(UseCommand):
 
     @staticmethod
     def parse(args):
-        result = parse_pattern_block(args,1,1,UseIntegCmd.name())
+        result = parse_pattern_block(args,1,1,2,
+                                     UseIntegCmd.name(),
+                                     debug=True)
         if not result is None:
             return UseIntegCmd(
                 result['chip'],
                 result['tile'],
                 result['slice'],
                 result['value0'],
-                inv=result['sign0']
+                inv=result['sign0'],
+                in_range=result['range0'],
+                out_range=result['range1'],
+                debug=result['debug']
             )
 
     @staticmethod
@@ -586,7 +711,10 @@ class UseIntegCmd(UseCommand):
                 'integ':{
                     'loc':self._loc.build_ctype(),
                     'value':float_to_byte(self._init_cond),
-                    'inv':self._inv
+                    'inv':self._inv,
+                    'in_range': self._in_range.code(),
+                    'out_range': self._out_range.code(),
+                    'debug': 1 if self._debug else 0
                 }
             }
         })
@@ -599,6 +727,14 @@ class UseIntegCmd(UseCommand):
                                                    self._init_cond)
         return st
 
+
+
+    def apply(self,state):
+        if state.dummy:
+            return
+
+        resp = ArduinoCommand.execute_command(self,state)
+        return resp
 
 
 
@@ -636,7 +772,8 @@ class UseFanoutCmd(UseCommand):
 
     @staticmethod
     def parse(args):
-        result = parse_pattern_block(args,3,0,UseFanoutCmd.name(),
+        result = parse_pattern_block(args,3,0,0,
+                                     UseFanoutCmd.name(),
                                      index=True)
         if not result is None:
             return UseFanoutCmd(
@@ -704,11 +841,11 @@ class UseMultCmd(UseCommand):
 
     @staticmethod
     def parse(args):
-        result1 = parse_pattern_block(args,1,1,
+        result1 = parse_pattern_block(args,1,1,0,
                                       UseMultCmd.name(),
                                      index=True)
 
-        result2 = parse_pattern_block(args,1,0,
+        result2 = parse_pattern_block(args,1,0,0,
                                       UseMultCmd.name(),
                                       index=True)
 
@@ -877,6 +1014,8 @@ class MakeConnCmd(ConnectionCmd):
                 'conn':data
             }
         })
+
+
 
 
     @staticmethod

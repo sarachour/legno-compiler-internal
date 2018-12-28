@@ -164,6 +164,27 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_output_port(Fabric * fab
   }
 }
 
+void load_range(uint8_t range, bool * lo, bool * hi){
+  switch(range){
+    case 0:
+      *lo = true;
+      *hi = false;
+      break;
+    case 1:
+      *lo = false;
+      *hi = false;
+      break;
+    case 2:
+      *lo = false;
+      *hi = true;
+      break;
+    default:
+      Serial.println("[ERROR] unknown range");
+      exit(1);
+      
+  }
+  
+}
 void commit_config(Fabric * fab){
    fab->cfgCommit();
 }
@@ -191,6 +212,8 @@ void exec_command(Fabric * fab, cmd_t& cmd){
   cmd_use_fanout_t fod;
   cmd_use_integ_t integd;
   cmd_connection_t connd;
+  bool lo;
+  bool hi;
   Fabric::Chip::Tile::Slice* slice;
   Fabric::Chip::Tile::Slice::Dac* dac;
   Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -235,9 +258,20 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         integd = cmd.data.integ;
         integ = get_slice(fab,integd.loc)->integrator;
         integ->setEnable(true);
+        integ->setException( integd.debug == 1 ? true : false);
         integ->out0->setInv(integd.inv);
         integ->setInitialCode(integd.value);
+        load_range(integd.in_range, &lo, &hi);
+        integ->in0->setRange(lo,hi);
+        load_range(integd.out_range, &lo, &hi);
+        integ->out0->setRange(lo,hi);
         Serial.println("enabled integ");
+        break;
+
+    case cmd_type_t::GET_INTEG_STATUS:
+        integ = get_slice(fab,cmd.data.circ_loc)->integrator;
+        Serial.println("retrieved exception");
+        Serial.println(integ->getException() ? 1 : 0);
         break;
         
     case cmd_type_t::DISABLE_DAC:
@@ -254,18 +288,16 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         break;
 
     case cmd_type_t::DISABLE_FANOUT:
-        /*
         fod = cmd.data.fanout;
         fanout = get_fanout(fab,fod.loc);
         fanout->setEnable(false);
-        */
         Serial.println("disabled fanout");
         break;
 
     case cmd_type_t::DISABLE_INTEG:
-        /*integd = cmd.data.integ;
+        integd = cmd.data.integ;
         integ = get_slice(fab,integd.loc)->integrator;
-        integ->setEnable(false);*/ 
+        integ->setEnable(false);
         Serial.println("disabled integ");
         break;
 
@@ -368,6 +400,8 @@ void print_block(uint8_t type){
   }
   
 }
+#define range_to_str(code) (code == 2 ? "h" : (code == 1 ? "m" : (code == 0 ? "l" : "?")))
+
 void print_command(cmd_t& cmd){
   switch(cmd.type){
       case cmd_type_t::USE_FANOUT:
@@ -404,6 +438,11 @@ void print_command(cmd_t& cmd){
         Serial.print(cmd.data.dac.inv ? "yes" : "no");
         break;
         
+      case cmd_type_t::GET_INTEG_STATUS:
+        Serial.print("get integ status ");
+        print_loc(cmd.data.integ.loc);
+        break;
+        
       case cmd_type_t::USE_INTEG:
         Serial.print("use integ ");
         print_loc(cmd.data.integ.loc);
@@ -411,6 +450,12 @@ void print_command(cmd_t& cmd){
         Serial.print(cmd.data.integ.value);
         Serial.print(" inv=");
         Serial.print(cmd.data.integ.inv ? "yes" : "no");
+        Serial.print(" in_range=");
+        Serial.print(range_to_str(cmd.data.integ.in_range));
+        Serial.print(" out_range=");
+        Serial.print(range_to_str(cmd.data.integ.out_range));
+        Serial.print(" debug=");
+        Serial.print(cmd.data.integ.debug == 1 ? "yes" : "no");
         break;
         
       case cmd_type_t::USE_LUT:
