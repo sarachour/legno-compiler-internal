@@ -348,6 +348,10 @@ class ABlockInst(ANode):
     def block(self):
         return self._block
 
+    @property
+    def inputs(self):
+        return self._inputs
+
     def _copy(self,eng):
         blk = ABlockInst(self._block)
         blk.config = self.config.copy()
@@ -369,6 +373,15 @@ class ABlockInst(ANode):
             return "blk %s" % (self._block.name)
         else:
             return "%d.blk %s" % (self._id,self._block.name)
+
+    def get_input_conn(self,inp):
+        for conn in self.subnodes():
+            dest_node,dest_port = conn.dest
+            if dest_node == self and \
+               dest_port == inp:
+                return conn
+
+        return None
 
     def use_output(self,output):
         assert(output in self._outputs)

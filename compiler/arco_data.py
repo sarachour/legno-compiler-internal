@@ -89,11 +89,16 @@ class AVar(AOp):
 
 class AConst(AOp):
 
-    def __init__(self):
+    def __init__(self,value):
         AOp.__init__(self,AOp.CONST,[])
+        self._value = value
+
+    @property
+    def value(self):
+        return self._value
 
     def make(self,inputs):
-        return AConst()
+        return AConst(self._value)
 
 
     def label(self):
@@ -108,6 +113,10 @@ class AGain(AOp):
         assert(isinstance(value,float) or \
                isinstance(value,int))
         self._value = value
+
+    @property
+    def value(self):
+        return self._value
 
     @property
     def input(self):
