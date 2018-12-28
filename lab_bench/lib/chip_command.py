@@ -11,6 +11,14 @@ class PortRangeType(Enum):
     HIGH = 'high'
     LOW = 'low'
 
+    def abbrev(self):
+        if self == PortRangeType.MED:
+            return "m"
+        elif self == PortRangeType.LOW:
+            return "l"
+        elif self == PortRangeType.HIGH:
+            return "h"
+
     def code(self):
         if self == PortRangeType.MED:
             return 1
@@ -527,7 +535,7 @@ class ConstVal:
 
 class UseDACCmd(UseCommand):
 
-    def __init__(self,chip,tile,slice,value):
+    def __init__(self,chip,tile,slice,value,inv=False):
         UseCommand.__init__(self,
                             enums.BlockType.DAC,
                             CircLoc(chip,tile,slice))
@@ -538,7 +546,7 @@ class UseDACCmd(UseCommand):
             self.fail("dac has no index <%d>" % loc.index)
 
         self._value = value
-        self._inv = False
+        self._inv = inv
 
     @staticmethod
     def desc():
@@ -717,11 +725,15 @@ class UseIntegCmd(UseCommand):
         })
 
     def __repr__(self):
-        st = "use_integ %d %d %d sgn %s val %f" % (self.loc.chip,
-                                                   self.loc.tile,
-                                                   self.loc.slice, \
-                                                   INV[self._inv],
-                                                   self._init_cond)
+        fmtstr = "use_integ %d %d %d sgn %s val %f rng %s %s %s"
+        st = fmtstr % (self.loc.chip, \
+                       self.loc.tile, \
+                       self.loc.slice, \
+                       INV[self._inv],
+                       self._init_cond,
+                       self._in_range.abbrev(),
+                       self._out_range.abbrev(),
+                       "debug" if self._debug else "prod")
         return st
 
 
@@ -861,8 +873,8 @@ class UseMultCmd(UseCommand):
             st = "use_mult %d %d %d %d sgn %s" % (self.loc.chip,
                                               self.loc.tile,
                                               self.loc.slice,
-                                              INV[self._inv],
-                                              self.loc.index)
+                                              self.loc.index,
+                                              INV[self._inv])
 
         return st
 

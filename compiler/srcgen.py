@@ -45,6 +45,19 @@ def gen_unpack_loc(circ,locstr):
 
   return chip,tile,slce,index
 
+def gen_use_dac(circ,block,locstr,config):
+  INV_MAP = {'pos':False,'neg':True}
+
+  chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
+  inv = INV_MAP[config.scale_mode]
+  value = config.dac('in')
+  return chip_cmd.UseDACCmd(chip, \
+                              tile, \
+                              slce, \
+                              value=value, \
+                              inv=inv)
+
+
 def gen_use_integrator(circ,block,locstr,config):
   INV_MAP = {'pos':False,'neg':True}
 
@@ -96,6 +109,10 @@ def gen_block(gprog,circ,block,locstr,config):
     cmd = gen_use_multiplier(circ,block,locstr,config)
     gprog.add(cmd)
 
+  elif block.name == 'tile_dac':
+    cmd = gen_use_dac(circ,block,locstr,config)
+    gprog.add(cmd)
+
   elif block.name == 'integrator':
     cmd = gen_use_integrator(circ,block,locstr,config)
     gprog.add(cmd)
@@ -118,6 +135,7 @@ def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
     'integrator': 'integ',
     'fanout': 'fanout',
     'tile_out': 'tile_output',
+    'tile_dac': 'dac',
     'multiplier':'mult',
     'due_adc': 'chip_output'
   }

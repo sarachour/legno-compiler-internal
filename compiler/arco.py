@@ -189,6 +189,13 @@ def enumerate_tree(block,n,max_blocks=None,mode='default',
     nels = len(block.by_property(prop,mode,block.inputs)) if permute_input \
        else len(block.by_property(prop,mode,block.outputs))
 
+    def compute_max_depth(n,n_ports):
+        if n <= n_ports:
+            return 1
+        else:
+            return 1+\
+                compute_max_depth(n-(n_ports-1),n_ports)
+
     def count_free(levels):
         cnt = 0
         for idx in range(0,len(levels)):
@@ -201,7 +208,7 @@ def enumerate_tree(block,n,max_blocks=None,mode='default',
         return cnt
 
     levels = [1]
-    max_depth = int(math.ceil(n/(nels-1)))
+    max_depth = compute_max_depth(n,nels)
     choices = []
     for depth in range(0,max_depth):
         max_nodes = nels**depth
