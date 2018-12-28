@@ -4,7 +4,7 @@ import ops.op as ops
 from chip.block import Block
 from chip.board import Board
 
-
+'''
 def mult_scale_modes():
    labels = ['inp0_ival','scf','out_ival']
    raise Exception("todo: mult scale")
@@ -31,6 +31,7 @@ def integ_scale_modes():
        'lGainLRng': (False,False,True,False),
        'lGainMRng': (False,True,False,False)
    }
+'''
 
 current_props = props.AnalogProperties() \
 .set_interval(-1.0,1.0,unit=units.uA)

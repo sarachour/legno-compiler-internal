@@ -533,7 +533,7 @@ class UseDACCmd(UseCommand):
                             CircLoc(chip,tile,slice))
 
         if value < -1.0 or value > 1.0:
-            self.fail("value not in [0,1]: %s" % value)
+            self.fail("value not in [-1,1]: %s" % value)
         if not self._loc.index is None:
             self.fail("dac has no index <%d>" % loc.index)
 
@@ -658,8 +658,8 @@ class UseIntegCmd(UseCommand):
         UseCommand.__init__(self,
                             enums.BlockType.INTEG,
                             CircLoc(chip,tile,slice))
-        if init_cond < 0.0 or init_cond > 1.0:
-            self.fail("init_cond not in [0,1]: %s" % init_cond)
+        if init_cond < -1.0 or init_cond > 1.0:
+            self.fail("init_cond not in [-1,1]: %s" % init_cond)
 
         self._init_cond = init_cond
         self._inv = inv

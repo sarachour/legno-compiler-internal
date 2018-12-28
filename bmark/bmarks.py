@@ -11,7 +11,8 @@ def benchmark_smmrxn(experiment=None):
     ES = op.Integ(op.Add(
         op.Mult(op.Const(kf),
                 op.Mult(op.Var("S"),op.Var("E"))),
-        op.Mult(op.Const(-1*kr),op.Var("ES"))), op.Const(0))
+        op.Mult(op.Const(-1*kr),op.Var("ES"))), op.Const(0),
+                  handle=':z')
 
     E = op.Add(op.Const(E0),
                op.Mult(op.Var("ES"), op.Const(-1)))

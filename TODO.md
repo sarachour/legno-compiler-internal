@@ -1,17 +1,22 @@
+# Chip
+
+1. there's no tile output 0.0.0.2.2
+2. mult and dac also have value ranges, support m and l there
+3. determine if ordering things has a significant impact
+4. implement recalibrate statements for integ, mults, dacs
+5. reduce maximum initial condition (1 is clearly not valid)
+6. get to bottom of saturationissue.
+
 # Bugs 
 
 1. smmrxn / circuit 18. Two wires to multiplier 0.0.1.0.
-2. decay: multiplier with zero sources.
 
 # Compiler
 
-
-1. Validate circuits
+1. bundle version of gpkit programmed to work with python3
 2. Add support for f(t) inputs (special ast block)
-4. update jaunt to work with new repr
-5. update src generator to generate grendel files
-6. address Nicholas's comments
-
+3. investigate integrator scaling (what mode is default?)
+4. what other components have scaling?
 
 # Paper Contribution List
 
