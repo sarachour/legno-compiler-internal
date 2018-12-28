@@ -64,9 +64,9 @@ class ArduinoCommand(Command):
         rep = ""
         for byt in cdata:
             rep += str(int(byt)) + " "
-        print("bytes: %s" % rep)
+        #print("bytes: %s" % rep)
         resp = self.write_to_arduino(state,cdata)
-        print("resp:> %s" % resp)
+        #print("resp:> %s" % resp)
         return resp
 
 class FlushCommand(ArduinoCommand):
@@ -85,7 +85,7 @@ class FlushCommand(ArduinoCommand):
 
     def write_to_arduino(self,state,cdata):
         if not state.dummy:
-            print("execute: %s [%d]" % (self,len(cdata)))
+            #print("execute: %s [%d]" % (self,len(cdata)))
             # twenty bytes
             found_process = False
             while True:
@@ -102,7 +102,7 @@ class FlushCommand(ArduinoCommand):
 
 
     def process_response(self,resp):
-        print("resp:> %s" % resp)
+        #print("resp:> %s" % resp)
         if not resp is None and \
            "::flush::" in resp:
             return True

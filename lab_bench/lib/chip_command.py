@@ -304,7 +304,7 @@ class AnalogChipCommand(ArduinoCommand):
             return
 
         resp = ArduinoCommand.execute_command(self,state)
-        print("...")
+        print("cmd> %s" % resp)
         line = state.arduino.readline()
         print("resp> %s" % line)
         return resp
@@ -537,11 +537,8 @@ class UseDACCmd(UseCommand):
         if not self._loc.index is None:
             self.fail("dac has no index <%d>" % loc.index)
 
-        self._value,self._inv,self._code = ConstVal.get_closest(value)
-
-
-        print("%f := %s, %s" % (value,self._inv,self._value))
-
+        self._value = value
+        self._inv = False
 
     @staticmethod
     def desc():
@@ -568,7 +565,7 @@ class UseDACCmd(UseCommand):
             'data':{
                 'dac':{
                     'loc':self._loc.build_ctype(),
-                    'value':self._code,
+                    'value':self._value,
                     # for whatever screwy reason, with inversion disabled
                     # 255=-1.0 and 0=1.0
                     'inv':self._inv
@@ -634,12 +631,12 @@ class GetIntegStatusCmd(AnalogChipCommand):
         if state.dummy:
             return
 
+        resp = AnalogChipCommand.apply(self,state)
         handle = "integ.%s" % self.loc
-        resp = ArduinoCommand.execute_command(self,state)
         oflow_val = int(state.arduino.readline())
         oflow = True if oflow_val == 1 else False
+        print("overflow_val: %s" % oflow_val)
         state.set_overflow(handle, oflow)
-        return resp
 
 
 
@@ -710,7 +707,7 @@ class UseIntegCmd(UseCommand):
             'data':{
                 'integ':{
                     'loc':self._loc.build_ctype(),
-                    'value':float_to_byte(self._init_cond),
+                    'value':self._init_cond,
                     'inv':self._inv,
                     'in_range': self._in_range.code(),
                     'out_range': self._out_range.code(),
@@ -727,14 +724,6 @@ class UseIntegCmd(UseCommand):
                                                    self._init_cond)
         return st
 
-
-
-    def apply(self,state):
-        if state.dummy:
-            return
-
-        resp = ArduinoCommand.execute_command(self,state)
-        return resp
 
 
 
@@ -811,14 +800,8 @@ class UseMultCmd(UseCommand):
             self.fail("value not in [-1,1]: %s" % coeff)
 
         self._use_coeff = use_coeff
-        if use_coeff:
-            coeff = -coeff if inv else coeff
-            self._coeff,self._inv,self._code = \
-                            ConstVal.get_closest(coeff)
-        else:
-            self._code = 0
-            self._coeff = coeff
-            self._inv = inv
+        self._coeff = coeff
+        self._inv = inv
 
 
     @staticmethod
@@ -832,7 +815,7 @@ class UseMultCmd(UseCommand):
                 'mult':{
                     'loc':self._loc.build_ctype(),
                     'use_coeff':self._use_coeff,
-                    'coeff':self._code,
+                    'coeff':self._coeff,
                     'inv':self._inv
                 }
             }

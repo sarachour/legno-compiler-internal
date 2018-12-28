@@ -163,7 +163,16 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_output_port(Fabric * fab
     
   }
 }
-
+float range_to_scf(uint8_t range){
+    switch(range){
+      case 0:
+        return 0.1;
+      case 1:
+        return 1.0;
+      case 2:
+        return 10.0; 
+    }
+}
 void load_range(uint8_t range, bool * lo, bool * hi){
   switch(range){
     case 0:
@@ -214,6 +223,7 @@ void exec_command(Fabric * fab, cmd_t& cmd){
   cmd_connection_t connd;
   bool lo;
   bool hi;
+  float value;
   Fabric::Chip::Tile::Slice* slice;
   Fabric::Chip::Tile::Slice::Dac* dac;
   Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -229,7 +239,7 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         dac = get_slice(fab,dacd.loc)->dac;
         dac->setEnable(true);
         dac->out0->setInv(dacd.inv);
-        dac->setConstantCode(dacd.value);
+        dac->setConstant(dacd.value);
         Serial.println("enabled dac");
         break;
 
@@ -238,9 +248,11 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         // multiplier uses dac from same row.
         multd = cmd.data.mult;
         mult = get_mult(fab,multd.loc);
-        mult->setGainCode(multd.coeff);
-        mult->setVga(multd.use_coeff); 
         mult->setEnable(true);
+        mult->setVga(multd.use_coeff); 
+        if(multd.use_coeff){
+          mult->setGain(multd.coeff);
+        }
         Serial.println("enabled mult");
         break;
 
@@ -260,11 +272,11 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         integ->setEnable(true);
         integ->setException( integd.debug == 1 ? true : false);
         integ->out0->setInv(integd.inv);
-        integ->setInitialCode(integd.value);
         load_range(integd.in_range, &lo, &hi);
         integ->in0->setRange(lo,hi);
         load_range(integd.out_range, &lo, &hi);
         integ->out0->setRange(lo,hi);
+        integ->setInitial(integd.value);
         Serial.println("enabled integ");
         break;
 

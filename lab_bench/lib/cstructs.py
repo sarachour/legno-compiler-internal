@@ -77,8 +77,9 @@ def circ_loc_idx2_t():
 def circ_use_integ_t():
     return cstruct.Struct(
         "loc" / circ_loc_t(),
-        "value" / cstruct.Int8ul,
         "inv" / cstruct.Int8ul,
+        "value" / cstruct.Float32l,
+        cstruct.Padding(1),
         'in_range' / cstruct.Int8ul,
         'out_range' / cstruct.Int8ul,
         'debug' / cstruct.Int8ul
@@ -87,15 +88,15 @@ def circ_use_integ_t():
 def circ_use_dac_t():
     return cstruct.Struct(
         "loc" / circ_loc_t(),
-        "value" / cstruct.Int8ul,
-        "inv" / cstruct.Int8ul
+        "inv" / cstruct.Int8ul,
+        "value" / cstruct.Float32l
     )
 
 def circ_use_mult_t():
     return cstruct.Struct(
         "loc" / circ_loc_idx1_t(),
+        "coeff" / cstruct.Float32l,
         "use_coeff" / cstruct.Int8ul,
-        "coeff" / cstruct.Int8ul,
         "inv" / cstruct.Int8ul
     )
 
@@ -130,6 +131,7 @@ def circ_cmd_data():
 def circ_cmd_t():
         return cstruct.Struct(
             "type" / circ_cmd_type(),
+            cstruct.Padding(2),
             "data" / circ_cmd_data()
         )
 

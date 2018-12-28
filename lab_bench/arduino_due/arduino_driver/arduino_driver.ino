@@ -45,8 +45,8 @@ void loop() {
       case cmd_type_t::CIRC_CMD:
         assert(this_fabric != NULL);
         if(!debug){
-          circ::exec_command(this_fabric,cmd.data.circ_cmd);
           circ::print_command(cmd.data.circ_cmd);
+          circ::exec_command(this_fabric,cmd.data.circ_cmd);
         }
         else{
           Serial.print("DEBUG:");

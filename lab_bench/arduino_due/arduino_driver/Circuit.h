@@ -56,8 +56,8 @@ typedef struct circ_loc_idx2 {
 
 typedef struct use_integ {
    circ_loc_t loc;
-   uint8_t value;
    uint8_t inv;
+   float value;
    uint8_t in_range;
    uint8_t out_range;
    uint8_t debug;
@@ -66,14 +66,14 @@ typedef struct use_integ {
 
 typedef struct use_dac {
    circ_loc_t loc;
-   uint8_t value;
    uint8_t inv;
+   float value;
 } cmd_use_dac_t;
 
 typedef struct use_mult {
   circ_loc_idx1_t loc;
+  float coeff;
   uint8_t use_coeff;
-  uint8_t coeff;
   uint8_t inv;
 } cmd_use_mult_t;
 
