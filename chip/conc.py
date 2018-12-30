@@ -4,9 +4,8 @@ import os
 
 class ConcCirc:
 
-    def __init__(self,board,name):
+    def __init__(self,board):
         self._board = board
-        self.name = name
         self._tau = 1.0
         self._configs= {}
         self._conns = {}
@@ -177,8 +176,7 @@ class ConcCirc:
             'insts': [],
             'conns':[],
             'intervals':{},
-            'bandwidths':{},
-            'name':self.name
+            'bandwidths':{}
         }
         for label,(lb,ub) in self._intervals.items():
             data_struct['intervals'][label] = (lb,ub)
@@ -253,6 +251,7 @@ class ConcCirc:
         def q(stmt):
             stmts.append(stmt)
 
+        #q('graph [splines=ortho, nodesep=1]')
         q('node [shape=record];')
         for idx,blkdata in to_id.items():
             inp_label = "|".join(map(

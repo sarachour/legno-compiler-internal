@@ -19,6 +19,7 @@ class ANode:
                 return False
 
             new_node._id = node._id
+            new_node._namespace = node._namespace
             self._map[node.id] = new_node
             return True
 
@@ -39,30 +40,42 @@ class ANode:
     def __init__(self):
         self._children = []
         self._parents = []
-        self._node_cache = set([self])
         self._id = ANode._IDENT
+        self._namespace = None
         ANode._IDENT += 1
 
     @property
     def id(self):
         return self._id
 
+    @property
+    def namespace(self):
+        assert(not self._namespace is None)
+        return self._namespace
+
+    def set_namespace(self,ns):
+        assert(not ns is None)
+        self._namespace = ns
 
     def contains(self,n):
         return n in self.nodes()
 
     def nodes(self):
-        def helper(curr_node):
-            if len(curr_node._parents) > 0:
-                for par in curr_node._parents:
-                    for node in helper(par):
-                        yield node
+        return set(self._nodes())
 
-            else:
-                for node in curr_node._node_cache:
-                    yield node
+    def _nodes(self,ids=[]):
+        if self.id in ids:
+            return
 
-        return set(helper(self))
+        yield self
+        for node in self._children:
+            for result in node._nodes(ids+[self.id]):
+                yield result
+
+        for node in self._parents:
+            for result in node._nodes(ids+[self.id]):
+                yield result
+
 
     def get_by_id(self,ident):
         for node in self.nodes():
@@ -72,27 +85,15 @@ class ANode:
 
         raise Exception("no node with that id")
 
-    def _add_nodes_to_cache(self,ns):
-        upd = []
-        for n in ns:
-            if not n in self._node_cache:
-                self._node_cache.add(n)
-                upd.append(n)
-
-        for par in self._parents:
-            par._add_nodes_to_cache(upd)
-
     def add_child(self,node):
         assert(not node in self._children)
         node._parents.append(self)
         self._children.append(node)
-        self._add_nodes_to_cache([node])
 
     def add_parent(self,node):
         assert(not node in self._parents)
         self._parents.append(node)
         node._children.append(node)
-        node._add_nodes_to_cache(self._node_cache)
 
     def parents(self):
         for par in self._parents:
@@ -150,7 +151,8 @@ class ANode:
                                    indent=indent,
                                    printed=printed+subnodes+[self])
 
-        ident = "%d." % self._internal_id if internal_id else ""
+        ident = "%s." % self._namespace if self._namespace else ""
+        ident += "%d." % self._internal_id if internal_id else ""
         return prefix + ident + self.header() + delim + substr + postfix
 
 class AInput(ANode):
@@ -227,6 +229,9 @@ class AJoin(ANode):
             return "%d.join" % (self._id)
 
     def dest(self):
+        if len(self._children) == 0:
+            return None
+
         return self._children[0]
 
     def _copy(self,eng):

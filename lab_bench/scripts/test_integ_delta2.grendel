@@ -1,0 +1,27 @@
+reset
+set_volt_ranges differential -2.0 5.0 -2.0 5.0
+set_sim_time 0.000050000 0.000050000
+get_num_adc_samples
+get_num_dac_samples
+get_time_between_samples
+use_osc
+compute_offsets
+use_chip
+use_integ 0 0 0 sgn + val -0.069688 rng m m debug
+use_integ 0 0 1 sgn + val 0.502188 rng m m debug
+use_mult 0 0 0 0 sgn + val -0.164062
+use_mult 0 0 0 1 sgn + val -0.546875
+use_fanout 0 0 0 0 sgn + + +
+use_fanout 0 0 0 1 sgn + + +
+mkconn tile_output 0 0 2 1 chip_output 0 3 2
+mkconn integ 0 0 1 fanout 0 0 0 1
+mkconn fanout 0 0 0 0 port 1 mult 0 0 0 0 port 0
+mkconn mult 0 0 0 1 integ 0 0 0
+mkconn fanout 0 0 0 1 port 1 mult 0 0 0 1 port 0
+mkconn fanout 0 0 0 0 port 2 integ 0 0 1
+mkconn integ 0 0 0 fanout 0 0 0 0
+mkconn fanout 0 0 0 1 port 2 tile_output 0 0 2 1
+mkconn mult 0 0 0 0 integ 0 0 0
+get_integ_status 0 0 0
+get_integ_status 0 0 1
+run

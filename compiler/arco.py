@@ -373,7 +373,6 @@ def tac_vprod(board,ast):
                         srcblk,_ = _srcblk.copy()
                         acirc.ANode.connect(srcblk,srcport, \
                                             dstblk,dstport)
-                    print(ast)
                     validate_fragment(out_block_c)
                     yield out_block_c,out_port
 
@@ -382,6 +381,10 @@ def tac_cprod(board,ast):
         for result in to_abs_circ(board,ast.input):
             yield result
     else:
+        for qnode,qnode_output in to_abs_circ(board,ast.input):
+            # hail mary, assume we can scale our way around this
+            yield qnode,qnode_output
+
         for qnode,qnode_output in to_abs_circ(board,ast.input):
             node = acirc.ANode.make_node(board,"multiplier")
             node.config.set_mode("vga").set_dac("coeff",ast.value)
@@ -539,6 +542,21 @@ def count_var_refs(frag_node_map):
 
     return refs,stubs
 
+def bind_namespace(node,namespace,ids=[]):
+    if node.id in ids:
+        return
+
+    node.set_namespace(namespace)
+    if isinstance(node,acirc.AInput) and \
+       not node.source is None:
+        new_namespace = node.label
+        rslv_node,_ = node.source
+        bind_namespace(rslv_node,new_namespace,ids=ids + [node.id])
+
+    else:
+        for subn in node.subnodes():
+            bind_namespace(subn,namespace,ids=ids + [node.id])
+
 def compile_compute_fragments(board,prob,n_xforms):
     frag_node_map= {}
     frag_output_map= {}
@@ -565,10 +583,13 @@ def compile_sample_fragments_and_add_fanouts(board,frag_node_map, \
     while True:
         frag_nodes = {}
         frag_outputs = {}
+        print("-> sampling circuit")
         choices = sample(frag_node_map)
         for variable,index in choices.items():
-            frag_nodes[variable] = frag_node_map[variable][index]
+            frag_nodes[variable],_ = \
+                                     frag_node_map[variable][index].copy()
             frag_outputs[variable] = frag_output_map[variable][index]
+
         # compute any references/stubs
         refs,stubs = count_var_refs(frag_nodes)
 
@@ -576,7 +597,8 @@ def compile_sample_fragments_and_add_fanouts(board,frag_node_map, \
         skip_circuit = False
         # number of free fanouts for variable references
         free_fanouts = board.num_blocks("fanout") - \
-                       acirc.AbsCirc.count_instances(board,frag_nodes.values())["fanout"]
+                       acirc.AbsCirc.count_instances(board,\
+                                    frag_nodes.values())["fanout"]
 
         for var_name,frag_node in frag_nodes.items():
             frag_output = frag_outputs[var_name]
@@ -586,16 +608,18 @@ def compile_sample_fragments_and_add_fanouts(board,frag_node_map, \
                 copy_signal(board,frag_node,frag_output,
                             refs[var_name], var_name, free_fanouts):
 
-                other_frags = [v for k,v in frag_nodes.items() if k != var_name]
+                other_frags = [v for k,v in frag_nodes.items() \
+                               if k != var_name]
+
                 if acirc.AbsCirc.feasible(board,[cnode]+other_frags):
                     subcs[var_name].append((sources,cnode,coutput))
 
             if len(subcs[var_name]) == 0:
-                logger.warn("> no fanout scheme: %s" % (var_name))
                 skip_circuit = True
                 break
 
         if skip_circuit:
+            print("-> invalid. skipping...")
             continue
 
         logger.info("--- Fan outs ---")
@@ -642,17 +666,23 @@ def compile_apply_mapping(source_map,node_map,output_map,mapping):
 
     for (node,output),inp in mapping:
         in_varmap = \
-            any(map(lambda other_node: other_node.contains(inp), node_map.values()))
+            any(map(lambda other_node: other_node.contains(inp), \
+                    node_map.values()))
         assert(in_varmap)
 
 
-def compile(board,prob,depth=3,max_abs_circs=100,max_conc_circs=1):
+def compile(board,prob,depth=3, \
+            max_abs_circs=100, \
+            max_fanout_circs=1, \
+            max_conc_circs=1):
     frag_node_map,frag_output_map = \
             compile_compute_fragments(board,prob,n_xforms=depth)
 
     logger.info("--- Fragments ---")
     for var,frags in frag_node_map.items():
         logger.info("====== %s: %d ====" % (var,len(frags)))
+        for idx,frag in enumerate(frags):
+            print("frag[%d]: %d nodes" % (idx,len(frag.nodes())))
         if len(frags) == 0:
             raise Exception("cannot model variable <%s>" % var)
 
@@ -665,33 +695,48 @@ def compile(board,prob,depth=3,max_abs_circs=100,max_conc_circs=1):
         if num_abs>= max_abs_circs:
             break
 
+        print(">>> combine fragments <<<")
+        num_abs += 1
+        n_fanout = 0
         for fanout_index,source_map,node_map,output_map in \
             compile_combine_fragments(subcircuits_optmap):
 
             refs,stubs = count_var_refs(node_map)
+            if n_fanout == max_fanout_circs:
+                logger.info("-> found %d/%d fanout circuits" % \
+                            (n_fanout,max_fanout_circs))
+                break
 
             n_conc = 0;
+            print(">>> connect stubs to sources <<<")
             for stub_src_index,mapping in \
                 enumerate(connect_stubs_to_sources(source_map,stubs)):
 
                 if n_conc == max_conc_circs:
-                    logger.info("-> done")
+                    logger.info("-> found %d/%d conc circuits" % \
+                                (n_conc,max_conc_circs))
                     break
 
-                compile_apply_mapping(source_map,node_map,output_map,mapping)
+                print(">>> apply mapping <<<")
+                compile_apply_mapping(source_map, \
+                                      node_map, \
+                                      output_map, \
+                                      mapping)
+
+                print(">>> bind namespaces <<<")
+                for var,node in node_map.items():
+                    bind_namespace(node,var)
 
                 indices = [num_abs,fanout_index,stub_src_index,stub_src_index]
-                basename =  prob.name+ "_".join(map(lambda i:str(i),indices))
-                for route_index,conc_circ in enumerate(arco_route.route(basename,
-                                                                        board,
+                print(">>> route <<<")
+                for route_index,conc_circ in enumerate(arco_route.route(board,
                                                                         prob,
                                                                         node_map)):
 
                     yield indices+[route_index],conc_circ
                     n_conc += 1
-
+                    n_fanout += 1
                     if n_conc >= max_conc_circs:
                         break
 
 
-        num_abs += 1

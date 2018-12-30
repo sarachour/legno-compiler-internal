@@ -59,7 +59,7 @@ def benchmark_decay(experiment=None):
     x = op.Integ(
         op.Mult(op.Var("x"),op.Const(-0.5)), \
         op.Const(5), \
-        'x')
+        ':x')
     prob.bind("x",x)
     prob.bind("X", op.Emit(op.Var("x")))
     prob.interval("x",0,5)
