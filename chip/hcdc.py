@@ -5,21 +5,13 @@ from chip.block import Block
 from chip.board import Board
 import lab_bench.lib.chip_command as chipcmd
 import itertools
+import numpy as np
 
-SCFS = {
-    'L': 0.1,
-    'M': 1.0,
-    'H': 10.0
-}
-PROPS = {
-    'L': props.AnalogProperties() \
-    .set_interval(-0.2,0.2,unit=units.uA),
-    'M':  props.AnalogProperties() \
-    .set_interval(-2.0,2.0,unit=units.uA),
-    'H': props.AnalogProperties() \
-    .set_interval(-20.0,20.0,unit=units.uA)
-}
-
+DAC_MIN = -1
+DAC_MAX = 1.0-1.0/256
+ADC_SAMPLE_US = 3.0
+ANALOG_MIN = 2.0
+ANALOG_MAX = 2.0
 
 current_props = props.AnalogProperties() \
 .set_interval(-1.0,1.0,unit=units.uA)
@@ -44,25 +36,26 @@ digvar_props = props.DigitalProperties() \
 #TODO: proper conversion rate.
 due_dac_props = props.DigitalProperties() \
 .set_values(due_values) \
-.set_sample(3,unit=units.us) \
+.set_sample(ADC_SAMPLE_US,unit=units.us) \
 .check()
 
 
 due_adc_props = props.DigitalProperties() \
 .set_values(due_values) \
-.set_sample(3,unit=units.us) \
+.set_sample(ADC_SAMPLE_US,unit=units.us) \
 .check()
 
 
-def make_ana_props(rng,value=1.0):
+def make_ana_props(rng,lb,ub):
     return props.AnalogProperties() \
-                .set_interval(-value*rng.coeff(),
-                              value*rng.coeff(),
+                .set_interval(-lb*rng.coeff(),
+                              ub*rng.coeff(),
                               unit=units.uA)
 
-def make_dig_props(rng,value=1.0):
-    hcdcv2_values = list(map(lambda x :(x/256.0*2.0*value-value)*rng.coeff(), \
-                             range(0,256)))
+def make_dig_props(rng,lb,ub):
+    start = lb*rng.coeff()
+    end = ub*rng.coeff()
+    hcdcv2_values = np.linspace(start,end,256)
     info = props.DigitalProperties() \
                 .set_values(hcdcv2_values) \
                 .check()
@@ -100,11 +93,14 @@ def integ_scale_modes(integ):
     for mode in modes:
         sign,inrng,outrng = mode
         scf = outrng.coeff()/inrng.coeff()*sign.coeff()
-        integ.set_info("*",mode,['in'],make_ana_props(inrng))
-        integ.set_info("*",mode,["ic"],make_dig_props(inrng))
-        integ.set_info("*",mode,["out"],make_ana_props(inrng,1.2))
-        integ.set_info("*",mode,["out"],make_ana_props(inrng,1.2),handle=":z")
-        integ.set_info("*",mode,["out"],make_ana_props(inrng),handle=":z'")
+        integ.set_info("*",mode,['in'],make_ana_props(inrng,ANALOG_MIN,ANALOG_MAX))
+        integ.set_info("*",mode,["ic"],make_dig_props(chipcmd.RangeType.MED, \
+                                                      DAC_MIN,DAC_MAX))
+        integ.set_info("*",mode,["out"],make_ana_props(outrng,ANALOG_MIN,ANALOG_MAX),\
+                       handle=":z")
+        integ.set_info("*",mode,["out"],make_ana_props(outrng,ANALOG_MIN,ANALOG_MAX),\
+                       handle=":z'")
+        integ.set_info("*",mode,["out"],make_ana_props(outrng,ANALOG_MIN,ANALOG_MAX))
         integ.set_scale_factor("*",mode,"out",scf)
 
 
@@ -138,19 +134,23 @@ def mult_scale_modes(mult):
     for mode in mul_modes:
         in0rng,in1rng,outrng = mode
         scf = outrng.coeff()/(in0rng.coeff()*in1rng.coeff())
-        mult.set_info("mul",mode,["in0"],make_ana_props(in0rng))
-        mult.set_info("mul",mode,["in1"],make_ana_props(in1rng))
-        mult.set_info("mul",mode,["coeff"],make_dig_props(chipcmd.RangeType.MED))
-        mult.set_info("mul",mode,["out"],make_ana_props(outrng))
+        mult.set_info("mul",mode,["in0"],make_ana_props(in0rng,ANALOG_MIN,ANALOG_MAX))
+        mult.set_info("mul",mode,["in1"],make_ana_props(in1rng,ANALOG_MIN,ANALOG_MAX))
+        mult.set_info("mul",mode,["coeff"],make_dig_props(chipcmd.RangeType.MED, \
+                                                          DAC_MIN,DAC_MAX))
+        mult.set_info("mul",mode,["out"],make_ana_props(outrng,ANALOG_MIN,ANALOG_MAX))
         mult.set_scale_factor("mul",mode,'out', scf)
 
     for mode in vga_modes:
         in0rng,outrng = mode
         scf = outrng.coeff()/in0rng.coeff()
-        mult.set_info("vga",mode,["in0"],make_ana_props(in0rng))
-        mult.set_info("vga",mode,["in1"],make_ana_props(chipcmd.RangeType.MED))
-        mult.set_info("vga",mode,["coeff"],make_dig_props(chipcmd.RangeType.MED))
-        mult.set_info("vga",mode,["out"],make_ana_props(outrng))
+        mult.set_info("vga",mode,["in0"],make_ana_props(in0rng,ANALOG_MIN,ANALOG_MAX))
+        mult.set_info("vga",mode,["in1"],make_ana_props(chipcmd.RangeType.MED, \
+                                                        ANALOG_MIN,ANALOG_MAX))
+        mult.set_info("vga",mode,["coeff"],make_dig_props(chipcmd.RangeType.MED,\
+                                                          DAC_MIN,DAC_MAX))
+        mult.set_info("vga",mode,["out"],make_ana_props(outrng, \
+                                                        ANALOG_MIN,ANALOG_MAX))
         mult.set_scale_factor("vga",mode,'out', scf)
 
 
@@ -177,10 +177,11 @@ def dac_scale_modes(dac):
     dac.set_scale_modes("*",modes)
     for mode in modes:
         sign,rng = mode
-        coeff = sign.coeff()*rng.coeff()
+        coeff = sign.coeff()*rng.coeff()*2.0
         dac.set_scale_factor("*",mode,'out', coeff)
-        dac.set_info("*",mode,["in"],make_dig_props(chipcmd.RangeType.MED))
-        dac.set_info("*",mode,["out"],make_ana_props(rng))
+        dac.set_info("*",mode,["in"], \
+                     make_dig_props(chipcmd.RangeType.MED,DAC_MIN,DAC_MAX))
+        dac.set_info("*",mode,["out"],make_ana_props(rng,ANALOG_MIN,ANALOG_MAX))
 
 
 def fanout_scale_modes(fanout):
@@ -203,7 +204,7 @@ def fanout_scale_modes(fanout):
             .set_scale_factor("*",mode,"out2",inv2.coeff())
         fanout\
             .set_info("*",mode,["out0","out1","out2","in"],
-                      make_ana_props(rng))
+                      make_ana_props(rng,ANALOG_MIN,ANALOG_MAX))
 
     fanout.check()
 
