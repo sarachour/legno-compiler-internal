@@ -184,10 +184,10 @@ def distribute_consts(ast,const=None):
         raise Exception(ast)
 
 
-def enumerate_tree(block,n,max_blocks=None,mode='default',
+def enumerate_tree(block,n,max_blocks=None,
                    permute_input=False,prop=prop.CURRENT):
-    nels = len(block.by_property(prop,mode,block.inputs)) if permute_input \
-       else len(block.by_property(prop,mode,block.outputs))
+    nels = len(block.by_signal(prop,block.inputs)) if permute_input \
+       else len(block.by_signal(prop,block.outputs))
 
     def compute_max_depth(n,n_ports):
         if n <= n_ports:
@@ -228,19 +228,19 @@ def enumerate_tree(block,n,max_blocks=None,mode='default',
 
 def build_tree_from_levels(board,levels,block,
                            input_tree=False,
-                           mode='default',
+                           mode='?',
                            prop=None):
     blocks = []
     free_ports = {}
 
-    par_ports = block.by_property(prop,mode,block.outputs) if input_tree \
-       else block.by_property(prop,mode,block.inputs)
+    par_ports = block.by_signal(prop,block.outputs) if input_tree \
+       else block.by_signal(prop,block.inputs)
 
     assert(len(par_ports) == 1)
     par_port = par_ports[0]
 
-    child_ports = block.by_property(prop,mode,block.inputs) if input_tree \
-                  else block.by_property(prop,mode,block.outputs)
+    child_ports = block.by_signal(prop,block.inputs) if input_tree \
+                  else block.by_signal(prop,block.outputs)
 
     # build all the nodes for each level, and all of the inputs, outputs
     nodes = {}
@@ -252,6 +252,7 @@ def build_tree_from_levels(board,levels,block,
         children[level_idx] = []
         for idx in range(0,n_nodes):
             node = acirc.ANode.make_node(board,block.name)
+            node.config.set_comp_mode(mode)
             nodes[level_idx].append(node)
             parents[level_idx].append((node,par_port))
 
@@ -304,6 +305,7 @@ def tac_integ(board,ast):
 
         init_cond = ic.value
         node = acirc.ANode.make_node(board,"integrator")
+        node.config.set_comp_mode("*")
         node.config.set_dac("ic",init_cond)
         acirc.ANode.connect(deriv,deriv_output,node,"in")
         yield node,"out"
@@ -319,7 +321,7 @@ def validate_fragment(frag):
 
     if isinstance(frag, acirc.ABlockInst):
         if frag.block.name == 'multiplier':
-           if frag.config.mode == 'vga':
+           if frag.config.comp_mode == 'vga':
                test_inputs(['in0'])
            else:
                test_inputs(['in0','in1'])
@@ -347,7 +349,6 @@ def tac_vprod(board,ast):
         multiplier = board.block("multiplier")
         for levels in \
             enumerate_tree(multiplier,len(ast.inputs),
-                           mode='default',
                            permute_input=True,
                            prop=prop.CURRENT):
 
@@ -362,7 +363,7 @@ def tac_vprod(board,ast):
                                                     levels,
                                                     multiplier,
                                                     input_tree=True,
-                                                    mode='default',
+                                                    mode='mul',
                                                     prop=prop.CURRENT
                                                 )
 
@@ -387,7 +388,8 @@ def tac_cprod(board,ast):
 
         for qnode,qnode_output in to_abs_circ(board,ast.input):
             node = acirc.ANode.make_node(board,"multiplier")
-            node.config.set_mode("vga").set_dac("coeff",ast.value)
+            node.config.set_comp_mode("vga")\
+                       .set_dac("coeff",ast.value)
             acirc.ANode.connect(qnode,qnode_output,node,"in0")
             yield node,"out"
 
@@ -408,6 +410,7 @@ def to_abs_circ(board,ast):
 
     elif ast.op == aexpr.AOp.CONST:
         node = acirc.ANode.make_node(board,"tile_dac")
+        node.config.set_comp_mode('*')
         node.config.set_dac("in",ast.value)
         yield node,"out"
 
@@ -431,6 +434,7 @@ def to_abs_circ(board,ast):
     elif ast.op == aexpr.AOp.EMIT:
         for in_node,in_port in to_abs_circ(board,ast.input(0)):
             node = acirc.ANode.make_node(board,"due_adc")
+            node.config.set_comp_mode("*")
             acirc.ANode.connect(in_node,in_port,node,"in")
             yield node,"out"
 
@@ -461,7 +465,7 @@ def copy_signal(board,node,output,n_copies,label,max_fanouts):
                                                             levels,
                                                             fanout,
                                                             input_tree=False,
-                                                            mode='default',
+                                                            mode='*',
                                                             prop=prop.CURRENT
         )
         for level,ports in free_ports.items():

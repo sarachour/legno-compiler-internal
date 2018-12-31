@@ -493,8 +493,10 @@ def tac_abs_rslv_constraints(graph,ctx,cutoff,debug=False):
         for blk,loc in intermediate_nodes:
             node = RouteGraph.RNode(graph,blk,loc)
             print("use %s.%s.%d" % (node.block_name,node.loc,node.id))
+            cfg = Config()
+            cfg.set_comp_mode("*")
             step = DFSUseNode(node,
-                              config=Config(), \
+                              config=cfg, \
                               fragment=None)
             base_ctx.add(step)
 

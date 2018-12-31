@@ -3,35 +3,23 @@ import chip.units as units
 import ops.op as ops
 from chip.block import Block
 from chip.board import Board
+import lab_bench.lib.chip_command as chipcmd
+import itertools
 
-'''
-def mult_scale_modes():
-   labels = ['inp0_ival','scf','out_ival']
-   raise Exception("todo: mult scale")
+SCFS = {
+    'L': 0.1,
+    'M': 1.0,
+    'H': 10.0
+}
+PROPS = {
+    'L': props.AnalogProperties() \
+    .set_interval(-0.2,0.2,unit=units.uA),
+    'M':  props.AnalogProperties() \
+    .set_interval(-2.0,2.0,unit=units.uA),
+    'H': props.AnalogProperties() \
+    .set_interval(-20.0,20.0,unit=units.uA)
+}
 
-
-def integ_scale_modes():
-   labels = ['inp_ival','scf','out_ival']
-   ivals = {
-        'mGainMRng': [(-2,2),1.0,(-2,2)],
-        'mGainLRng': [(-2,2),1.0,(-0.2,0.2)],
-        'mGainHRng': [(-20,20),1.0, (-20,20)],
-        'hGainHRng': [(-2,2),10.0,(-20,20)],
-        'hGainMRng': [(-0.2,0.2),10.0,(-2,2)],
-        'lGainLRng': [(-2,2),0.1,(-0.2,0.2)],
-        'lGainMRng': [(20,20),0.1,(-2,2)]
-   }
-   labels = ['inp.loRange','inp.HiRange','out.LoRange','out.HiRange']
-   {
-       'mGainMRng': (False,False,False,False),
-       'mGainLRng': (True,False,True,False),
-       'mGainHRng': (False,True,False,True),
-       'hGainHRng': (False,False,False,True),
-       'hGainMRng': (True,False,False,False)
-       'lGainLRng': (False,False,True,False),
-       'lGainMRng': (False,True,False,False)
-   }
-'''
 
 current_props = props.AnalogProperties() \
 .set_interval(-1.0,1.0,unit=units.uA)
@@ -66,74 +54,76 @@ due_adc_props = props.DigitalProperties() \
 .check()
 
 
-inv_conn = Block('conn_inv',type=Block.BUS) \
-.add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.CURRENT,["in"]) \
-.set_op("out",ops.Var("in")) \
-.set_prop(["out","in"], current_props) \
-.set_scale_modes(["inv"]) \
-.set_scale_mode("inv") \
-.set_scale_factor("out",-1.0) \
-.check()
+def make_ana_props(rng,value=1.0):
+    return props.AnalogProperties() \
+                .set_interval(-value*rng.coeff(),
+                              value*rng.coeff(),
+                              unit=units.uA)
+
+def make_dig_props(rng,value=1.0):
+    hcdcv2_values = list(map(lambda x :(x/256.0*2.0*value-value)*rng.coeff(), \
+                             range(0,256)))
+    info = props.DigitalProperties() \
+                .set_values(hcdcv2_values) \
+                .check()
+    return info
+
+def integ_scale_modes(integ):
+    opts = [
+        chipcmd.SignType.options(),
+        chipcmd.RangeType.options(),
+        chipcmd.RangeType.options()
+    ]
+    modes = list(itertools.product(*opts))
+    integ.set_scale_modes("*",modes)
+    for mode in modes:
+        sign,inrng,outrng = mode
+        scf = outrng.coeff()/inrng.coeff()*sign.coeff()
+        integ.set_info("*",mode,['in'],make_ana_props(inrng))
+        integ.set_info("*",mode,["ic"],make_dig_props(inrng))
+        integ.set_info("*",mode,["out"],make_ana_props(inrng,1.2))
+        integ.set_info("*",mode,["out"],make_ana_props(inrng,1.2),handle=":z")
+        integ.set_info("*",mode,["out"],make_ana_props(inrng),handle=":z'")
+        integ.set_scale_factor("*",mode,"out",scf)
 
 
-chip_out = Block('chip_out',type=Block.BUS) \
-.add_outputs(props.VOLTAGE,["out"]) \
-.add_inputs(props.CURRENT,["in"]) \
-.set_op("out",ops.Var("in")) \
-.set_prop(["out","in"], current_props) \
-.check()
+def mult_scale_modes(mult):
+    opts_def = [
+        chipcmd.RangeType.options(),
+        chipcmd.RangeType.options(),
+        chipcmd.RangeType.options()
+    ]
 
-chip_inp = Block('chip_in',type=Block.BUS) \
-.add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.VOLTAGE,["in"]) \
-.set_op("out",ops.Var("in")) \
-.set_prop(["out","in"], current_props) \
-.check()
+    opts_vga = [
+        chipcmd.RangeType.options(),
+        chipcmd.RangeType.options()
+    ]
+    vga_modes = list(itertools.product(*opts_vga))
+    mul_modes = list(itertools.product(*opts_def))
+    mult.set_scale_modes("mul",mul_modes)
+    mult.set_scale_modes("vga",vga_modes)
+    for mode in mul_modes:
+        in0rng,in1rng,outrng = mode
+        scf = outrng.coeff()/(in0rng.coeff()*in1rng.coeff())
+        mult.set_info("mul",mode,["in0"],make_ana_props(in0rng))
+        mult.set_info("mul",mode,["in1"],make_ana_props(in1rng))
+        mult.set_info("vga",mode,["coeff"],make_dig_props(chipcmd.RangeType.MED))
+        mult.set_info("mul",mode,["out"],make_ana_props(outrng))
+        mult.set_scale_factor("mul",mode,'out', scf)
 
-
-tile_out = Block('tile_out',type=Block.BUS) \
-.add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.CURRENT,["in"]) \
-.set_op("out",ops.Var("in")) \
-.set_prop(["out","in"], current_props) \
-.check()
-
-tile_inp = Block('tile_in',type=Block.BUS) \
-.add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.CURRENT,["in"]) \
-.set_op("out",ops.Var("in")) \
-.set_prop(["out","in"], current_props) \
-.check()
-
-
-due_dac = Block('due_dac',type=Block.DAC) \
-.add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.DIGITAL,["in"]) \
-.set_op("out",ops.Var("in")) \
-.set_prop(["in"],due_dac_props) \
-.set_prop(["out"], current_props) \
-.set_external() \
-.check()
+    for mode in vga_modes:
+        in0rng,outrng = mode
+        scf = outrng.coeff()/in0rng.coeff()
+        mult.set_info("vga",mode,["in0"],make_ana_props(in0rng))
+        mult.set_info("vga",mode,["in1"],make_ana_props(chipcmd.RangeType.MED))
+        mult.set_info("vga",mode,["coeff"],make_dig_props(chipcmd.RangeType.MED))
+        mult.set_info("vga",mode,["out"],make_ana_props(outrng))
+        mult.set_scale_factor("vga",mode,'out', scf)
 
 
-due_adc = Block('due_adc',type=Block.ADC) \
-.add_outputs(props.DIGITAL,["out"]) \
-.add_inputs(props.CURRENT,["in"]) \
-.set_op("out",ops.Var("in")) \
-.set_prop(["out"],due_adc_props) \
-.set_prop(["in"],current_props) \
-.set_external() \
-.check()
-
-
-
-tile_dac = Block('tile_dac',type=Block.DAC) \
-.add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.DIGITAL,["in"]) \
+'''
 .set_prop(["in"],digvar_props) \
 .set_prop(["out"], current_props) \
-.set_op("out",ops.Var("in")) \
 .set_prop(["in"],digvar_props) \
 .set_prop(["out"], current_props) \
 .set_scale_modes(["pos","neg"]) \
@@ -141,42 +131,129 @@ tile_dac = Block('tile_dac',type=Block.DAC) \
 .set_scale_factor("out",1.0) \
 .set_scale_mode("neg") \
 .set_scale_factor("out",-1.0) \
+'''
+def dac_scale_modes(dac):
+    opts = [
+        chipcmd.SignType.options(),
+        [chipcmd.RangeType.MED,chipcmd.RangeType.HIGH]
+    ]
+    modes = list(itertools.product(*opts))
+    dac.set_scale_modes("*",modes)
+    for mode in modes:
+        sign,rng = mode
+        coeff = sign.coeff()*rng.coeff()
+        dac.set_scale_factor("*",mode,'out', coeff)
+        dac.set_info("*",mode,["in"],make_dig_props(chipcmd.RangeType.MED))
+        dac.set_info("*",mode,["out"],make_ana_props(rng))
+
+
+def fanout_scale_modes(fanout):
+    opts = [
+        chipcmd.SignType.options(),
+        chipcmd.SignType.options(),
+        chipcmd.SignType.options(),
+        [chipcmd.RangeType.MED,chipcmd.RangeType.HIGH]
+    ]
+    modes = list(itertools.product(*opts))
+    fanout.set_scale_modes("*",modes)
+    for mode in modes:
+        inv0,inv1,inv2,rng = mode
+        fanout\
+            .set_scale_factor("*",mode,"out0",inv0.coeff()) \
+            .set_scale_factor("*",mode,"out1",inv1.coeff()) \
+            .set_scale_factor("*",mode,"out2",inv2.coeff())
+        fanout\
+            .set_info("*",mode,["out0","out1","out2","in"],
+                      make_ana_props(rng))
+
+    fanout.check()
+
+
+inv_conn = Block('conn_inv',type=Block.BUS) \
+.add_outputs(props.CURRENT,["out"]) \
+.add_inputs(props.CURRENT,["in"]) \
+.set_op("*","out",ops.Var("in")) \
+.set_info("*","*",["out","in"], current_props) \
+.set_scale_factor("*","*","out",-1.0) \
 .check()
 
+
+chip_out = Block('chip_out',type=Block.BUS) \
+.add_outputs(props.VOLTAGE,["out"]) \
+.add_inputs(props.CURRENT,["in"]) \
+.set_op("*","out",ops.Var("in")) \
+.set_info("*","*",["out","in"], current_props) \
+.set_scale_factor("*","*","out",1.0) \
+.check()
+
+chip_inp = Block('chip_in',type=Block.BUS) \
+.add_outputs(props.CURRENT,["out"]) \
+.add_inputs(props.VOLTAGE,["in"]) \
+.set_op("*","out",ops.Var("in")) \
+.set_info("*","*",["out","in"], current_props) \
+.set_scale_factor("*","*","out",1.0) \
+.check()
+
+
+tile_out = Block('tile_out',type=Block.BUS) \
+.add_outputs(props.CURRENT,["out"]) \
+.add_inputs(props.CURRENT,["in"]) \
+.set_op("*","out",ops.Var("in")) \
+.set_info("*","*",["out","in"], current_props) \
+.set_scale_factor("*","*","out",1.0) \
+.check()
+
+tile_inp = Block('tile_in',type=Block.BUS) \
+.add_outputs(props.CURRENT,["out"]) \
+.add_inputs(props.CURRENT,["in"]) \
+.set_op("*","out",ops.Var("in")) \
+.set_info("*","*",["out","in"], current_props) \
+.set_scale_factor("*","*","out",1.0) \
+.check()
+
+
+due_dac = Block('due_dac',type=Block.DAC) \
+.add_outputs(props.CURRENT,["out"]) \
+.add_inputs(props.DIGITAL,["in"]) \
+.set_op("*","out",ops.Var("in")) \
+.set_info("*","*",["in"],due_dac_props) \
+.set_info("*","*",["out"], current_props) \
+.set_scale_factor("*","*","out",1.0) \
+.check()
+
+
+due_adc = Block('due_adc',type=Block.ADC) \
+.add_outputs(props.DIGITAL,["out"]) \
+.add_inputs(props.CURRENT,["in"]) \
+.set_op("*","out",ops.Var("in")) \
+.set_info("*","*",["out"],due_adc_props) \
+.set_info("*","*",["in"],current_props) \
+.set_scale_factor("*","*","out",1.0) \
+.check()
+
+tile_dac = Block('tile_dac',type=Block.DAC) \
+.add_outputs(props.CURRENT,["out"]) \
+.add_inputs(props.DIGITAL,["in"]) \
+.set_op("*","out",ops.Var("in"))
+dac_scale_modes(tile_dac)
+tile_dac.check()
 
 tile_adc = Block('tile_adc',type=Block.ADC) \
 .add_outputs(props.DIGITAL,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
-.set_op("out",ops.Var("in")) \
-.set_prop(["out"],digvar_props) \
-.set_prop(["in"],current_props) \
+.set_op("*","out",ops.Var("in")) \
+.set_info("*","*",["out"],digvar_props) \
+.set_info("*","*",["in"],current_props) \
+.set_scale_factor("*","*","out",1.0) \
 .check()
 
 fanout = Block('fanout',type=Block.COPIER) \
 .add_outputs(props.CURRENT,["out1","out2","out0"]) \
 .add_inputs(props.CURRENT,["in"]) \
-.set_op("out0",ops.Var("in")) \
-.set_copy("out1","out0") \
-.set_copy("out2","out0") \
-.set_prop(["out0","out1","out2","in"],current_props)
-
-modes = []
-for inv0 in ["pos","neg"]:
-    for inv1 in ["pos","neg"]:
-        for inv2 in ["pos","neg"]:
-            modes.append([inv0,inv1,inv2])
-
-
-fanout.set_scale_modes(modes)
-for inv0,inv1,inv2 in modes:
-    fanout\
-        .set_scale_mode([inv0,inv1,inv2])\
-        .set_scale_factor("out0",1.0 if inv0 else -1.0) \
-        .set_scale_factor("out1",1.0 if inv1 else -1.0) \
-        .set_scale_factor("out2",1.0 if inv2 else -1.0)
-
-fanout.check()
-
+.set_op("*","out0",ops.Var("in")) \
+.set_copy("*","out1","out0") \
+.set_copy("*","out2","out0")
+fanout_scale_modes(fanout)
 
 tcs = {
     #'hi': 0.1,
@@ -186,83 +263,44 @@ tcs = {
 mult_scf = 1.0
 #mult_scf = 1.0
 mult = Block('multiplier') \
-.set_modes(["default","vga"]) \
+.set_comp_modes(["mul","vga"]) \
 .add_inputs(props.CURRENT,["in0","in1"]) \
 .add_inputs(props.DIGITAL,["coeff"]) \
 .add_outputs(props.CURRENT,["out"]) \
-.set_mode("default") \
-.set_prop(["coeff"],digval_props) \
-.set_prop(["in0","in1","out"],current_props) \
-.set_op("out",ops.Mult(ops.Var("in0"),ops.Var("in1"))) \
-.set_mode("vga") \
-.set_prop(["coeff"],digval_props) \
-.set_prop(["in0","in1","out"],current_props) \
-.set_op("out",ops.Mult(ops.Var("coeff"),ops.Var("in0"))) \
-
-modes = []
-for scf in tcs.keys():
-    modes.append(scf)
-
-mult.set_scale_modes(modes)
-
-for scf in modes:
-    mult.set_scale_mode(scf) \
-        .set_scale_factor("out",tcs[scf])
-
+.set_op("mul","out",ops.Mult(ops.Var("in0"),ops.Var("in1"))) \
+.set_op("vga","out",ops.Mult(ops.Var("coeff"),ops.Var("in0")))
+mult_scale_modes(mult)
 mult.check()
 
 
 # TODO: better operating ranges for inputs
 
 integ = Block('integrator') \
-.add_inputs(props.CURRENT,["in"]) \
-.add_inputs(props.CURRENT,["ic"]) \
+.add_inputs(props.CURRENT,["in","ic"]) \
 .add_outputs(props.CURRENT,["out"]) \
-.set_op("out",
+.set_op("*","out",
         ops.Integ(ops.Var("in"), ops.Var("ic"),
                   handle=':z'
         )
-) \
-.set_prop(["out"], current_integ_props) \
-.set_prop(["out"], current_integ_props,handle=":z") \
-.set_prop(["out"], current_props,handle=":z'") \
-.set_prop(["in"], current_props) \
-.set_prop(["ic"], digval_props)
-
-modes = []
-for speed_out in tcs.keys():
-    for speed_in in tcs.keys():
-        for direction in ["pos","neg"]:
-            modes.append([speed_out,speed_in,direction])
-
-integ.set_scale_modes(modes)
-
-for mode in modes:
-    flip_it = 1.0 if mode[2] == "pos" else -1.0
-    integ \
-    .set_scale_mode(mode) \
-    .set_scale_factor("out",tcs[mode[0]]*flip_it) \
-    .set_scale_factor("in",tcs[mode[1]])
-
+)
+integ_scale_modes(integ)
 integ.check()
 
 # TODO: better mode-dependent operating ranges
 multifun = Block("lut") \
-.add_inputs(props.CURRENT,["in"]) \
-.add_outputs(props.CURRENT,["out"]) \
-.set_modes(["ln","exp","sq","sqrt"]) \
-.set_mode("ln") \
-.set_op("out",ops.Ln(ops.Var("in"))) \
-.set_prop(["in","out"], current_props) \
-.set_mode("exp") \
-.set_op("out",ops.Exp(ops.Var("in"))) \
-.set_prop(["in","out"], current_props) \
-.set_mode("sq") \
-.set_op("out",ops.Square(ops.Var("in"))) \
-.set_prop(["in","out"], current_props) \
-.set_mode("sqrt") \
-.set_op("out",ops.Sqrt(ops.Var("in"))) \
-.set_prop(["in","out"], current_props) \
+           .set_comp_modes(["ln","exp","sq","sqrt"]) \
+           .add_inputs(props.CURRENT,["in"]) \
+           .add_outputs(props.CURRENT,["out"])
+
+for mode in ['ln','exp','sq','sqrt']:
+
+    multifun.set_info(mode,"*",["in","out"], current_props) \
+            .set_scale_modes(mode,["*"])
+
+multifun.set_op("ln","out",ops.Ln(ops.Var("in"))) \
+        .set_op("exp","out",ops.Exp(ops.Var("in"))) \
+        .set_op("sq","out",ops.Square(ops.Var("in"))) \
+        .set_op("sqrt","out",ops.Sqrt(ops.Var("in"))) \
 .check()
 
 def connect(hw,scope1,block1,scope2,block2,negs=[]):

@@ -9,15 +9,15 @@ class Labels(Enum):
 class Config:
 
     def __init__(self):
-        self._mode = "default"
-        self._scale_mode = "default"
+        self._comp_mode = None
+        self._scale_mode = None
         self._dacs = {}
         self._labels = {}
 
     @staticmethod
     def from_json(obj):
         cfg = Config()
-        cfg._mode = obj['compute-mode']
+        cfg._comp_mode = obj['compute-mode']
         cfg._scale_mode = obj['scale-mode']
         for dac,value in obj['dacs'].items():
             cfg._dacs[dac] = value
@@ -27,7 +27,7 @@ class Config:
 
     def to_json(self):
         cfg = {}
-        cfg['compute-mode'] = self._mode
+        cfg['compute-mode'] = self._comp_mode
         cfg['scale-mode'] = self._scale_mode
         cfg['dacs'] = {}
         cfg['labels'] = {}
@@ -41,7 +41,7 @@ class Config:
 
     def copy(self):
         cfg = Config()
-        cfg._mode = self._mode
+        cfg._comp_mode = self._comp_mode
         cfg._scale_mode = self._scale_mode
         cfg._dacs = dict(self._dacs)
         cfg._labels = dict(self._labels)
@@ -52,8 +52,8 @@ class Config:
         return self._scale_mode
 
     @property
-    def mode(self):
-        return self._mode
+    def comp_mode(self):
+        return self._comp_mode
 
     def set_scale_mode(self,modename):
         self._scale_mode = modename
@@ -65,8 +65,8 @@ class Config:
     def dac(self,v):
         return self._dacs[v]
 
-    def set_mode(self,modename):
-        self._mode = modename
+    def set_comp_mode(self,modename):
+        self._comp_mode = modename
         return self
 
     def set_dac(self,dac,value):
@@ -104,9 +104,9 @@ class Config:
 
     def to_str(self,delim="\n"):
         s = ""
-        s += "comp-mode: %s" % self._mode
+        s += "comp-mode: %s" % self._comp_mode
         s += delim
-        s += "scale-mode: %s" % self._scale_mode
+        s += "scale-mode: %s" % str(self._scale_mode)
         s += delim
         for v,e in self._dacs.items():
             s += "%s: %s" % (v,e)
@@ -136,59 +136,62 @@ class Block:
         # port info
         self._outputs = []
         self._inputs = []
-        self._sigmap = {}
-        self._external = False
 
         # mode specific properties
-        self._modes = ['default']
-        self._current_mode = 'default'
-        self._propmap = {}
-        self._copies = {}
+        self._signals = {}
         self._ops = {}
+        self._copies = {}
+
+        self._scale_factors = {}
+        self._info = {}
 
 
         # scale factors
-        self._scale_modes = ['default']
-        self._current_scale_mode = 'default'
-        self._scale_factors = {}
+        self._scale_modes = {}
+        self.set_comp_modes(['*'])
+        self.set_scale_modes("*",['*'])
 
-    def set_external(self):
-        self._external = True
-        return self
+    def _make_comp_dict(self,comp_mode,d):
+        if not comp_mode in d:
+            d[comp_mode] = {}
 
-    def set_scale_modes(self,modes):
-        assert(not "default" in modes)
-        self._scale_modes = modes
-        self._current_scale_mode = None
-        for scale_mode in self._scale_modes:
-            self._scale_factors[str(scale_mode)] = {}
+        return d[comp_mode]
 
-        return self
+    def _make_scale_dict(self,comp_mode,scale_mode,d):
+        assert(comp_mode in self._comp_modes)
+        data = self._make_comp_dict(comp_mode,d)
 
-    def set_scale_mode(self,mode):
-        assert(mode in self._scale_modes)
-        self._current_scale_mode = mode
-        return self
+        if not scale_mode in data:
+            data[scale_mode] = {}
 
-    def scale_factor(self,out,mode=None):
-        mode = self._current_scale_mode \
-               if mode is None else str(mode)
+        return data[scale_mode]
 
-        if not mode in self._scale_factors:
+    def _get_comp_dict(self,comp_mode,d):
+        if not comp_mode in d:
+            return None
+
+        return d[comp_mode]
+
+    def _get_scale_dict(self,comp_mode,scale_mode,d):
+        data = self._get_comp_dict(comp_mode,d)
+        if data is None:
+            return None
+        if not scale_mode in data:
+            return None
+
+        return data[scale_mode]
+
+    def scale_factor(self,comp_mode,scale_mode,out):
+        data = self._get_scale_dict(comp_mode,scale_mode, \
+                                    self._scale_factors)
+        if not out in data:
             return 1.0
 
-        if not out in self._scale_factors[mode]:
-            return 1.0
+        return data[out]
 
-        return self._scale_factors[mode][out]
-
-    def set_scale_factor(self,port,value):
-        mode = self._current_scale_mode
-        mode_key = str(mode)
-        if not mode_key in self._scale_factors:
-            self._scale_factors[mode_key] = {}
-
-        self._scale_factors[mode_key][port] = value
+    def set_scale_factor(self,comp_mode,scale_mode,port,value):
+        data = self._make_scale_dict(comp_mode,scale_mode,self._scale_factors)
+        data[port] = value
         return self
 
     @property
@@ -197,40 +200,43 @@ class Block:
 
     def _map_ports(self,prop,ports):
         for port in ports:
-            assert(not port in self._sigmap)
-            self._sigmap[port] = prop
+            assert(not port in self._signals)
+            self._signals[port] = prop
 
 
-    def get_dynamics(self,output,mode):
-        if output in self._copies:
-            output = self._copies[output][mode]
+    def get_dynamics(self,comp_mode,output):
+        copy_data = self._get_comp_dict(comp_mode,self._copies)
+        op_data = self._get_comp_dict(comp_mode,self._ops)
+        if output in copy_data:
+            output = copy_data[output]
 
-        modedict = self._ops[output]
-        assert(not mode is None)
-        expr = modedict[mode]
-        return expr
+        return op_data[output]
 
 
-    def dynamics(self,mode=None):
-        for output,modedict in self._ops.items():
-            if not mode is None:
-                expr = modedict[mode]
-                yield output,expr
-                continue
+    def dynamics(self,comp_mode):
+        data = self._get_comp_dict(comp_mode,self._ops)
+        for output,expr in data.items():
+            yield output,expr
 
-            for _mode,expr in modedict.items():
-                yield output,_mode,expr
+    def all_dynamics(self):
+        for comp_mode in self._ops:
+            for output,expr in self._ops[comp_mode].items():
+                yield comp_mode,output,expr
 
     def signals(self,port):
-        return self._sigmap[port]
+        return self._signals[port]
 
-    def props(self,mode,port,handle=None):
-        return self._propmap[mode][port][handle]
+    def info(self,comp_mode,scale_mode,port,handle=None):
+        data = self._get_scale_dict(comp_mode,scale_mode, \
+                                    self._info)
+        print(comp_mode,scale_mode,data)
+        print(data[port].keys())
+        return data[port][handle]
 
-    def handles(self,mode,port):
+    def handles(self,comp_mode,port):
         if self.is_input(port):
             return []
-        return self.get_dynamics(port,mode).handles()
+        return self.get_dynamics(comp_mode,port).handles()
 
     @property
     def name(self):
@@ -240,23 +246,19 @@ class Block:
     def inputs(self):
         return self._inputs
 
-    def by_property(self,sel_prop,mode,ports):
+    def by_signal(self,sel_signal,ports):
         def _fn():
             for port in ports:
-                prop = self._sigmap[port]
-                if sel_prop == prop:
+                signal = self._signals[port]
+                if sel_signal == signal:
                     yield port
 
         return list(_fn())
 
-    def copies(self,mode,port):
-        mode = "default" if mode is None else mode
-
-        for copy_port, srcdict in self._copies.items():
-            if not mode in srcdict:
-                continue
-
-            if srcdict[mode] == port:
+    def copies(self,comp_mode,port):
+        data = self._get_comp_dict(comp_mode,self._copies)
+        for this_port, copy_port in data.items():
+            if this_port == port:
                 yield copy_port
 
     @property
@@ -277,52 +279,54 @@ class Block:
         self._map_ports(prop,outs)
         return self
 
-    def set_mode(self,mode):
-        assert(mode in self._modes)
-        self._current_mode = mode
-        return self
 
     @property
-    def modes(self):
-        return self._modes
+    def comp_modes(self):
+        return self._comp_modes
 
-    @property
-    def scale_modes(self):
-        return self._scale_modes
+    def scale_modes(self,comp_mode):
+        return self._scale_modes[comp_mode]
 
-    def set_modes(self,modes):
-        self._modes = modes
-        self._current_mode = None
+    def set_comp_modes(self,modes):
+        self._comp_modes = modes
+        for mode in modes:
+            self._ops[mode] = {}
+            self._signals[mode] = {}
+            self._copies[mode] = {}
+            self._info[mode] = {}
+            self._scale_factors[mode] = {}
+
         return self
 
-    def set_copy(self,copy,orig):
-        mode = self._current_mode
-        if not copy in self._copies:
-            self._copies[copy] = {}
+    def set_scale_modes(self,comp_mode,modes):
+        self._scale_modes[comp_mode] = modes
+        for scale_mode in modes:
+            self._info[comp_mode][scale_mode] = {}
+            self._scale_factors[comp_mode][scale_mode] = {}
 
-        self._copies[copy][mode] = orig
         return self
 
-    def set_op(self,out,expr,integrate=False):
-        assert(not self._current_mode is None)
-        if not out in self._ops:
-            self._ops[out] = {}
-
-        assert(not self._current_mode in self._ops[out])
-        self._ops[out][self._current_mode] = expr
+    def set_copy(self,comp_mode,copy,orig):
+        data = self._get_comp_dict(comp_mode,self._copies)
+        assert(not copy in data)
+        data[copy] = orig
         return self
 
-    def set_prop(self,ports,properties,handle=None):
-        mode = self._current_mode
+    def set_op(self,comp_mode,out,expr,integrate=False):
+        data = self._make_comp_dict(comp_mode,self._ops)
+        data[out] = expr
+        return self
+
+    def set_info(self,comp_mode,scale_mode,ports,properties,handle=None):
+        data = self._make_scale_dict(comp_mode,scale_mode,self._info)
+
         for port in ports:
             assert(port in self._inputs or port in self._outputs)
-            assert(not port in self._propmap)
-            if not mode in self._propmap:
-                self._propmap[mode] = {}
-            if not port in self._propmap[mode]:
-                self._propmap[mode][port] = {}
+            if not port in data:
+                data[port] = {}
 
-            self._propmap[mode][port][handle] = properties
+            assert(not handle in data[port])
+            data[port][handle] = properties
 
         return self
 
@@ -335,29 +339,39 @@ class Block:
         assert(port in self._inputs or port in self._outputs)
         return port in self._outputs
 
+    def _check_comp_dict(self,data):
+        for comp_mode in self._comp_modes:
+            assert(comp_mode in data)
+            yield comp_mode,data[comp_mode]
+
+    def _check_scale_dict(self,data):
+        for comp_mode,datum in self._check_comp_dict(data):
+            for scale_mode in self._scale_modes[comp_mode]:
+                assert(scale_mode in datum)
+                yield comp_mode,scale_mode,datum[scale_mode]
+
     def check(self):
-        for inp in self._inputs:
-            for mode in self._modes:
-                assert(inp in self._sigmap)
-                assert(inp in self._propmap[mode])
+        for comp_mode,data in self._check_comp_dict(self._copies):
+            continue
 
+        for comp_mode,_ in self._check_comp_dict(self._ops):
+            continue
 
-        for out in self._outputs:
-            assert(out in self._ops or out in self._copies)
-            assert(out in self._sigmap)
-
-            for mode in self._modes:
-                assert(mode in self._propmap)
-                assert(out in self._propmap[mode])
-                if out in self._copies \
-                   and mode in self._copies[out]:
-                    assert(self._copies[out][mode] in self._outputs)
-
+        for comp_mode in self._comp_modes:
+            for out in self._outputs:
+                if out in self._copies[comp_mode]:
+                    assert(self._copies[comp_mode][out] in self._outputs)
                 else:
-                    assert(mode in self._ops[out])
-                    expr = self._ops[out][mode]
-                    inps = expr.vars()
-                    for inp in inps:
+                    assert(out in self._ops[comp_mode])
+                    expr = self._ops[comp_mode][out]
+                    for inp in expr.vars():
                         assert(inp in self._inputs)
+
+
+        for comp_mode,data in self._check_comp_dict(self._signals):
+            continue
+
+        for comp_mode,scale_mode,data in self._check_scale_dict(self._info):
+            continue
 
         return self

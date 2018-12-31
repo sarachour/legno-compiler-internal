@@ -140,7 +140,7 @@ class ConcCirc:
 
     @staticmethod
     def from_json(board,obj):
-        circ = ConcCirc(board,obj['name'])
+        circ = ConcCirc(board)
         for inst in obj['insts']:
             assert(inst['board'] == board.name)
             config = Config.from_json(inst['config'])
@@ -260,28 +260,31 @@ class ConcCirc:
             out_label = "|".join(map(
                 lambda args: "<o%d> %s" % (args[0],args[1]),
                 enumerate(blkdata['outputs'])))
-            blk_label = "%s|%s" % (blkdata['block_name'],blkdata['block_loc'])
+            blk_name = blkdata['block_name']
+            blk_loc = blkdata['block_loc']
+            blk_label = "%s|%s" % (blk_name,blk_loc)
             cfg = blkdata['block_config']
-            mode_label = "cm-m:%s|sc-m:%s" % (cfg.mode, cfg.scale_mode)
+            mode_label = "cm-m:%s|sc-m:%s" % (cfg.comp_mode, cfg.scale_mode)
             label = "{{%s}|{%s}|{%s}|{%s}}}" %  \
                     (inp_label,blk_label,mode_label,out_label)
             st = "%s [label=\"%s\"]" % (varfn(idx),label)
             q(st)
 
             for port,math_label,scf,kind in cfg.labels():
-
                 kind = kind.value
                 label = "%s %s*%s" % (kind,math_label,scf)
                 st = "%s [label=\"%s\"]" % (labelfn(),label)
+                _,portidx = from_id[(blk_name,blk_loc,port)]
                 q(st)
-                st = "%s:%s -> %s" % (varfn(idx),port,labelfn())
+                st = "%s:%s -> %s" % (varfn(idx),portidx,labelfn())
                 q(st)
                 label_idx += 1
 
             for port,value in cfg.values():
                 st = "%s [label=\"%s\"]" % (valuefn(),value)
                 q(st)
-                st = "%s -> %s:%s" % (valuefn(),varfn(idx),port)
+                _,portidx = from_id[(blk_name,blk_loc,port)]
+                st = "%s -> %s:%s" % (valuefn(),varfn(idx),portidx)
                 q(st)
                 value_idx += 1
 

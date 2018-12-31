@@ -204,8 +204,11 @@ class JauntProb:
 
 
 
-def bp_ival_port_to_range(block,mode,port,handle=None):
-    port_props = block.props(mode,port,handle=handle)
+def bp_ival_port_to_range(block,config,port,handle=None):
+    port_props = block.info(config.comp_mode,\
+                            config.scale_mode,\
+                            port,\
+                            handle=handle)
     if isinstance(port_props,props.AnalogProperties):
         lb,ub,units = port_props.interval()
         return IRange(lb,ub)
@@ -222,12 +225,12 @@ def bp_ival_hw_port_op_ranges(prob,circ):
 
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
-        mode = config.mode
+        mode = config.comp_mode
         for port in block.inputs + block.outputs:
-            hwrng = bp_ival_port_to_range(block,mode,port)
+            hwrng = bp_ival_port_to_range(block,config,port)
             prob.set_hardware_range(block_name,loc,port,hwrng)
             for handle in block.handles(mode,port):
-                hwrng = bp_ival_port_to_range(block,mode,port, \
+                hwrng = bp_ival_port_to_range(block,config,port, \
                                               handle=handle)
                 prob.set_hardware_range(block_name,loc,port,hwrng,\
                                         handle=handle)
@@ -235,9 +238,7 @@ def bp_ival_hw_port_op_ranges(prob,circ):
 def bp_ival_math_dac_ranges(prob,circ):
      for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
-        mode = config.mode
         for port in block.inputs + block.outputs:
-            port_props = block.props(mode,port)
             if config.has_dac(port):
                 value = config.dac(port)
                 mrng = IValue(value)
@@ -246,11 +247,10 @@ def bp_ival_math_dac_ranges(prob,circ):
 def bp_ival_math_label_ranges(prob,circ):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
-        mode = config.mode
         for port in block.inputs + block.outputs:
             if config.has_label(port):
                 label = config.label(port)
-                handle = block.get_dynamics(port,mode).toplevel()
+                handle = block.get_dynamics(config.comp_mode,port).toplevel()
                 lb,ub = circ.interval(label)
                 mrng = IRange(lb,ub)
                 prob.set_math_range(block_name,loc,port,mrng,\
@@ -282,8 +282,7 @@ def bp_ival_math_classify_ports(prob,variables):
     return free,bound
 
 def bpder_derive_output_port(prob,circ,block,config,loc,port):
-    comp_mode = config.mode
-    expr = block.get_dynamics(port,comp_mode)
+    expr = block.get_dynamics(config.comp_mode,port)
     handles = expr.handles()
     # test to see if we have computed the interval
     computed_interval = True
@@ -391,8 +390,8 @@ def bp_bind_coefficients(prob,circ):
 
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
-        for out,expr in block.dynamics(mode=config.mode):
-            scf = block.scale_factor(out,mode=config.scale_mode)
+        for out,expr in block.dynamics(config.comp_mode):
+            scf = block.scale_factor(config.comp_mode,config.scale_mode,out)
 
             if scf != 1.0:
                 prob.set_coefficient(block_name,out,loc,scf)
@@ -403,14 +402,14 @@ def bp_decl_scaling_factors(prob,circ):
         block = circ.board.block(block_name)
         for output in block.outputs:
             prob.decl_scf(block_name,loc,output)
-            for handle in block.handles(config.mode,output):
+            for handle in block.handles(config.comp_mode,output):
                 prob.decl_scf(block_name,loc,output,handle=handle)
 
         for inp in block.inputs:
             prob.decl_scf(block_name,loc,inp)
 
         for output in block.outputs:
-            for orig in block.copies(config.mode,output):
+            for orig in block.copies(config.comp_mode,output):
                 copy_scf = prob.get_scf(block_name,loc,output)
                 orig_scf = prob.get_scf(block_name,loc,orig)
                 prob.eq(jop.JVar(orig_scf),jop.JVar(copy_scf))
@@ -565,7 +564,7 @@ def bpgen_traverse_dynamics(prob,block,loc,out,expr):
 def bp_generate_problem(prob,circ):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
-        for out,expr in block.dynamics(mode=config.mode):
+        for out,expr in block.dynamics(config.comp_mode):
             bpgen_traverse_dynamics(prob,block,loc,out,expr)
 
         for port in block.outputs + block.inputs:
@@ -636,7 +635,7 @@ def sp_update_circuit(prob,circ,assigns):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for port in block.outputs + block.inputs:
-            propobj= block.props(config.mode,port)
+            propobj= block.info(config.comp_mode,config.scale_mode,port)
             if config.has_dac(port):
                 scale_factor = bindings[(block_name,loc,port,None)]
                 value = config.dac(port)
@@ -734,10 +733,10 @@ def iter_scaled_circuits(circ):
     choices = []
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
-        modes = block.scale_modes
-        if len(modes) > 1:
-            labels.append((block_name,loc))
-            choices.append(modes)
+        assert(not config.comp_mode is None)
+        modes = block.scale_modes(config.comp_mode)
+        labels.append((block_name,loc))
+        choices.append(modes)
 
     for choice in itertools.product(*choices):
         for (block_name,loc),scale_mode in zip(labels,choice):
@@ -759,6 +758,13 @@ def scale(circ,noise_analysis=False):
             print("[[FAILURE]]")
             continue
         else:
-            sp_update_circuit(prob,circ,
+            if not 'freevariables' in sln:
+                print("[[FAILURE]]")
+                succ,result = sln
+                assert(result is None)
+                assert(succ == False)
+                continue
+
+            sp_update_circuit(prob,orig_circ,
                               sln['freevariables'])
-            yield circ
+            yield orig_circ
