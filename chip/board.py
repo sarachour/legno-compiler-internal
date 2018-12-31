@@ -127,6 +127,13 @@ class Board(Layer):
     def mode(self):
         return self._mode
 
+    def set_time_constant(self,v):
+        self.set_meta('time-constant',v)
+
+    @property
+    def time_constant(self):
+        return self.meta('time-constant')
+
     def set_meta(self,key,value):
         self._metadata[key] = value
 

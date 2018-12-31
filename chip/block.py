@@ -229,7 +229,6 @@ class Block:
     def info(self,comp_mode,scale_mode,port,handle=None):
         data = self._get_scale_dict(comp_mode,scale_mode, \
                                     self._info)
-        print(comp_mode,scale_mode,data)
         return data[port][handle]
 
     def handles(self,comp_mode,port):

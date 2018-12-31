@@ -167,13 +167,8 @@ def parse_pattern_conn(args,name):
 def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
                         name,index=False,debug=False):
     line = " ".join(args)
-    SIGND = {'+':False,'-':True}
     DEBUG = {'debug':True,'prod':False}
-    RANGED = {
-        'm':PortRangeType.MED,
-        'l':PortRangeType.LOW,
-        'h':PortRangeType.HIGH
-    }
+    
     cmd = "{chip:d} {tile:d} {slice:d}"
     if index:
         cmd += " {index:d}"
@@ -205,19 +200,13 @@ def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
     result = dict(result.named.items())
     for idx in range(0,n_signs):
         key = 'sign%d' % idx
-        if not result[key] in SIGND:
-            print("unknown sign: <%s>" % result[key])
-            return None
-
-        result[key] = SignType.from_abbrev(result[key])
+        value = result[key]
+        result[key] = SignType.from_abbrev(value)
 
     for idx in range(0,n_range_codes):
         key = 'range%d' % idx
-        if not result[key] in RANGED:
-            print("unknown sign: <%s>" % result[key])
-            return None
-
-        result[key] = RangeType.from_abbrev(result[key])
+        value = result[key]
+        result[key] = RangeType.from_abbrev(value)
 
     if debug:
         result['debug'] = DEBUG[result['debug']]
@@ -606,7 +595,8 @@ class ConstVal:
 
 class UseDACCmd(UseCommand):
 
-    def __init__(self,chip,tile,slice,value,inv=False):
+    def __init__(self,chip,tile,slice,value,
+                 out_range=RangeType.MED,inv=SignType.POS):
         UseCommand.__init__(self,
                             enums.BlockType.DAC,
                             CircLoc(chip,tile,slice))
@@ -616,6 +606,12 @@ class UseDACCmd(UseCommand):
         if not self._loc.index is None:
             self.fail("dac has no index <%d>" % loc.index)
 
+        assert(isinstance(inv,SignType))
+        assert(isinstance(out_range,RangeType))
+        if out_range == RangeType.LOW:
+            raise Exception("incompatible: low output")
+
+        self._out_range = out_range
         self._value = value
         self._inv = inv
 
@@ -743,16 +739,19 @@ class UseIntegCmd(UseCommand):
         UseCommand.__init__(self,
                             enums.BlockType.INTEG,
                             CircLoc(chip,tile,slice))
+        assert(isinstance(inv,SignType))
+        assert(isinstance(in_range,RangeType))
+        assert(isinstance(out_range,RangeType))
         if init_cond < -1.0 or init_cond > 1.0:
             self.fail("init_cond not in [-1,1]: %s" % init_cond)
 
         self._init_cond = init_cond
         self._inv = inv
-        if in_range == PortRangeType.HIGH and \
-           out_range == PortRangeType.LOW:
+        if in_range == RangeType.HIGH and \
+           out_range == RangeType.LOW:
             raise Exception("incompatible: high input and low output")
-        elif in_range == PortRangeType.LOW and \
-             out_range == PortRangeType.HIGH:
+        elif in_range == RangeType.LOW and \
+             out_range == RangeType.HIGH:
             raise Exception("incompatible: high input and low output")
 
         self._in_range = in_range
@@ -822,9 +821,17 @@ class UseFanoutCmd(UseCommand):
     def __init__(self,chip,tile,slice,index,
                  in_range,
                  inv0=False,inv1=False,inv2=False):
+
+        assert(isinstance(inv0,SignType))
+        assert(isinstance(inv1,SignType))
+        assert(isinstance(inv2,SignType))
+        assert(isinstance(in_range,RangeType))
+
         UseCommand.__init__(self,
                             enums.BlockType.FANOUT,
                             CircLoc(chip,tile,slice,index))
+        if in_range == RangeType.LOW:
+            raise Exception("incompatible: low output")
 
         self._inv = [inv0,inv1,inv2]
         self._in_range = in_range
@@ -885,14 +892,22 @@ class UseMultCmd(UseCommand):
 
 
     def __init__(self,chip,tile,slice,index,
-                 in0_range,in1_range,out_range,
-                 coeff=0,use_coeff=False,inv=False):
+                 in0_range=RangeType.MED,
+                 in1_range=RangeType.MED,
+                 out_range=RangeType.MED,
+                 coeff=0,use_coeff=False,
+                 inv=SignType.POS):
         UseCommand.__init__(self,
                             enums.BlockType.MULT,
                             CircLoc(chip,tile,slice,index))
 
         if coeff < -1.0 or coeff > 1.0:
             self.fail("value not in [-1,1]: %s" % coeff)
+
+        assert(isinstance(inv,SignType))
+        assert(isinstance(in0_range,RangeType))
+        assert(isinstance(in1_range,RangeType))
+        assert(isinstance(out_range,RangeType))
 
         self._use_coeff = use_coeff
         self._coeff = coeff
@@ -938,7 +953,6 @@ class UseMultCmd(UseCommand):
                               in1_range=RangeType.MED,
                               out_range=result1['range1'],
                               use_coeff=True,
-                              inv=result2['sign0'],
                               coeff=result1['value0'])
         elif not result2 is None:
             return UseMultCmd(result2['chip'],result2['tile'],
@@ -946,7 +960,6 @@ class UseMultCmd(UseCommand):
                               in0_range=result2['range0'],
                               in1_range=result2['range1'],
                               out_range=result2['range2'],
-                              inv=result2['sign0'],
                               use_coeff=False, coeff=0)
 
         else:

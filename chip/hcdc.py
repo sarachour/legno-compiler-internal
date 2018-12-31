@@ -68,13 +68,34 @@ def make_dig_props(rng,value=1.0):
                 .check()
     return info
 
+def apply_blacklist(options,blacklist):
+    def in_blacklist(opt,blist):
+        for entry in blacklist:
+            match = True
+            for ov,ev in zip(opt,entry):
+                if not ev is None and ov != ev:
+                    match = False
+
+            if match:
+                return True
+        return False
+
+    for opt in options:
+        if in_blacklist(opt,blacklist):
+            continue
+        yield opt
+
 def integ_scale_modes(integ):
     opts = [
         chipcmd.SignType.options(),
         chipcmd.RangeType.options(),
         chipcmd.RangeType.options()
     ]
-    modes = list(itertools.product(*opts))
+    blacklist = [
+        (None,chipcmd.RangeType.LOW,chipcmd.RangeType.HIGH),
+        (None,chipcmd.RangeType.HIGH,chipcmd.RangeType.LOW)
+    ]
+    modes = list(apply_blacklist(itertools.product(*opts),blacklist))
     integ.set_scale_modes("*",modes)
     for mode in modes:
         sign,inrng,outrng = mode
@@ -98,8 +119,20 @@ def mult_scale_modes(mult):
         chipcmd.RangeType.options(),
         chipcmd.RangeType.options()
     ]
-    vga_modes = list(itertools.product(*opts_vga))
-    mul_modes = list(itertools.product(*opts_def))
+    blacklist_vga = [
+        (chipcmd.RangeType.LOW,chipcmd.RangeType.HIGH)
+    ]
+    blacklist_mult = [
+        (chipcmd.RangeType.LOW,chipcmd.RangeType.LOW,chipcmd.RangeType.HIGH),
+        (chipcmd.RangeType.MED,chipcmd.RangeType.LOW,chipcmd.RangeType.HIGH),
+        (chipcmd.RangeType.LOW,chipcmd.RangeType.MED,chipcmd.RangeType.HIGH),
+        (chipcmd.RangeType.HIGH,chipcmd.RangeType.HIGH,chipcmd.RangeType.LOW),
+        (chipcmd.RangeType.HIGH,chipcmd.RangeType.MED,chipcmd.RangeType.LOW),
+        (chipcmd.RangeType.MED,chipcmd.RangeType.HIGH,chipcmd.RangeType.LOW)
+
+    ]
+    vga_modes = list(apply_blacklist(itertools.product(*opts_vga),blacklist_vga))
+    mul_modes = list(apply_blacklist(itertools.product(*opts_def),blacklist_mult))
     mult.set_scale_modes("mul",mul_modes)
     mult.set_scale_modes("vga",vga_modes)
     for mode in mul_modes:
@@ -135,9 +168,12 @@ def mult_scale_modes(mult):
 def dac_scale_modes(dac):
     opts = [
         chipcmd.SignType.options(),
-        [chipcmd.RangeType.MED,chipcmd.RangeType.HIGH]
+        chipcmd.RangeType.options()
     ]
-    modes = list(itertools.product(*opts))
+    blacklist = [
+        (None,chipcmd.RangeType.LOW)
+    ]
+    modes = list(apply_blacklist(itertools.product(*opts),blacklist))
     dac.set_scale_modes("*",modes)
     for mode in modes:
         sign,rng = mode
@@ -152,9 +188,12 @@ def fanout_scale_modes(fanout):
         chipcmd.SignType.options(),
         chipcmd.SignType.options(),
         chipcmd.SignType.options(),
-        [chipcmd.RangeType.MED,chipcmd.RangeType.HIGH]
+        chipcmd.RangeType.options()
     ]
-    modes = list(itertools.product(*opts))
+    blacklist = [
+        (None,None,None,chipcmd.RangeType.LOW)
+    ]
+    modes = list(apply_blacklist(itertools.product(*opts),blacklist))
     fanout.set_scale_modes("*",modes)
     for mode in modes:
         inv0,inv1,inv2,rng = mode
@@ -356,10 +395,10 @@ def make_board():
            [tile_inp,tile_out,chip_inp,chip_out,inv_conn] + \
            [due_dac,due_adc])
 
-
-    hw.set_meta("hardware_time_us", 126000)
-    hw.set_meta("adc_sample_us", 3)
-    hw.set_meta("adc_delta", 1.0/128)
+    hw.set_time_constant(1.0/126000.0)
+    #hw.set_meta("hardware_time_us", 126000)
+    #hw.set_meta("adc_sample_us", 3)
+    #hw.set_meta("adc_delta", 1.0/128)
 
     chips = map(lambda i : hw.layer(i),range(0,n_chips))
     for chip_idx,chip in enumerate(chips):

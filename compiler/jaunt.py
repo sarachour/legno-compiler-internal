@@ -298,9 +298,6 @@ def bpder_derive_output_port(prob,circ,block,config,loc,port):
 
     # find intervals for free variables
     variables = list(map(lambda v: (block.name,loc,v), expr.vars()))
-    print("-----------------")
-    print(config)
-    print("variables=%s" % variables)
     free,bound = bp_ival_hardware_classify_ports(prob, variables)
     assert(len(free) == 0)
     free,bound = bp_ival_math_classify_ports(prob, variables)
