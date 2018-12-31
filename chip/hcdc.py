@@ -107,7 +107,7 @@ def mult_scale_modes(mult):
         scf = outrng.coeff()/(in0rng.coeff()*in1rng.coeff())
         mult.set_info("mul",mode,["in0"],make_ana_props(in0rng))
         mult.set_info("mul",mode,["in1"],make_ana_props(in1rng))
-        mult.set_info("vga",mode,["coeff"],make_dig_props(chipcmd.RangeType.MED))
+        mult.set_info("mul",mode,["coeff"],make_dig_props(chipcmd.RangeType.MED))
         mult.set_info("mul",mode,["out"],make_ana_props(outrng))
         mult.set_scale_factor("mul",mode,'out', scf)
 
