@@ -2,7 +2,7 @@ import parse as parselib
 import lib.cstructs as cstructs
 import lib.enums as enums
 import lib.util as util
-from lib.base_command import Command,ArduinoCommand
+from lib.base_command import Command,ArduinoCommand,OptionalValue
 import math
 import construct
 import matplotlib.pyplot as plt
@@ -21,26 +21,46 @@ def build_exp_ctype(exp_data):
         }
     }
 
+def do_parse(cmd,args,ctor):
+    line = " ".join(args)
+    if cmd == "" or cmd is None:
+        full_cmd = ctor.name()
+    else:
+        full_cmd = " ".join([ctor.name(),cmd])
+    result = parselib.parse(full_cmd,line)
+    if result is None:
+        return OptionalValue.error("usage:[%s]\nline:[%s]" % (full_cmd,line))
+
+    obj = ctor(**result.named)
+    return OptionalValue.value(obj)
+
+def strict_do_parse(cmd,args,ctor):
+    result = do_parse(cmd,args,ctor)
+    if result.success:
+        return result.value
+
+    raise Exception(result.message)
 
 
-class ResetCmd(ArduinoCommand):
+class MicroResetCmd(ArduinoCommand):
 
     def __init__(self):
         ArduinoCommand.__init__(self)
 
     @staticmethod
     def name():
-        return 'reset'
+        return 'micro_reset'
 
     @staticmethod
     def desc():
-        return "reset any set flags, values and buffers."
+        return "[microcontroller] reset any set flags, values and buffers on the microcontroller."
 
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.RESET.name,
             'args':{
-                'ints':[0,0,0]
+                'ints':[0,0,0],
+                'bool':False
             }
         })
 
@@ -52,67 +72,60 @@ class ResetCmd(ArduinoCommand):
 
     @staticmethod
     def parse(args):
-        if len(args) != 0:
-            print("usage: %s" % (ResetCmd.name()))
-            return None
-
-        return ResetCmd()
+        return strict_do_parse("", args, MicroResetCmd)
 
     def __repr__(self):
-        return "reset"
+        return self.name()
 
-class UseDueADCCmd(ArduinoCommand):
+
+
+class MicroUseADCCmd(ArduinoCommand):
     def __init__(self,adc_no):
         ArduinoCommand.__init__(self)
         self._adc_id = adc_no
 
     @staticmethod
     def name():
-        return "use_due_adc"
+        return "micro_use_adc"
 
     @staticmethod
     def desc():
-        return "use the arduino's analog to digital converter."
+        return "[microcontroller] use the arduino's analog to digital converter."
 
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.USE_ADC.name,
             'args':{
-                'ints':[self._adc_id,0,0]
+                'ints':[self._adc_id,0,0],
+                'bool':False
             }
         })
 
 
     @staticmethod
     def parse(args):
-        line = " ".join(args)
-        result = parselib.parse("{arduino_adc:d}",line)
-        if result is None:
-            print("usage: %s <arduino_adc_id>" % (UseDueADCCmd.name()))
-            return None
-
-        return UseDueADCCmd(result['arduino_adc'])
+        return strict_do_parse("{adc_no:d}", args, MicroUseADCCmd)
 
     def execute(self,state):
         state.use_adc(self._adc_id)
         ArduinoCommand.execute(self,state)
 
     def __repr__(self):
-        return "use_due_adc %d" % self._adc_id
+        return "%s %d" % (self.name(), self._adc_id)
 
 
-class GetTimeBetweenSamplesCmd(ArduinoCommand):
+class MicroGetTimeDeltaCmd(ArduinoCommand):
 
     def __init__(self):
         ArduinoCommand.__init__(self)
 
     @staticmethod
     def name():
-        return 'get_time_between_samples'
+        return 'micro_get_time_delta'
 
     @staticmethod
     def desc():
-        return "get the time between samples"
+        return "[microcontroller] get the time between samples"
 
 
     def __repr__(self):
@@ -120,47 +133,42 @@ class GetTimeBetweenSamplesCmd(ArduinoCommand):
 
     @staticmethod
     def parse(args):
-        if len(args) > 0:
-            print("usage: %s" % GetTimeBetweenSamplesCmd.name())
-            return None
-
-        return GetTimeBetweenSamplesCmd()
+        return strict_do_parse("", args, MicroGetTimeDeltaCmd)
 
 
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.GET_TIME_BETWEEN_SAMPLES.name,
             'args':{
-                'ints':[0,0,0]
+                'ints':[0,0,0],
+                'bool':False
             }
         })
 
 
     def execute(self,state):
-        line = ArduinoCommand.execute(self,state)
-        print(">> %s" % line)
         if state.dummy:
             return;
 
+        line = ArduinoCommand.execute(self,state)
         resp = state.arduino.readline()
         tb_samples = float(resp.strip())
         state.time_between_samples_s = tb_samples*0.001
-        print("time-between-samples: %s" % tb_samples)
         return tb_samples
 
 
-class GetNumADCSamplesCmd(ArduinoCommand):
+class MicroGetNumADCSamplesCmd(ArduinoCommand):
 
     def __init__(self):
         ArduinoCommand.__init__(self)
 
     @staticmethod
     def name():
-        return 'get_num_adc_samples'
+        return 'micro_get_num_adc_samples'
 
     @staticmethod
     def desc():
-        return "get the number of samples"
+        return "[microcontroller] get the number of adc samples"
 
 
     def __repr__(self):
@@ -168,18 +176,14 @@ class GetNumADCSamplesCmd(ArduinoCommand):
 
     @staticmethod
     def parse(args):
-        if len(args) > 0:
-            print("usage: %s" % GetNumADCSamplesCmd.name())
-            return None
-
-        return GetNumADCSamplesCmd()
-
+        return strict_do_parse("", args, MicroGetNumADCSamplesCmd)
 
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.GET_NUM_ADC_SAMPLES.name,
             'args':{
-                'ints':[0,0,0]
+                'ints':[0,0,0],
+                'bool':False
             }
         })
 
@@ -189,26 +193,24 @@ class GetNumADCSamplesCmd(ArduinoCommand):
             return
 
         line = ArduinoCommand.execute(self,state)
-        print(">> %s" % line)
         resp = state.arduino.readline()
         n_samples = int(resp.strip())
         state.n_adc_samples = n_samples
-        print("num-adc-samples: %s" % n_samples)
         return n_samples
 
 
-class GetNumDACSamplesCmd(ArduinoCommand):
+class MicroGetNumDACSamplesCmd(ArduinoCommand):
 
     def __init__(self):
         ArduinoCommand.__init__(self)
 
     @staticmethod
     def name():
-        return 'get_num_dac_samples'
+        return 'micro_get_num_dac_samples'
 
     @staticmethod
     def desc():
-        return "get the number of samples"
+        return "[microcontroller] get the number of dac samples"
 
 
     def __repr__(self):
@@ -217,18 +219,15 @@ class GetNumDACSamplesCmd(ArduinoCommand):
 
     @staticmethod
     def parse(args):
-        if len(args) > 0:
-            print("usage: %s" % GetNumDACSamplesCmd.name())
-            return None
-
-        return GetNumDACSamplesCmd()
-
+        return strict_do_parse("", args, \
+                        MicroGetNumDACSamplesCmd)
 
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.GET_NUM_DAC_SAMPLES.name,
             'args':{
-                'ints':[0,0,0]
+                'ints':[0,0,0],
+                'bool':False
             }
         })
 
@@ -238,65 +237,50 @@ class GetNumDACSamplesCmd(ArduinoCommand):
             return
 
         line = ArduinoCommand.execute(self,state)
-        print(">> %s" % line)
         resp = state.arduino.readline()
         n_samples = int(resp.strip())
         state.n_dac_samples = n_samples
-        print("num-dac-samples: %s" % n_samples)
         return n_samples
 
 
-class GetDueADCValuesCmd(ArduinoCommand):
+class MicroGetADCValuesCmd(ArduinoCommand):
 
-    def __init__(self,filename,differential=True):
+    def __init__(self,adc_id,filename):
         ArduinoCommand.__init__(self)
         self._filename = filename
-        self._differential = differential
+        self._adc_id = adc_id
 
     @staticmethod
     def name():
-        return 'get_due_adc_values'
+        return 'micro_get_adc_values'
 
     @staticmethod
     def desc():
-        return "use the arduino's analog to digital converter."
+        return "[microcontroller] get adc values."
 
 
     def execute_read_op(self,state,adc_id,n,offset):
         data_header = build_exp_ctype({
             'type':enums.ExpCmdType.GET_ADC_VALUES.name,
             'args':{
-                'ints':[adc_id,n,offset]
+                'ints':[adc_id,n,offset],
+                'bool':False
             }
         })
 
         data_header_t = self._c_type
         byts = data_header_t.build(data_header)
         line = self.write_to_arduino(state,byts)
-        data_pos = []
-        data_neg = []
-        if state.dummy:
-            return range(0,n),range(-n,0)
-        else:
-            return data_pos,data_neg
+        print(line)
+        input("what do i do")
+        data = []
+        assert(len(data) <= n)
+        return data
 
     @staticmethod
     def parse(args):
-        line = " ".join(args)
-        types = ['differential','direct']
-        result = parselib.parse("{type} {filename}",line)
-        if result is None:
-            print("usage: %s <differential|direct> <filename>" % (GetDueADCValuesCmd.name()))
-            return None
-
-        if not result['type'] in types:
-            print("usage: %s <differential|direct> <filename>" % (GetDueADCValuesCmd.name()))
-            return None
-
-        is_diff = result['type'] == 'differential'
-        return GetDueADCValuesCmd(result['filename'],
-                               differential=is_diff)
-
+        return strict_do_parse("{adc_id:d} {filename:W}", args, \
+                        MicroGetADCValuesCmd)
 
     def plot_data(self,filename,data):
         time = data['time']
@@ -316,26 +300,22 @@ class GetDueADCValuesCmd(ArduinoCommand):
         chunksize_shorts = int(chunksize_bytes/2)
 
         data = {}
-        data['time'] = range(0,n)
-        data['adcs'] = {}
-        for adc_id in state.adcs_in_use():
-            data_p = []
-            data_n = []
-            for offset in range(0,n,chunksize_shorts):
-                datum_p,datum_n = self.execute_read_op(state,
-                                     adc_id,
-                                     chunksize_shorts,
-                                     offset)
-                data_p += datum_p
-                data_n += datum_n
-
-            data['adcs'][adc_id] = {'pos':data_p,'neg':data_n}
-
-        self.plot_data("adc_data.png",data)
-        return data
+        time = np.linspace(0,state.time_between_samples_s*n,n)
+        values = np.zeros(n)
+        for offset in range(0,n,chunksize_shorts):
+            datum = self.execute_read_op(state,
+                                         adc_id,
+                                         chunksize_shorts,
+                                         offset)
+            for i,value in enumerate(datum):
+                print(time[offset+i],value)
+                values[offset+i] = value
 
 
-class UseDueDACCmd(ArduinoCommand):
+        return time,values
+
+
+class MicroUseDACCmd(ArduinoCommand):
 
     def __init__(self,dac_id):
         ArduinoCommand.__init__(self)
@@ -345,7 +325,7 @@ class UseDueDACCmd(ArduinoCommand):
 
     @staticmethod
     def name():
-        return 'use_due_dac'
+        return 'micro_use_dac'
 
     @staticmethod
     def desc():
@@ -356,7 +336,8 @@ class UseDueDACCmd(ArduinoCommand):
         return build_exp_ctype({
             'type':enums.ExpCmdType.USE_DAC.name,
             'args':{
-                'ints':[self._dac_id,0,0]
+                'ints':[self._dac_id,0,0],
+                'bool':False
             }
         })
 
@@ -368,55 +349,49 @@ class UseDueDACCmd(ArduinoCommand):
 
     @staticmethod
     def parse(args):
-        line = " ".join(args)
-        result = parselib.parse("{arduino_dac:d}",line)
-        if result is None:
-            print("usage: %s <arduino_dac_id>" % (UseDueDACCmd.name()))
-            return None
-
-        return UseDueDACCmd(result['arduino_dac'])
-
+        return strict_do_parse("{dac_id:d}", args, \
+                        MicroUseDACCmd)
 
     def __repr__(self):
-        return "use_due_dac %d" % self._dac_id
+        return "%s %d" % (self.name(),self._dac_id)
 
 
 
-class SetDueDACValuesCmd(ArduinoCommand):
+class MicroSetDACValuesCmd(ArduinoCommand):
 
-    def __init__(self,dacid,pyexpr):
+    def __init__(self,dac_id,expr,scf,time_scf,periodic):
         ArduinoCommand.__init__(self)
-        self.dac_id = dacid
-        self.pyexpr = pyexpr
+        self.dac_id = dac_id
+        self.time_scf = time_scf
+        self.scf = scf
+        self.expr = expr
+        self.periodic = bool(periodic)
 
     @staticmethod
     def name():
-        return 'set_due_dac_values'
+        return 'micro_set_dac_values'
 
 
     @staticmethod
     def desc():
-        return "set the dac values to an expression."
-
+        return "[microconotroller] set the dac values to an expression." + \
+            "tau=time constant, scf=scaling factor for input, "+\
+            "periodic=is this input periodic."
 
     @staticmethod
     def parse(args):
-        def usage():
-            print("set_due_dac <dacid> <expr(t)>")
+        return strict_do_parse("{dac_id:d} {expr} {scf:g} {time_scf:g} {periodic:w}", \
+                        args, \
+                        MicroSetDACValuesCmd)
 
-        if len(args) < 2:
-            usage()
-            return None
 
-        dacid = int(args[0])
-        expr = " ".join(args[1:])
-        return SetDueDACValuesCmd(dacid,expr)
 
     def execute_write_op(self,state,buf,offset):
         data_header = build_exp_ctype({
             'type':enums.ExpCmdType.SET_DAC_VALUES.name,
             'args':{
-                'ints':[self.dac_id,len(buf),offset]
+                'ints':[self.dac_id,len(buf),offset],
+                'bool': self.period
             }
         })
 
@@ -428,6 +403,12 @@ class SetDueDACValuesCmd(ArduinoCommand):
         return self.write_to_arduino(state,byts_h + byts_d)
 
 
+    def compute_value(self,idx):
+        delta = state.time_between_samples_s
+        args = {'t':idx*delta*self.time_scf,'i':idx}
+        value = self.scf*util.eval_func(self.expr,args)
+        return args['t'],value
+
     def execute(self,state):
         if state.dummy:
             return
@@ -437,89 +418,53 @@ class SetDueDACValuesCmd(ArduinoCommand):
         chunksize_bytes = 1000;
         chunksize_floats = chunksize_bytes/4
         # delta in seconds
-        delta = state.time_between_samples_s
         offset = 0
         for idx in range(0,n):
-            args = {'t':idx*delta,'i':idx}
-            value = util.eval_func(self.pyexpr,args)
+            _,value = self.compute_value(idx)
             buf.append(value)
             if len(buf) == chunksize_floats:
                 line = self.execute_write_op(state,buf,offset)
-                print('  >> %s' % line)
                 offset += len(buf)
                 buf = []
-
-        n_ref_samples = state.n_dac_samples*int(state.sim_time/state.period)
-        for idx in range(0,n_ref_samples):
-            args = {'t':idx*delta,'i':idx}
-            value = util.eval_func(self.pyexpr,args)
-            state.write_input(self.dac_id,idx*delta,value)
 
         self.execute_write_op(state,buf,offset)
 
 
     def __repr__(self):
-        return "set_due_dac_values %d %s" % (self.dac_id,self.pyexpr)
+        return "%s %d %s %f %f %s" % \
+            (self.name(),self.dac_id,self.expr,
+             self.scf,self.time_scf,self.periodic)
 
 
-class SetOscVoltageRangeCmd(Command):
+class OscSetVoltageRangeCmd(Command):
 
-    def __init__(self,minval,maxval,differential,
-                 minval_low=None,maxval_low=None):
+    def __init__(self,chan_id,low,high):
         Command.__init__(self)
-        self._min_voltage = minval
-        self._max_voltage = maxval
-        self._differential = differential
-        self._min_voltage_low = minval_low
-        self._max_voltage_low = maxval_low
-
+        self._chan_id = chan_id
+        self._low = low
+        self._high = high
 
     @staticmethod
     def name():
-        return 'set_volt_ranges'
+        return 'osc_set_volt_range'
 
 
     @staticmethod
     def desc():
-        return "set the ranges of the voltages read from the oscilloscope."
+        return "[oscilloscope] set the ranges of the voltages read from the oscilloscope."
 
 
     def __repr__(self):
-        if not self._differential:
-            return "set_volt_ranges direct %f %f" % \
-                (self._min_voltage,self._max_voltage)
-        else:
-            return "set_volt_ranges differential %f %f %f %f" % \
-                (self._min_voltage_low,self._max_voltage_low,
-                 self._min_voltage,self._max_voltage)
+        return "%s %d %f %f" % (self.name(),self._chan_id,
+                                self._low,self._high)
+
 
     @staticmethod
     def parse(args):
-        if len(args) == 0:
-            print("usage: [differential|direct] ...")
-            return
+        return strict_do_parse("{chan_id:d} {low:g} {high:g}", \
+                        args, \
+                        OscSetVoltageRangeCmd)
 
-        line = " ".join(args[1:])
-        if args[0] == "differential":
-            result = parselib.parse("{minval_low:f} {maxval_low:f} {minval_high:f} {maxval_high:f}",line)
-            if result is None:
-                print(("usage: %s differential <low-minval> <low-maxval> "+
-                      "<hi-minval> <hi-maxval>") % SetOscVoltageRangeCmd.name())
-                return None
-            return SetOscVoltageRangeCmd(result['minval_high'],
-                                         result['maxval_high'],
-                                      differential=True,
-                                      minval_low=result['minval_low'],
-                                      maxval_low=result['maxval_low'])
-
-        elif args[0] == "direct":
-            result = parselib.parse("{minval:f} {maxval:f}")
-            if result is None:
-                print("usage: direct <minval> <maxval>")
-                return None
-
-            return SetOscVoltageRangeCmd(result['minval'],result['maxval'],
-                                      differential=False)
 
     def set_channel(self,state,chan,minv,maxv):
         vdivs = state.oscilloscope.VALUE_DIVISIONS
@@ -533,56 +478,54 @@ class SetOscVoltageRangeCmd(Command):
     def execute(self,state):
         if state.dummy:
             return
-        if self._differential:
-            self.set_channel(state,state.oscilloscope.analog_channel(1),
-                             self._min_voltage_low,self._max_voltage_low)
 
-        self.set_channel(state,state.oscilloscope.analog_channel(0),
-                         self._min_voltage,self._max_voltage)
+        vdivs = state.oscilloscope.VALUE_DIVISIONS
+        volt_offset = -(self._low+self._high)/2.0
+        volts_per_div = (self._high- self._low)/vdivs
+        state.oscilloscope \
+            .set_voltage_offset(chan,volt_offset)
+        state.oscilloscope \
+             .set_volts_per_division(chan,volts_per_div)
 
-class GetOscValuesCmd(Command):
 
-    def __init__(self,filename,differential=True):
+class OscGetValuesCmd(Command):
+
+    def __init__(self,filename,chan_low,chan_high=None):
         Command.__init__(self)
         self._filename = filename
-        self._differential = differential
-        self._save_image = False
+        self._differential = False if chan_high is None else True
+        self._chan_low = chan_low
+        self._chan_high = chan_high
 
     @staticmethod
     def name():
-        return 'get_osc_values'
+        return 'osc_get_values'
 
 
     @staticmethod
     def desc():
-        return "get the values read from an oscilloscope."
+        return "[oscilloscope] get the values read from an oscilloscope."
 
 
     @staticmethod
     def parse(args):
         line = " ".join(args)
         types = ['differential','direct']
-        result = parselib.parse("{type} {filename}",line)
-        if result is None:
-            print("usage: %s <differential|direct> <filename>" % (GetOscValuesCmd.name()))
-            return None
+        cmd1 = "differential {chan_low:d} {chan_high:d} {filename}"
+        opt_result = do_parse(cmd1, args, OscGetValuesCmd)
+        if opt_result.success:
+            return opt_result.value
 
-        if not result['type'] in types:
-            print("usage: %s <differential|direct> <filename>" % (GetOscValuesCmd.name()))
-            return None
-
-        is_diff = result['type'] == 'differential'
-        return GetOscValuesCmd(result['filename'],
-                               differential=is_diff)
+        cmd2 = "direct {chan_low:d} {filename}"
+        opt_result = do_parse(cmd2,args,OscGetValuesCmd)
+        if opt_result.success:
+            return opt_result.value
 
     def process_data(self,state,filename,chan1,chan2):
         data = {}
         data = waveform.TimeSeriesSet(state.sim_time)
         for ident,inp_t,inp_v in state.input_data():
             data.set_input(ident,inp_t,inp_v)
-
-        ref_t,ref_v = state.reference_data()
-        data.set_reference(ref_t,ref_v)
 
         # compute differential or direct
         if self._differential:
@@ -606,87 +549,45 @@ class GetOscValuesCmd(Command):
             fh.write(strdata)
         print("<wrote file>")
 
-    def plot_data(self,state,filename,chan1,chan2):
-        print("-> plotting")
-        ch1_t,ch1_v = chan1
-        for ident,time,value in state.input_data():
-            plt.scatter(time,value,label="input_%s" % ident,s=1.0)
-
-        plt.scatter(ch1_t,ch1_v,label="chan1",s=1.0)
-        if not chan2 is None:
-            ch2_t,ch2_v = chan2
-            plt.scatter(ch2_t,ch2_v,label="chan2",s=1.0)
-
-        ref_t,ref_v = state.reference_data()
-        plt.scatter(ref_t,ref_v,label="ref",s=1.0)
-        plt.legend()
-        plt.savefig(filename)
-        print("-> plotted")
-        plt.clf()
 
     def execute(self,state):
         if not state.dummy:
             props = state.oscilloscope.get_properties()
-            chan = state.oscilloscope.analog_channel(0)
+            chan = state.oscilloscope.analog_channel(self._chan_low)
 
 
             ch1 = state.oscilloscope.full_waveform(chan)
 
             ch2 = None
             if self._differential:
-                chan = state.oscilloscope.analog_channel(1)
+                chan = state.oscilloscope.analog_channel(self._chan_high)
                 ch2 = state.oscilloscope.full_waveform(chan)
 
-            if self._save_image:
-                imagename = self._filename.split(".")[0] + ".png"
-                self.plot_data(state,imagename,ch1,ch2)
             return self.process_data(state,self._filename,ch1,ch2)
 
 
     def __repr__(self):
-        return "get_osc_values %s" % (self._filename)
+        return "%s %s" % (self.name,self._filename)
 
 
-class SetSimTimeCmd(ArduinoCommand):
+class OscSetSimTimeCmd(Command):
 
-    def __init__(self,sim_time,period,frame_time=None):
-        ArduinoCommand.__init__(self)
-        if(sim_time <= 0):
-            self.fail("invalid simulation time: %s" % n_samples)
-
+    def __init__(self,sim_time,frame_time=None):
         self._sim_time = sim_time
-        self._period = period
         self._frame_time = (sim_time if frame_time is None else frame_time)
-
-
-    def build_ctype(self):
-        return build_exp_ctype({
-            'type':enums.ExpCmdType.SET_SIM_TIME.name,
-            'args':{
-                'floats':[self._sim_time*1000.0,
-                          self._period*1000.0,
-                          self._frame_time*1000.0]
-            }
-        })
-
 
     @staticmethod
     def name():
-        return 'set_sim_time'
+        return 'osc_set_sim_time'
 
     def __repr__(self):
-        return "set_sim_time %f %f" % (self._sim_time,self._period)
+        return "%s %f" % (self.name(),self._sim_time)
 
 
     @staticmethod
     def parse(args):
-        line = " ".join(args)
-        result = parselib.parse("{simtime_s:f} {period_s:f}",line)
-        if result is None:
-            print("usage: %s <# samples>" % (SetSimTimeCmd.name()))
-            return None
-
-        return SetSimTimeCmd(result['simtime_s'],result['period_s'])
+        return strict_do_parse("{sim_time:f}", args, \
+                               OscSetSimTimeCmd)
 
 
     def configure_oscilloscope(self,state,time_sec):
@@ -705,29 +606,79 @@ class SetSimTimeCmd(ArduinoCommand):
         return frame_sec
 
     def execute(self,state):
-        state.sim_time = self._sim_time
-        state.period = self._period
         if not state.dummy:
             frame_time_sec = self.configure_oscilloscope(state,self._sim_time)
             self._frame_time = frame_time_sec
-
-        ArduinoCommand.execute(self,state)
-
-
 
     @staticmethod
     def desc():
         return "set the number of samples to record (max 10000)"
 
 
-class ComputeOffsetsCmd(ArduinoCommand):
+    @staticmethod
+    def desc():
+        return "[oscilloscope] set the simulation time and input time"
+
+
+
+class MicroSetSimTimeCmd(ArduinoCommand):
+
+    def __init__(self,sim_time,input_time,frame_time=None):
+        ArduinoCommand.__init__(self)
+        if(sim_time <= 0):
+            self.fail("invalid simulation time: %s" % n_samples)
+
+        self._sim_time = sim_time
+        self._input_time = input_time
+        self._frame_time = (sim_time if frame_time is None else frame_time)
+
+
+    def build_ctype(self):
+        return build_exp_ctype({
+            'type':enums.ExpCmdType.SET_SIM_TIME.name,
+            'args':{
+                'floats':[self._sim_time*1000.0,
+                          self._period*1000.0,
+                          self._frame_time*1000.0],
+                'bool':False
+            }
+        })
+
+
+    @staticmethod
+    def name():
+        return 'micro_set_sim_time'
+
+    def __repr__(self):
+        return "%s %f %f" % (self.name(),self._sim_time,self._input_time)
+
+
+    @staticmethod
+    def parse(args):
+        return strict_do_parse("{sim_time:f} {input_time:f}", args, \
+                               MicroSetSimTimeCmd)
+
+
+    def execute(self,state):
+        state.sim_time = self._sim_time
+        state.period = self._period
+        ArduinoCommand.execute(self,state)
+
+
+
+    @staticmethod
+    def desc():
+        return "[microcontroller] set the simulation time and input time"
+
+
+class MicroComputeOffsetsCmd(ArduinoCommand):
 
     def __init__(self):
         ArduinoCommand.__init__(self)
 
     @staticmethod
     def name():
-        return 'compute_offsets'
+        return 'micro_compute_offsets'
 
     @staticmethod
     def desc():
@@ -738,7 +689,8 @@ class ComputeOffsetsCmd(ArduinoCommand):
         return build_exp_ctype({
             'type':enums.ExpCmdType.COMPUTE_OFFSETS.name,
             'args':{
-                'ints':[0,0,0]
+                'ints':[0,0,0],
+                'bool':False
             }
         })
 
@@ -748,24 +700,20 @@ class ComputeOffsetsCmd(ArduinoCommand):
 
     @staticmethod
     def parse(args):
-        if len(args) > 0:
-            print("usage: %s" % ComputeOffsetsCmd.name())
-            return None
-
-        return ComputeOffsetsCmd()
+        return strict_do_parse("",args,MicroComputeOffsetsCmd)
 
     def __repr__(self):
         return self.name()
 
 
-class UseAnalogChipCmd(ArduinoCommand):
+class MicroUseAnalogChipCmd(ArduinoCommand):
 
     def __init__(self):
         ArduinoCommand.__init__(self)
 
     @staticmethod
     def name():
-        return 'use_chip'
+        return 'micro_use_chip'
 
     @staticmethod
     def desc():
@@ -776,7 +724,8 @@ class UseAnalogChipCmd(ArduinoCommand):
         return build_exp_ctype({
             'type':enums.ExpCmdType.USE_ANALOG_CHIP.name,
             'args':{
-                'ints':[0,0,0]
+                'ints':[0,0,0],
+                'bool':False
             }
         })
 
@@ -787,63 +736,38 @@ class UseAnalogChipCmd(ArduinoCommand):
 
     @staticmethod
     def parse(args):
-        if len(args) > 0:
-            print("usage: %s" % UseAnalogChipCmd.name())
-            return None
-
-        return UseAnalogChipCmd()
+        return strict_do_parse("",args,MicroUseAnalogChipCmd)
 
     def __repr__(self):
         return self.name()
 
 
-class UseADCCommand(ArduinoCommand):
+class MicroUseOscCmd(ArduinoCommand):
 
     def __init__(self):
         ArduinoCommand.__init__(self)
 
     @staticmethod
     def name():
-        return 'use_ard_adc'
+        return 'micro_use_osc'
 
     @staticmethod
     def desc():
-        return "enable recording samples read from ADCs."
-
-
-    def execute(self,state):
-        state.use_adc = True
-        ArduinoCommand.execute(state)
-
-
-class UseOscilloscopeCmd(ArduinoCommand):
-
-    def __init__(self):
-        ArduinoCommand.__init__(self)
-
-    @staticmethod
-    def name():
-        return 'use_osc'
-
-    @staticmethod
-    def desc():
-        return "enable recording values from oscilloscope."
+        return "[microcontroller] setup trigger on pin 23 for oscilloscope."
 
 
 
     @staticmethod
     def parse(args):
-        if len(args) > 0:
-            print("usage: %s" % UseOscilloscopeCmd.name())
-            return None
+        return strict_do_parse("",args,MicroUseOscCmd)
 
-        return UseOscilloscopeCmd()
 
     def build_ctype(self):
         return build_exp_ctype({
             'type':enums.ExpCmdType.USE_OSC.name,
             'args':{
-                'ints':[0,0,0]
+                'ints':[0,0,0],
+                'bool':False
             }
         })
 
@@ -856,38 +780,27 @@ class UseOscilloscopeCmd(ArduinoCommand):
     def __repr__(self):
         return self.name()
 
-
-class RunCmd(ArduinoCommand):
+class OscSetupTrigger(Command):
 
     def __init__(self):
-        ArduinoCommand.__init__(self)
+        Command.__init__(self)
 
     @staticmethod
     def name():
-        return 'run'
+        return 'osc_setup_trigger'
 
     @staticmethod
     def desc():
-        return "run the configured experiment."
+        return "[oscilloscope] setup edge trigger on oscilloscope."
+
 
 
     @staticmethod
     def parse(args):
-        if len(args) > 0:
-            print("usage: %s" % RunCmd.run())
-            return None
+        return strict_do_parse("",args,OscSetupTrigger)
 
-        return RunCmd()
 
-    def build_ctype(self):
-        return build_exp_ctype({
-            'type':enums.ExpCmdType.RUN.name,
-            'args':{
-                'ints':[0,0,0]
-            }
-        })
-
-    def _exec_setup_osc(self,state):
+    def exec_setup_osc(self,state):
         if state.use_osc and not state.dummy:
             edge_trigger = osclib.Trigger(osclib.TriggerType.EDGE,
                                 state.oscilloscope.ext_channel(),
@@ -907,21 +820,37 @@ class RunCmd(ArduinoCommand):
             for key,val in props.items():
                 print("%s : %s" % (key,val))
 
-    def _exec_waitfor_arduino(self,state):
-        line = ArduinoCommand.execute(self,state)
-        if not state.dummy:
-            while line is None or not "::done::" in line:
-                print("resp:> %s" % line)
-                line = state.arduino.readline()
-            print("resp:> %s" % line)
-            print("<done>")
-            #input("<press enter to continue>")
 
-    def _exec_print_overflows(self,state):
-        print("==== overflow summary ====")
-        for handle,oflow in state.overflows():
-            print("%s overflow=%s" % (handle,oflow))
-        print("=========")
+    def __repr__(self):
+        return self.name()
+
+
+    def execute(self,state):
+        self.exec_setup_osc(state)
+
+class MicroSetupChipCmd(ArduinoCommand):
+
+    def __init__(self):
+        ArduinoCommand.__init__(self)
+
+
+    @staticmethod
+    def name():
+        return 'micro_setup_chip'
+
+    @staticmethod
+    def desc():
+        return "[microcontroller] calibrate+setup blocks/conns in chip."
+
+    @staticmethod
+    def parse(args):
+        return strict_do_parse("",args,MicroSetupChipCmd)
+
+
+
+    def __repr__(self):
+        return self.name()
+
 
     def execute(self,state):
         for stmt in state.calibrate_chip():
@@ -930,23 +859,101 @@ class RunCmd(ArduinoCommand):
         for stmt in state.configure_chip():
             stmt.apply(state)
 
-        self._exec_setup_osc(state)
 
-        for stmt in state.preexec_chip():
+class MicroGetOverflowCmd(ArduinoCommand):
+
+    def __init__(self):
+        ArduinoCommand.__init__(self)
+
+    @staticmethod
+    def name():
+        return 'micro_get_overflows'
+
+    @staticmethod
+    def desc():
+        return "[microcontroller] get chip integrator overflows."
+
+
+    @staticmethod
+    def parse(args):
+        return strict_do_parse("",args,MicroGetOverflowCmd)
+
+    def __repr__(self):
+        return self.name()
+
+    def execute(self,state):
+        for stmt in state.analyze_chip():
             stmt.apply(state)
 
-        self._exec_print_overflows(state)
-        time.sleep(0.5)
-        #input("<press enter to start>")
-        self._exec_waitfor_arduino(state)
+        print("==== overflow summary ====")
+        for handle,oflow in state.overflows():
+            print("%s overflow=%s" % (handle,oflow))
+        print("=========")
 
-        for stmt in state.postexec_chip():
-            stmt.apply(state)
 
-        self._exec_print_overflows(state)
+class MicroTeardownChipCmd(ArduinoCommand):
 
+    def __init__(self):
+        ArduinoCommand.__init__(self)
+
+    @staticmethod
+    def name():
+        return 'micro_teardown_chip'
+
+    @staticmethod
+    def desc():
+        return "[microcontroller] calibrate+teardown blocks/conns in chip."
+
+    @staticmethod
+    def parse(args):
+        return strict_do_parse("",args,MicroTeardownChipCmd)
+
+    def __repr__(self):
+        return self.name()
+
+    def execute(self,state):
         for stmt in state.teardown_chip():
             stmt.apply(state)
+
+
+class MicroRunCmd(ArduinoCommand):
+
+    def __init__(self):
+        ArduinoCommand.__init__(self)
+
+    @staticmethod
+    def name():
+        return 'micro_run'
+
+    @staticmethod
+    def desc():
+        return "[microcontroller] run the experiment."
+
+
+    @staticmethod
+    def parse(args):
+        return strict_do_parse("",args,MicroRunCmd)
+
+
+    def build_ctype(self):
+        return build_exp_ctype({
+            'type':enums.ExpCmdType.RUN.name,
+            'args':{
+                'ints':[0,0,0],
+                'bool':False
+            }
+        })
+
+
+    def execute(self,state):
+        line = ArduinoCommand.execute(self,state)
+        if not state.dummy:
+            while line is None or not "::done::" in line:
+                print("resp:> %s" % line)
+                line = state.arduino.readline()
+            print("resp:> %s" % line)
+            print("<done>")
+            #input("<press enter to continue>")
 
     def __repr__(self):
         return self.name()

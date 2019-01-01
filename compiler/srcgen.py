@@ -11,7 +11,7 @@ class GrendelProg:
     cmdstr = str(cmd)
     args = cmdstr.split()
     assert(cmd.__class__.name() == args[0])
-    test = cmd.__class__.parse(args[1:])
+    test = cmd.__class__.parse(args)
     if(test is None):
       raise Exception("failed to validate: %s" % cmd)
 
@@ -150,9 +150,12 @@ def gen_block(gprog,circ,block,locstr,config):
     cmd = gen_use_fanout(circ,block,locstr,config)
     gprog.add(cmd)
 
-  elif block.name == 'due_adc' or \
+  elif block.name == 'ext_chip_in' or \
        block.name == 'tile_in' or \
-       block.name == 'tile_out':
+       block.name == 'chip_in' or \
+       block.name == 'ext_chip_out' or \
+       block.name == 'tile_out' or \
+       block.name == 'chip_out':
     return
 
   else:
@@ -164,9 +167,11 @@ def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
     'integrator': 'integ',
     'fanout': 'fanout',
     'tile_out': 'tile_output',
+    'tile_in': 'tile_input',
     'tile_dac': 'dac',
     'multiplier':'mult',
-    'due_adc': 'chip_output'
+    'ext_chip_in': 'chip_output',
+    'ext_chip_out': 'chip_output'
   }
   TO_PORT_ID = {
     'in' : 0,
@@ -197,31 +202,128 @@ def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
 def parse(line):
   cmd = toplevel_cmd.parse(line)
   assert(not cmd is None)
+  cmd = toplevel_cmd.parse(str(cmd))
+  assert(not cmd is None)
   return cmd
 
-def preamble(gren,board,conc_circ,sim_time):
+def get_ext_dacs_in_use(board,conc_circ,menv):
+  info = {}
+  for loc,config in conc_circ.instances_of_block('ext_chip_in'):
+    waveform,periodic = menv.input(config.label('in'))
+    handle = board.handle_by_inst('ext_chip_in',loc)
+    assert(not handle is None)
+    info[handle] = {'label':config.label('in'),
+                    'scf':config.scf('in'),
+                    'waveform':waveform,
+                    'periodic':periodic}
+
+
+  return info
+
+def get_ext_adcs_in_use(board,conc_circ,menv):
+  info = {}
+  for loc,config in conc_circ.instances_of_block('ext_chip_out'):
+    handle = board.handle_by_inst('ext_chip_out',loc)
+    info[handle] = {'label':config.label('out'),
+                    'scf':config.scf('out')}
+
+
+  return info
+
+
+def preamble(gren,board,conc_circ,mathenv,hwenv):
+  dacs_in_use = get_ext_dacs_in_use(board,conc_circ,mathenv)
+  adcs_in_use = get_ext_adcs_in_use(board,conc_circ,mathenv)
+  # compute times
   tau = conc_circ.tau
   tc = board.time_constant
-  scaled_tc = tc/tau
-  scaled_runtime = sim_time*scaled_tc
-  gren.add(parse('reset'))
-  gren.add(parse('set_volt_ranges differential -1.5 2.5 -1.5 2.5'))
-  gren.add(parse('set_sim_time %f %f' % (scaled_runtime,scaled_runtime)))
-  gren.add(parse('get_num_adc_samples'))
-  gren.add(parse('get_num_dac_samples'))
-  gren.add(parse('get_time_between_samples'))
-  gren.add(parse('use_osc'))
+  scaled_tc_s = tc/tau
+  scaled_tc_us = tc/tau*1e6
+  scaled_sim_time = mathenv.sim_time*scaled_tc_s
+  scaled_input_time = mathenv.input_time*scaled_tc_s
+  gren.add(parse('micro_reset'))
+  # initialize oscilloscope
+  if hwenv.use_oscilloscope:
+    gren.add(parse('micro_use_osc'))
+    for chan,lb,ub in hwenv.oscilloscope.chan_ranges():
+       cmd = "osc_set_volt_range %d %f %f" % (chan,lb,ub)
+       gren.add(parse(cmd))
+       cmd = "osc_set_sim_time %f" % \
+             (scaled_sim_time)
+       gren.add(parse(cmd))
+
+  # initialize microcontroller
+  cmd = "micro_set_sim_time %f %f" % \
+             (scaled_sim_time,scaled_input_time)
+  gren.add(parse(cmd))
+
+  # flag adc/dac data for storage in buffer
+  for handle in adcs_in_use.keys():
+    out_no = hwenv.adc(handle)
+    print(out_no)
+    if not out_no is None:
+      gren.add(parse('micro_use_adc %d' % out_no))
+
+  for handle in dacs_in_use.keys():
+    in_no = hwenv.dac(handle)
+    gren.add(parse('micro_use_dac %d' % \
+                   (in_no)))
+
+
+  gren.add(parse('micro_get_num_adc_samples'))
+  gren.add(parse('micro_get_num_dac_samples'))
+  gren.add(parse('micro_get_time_delta'))
   #FIXME `use_due_dac` if there are external inputs
   #FIXME `use_due_adc` / `use_osc` if there are external outputs
-  gren.add(parse('compute_offsets'))
-  gren.add(parse('use_chip'))
+  gren.add(parse('micro_compute_offsets'))
+  gren.add(parse('micro_use_chip'))
 
-def postconfig(gren):
-  gren.add(parse('run'))
+  for handle,info in dacs_in_use.items():
+    in_no = hwenv.dac(handle)
+    gren.add(parse('micro_set_dac_values %d %s %f %f %s' % \
+                   (in_no,info['waveform'],\
+                    1.0/scaled_tc_s,info['scf'],\
+                    str(info['periodic'])
+                   )))
 
-def generate(board,conc_circ,sim_time=1.0):
+def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename):
+  if hwenv.use_oscilloscope:
+    gren.add(parse('osc_setup_trigger'))
+  gren.add(parse('micro_setup_chip'))
+  gren.add(parse('micro_get_overflows'))
+  gren.add(parse('micro_run'))
+  gren.add(parse('micro_get_overflows'))
+  gren.add(parse('micro_teardown_chip'))
+
+  adcs_in_use = get_ext_adcs_in_use(board,conc_circ,menv)
+  circ_bmark,circ_indices,circ_scale_index = \
+                    path_handler.grendel_file_to_args(filename)
+
+  raise Exception("TODO: save outputs in use.")
+  if hwenv.use_oscilloscope:
+    for out_no,mode in hwenv.oscilloscope.outputs:
+      if mode.type == OscOutputModes.DIFFERENTIAL:
+        ch1 = mode.low_chan
+        ch2 = mode.high_chan
+        filename = paths.output_waveform(circ_bmark, \
+                                         circ_indices, \
+                                         circ_scale_index, \
+                                         out_no)
+        gren.add(parse('osc_get_values differential %d %d %s.json' % \
+                       (ch1,ch2,filename)))
+      else:
+        raise Exception("unimplemented")
+
+  for out_no in hwenv.adcs:
+    filename = paths.output_waveform(circ_bmark, \
+                                         circ_indices, \
+                                         circ_scale_index, \
+                                         out_no)
+    parse('micro_get_adc_values %d %s.json'  % (filename))
+
+def generate(paths,board,conc_circ,menv,hwenv,filename):
   gren = GrendelProg()
-  preamble(gren,board,conc_circ,sim_time)
+  preamble(gren,board,conc_circ,menv,hwenv)
   for block_name,loc,config in conc_circ.instances():
     block = conc_circ.board.block(block_name)
     gen_block(gren,conc_circ,block,loc,config)
@@ -231,5 +333,5 @@ def generate(board,conc_circ,sim_time=1.0):
     gen_conn(gren,conc_circ,sblk,sloc,sport, \
              dblk,dloc,dport)
 
-  postconfig(gren)
+  postconfig(paths,gren,board,conc_circ,menv,hwenv,filename)
   return gren

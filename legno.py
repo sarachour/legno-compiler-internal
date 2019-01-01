@@ -12,7 +12,9 @@ import time
 from util import paths
 import json
 
-
+import bmark.menvs as menvs
+import bmark.hwenvs as hwenvs
+import bmark.diffeqs as bmark
 
 #import conc
 #import srcgen
@@ -57,9 +59,11 @@ jaunt_subp.add_argument('--scale-circuits', type=int,default=3,
                        help='number of scaled circuits to generate.')
 
 
-gren_subp = subparsers.add_parser('gen', help='generate grendel.')
-gren_subp.add_argument('--experiment', type=str,default='default',
-                       help='experiment to run.')
+gren_subp = subparsers.add_parser('srcgen', help='generate grendel.')
+gren_subp.add_argument('math_env', type=str,
+                       help='math environment.')
+gren_subp.add_argument('hw_env', type=str, \
+                        help='hardware environment')
 
 args = parser.parse_args()
 
@@ -67,9 +71,8 @@ path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
 
 if args.subparser_name == "arco":
     from chip.hcdc import board as hdacv2_board
-    import bmark.bmarks as bmark
 
-    problem = bmark.get_bmark(args.benchmark)
+    problem = bmark.get_prog(args.benchmark)
 
     for indices,conc_circ in \
         arco.compile(hdacv2_board,
@@ -88,7 +91,6 @@ if args.subparser_name == "arco":
 
 elif args.subparser_name == "jaunt":
     from chip.hcdc import board as hdacv2_board
-    import bmark.bmarks as bmark
 
     circ_dir = path_handler.abs_circ_dir()
     for dirname, subdirlist, filelist in os.walk(circ_dir):
@@ -115,9 +117,8 @@ elif args.subparser_name == "jaunt":
                         if n_scaled >= args.scale_circuits:
                             break
 
-elif args.subparser_name == "gen":
+elif args.subparser_name == "srcgen":
    from chip.hcdc import board as hdacv2_board
-   import bmark.bmarks as bmark
 
    circ_dir = path_handler.conc_circ_dir()
    for dirname, subdirlist, filelist in os.walk(circ_dir):
@@ -130,8 +131,15 @@ elif args.subparser_name == "gen":
                     path_handler.conc_circ_to_args(fname)
                    conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                   obj)
-                   gren_file = srcgen.generate(hdacv2_board,conc_circ)
+                   menv = menvs.get_math_env(args.math_env)
+                   hwenv = hwenvs.get_hw_env(args.hw_env)
                    filename = path_handler.grendel_file(circ_bmark, \
                                                         circ_indices, \
                                                         circ_scale_index)
+                   gren_file = srcgen.generate(path_handler,
+                                               hdacv2_board,\
+                                               conc_circ,\
+                                               menv,
+                                               hwenv,
+                                               filename=filename)
                    gren_file.write(filename)

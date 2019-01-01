@@ -77,6 +77,13 @@ end
     return results
 end
 
+#########################
+# inference operators   #
+#########################
+
+@gen function do_inference(n):
+end
+
 model = gen_model(500000.)
 println(model)
 fs = [0.,10.,20.,1000.]

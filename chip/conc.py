@@ -39,6 +39,13 @@ class ConcCirc:
     def board(self):
         return self._board
 
+    def instances_of_block(self,block_name):
+        if not block_name in self._configs:
+            return
+
+        for loc,config in self._configs[block_name].items():
+            yield loc,config
+
     def instances(self):
         for block_name in self._configs:
             for loc,config in self._configs[block_name].items():

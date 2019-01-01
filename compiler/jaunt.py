@@ -250,10 +250,13 @@ def bp_ival_math_dac_ranges(prob,circ):
 def bp_ival_math_label_ranges(prob,circ):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
-        for port in block.inputs + block.outputs:
+        for port in block.outputs + block.inputs:
             if config.has_label(port):
                 label = config.label(port)
-                handle = block.get_dynamics(config.comp_mode,port).toplevel()
+                if port in block.outputs:
+                    handle = block.get_dynamics(config.comp_mode,port).toplevel()
+                else:
+                    handle = None
                 lb,ub = circ.interval(label)
                 mrng = IRange(lb,ub)
                 prob.set_math_range(block_name,loc,port,mrng,\

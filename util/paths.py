@@ -48,6 +48,15 @@ class PathHandler:
         (self._bmark,index_str,scale_index)
 
 
+    def grendel_file_to_args(self,name):
+      basename = name.split(".grendel")[0]
+      args = basename.split("_")
+      bmark = args[0]
+      indices = list(map(lambda token: int(token), args[1:-1]))
+      scale_index = int(args[-1].split('s')[1])
+      return bmark,indices,scale_index
+
+
     def conc_circ_to_args(self,name):
       basename = name.split(".circ")[0]
       args = basename.split("_")

@@ -1,9 +1,8 @@
+from lang.prog import MathProg
+from ops import op
 
-def add_test(experiment=None):
-    prob = MathProg("test-")
-
-def benchmark_smmrxn(experiment=None):
-    prob = MathProg("test2")
+def benchmark_smmrxn():
+    prob = MathProg("smmrxn")
     kf = 1e-4
     kr = 1e-2
     E0 = 4400
@@ -31,10 +30,7 @@ def benchmark_smmrxn(experiment=None):
     prob.compile()
     return prob
 
-from lang.prog import MathProg
-from ops import op
-
-def benchmark_spring(experiment=None):
+def benchmark_spring():
     prob = MathProg("spring")
     dy2 = op.Add(
         op.Mult(op.Var("dy1"),op.Const(-0.2)),
@@ -54,7 +50,7 @@ def benchmark_spring(experiment=None):
     return prob
 
 
-def benchmark_decay(experiment=None):
+def benchmark_decay():
     prob = MathProg("decay")
     x = op.Integ(
         op.Mult(op.Var("x"),op.Const(-0.5)), \
@@ -68,14 +64,28 @@ def benchmark_decay(experiment=None):
     prob.compile()
     return prob
 
-_BMARKS = {
-    'decay' : benchmark_decay,
-    'spring' : benchmark_spring,
-    'smmrxn' : benchmark_smmrxn,
-}
+def benchmark_inout():
+    prob = MathProg("inout")
+    prob.bind('O', op.Emit(
+        op.Mult(op.ExtVar("I"),
+                op.Const(0.5))
+    ))
+    prob.bandwidth("I",1e4)
+    prob.interval("I",0,5)
+    prob.interval("O",0,5)
+    prob.compile()
+    return prob
 
-def get_bmark(name,experiment=None):
-    if name in _BMARKS:
-        return _BMARKS[name](experiment)
-    else:
-        raise Exception("unknown benchmark")
+BMARKS = [
+    benchmark_decay(),
+    benchmark_spring(),
+    benchmark_smmrxn(),
+    benchmark_inout()
+]
+
+def get_prog(name):
+    for bmark in BMARKS:
+        if bmark.name == name:
+            return bmark
+
+    raise Exception("unknown benchmark: <%s>" % name)

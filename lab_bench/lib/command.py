@@ -24,24 +24,29 @@ COMMANDS = [
     #BreakConnCmd,
     #CalibrateCmd,
     # experiment commands dispatched to microcontroller
-    ResetCmd,
-    RunCmd,
-    UseOscilloscopeCmd,
-    UseDueDACCmd,
-    UseDueADCCmd,
-    UseAnalogChipCmd,
-    SetSimTimeCmd,
-    SetDueDACValuesCmd,
-    GetDueADCValuesCmd,
-    ComputeOffsetsCmd,
-    GetNumADCSamplesCmd,
-    GetNumDACSamplesCmd,
-    GetTimeBetweenSamplesCmd,
+    MicroResetCmd,
+    MicroRunCmd,
+    MicroTeardownChipCmd,
+    MicroSetupChipCmd,
+    MicroGetOverflowCmd,
+    MicroUseOscCmd,
+    MicroUseDACCmd,
+    MicroUseADCCmd,
+    MicroUseAnalogChipCmd,
+    MicroSetSimTimeCmd,
+    MicroSetDACValuesCmd,
+    MicroGetADCValuesCmd,
+    MicroComputeOffsetsCmd,
+    MicroGetNumADCSamplesCmd,
+    MicroGetNumDACSamplesCmd,
+    MicroGetTimeDeltaCmd,
     # oscilloscope-only commands
-    GetOscValuesCmd,
-    SetOscVoltageRangeCmd,
+    OscGetValuesCmd,
+    OscSetVoltageRangeCmd,
+    OscSetupTrigger,
+    OscSetSimTimeCmd
     # virtual commands
-    SetReferenceFunction
+    #SetReferenceFunction
 ]
 
 
@@ -49,10 +54,10 @@ def parse(line):
     args = line.strip().split()
     if len(args) == 0:
         return None
-
+    print("cmd>> %s" % line)
     for cmd in COMMANDS:
         if args[0] == cmd.name():
-            obj = cmd.parse(args[1:])
+            obj = cmd.parse(args)
             return obj
 
     if args[0] == 'help':

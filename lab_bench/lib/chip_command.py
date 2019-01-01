@@ -1,10 +1,15 @@
 import parse as parselib
 import lib.cstructs as cstructs
 import lib.enums as enums
-from lib.base_command import Command,ArduinoCommand
+from lib.base_command import Command,ArduinoCommand, OptionalValue
 import lib.util as util
 import numpy as np
 from enum import Enum
+
+class Priority(str,Enum):
+    VERY_EARLY = "first"
+    EARLY = "early"
+    NORMAL = "normal"
 
 class RangeType(str,Enum):
     MED = 'medium'
@@ -103,24 +108,7 @@ class SignType(str,Enum):
     def __repr__(self):
         return self.abbrev()
 
-class OptionalValue:
 
-    def __init__(self,value,success=True):
-        self.value = value
-        self.success = success
-
-    @property
-    def message(self):
-        assert(not self.success)
-        return self.value
-
-    @staticmethod
-    def error(msg):
-        return OptionalValue(msg,success=False)
-
-    @staticmethod
-    def value(val):
-        return OptionalValue(val,success=True)
 
 def build_circ_ctype(circ_data):
     return {
@@ -163,11 +151,11 @@ def parse_pattern_conn(args,name):
     for dst in dst_cmds:
         for src in src_cmds:
             if result is None:
-                cmd = src + " " + dst
+                cmd = "%s %s %s" % (name,src,dst)
                 result = parselib.parse(cmd,line)
 
     if result is None:
-        return OptionalValue.error("usage: %s %s" % (name,cmd))
+        return OptionalValue.error("usage:<%s>\nline:<%s>" % (cmd,line))
 
     result = dict(result.named.items())
     if not 'sindex' in result:
@@ -186,7 +174,7 @@ def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
     line = " ".join(args)
     DEBUG = {'debug':True,'prod':False}
     
-    cmd = "{chip:d} {tile:d} {slice:d}"
+    cmd = "%s {chip:d} {tile:d} {slice:d}" % name
     if index:
         cmd += " {index:d}"
     if n_signs > 0:
@@ -210,7 +198,7 @@ def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
     cmd = cmd.strip()
     result = parselib.parse(cmd,line)
     if result is None:
-        msg = "usage: <%s:%s>\n" % (name,cmd)
+        msg = "usage: <%s>\n" % (cmd)
         msg += "line: <%s>" % line
         return OptionalValue.error(msg)
 
