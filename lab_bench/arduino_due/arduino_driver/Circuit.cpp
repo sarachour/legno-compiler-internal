@@ -163,7 +163,7 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_output_port(Fabric * fab
     
   }
 }
-float range_to_scf(uint8_t range){
+float load_scf(uint8_t range){
     switch(range){
       case 0:
         return 0.1;
@@ -194,6 +194,7 @@ void load_range(uint8_t range, bool * lo, bool * hi){
   }
   
 }
+
 void commit_config(Fabric * fab){
    fab->cfgCommit();
 }
@@ -221,9 +222,10 @@ void exec_command(Fabric * fab, cmd_t& cmd){
   cmd_use_fanout_t fod;
   cmd_use_integ_t integd;
   cmd_connection_t connd;
-  bool lo;
-  bool hi;
-  float value;
+  bool lo1,hi1;
+  bool lo2,hi2;
+  bool lo3,hi3;
+  float scf;
   Fabric::Chip::Tile::Slice* slice;
   Fabric::Chip::Tile::Slice::Dac* dac;
   Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -249,9 +251,18 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         multd = cmd.data.mult;
         mult = get_mult(fab,multd.loc);
         mult->setEnable(true);
-        mult->setVga(multd.use_coeff); 
+        mult->setVga(multd.use_coeff);
+        load_range(multd.in0_range, &lo1, &hi1);
+        load_range(multd.out_range, &lo2, &hi2);
+        load_range(multd.in1_range, &lo3, &hi3);
         if(multd.use_coeff){
-          mult->setGain(multd.coeff);
+          scf = load_scf(multd.out_range)/load_scf(multd.in0_range);
+          mult->setGain(multd.coeff*scf);
+        }
+        else{
+           mult->in0->setRange(lo1,hi1);
+           mult->in0->setRange(lo2,hi2);
+           mult->out0->setRange(lo3,hi3);
         }
         Serial.println("enabled mult");
         break;
@@ -260,6 +271,9 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         fod = cmd.data.fanout;
         fanout = get_fanout(fab,fod.loc);
         fanout->setEnable(true);
+        load_range(fod.in_range, &lo1, &hi1);
+        assert(!lo1);
+        fanout->setHiRange(hi1);
         fanout->out0->setInv(fod.inv[0]);
         fanout->out1->setInv(fod.inv[1]);
         fanout->out2->setInv(fod.inv[2]);
@@ -272,11 +286,12 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         integ->setEnable(true);
         integ->setException( integd.debug == 1 ? true : false);
         integ->out0->setInv(integd.inv);
-        load_range(integd.in_range, &lo, &hi);
-        integ->in0->setRange(lo,hi);
-        load_range(integd.out_range, &lo, &hi);
-        integ->out0->setRange(lo,hi);
-        integ->setInitial(integd.value);
+        load_range(integd.in_range, &lo1, &hi1);
+        load_range(integd.out_range, &lo2, &hi2);
+        integ->in0->setRange(lo1,hi1);
+        integ->out0->setRange(lo2,hi2);
+        scf = load_scf(integd.out_range)/load_scf(integd.in_range);
+        integ->setInitial(integd.value*scf);
         Serial.println("enabled integ");
         break;
 
@@ -425,6 +440,8 @@ void print_command(cmd_t& cmd){
         Serial.print(cmd.data.fanout.inv[1] ? "yes" : "no");
         Serial.print(" inv[2]=");
         Serial.print(cmd.data.fanout.inv[2] ? "yes" : "no");
+        Serial.print(" rng=");
+        Serial.print(range_to_str(cmd.data.fanout.in_range));
         break;
 
       case cmd_type_t::USE_MULT:
@@ -435,10 +452,14 @@ void print_command(cmd_t& cmd){
           Serial.print(cmd.data.mult.coeff);
         }
         else{
-          Serial.print(" mult");
+          Serial.print(" prod");
         }
-        Serial.print(" inv=");
-        Serial.print(cmd.data.mult.inv ? "yes" : "no");
+        Serial.print(" in0_rng=");
+        Serial.print(range_to_str(cmd.data.mult.in0_range));
+        Serial.print(" in1_rng=");
+        Serial.print(range_to_str(cmd.data.mult.in1_range));
+        Serial.print(" out_rng=");
+        Serial.print(range_to_str(cmd.data.mult.out_range));
         break;
         
       case cmd_type_t::USE_DAC:
@@ -448,6 +469,8 @@ void print_command(cmd_t& cmd){
         Serial.print(cmd.data.dac.value);
         Serial.print(" inv=");
         Serial.print(cmd.data.dac.inv ? "yes" : "no");
+        Serial.print(" rng=");
+        Serial.print(range_to_str(cmd.data.dac.out_range));
         break;
         
       case cmd_type_t::GET_INTEG_STATUS:

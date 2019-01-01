@@ -415,11 +415,6 @@ def tac_abs_get_resolutions(graph,ctx,cutoff,debug=False):
         src_rnode = ctx.context().get_node_by_fragment(src_node)
         dest_rnode= ctx.context().get_node_by_fragment(dest_node)
         if src_rnode is None or dest_rnode is None:
-
-            if debug:
-                print("src: %s.%d:%s -> %s" % (src_ns,src_node.id,src_port,src_rnode))
-                print("dst: %s.%d:%s -> %s" % (dest_ns,dest_node.id,dest_port,dest_rnode))
-                print("---")
             continue
 
         paths= list(graph.board.find_routes(
@@ -427,6 +422,7 @@ def tac_abs_get_resolutions(graph,ctx,cutoff,debug=False):
                 dest_rnode.block_name,dest_rnode.loc,dest_port,
                 cutoff=cutoff
         ))
+        print("%s -> %s" % (src_rnode,dest_rnode))
         all_routes = []
         for path in paths:
             route = []

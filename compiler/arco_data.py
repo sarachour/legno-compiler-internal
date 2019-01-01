@@ -12,6 +12,7 @@ class AOp:
     SQRT = 9;
     INTEG = 10;
     EMIT = 11;
+    EXTVAR = 12;
 
     TOSTR = {
         SUM: "+",
@@ -67,6 +68,26 @@ class AOp:
     def __repr__(self):
         argstr = " ".join(map(lambda x: str(x), self._inputs))
         return "(%s %s)" % (self.label(),argstr)
+
+class AExtVar(AOp):
+
+    def __init__(self,var):
+        AOp.__init__(self,AOp.EXTVAR,[])
+        self._var = var
+
+    def make(self,inputs):
+        return AExtVar(self._var)
+
+    @property
+    def name(self):
+        return self._var
+
+    def vars(self):
+        return [self._var]
+
+    def label(self):
+        return str(self._var)
+
 
 class AVar(AOp):
 

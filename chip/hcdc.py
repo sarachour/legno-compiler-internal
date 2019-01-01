@@ -10,9 +10,14 @@ import numpy as np
 DAC_MIN = -1
 DAC_MAX = 1.0-1.0/256
 ADC_SAMPLE_US = 3.0
-ANALOG_MIN = 2.0
+VI_MIN = -0.055
+VI_MAX = 0.055
+IV_MIN = -1.2
+IV_MAX = 1.2
+# microamps
+ANALOG_MIN = -2.0
 ANALOG_MAX = 2.0
-
+'''
 current_props = props.AnalogProperties() \
 .set_interval(-1.0,1.0,unit=units.uA)
 
@@ -45,19 +50,22 @@ due_adc_props = props.DigitalProperties() \
 .set_sample(ADC_SAMPLE_US,unit=units.us) \
 .check()
 
+'''
 
 def make_ana_props(rng,lb,ub):
+    assert(lb < ub)
     return props.AnalogProperties() \
-                .set_interval(-lb*rng.coeff(),
+                .set_interval(lb*rng.coeff(),
                               ub*rng.coeff(),
                               unit=units.uA)
 
-def make_dig_props(rng,lb,ub):
+def make_dig_props(rng,lb,ub,npts=256):
     start = lb*rng.coeff()
     end = ub*rng.coeff()
-    hcdcv2_values = np.linspace(start,end,256)
+    hcdcv2_values = np.linspace(start,end,npts)
     info = props.DigitalProperties() \
                 .set_values(hcdcv2_values) \
+                .set_constant() \
                 .check()
     return info
 
@@ -213,24 +221,36 @@ inv_conn = Block('conn_inv',type=Block.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_info("*","*",["out","in"], current_props) \
+.set_info("*","*",["out","in"], \
+          make_ana_props(chipcmd.RangeType.HIGH,\
+                         ANALOG_MIN,ANALOG_MAX)) \
 .set_scale_factor("*","*","out",-1.0) \
 .check()
 
 
 chip_out = Block('chip_out',type=Block.BUS) \
-.add_outputs(props.VOLTAGE,["out"]) \
+.add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_info("*","*",["out","in"], current_props) \
+.set_info("*","*",["out"], \
+          make_ana_props(chipcmd.RangeType.HIGH,\
+                         ANALOG_MIN,ANALOG_MAX)) \
+.set_info("*","*",["in"], \
+          make_ana_props(chipcmd.RangeType.HIGH,\
+                         ANALOG_MIN,ANALOG_MAX)) \
 .set_scale_factor("*","*","out",1.0) \
 .check()
 
 chip_inp = Block('chip_in',type=Block.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.VOLTAGE,["in"]) \
+.add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_info("*","*",["out","in"], current_props) \
+.set_info("*","*",["in"], \
+          make_ana_props(chipcmd.RangeType.MED,\
+                         ANALOG_MIN,ANALOG_MAX)) \
+.set_info("*","*",["out"], \
+          make_ana_props(chipcmd.RangeType.MED,\
+                         ANALOG_MIN,ANALOG_MAX)) \
 .set_scale_factor("*","*","out",1.0) \
 .check()
 
@@ -239,7 +259,9 @@ tile_out = Block('tile_out',type=Block.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_info("*","*",["out","in"], current_props) \
+.set_info("*","*",["out","in"], \
+          make_ana_props(chipcmd.RangeType.HIGH,\
+                         ANALOG_MIN,ANALOG_MAX)) \
 .set_scale_factor("*","*","out",1.0) \
 .check()
 
@@ -247,28 +269,40 @@ tile_inp = Block('tile_in',type=Block.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_info("*","*",["out","in"], current_props) \
+.set_info("*","*",["out","in"], \
+          make_ana_props(chipcmd.RangeType.HIGH,\
+                         ANALOG_MIN,ANALOG_MAX)) \
 .set_scale_factor("*","*","out",1.0) \
 .check()
 
-
+# DUE DAC -> VTOI
+due_dac_info = make_dig_props(chipcmd.RangeType.MED,-1.0,1.0,npts=4096)
+# do note there's a weird offset of 0..
+due_dac_scale_factor = 0.030/0.055*2.0
 due_dac = Block('due_dac',type=Block.DAC) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.DIGITAL,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_info("*","*",["in"],due_dac_props) \
-.set_info("*","*",["out"], current_props) \
-.set_scale_factor("*","*","out",1.0) \
+.set_info("*","*",["in"],due_dac_info) \
+.set_info("*","*",["out"], \
+          make_ana_props(chipcmd.RangeType.MED,\
+                         ANALOG_MIN,ANALOG_MAX)) \
+.set_scale_factor("*","*","out",due_dac_scale_factor) \
 .check()
 
 
+# DUE ADC -> VTOI
+due_adc_info = make_dig_props(chipcmd.RangeType.MED,-1.0,1.0,npts=4096)
+due_adc_scale_factor = 1.0/2.0
 due_adc = Block('due_adc',type=Block.ADC) \
 .add_outputs(props.DIGITAL,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_info("*","*",["out"],due_adc_props) \
-.set_info("*","*",["in"],current_props) \
-.set_scale_factor("*","*","out",1.0) \
+.set_info("*","*",["out"],due_adc_info) \
+.set_info("*","*",["in"], \
+          make_ana_props(chipcmd.RangeType.MED,\
+                         ANALOG_MIN,ANALOG_MAX)) \
+.set_scale_factor("*","*","out",due_adc_scale_factor) \
 .check()
 
 tile_dac = Block('tile_dac',type=Block.DAC) \
@@ -282,8 +316,8 @@ tile_adc = Block('tile_adc',type=Block.ADC) \
 .add_outputs(props.DIGITAL,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_info("*","*",["out"],digvar_props) \
-.set_info("*","*",["in"],current_props) \
+.set_info("*","*",["out"],None) \
+.set_info("*","*",["in"],None) \
 .set_scale_factor("*","*","out",1.0) \
 .check()
 
@@ -295,13 +329,6 @@ fanout = Block('fanout',type=Block.COPIER) \
 .set_copy("*","out2","out0")
 fanout_scale_modes(fanout)
 
-tcs = {
-    #'hi': 0.1,
-    'med': 1,
-    #'low': 10
-}
-mult_scf = 1.0
-#mult_scf = 1.0
 mult = Block('multiplier') \
 .set_comp_modes(["mul","vga"]) \
 .add_inputs(props.CURRENT,["in0","in1"]) \
@@ -334,7 +361,9 @@ multifun = Block("lut") \
 
 for mode in ['ln','exp','sq','sqrt']:
 
-    multifun.set_info(mode,"*",["in","out"], current_props) \
+    multifun.set_info(mode,"*",["in","out"],  \
+                      make_ana_props(chipcmd.RangeType.MED,\
+                                     ANALOG_MIN,ANALOG_MAX)) \
             .set_scale_modes(mode,["*"])
 
 multifun.set_op("ln","out",ops.Ln(ops.Var("in"))) \

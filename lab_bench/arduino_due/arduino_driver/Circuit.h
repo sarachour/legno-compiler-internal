@@ -57,29 +57,33 @@ typedef struct circ_loc_idx2 {
 typedef struct use_integ {
    circ_loc_t loc;
    uint8_t inv;
-   float value;
    uint8_t in_range;
    uint8_t out_range;
    uint8_t debug;
+   float value;
 } cmd_use_integ_t;
 
 
 typedef struct use_dac {
    circ_loc_t loc;
    uint8_t inv;
+   uint8_t out_range;
    float value;
 } cmd_use_dac_t;
 
 typedef struct use_mult {
   circ_loc_idx1_t loc;
-  float coeff;
   uint8_t use_coeff;
-  uint8_t inv;
+  uint8_t in0_range;
+  uint8_t in1_range;
+  uint8_t out_range;
+  float coeff;
 } cmd_use_mult_t;
 
 typedef struct use_fanout {
   circ_loc_idx1_t loc;
   uint8_t inv[3];
+  uint8_t in_range;
 } cmd_use_fanout_t;
 
 typedef struct connection {

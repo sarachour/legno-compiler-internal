@@ -1,6 +1,7 @@
 import itertools
 import chip.abs as acirc
 import chip.props as prop
+from chip.block import Labels
 import compiler.arco_route as arco_route
 from compiler.arco_rules import get_rules
 import compiler.arco_data as aexpr
@@ -116,6 +117,9 @@ def make_abstract(ast):
         ic = make_abstract(ast.init_cond)
         return aexpr.AInteg(deriv,ic)
 
+    elif ast.op == mop.Op.EXTVAR:
+        return aexpr.AExtVar(ast.name)
+
     elif ast.op == mop.Op.EMIT:
         expr = make_abstract(ast.args[0])
         return aexpr.AFunc(aexpr.AOp.EMIT, [expr])
@@ -162,6 +166,13 @@ def distribute_consts(ast,const=None):
             yield aexpr.AGain(const, ast)
         else:
             yield ast
+
+    elif ast.op == aexpr.AOp.EXTVAR:
+        if not const is None:
+            yield aexpr.AGain(const, ast)
+        else:
+            yield ast
+
 
     elif ast.op == aexpr.AOp.VAR:
         if not const is None:
@@ -382,9 +393,9 @@ def tac_cprod(board,ast):
         for result in to_abs_circ(board,ast.input):
             yield result
     else:
-        for qnode,qnode_output in to_abs_circ(board,ast.input):
-            # hail mary, assume we can scale our way around this
-            yield qnode,qnode_output
+        #for qnode,qnode_output in to_abs_circ(board,ast.input):
+        # hail mary, assume we can scale our way around this
+        #    yield qnode,qnode_output
 
         for qnode,qnode_output in to_abs_circ(board,ast.input):
             node = acirc.ANode.make_node(board,"multiplier")
@@ -417,6 +428,12 @@ def to_abs_circ(board,ast):
     elif ast.op == aexpr.AOp.VAR:
         stub = acirc.AInput(ast.name)
         yield stub,"out"
+
+    elif ast.op == aexpr.AOp.EXTVAR:
+        node = acirc.ANode.make_node(board,"due_dac")
+        node.config.set_label("in", ast.name,kind=Labels.DYNAMIC_INPUT)
+        node.config.set_comp_mode("*")
+        yield node,"out"
 
     elif ast.op == aexpr.AOp.SUM:
         new_inputs = list(map(lambda inp: list(to_abs_circ(board,inp)), \
@@ -470,7 +487,7 @@ def copy_signal(board,node,output,n_copies,label,max_fanouts):
         )
         for level,ports in free_ports.items():
             for port_node,port in ports:
-                port_node.config.set_label(port,label)
+                port_node.config.set_label(port,label,kind=Labels.OUTPUT)
 
         new_node,_ = node.copy()
         acirc.ANode.connect(new_node,output,c_node,c_output)
@@ -573,7 +590,7 @@ def compile_compute_fragments(board,prob,n_xforms):
             for n_xforms,xform_abs_expr in xform_expr(dist_abs_expr,rules):
                 for node,output in to_abs_circ(board,xform_abs_expr):
                     if isinstance(node,acirc.ABlockInst):
-                        node.config.set_label(output,var)
+                        node.config.set_label(output,var,kind=Labels.OUTPUT)
 
                     if acirc.AbsCirc.feasible(board,[node]):
                         frag_node_map[var].append(node)

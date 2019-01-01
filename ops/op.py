@@ -15,6 +15,7 @@ class Op:
     VAR = 9
     POW = 10
     EMIT = 11
+    EXTVAR = 12
     STRMAP = {
         EQ: "=",
         MULT: "*",
@@ -27,7 +28,8 @@ class Op:
         CONST: "const",
         VAR: "var",
         POW: "pow",
-        EMIT: "emit"
+        EMIT: "emit",
+        EXTVAR: "extvar"
     }
 
     def __init__(self,op,args):
@@ -309,6 +311,30 @@ class Square(BaseExpOp):
         return Const(2)
 
 
+class ExtVar(Op):
+
+    def __init__(self,name,min_val,max_val,bandwidth):
+        Op.__init__(self,Op.EXTVAR,[])
+        self._interval = (min_val,max_val)
+        self._bandwidth = bandwidth
+        self._name = name
+
+    @property
+    def name(self):
+        return self._name
+
+    def interval(self,bindings):
+        l,h = self._interval
+        return interval.IntervalCollection(
+            interval.Interva.infer_type(l,h)
+        )
+
+    def bandwidth(self,intervals,bindings):
+        return self._bandwidth
+
+    @property
+    def name(self):
+        return self._name
 
 class Var(Op):
 

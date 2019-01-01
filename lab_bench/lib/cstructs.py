@@ -78,32 +78,36 @@ def circ_use_integ_t():
     return cstruct.Struct(
         "loc" / circ_loc_t(),
         "inv" / cstruct.Int8ul,
-        "value" / cstruct.Float32l,
-        cstruct.Padding(1),
         'in_range' / cstruct.Int8ul,
         'out_range' / cstruct.Int8ul,
-        'debug' / cstruct.Int8ul
+        'debug' / cstruct.Int8ul,
+        cstruct.Padding(1),
+        "value" / cstruct.Float32l
     )
 
 def circ_use_dac_t():
     return cstruct.Struct(
         "loc" / circ_loc_t(),
         "inv" / cstruct.Int8ul,
+        "out_range" / cstruct.Int8ul,
         "value" / cstruct.Float32l
     )
 
 def circ_use_mult_t():
     return cstruct.Struct(
         "loc" / circ_loc_idx1_t(),
-        "coeff" / cstruct.Float32l,
         "use_coeff" / cstruct.Int8ul,
-        "inv" / cstruct.Int8ul
+        "in0_range" / cstruct.Int8ul,
+        "in1_range" / cstruct.Int8ul,
+        "out_range" / cstruct.Int8ul,
+        "coeff" / cstruct.Float32l
     )
 
 def circ_use_fanout_t():
     return cstruct.Struct(
         "loc" / circ_loc_idx1_t(),
-        "inv" / cstruct.Array(3,cstruct.Int8ul)
+        "inv" / cstruct.Array(3,cstruct.Int8ul),
+        "in_range" / cstruct.Int8ul
     )
 
 def circ_connection_t():

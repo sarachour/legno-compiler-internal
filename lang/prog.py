@@ -34,6 +34,8 @@ class MathProg:
             assert(variable in self._intervals)
 
         for variable,expr in self._bindings.items():
+            if expr is None:
+                continue
             bw = expr.bandwidth(self._intervals,self._bindings)
             self._bandwidths[variable] = bw
 

@@ -1,10 +1,13 @@
 import chip.props as props
+from chip.conc import ConcCirc
 import ops.op as ops
 import gpkit
 import itertools
 import compiler.jaunt_gen_noise_circ as jnoise
 import ops.jop as jop
+import ops.op as op
 from ops.interval import Interval, IRange, IValue
+import signal
 
 #TODO: what is low range, high range and med range?
 #TODO: setRange: integ.in, integ.out and mult have setRange functions.
@@ -282,7 +285,11 @@ def bp_ival_math_classify_ports(prob,variables):
     return free,bound
 
 def bpder_derive_output_port(prob,circ,block,config,loc,port):
-    expr = block.get_dynamics(config.comp_mode,port)
+    coeff = prob.coefficient(block.name,port,loc)
+    dyn = block.get_dynamics(config.comp_mode,port)
+    expr = op.Mult(dyn,op.Const(coeff))
+
+
     handles = expr.handles()
     # test to see if we have computed the interval
     computed_interval = True
@@ -457,8 +464,9 @@ def bpgen_build_lower_bound(prob,expr,math_lower,hw_lower):
          hw_lower < 0 and math_lower > 0:
         pass
 
-    elif not same_sign(math_upper,hw_upper) and \
-         hw_lower > 0 and math_upper < 0:
+    elif not same_sign(math_lower,hw_lower) and \
+         hw_lower > 0 and math_lower < 0:
+        print("[[fail]] dne A st: %s < A*%s" % (hw_lower,math_lower))
         prob.fail()
     else:
         raise Exception("uncovered lb: %s %s" % (math_lower,hw_lower))
@@ -496,6 +504,7 @@ def bpgen_build_upper_bound(prob,expr,math_upper,hw_upper):
 
     elif not same_sign(math_upper,hw_upper) and \
          hw_upper < 0 and math_upper > 0:
+        print("[[fail]] dne A st: %s > A*%s" % (hw_upper,math_upper))
         prob.fail()
     else:
         raise Exception("uncovered lb: %s %s" % (math_lower,hw_lower))
@@ -511,7 +520,7 @@ def bpgen_scaled_interval_constraint(prob,scale_expr,math_rng,hw_rng):
 def bpgen_traverse_expr(prob,block,loc,port,expr):
     inv_tau_scfvar = jop.JVar(prob.TAU,exponent=-1)
     if expr.op == ops.Op.CONST:
-        return JConst(1.0)
+        return jop.JConst(1.0)
 
     elif expr.op == ops.Op.VAR:
         port = expr.name
@@ -551,10 +560,6 @@ def bpgen_traverse_expr(prob,block,loc,port,expr):
 
 def bpgen_traverse_dynamics(prob,block,loc,out,expr):
   expr_scf = bpgen_traverse_expr(prob,block,loc,out,expr)
-  coeff = prob.coefficient(block.name,out,loc)
-  if coeff != 1.0:
-      expr_scf = jop.JMult(jop.JConst(coeff),expr_scf)
-
   var_scfvar = jop.JVar(prob.get_scf(block.name,loc,out))
   prob.eq(var_scfvar,expr_scf)
 
@@ -580,7 +585,7 @@ def bp_generate_problem(prob,circ):
     prob.lte(jop.JVar(prob.TAU),jop.JConst(TAU_MAX))
     prob.gte(jop.JVar(prob.TAU),jop.JConst(TAU_MIN))
 
-def build_problem(circ):
+def build_data_structures(circ):
     prob = JauntProb()
 
     # declare scaling factors
@@ -667,9 +672,13 @@ def cancel_signs(orig_lhs,orig_rhs):
     new_expr2 = jop.JMult(jop.JConst(const2),expr2)
     return True,new_expr1,new_expr2
 
-def solve_problem(circ,prob):
+def build_problem(circ,prob):
     TAU_MIN = 1e-6
     failed = prob.failed()
+    if failed:
+        input("<< failed >>")
+        return None
+
 
     variables = {}
     for scf in prob.variables():
@@ -687,7 +696,10 @@ def solve_problem(circ,prob):
         gp_rhs = gpkit_expr(variables,rhs)
         if isinstance(gp_lhs == gp_rhs,bool):
             #print("assert(%s == %s)" % (gp_lhs,gp_rhs))
-            failed = failed or not (gp_lhs == gp_rhs)
+            if not gp_lhs == gp_rhs:
+                print("[[false]]: %s != %s" % (lhs,rhs))
+                failed = True
+
             continue
 
 
@@ -699,7 +711,9 @@ def solve_problem(circ,prob):
         gp_rhs = gpkit_expr(variables,rhs)
         if isinstance(gp_lhs <= gp_rhs,bool):
             #print("assert(%s <= %s)" % (gp_lhs,gp_rhs))
-            failed = failed or not (gp_lhs <= gp_rhs)
+            if not gp_lhs <= gp_rhs:
+                print("[[false]]: %s <= %s" % (lhs,rhs))
+                failed = True
             continue
 
         print("%s <= %s" % (gp_lhs,gp_rhs))
@@ -709,7 +723,8 @@ def solve_problem(circ,prob):
     #constraints.append(1.0 == variables[prob.TAU])
 
     if failed:
-        return False,None
+        input("<< failed >>")
+        return None
 
     objective = 1.0/variables["tau"]
     for block_name,port,loc,handle,weight in prob.priority():
@@ -717,9 +732,20 @@ def solve_problem(circ,prob):
         objective += 1.0/variables[scf]
 
     model = gpkit.Model(objective,constraints)
+    return model
+
+def solve_problem(gpmodel,timeout=10):
+    def handle_timeout(signum,frame):
+        raise TimeoutError("solver timed out")
     try:
-        sln = model.solve(verbosity=2)
+        signal.signal(signal.SIGALRM, handle_timeout)
+        signal.alarm(timeout)
+        sln = gpmodel.solve(verbosity=2)
+        signal.alarm(0)
     except RuntimeWarning:
+        return None
+    except TimeoutError as te:
+        print("Timeout: cvxopt timed out or hung")
         return None
 
     return sln
@@ -728,6 +754,7 @@ def solve_problem(circ,prob):
 def iter_scaled_circuits(circ):
     labels = []
     choices = []
+    circ_json = circ.to_json()
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         assert(not config.comp_mode is None)
@@ -742,26 +769,31 @@ def iter_scaled_circuits(circ):
                 .set_scale_mode(scale_mode)
 
         yield circ
+        circ = ConcCirc.from_json(circ.board,circ_json)
 
 def scale(circ,noise_analysis=False):
     for orig_circ in iter_scaled_circuits(circ):
         if not noise_analysis:
-            prob = build_problem(orig_circ)
+            data_structs = build_data_structures(orig_circ)
         else:
             raise Exception("unimplemented: noise analysis")
 
-        sln = solve_problem(orig_circ,prob)
+        prob = build_problem(orig_circ,data_structs)
+        if prob is None:
+            continue
+
+        sln = solve_problem(prob)
         if sln is None:
             print("[[FAILURE]]")
             continue
-        else:
-            if not 'freevariables' in sln:
-                print("[[FAILURE]]")
-                succ,result = sln
-                assert(result is None)
-                assert(succ == False)
-                continue
 
-            sp_update_circuit(prob,orig_circ,
-                              sln['freevariables'])
-            yield orig_circ
+        if not 'freevariables' in sln:
+            print("[[FAILURE]]")
+            succ,result = sln
+            assert(result is None)
+            assert(succ == False)
+            continue
+
+        sp_update_circuit(data_structs,orig_circ,
+                            sln['freevariables'])
+        yield orig_circ

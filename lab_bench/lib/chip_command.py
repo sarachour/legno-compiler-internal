@@ -103,6 +103,24 @@ class SignType(str,Enum):
     def __repr__(self):
         return self.abbrev()
 
+class OptionalValue:
+
+    def __init__(self,value,success=True):
+        self.value = value
+        self.success = success
+
+    @property
+    def message(self):
+        assert(not self.success)
+        return self.value
+
+    @staticmethod
+    def error(msg):
+        return OptionalValue(msg,success=False)
+
+    @staticmethod
+    def value(val):
+        return OptionalValue(val,success=True)
 
 def build_circ_ctype(circ_data):
     return {
@@ -149,8 +167,7 @@ def parse_pattern_conn(args,name):
                 result = parselib.parse(cmd,line)
 
     if result is None:
-        print("usage: %s %s" % (name,cmd))
-        return None
+        return OptionalValue.error("usage: %s %s" % (name,cmd))
 
     result = dict(result.named.items())
     if not 'sindex' in result:
@@ -162,7 +179,7 @@ def parse_pattern_conn(args,name):
     if not 'dport' in result:
         result['dport'] = None
 
-    return result
+    return OptionalValue.value(result)
 
 def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
                         name,index=False,debug=False):
@@ -193,9 +210,9 @@ def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
     cmd = cmd.strip()
     result = parselib.parse(cmd,line)
     if result is None:
-        print("usage: <%s:%s>" % (name,cmd))
-        print("line: <%s>" % line)
-        return None
+        msg = "usage: <%s:%s>\n" % (name,cmd)
+        msg += "line: <%s>" % line
+        return OptionalValue.error(msg)
 
     result = dict(result.named.items())
     for idx in range(0,n_signs):
@@ -211,7 +228,7 @@ def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
     if debug:
         result['debug'] = DEBUG[result['debug']]
 
-    return result
+    return OptionalValue.value(result)
 
 
 class CircLoc:
@@ -313,26 +330,31 @@ class AnalogChipCommand(ArduinoCommand):
     def specify_input_port(self,block):
         return (block == enums.BlockType.MULT)
 
+    def priority(self):
+        raise Exception("overrideme: order")
+
     def test_loc(self,block,loc):
-        if not loc.chip in range(0,2):
+        NCHIPS = 2
+        NTILES = 4
+        NSLICES = 4
+        NINDICES_COMP = 2
+        NINDICES_TILE = 4
+        if not loc.chip in range(0,NCHIPS):
             self.fail("unknown chip <%d>" % loc.chip)
-        if not loc.tile in range(0,4):
+        if not loc.tile in range(0,NTILES):
             self.fail("unknown tile <%d>" % loc.tile)
-        if not loc.slice in range(0,4):
+        if not loc.slice in range(0,NSLICES):
             self.fail("unknown slice <%d>" % loc.slice)
-        if not loc.index is None and \
-           not loc.index in range(0,2):
-            self.fail("unknown index <%s>" % loc.index)
 
         if (block == enums.BlockType.FANOUT) \
             or (block == enums.BlockType.TILE_INPUT) \
             or (block == enums.BlockType.TILE_OUTPUT) \
             or (block == enums.BlockType.MULT):
             indices = {
-                enums.BlockType.FANOUT: range(0,2),
-                enums.BlockType.MULT: range(0,2),
-                enums.BlockType.TILE_INPUT: range(0,4),
-                enums.BlockType.TILE_OUTPUT: range(0,4)
+                enums.BlockType.FANOUT: range(0,NINDICES_COMP),
+                enums.BlockType.MULT: range(0,NINDICES_COMP),
+                enums.BlockType.TILE_INPUT: range(0,NINDICES_TILE),
+                enums.BlockType.TILE_OUTPUT: range(0,NINDICES_TILE)
             }
             if loc.index is None:
                 self.fail("expected index <%s>" % block)
@@ -513,12 +535,15 @@ class CalibrateCmd(AnalogChipCommand):
 
     @staticmethod
     def parse(args):
-        line = " ".join(args)
         result = parse_pattern_block(args,0,0,0,
                                       CalibrateCmd.name(),
                                       index=False)
-        return CalibrateCmd(result['chip'],result['tile'],
-                            result['slice'])
+        if result.success:
+            return CalibrateCmd(result['chip'],result['tile'],
+                                result['slice'])
+        else:
+            print(result.message)
+            raise Exception("<parse_failure>: %s" % args)
 
     def __repr__(self):
         return "calib %s" % self._loc
@@ -624,15 +649,18 @@ class UseDACCmd(UseCommand):
     def parse(args):
         result = parse_pattern_block(args,1,1,1,
                                      UseDACCmd.name())
-        if not result is None:
+        if result.success:
+            data = result.value
             return UseDACCmd(
-                result['chip'],
-                result['tile'],
-                result['slice'],
-                result['value0'],
-                inv=result['sign0'],
-                out_range=result['range0']
+                data['chip'],
+                data['tile'],
+                data['slice'],
+                data['value0'],
+                inv=data['sign0'],
+                out_range=data['range0']
             )
+        else:
+            raise Exception(result.message)
 
     def build_ctype(self):
         # inverting flips the sign for some wacky reason, given the byte
@@ -683,12 +711,15 @@ class GetIntegStatusCmd(AnalogChipCommand):
         result = parse_pattern_block(args,0,0,0,
                                      GetIntegStatusCmd.name(),
                                      debug=False)
-        if not result is None:
+        if result.success:
+            data = result.value
             return GetIntegStatusCmd(
-                result['chip'],
-                result['tile'],
-                result['slice']
+                data['chip'],
+                data['tile'],
+                data['slice']
             )
+        else:
+            raise Exception(result.message)
 
 
     def preexec(self):
@@ -769,17 +800,21 @@ class UseIntegCmd(UseCommand):
         result = parse_pattern_block(args,1,1,2,
                                      UseIntegCmd.name(),
                                      debug=True)
-        if not result is None:
+        if result.success:
+            data = result.value
             return UseIntegCmd(
-                result['chip'],
-                result['tile'],
-                result['slice'],
-                result['value0'],
-                inv=result['sign0'],
-                in_range=result['range0'],
-                out_range=result['range1'],
-                debug=result['debug']
+                data['chip'],
+                data['tile'],
+                data['slice'],
+                data['value0'],
+                inv=data['sign0'],
+                in_range=data['range0'],
+                out_range=data['range1'],
+                debug=data['debug']
             )
+        else:
+            raise Exception(result.message)
+
 
     @staticmethod
     def name():
@@ -834,6 +869,9 @@ class UseFanoutCmd(UseCommand):
             raise Exception("incompatible: low output")
 
         self._inv = [inv0,inv1,inv2]
+        self._inv0 = inv0
+        self._inv1 = inv1
+        self._inv2 = inv2
         self._in_range = in_range
 
     @staticmethod
@@ -851,7 +889,11 @@ class UseFanoutCmd(UseCommand):
             'data':{
                 'fanout':{
                     'loc':self._loc.build_ctype(),
-                    'inv':self._inv.code(),
+                    'inv':[
+                        self._inv0.code(),
+                        self._inv1.code(),
+                        self._inv2.code()
+                    ],
                     'in_range':self._in_range.code()
                 }
             }
@@ -863,17 +905,21 @@ class UseFanoutCmd(UseCommand):
         result = parse_pattern_block(args,3,0,1,
                                      UseFanoutCmd.name(),
                                      index=True)
-        if not result is None:
+        if result.success:
+            data = result.value
             return UseFanoutCmd(
-                result['chip'],
-                result['tile'],
-                result['slice'],
-                result['index'],
-                in_range=result['range0'],
-                inv0=result['sign0'],
-                inv1=result['sign1'],
-                inv2=result['sign2']
+                data['chip'],
+                data['tile'],
+                data['slice'],
+                data['index'],
+                in_range=data['range0'],
+                inv0=data['sign0'],
+                inv1=data['sign1'],
+                inv2=data['sign2']
             )
+        else:
+            raise Exception(result.message)
+
 
     def __repr__(self):
         st = "use_fanout %d %d %d %d sgn %s %s %s rng %s" % (self.loc.chip,
@@ -946,24 +992,30 @@ class UseMultCmd(UseCommand):
                                       UseMultCmd.name(),
                                       index=True)
 
-        if not result1 is None:
-            return UseMultCmd(result1['chip'],result1['tile'],
-                              result1['slice'],result1['index'],
-                              in0_range=result1['range0'],
+        if result1.success:
+            data = result1.value
+            return UseMultCmd(data['chip'],data['tile'],
+                              data['slice'],data['index'],
+                              in0_range=data['range0'],
                               in1_range=RangeType.MED,
-                              out_range=result1['range1'],
+                              out_range=data['range1'],
                               use_coeff=True,
-                              coeff=result1['value0'])
-        elif not result2 is None:
-            return UseMultCmd(result2['chip'],result2['tile'],
-                              result2['slice'],result2['index'],
-                              in0_range=result2['range0'],
-                              in1_range=result2['range1'],
-                              out_range=result2['range2'],
+                              coeff=data['value0'])
+        elif result2.success:
+            data = result2.value
+            return UseMultCmd(data['chip'],data['tile'],
+                              data['slice'],data['index'],
+                              in0_range=data['range0'],
+                              in1_range=data['range1'],
+                              out_range=data['range2'],
                               use_coeff=False, coeff=0)
 
-        else:
-            return None
+        elif not result1.success and not result2.success:
+            msg = result1.message
+            msg += "OR\n"
+            msg += result2.message
+            raise Exception(msg)
+
 
     @staticmethod
     def name():
@@ -1070,20 +1122,22 @@ class BreakConnCmd(ConnectionCmd):
     @staticmethod
     def parse(args):
         result = parse_pattern_conn(args,BreakConnCmd.name())
-        if not result is None:
-            srcloc = CircPortLoc(result['schip'],result['stile'],
-                                 result['sslice'],result['sport'],
-                                 result['sindex'])
-            dstloc = CircPortLoc(result['dchip'],result['dtile'],
-                                 result['dslice'],result['dport'],
-                                 result['dindex'])
+        if result.success:
+            data = result.value
+            srcloc = CircPortLoc(data['schip'],data['stile'],
+                                 data['sslice'],data['sport'],
+                                 data['sindex'])
+            dstloc = CircPortLoc(data['dchip'],data['dtile'],
+                                 data['dslice'],data['dport'],
+                                 data['dindex'])
 
 
             return BrkConnCmd(
-                result['sblk'],srcloc,
-                result['dblk'],dstloc)
+                data['sblk'],srcloc,
+                data['dblk'],dstloc)
 
-
+        else:
+            raise Exception(result.message)
 
 
     def __repr__(self):
@@ -1128,19 +1182,22 @@ class MakeConnCmd(ConnectionCmd):
     @staticmethod
     def parse(args):
         result = parse_pattern_conn(args,MakeConnCmd.name())
-        if not result is None:
-            srcloc = CircPortLoc(result['schip'],result['stile'],
-                                 result['sslice'],result['sport'],
-                                 result['sindex'])
-            dstloc = CircPortLoc(result['dchip'],result['dtile'],
-                                 result['dslice'],result['dport'],
-                                 result['dindex'])
+        if result.success:
+            data = result.value
+            srcloc = CircPortLoc(data['schip'],data['stile'],
+                                 data['sslice'],data['sport'],
+                                 data['sindex'])
+            dstloc = CircPortLoc(data['dchip'],data['dtile'],
+                                 data['dslice'],data['dport'],
+                                 data['dindex'])
 
 
             return MakeConnCmd(
-                result['sblk'],srcloc,
-                result['dblk'],dstloc)
+                data['sblk'],srcloc,
+                data['dblk'],dstloc)
 
+        else:
+            raise Exception(result.message)
 
     def configure(self):
         return self
