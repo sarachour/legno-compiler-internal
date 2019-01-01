@@ -5,10 +5,19 @@ from chip.block import Block
 from chip.board import Board
 import lab_bench.lib.chip_command as chipcmd
 import itertools
+
 import numpy as np
+def truncate(f, n):
+    '''Truncates/pads a float f to n decimal places without rounding'''
+    s = '{}'.format(f)
+    if 'e' in s or 'E' in s:
+        return '{0:.{1}f}'.format(f, n)
+    i, p, d = s.partition('.')
+    return float('.'.join([i, (d+'0'*n)[:n]]))
+
 
 DAC_MIN = -1
-DAC_MAX = 1.0-1.0/256
+DAC_MAX = truncate(1.0-1.0/256,2)
 ADC_SAMPLE_US = 3.0
 VI_MIN = -0.055
 VI_MAX = 0.055

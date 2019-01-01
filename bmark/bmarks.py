@@ -46,9 +46,9 @@ def benchmark_spring(experiment=None):
     prob.bind("dy1",dy1)
     prob.bind("y",y)
     prob.bind("Y", op.Emit(op.Var("y")))
-    prob.interval("Y",-1,1)
-    prob.interval("y",-1,1)
-    prob.interval("dy1",-2,2)
+    prob.interval("Y",-10,10)
+    prob.interval("y",-10,10)
+    prob.interval("dy1",-10,10)
     # compute fmin and fmax for each signal.
     prob.compile()
     return prob
@@ -68,10 +68,23 @@ def benchmark_decay(experiment=None):
     prob.compile()
     return prob
 
+def benchmark_inout(experiment=None):
+    prob = MathProg("inout")
+    prob.bind('x', op.ExtVar("I",0,5,1e4))
+    prob.bind('O', op.Emit(
+        op.Mult(op.Var("x"),
+                op.Const(0.5))
+    ))
+    prob.interval("O",0,5)
+    prob.interval("x",0,5)
+    prob.compile()
+    return prob
+
 _BMARKS = {
     'decay' : benchmark_decay,
     'spring' : benchmark_spring,
     'smmrxn' : benchmark_smmrxn,
+    'inout' : benchmark_inout
 }
 
 def get_bmark(name,experiment=None):
