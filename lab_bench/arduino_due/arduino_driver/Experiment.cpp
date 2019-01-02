@@ -50,10 +50,12 @@ inline void save_adc3_value(experiment_t * expr, int idx){
 }
 
 inline void write_dac0_value(experiment_t * expr, int idx){
-  analogWrite(DAC0, get_value(expr,expr->dac_offsets[0] + (idx % N_DAC) )); 
+  int i = idx < N_DAC or expr->periodic_dac[0] ? (idx % N_DAC) : N_DAC-1;
+  analogWrite(DAC0, get_value(expr,expr->dac_offsets[0] + i )); 
 }
 inline void write_dac1_value(experiment_t * expr, int idx){
-  analogWrite(DAC1, get_value(expr,expr->dac_offsets[1] + (idx % N_DAC) )); 
+  int i = idx < N_DAC or expr->periodic_dac[1] ? (idx % N_DAC) : N_DAC-1;
+  analogWrite(DAC1, get_value(expr,expr->dac_offsets[1] + i )); 
 }
 inline void _toggle_SDA(){
   SDA_VAL = SDA_VAL == HIGH ? LOW : HIGH;
@@ -68,13 +70,12 @@ void _update_wave(){
   int idx = IDX;
   IDX += 1;
   
-  //if(EXPERIMENT->use_dac[0])
+  if(EXPERIMENT->use_dac[0])
     write_dac0_value(EXPERIMENT,idx);  
 
   if(EXPERIMENT->use_dac[1])
     write_dac1_value(EXPERIMENT,idx);
     
-  /*
   if(EXPERIMENT->use_adc[0])
     save_adc0_value(EXPERIMENT,idx);
   
@@ -86,7 +87,6 @@ void _update_wave(){
   
   if(EXPERIMENT->use_adc[3])
     save_adc3_value(EXPERIMENT,idx);
-  */
     
   drive_sda_clock(idx);
   if(idx >= N){
@@ -118,8 +118,9 @@ void enable_oscilloscope(experiment_t * expr){
 void enable_analog_chip(experiment_t * expr){
   expr->use_analog_chip = true;
 }
-void enable_dac(experiment_t * expr, byte dac_id){
+void enable_dac(experiment_t * expr, byte dac_id,bool periodic){
   expr->use_dac[dac_id] = true;
+  expr->periodic_dac[dac_id] = periodic;
 }
 
 void print_adc_values(experiment_t * expr, int adc_id, int nels, int offset){
@@ -185,6 +186,7 @@ void reset_experiment(experiment_t * expr){
   expr->total_samples = 0;
   for(int idx = 0; idx < MAX_DACS; idx+=1 ){
     expr->use_dac[idx] = false;
+    expr->periodic_dac[idx] = false;
     expr->dac_offsets[idx] = -1;
   }
   for(int idx = 0; idx < MAX_ADCS; idx+=1 ){
@@ -278,7 +280,7 @@ void exec_command(experiment_t* expr, Fabric* fab, cmd_t& cmd, float * inbuf){
       enable_analog_chip(expr);
       break;
     case cmd_type_t::USE_DAC:
-      enable_dac(expr,cmd.args.ints[0]);
+      enable_dac(expr,cmd.args.ints[0],cmd.flag);
       break;
     case cmd_type_t::USE_ADC:
       enable_adc(expr,cmd.args.ints[0]);

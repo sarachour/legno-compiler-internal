@@ -141,8 +141,8 @@ def circ_cmd_t():
 
 def exp_cmd_args_t():
     return cstruct.Union(None,
-        floats=cstruct.Array(3,cstruct.Float32l),
-        ints=cstruct.Array(3,cstruct.Int32ul)
+        floats=cstruct.Array(4,cstruct.Float32l),
+        ints=cstruct.Array(4,cstruct.Int32ul)
     )
 
 def experiment_cmd_t():

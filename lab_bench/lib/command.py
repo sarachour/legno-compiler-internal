@@ -54,7 +54,6 @@ def parse(line):
     args = line.strip().split()
     if len(args) == 0:
         return None
-    print("cmd>> %s" % line)
     for cmd in COMMANDS:
         if args[0] == cmd.name():
             obj = cmd.parse(args)

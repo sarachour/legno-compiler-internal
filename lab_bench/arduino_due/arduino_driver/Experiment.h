@@ -28,6 +28,7 @@ typedef struct experiment_data {
   bool compute_offsets;
   bool use_adc[MAX_ADCS];
   bool use_dac[MAX_DACS];
+  bool periodic_dac[MAX_DACS];
   bool use_analog_chip;
   // input data
   datapair_t databuf[MAX_SIZE/3];
@@ -57,6 +58,7 @@ typedef union args {
 typedef struct cmd {
   uint16_t type;
   args_t args;
+  uint8_t flag;
 } cmd_t;
 
 void setup_experiment();

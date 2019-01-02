@@ -12,6 +12,7 @@ class PathHandler:
             self.CONC_CIRC_DIR,
             self.CONC_GRAPH_DIR,
             self.ABS_GRAPH_DIR,
+            self.WAVEFORM_FILE_DIR,
             self.GRENDEL_FILE_DIR
         ]:
           if not os.path.exists(path):
@@ -28,6 +29,7 @@ class PathHandler:
         self.CONC_CIRC_DIR = self.BMARK_DIR + "/conc-circ"
         self.CONC_GRAPH_DIR = self.BMARK_DIR + "/conc-graph"
         self.GRENDEL_FILE_DIR = self.BMARK_DIR + "/grendel"
+        self.WAVEFORM_FILE_DIR = self.BMARK_DIR + "/waveform"
 
 
     def conc_graph_file(self,bmark,indices,scale_index):
@@ -42,10 +44,10 @@ class PathHandler:
         (self._bmark,index_str,scale_index)
 
 
-    def conc_circ_file(self,bmark,indices,scale_index):
+    def waveform_file(self,bmark,indices,scale_index,variable):
       index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.CONC_CIRC_DIR+ "/%s_%s_s%s.circ" % \
-        (self._bmark,index_str,scale_index)
+      return self.WAVEFORM_FILE_DIR+ "/%s_%s_s%s_%s.json" % \
+        (self._bmark,index_str,scale_index,variable)
 
 
     def grendel_file_to_args(self,name):

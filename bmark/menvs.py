@@ -6,7 +6,7 @@ def med():
   return exp
 
 def med_sin1():
-  exp = MathEnv('t20sin')
+  exp = MathEnv('t20sin1')
   exp.set_sim_time(20)
   exp.set_input_time(10)
   exp.set_input('I','5.0*sin(t)')

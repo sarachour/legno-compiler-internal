@@ -60,8 +60,8 @@ class MicroResetCmd(ArduinoCommand):
             'type':enums.ExpCmdType.RESET.name,
             'args':{
                 'ints':[0,0,0],
-                'bool':False
-            }
+            },
+            'flag':False
         })
 
 
@@ -97,8 +97,8 @@ class MicroUseADCCmd(ArduinoCommand):
             'type':enums.ExpCmdType.USE_ADC.name,
             'args':{
                 'ints':[self._adc_id,0,0],
-                'bool':False
-            }
+            },
+            'flag':False
         })
 
 
@@ -141,8 +141,8 @@ class MicroGetTimeDeltaCmd(ArduinoCommand):
             'type':enums.ExpCmdType.GET_TIME_BETWEEN_SAMPLES.name,
             'args':{
                 'ints':[0,0,0],
-                'bool':False
-            }
+            },
+            'flag':False
         })
 
 
@@ -183,8 +183,8 @@ class MicroGetNumADCSamplesCmd(ArduinoCommand):
             'type':enums.ExpCmdType.GET_NUM_ADC_SAMPLES.name,
             'args':{
                 'ints':[0,0,0],
-                'bool':False
-            }
+            },
+            'flag':False
         })
 
 
@@ -227,8 +227,8 @@ class MicroGetNumDACSamplesCmd(ArduinoCommand):
             'type':enums.ExpCmdType.GET_NUM_DAC_SAMPLES.name,
             'args':{
                 'ints':[0,0,0],
-                'bool':False
-            }
+            },
+            'flag':False
         })
 
 
@@ -264,8 +264,8 @@ class MicroGetADCValuesCmd(ArduinoCommand):
             'type':enums.ExpCmdType.GET_ADC_VALUES.name,
             'args':{
                 'ints':[adc_id,n,offset],
-                'bool':False
-            }
+            },
+            'flag':False
         })
 
         data_header_t = self._c_type
@@ -317,9 +317,10 @@ class MicroGetADCValuesCmd(ArduinoCommand):
 
 class MicroUseDACCmd(ArduinoCommand):
 
-    def __init__(self,dac_id):
+    def __init__(self,dac_id,periodic):
         ArduinoCommand.__init__(self)
         self._dac_id = dac_id
+        self._periodic = bool(periodic)
 
 
 
@@ -337,8 +338,8 @@ class MicroUseDACCmd(ArduinoCommand):
             'type':enums.ExpCmdType.USE_DAC.name,
             'args':{
                 'ints':[self._dac_id,0,0],
-                'bool':False
-            }
+            },
+            'flag':self._periodic
         })
 
 
@@ -349,23 +350,23 @@ class MicroUseDACCmd(ArduinoCommand):
 
     @staticmethod
     def parse(args):
-        return strict_do_parse("{dac_id:d}", args, \
+        return strict_do_parse("{dac_id:d} {periodic}", args, \
                         MicroUseDACCmd)
 
     def __repr__(self):
-        return "%s %d" % (self.name(),self._dac_id)
+        return "%s %d %s" % (self.name(),self._dac_id, \
+                             str(self._periodic))
 
 
 
 class MicroSetDACValuesCmd(ArduinoCommand):
 
-    def __init__(self,dac_id,expr,scf,time_scf,periodic):
+    def __init__(self,dac_id,expr,scf,time_scf):
         ArduinoCommand.__init__(self)
         self.dac_id = dac_id
         self.time_scf = time_scf
         self.scf = scf
         self.expr = expr
-        self.periodic = bool(periodic)
 
     @staticmethod
     def name():
@@ -380,7 +381,7 @@ class MicroSetDACValuesCmd(ArduinoCommand):
 
     @staticmethod
     def parse(args):
-        return strict_do_parse("{dac_id:d} {expr} {scf:g} {time_scf:g} {periodic:w}", \
+        return strict_do_parse("{dac_id:d} {expr} {scf:g} {time_scf:g}", \
                         args, \
                         MicroSetDACValuesCmd)
 
@@ -391,8 +392,8 @@ class MicroSetDACValuesCmd(ArduinoCommand):
             'type':enums.ExpCmdType.SET_DAC_VALUES.name,
             'args':{
                 'ints':[self.dac_id,len(buf),offset],
-                'bool': self.period
-            }
+            },
+            'flag': False
         })
 
         data_header_t = self._c_type
@@ -431,9 +432,9 @@ class MicroSetDACValuesCmd(ArduinoCommand):
 
 
     def __repr__(self):
-        return "%s %d %s %f %f %s" % \
+        return "%s %d %s %f %f" % \
             (self.name(),self.dac_id,self.expr,
-             self.scf,self.time_scf,self.periodic)
+             self.scf,self.time_scf)
 
 
 class OscSetVoltageRangeCmd(Command):
@@ -490,12 +491,13 @@ class OscSetVoltageRangeCmd(Command):
 
 class OscGetValuesCmd(Command):
 
-    def __init__(self,filename,chan_low,chan_high=None):
+    def __init__(self,filename,variable,chan_low,chan_high=None):
         Command.__init__(self)
         self._filename = filename
         self._differential = False if chan_high is None else True
         self._chan_low = chan_low
         self._chan_high = chan_high
+        self._variable = variable
 
     @staticmethod
     def name():
@@ -511,17 +513,20 @@ class OscGetValuesCmd(Command):
     def parse(args):
         line = " ".join(args)
         types = ['differential','direct']
-        cmd1 = "differential {chan_low:d} {chan_high:d} {filename}"
-        opt_result = do_parse(cmd1, args, OscGetValuesCmd)
-        if opt_result.success:
-            return opt_result.value
+        cmd1 = "differential {chan_low:d} {chan_high:d} {variable} {filename}"
+        opt_result1 = do_parse(cmd1, args, OscGetValuesCmd)
+        if opt_result1.success:
+            return opt_result1.value
 
-        cmd2 = "direct {chan_low:d} {filename}"
-        opt_result = do_parse(cmd2,args,OscGetValuesCmd)
-        if opt_result.success:
-            return opt_result.value
+        cmd2 = "direct {chan_low:d} {variable} {filename}"
+        opt_result2 = do_parse(cmd2,args,OscGetValuesCmd)
+        if opt_result2.success:
+            return opt_result2.value
 
-    def process_data(self,state,filename,chan1,chan2):
+        raise Exception(opt_result1.message + "\nOR\n" +
+                        opt_result2.message)
+
+    def process_data(self,state,filename,variable,chan1,chan2):
         data = {}
         data = waveform.TimeSeriesSet(state.sim_time)
         for ident,inp_t,inp_v in state.input_data():
@@ -545,7 +550,8 @@ class OscGetValuesCmd(Command):
         # the oscilloscope leaves two divisions of buffer room for whatever reason.
         print("<writing file>")
         with open(filename,'w') as fh:
-            strdata = json.dumps(data.to_json(),indent=4)
+            obj = {'data':data.to_json(),'variable':variable}
+            strdata = json.dumps(obj,indent=4)
             fh.write(strdata)
         print("<wrote file>")
 
@@ -563,11 +569,24 @@ class OscGetValuesCmd(Command):
                 chan = state.oscilloscope.analog_channel(self._chan_high)
                 ch2 = state.oscilloscope.full_waveform(chan)
 
-            return self.process_data(state,self._filename,ch1,ch2)
+            return self.process_data(state,self._filename, \
+                                     self._variable,
+                                     ch1,ch2)
 
 
     def __repr__(self):
-        return "%s %s" % (self.name,self._filename)
+        if not self._differential:
+            return "%s direct %d %s %s" % (self.name(),
+                                        self._chan_low,
+                                        self._variable,
+                                        self._filename)
+        else:
+            return "%s differential %d %d %s %s" % (self.name(),
+                                        self._chan_low,
+                                        self._chan_high,
+                                        self._variable,
+                                        self._filename)
+
 
 
 class OscSetSimTimeCmd(Command):
@@ -639,9 +658,9 @@ class MicroSetSimTimeCmd(ArduinoCommand):
             'args':{
                 'floats':[self._sim_time*1000.0,
                           self._period*1000.0,
-                          self._frame_time*1000.0],
-                'bool':False
-            }
+                          self._frame_time*1000.0]
+            },
+            'flag':False
         })
 
 
@@ -690,8 +709,8 @@ class MicroComputeOffsetsCmd(ArduinoCommand):
             'type':enums.ExpCmdType.COMPUTE_OFFSETS.name,
             'args':{
                 'ints':[0,0,0],
-                'bool':False
-            }
+            },
+            'flag':False
         })
 
 
@@ -725,8 +744,8 @@ class MicroUseAnalogChipCmd(ArduinoCommand):
             'type':enums.ExpCmdType.USE_ANALOG_CHIP.name,
             'args':{
                 'ints':[0,0,0],
-                'bool':False
-            }
+            },
+            'flag':False
         })
 
 
@@ -767,8 +786,8 @@ class MicroUseOscCmd(ArduinoCommand):
             'type':enums.ExpCmdType.USE_OSC.name,
             'args':{
                 'ints':[0,0,0],
-                'bool':False
-            }
+            },
+            'flag':False
         })
 
 
@@ -940,8 +959,8 @@ class MicroRunCmd(ArduinoCommand):
             'type':enums.ExpCmdType.RUN.name,
             'args':{
                 'ints':[0,0,0],
-                'bool':False
-            }
+            },
+            'flag':False
         })
 
 

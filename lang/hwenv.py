@@ -2,8 +2,8 @@
 class DiffPinMode:
 
   def __init__(self,low_pin,high_pin):
-    self._low_pin = low_pin
-    self._high_pin = high_pin
+    self.low= low_pin
+    self.high= high_pin
 
 
 class HWEnv:
@@ -23,6 +23,10 @@ class HWEnv:
 
     def add_output(self,pinmode,handle):
       self._outputs[handle] = pinmode
+
+    def output(self,handle):
+      return self._outputs[handle]
+
 
   def __init__(self,name):
     self.name = name

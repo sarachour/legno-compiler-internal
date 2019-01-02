@@ -1,6 +1,7 @@
 import lab_bench.lib.chip_command as chip_cmd
 import lab_bench.lib.exp_command as exp_cmd
 import lab_bench.lib.command as toplevel_cmd
+from lang.hwenv import DiffPinMode
 
 class GrendelProg:
 
@@ -260,14 +261,13 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
   # flag adc/dac data for storage in buffer
   for handle in adcs_in_use.keys():
     out_no = hwenv.adc(handle)
-    print(out_no)
     if not out_no is None:
       gren.add(parse('micro_use_adc %d' % out_no))
 
-  for handle in dacs_in_use.keys():
+  for handle,info in dacs_in_use.items():
     in_no = hwenv.dac(handle)
-    gren.add(parse('micro_use_dac %d' % \
-                   (in_no)))
+    gren.add(parse('micro_use_dac %d %s' % \
+                   (in_no,info['periodic'])))
 
 
   gren.add(parse('micro_get_num_adc_samples'))
@@ -280,11 +280,12 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
 
   for handle,info in dacs_in_use.items():
     in_no = hwenv.dac(handle)
-    gren.add(parse('micro_set_dac_values %d %s %f %f %s' % \
+    gren.add(parse('micro_set_dac_values %d %s %f %f' % \
                    (in_no,info['waveform'],\
-                    1.0/scaled_tc_s,info['scf'],\
-                    str(info['periodic'])
-                   )))
+                    1.0/scaled_tc_s,
+                    info['scf']
+                   )
+    ))
 
 def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename):
   if hwenv.use_oscilloscope:
@@ -295,31 +296,38 @@ def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename):
   gren.add(parse('micro_get_overflows'))
   gren.add(parse('micro_teardown_chip'))
 
-  adcs_in_use = get_ext_adcs_in_use(board,conc_circ,menv)
+
   circ_bmark,circ_indices,circ_scale_index = \
                     path_handler.grendel_file_to_args(filename)
 
-  raise Exception("TODO: save outputs in use.")
-  if hwenv.use_oscilloscope:
-    for out_no,mode in hwenv.oscilloscope.outputs:
-      if mode.type == OscOutputModes.DIFFERENTIAL:
-        ch1 = mode.low_chan
-        ch2 = mode.high_chan
-        filename = paths.output_waveform(circ_bmark, \
-                                         circ_indices, \
-                                         circ_scale_index, \
-                                         out_no)
-        gren.add(parse('osc_get_values differential %d %d %s.json' % \
-                       (ch1,ch2,filename)))
-      else:
-        raise Exception("unimplemented")
 
-  for out_no in hwenv.adcs:
-    filename = paths.output_waveform(circ_bmark, \
-                                         circ_indices, \
-                                         circ_scale_index, \
-                                         out_no)
-    parse('micro_get_adc_values %d %s.json'  % (filename))
+
+  adcs_in_use = get_ext_adcs_in_use(board,conc_circ,menv)
+
+  for handle, info in adcs_in_use.items():
+    out_no = hwenv.adc(handle)
+    filename = path_handler.waveform_file(circ_bmark, \
+                                     circ_indices, \
+                                     circ_scale_index, \
+                                     info['label'])
+    if not out_no is None:
+      gren.add(parse('micro_get_adc_values %d %s %s' % (out_no, \
+                                                        variable, \
+                                                        filename)))
+    elif hwenv.use_oscilloscope:
+      pin_mode = hwenv.oscilloscope.output(handle)
+      if isinstance(pin_mode,DiffPinMode):
+          gren.add(parse('osc_get_values differential %d %d %s %s' % \
+                         (pin_mode.low,pin_mode.high, \
+                          info['label'], \
+                          filename)))
+      else:
+        raise Exception("unknown pinmode")
+    else:
+      raise Exception("cannot read value")
+
+
+  return gren
 
 def generate(paths,board,conc_circ,menv,hwenv,filename):
   gren = GrendelProg()
