@@ -42,20 +42,34 @@ class MathProg:
         self._bindings = {}
         self._intervals = {}
         self._bandwidths= {}
+        self._variables = []
+
+    def variables(self):
+        return self._variables
 
     def bind(self,var,expr):
         assert(not var in self._bindings)
+        self._variables.append(var)
         self._bindings[var] = expr
 
     def bindings(self):
         for var,expr in self._bindings.items():
             yield var,expr
 
+    def binding(self,v):
+        if not v in self._bindings:
+            return None
+        return self._bindings[v]
+
     def bandwidth(self,v,b):
+        if not v in self._variables:
+            self._variables.append(v)
         self._bandwidths[v] = b
 
     def interval(self,v,min_v,max_v):
         assert(min_v <= max_v)
+        if not v in self._variables:
+            self._variables.append(v)
         self._intervals[v] = Interval.type_infer(min_v,max_v)
 
     def intervals(self):

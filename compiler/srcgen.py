@@ -297,7 +297,7 @@ def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename):
   gren.add(parse('micro_teardown_chip'))
 
 
-  circ_bmark,circ_indices,circ_scale_index = \
+  circ_bmark,circ_indices,circ_scale_index,_,_ = \
                     path_handler.grendel_file_to_args(filename)
 
 
@@ -306,10 +306,12 @@ def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename):
 
   for handle, info in adcs_in_use.items():
     out_no = hwenv.adc(handle)
-    filename = path_handler.waveform_file(circ_bmark, \
-                                     circ_indices, \
-                                     circ_scale_index, \
-                                     info['label'])
+    filename = path_handler.measured_waveform_file(circ_bmark, \
+                                                   circ_indices, \
+                                                   circ_scale_index, \
+                                                   menv.name, \
+                                                   hwenv.name, \
+                                                   info['label'])
     if not out_no is None:
       gren.add(parse('micro_get_adc_values %d %s %s' % (out_no, \
                                                         variable, \

@@ -3,7 +3,7 @@ import os
 
 sys.path.insert(0,os.path.abspath("lab_bench"))
 
-from compiler import arco, jaunt, srcgen
+from compiler import arco, jaunt, srcgen, execprog
 from chip.conc import ConcCirc
 
 import argparse
@@ -58,6 +58,17 @@ jaunt_subp.add_argument('--noise', type=str,help='perform noise analysis.')
 jaunt_subp.add_argument('--scale-circuits', type=int,default=3,
                        help='number of scaled circuits to generate.')
 
+
+ref_subp = subparsers.add_parser('execprog', help='compute reference signal')
+ref_subp.add_argument('math_env', type=str,
+                       help='math environment.')
+
+
+comp_subp = subparsers.add_parser('compare', \
+                                  help='compare analytical and measured results.')
+comp_subp.add_argument('math_env', type=str,
+                       help='math environment.')
+g
 
 gren_subp = subparsers.add_parser('srcgen', help='generate grendel.')
 gren_subp.add_argument('math_env', type=str,
@@ -117,9 +128,22 @@ elif args.subparser_name == "jaunt":
                         if n_scaled >= args.scale_circuits:
                             break
 
+elif args.subparser_name == "execprog":
+   from chip.hcdc import board as hdacv2_board
+   prog = bmark.get_prog(args.benchmark)
+   menv = menvs.get_math_env(args.math_env)
+   execprog.execute(path_handler,
+                    prog,
+                    menv)
+
+elif args.subparser_name == "compare":
+    raise Exception("todo: implement compare")
+
+
 elif args.subparser_name == "srcgen":
    from chip.hcdc import board as hdacv2_board
-
+   menv = menvs.get_math_env(args.math_env)
+   hwenv = hwenvs.get_hw_env(args.hw_env)
    circ_dir = path_handler.conc_circ_dir()
    for dirname, subdirlist, filelist in os.walk(circ_dir):
        for fname in filelist:
@@ -131,11 +155,11 @@ elif args.subparser_name == "srcgen":
                     path_handler.conc_circ_to_args(fname)
                    conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                   obj)
-                   menv = menvs.get_math_env(args.math_env)
-                   hwenv = hwenvs.get_hw_env(args.hw_env)
                    filename = path_handler.grendel_file(circ_bmark, \
                                                         circ_indices, \
-                                                        circ_scale_index)
+                                                        circ_scale_index, \
+                                                        menv.name,
+                                                        hwenv.name)
                    gren_file = srcgen.generate(path_handler,
                                                hdacv2_board,\
                                                conc_circ,\

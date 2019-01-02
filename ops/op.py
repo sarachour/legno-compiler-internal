@@ -67,7 +67,7 @@ class Op:
         return None
 
     def compute(self,bindings={}):
-        raise NotImplementedError
+        raise Exception("compute not implemented: %s" % self)
 
     def arg(self,idx):
         return self._args[idx]
@@ -185,7 +185,7 @@ class Op2(Op):
         return self.compute_op2(arg1,arg2)
 
     def compute_op2(self,arg1,arg2):
-        raise NotImplementedError
+        raise Exception("compute_op2 not implemented: %s" % self)
 
 class BaseExpOp(Op):
     def __init__(self,op,args):
@@ -331,6 +331,11 @@ class ExtVar(Op):
     def name(self):
         return self._name
 
+    def __repr__(self):
+        return "(%s %s)" % \
+            (Op.STRMAP[self._op],self._name)
+
+
 class Var(Op):
 
     def __init__(self,name):
@@ -441,6 +446,11 @@ class Emit(Op):
     def interval(self,bindings):
         return self.arg(0).interval(bindings)
 
+
+    def compute(self,bindings):
+        return self.arg(0).compute(bindings)
+
+
 class Mult(Op2):
 
     def __init__(self,arg1,arg2):
@@ -521,6 +531,10 @@ class Add(Op2):
                 [(self.arg1,expr),(self.arg2,Const(0))],
                 [(self.arg1,Const(0)),(self.arg2,expr)]
             ]
+
+    def compute_op2(self,arg1,arg2):
+        return arg1+arg2
+
 
 
 
