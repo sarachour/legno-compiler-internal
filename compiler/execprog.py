@@ -28,7 +28,7 @@ def find_stvars(var,expr,stvars,ics):
 
 def compute_varmap(y,t,fnvars,stvars,extfns,fns):
   vmap = dict(zip(stvars,y))
-  for var,expr in extfns.items():
+  for var,(expr,_) in extfns.items():
     args = {'t':t, 'math':math}
     vmap[var] = eval(expr,args)
 

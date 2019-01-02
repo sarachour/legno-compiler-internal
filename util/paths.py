@@ -34,6 +34,12 @@ class PathHandler:
         self.REF_WAVEFORM_FILE_DIR = self.BMARK_DIR + "/ref-waveform"
 
 
+    def conc_circ_file(self,bmark,indices,scale_index):
+      index_str = "_".join(map(lambda ind : str(ind),indices))
+      return self.CONC_CIRC_DIR+ "/%s_%s_s%s.circ" % \
+        (self._bmark,index_str,scale_index)
+
+
     def conc_graph_file(self,bmark,indices,scale_index):
       index_str = "_".join(map(lambda ind : str(ind),indices))
       return self.CONC_GRAPH_DIR+ "/%s_%s_s%s.dot" % \

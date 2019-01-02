@@ -7,9 +7,23 @@ import numpy as np
 from enum import Enum
 
 class Priority(str,Enum):
-    VERY_EARLY = "first"
+    FIRST = "first"
     EARLY = "early"
     NORMAL = "normal"
+    LATE = "late"
+    LAST = "last"
+
+    def priority(self):
+        if self == Priority.FIRST:
+            return 0
+        elif self == Priority.EARLY:
+            return 1
+        elif self == Priority.NORMAL:
+            return 2
+        elif self == Priority.LATE:
+            return 3
+        elif self == Priority.LAST:
+            return 4
 
 class RangeType(str,Enum):
     MED = 'medium'
@@ -318,8 +332,6 @@ class AnalogChipCommand(ArduinoCommand):
     def specify_input_port(self,block):
         return (block == enums.BlockType.MULT)
 
-    def priority(self):
-        raise Exception("overrideme: order")
 
     def test_loc(self,block,loc):
         NCHIPS = 2
@@ -359,10 +371,10 @@ class AnalogChipCommand(ArduinoCommand):
         else:
             self.fail("not in block list <%s>" % block)
 
-    def preexec(self):
-        return None
+    def priority(self):
+        return Priority.NORMAL
 
-    def postexec(self):
+    def analyze(self):
         return None
 
     def calibrate(self):
@@ -404,6 +416,9 @@ class DisableCmd(AnalogChipCommand):
                 self._block.name == other._block.name
         else:
             return False
+
+    def __hash__(self):
+        return hash(str(self))
 
     @staticmethod
     def name():
@@ -632,6 +647,9 @@ class UseDACCmd(UseCommand):
     def desc():
         return "use a constant dac block on the hdacv2 board"
 
+    def priority(self):
+        return Priority.LATE
+
 
     @staticmethod
     def parse(args):
@@ -710,10 +728,7 @@ class GetIntegStatusCmd(AnalogChipCommand):
             raise Exception(result.message)
 
 
-    def preexec(self):
-        return self
-
-    def postexec(self):
+    def analyze(self):
         return self
 
     def build_ctype(self):
@@ -781,6 +796,9 @@ class UseIntegCmd(UseCommand):
     @staticmethod
     def desc():
         return "use a integrator block on the hdacv2 board"
+
+    def priority(self):
+        return Priority.LAST
 
 
     @staticmethod
@@ -949,6 +967,9 @@ class UseMultCmd(UseCommand):
         self._in1_range = in1_range
         self._out_range = out_range
 
+    def priority(self):
+        return Priority.LATE
+
 
     @staticmethod
     def desc():
@@ -1055,6 +1076,10 @@ class ConnectionCmd(AnalogChipCommand):
             'dst_blk':self._dst_blk.name,
             'dst_loc':self._dst_loc.build_ctype()
         }
+
+    def priority(self):
+        return Priority.EARLY
+
 
     def build_identifier(self,block,ploc,is_input=False):
         rep = "%s %d %d %d" % (block.value,

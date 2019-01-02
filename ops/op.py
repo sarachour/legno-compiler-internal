@@ -331,6 +331,9 @@ class ExtVar(Op):
     def name(self):
         return self._name
 
+    def compute(self,bindings):
+        return bindings[self._name]
+
     def __repr__(self):
         return "(%s %s)" % \
             (Op.STRMAP[self._op],self._name)

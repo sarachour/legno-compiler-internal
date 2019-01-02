@@ -53,8 +53,6 @@ def gen_unpack_loc(circ,locstr):
   return chip,tile,slce,index
 
 def gen_use_dac(circ,block,locstr,config):
-  INV_MAP = {'pos':False,'neg':True}
-
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   inv,rng = cast_enum(config.scale_mode,\
                       [chip_cmd.SignType,chip_cmd.RangeType])
@@ -68,9 +66,14 @@ def gen_use_dac(circ,block,locstr,config):
                             out_range=rng)
 
 
-def gen_use_integrator(circ,block,locstr,config):
-  INV_MAP = {'pos':False,'neg':True}
+def gen_get_integrator_status(circ,block,locstr):
+  chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
+  return chip_cmd.GetIntegStatusCmd(chip,
+                                 tile,
+                                 slce)
 
+
+def gen_use_integrator(circ,block,locstr,config,debug=True):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   inv,in_rng,out_rng = cast_enum(config.scale_mode,
                                    [chip_cmd.SignType, \
@@ -83,7 +86,8 @@ def gen_use_integrator(circ,block,locstr,config):
                               init_cond=init_cond,
                               inv=inv,
                               in_range=in_rng,
-                              out_range=out_rng)
+                              out_range=out_rng,
+                              debug=debug)
 
 
 def gen_use_multiplier(circ,block,locstr,config):
@@ -144,7 +148,9 @@ def gen_block(gprog,circ,block,locstr,config):
     gprog.add(cmd)
 
   elif block.name == 'integrator':
-    cmd = gen_use_integrator(circ,block,locstr,config)
+    cmd = gen_use_integrator(circ,block,locstr,config,debug=True)
+    gprog.add(cmd)
+    cmd = gen_get_integrator_status(circ,block,locstr)
     gprog.add(cmd)
 
   elif block.name == 'fanout':

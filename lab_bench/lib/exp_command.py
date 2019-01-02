@@ -592,6 +592,7 @@ class OscGetValuesCmd(Command):
 class OscSetSimTimeCmd(Command):
 
     def __init__(self,sim_time,frame_time=None):
+        Command.__init__(self)
         self._sim_time = sim_time
         self._frame_time = (sim_time if frame_time is None else frame_time)
 
@@ -657,7 +658,7 @@ class MicroSetSimTimeCmd(ArduinoCommand):
             'type':enums.ExpCmdType.SET_SIM_TIME.name,
             'args':{
                 'floats':[self._sim_time*1000.0,
-                          self._period*1000.0,
+                          self._input_time*1000.0,
                           self._frame_time*1000.0]
             },
             'flag':False
@@ -680,7 +681,7 @@ class MicroSetSimTimeCmd(ArduinoCommand):
 
     def execute(self,state):
         state.sim_time = self._sim_time
-        state.period = self._period
+        state.input_time = self._input_time
         ArduinoCommand.execute(self,state)
 
 

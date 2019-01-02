@@ -68,7 +68,6 @@ comp_subp = subparsers.add_parser('compare', \
                                   help='compare analytical and measured results.')
 comp_subp.add_argument('math_env', type=str,
                        help='math environment.')
-g
 
 gren_subp = subparsers.add_parser('srcgen', help='generate grendel.')
 gren_subp.add_argument('math_env', type=str,
