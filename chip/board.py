@@ -141,6 +141,10 @@ class Board(Layer):
     def handle(self,handle):
         return self._handles[handle]
 
+    def handles(self):
+        for handle,(block,loc) in self._handles.items():
+            yield handle,block,loc
+
     def handle_by_inst(self,block_name,loc):
         for handle,(b,l) in self._handles.items():
             if b == block_name and l == loc:

@@ -56,12 +56,26 @@ class PathHandler:
       return self.REF_WAVEFORM_FILE_DIR+ "/%s_%s.json" % \
         (self._bmark,menv_name)
 
+    def measured_waveform_dir(self):
+      return self.MEAS_WAVEFORM_FILE_DIR
+
 
     def measured_waveform_file(self,bmark,indices,scale_index,\
                                menv_name,hwenv_name,variable):
       index_str = "_".join(map(lambda ind : str(ind),indices))
       return self.MEAS_WAVEFORM_FILE_DIR+ "/%s_%s_s%s_%s_%s_%s.json" % \
         (self._bmark,index_str,scale_index,menv_name,hwenv_name,variable)
+
+
+    def measured_waveform_file_to_args(self,name):
+      basename = name.split(".json")[0]
+      args = basename.split("_")
+      bmark = args[0]
+      indices = list(map(lambda token: int(token), args[1:-3]))
+      scale_index = int(args[-3].split('s')[1])
+      menv_name = args[-2]
+      hwenv_name = args[-3]
+      return bmark,indices,scale_index,menv_name,hwenv_name
 
 
     def grendel_file_to_args(self,name):

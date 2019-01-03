@@ -29,16 +29,16 @@ int16_t get_value(experiment_t * expr,uint32_t offset){
   int16_t  value = expr->databuf[offset];
   return value;
 }
-inline void save_adc0_value(experiment_t * expr, int idx){
+inline void save_adc3_value(experiment_t * expr, int idx){
   store_value(expr,expr->adc_offsets[0] + (idx % N_ADC), ADC->ADC_CDR[6] - ADC->ADC_CDR[7]);
 }
-inline void save_adc1_value(experiment_t * expr, int idx){
+inline void save_adc2_value(experiment_t * expr, int idx){
   store_value(expr,expr->adc_offsets[1] + (idx % N_ADC), ADC->ADC_CDR[4] - ADC->ADC_CDR[5]);
 }
-inline void save_adc2_value(experiment_t * expr, int idx){
+inline void save_adc1_value(experiment_t * expr, int idx){
   store_value(expr,expr->adc_offsets[2] + (idx % N_ADC), ADC->ADC_CDR[2] - ADC->ADC_CDR[3]);
 }
-inline void save_adc3_value(experiment_t * expr, int idx){
+inline void save_adc0_value(experiment_t * expr, int idx){
   store_value(expr,expr->adc_offsets[3] + (idx % N_ADC), ADC->ADC_CDR[0] - ADC->ADC_CDR[1]);
 }
 

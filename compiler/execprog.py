@@ -80,7 +80,7 @@ def compute_func_vars(fnmap):
 
   return variables
 
-def execute(path_handler,prog,menv,n=1000):
+def execute(path_handler,prog,menv,n=10000):
   stfns = {}
   ics = {}
   fns = {}
@@ -108,6 +108,7 @@ def execute(path_handler,prog,menv,n=1000):
                           extfns,fns,stfns)
 
   relevent_dataset = {}
+  relevent_dataset['time'] = dataset['t']
   for var in prog.variables():
     relevent_dataset[var] = dataset[var]
 
