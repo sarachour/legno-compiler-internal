@@ -7,15 +7,10 @@
 # define MAX_ADCS 4
 # define MAX_DACS 2
 // max value is 32000
-//# define MAX_SIZE 4053
-# define MAX_SIZE 3753
+# define MAX_N_BYTES 6000
+#define MAX_N_SAMPLES (MAX_N_BYTES>>1)
 
 namespace experiment {
-
-typedef struct _datapair {
-  unsigned int e1: 12;
-  unsigned int e2: 12;
-} datapair_t;
 
 typedef struct experiment_data {
   int dac_samples;
@@ -30,8 +25,9 @@ typedef struct experiment_data {
   bool use_dac[MAX_DACS];
   bool periodic_dac[MAX_DACS];
   bool use_analog_chip;
+  float time_between_samps_us;
   // input data
-  datapair_t databuf[MAX_SIZE/3];
+  int16_t * databuf;
 
 } experiment_t;
 
@@ -61,7 +57,7 @@ typedef struct cmd {
   uint8_t flag;
 } cmd_t;
 
-void setup_experiment();
+void setup_experiment(experiment_t * expr);
 void set_dac_value(experiment_t * expr, byte dac_id,int sample,float data);
 void enable_adc(experiment_t * expr, byte adc_id);
 void enable_oscilloscope(experiment_t * expr);

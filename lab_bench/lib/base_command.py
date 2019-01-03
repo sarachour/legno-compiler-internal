@@ -56,7 +56,7 @@ class Command:
 class ArduinoCommand(Command):
     # 1=only print commands
     # 0=run commands
-    DEBUG = 1
+    DEBUG = 0
 
     def __init__(self,typ=cstructs.cmd_t()):
         Command.__init__(self)
@@ -85,7 +85,7 @@ class ArduinoCommand(Command):
             rep += str(int(byt)) + " "
         #print("bytes: %s" % rep)
         resp = self.write_to_arduino(state,cdata)
-        #print("resp:> %s" % resp)
+        print("resp:> %s" % resp)
         return resp
 
 class FlushCommand(ArduinoCommand):

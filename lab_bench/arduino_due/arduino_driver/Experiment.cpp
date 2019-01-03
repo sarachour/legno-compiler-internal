@@ -7,6 +7,8 @@
 
 namespace experiment {
 
+int16_t DATABUF[MAX_N_BYTES/sizeof(int16_t)];
+
 volatile int IDX;
 int N;
 int N_DAC;
@@ -20,21 +22,12 @@ Fabric* FABRIC;
 short BITMASK_ONE[] = {0x0000,0xffff};
 short BITMASK_ZERO[] = {0xffff, 0x0000};
 
-inline void store_value(experiment_t * expr,uint32_t offset, int short value){
-  uint32_t align_offset = offset >> 1;
-  uint32_t mask_offset = offset & 0x1;
-  expr->databuf[align_offset].e1 = (value & BITMASK_ZERO[mask_offset]) | 
-    (expr->databuf[align_offset].e1 & BITMASK_ONE[mask_offset]);
-  expr->databuf[align_offset].e2 = (value & BITMASK_ONE[mask_offset]) | 
-    (expr->databuf[align_offset].e2 & BITMASK_ZERO[mask_offset]);
+inline void store_value(experiment_t * expr,uint32_t offset, int16_t value){
+  expr->databuf[offset] = value;
 }
-short get_value(experiment_t * expr,uint32_t offset){
-  uint32_t align_offset = offset >> 1;
-  uint32_t mask_offset = offset & 0x1;
-  short value =  (expr->databuf[align_offset].e1 & BITMASK_ZERO[mask_offset]) | 
-    (expr->databuf[align_offset].e2 & BITMASK_ONE[mask_offset]);
+int16_t get_value(experiment_t * expr,uint32_t offset){
+  int16_t  value = expr->databuf[offset];
   return value;
-  
 }
 inline void save_adc0_value(experiment_t * expr, int idx){
   store_value(expr,expr->adc_offsets[0] + (idx % N_ADC), ADC->ADC_CDR[6] - ADC->ADC_CDR[7]);
@@ -98,10 +91,11 @@ void _update_wave(){
 }
 
 
-void setup_experiment() {
+void setup_experiment(experiment_t* expr) {
   pinMode(SDA, OUTPUT);
   // put your setup code here, to run once:
   analogWriteResolution(12);  // set the analog output resolution to 12 bit (4096 levels)
+  expr->databuf = DATABUF;
   //Serial.print("external trigger: ");
   //Serial.println(SDA);
   
@@ -124,13 +118,15 @@ void enable_dac(experiment_t * expr, byte dac_id,bool periodic){
 }
 
 void print_adc_values(experiment_t * expr, int adc_id, int nels, int offset){
-  int n = nels ? nels + offset < expr->adc_samples : expr->adc_samples - (nels+offset);
+  int n = nels + offset <= expr->adc_samples ? nels : expr->adc_samples - offset;
   Serial.print(n);
   int adc_offset = expr->adc_offsets[adc_id];
   if(adc_offset >= 0 and expr->compute_offsets){
-    for(int idx=offset; idx<offset+n; idx+=1){
-      Serial.print(expr->databuf[adc_offset+idx].e1);
-      Serial.print(expr->databuf[adc_offset+idx].e2);
+    for(int idx=offset; idx < offset+n; idx+=1){
+      assert(adc_offset+idx < MAX_N_SAMPLES);
+      short val = get_value(expr, adc_offset+idx);
+      Serial.print(" ");
+      Serial.print(float(val)/4096);
     }
   }
   Serial.println("");
@@ -139,42 +135,49 @@ void print_adc_values(experiment_t * expr, int adc_id, int nels, int offset){
 void compute_offsets(experiment_t * expr){
   int n_dac_segs = 0;
   int n_adc_segs = 0;
-  // data is periodic, simulation is not.
-  float sim_to_dac = ( (float) expr->total_samples)/(expr->dac_samples);
-  
+
+  // compute the number of adc and dac segments in use.
   for(int i=0; i < MAX_ADCS; i+= 1){
     n_adc_segs += expr->use_adc[i] ? 1 : 0;
   }
   for(int i=0; i < MAX_DACS; i+= 1){
     n_dac_segs += expr->use_dac[i] ? 1 : 0;
   }
-  int n_segs = n_dac_segs + n_adc_segs;
-  // cannot fit all the dac data in memory.
-  int max_size = n_segs == 0 ? MAX_SIZE : MAX_SIZE/n_segs;
-  if(max_size < expr->dac_samples){
-     expr->dac_samples = max_size;
-     expr->total_samples = max_size;
-     expr->adc_samples = max_size;
+  int max_n_samples = MAX_N_SAMPLES;
+  int samples_required = n_dac_segs*expr->dac_samples + n_adc_segs*expr->total_samples;
+  int dac_samples = expr->dac_samples;
+  int adc_samples = expr->total_samples;
+  int total_samples = expr->total_samples;
+  float time_between_samps = expr->time_between_samps_us;
+  // if we're in over our head in terms of number of samples, readjust
+  if(samples_required > max_n_samples){
+    float time_scf = float(samples_required)/max_n_samples;
+    dac_samples = floor(expr->dac_samples*(1.0/time_scf));
+    adc_samples = floor(expr->adc_samples*(1.0/time_scf));
+    total_samples = floor(expr->adc_samples*(1.0/time_scf));
+    samples_required = n_dac_segs*dac_samples + n_adc_segs*adc_samples;
+    time_between_samps = time_between_samps*time_scf;
+    assert(samples_required <= max_n_samples);
   }
-  //
-  else{
-     // expr->dac_samples unchanged
-     int adc_samples = MAX_SIZE - expr->dac_samples*n_dac_segs;
-     expr->dac_samples = expr->dac_samples;
-     expr->adc_samples = n_adc_segs == 0 ? expr->total_samples : adc_samples/n_adc_segs;
-     expr->total_samples = expr->adc_samples;
-  }
+  expr->adc_samples = adc_samples;
+  expr->dac_samples = dac_samples;
+  expr->total_samples = dac_samples;
+  expr->time_between_samps_us = time_between_samps;
   
-  int seg_idx = 0;
   int offset = 0;
   for(int i=0; i < MAX_ADCS; i += 1){
-    expr->adc_offsets[i] = offset;
-    offset += expr->adc_samples;
+    assert(offset < max_n_samples);
+    if(expr->use_adc[i]){
+      expr->adc_offsets[i] = offset;
+      offset += expr->adc_samples;
+    }
   }
   for(int i=0; i < MAX_DACS; i += 1){
-    expr->adc_offsets[i] = offset;
-    offset += expr->dac_samples;
-    seg_idx += 1;
+    assert(offset < max_n_samples);
+    if(expr->use_dac[i]){
+      expr->dac_offsets[i] = offset;
+      offset += expr->dac_samples;
+    }
   }
   expr->compute_offsets = true;
 }
@@ -184,6 +187,7 @@ void reset_experiment(experiment_t * expr){
   expr->dac_samples = 0;
   expr->adc_samples = 0;
   expr->total_samples = 0;
+  expr->time_between_samps_us = DELAY_TIME_US;;
   for(int idx = 0; idx < MAX_DACS; idx+=1 ){
     expr->use_dac[idx] = false;
     expr->periodic_dac[idx] = false;
@@ -194,7 +198,7 @@ void reset_experiment(experiment_t * expr){
     expr->adc_offsets[idx] = -1;
   }
   expr->use_osc = false;
-  memset(expr->databuf,0,MAX_SIZE);
+  memset(expr->databuf,0,MAX_N_BYTES);
 }
 void run_experiment(experiment_t * expr, Fabric * fab){
   if(not expr->compute_offsets){
@@ -223,7 +227,7 @@ void run_experiment(experiment_t * expr, Fabric * fab){
     circ::finalize_config(fab);
     _toggle_SDA();
     circ::execute(fab);
-    Timer3.start(DELAY_TIME_US);
+    Timer3.start(expr->time_between_samps_us);
   }
   else{
     _toggle_SDA();
@@ -245,15 +249,16 @@ void run_experiment(experiment_t * expr, Fabric * fab){
 
 void set_sim_time(experiment_t * expr, float sim_time, float period_time, float frame_time){
   // TODO: compute number of samples and osc clock
-  float time_between_samples = DELAY_TIME_US/1000.0;
+  float time_between_samples = DELAY_TIME_US*1e-6;
   int osc_samples = frame_time/time_between_samples;
   int sim_samples = sim_time/time_between_samples;
   int dac_samples = period_time/time_between_samples;
-  expr->total_samples = sim_samples;
-  expr->compute_offsets = false;
+  expr->time_between_samps_us = DELAY_TIME_US;
   expr->dac_samples = dac_samples;
   expr->adc_samples = sim_samples;
+  expr->total_samples = sim_samples;
   expr->osc_samples = osc_samples;
+  expr->compute_offsets = false;
 }
 
 void set_dac_values(experiment_t* expr, float * inbuf, int dac_id, int n, int offset){
@@ -304,7 +309,7 @@ void exec_command(experiment_t* expr, Fabric* fab, cmd_t& cmd, float * inbuf){
       break;
 
     case cmd_type_t::GET_TIME_BETWEEN_SAMPLES:
-      Serial.println(DELAY_TIME_US/1000.0);
+      Serial.println(expr->time_between_samps_us*1e-6,12);
       break;
       
     case cmd_type_t::GET_NUM_DAC_SAMPLES:
@@ -334,7 +339,9 @@ void print_command(cmd_t& cmd, float* inbuf){
 
     case cmd_type_t::USE_DAC:
       Serial.print("use_dac ");
-      Serial.println(cmd.args.ints[0]);
+      Serial.print(cmd.args.ints[0]);
+      Serial.print(" periodic=");
+      Serial.println(cmd.flag ? "yes" : "no");
       break;
 
     case cmd_type_t::USE_ADC:

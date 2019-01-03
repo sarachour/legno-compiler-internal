@@ -148,7 +148,7 @@ class State:
                     calibs.append(calib_stmt)
 
         for calib in self.order(set(calibs)):
-            print("[calibrate] %s" % stmt)
+            print("[calibrate] %s" % calib)
             yield calib
 
     def analyze_chip(self):

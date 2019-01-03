@@ -173,6 +173,7 @@ def cmd_t():
         "test" / cstruct.Int8ul,
         "type" / cmd_type_t(),
         cstruct.Padding(2),
-        "data" / cmd_data_t()
+        "data" / cmd_data_t(),
+        cstruct.Padding(4)
     )
 #

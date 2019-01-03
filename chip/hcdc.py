@@ -7,8 +7,16 @@ import lab_bench.lib.chip_command as chipcmd
 import itertools
 import numpy as np
 
+def truncate(f, n):
+    '''Truncates/pads a float f to n decimal places without rounding'''
+    s = '{}'.format(f)
+    if 'e' in s or 'E' in s:
+        return '{0:.{1}f}'.format(f, n)
+    i, p, d = s.partition('.')
+    return float('.'.join([i, (d+'0'*n)[:n]]))
+
 DAC_MIN = -1
-DAC_MAX = 1.0-1.0/256
+DAC_MAX = truncate(1.0-1.0/256,2)
 ADC_SAMPLE_US = 3.0
 VI_MIN = -0.055
 VI_MAX = 0.055
@@ -17,40 +25,6 @@ IV_MAX = 1.2
 # microamps
 ANALOG_MIN = -2.0
 ANALOG_MAX = 2.0
-'''
-current_props = props.AnalogProperties() \
-.set_interval(-1.0,1.0,unit=units.uA)
-
-current_integ_props = props.AnalogProperties() \
-.set_interval(-1.2,1.2,unit=units.uA)
-
-
-hcdcv2_values = list(map(lambda x :x/256.0*2.0-1.0, range(0,256)))
-due_values = list(map(lambda x :x/4096.0*2.0-1.0, range(0,4096)))
-digval_props = props.DigitalProperties() \
-.set_values(hcdcv2_values) \
-.set_constant() \
-.check()
-
-digvar_props = props.DigitalProperties() \
-.set_values(hcdcv2_values) \
-.set_continuous() \
-.check()
-
-
-#TODO: proper conversion rate.
-ext_chip_in_props = props.DigitalProperties() \
-.set_values(due_values) \
-.set_sample(ADC_SAMPLE_US,unit=units.us) \
-.check()
-
-
-ext_chip_out_props = props.DigitalProperties() \
-.set_values(due_values) \
-.set_sample(ADC_SAMPLE_US,unit=units.us) \
-.check()
-
-'''
 
 def make_ana_props(rng,lb,ub):
     assert(lb < ub)

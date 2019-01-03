@@ -153,7 +153,8 @@ class MicroGetTimeDeltaCmd(ArduinoCommand):
         line = ArduinoCommand.execute(self,state)
         resp = state.arduino.readline()
         tb_samples = float(resp.strip())
-        state.time_between_samples_s = tb_samples*0.001
+        print("time_delta: %s" % tb_samples)
+        state.time_between_samples_s = tb_samples
         return tb_samples
 
 
@@ -195,6 +196,7 @@ class MicroGetNumADCSamplesCmd(ArduinoCommand):
         line = ArduinoCommand.execute(self,state)
         resp = state.arduino.readline()
         n_samples = int(resp.strip())
+        print("n-adc=%s" % n_samples)
         state.n_adc_samples = n_samples
         return n_samples
 
@@ -239,15 +241,17 @@ class MicroGetNumDACSamplesCmd(ArduinoCommand):
         line = ArduinoCommand.execute(self,state)
         resp = state.arduino.readline()
         n_samples = int(resp.strip())
+        print("n-dac=%s" % n_samples)
         state.n_dac_samples = n_samples
         return n_samples
 
 
 class MicroGetADCValuesCmd(ArduinoCommand):
 
-    def __init__(self,adc_id,filename):
+    def __init__(self,adc_id,variable,filename):
         ArduinoCommand.__init__(self)
         self._filename = filename
+        self._variable = variable
         self._adc_id = adc_id
 
     @staticmethod
@@ -258,6 +262,12 @@ class MicroGetADCValuesCmd(ArduinoCommand):
     def desc():
         return "[microcontroller] get adc values."
 
+    def __repr__(self):
+        return "%s %d %s %s" % (
+            self.name(),
+            self._adc_id,
+            self._variable,
+            self._filename)
 
     def execute_read_op(self,state,adc_id,n,offset):
         data_header = build_exp_ctype({
@@ -267,31 +277,22 @@ class MicroGetADCValuesCmd(ArduinoCommand):
             },
             'flag':False
         })
-
+        VAL_TO_VOLTS = 3.3
         data_header_t = self._c_type
         byts = data_header_t.build(data_header)
         line = self.write_to_arduino(state,byts)
-        print(line)
-        input("what do i do")
-        data = []
+        line = state.arduino.readline()
+        data = list(map(lambda tok: float(tok)*VAL_TO_VOLTS, \
+                   line.split()[1:]))
+
         assert(len(data) <= n)
         return data
 
     @staticmethod
     def parse(args):
-        return strict_do_parse("{adc_id:d} {filename:W}", args, \
+        return strict_do_parse("{adc_id:d} {variable} {filename}", \
+                               args, \
                         MicroGetADCValuesCmd)
-
-    def plot_data(self,filename,data):
-        time = data['time']
-        for adc_id in data['adcs'].keys():
-            pos = data['adcs'][adc_id]['pos']
-            neg = data['adcs'][adc_id]['neg']
-            plt.plot(time,pos,label="%d-pos" % adc_id)
-            plt.plot(time,neg,label="%d-neg" % adc_id)
-
-        plt.savefig(filename)
-        plt.clf()
 
     def execute(self,state):
         n = state.n_adc_samples
@@ -304,15 +305,19 @@ class MicroGetADCValuesCmd(ArduinoCommand):
         values = np.zeros(n)
         for offset in range(0,n,chunksize_shorts):
             datum = self.execute_read_op(state,
-                                         adc_id,
+                                         self._adc_id,
                                          chunksize_shorts,
                                          offset)
             for i,value in enumerate(datum):
-                print(time[offset+i],value)
                 values[offset+i] = value
 
-
-        return time,values
+        obj = {
+            'variable':self._variable,
+            'times':list(time),
+            'values':list(values)
+        }
+        with open(self._filename,'w') as fh:
+            fh.write(json.dumps(obj,indent=4))
 
 
 class MicroUseDACCmd(ArduinoCommand):
@@ -381,7 +386,7 @@ class MicroSetDACValuesCmd(ArduinoCommand):
 
     @staticmethod
     def parse(args):
-        return strict_do_parse("{dac_id:d} {expr} {scf:g} {time_scf:g}", \
+        return strict_do_parse("{dac_id:d} {expr} {time_scf:g} {scf:g}", \
                         args, \
                         MicroSetDACValuesCmd)
 
@@ -401,12 +406,14 @@ class MicroSetDACValuesCmd(ArduinoCommand):
                                       construct.Float32l)
         byts_h = data_header_t.build(data_header)
         byts_d = data_body_t.build(buf)
-        return self.write_to_arduino(state,byts_h + byts_d)
+        resp = self.write_to_arduino(state,byts_h + byts_d)
+        print("resp:> %s" % resp)
 
 
-    def compute_value(self,idx):
+    def compute_value(self,state,idx):
         delta = state.time_between_samples_s
-        args = {'t':idx*delta*self.time_scf,'i':idx}
+        args = {'t':idx*delta*self.time_scf,\
+                'i':idx}
         value = self.scf*util.eval_func(self.expr,args)
         return args['t'],value
 
@@ -421,7 +428,7 @@ class MicroSetDACValuesCmd(ArduinoCommand):
         # delta in seconds
         offset = 0
         for idx in range(0,n):
-            _,value = self.compute_value(idx)
+            _,value = self.compute_value(state,idx)
             buf.append(value)
             if len(buf) == chunksize_floats:
                 line = self.execute_write_op(state,buf,offset)
@@ -467,20 +474,12 @@ class OscSetVoltageRangeCmd(Command):
                         OscSetVoltageRangeCmd)
 
 
-    def set_channel(self,state,chan,minv,maxv):
-        vdivs = state.oscilloscope.VALUE_DIVISIONS
-        volt_offset = -(minv+maxv)/2.0
-        volts_per_div = (maxv - minv)/vdivs
-        state.oscilloscope \
-            .set_voltage_offset(chan,volt_offset)
-        state.oscilloscope \
-             .set_volts_per_division(chan,volts_per_div)
-
     def execute(self,state):
         if state.dummy:
             return
 
         vdivs = state.oscilloscope.VALUE_DIVISIONS
+        chan = state.oscilloscope.analog_channel(self._chan_id)
         volt_offset = -(self._low+self._high)/2.0
         volts_per_div = (self._high- self._low)/vdivs
         state.oscilloscope \
@@ -527,11 +526,6 @@ class OscGetValuesCmd(Command):
                         opt_result2.message)
 
     def process_data(self,state,filename,variable,chan1,chan2):
-        data = {}
-        data = waveform.TimeSeriesSet(state.sim_time)
-        for ident,inp_t,inp_v in state.input_data():
-            data.set_input(ident,inp_t,inp_v)
-
         # compute differential or direct
         if self._differential:
             out_t1,out_v1 = chan1
@@ -543,14 +537,15 @@ class OscGetValuesCmd(Command):
         else:
             out_t,out_v = chan1
 
-        data.set_output(out_t,out_v)
         theo_time_per_div = float(state.sim_time) / state.oscilloscope.TIME_DIVISIONS
         act_time_per_div = state.oscilloscope\
                                 .closest_seconds_per_division(theo_time_per_div)
         # the oscilloscope leaves two divisions of buffer room for whatever reason.
         print("<writing file>")
         with open(filename,'w') as fh:
-            obj = {'data':data.to_json(),'variable':variable}
+            obj = {'times':list(out_t),
+                   'values': list(out_v),
+                   'variable':variable}
             strdata = json.dumps(obj,indent=4)
             fh.write(strdata)
         print("<wrote file>")
@@ -657,9 +652,9 @@ class MicroSetSimTimeCmd(ArduinoCommand):
         return build_exp_ctype({
             'type':enums.ExpCmdType.SET_SIM_TIME.name,
             'args':{
-                'floats':[self._sim_time*1000.0,
-                          self._input_time*1000.0,
-                          self._frame_time*1000.0]
+                'floats':[self._sim_time,
+                          self._input_time,
+                          self._frame_time]
             },
             'flag':False
         })

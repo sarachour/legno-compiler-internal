@@ -177,7 +177,7 @@ def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
     'tile_in': 'tile_input',
     'tile_dac': 'dac',
     'multiplier':'mult',
-    'ext_chip_in': 'chip_output',
+    'ext_chip_in': 'chip_input',
     'ext_chip_out': 'chip_output'
   }
   TO_PORT_ID = {
@@ -276,12 +276,12 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
                    (in_no,info['periodic'])))
 
 
+  gren.add(parse('micro_compute_offsets'))
   gren.add(parse('micro_get_num_adc_samples'))
   gren.add(parse('micro_get_num_dac_samples'))
   gren.add(parse('micro_get_time_delta'))
   #FIXME `use_due_dac` if there are external inputs
   #FIXME `use_due_adc` / `use_osc` if there are external outputs
-  gren.add(parse('micro_compute_offsets'))
   gren.add(parse('micro_use_chip'))
 
   for handle,info in dacs_in_use.items():
@@ -320,7 +320,7 @@ def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename):
                                                    info['label'])
     if not out_no is None:
       gren.add(parse('micro_get_adc_values %d %s %s' % (out_no, \
-                                                        variable, \
+                                                        info['label'], \
                                                         filename)))
     elif hwenv.use_oscilloscope:
       pin_mode = hwenv.oscilloscope.output(handle)

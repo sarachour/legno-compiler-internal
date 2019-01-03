@@ -648,7 +648,7 @@ class UseDACCmd(UseCommand):
         return "use a constant dac block on the hdacv2 board"
 
     def priority(self):
-        return Priority.LATE
+        return Priority.EARLY
 
 
     @staticmethod
@@ -798,7 +798,7 @@ class UseIntegCmd(UseCommand):
         return "use a integrator block on the hdacv2 board"
 
     def priority(self):
-        return Priority.LAST
+        return Priority.FIRST
 
 
     @staticmethod
@@ -968,7 +968,7 @@ class UseMultCmd(UseCommand):
         self._out_range = out_range
 
     def priority(self):
-        return Priority.LATE
+        return Priority.FIRST
 
 
     @staticmethod

@@ -3,8 +3,38 @@ from ops import op
 
 def benchmark_smmrxn():
     prob = MathProg("smmrxn")
-    kf = 1e-4
-    kr = 1e-2
+    kf = 0.5
+    kr = 0.1
+    E0 = 1.2
+    S0 = 2.4
+    ES = op.Integ(op.Add(
+        op.Mult(op.Const(kf),
+                op.Mult(op.Var("S"),op.Var("E"))),
+        op.Mult(op.Const(-1*kr),op.Var("ES"))), op.Const(0),
+                  handle=':z')
+
+    E = op.Add(op.Const(E0),
+               op.Mult(op.Var("ES"), op.Const(-1)))
+
+    S = op.Add(op.Const(S0),
+               op.Mult(op.Var("ES"), op.Const(-1)))
+
+    prob.bind("E",E)
+    prob.bind("S",S)
+    prob.bind("ES",ES)
+    prob.interval("E",0,E0)
+    prob.interval("S",0,S0)
+    prob.interval("ES",0,min(E0,S0))
+    prob.interval("enz-sub",0,min(E0,S0))
+    prob.bind("enz-sub", op.Emit(op.Var("ES")))
+    prob.compile()
+    return prob
+
+
+def benchmark_bmmrxn():
+    prob = MathProg("bmmrxn")
+    kf = 0.1
+    kr = 0.05
     E0 = 4400
     S0 = 6600
     ES = op.Integ(op.Add(
@@ -22,10 +52,10 @@ def benchmark_smmrxn():
     prob.bind("E",E)
     prob.bind("S",S)
     prob.bind("ES",ES)
-    prob.interval("E",0,4400)
-    prob.interval("S",0,6800)
-    prob.interval("ES",0,4400)
-    prob.interval("enz-sub",0,4400)
+    prob.interval("E",0,E0)
+    prob.interval("S",0,S0)
+    prob.interval("ES",0,min(E0,S0))
+    prob.interval("enz-sub",0,min(E0,S0))
     prob.bind("enz-sub", op.Emit(op.Var("ES")))
     prob.compile()
     return prob
@@ -53,7 +83,7 @@ def benchmark_spring():
 def benchmark_decay():
     prob = MathProg("decay")
     x = op.Integ(
-        op.Mult(op.Var("x"),op.Const(-0.5)), \
+        op.Mult(op.Var("x"),op.Const(-0.05)), \
         op.Const(5), \
         ':x')
     prob.bind("x",x)
@@ -64,8 +94,8 @@ def benchmark_decay():
     prob.compile()
     return prob
 
-def benchmark_inout():
-    prob = MathProg("inout")
+def benchmark_inout1():
+    prob = MathProg("inout1")
     prob.bind('O', op.Emit(
         op.Mult(op.ExtVar("I"),
                 op.Const(0.5))
@@ -76,11 +106,33 @@ def benchmark_inout():
     prob.compile()
     return prob
 
+
+def benchmark_inout2():
+    prob = MathProg("inout2")
+    prob.bind('O1', op.Emit(
+        op.Mult(op.ExtVar("I1"),
+                op.Const(0.5))
+    ))
+    prob.bind('O2', op.Emit(
+        op.Mult(op.ExtVar("I2"),
+                op.Const(0.1))
+    ))
+    prob.bandwidth("I1",1e4)
+    prob.interval("I1",0,5)
+    prob.bandwidth("I2",1e4)
+    prob.interval("I2",0,5)
+    prob.interval("O1",0,5)
+    prob.interval("O2",0,5)
+    prob.compile()
+    return prob
+
 BMARKS = [
     benchmark_decay(),
     benchmark_spring(),
     benchmark_smmrxn(),
-    benchmark_inout()
+    benchmark_bmmrxn(),
+    benchmark_inout1(),
+    benchmark_inout2()
 ]
 
 def get_prog(name):
