@@ -654,7 +654,7 @@ class UseDACCmd(UseCommand):
 
     @staticmethod
     def parse(args):
-        return UseDacCmd._parse(args,UseDacCmd)
+        return UseDACCmd._parse(args,UseDACCmd)
 
     @staticmethod
     def _parse(args,cls):

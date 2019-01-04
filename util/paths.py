@@ -76,6 +76,19 @@ class PathHandler:
         (self._bmark,index_str,scale_index,menv_name,hwenv_name,variable)
 
 
+    def measured_waveform_files(self,bmark,indices,scale_index,\
+                               menv_name,hwenv_name,variable):
+      index_str = "_".join(map(lambda ind : str(ind),indices))
+      prefix = "%s_%s_s%s_%s_%s_" % \
+        (self._bmark,index_str,scale_index,menv_name,hwenv_name)
+
+      for dirname, subdirlist, filelist in \
+          os.walk(self.MEAS_WAVEFORM_FILE_DIR):
+        for fname in filelist:
+          if fname.endswith('.json') and fname.startswith(prefix):
+            yield "%s/%s" % (self.MEAS_WAVEFORM_FILE_DIR,fname)
+
+
     def measured_waveform_file_to_args(self,name):
       basename = name.split(".json")[0]
       args = basename.split("_")
@@ -95,8 +108,8 @@ class PathHandler:
       bmark = args[0]
       indices = list(map(lambda token: int(token), args[1:-3]))
       scale_index = int(args[-3].split('s')[1])
-      menv_name = args[-3]
-      hwenv_name = args[-2]
+      menv_name = args[-2]
+      hwenv_name = args[-1]
       return bmark,indices,scale_index,menv_name,hwenv_name
 
 
@@ -126,6 +139,10 @@ class PathHandler:
         index_str = "_".join(map(lambda ind : str(ind),indices))
         return self.ABS_CIRC_DIR+ "/%s_%s.circ" % \
           (self._bmark,index_str)
+
+    def grendel_file_dir(self):
+        return self.GRENDEL_FILE_DIR
+
 
     def conc_circ_dir(self):
         return self.CONC_CIRC_DIR
