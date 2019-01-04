@@ -31,8 +31,8 @@ def long_sin2():
   exp = MathEnv('t2ksin2')
   exp.set_sim_time(2000)
   exp.set_input_time(2000)
-  exp.set_input('I1','5.0*math.sin(0.01*t)')
-  exp.set_input('I2',\
+  exp.set_input('I2','5.0*math.sin(0.01*t)')
+  exp.set_input('I1',\
       '3.0*math.sin(0.01*t)+2.0*math.cos(0.037*t)')
   return exp
 

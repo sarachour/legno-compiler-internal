@@ -30,16 +30,16 @@ int16_t get_value(experiment_t * expr,uint32_t offset){
   return value;
 }
 inline void save_adc3_value(experiment_t * expr, int idx){
-  store_value(expr,expr->adc_offsets[0] + (idx % N_ADC), ADC->ADC_CDR[6] - ADC->ADC_CDR[7]);
+  store_value(expr,expr->adc_offsets[3] + (idx % N_ADC), ADC->ADC_CDR[6] - ADC->ADC_CDR[7]);
 }
 inline void save_adc2_value(experiment_t * expr, int idx){
-  store_value(expr,expr->adc_offsets[1] + (idx % N_ADC), ADC->ADC_CDR[4] - ADC->ADC_CDR[5]);
+  store_value(expr,expr->adc_offsets[2] + (idx % N_ADC), ADC->ADC_CDR[4] - ADC->ADC_CDR[5]);
 }
 inline void save_adc1_value(experiment_t * expr, int idx){
-  store_value(expr,expr->adc_offsets[2] + (idx % N_ADC), ADC->ADC_CDR[2] - ADC->ADC_CDR[3]);
+  store_value(expr,expr->adc_offsets[1] + (idx % N_ADC), ADC->ADC_CDR[2] - ADC->ADC_CDR[3]);
 }
 inline void save_adc0_value(experiment_t * expr, int idx){
-  store_value(expr,expr->adc_offsets[3] + (idx % N_ADC), ADC->ADC_CDR[0] - ADC->ADC_CDR[1]);
+  store_value(expr,expr->adc_offsets[0] + (idx % N_ADC), ADC->ADC_CDR[0] - ADC->ADC_CDR[1]);
 }
 
 inline void write_dac0_value(experiment_t * expr, int idx){
@@ -81,7 +81,7 @@ void _update_wave(){
   if(EXPERIMENT->use_adc[3])
     save_adc3_value(EXPERIMENT,idx);
     
-  drive_sda_clock(idx);
+  //drive_sda_clock(idx);
   if(idx >= N){
     Timer3.detachInterrupt();
     analogWrite(DAC0, 0); 
@@ -231,7 +231,7 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   }
   else{
     _toggle_SDA();
-    Timer3.start(DELAY_TIME_US);
+    Timer3.start(expr->time_between_samps_us);
   }
   while(IDX < N){
     Serial.print("waiting idx=");

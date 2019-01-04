@@ -14,7 +14,8 @@ class PathHandler:
             self.ABS_GRAPH_DIR,
             self.REF_WAVEFORM_FILE_DIR,
             self.MEAS_WAVEFORM_FILE_DIR,
-            self.GRENDEL_FILE_DIR
+            self.GRENDEL_FILE_DIR,
+            self.PLOT_DIR
         ]:
           if not os.path.exists(path):
             os.makedirs(path)
@@ -30,6 +31,7 @@ class PathHandler:
         self.CONC_CIRC_DIR = self.BMARK_DIR + "/conc-circ"
         self.CONC_GRAPH_DIR = self.BMARK_DIR + "/conc-graph"
         self.GRENDEL_FILE_DIR = self.BMARK_DIR + "/grendel"
+        self.PLOT_DIR = self.BMARK_DIR + "/plots"
         self.MEAS_WAVEFORM_FILE_DIR = self.BMARK_DIR + "/out-waveform"
         self.REF_WAVEFORM_FILE_DIR = self.BMARK_DIR + "/ref-waveform"
 
@@ -44,6 +46,13 @@ class PathHandler:
       index_str = "_".join(map(lambda ind : str(ind),indices))
       return self.CONC_GRAPH_DIR+ "/%s_%s_s%s.dot" % \
         (self._bmark,index_str,scale_index)
+
+
+    def plot(self,bmark,indices,scale_index,menv_name,henv_name,tag):
+      index_str = "_".join(map(lambda ind : str(ind),indices))
+      return self.PLOT_DIR+ "/%s_%s_s%s_%s_%s_%s.png" % \
+        (self._bmark,index_str,scale_index,menv_name,henv_name,\
+         tag)
 
 
     def grendel_file(self,bmark,indices,scale_index,menv_name,henv_name):
@@ -71,11 +80,13 @@ class PathHandler:
       basename = name.split(".json")[0]
       args = basename.split("_")
       bmark = args[0]
-      indices = list(map(lambda token: int(token), args[1:-3]))
-      scale_index = int(args[-3].split('s')[1])
-      menv_name = args[-2]
-      hwenv_name = args[-3]
-      return bmark,indices,scale_index,menv_name,hwenv_name
+      indices = list(map(lambda token: int(token), args[1:-4]))
+      scale_index = int(args[-4].split('s')[1])
+      menv_name = args[-3]
+      hwenv_name = args[-2]
+      var_name = args[-1]
+
+      return bmark,indices,scale_index,menv_name,hwenv_name,var_name
 
 
     def grendel_file_to_args(self,name):
@@ -84,8 +95,8 @@ class PathHandler:
       bmark = args[0]
       indices = list(map(lambda token: int(token), args[1:-3]))
       scale_index = int(args[-3].split('s')[1])
-      menv_name = args[-2]
-      hwenv_name = args[-3]
+      menv_name = args[-3]
+      hwenv_name = args[-2]
       return bmark,indices,scale_index,menv_name,hwenv_name
 
 
@@ -124,4 +135,8 @@ class PathHandler:
         return self.ABS_CIRC_DIR
 
     def has_file(self,filepath):
-        return os.path.exists(filepath)
+        if not os.path.exists(filepath):
+          return False
+
+        directory,filename = os.path.split(filepath)
+        return filename in os.listdir(directory)

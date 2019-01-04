@@ -55,7 +55,7 @@ arco_subp.add_argument('--conc-circuits', type=int,default=3,
 
 jaunt_subp = subparsers.add_parser('jaunt', help='scale circuit parameters.')
 jaunt_subp.add_argument('--noise', type=str,help='perform noise analysis.')
-jaunt_subp.add_argument('--scale-circuits', type=int,default=3,
+jaunt_subp.add_argument('--scale-circuits', type=int,default=15,
                        help='number of scaled circuits to generate.')
 
 
@@ -102,15 +102,18 @@ elif args.subparser_name == "jaunt":
     for dirname, subdirlist, filelist in os.walk(circ_dir):
         for fname in filelist:
             if fname.endswith('.circ'):
+                circ_bmark,circ_indices = path_handler \
+                                          .abs_circ_to_args(fname)
                 print('<<<< %s >>>>' % fname)
                 with open("%s/%s" % (dirname,fname),'r') as fh:
                     obj = json.loads(fh.read())
-                    circ_bmark,circ_indices = path_handler.abs_circ_to_args(fname)
                     conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                obj)
                     n_scaled = 0
                     for scale_circ in jaunt.scale(conc_circ, \
                                                   noise_analysis=args.noise):
+
+
                         filename = path_handler.conc_circ_file(circ_bmark,
                                                                circ_indices,
                                                                n_scaled)
@@ -120,6 +123,7 @@ elif args.subparser_name == "jaunt":
                                                                 n_scaled)
                         scale_circ.write_graph(filename,write_png=True)
                         n_scaled += 1
+                        #input()
                         if n_scaled >= args.scale_circuits:
                             break
 

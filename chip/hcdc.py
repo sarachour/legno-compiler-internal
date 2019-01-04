@@ -15,16 +15,23 @@ def truncate(f, n):
     i, p, d = s.partition('.')
     return float('.'.join([i, (d+'0'*n)[:n]]))
 
-DAC_MIN = -1
-DAC_MAX = truncate(1.0-1.0/256,2)
+DAC_SLACK = 1.0/256
+DAC_MIN = truncate(-1+DAC_SLACK,2)
+DAC_MAX = truncate(1.0-DAC_SLACK,2)
 ADC_SAMPLE_US = 3.0
+# range for voltage to current
 VI_MIN = -0.055
 VI_MAX = 0.055
-IV_MIN = -1.2
-IV_MAX = 1.2
+# range for current to voltage
+# previously 1.2
+IV_MIN = -3.3
+IV_MAX = 3.3
+# frequency with experimental adjustments 
+TIME_FREQUENCY = 126000*1.55916665
 # microamps
-ANALOG_MIN = -2.0
-ANALOG_MAX = 2.0
+ANALOG_SLACK = 0.1
+ANALOG_MIN = -2.0+ANALOG_SLACK
+ANALOG_MAX = 2.0-ANALOG_SLACK
 
 def make_ana_props(rng,lb,ub):
     assert(lb < ub)
@@ -399,10 +406,7 @@ def make_board():
            [tile_inp,tile_out,chip_inp,chip_out,inv_conn] + \
            [ext_chip_in,ext_chip_out])
 
-    hw.set_time_constant(1.0/126000.0)
-    #hw.set_meta("hardware_time_us", 126000)
-    #hw.set_meta("adc_sample_us", 3)
-    #hw.set_meta("adc_delta", 1.0/128)
+    hw.set_time_constant(1.0/TIME_FREQUENCY)
 
     chips = map(lambda i : hw.layer(i),range(0,n_chips))
     for chip_idx,chip in enumerate(chips):

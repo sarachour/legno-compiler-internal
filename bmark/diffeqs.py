@@ -115,7 +115,7 @@ def benchmark_inout2():
     ))
     prob.bind('O2', op.Emit(
         op.Mult(op.ExtVar("I2"),
-                op.Const(0.1))
+                op.Const(0.8))
     ))
     prob.bandwidth("I1",1e4)
     prob.interval("I1",0,5)

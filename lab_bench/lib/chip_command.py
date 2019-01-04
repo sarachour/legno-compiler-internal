@@ -621,6 +621,7 @@ class ConstVal:
             near_val = neg_near_val
         return near_val,inv,code
 
+
 class UseDACCmd(UseCommand):
 
     def __init__(self,chip,tile,slice,value,
@@ -653,11 +654,15 @@ class UseDACCmd(UseCommand):
 
     @staticmethod
     def parse(args):
+        return UseDacCmd._parse(args,UseDacCmd)
+
+    @staticmethod
+    def _parse(args,cls):
         result = parse_pattern_block(args,1,1,1,
-                                     UseDACCmd.name())
+                                     cls.name())
         if result.success:
             data = result.value
-            return UseDACCmd(
+            return cls(
                 data['chip'],
                 data['tile'],
                 data['slice'],
@@ -690,13 +695,54 @@ class UseDACCmd(UseCommand):
         return 'use_dac'
 
     def __repr__(self):
-        st = "use_dac %s %s %s sgn %s val %s rng %s" % \
-              (self.loc.chip,self.loc.tile, \
+        st = "%s %s %s %s sgn %s val %s rng %s" % \
+              (self.name(),
+               self.loc.chip,self.loc.tile, \
                self.loc.slice,
                self._inv.abbrev(),
                self._value,
                self._out_range.abbrev())
         return st
+
+class ConfigDACCmd(UseDACCmd):
+
+    def __init__(self,chip,tile,slice,value,
+                 out_range=RangeType.MED,\
+                 inv=SignType.POS):
+        UseDACCmd.__init__(self,chip,tile,slice,value,
+                           out_range,\
+                           inv)
+
+
+    def build_ctype(self):
+        # inverting flips the sign for some wacky reason, given the byte
+        # representation is signed
+        return build_circ_ctype({
+            'type':enums.CircCmdType.CONFIG_DAC.name,
+            'data':{
+                'dac':{
+                    'loc':self._loc.build_ctype(),
+                    'value':self._value,
+                    # for whatever screwy reason, with inversion disabled
+                    # 255=-1.0 and 0=1.0
+                    'inv':self._inv.code(),
+                    'out_range':self._out_range.code()
+                }
+            }
+        })
+
+    @staticmethod
+    def name():
+        return 'config_dac'
+
+
+    def priority(self):
+        return Priority.NORMAL
+
+    @staticmethod
+    def parse(args):
+        return UseDACCmd._parse(args,ConfigDACCmd)
+
 
 
 class GetIntegStatusCmd(AnalogChipCommand):
@@ -803,12 +849,16 @@ class UseIntegCmd(UseCommand):
 
     @staticmethod
     def parse(args):
+        return UseIntegCmd._parse(args,UseIntegCmd)
+
+    @staticmethod
+    def _parse(args,cls):
         result = parse_pattern_block(args,1,1,2,
-                                     UseIntegCmd.name(),
+                                     cls.name(),
                                      debug=True)
         if result.success:
             data = result.value
-            return UseIntegCmd(
+            return cls(
                 data['chip'],
                 data['tile'],
                 data['slice'],
@@ -842,8 +892,9 @@ class UseIntegCmd(UseCommand):
         })
 
     def __repr__(self):
-        fmtstr = "use_integ %d %d %d sgn %s val %f rng %s %s %s"
-        st = fmtstr % (self.loc.chip, \
+        fmtstr = "%s %d %d %d sgn %s val %f rng %s %s %s"
+        st = fmtstr % (self.name(),
+                       self.loc.chip, \
                        self.loc.tile, \
                        self.loc.slice, \
                        self._inv.abbrev(),
@@ -854,6 +905,46 @@ class UseIntegCmd(UseCommand):
         return st
 
 
+
+class ConfigIntegCmd(UseIntegCmd):
+
+    def __init__(self,chip,tile,slice,init_cond,
+                 inv=SignType.POS, \
+                 in_range=RangeType.MED, \
+                 out_range=RangeType.MED,
+                 debug=False):
+        UseIntegCmd.__init__(self,chip,tile,slice,init_cond,
+                         inv=inv,
+                         in_range=in_range,
+                         out_range=out_range,
+                         debug=debug)
+
+    def priority(self):
+        return Priority.LAST
+
+
+    @staticmethod
+    def name():
+        return 'config_integ'
+
+    def build_ctype(self):
+        return build_circ_ctype({
+            'type':enums.CircCmdType.CONFIG_INTEG.name,
+            'data':{
+                'integ':{
+                    'loc':self._loc.build_ctype(),
+                    'value':self._init_cond,
+                    'inv':self._inv.code(),
+                    'in_range': self._in_range.code(),
+                    'out_range': self._out_range.code(),
+                    'debug': 1 if self._debug else 0
+                }
+            }
+        })
+
+    @staticmethod
+    def parse(args):
+        return UseIntegCmd._parse(args,cls=ConfigIntegCmd)
 
 
 class UseFanoutCmd(UseCommand):
@@ -928,15 +1019,17 @@ class UseFanoutCmd(UseCommand):
 
 
     def __repr__(self):
-        st = "use_fanout %d %d %d %d sgn %s %s %s rng %s" % (self.loc.chip,
-                                                      self.loc.tile,
-                                                      self.loc.slice,
-                                                      self.loc.index,
-                                                      self._inv[0].abbrev(),
-                                                      self._inv[1].abbrev(),
-                                                      self._inv[2].abbrev(),
-                                                      self._in_range.abbrev())
+        st = "use_fanout %d %d %d %d sgn %s %s %s rng %s" % (\
+                    self.loc.chip,
+                    self.loc.tile,
+                    self.loc.slice,
+                    self.loc.index,
+                    self._inv[0].abbrev(),
+                    self._inv[1].abbrev(),
+                    self._inv[2].abbrev(),
+                    self._in_range.abbrev())
         return st
+
 
 
 
@@ -990,20 +1083,23 @@ class UseMultCmd(UseCommand):
             }
         })
 
-
     @staticmethod
     def parse(args):
+        return UseMultCmd._parse(args,UseMultCmd)
+
+    @staticmethod
+    def _parse(args,cls):
         result1 = parse_pattern_block(args,0,1,2,
-                                      UseMultCmd.name(),
+                                      cls.name(),
                                      index=True)
 
         result2 = parse_pattern_block(args,0,0,3,
-                                      UseMultCmd.name(),
+                                      cls.name(),
                                       index=True)
 
         if result1.success:
             data = result1.value
-            return UseMultCmd(data['chip'],data['tile'],
+            return cls(data['chip'],data['tile'],
                               data['slice'],data['index'],
                               in0_range=data['range0'],
                               in1_range=RangeType.MED,
@@ -1012,7 +1108,7 @@ class UseMultCmd(UseCommand):
                               coeff=data['value0'])
         elif result2.success:
             data = result2.value
-            return UseMultCmd(data['chip'],data['tile'],
+            return cls(data['chip'],data['tile'],
                               data['slice'],data['index'],
                               in0_range=data['range0'],
                               in1_range=data['range1'],
@@ -1032,7 +1128,9 @@ class UseMultCmd(UseCommand):
 
     def __repr__(self):
         if self._use_coeff:
-            st = "use_mult %d %d %d %d val %f rng %s %s" % (self.loc.chip,
+            st = "%s %d %d %d %d val %f rng %s %s" % (\
+                                                      self.name(),
+                                                      self.loc.chip,
                                                                    self.loc.tile,
                                                                    self.loc.slice,
                                                                    self.loc.index,
@@ -1041,7 +1139,8 @@ class UseMultCmd(UseCommand):
                                                                    self._out_range.abbrev()
             )
         else:
-            st = "use_mult %d %d %d %d rng %s %s %s" % (self.loc.chip,
+            st = "%s %d %d %d %d rng %s %s %s" % (self.name(),
+                                                  self.loc.chip,
                                                                self.loc.tile,
                                                                self.loc.slice,
                                                                self.loc.index,
@@ -1050,6 +1149,52 @@ class UseMultCmd(UseCommand):
                                                                self._out_range.abbrev())
 
         return st
+
+
+class ConfigMultCmd(UseMultCmd):
+
+    def __init__(self,chip,tile,slice,index,
+                 in0_range=RangeType.MED,
+                 in1_range=RangeType.MED,
+                 out_range=RangeType.MED,
+                 coeff=0,use_coeff=False,
+                 inv=SignType.POS):
+        assert(use_coeff)
+        UseMultCmd.__init__(self, chip,tile,slice,index,
+                 in0_range,
+                 in1_range,
+                 out_range,
+                 coeff,
+                 use_coeff,
+                 inv=SignType.POS)
+
+    @staticmethod
+    def name():
+        return 'config_mult'
+
+
+    def priority(self):
+        return Priority.LATE
+
+
+    @staticmethod
+    def parse(args):
+        return UseMultCmd._parse(args,cls=ConfigMultCmd)
+
+    def build_ctype(self):
+        return build_circ_ctype({
+            'type':enums.CircCmdType.CONFIG_MULT.name,
+            'data':{
+                'mult':{
+                    'loc':self._loc.build_ctype(),
+                    'use_coeff':self._use_coeff,
+                    'coeff':self._coeff,
+                    'in0_range':self._in0_range.code(),
+                    'in1_range':self._in1_range.code(),
+                    'out_range':self._out_range.code()
+                }
+            }
+        })
 
 
 class ConnectionCmd(AnalogChipCommand):

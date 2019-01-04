@@ -49,7 +49,11 @@ def circ_cmd_type():
         CircCmdType.CONNECT.name:10,
         CircCmdType.BREAK.name:11,
         CircCmdType.CALIBRATE.name:12,
-        CircCmdType.GET_INTEG_STATUS.name:13
+        CircCmdType.GET_INTEG_STATUS.name:13,
+        CircCmdType.CONFIG_DAC.name:14,
+        CircCmdType.CONFIG_MULT.name:15,
+        CircCmdType.CONFIG_INTEG.name:16
+
     }
     return cstruct.Enum(cstruct.Int16ul,
                         **kwargs)

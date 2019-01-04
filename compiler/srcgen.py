@@ -58,7 +58,14 @@ def gen_use_dac(circ,block,locstr,config):
                       [chip_cmd.SignType,chip_cmd.RangeType])
 
   value = config.dac('in')
-  return chip_cmd.UseDACCmd(chip, \
+  yield chip_cmd.UseDACCmd(chip, \
+                            tile, \
+                            slce, \
+                            value=value, \
+                            inv=inv, \
+                            out_range=rng)
+
+  yield chip_cmd.ConfigDACCmd(chip, \
                             tile, \
                             slce, \
                             value=value, \
@@ -80,7 +87,7 @@ def gen_use_integrator(circ,block,locstr,config,debug=True):
                                     chip_cmd.RangeType, \
                                     chip_cmd.RangeType])
   init_cond = config.dac('ic')
-  return chip_cmd.UseIntegCmd(chip,
+  yield chip_cmd.UseIntegCmd(chip,
                               tile,
                               slce,
                               init_cond=init_cond,
@@ -88,6 +95,16 @@ def gen_use_integrator(circ,block,locstr,config,debug=True):
                               in_range=in_rng,
                               out_range=out_rng,
                               debug=debug)
+  yield chip_cmd.ConfigIntegCmd(chip,
+                              tile,
+                              slce,
+                              init_cond=init_cond,
+                              inv=inv,
+                              in_range=in_rng,
+                              out_range=out_rng,
+                              debug=debug)
+
+
 
 
 def gen_use_multiplier(circ,block,locstr,config):
@@ -99,7 +116,15 @@ def gen_use_multiplier(circ,block,locstr,config):
     in0_rng,out_rng = cast_enum(config.scale_mode, \
                                 [chip_cmd.RangeType,chip_cmd.RangeType])
     coeff = config.dac('coeff')
-    return chip_cmd.UseMultCmd(chip,
+    yield chip_cmd.UseMultCmd(chip,
+                               tile,
+                               slce,
+                               index,
+                               in0_range=in0_rng,
+                               out_range=out_rng,
+                               coeff=coeff,
+                               use_coeff=True)
+    yield chip_cmd.ConfigMultCmd(chip,
                                tile,
                                slce,
                                index,
@@ -108,13 +133,14 @@ def gen_use_multiplier(circ,block,locstr,config):
                                coeff=coeff,
                                use_coeff=True)
 
+
   else:
     in0_rng,in1_rng,out_rng = cast_enum(config.scale_mode, \
                                 [chip_cmd.RangeType, \
                                  chip_cmd.RangeType, \
                                  chip_cmd.RangeType])
 
-    return chip_cmd.UseMultCmd(chip,
+    yield chip_cmd.UseMultCmd(chip,
                                tile,
                                slce,
                                index,
@@ -131,7 +157,7 @@ def gen_use_fanout(circ,block,locstr,config):
                                      chip_cmd.SignType,
                                      chip_cmd.SignType,
                                      chip_cmd.RangeType])
-  return chip_cmd.UseFanoutCmd(chip,tile,slce,index,
+  yield chip_cmd.UseFanoutCmd(chip,tile,slce,index,
                                in_range=in_rng,
                                inv0=inv0,
                                inv1=inv1,
@@ -140,22 +166,19 @@ def gen_use_fanout(circ,block,locstr,config):
 
 def gen_block(gprog,circ,block,locstr,config):
   if block.name == 'multiplier':
-    cmd = gen_use_multiplier(circ,block,locstr,config)
-    gprog.add(cmd)
+    generator = gen_use_multiplier(circ,block,locstr,config)
 
   elif block.name == 'tile_dac':
-    cmd = gen_use_dac(circ,block,locstr,config)
-    gprog.add(cmd)
+    generator = gen_use_dac(circ,block,locstr,config)
 
   elif block.name == 'integrator':
-    cmd = gen_use_integrator(circ,block,locstr,config,debug=True)
-    gprog.add(cmd)
+    generator = gen_use_integrator(circ,block,locstr,config, \
+                                   debug=True)
     cmd = gen_get_integrator_status(circ,block,locstr)
     gprog.add(cmd)
 
   elif block.name == 'fanout':
-    cmd = gen_use_fanout(circ,block,locstr,config)
-    gprog.add(cmd)
+    generator = gen_use_fanout(circ,block,locstr,config)
 
   elif block.name == 'ext_chip_in' or \
        block.name == 'tile_in' or \
@@ -167,6 +190,9 @@ def gen_block(gprog,circ,block,locstr,config):
 
   else:
     raise Exception("unimplemented: <%s>" % block.name)
+
+  for cmd in generator:
+    gprog.add(cmd)
 
 def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
   TO_BLOCK_TYPE = {
