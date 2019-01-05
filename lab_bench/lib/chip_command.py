@@ -372,7 +372,7 @@ class AnalogChipCommand(ArduinoCommand):
             self.fail("not in block list <%s>" % block)
 
     def priority(self):
-        return Priority.NORMAL
+        return Priority.EARLY
 
     def analyze(self):
         return None
@@ -564,6 +564,9 @@ class UseCommand(AnalogChipCommand):
     def loc(self):
         return self._loc
 
+    def priority(self):
+        return Priority.FIRST
+
     def configure(self):
         return self
 
@@ -647,9 +650,6 @@ class UseDACCmd(UseCommand):
     @staticmethod
     def desc():
         return "use a constant dac block on the hdacv2 board"
-
-    def priority(self):
-        return Priority.EARLY
 
 
     @staticmethod
@@ -843,9 +843,6 @@ class UseIntegCmd(UseCommand):
     def desc():
         return "use a integrator block on the hdacv2 board"
 
-    def priority(self):
-        return Priority.FIRST
-
 
     @staticmethod
     def parse(args):
@@ -920,7 +917,7 @@ class ConfigIntegCmd(UseIntegCmd):
                          debug=debug)
 
     def priority(self):
-        return Priority.LAST
+        return Priority.LATE
 
 
     @staticmethod
@@ -1060,8 +1057,6 @@ class UseMultCmd(UseCommand):
         self._in1_range = in1_range
         self._out_range = out_range
 
-    def priority(self):
-        return Priority.FIRST
 
 
     @staticmethod
@@ -1174,7 +1169,7 @@ class ConfigMultCmd(UseMultCmd):
 
 
     def priority(self):
-        return Priority.LATE
+        return Priority.NORMAL
 
 
     @staticmethod
@@ -1324,6 +1319,9 @@ class MakeConnCmd(ConnectionCmd):
     @staticmethod
     def desc():
         return "make a connection on the hdacv2 board"
+
+    def priority(self):
+        return Priority.LAST
 
     def build_ctype(self):
         data = ConnectionCmd.build_ctype(self)

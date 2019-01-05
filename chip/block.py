@@ -184,13 +184,17 @@ class Block:
     def scale_factor(self,comp_mode,scale_mode,out):
         data = self._get_scale_dict(comp_mode,scale_mode, \
                                     self._scale_factors)
+        if data is None:
+            return 1.0
+
         if not out in data:
             return 1.0
 
         return data[out]
 
     def set_scale_factor(self,comp_mode,scale_mode,port,value):
-        data = self._make_scale_dict(comp_mode,scale_mode,self._scale_factors)
+        data = self._make_scale_dict(comp_mode,scale_mode, \
+                                     self._scale_factors)
         data[port] = value
         return self
 
@@ -327,6 +331,7 @@ class Block:
             data[port][handle] = properties
 
         return self
+
 
 
     def is_input(self,port):

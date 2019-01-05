@@ -1,9 +1,10 @@
 import sys
 import os
+import numpy as np
 
 sys.path.insert(0,os.path.abspath("lab_bench"))
 
-from compiler import arco, jaunt, srcgen, execprog
+from compiler import arco, jaunt, srcgen, execprog, skelter
 from chip.conc import ConcCirc
 
 import argparse
@@ -59,6 +60,9 @@ jaunt_subp.add_argument('--scale-circuits', type=int,default=15,
                        help='number of scaled circuits to generate.')
 
 
+ref_subp = subparsers.add_parser('skelter', help='perform noise analysis')
+
+
 ref_subp = subparsers.add_parser('execprog', help='compute reference signal')
 ref_subp.add_argument('math_env', type=str,
                        help='math environment.')
@@ -74,6 +78,8 @@ gren_subp.add_argument('hw_env', type=str, \
 args = parser.parse_args()
 
 path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
+
+from chip.hcdc import board as hdacv2_board
 
 if args.subparser_name == "arco":
     from chip.hcdc import board as hdacv2_board
@@ -95,8 +101,33 @@ if args.subparser_name == "arco":
         conc_circ.write_graph(filename,write_png=True)
         time.sleep(1)
 
+elif args.subparser_name == "skelter":
+    circ_dir = path_handler.conc_circ_dir()
+    scores = []
+    filenames = []
+    for dirname, subdirlist, filelist in os.walk(circ_dir):
+        for fname in filelist:
+           if fname.endswith('.circ'):
+               print('<<<< %s >>>>' % fname)
+               with open("%s/%s" % (dirname,fname),'r') as fh:
+                   obj = json.loads(fh.read())
+                   circ_bmark,circ_indices,circ_scale_index = \
+                    path_handler.conc_circ_to_args(fname)
+                   conc_circ = ConcCirc.from_json(hdacv2_board, \
+                                                  obj)
+
+                   score = skelter.execute(hdacv2_board,conc_circ)
+                   scores.append(score)
+                   filenames.append(fname)
+
+
+    sorted_indices = np.argsort(scores)
+    with open('scores.txt','w') as fh:
+        for ind in sorted_indices:
+            line = "%s ]] %s" % (scores[ind], filenames[ind])
+            fh.write("%s\n" % line)
+            print(line)
 elif args.subparser_name == "jaunt":
-    from chip.hcdc import board as hdacv2_board
 
     circ_dir = path_handler.abs_circ_dir()
     for dirname, subdirlist, filelist in os.walk(circ_dir):
@@ -128,7 +159,6 @@ elif args.subparser_name == "jaunt":
                             break
 
 elif args.subparser_name == "execprog":
-   from chip.hcdc import board as hdacv2_board
    prog = bmark.get_prog(args.benchmark)
    menv = menvs.get_math_env(args.math_env)
    execprog.execute(path_handler,
@@ -136,7 +166,6 @@ elif args.subparser_name == "execprog":
                     menv)
 
 elif args.subparser_name == "srcgen":
-   from chip.hcdc import board as hdacv2_board
    menv = menvs.get_math_env(args.math_env)
    hwenv = hwenvs.get_hw_env(args.hw_env)
    circ_dir = path_handler.conc_circ_dir()

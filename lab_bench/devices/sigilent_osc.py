@@ -412,6 +412,8 @@ class Sigilent1020XEOscilloscope(SICPDevice):
         rate,unit = extract_number_and_unit(args[0])
         if unit == 'Sa/s':
             return rate
+        elif unit == "kSa/s":
+            return rate*1e3
         elif unit == "GSa/s":
             return rate*1e9
         elif unit == "MSa/s":
@@ -545,6 +547,8 @@ class Sigilent1020XEOscilloscope(SICPDevice):
         code_idx = None
         for idx,byte in enumerate(resp):
             chrs = chr(byte)
+            if len(resp) < idx+2:
+                raise Exception("message too small %s" % resp)
             chrs += chr(resp[idx+1])
             if chrs == '#9':
                 code_idx = idx

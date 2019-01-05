@@ -2,6 +2,7 @@ import sys
 import os
 import argparse
 import chip_compare
+import time
 
 sys.path.insert(0,os.path.abspath("lab_bench"))
 
@@ -31,4 +32,4 @@ for dirname, subdirlist, filelist in os.walk(grendel_dir):
           os.system(exec_cmd)
           print("compare chip result")
           chip_compare.execute(script_file)
-          input()
+          time.sleep(3)

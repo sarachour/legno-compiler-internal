@@ -16,7 +16,7 @@ def truncate(f, n):
     return float('.'.join([i, (d+'0'*n)[:n]]))
 
 DAC_SLACK = 1.0/256
-DAC_MIN = truncate(-1+DAC_SLACK,2)
+DAC_MIN = truncate(-1.0+DAC_SLACK,2)
 DAC_MAX = truncate(1.0-DAC_SLACK,2)
 ADC_SAMPLE_US = 3.0
 # range for voltage to current
@@ -28,6 +28,7 @@ IV_MIN = -3.3
 IV_MAX = 3.3
 # frequency with experimental adjustments 
 TIME_FREQUENCY = 126000*1.55916665
+#TIME_FREQUENCY = 126000.0
 # microamps
 ANALOG_SLACK = 0.1
 ANALOG_MIN = -2.0+ANALOG_SLACK

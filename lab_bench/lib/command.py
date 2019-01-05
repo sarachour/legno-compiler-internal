@@ -13,9 +13,12 @@ CIRCUIT COMMANDS
 
 COMMANDS = [
     # dac/adc commands
+    ConfigDACCmd,
     UseDACCmd,
     UseIntegCmd,
+    ConfigIntegCmd,
     UseMultCmd,
+    ConfigMultCmd,
     GetIntegStatusCmd,
     UseFanoutCmd,
     MakeConnCmd,

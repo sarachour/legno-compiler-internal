@@ -238,7 +238,8 @@ void exec_command(Fabric * fab, cmd_t& cmd){
       case cmd_type_t::CONFIG_DAC:
         dacd = cmd.data.dac; 
         dac = get_slice(fab,dacd.loc)->dac;
-        dac->setConstant(dacd.value);
+        scf = load_scf(dacd.out_range);
+        dac->setConstant(dacd.value*scf);
         Serial.println("configured dac");
         break;
         
@@ -256,9 +257,6 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         // multiplier uses dac from same row.
         multd = cmd.data.mult;
         mult = get_mult(fab,multd.loc);
-        load_range(multd.in0_range, &lo1, &hi1);
-        load_range(multd.out_range, &lo2, &hi2);
-        load_range(multd.in1_range, &lo3, &hi3);
         if(multd.use_coeff){
           scf = load_scf(multd.out_range)/load_scf(multd.in0_range);
           mult->setGain(multd.coeff*scf);
@@ -301,7 +299,6 @@ void exec_command(Fabric * fab, cmd_t& cmd){
     case cmd_type_t::CONFIG_INTEG:
         integd = cmd.data.integ;
         integ = get_slice(fab,integd.loc)->integrator;
-        integ->setException( integd.debug == 1 ? true : false);
         scf = load_scf(integd.out_range)/load_scf(integd.in_range);
         integ->setInitial(integd.value*scf);
         Serial.println("configured integ");
