@@ -1,4 +1,5 @@
 import ops.op as op
+import numpy as np
 
 class NoiseEnv:
 
@@ -74,6 +75,17 @@ def noise_analysis(nzenv,board,circ,block_name,loc,port,visited=[]):
 
     return sum(bindings)
 
+
+def compute_score(board,circ,block_name,loc,port,noise):
+  block = board.block(block_name)
+  config = circ.config(block_name,loc)
+  scf = config.scf(port)
+  label = config.label(port)
+
+  mmin,mmax = circ.interval(label)
+  signal_mag = scf*max(abs(mmin),abs(mmax))
+  return np.log10(signal_mag/noise)
+
 def execute(board,circ):
   endpoints = []
   for handle,block,loc in board.handles():
@@ -83,9 +95,11 @@ def execute(board,circ):
         endpoints.append((block,loc,port,label))
 
   score = 0
-  for block,loc,port,label in endpoints:
+  for block_name,loc,port,label in endpoints:
     print("%s[%s].%s := %s" % (block,loc,port,label))
-    noise = noise_analysis(NoiseEnv(),board,circ,block,loc,port,visited=[])
-    score += noise
+    noise = noise_analysis(NoiseEnv(),board,circ, \
+                           block_name,loc,port,visited=[])
+    this_score = compute_score(board,circ,block_name,loc,port,noise)
+    score += this_score
 
   return score
