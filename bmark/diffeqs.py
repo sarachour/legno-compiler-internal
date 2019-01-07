@@ -1,6 +1,6 @@
 from lang.prog import MathProg
 from ops import op
-
+'''
 def benchmark_smmrxn():
     prob = MathProg("smmrxn")
     kf = 0.5
@@ -59,6 +59,15 @@ def benchmark_bmmrxn():
     prob.bind("enz-sub", op.Emit(op.Var("ES")))
     prob.compile()
     return prob
+'''
+
+def benchmark_p53stoch():
+    raise Exception("not implemented")
+
+
+def benchmark_reprissilator():
+    raise Exception("not implemented")
+
 
 def benchmark_spring():
     prob = MathProg("spring")
@@ -72,14 +81,14 @@ def benchmark_spring():
     prob.bind("dy1",dy1)
     prob.bind("y",y)
     prob.bind("Y", op.Emit(op.Var("y")))
-    prob.interval("Y",-1,1)
-    prob.interval("y",-1,1)
-    prob.interval("dy1",-2,2)
+    prob.interval("Y",-10,10)
+    prob.interval("y",-10,10)
+    prob.interval("dy1",-10,10)
     # compute fmin and fmax for each signal.
     prob.compile()
     return prob
 
-
+'''
 def benchmark_decay():
     prob = MathProg("decay")
     x = op.Integ(
@@ -93,6 +102,45 @@ def benchmark_decay():
 
     prob.compile()
     return prob
+'''
+
+def benchmark_vanderpol():
+    # y'' - u(1-y^2)*y'+y = 0
+    # separated
+    # y1' = y2
+    # y2' = u*(1-y1*y1)*y2 - y1
+    prob = MathProg("vanderpol")
+    mu = 1000
+    y1_ic = 2
+    y2_ic = 0
+    dy1 = op.Var("y2")
+    dy2 = op.Add(
+        op.Mult(
+            op.Mult(
+                op.Const(-mu),
+                op.Var("y2")
+            ),
+            op.Add(
+                op.Const(-1),
+                op.Mult(op.Var('y1'),
+                        op.Var('y1'))
+            )
+        ),
+        op.Mult(
+            op.Const(-1),
+            op.Var('y1')
+        )
+    )
+
+    prob.bind("y1",
+              op.Integ(dy1, op.Const(y1_ic),
+                       ":u"))
+    prob.bind("y2",
+              op.Integ(dy2, op.Const(y2_ic),
+                       ":v"))
+    prob.interval("y1",0,5)
+    prob.interval("y2",0,5)
+    prob.bind("Y", op.Emit(op.Var("y1")))
 
 def benchmark_inout1():
     prob = MathProg("inout1")
@@ -127,12 +175,10 @@ def benchmark_inout2():
     return prob
 
 BMARKS = [
-    benchmark_decay(),
     benchmark_spring(),
-    benchmark_smmrxn(),
-    benchmark_bmmrxn(),
     benchmark_inout1(),
-    benchmark_inout2()
+    benchmark_inout2(),
+    benchmark_vanderpol()
 ]
 
 def get_prog(name):

@@ -141,5 +141,5 @@ def execute(script_file):
   plot_out(ph,script_file,out_data)
   plot_compare(ph,script_file,out_data,ref_data,circ)
 
-
-outpath = sys.argv[1]
+if __name__ == "__main__":
+  execute(sys.argv[1])

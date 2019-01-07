@@ -276,7 +276,7 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         load_range(multd.in1_range, &lo3, &hi3);
         if(not multd.use_coeff){
            mult->in0->setRange(lo1,hi1);
-           mult->in0->setRange(lo2,hi2);
+           mult->in1->setRange(lo2,hi2);
            mult->out0->setRange(lo3,hi3);
         }
         Serial.println("enabled mult");

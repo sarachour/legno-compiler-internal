@@ -5,5 +5,5 @@ MATHENV=$2
 HWENV="default"
 python3 legno.py $BMARK execprog $MATHENV
 python3 legno.py $BMARK arco --xforms 0 --abs-circuits 25 --conc-circuits 1
-python3 legno.py $BMARK jaunt
+python3 legno.py $BMARK jaunt --scale-circuits 30
 python3 legno.py $BMARK srcgen $MATHENV $HWENV

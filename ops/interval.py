@@ -116,3 +116,10 @@ class IntervalCollection:
 
     new_ivals.update(new_ival)
     return new_ivals
+
+  def __repr__(self):
+    st = "ival %s\n" % self._ival
+    for bnd,ival in self._bindings.items():
+      st += "  %s: %s\n" % (bnd,ival)
+
+    return st

@@ -58,7 +58,7 @@ def noise_analysis(nzenv,board,circ,block_name,loc,port,visited=[]):
     scf = block.scale_factor(config.comp_mode,\
                              scale_mode,port)
     print("scf: %s" % scf)
-    out_noise = nz_expr(expr,config,bindings)*scf
+    out_noise = nz_expr(expr,config,bindings)*abs(scf)
     out_noise += 1.0
     return out_noise
 
@@ -84,7 +84,14 @@ def compute_score(board,circ,block_name,loc,port,noise):
 
   mmin,mmax = circ.interval(label)
   signal_mag = scf*max(abs(mmin),abs(mmax))
-  return np.log10(signal_mag/noise)
+  print(signal_mag)
+  print(noise)
+
+  score = np.log10(signal_mag/noise)
+  if np.isnan(score):
+    input()
+
+  return score
 
 def execute(board,circ):
   endpoints = []

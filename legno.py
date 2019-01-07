@@ -20,6 +20,13 @@ import bmark.diffeqs as bmark
 #import conc
 #import srcgen
 
+def write_interval_file(filename,tau,intervals):
+    with open(filename,'w') as fh:
+        fh.write("tau=%s\n" % (tau))
+        for (block,loc,port),ival in intervals.items():
+            fh.write("%s[%s].%s = [%s,%s] scf=%s\n" % \
+                     (block,loc,port,ival[0],ival[1],ival[2]))
+
 # TODO: in concrete specification, connection is made to same dest.
 def compile(board,problem):
     files = []
@@ -61,6 +68,14 @@ jaunt_subp.add_argument('--scale-circuits', type=int,default=15,
 
 
 ref_subp = subparsers.add_parser('skelter', help='perform noise analysis')
+ref_subp.add_argument('--math-env', type=str,default='t20',
+                       help='math environment.')
+ref_subp.add_argument('--hw-env', type=str,default='default', \
+                        help='hardware environment')
+ref_subp.add_argument('--gen-script-list', action='store_true',
+                        help='generate a script list')
+
+
 
 
 ref_subp = subparsers.add_parser('execprog', help='compute reference signal')
@@ -124,9 +139,38 @@ elif args.subparser_name == "skelter":
     sorted_indices = np.argsort(scores)
     with open('scores.txt','w') as fh:
         for ind in sorted_indices:
-            line = "%s ]] %s" % (scores[ind], filenames[ind])
+            line = "%s\t\t %s" % (scores[ind], filenames[ind])
             fh.write("%s\n" % line)
             print(line)
+
+    if args.gen_script_list:
+        menv = args.math_env
+        hwenv = args.hw_env
+        subinds = np.random.choice(sorted_indices,15)
+        subscores = list(map(lambda i: scores[i], subinds))
+        sorted_subinds = map(lambda i: subinds[i], np.argsort(subscores))
+
+        files = []
+        for ind in sorted_subinds:
+            score = scores[ind]
+            conc_filename = filenames[ind]
+            circ_bmark,circ_indices,circ_scale_index = \
+                    path_handler.conc_circ_to_args(conc_filename)
+            gren_filename = path_handler.grendel_file(circ_bmark, \
+                                                      circ_indices, \
+                                                      circ_scale_index, \
+                                                      menv,
+                                                      hwenv)
+            print(gren_filename,score)
+            assert(path_handler.has_file(gren_filename))
+            files.append((gren_filename,score))
+
+        with open("grendel_scripts.txt",'w') as fh:
+            for filename,score in files:
+                fh.write("# %f\n" % score)
+                fh.write("%s\n" % filename)
+
+
 elif args.subparser_name == "jaunt":
 
     circ_dir = path_handler.abs_circ_dir()
@@ -141,14 +185,18 @@ elif args.subparser_name == "jaunt":
                     conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                obj)
                     n_scaled = 0
-                    for scale_circ in jaunt.scale(conc_circ, \
+                    for scale_circ,tau,intervals in jaunt.scale(conc_circ, \
                                                   noise_analysis=args.noise):
-
 
                         filename = path_handler.conc_circ_file(circ_bmark,
                                                                circ_indices,
                                                                n_scaled)
                         scale_circ.write_circuit(filename)
+                        filename = path_handler.interval_file(circ_bmark,
+                                                              circ_indices,
+                                                              n_scaled)
+
+                        write_interval_file(filename,tau,intervals)
                         filename = path_handler.conc_graph_file(circ_bmark,
                                                                 circ_indices,
                                                                 n_scaled)
@@ -174,16 +222,20 @@ elif args.subparser_name == "srcgen":
            if fname.endswith('.circ'):
                print('<<<< %s >>>>' % fname)
                with open("%s/%s" % (dirname,fname),'r') as fh:
-                   obj = json.loads(fh.read())
                    circ_bmark,circ_indices,circ_scale_index = \
                     path_handler.conc_circ_to_args(fname)
-                   conc_circ = ConcCirc.from_json(hdacv2_board, \
-                                                  obj)
                    filename = path_handler.grendel_file(circ_bmark, \
                                                         circ_indices, \
                                                         circ_scale_index, \
                                                         menv.name,
                                                         hwenv.name)
+
+                   if path_handler.has_file(filename):
+                       continue
+
+                   obj = json.loads(fh.read())
+                   conc_circ = ConcCirc.from_json(hdacv2_board, \
+                                                  obj)
                    gren_file = srcgen.generate(path_handler,
                                                hdacv2_board,\
                                                conc_circ,\

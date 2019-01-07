@@ -348,17 +348,20 @@ def bpder_derive_output_port(prob,circ,block,config,loc,port):
     for var_block_name,var_loc,var_port in free+bound:
         ival = prob.math_range(var_block_name,var_loc,var_port)
         varmap[var_port] = ival
+        print("  v:%s=%s" % (var_port,ival))
 
     for handle in handles:
-        ival = prob.math_range(block.name, loc, port, handle=handle)
+        ival = prob.math_range(block.name, loc, port,
+                               handle=handle)
         varmap[handle] = ival
+        print("  h:%s=%s" % (handle,ival))
 
     intervals = expr.interval(varmap)
 
     if prob.math_range(block.name,loc,port) is None:
         prob.set_math_range(block.name,loc,port,intervals.interval)
-        print("out %s[%s].%s => %s" % \
-              (block.name,loc,port,intervals.interval))
+        print("out %s[%s].%s => %s [c=%s]" % \
+              (block.name,loc,port,intervals.interval,coeff))
 
     for handle,interval in intervals.bindings():
         if not prob.math_range(block.name,loc,port,handle=handle):
@@ -552,6 +555,13 @@ def bpgen_scaled_interval_constraint(prob,scale_expr,math_rng,hw_rng):
                             math_rng.lower,hw_rng.lower)
 
 
+def bpgen_compute_interval(prob,block,loc,expr):
+    bindings = {}
+    for var in expr.vars():
+        bindings[var] = prob.math_range(block,loc,var)
+
+    return expr.interval(bindings).interval
+
 def bpgen_traverse_expr(prob,block,loc,port,expr):
     inv_tau_scfvar = jop.JVar(prob.TAU,exponent=-1)
     if expr.op == ops.Op.CONST:
@@ -575,15 +585,25 @@ def bpgen_traverse_expr(prob,block,loc,port,expr):
                                           handle=expr.deriv_handle))
         var_stvar = jop.JVar(prob.get_scf(block.name,loc,port, \
                                           handle=expr.handle))
+        integ_expr = jop.JMult(inv_tau_scfvar,var_deriv)
 
         # ranges are contained
-        mrng = prob.math_range(block.name,loc,port,expr.deriv_handle)
-        hwrng = prob.hardware_range(block.name,loc,port,expr.deriv_handle)
-        assert(not mrng is None)
-        assert(not hwrng is None)
-        bpgen_scaled_interval_constraint(prob,ic_expr,mrng,hwrng)
+        deriv_mrng = prob.math_range(block.name,loc,port,expr.deriv_handle)
+        st_mrng = prob.math_range(block.name,loc,port,expr.handle)
+        ic_mrng = bpgen_compute_interval(prob,block.name,loc,expr.init_cond)
+        deriv_hwrng = prob.hardware_range(block.name,loc,port,expr.deriv_handle)
+        st_hwrng = prob.hardware_range(block.name,loc,port,expr.handle)
+        assert(not deriv_mrng is None)
+        assert(not ic_mrng is None)
+        assert(not deriv_hwrng is None)
+        assert(not st_hwrng is None)
+        bpgen_scaled_interval_constraint(prob, \
+                                         deriv_expr,deriv_mrng,deriv_hwrng)
+        bpgen_scaled_interval_constraint(prob,integ_expr,\
+                                         st_mrng,st_hwrng)
+        bpgen_scaled_interval_constraint(prob,ic_expr, \
+                                         ic_mrng,st_hwrng)
         # the handles for deriv and stvar are the same
-        integ_expr = jop.JMult(inv_tau_scfvar,var_deriv)
         prob.eq(integ_expr,var_stvar)
         prob.eq(ic_expr,var_stvar)
         prob.eq(deriv_expr,var_deriv)
@@ -732,7 +752,7 @@ def build_problem(circ,prob):
 
     if failed:
         print("<< failed >>")
-        time.sleep(1.0)
+        time.sleep(0.2)
         return None
 
     objective = 1.0/variables["tau"]
@@ -772,6 +792,7 @@ def sp_update_circuit(prob,circ,assigns):
             bindings[(block_name,loc,port,handle)] = value
 
 
+    intervals = {}
     circ.set_tau(tau)
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
@@ -787,15 +808,27 @@ def sp_update_circuit(prob,circ,assigns):
                       (block.name,loc,port,value, \
                        closest_scaled_value))
                 config.set_dac(port,closest_scaled_value)
+                intervals[(block_name,loc,port)] = \
+                          [closest_scaled_value, \
+                           closest_scaled_value,scale_factor]
 
-            elif config.has_label(port):
-                label = config.label(port)
+            elif (block_name,loc,port,None) in bindings:
                 scale_factor = bindings[(block_name,loc,port,None)]
-                config.set_scf(port,scale_factor)
-                print("scf %s[%s].%s:%s = %s" % (block.name,loc,port,
-                                                 label,scale_factor))
+                # add scale factor, if there's a label
+                if config.has_label(port):
+                    label = config.label(port)
+                    config.set_scf(port,scale_factor)
 
-    return circ
+                #compute ranges
+                low,high = prob.math_range(block_name,loc,port)
+                intervals[(block.name,loc,port)] = [
+                    low*scale_factor,
+                    high*scale_factor,
+                    scale_factor
+                ]
+
+
+    return circ,(tau,intervals)
 
 
 def iter_scaled_circuits(circ):
@@ -831,6 +864,7 @@ def scale(circ,noise_analysis=False):
         if prob is None:
             continue
 
+        #input()
         sln = solve_problem(prob)
         if sln is None:
             print("[[FAILURE]]")
@@ -843,6 +877,6 @@ def scale(circ,noise_analysis=False):
             assert(succ == False)
             continue
 
-        sp_update_circuit(data_structs,orig_circ,
-                            sln['freevariables'])
-        yield orig_circ
+        upd_circ,(tau,intervals) = sp_update_circuit(data_structs,orig_circ,
+                                                     sln['freevariables'])
+        yield upd_circ,tau,intervals
