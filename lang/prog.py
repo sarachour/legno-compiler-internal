@@ -1,5 +1,40 @@
 from ops.interval import Interval
 
+class MathEnv:
+
+    def __init__(self,name):
+        self._name = name
+        self._sim_time = 1.0
+        self._input_time = 1.0
+        self._inputs = {}
+
+    def input(self,name):
+        return self._inputs[name]
+
+    def set_input(self,name,func,periodic=False):
+        self._inputs[name] = (func,periodic)
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def input_time(self):
+        return self._input_time
+
+    @property
+    def sim_time(self):
+        return self._sim_time
+
+    def set_input_time(self,t):
+        assert(t > 0)
+        self._input_time = t
+
+
+    def set_sim_time(self,t):
+        assert(t > 0)
+        self._sim_time = t
+
 class MathProg:
 
     def __init__(self,name):
@@ -7,18 +42,34 @@ class MathProg:
         self._bindings = {}
         self._intervals = {}
         self._bandwidths= {}
+        self._variables = []
+
+    def variables(self):
+        return self._variables
 
     def bind(self,var,expr):
         assert(not var in self._bindings)
+        self._variables.append(var)
         self._bindings[var] = expr
 
     def bindings(self):
         for var,expr in self._bindings.items():
             yield var,expr
 
+    def binding(self,v):
+        if not v in self._bindings:
+            return None
+        return self._bindings[v]
+
+    def bandwidth(self,v,b):
+        if not v in self._variables:
+            self._variables.append(v)
+        self._bandwidths[v] = b
 
     def interval(self,v,min_v,max_v):
         assert(min_v <= max_v)
+        if not v in self._variables:
+            self._variables.append(v)
         self._intervals[v] = Interval.type_infer(min_v,max_v)
 
     def intervals(self):
@@ -34,9 +85,12 @@ class MathProg:
             assert(variable in self._intervals)
 
         for variable,expr in self._bindings.items():
-            if expr is None:
+            if expr is None \
+               or variable in self._bandwidths:
                 continue
-            bw = expr.bandwidth(self._intervals,self._bindings)
+            bw = expr.bandwidth(self._intervals,\
+                                self._bandwidths,\
+                                self._bindings)
             self._bandwidths[variable] = bw
 
     @property

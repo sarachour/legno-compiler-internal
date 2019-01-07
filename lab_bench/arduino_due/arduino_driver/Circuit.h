@@ -35,7 +35,11 @@ typedef enum cmd_type {
     BREAK,
     CALIBRATE,
     /*debug*/
-    GET_INTEG_STATUS
+    GET_INTEG_STATUS,
+    /*set values*/
+    CONFIG_DAC,
+    CONFIG_MULT,
+    CONFIG_INTEG
 } cmd_type_t;
 
 typedef struct circ_loc {

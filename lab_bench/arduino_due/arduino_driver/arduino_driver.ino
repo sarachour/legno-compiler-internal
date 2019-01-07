@@ -30,7 +30,7 @@ void setup() {
   this_fabric = circ::setup_board();
   Serial.begin(115200);
   Serial.flush();
-  experiment::setup_experiment();
+  experiment::setup_experiment(&this_experiment);
   
 }
 

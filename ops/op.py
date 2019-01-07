@@ -67,7 +67,7 @@ class Op:
         return None
 
     def compute(self,bindings={}):
-        raise NotImplementedError
+        raise Exception("compute not implemented: %s" % self)
 
     def arg(self,idx):
         return self._args[idx]
@@ -113,7 +113,7 @@ class Op:
         else:
             return False,False,None
 
-    def bandwidth(self,intervals,bindings):
+    def bandwidth(self,intervals,bandwidths,bindings):
         raise NotImplementedError("unknown bandwidth <%s>" % (str(self)))
 
     def match(self,expr):
@@ -185,7 +185,7 @@ class Op2(Op):
         return self.compute_op2(arg1,arg2)
 
     def compute_op2(self,arg1,arg2):
-        raise NotImplementedError
+        raise Exception("compute_op2 not implemented: %s" % self)
 
 class BaseExpOp(Op):
     def __init__(self,op,args):
@@ -248,7 +248,7 @@ class Integ(Op2):
         stvars[self._handle] = self
         return
 
-    def bandwidth(self,intervals,bindings):
+    def bandwidth(self,intervals,bandwidths,bindings):
         expr = self.deriv
         min_val,max_val = self.deriv.interval(intervals).interval
         tau,time_su = 1.0,1.0
@@ -313,10 +313,8 @@ class Square(BaseExpOp):
 
 class ExtVar(Op):
 
-    def __init__(self,name,min_val,max_val,bandwidth):
+    def __init__(self,name):
         Op.__init__(self,Op.EXTVAR,[])
-        self._interval = (min_val,max_val)
-        self._bandwidth = bandwidth
         self._name = name
 
     @property
@@ -324,17 +322,22 @@ class ExtVar(Op):
         return self._name
 
     def interval(self,bindings):
-        l,h = self._interval
-        return interval.IntervalCollection(
-            interval.Interva.infer_type(l,h)
-        )
+        return interval.IntervalCollection(bindings[self._name])
 
-    def bandwidth(self,intervals,bindings):
-        return self._bandwidth
+    def bandwidth(self,intervals,bandwidths,bindings):
+        return bandwidths[self._name]
 
     @property
     def name(self):
         return self._name
+
+    def compute(self,bindings):
+        return bindings[self._name]
+
+    def __repr__(self):
+        return "(%s %s)" % \
+            (Op.STRMAP[self._op],self._name)
+
 
 class Var(Op):
 
@@ -354,9 +357,9 @@ class Var(Op):
         assert(self._name in bindings)
         return interval.IntervalCollection(bindings[self._name])
 
-    def bandwidth(self,intervals,bindings):
+    def bandwidth(self,intervals,bandwidths,bindings):
         new_b = dict(filter(lambda el: el[0] != self._name, bindings.items()))
-        return bindings[self._name].bandwidth(intervals,new_b)
+        return bindings[self._name].bandwidth(intervals,bandwidths,new_b)
 
     def compute(self,bindings):
         if not self._name in bindings:
@@ -388,7 +391,7 @@ class Const(Op):
             interval.IValue(self._value)
         )
 
-    def bandwidth(self,intervals,bindings):
+    def bandwidth(self,intervals,bandwidths,bindings):
         return 0.0
 
     @property
@@ -440,11 +443,16 @@ class Emit(Op):
         Op.__init__(self,Op.EMIT,[node])
         pass
 
-    def bandwidth(self,intervals,bindings):
-        return self.arg(0).bandwidth(intervals,bindings)
+    def bandwidth(self,intervals,bandwidths,bindings):
+        return self.arg(0).bandwidth(intervals,bandwidths,bindings)
 
     def interval(self,bindings):
         return self.arg(0).interval(bindings)
+
+
+    def compute(self,bindings):
+        return self.arg(0).compute(bindings)
+
 
 class Mult(Op2):
 
@@ -459,19 +467,20 @@ class Mult(Op2):
         return is1.merge(is2,
                   is1.interval.mult(is2.interval))
 
-    def bandwidth(self,intervals,bindings):
+    def bandwidth(self,intervals,bandwidths,bindings):
         if self.arg1.op == Op.CONST:
             value = abs(self.arg1.value)
-            f2 = self.arg2.bandwidth(intervals,bindings)
+            f2 = self.arg2.bandwidth(intervals,bandwidths,bindings)
             return f2*value
 
         elif self.arg2.op == Op.CONST:
             value = abs(self.arg2.value)
-            f2 = self.arg1.bandwidth(intervals,bindings)
+            f2 = self.arg1.bandwidth(intervals,bandwidths,bindings)
             return f2*value
 
         else:
             raise Exception("cannot compute bandwidth of nonlinear fxn: <%s>" % self)
+
     def match_op(self,expr):
         if expr.op == self._op:
             return True,False,[
@@ -508,9 +517,9 @@ class Add(Op2):
                   is1.interval.add(is2.interval))
 
 
-    def bandwidth(self,intervals,bindings):
-        bandwidth1 = self.arg1.bandwidth(intervals,bindings)
-        bandwidth2 = self.arg2.bandwidth(intervals,bindings)
+    def bandwidth(self,intervals,bandwidths,bindings):
+        bandwidth1 = self.arg1.bandwidth(intervals,bandwidths,bindings)
+        bandwidth2 = self.arg2.bandwidth(intervals,bandwidths,bindings)
         return max(bandwidth1,bandwidth2)
 
     def match_op(self,expr,enable_eq=False):
@@ -525,6 +534,10 @@ class Add(Op2):
                 [(self.arg1,expr),(self.arg2,Const(0))],
                 [(self.arg1,Const(0)),(self.arg2,expr)]
             ]
+
+    def compute_op2(self,arg1,arg2):
+        return arg1+arg2
+
 
 
 

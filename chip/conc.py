@@ -39,6 +39,13 @@ class ConcCirc:
     def board(self):
         return self._board
 
+    def instances_of_block(self,block_name):
+        if not block_name in self._configs:
+            return
+
+        for loc,config in self._configs[block_name].items():
+            yield loc,config
+
     def instances(self):
         for block_name in self._configs:
             for loc,config in self._configs[block_name].items():
@@ -141,6 +148,7 @@ class ConcCirc:
     @staticmethod
     def from_json(board,obj):
         circ = ConcCirc(board)
+        circ.set_tau(obj['tau'])
         for inst in obj['insts']:
             assert(inst['board'] == board.name)
             config = Config.from_json(inst['config'])
@@ -173,6 +181,7 @@ class ConcCirc:
 
     def to_json(self):
         data_struct = {
+            'tau': self._tau,
             'insts': [],
             'conns':[],
             'intervals':{},

@@ -430,7 +430,7 @@ def to_abs_circ(board,ast):
         yield stub,"out"
 
     elif ast.op == aexpr.AOp.EXTVAR:
-        node = acirc.ANode.make_node(board,"due_dac")
+        node = acirc.ANode.make_node(board,"ext_chip_in")
         node.config.set_label("in", ast.name,kind=Labels.DYNAMIC_INPUT)
         node.config.set_comp_mode("*")
         yield node,"out"
@@ -450,7 +450,7 @@ def to_abs_circ(board,ast):
 
     elif ast.op == aexpr.AOp.EMIT:
         for in_node,in_port in to_abs_circ(board,ast.input(0)):
-            node = acirc.ANode.make_node(board,"due_adc")
+            node = acirc.ANode.make_node(board,"ext_chip_out")
             node.config.set_comp_mode("*")
             acirc.ANode.connect(in_node,in_port,node,"in")
             yield node,"out"

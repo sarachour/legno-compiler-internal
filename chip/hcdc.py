@@ -16,50 +16,24 @@ def truncate(f, n):
     return float('.'.join([i, (d+'0'*n)[:n]]))
 
 
-DAC_MIN = -1
-DAC_MAX = truncate(1.0-1.0/256,2)
+DAC_SLACK = 1.0/256
+DAC_MIN = truncate(-1.0+DAC_SLACK,2)
+DAC_MAX = truncate(1.0-DAC_SLACK,2)
 ADC_SAMPLE_US = 3.0
+# range for voltage to current
 VI_MIN = -0.055
 VI_MAX = 0.055
-IV_MIN = -1.2
-IV_MAX = 1.2
+# range for current to voltage
+# previously 1.2
+IV_MIN = -3.3
+IV_MAX = 3.3
+# frequency with experimental adjustments 
+TIME_FREQUENCY = 126000*1.55916665
+#TIME_FREQUENCY = 126000.0
 # microamps
-ANALOG_MIN = -2.0
-ANALOG_MAX = 2.0
-'''
-current_props = props.AnalogProperties() \
-.set_interval(-1.0,1.0,unit=units.uA)
-
-current_integ_props = props.AnalogProperties() \
-.set_interval(-1.2,1.2,unit=units.uA)
-
-
-hcdcv2_values = list(map(lambda x :x/256.0*2.0-1.0, range(0,256)))
-due_values = list(map(lambda x :x/4096.0*2.0-1.0, range(0,4096)))
-digval_props = props.DigitalProperties() \
-.set_values(hcdcv2_values) \
-.set_constant() \
-.check()
-
-digvar_props = props.DigitalProperties() \
-.set_values(hcdcv2_values) \
-.set_continuous() \
-.check()
-
-
-#TODO: proper conversion rate.
-due_dac_props = props.DigitalProperties() \
-.set_values(due_values) \
-.set_sample(ADC_SAMPLE_US,unit=units.us) \
-.check()
-
-
-due_adc_props = props.DigitalProperties() \
-.set_values(due_values) \
-.set_sample(ADC_SAMPLE_US,unit=units.us) \
-.check()
-
-'''
+ANALOG_SLACK = 0.1
+ANALOG_MIN = -2.0+ANALOG_SLACK
+ANALOG_MAX = 2.0-ANALOG_SLACK
 
 def make_ana_props(rng,lb,ub):
     assert(lb < ub)
@@ -285,33 +259,33 @@ tile_inp = Block('tile_in',type=Block.BUS) \
 .check()
 
 # DUE DAC -> VTOI
-due_dac_info = make_dig_props(chipcmd.RangeType.MED,-1.0,1.0,npts=4096)
+ext_chip_in_info = make_dig_props(chipcmd.RangeType.MED,-1.0,1.0,npts=4096)
 # do note there's a weird offset of 0..
-due_dac_scale_factor = 0.030/0.055*2.0
-due_dac = Block('due_dac',type=Block.DAC) \
+ext_chip_in_scale_factor = 0.030/0.055*2.0
+ext_chip_in = Block('ext_chip_in',type=Block.DAC) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.DIGITAL,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_info("*","*",["in"],due_dac_info) \
+.set_info("*","*",["in"],ext_chip_in_info) \
 .set_info("*","*",["out"], \
           make_ana_props(chipcmd.RangeType.MED,\
                          ANALOG_MIN,ANALOG_MAX)) \
-.set_scale_factor("*","*","out",due_dac_scale_factor) \
+.set_scale_factor("*","*","out",ext_chip_in_scale_factor) \
 .check()
 
 
 # DUE ADC -> VTOI
-due_adc_info = make_dig_props(chipcmd.RangeType.MED,-1.0,1.0,npts=4096)
-due_adc_scale_factor = 1.0/2.0
-due_adc = Block('due_adc',type=Block.ADC) \
+ext_chip_out_info = make_dig_props(chipcmd.RangeType.MED,-1.0,1.0,npts=4096)
+ext_chip_out_scale_factor = 1.0/2.0
+ext_chip_out = Block('ext_chip_out',type=Block.ADC) \
 .add_outputs(props.DIGITAL,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_info("*","*",["out"],due_adc_info) \
+.set_info("*","*",["out"],ext_chip_out_info) \
 .set_info("*","*",["in"], \
           make_ana_props(chipcmd.RangeType.MED,\
                          ANALOG_MIN,ANALOG_MAX)) \
-.set_scale_factor("*","*","out",due_adc_scale_factor) \
+.set_scale_factor("*","*","out",ext_chip_out_scale_factor) \
 .check()
 
 tile_dac = Block('tile_dac',type=Block.DAC) \
@@ -432,12 +406,9 @@ def make_board():
     hw = Board("HDACv2",Board.CURRENT_MODE)
     hw.add([multifun,integ,tile_dac,tile_adc,mult,fanout] + \
            [tile_inp,tile_out,chip_inp,chip_out,inv_conn] + \
-           [due_dac,due_adc])
+           [ext_chip_in,ext_chip_out])
 
-    hw.set_time_constant(1.0/126000.0)
-    #hw.set_meta("hardware_time_us", 126000)
-    #hw.set_meta("adc_sample_us", 3)
-    #hw.set_meta("adc_delta", 1.0/128)
+    hw.set_time_constant(1.0/TIME_FREQUENCY)
 
     chips = map(lambda i : hw.layer(i),range(0,n_chips))
     for chip_idx,chip in enumerate(chips):
@@ -472,12 +443,25 @@ def make_board():
                     slce.inst("chip_in")
 
                 else:
-                    slce.inst('due_dac')
-                    adc = slce.inst('due_adc')
+                    adc = slce.inst('ext_chip_out')
+
+                    if chip_idx == 0:
+                        dac = slce.inst('ext_chip_in')
+
                     assert(tile_idx == 3)
                     assert(slice_idx == 2 or slice_idx == 3)
-
-
+                    if slice_idx == 2 and chip_idx == 0:
+                        hw.add_handle('A0','ext_chip_out',adc)
+                        hw.add_handle('D0','ext_chip_in',dac)
+                    elif slice_idx == 3 and chip_idx == 0:
+                        hw.add_handle('A1','ext_chip_out',adc)
+                        hw.add_handle('D1','ext_chip_in',dac)
+                    elif slice_idx == 2 and chip_idx == 1:
+                        hw.add_handle('A2','ext_chip_out',adc)
+                        #hw.add_handle(dac,handle='D2')
+                    elif slice_idx == 3 and chip_idx == 1:
+                        hw.add_handle('A3','ext_chip_out',adc)
+                        #hw.add_handle(dac,handle='D3')
 
     chip0_chip1 = [
         ([0,0,0],[1,1,3],'+'),
@@ -555,10 +539,10 @@ def make_board():
                     connect(hw,tile_layer,block1,tile_layer,block2)
 
             for block1 in [tile_out]:
-                for block2 in [chip_out,due_adc]:
+                for block2 in [chip_out,ext_chip_out]:
                     connect(hw,tile_layer,block1,chip_layer,block2)
 
-            for block1 in [chip_inp,due_dac]:
+            for block1 in [chip_inp,ext_chip_in]:
                 for block2 in [tile_inp]:
                     connect(hw,chip_layer,block1,tile_layer,block2)
 

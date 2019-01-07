@@ -2,6 +2,25 @@ import lib.cstructs as cstructs
 import time
 import lib.enums as enums
 
+class OptionalValue:
+
+    def __init__(self,value,success=True):
+        self.value = value
+        self.success = success
+
+    @property
+    def message(self):
+        assert(not self.success)
+        return self.value
+
+    @staticmethod
+    def error(msg):
+        return OptionalValue(msg,success=False)
+
+    @staticmethod
+    def value(val):
+        return OptionalValue(val,success=True)
+
 class Command:
     # debug =1 : don't run me
     def __init__(self):
@@ -66,7 +85,7 @@ class ArduinoCommand(Command):
             rep += str(int(byt)) + " "
         #print("bytes: %s" % rep)
         resp = self.write_to_arduino(state,cdata)
-        #print("resp:> %s" % resp)
+        print("resp:> %s" % resp)
         return resp
 
 class FlushCommand(ArduinoCommand):

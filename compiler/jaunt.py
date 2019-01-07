@@ -8,6 +8,8 @@ import ops.jop as jop
 import ops.op as op
 from ops.interval import Interval, IRange, IValue
 import signal
+import random
+import time
 
 #TODO: what is low range, high range and med range?
 #TODO: setRange: integ.in, integ.out and mult have setRange functions.
@@ -29,6 +31,7 @@ class JauntProb:
         self._to_hw_range = {}
         self._to_math_range = {}
         self._to_coefficient = {}
+        self._visited = {}
         self._priority = {}
 
         self._eqs = []
@@ -38,6 +41,13 @@ class JauntProb:
         self._meta = {}
         self._metavar = 0
         self._failed = False
+        self._use_tau = False
+
+    def use_tau(self):
+        self._use_tau = True
+
+    def uses_tau(self):
+        return self._use_tau
 
     def fail(self):
         self._failed = True
@@ -91,15 +101,27 @@ class JauntProb:
     def _index_to_loc(self,block_name,index):
         return self._to_loc[block_name][index]
 
-    def coefficient(self,block_name,port,loc,handle=None):
+    def visited(self,block_name,loc,port,handle=None):
+        index = self._loc_to_index(block_name,loc)
+        if not (block_name,port,index,handle) in self._visited:
+            return False
+        else:
+            return self._visited[(block_name,port,index,handle)]
+
+    def visit(self,block_name,loc,port,handle=None):
+        index = self._loc_to_index(block_name,loc,create=True)
+        self._visited[(block_name,port,index,handle)] = True
+
+
+    def coefficient(self,block_name,loc,port,handle=None):
         index = self._loc_to_index(block_name,loc)
         if not (block_name,port,index,handle) in self._to_coefficient:
             return 1.0
         else:
             return self._to_coefficient[(block_name,port,index,handle)]
 
-    def set_coefficient(self,block_name,port,loc,value,handle=None):
-        index = self._loc_to_index(block_name,loc)
+    def set_coefficient(self,block_name,loc,port,value,handle=None):
+        index = self._loc_to_index(block_name,loc,create=True)
         self._to_coefficient[(block_name,port,index,handle)] = value
 
     def set_hardware_range(self,block_name,loc,port,ival,handle=None):
@@ -245,17 +267,22 @@ def bp_ival_math_dac_ranges(prob,circ):
             if config.has_dac(port):
                 value = config.dac(port)
                 mrng = IValue(value)
+                print("val: %s[%s].%s := %s" % (block_name,loc,port,mrng))
                 prob.set_math_range(block_name,loc,port,mrng)
 
 def bp_ival_math_label_ranges(prob,circ):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
-        for port in block.inputs + block.outputs:
+        for port in block.outputs + block.inputs:
             if config.has_label(port):
                 label = config.label(port)
-                handle = block.get_dynamics(config.comp_mode,port).toplevel()
+                if port in block.outputs:
+                    handle = block.get_dynamics(config.comp_mode,port).toplevel()
+                else:
+                    handle = None
                 lb,ub = circ.interval(label)
                 mrng = IRange(lb,ub)
+                print("lbl: %s[%s].%s := %s" % (block_name,loc,port,mrng))
                 prob.set_math_range(block_name,loc,port,mrng,\
                                     handle=handle)
                 prob.set_priority(block_name,loc,port, \
@@ -285,24 +312,26 @@ def bp_ival_math_classify_ports(prob,variables):
     return free,bound
 
 def bpder_derive_output_port(prob,circ,block,config,loc,port):
-    coeff = prob.coefficient(block.name,port,loc)
+    coeff = prob.coefficient(block.name,loc,port)
     dyn = block.get_dynamics(config.comp_mode,port)
     expr = op.Mult(dyn,op.Const(coeff))
 
 
     handles = expr.handles()
     # test to see if we have computed the interval
-    computed_interval = True
-    if not prob.has_math_range(block.name,loc,port):
-        computed_interval = False
+    visited = True
+    if not prob.visited(block.name,loc,port):
+        visited = False
     for handle in handles:
-        if not prob.has_math_range(block.name,loc,port,handle=handle):
-            computed_interval = False
+        if not prob.visited(block.name,loc,port,handle=handle):
+            visited = False
 
-    if computed_interval:
-        print("skipping %s" % block.name)
+    if visited:
+        print("[visit] skipping %s[%s].%s" \
+              % (block.name,loc,port))
         return True
 
+    prob.visit(block.name,loc,port)
     # find intervals for free variables
     variables = list(map(lambda v: (block.name,loc,v), expr.vars()))
     free,bound = bp_ival_hardware_classify_ports(prob, variables)
@@ -319,18 +348,27 @@ def bpder_derive_output_port(prob,circ,block,config,loc,port):
     for var_block_name,var_loc,var_port in free+bound:
         ival = prob.math_range(var_block_name,var_loc,var_port)
         varmap[var_port] = ival
+        print("  v:%s=%s" % (var_port,ival))
 
     for handle in handles:
-        ival = prob.math_range(block.name, loc, port, handle=handle)
+        ival = prob.math_range(block.name, loc, port,
+                               handle=handle)
         varmap[handle] = ival
+        print("  h:%s=%s" % (handle,ival))
 
     intervals = expr.interval(varmap)
-    prob.set_math_range(block.name,loc,port,intervals.interval)
-    print("out %s[%s].%s => %s" % (block.name,loc,port,intervals.interval))
+
+    if prob.math_range(block.name,loc,port) is None:
+        prob.set_math_range(block.name,loc,port,intervals.interval)
+        print("out %s[%s].%s => %s [c=%s]" % \
+              (block.name,loc,port,intervals.interval,coeff))
+
     for handle,interval in intervals.bindings():
-        prob.set_math_range(block.name,loc,port,interval,handle=handle)
-        print("out %s[%s].%s:%s => %s" % \
-              (block.name,loc,port,handle,interval))
+        if not prob.math_range(block.name,loc,port,handle=handle):
+            prob.set_math_range(block.name,loc,port, \
+                                interval,handle=handle)
+            print("out %s[%s].%s:%s => %s" % \
+                (block.name,loc,port,handle,interval))
 
 
 
@@ -398,7 +436,7 @@ def bp_bind_coefficients(prob,circ):
             scf = block.scale_factor(config.comp_mode,config.scale_mode,out)
 
             if scf != 1.0:
-                prob.set_coefficient(block_name,out,loc,scf)
+                prob.set_coefficient(block_name,loc,out,scf)
 
 def bp_decl_scaling_factors(prob,circ):
     # define scaling factors
@@ -517,6 +555,13 @@ def bpgen_scaled_interval_constraint(prob,scale_expr,math_rng,hw_rng):
                             math_rng.lower,hw_rng.lower)
 
 
+def bpgen_compute_interval(prob,block,loc,expr):
+    bindings = {}
+    for var in expr.vars():
+        bindings[var] = prob.math_range(block,loc,var)
+
+    return expr.interval(bindings).interval
+
 def bpgen_traverse_expr(prob,block,loc,port,expr):
     inv_tau_scfvar = jop.JVar(prob.TAU,exponent=-1)
     if expr.op == ops.Op.CONST:
@@ -540,18 +585,29 @@ def bpgen_traverse_expr(prob,block,loc,port,expr):
                                           handle=expr.deriv_handle))
         var_stvar = jop.JVar(prob.get_scf(block.name,loc,port, \
                                           handle=expr.handle))
-
-        prob.eq(ic_expr,deriv_expr)
-        prob.eq(ic_expr,var_deriv)
-        # ranges are contained
-        mrng = prob.math_range(block.name,loc,port,expr.deriv_handle)
-        hwrng = prob.hardware_range(block.name,loc,port,expr.deriv_handle)
-        assert(not mrng is None)
-        assert(not hwrng is None)
-        bpgen_scaled_interval_constraint(prob,ic_expr,mrng,hwrng)
-        # the handles for deriv and stvar are the same
         integ_expr = jop.JMult(inv_tau_scfvar,var_deriv)
+
+        # ranges are contained
+        deriv_mrng = prob.math_range(block.name,loc,port,expr.deriv_handle)
+        st_mrng = prob.math_range(block.name,loc,port,expr.handle)
+        ic_mrng = bpgen_compute_interval(prob,block.name,loc,expr.init_cond)
+        deriv_hwrng = prob.hardware_range(block.name,loc,port,expr.deriv_handle)
+        st_hwrng = prob.hardware_range(block.name,loc,port,expr.handle)
+        assert(not deriv_mrng is None)
+        assert(not ic_mrng is None)
+        assert(not deriv_hwrng is None)
+        assert(not st_hwrng is None)
+        bpgen_scaled_interval_constraint(prob, \
+                                         deriv_expr,deriv_mrng,deriv_hwrng)
+        bpgen_scaled_interval_constraint(prob,integ_expr,\
+                                         st_mrng,st_hwrng)
+        bpgen_scaled_interval_constraint(prob,ic_expr, \
+                                         ic_mrng,st_hwrng)
+        # the handles for deriv and stvar are the same
         prob.eq(integ_expr,var_stvar)
+        prob.eq(ic_expr,var_stvar)
+        prob.eq(deriv_expr,var_deriv)
+        prob.use_tau()
         return var_stvar
 
     else:
@@ -561,7 +617,8 @@ def bpgen_traverse_expr(prob,block,loc,port,expr):
 def bpgen_traverse_dynamics(prob,block,loc,out,expr):
   expr_scf = bpgen_traverse_expr(prob,block,loc,out,expr)
   var_scfvar = jop.JVar(prob.get_scf(block.name,loc,out))
-  prob.eq(var_scfvar,expr_scf)
+  coeff = prob.coefficient(block.name,loc,out)
+  prob.eq(var_scfvar,jop.JMult(jop.JConst(coeff), expr_scf))
 
 def bp_generate_problem(prob,circ):
     for block_name,loc,config in circ.instances():
@@ -572,7 +629,8 @@ def bp_generate_problem(prob,circ):
         for port in block.outputs + block.inputs:
             mrng = prob.math_range(block_name,loc,port)
             if mrng is None:
-                print("not in use <%s[%s].%s>" % (block_name,loc,port))
+                print("[skip] not in use <%s[%s].%s>" % \
+                      (block_name,loc,port))
                 continue
 
             hwrng = prob.hardware_range(block_name,loc,port)
@@ -580,10 +638,14 @@ def bp_generate_problem(prob,circ):
             bpgen_scaled_interval_constraint(prob,scfvar,mrng,hwrng)
 
 
-    TAU_MAX = 1e6
-    TAU_MIN = 1e-6
-    prob.lte(jop.JVar(prob.TAU),jop.JConst(TAU_MAX))
-    prob.gte(jop.JVar(prob.TAU),jop.JConst(TAU_MIN))
+    if not prob.uses_tau():
+        prob.eq(jop.JVar(prob.TAU), jop.JConst(1.0))
+
+    else:
+        TAU_MAX = 1e6
+        TAU_MIN = 1e-6
+        prob.lte(jop.JVar(prob.TAU),jop.JConst(TAU_MAX))
+        prob.gte(jop.JVar(prob.TAU),jop.JConst(TAU_MIN))
 
 def build_data_structures(circ):
     prob = JauntProb()
@@ -621,40 +683,7 @@ def gpkit_expr(variables,expr):
     else:
         raise Exception("unsupported <%s>" % expr)
 
-def sp_update_circuit(prob,circ,assigns):
-    bindings = {}
-    tau = None
-    for variable,value in assigns.items():
-        print("%s = %s" % (variable,value))
-        if variable.name == prob.TAU:
-            tau = value
-        else:
-            block_name,loc,port,handle = prob.get_scf_info(variable.name)
-            bindings[(block_name,loc,port,handle)] = value
 
-
-    circ.set_tau(tau)
-    for block_name,loc,config in circ.instances():
-        block = circ.board.block(block_name)
-        for port in block.outputs + block.inputs:
-            propobj= block.info(config.comp_mode,config.scale_mode,port)
-            if config.has_dac(port):
-                scale_factor = bindings[(block_name,loc,port,None)]
-                value = config.dac(port)
-                scaled_value = scale_factor*value
-                assert(isinstance(propobj,props.DigitalProperties))
-                closest_scaled_value = propobj.value(scaled_value)
-                print("dac %s: %s -> %s -> %s" %\
-                      (port,value,scaled_value,closest_scaled_value))
-                config.set_dac(port,closest_scaled_value)
-
-            elif config.has_label(port):
-                label = config.label(port)
-                scale_factor = bindings[(block_name,loc,port,None)]
-                config.set_scf(port,scale_factor)
-                print("%s.%s = %s" % (port,label,scale_factor))
-
-    return circ
 
 def cancel_signs(orig_lhs,orig_rhs):
     const1,expr1 = orig_lhs.factor_const()
@@ -676,7 +705,6 @@ def build_problem(circ,prob):
     TAU_MIN = 1e-6
     failed = prob.failed()
     if failed:
-        input("<< failed >>")
         return None
 
 
@@ -723,7 +751,8 @@ def build_problem(circ,prob):
     #constraints.append(1.0 == variables[prob.TAU])
 
     if failed:
-        input("<< failed >>")
+        print("<< failed >>")
+        time.sleep(0.2)
         return None
 
     objective = 1.0/variables["tau"]
@@ -751,6 +780,57 @@ def solve_problem(gpmodel,timeout=10):
     return sln
 
 
+def sp_update_circuit(prob,circ,assigns):
+    bindings = {}
+    tau = None
+    for variable,value in assigns.items():
+        print("SCF %s = %s" % (variable,value))
+        if variable.name == prob.TAU:
+            tau = value
+        else:
+            block_name,loc,port,handle = prob.get_scf_info(variable.name)
+            bindings[(block_name,loc,port,handle)] = value
+
+
+    intervals = {}
+    circ.set_tau(tau)
+    for block_name,loc,config in circ.instances():
+        block = circ.board.block(block_name)
+        for port in block.outputs + block.inputs:
+            propobj= block.info(config.comp_mode,config.scale_mode,port)
+            if config.has_dac(port):
+                scale_factor = bindings[(block_name,loc,port,None)]
+                value = config.dac(port)
+                scaled_value = scale_factor*value
+                assert(isinstance(propobj,props.DigitalProperties))
+                closest_scaled_value = propobj.value(scaled_value)
+                print("dac %s[%s].%s: %s -> %s" %\
+                      (block.name,loc,port,value, \
+                       closest_scaled_value))
+                config.set_dac(port,closest_scaled_value)
+                intervals[(block_name,loc,port)] = \
+                          [closest_scaled_value, \
+                           closest_scaled_value,scale_factor]
+
+            elif (block_name,loc,port,None) in bindings:
+                scale_factor = bindings[(block_name,loc,port,None)]
+                # add scale factor, if there's a label
+                if config.has_label(port):
+                    label = config.label(port)
+                    config.set_scf(port,scale_factor)
+
+                #compute ranges
+                low,high = prob.math_range(block_name,loc,port)
+                intervals[(block.name,loc,port)] = [
+                    low*scale_factor,
+                    high*scale_factor,
+                    scale_factor
+                ]
+
+
+    return circ,(tau,intervals)
+
+
 def iter_scaled_circuits(circ):
     labels = []
     choices = []
@@ -762,14 +842,16 @@ def iter_scaled_circuits(circ):
         labels.append((block_name,loc))
         choices.append(modes)
 
+
     for choice in itertools.product(*choices):
+        circ = ConcCirc.from_json(circ.board,circ_json)
         for (block_name,loc),scale_mode in zip(labels,choice):
             print("%s.%s = %s" % (block_name,loc,scale_mode))
             circ.config(block_name,loc) \
                 .set_scale_mode(scale_mode)
 
+        #input()
         yield circ
-        circ = ConcCirc.from_json(circ.board,circ_json)
 
 def scale(circ,noise_analysis=False):
     for orig_circ in iter_scaled_circuits(circ):
@@ -782,6 +864,7 @@ def scale(circ,noise_analysis=False):
         if prob is None:
             continue
 
+        #input()
         sln = solve_problem(prob)
         if sln is None:
             print("[[FAILURE]]")
@@ -794,6 +877,6 @@ def scale(circ,noise_analysis=False):
             assert(succ == False)
             continue
 
-        sp_update_circuit(data_structs,orig_circ,
-                            sln['freevariables'])
-        yield orig_circ
+        upd_circ,(tau,intervals) = sp_update_circuit(data_structs,orig_circ,
+                                                     sln['freevariables'])
+        yield upd_circ,tau,intervals

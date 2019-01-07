@@ -20,9 +20,6 @@ state = State(args.ip,args.port,
               ard_native=args.native,
               validate=args.validate)
 
-if not args.validate and (args.ip is None):
-    raise Exception("must include ip address of oscilloscope")
-
 state.initialize()
 
 try:

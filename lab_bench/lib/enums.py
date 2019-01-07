@@ -27,6 +27,9 @@ class CircCmdType(Enum):
     BREAK = 'break';
     CALIBRATE = 'calibrate';
     GET_INTEG_STATUS = 'get_integ_status';
+    CONFIG_INTEG = 'config_integ';
+    CONFIG_DAC = 'config_dac';
+    CONFIG_MULT = 'config_mult';
 
 
 class ExpCmdType(Enum):

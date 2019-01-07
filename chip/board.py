@@ -57,8 +57,7 @@ class Layer:
                 yield subp
 
     def inst(self,block_name):
-        self._board.inst(block_name,self.position)
-        pass
+        return self._board.inst(block_name,self.position)
 
 class Board(Layer):
 
@@ -73,13 +72,15 @@ class Board(Layer):
         self._key_to_pos = {}
         self._blocks = {}
 
+        self._time_constant = None
+        self._handles = {}
+
         # accessors
         self._inst_by_block = {}
         self._inst_by_position = {}
         self._inst_to_meta = {}
 
         # connections
-        self._metadata = {}
         self._connections = {}
         self._routes = nx.DiGraph()
         self._freeze_insts = False
@@ -128,18 +129,34 @@ class Board(Layer):
         return self._mode
 
     def set_time_constant(self,v):
-        self.set_meta('time-constant',v)
+        self._time_constant =v
 
     @property
     def time_constant(self):
-        return self.meta('time-constant')
+        return self._time_constant
 
-    def set_meta(self,key,value):
+    def add_handle(self,handle,block_name,loc):
+        self._handles[handle] = (block_name,loc)
+
+    def handle(self,handle):
+        return self._handles[handle]
+
+    def handles(self):
+        for handle,(block,loc) in self._handles.items():
+            yield handle,block,loc
+
+    def handle_by_inst(self,block_name,loc):
+        for handle,(b,l) in self._handles.items():
+            if b == block_name and l == loc:
+                return handle
+        return None
+
+    def _set_meta(self,key,value):
         self._metadata[key] = value
 
-    def meta(self,key):
+    def _meta(self,key):
         return self._metadata[key]
-
+    '''
     def set_inst_meta(self,block_name,pos,key,value):
         assert(isinstance(pos,str))
         meta = self._inst_to_meta[(block_name,pos)]
@@ -161,6 +178,7 @@ class Board(Layer):
                             (key,block_name,posstr))
 
         return meta[key]
+    '''
 
     def add(self,block_specs):
         for blk in block_specs:
@@ -238,6 +256,7 @@ class Board(Layer):
                             args[2]),
                            route))
 
+
     def inst(self,block_name,_position):
         assert(not self._freeze_insts)
         if not block_name in self._inst_by_block:
@@ -265,6 +284,8 @@ class Board(Layer):
             self._routes.add_node((block_name,key,block.outputs[0]))
             self._routes.add_edge((block_name,key,block.inputs[0]),
                                   (block_name,key,block.outputs[0]))
+
+        return key
 
     def blocks_at(self,key):
         assert(isinstance(key,str))

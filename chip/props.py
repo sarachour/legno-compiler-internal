@@ -62,6 +62,9 @@ class DigitalProperties(Properties):
         #FIXME: store delay
         return self
 
+    def interval(self):
+        return (min(self._values),max(self._values),units.unknown)
+
     def value(self,value):
         diff = map(lambda x : (x,abs(x-value)),self._values)
         choices = sorted(diff, key=lambda q: q[1])

@@ -235,16 +235,35 @@ void exec_command(Fabric * fab, cmd_t& cmd){
   Fabric::Chip::Tile::Slice::FunctionUnit::Interface* dst;
   
   switch(cmd.type){
+      case cmd_type_t::CONFIG_DAC:
+        dacd = cmd.data.dac; 
+        dac = get_slice(fab,dacd.loc)->dac;
+        scf = load_scf(dacd.out_range);
+        dac->setConstant(dacd.value*scf);
+        Serial.println("configured dac");
+        break;
         
       case cmd_type_t::USE_DAC:
         dacd = cmd.data.dac; 
         dac = get_slice(fab,dacd.loc)->dac;
         dac->setEnable(true);
         dac->out0->setInv(dacd.inv);
-        dac->setConstant(dacd.value);
+        //dac->setConstant(dacd.value);
         Serial.println("enabled dac");
         break;
-
+      
+      case cmd_type_t::CONFIG_MULT:
+        // multiplier doesn't actually support inversion
+        // multiplier uses dac from same row.
+        multd = cmd.data.mult;
+        mult = get_mult(fab,multd.loc);
+        if(multd.use_coeff){
+          scf = load_scf(multd.out_range)/load_scf(multd.in0_range);
+          mult->setGain(multd.coeff*scf);
+        }
+        Serial.println("configured mult");
+        break;
+        
       case cmd_type_t::USE_MULT:
         // multiplier doesn't actually support inversion
         // multiplier uses dac from same row.
@@ -255,18 +274,15 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         load_range(multd.in0_range, &lo1, &hi1);
         load_range(multd.out_range, &lo2, &hi2);
         load_range(multd.in1_range, &lo3, &hi3);
-        if(multd.use_coeff){
-          scf = load_scf(multd.out_range)/load_scf(multd.in0_range);
-          mult->setGain(multd.coeff*scf);
-        }
-        else{
+        if(not multd.use_coeff){
            mult->in0->setRange(lo1,hi1);
-           mult->in0->setRange(lo2,hi2);
+           mult->in1->setRange(lo2,hi2);
            mult->out0->setRange(lo3,hi3);
         }
         Serial.println("enabled mult");
         break;
-
+ 
+        
       case cmd_type_t::USE_FANOUT:
         fod = cmd.data.fanout;
         fanout = get_fanout(fab,fod.loc);
@@ -279,7 +295,15 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         fanout->out2->setInv(fod.inv[2]);
         Serial.println("enabled fanout");
         break;
-
+   
+    case cmd_type_t::CONFIG_INTEG:
+        integd = cmd.data.integ;
+        integ = get_slice(fab,integd.loc)->integrator;
+        scf = load_scf(integd.out_range)/load_scf(integd.in_range);
+        integ->setInitial(integd.value*scf);
+        Serial.println("configured integ");
+        break;
+        
     case cmd_type_t::USE_INTEG:
         integd = cmd.data.integ;
         integ = get_slice(fab,integd.loc)->integrator;
@@ -290,8 +314,6 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         load_range(integd.out_range, &lo2, &hi2);
         integ->in0->setRange(lo1,hi1);
         integ->out0->setRange(lo2,hi2);
-        scf = load_scf(integd.out_range)/load_scf(integd.in_range);
-        integ->setInitial(integd.value*scf);
         Serial.println("enabled integ");
         break;
 
@@ -443,7 +465,25 @@ void print_command(cmd_t& cmd){
         Serial.print(" rng=");
         Serial.print(range_to_str(cmd.data.fanout.in_range));
         break;
-
+        
+      case cmd_type_t::CONFIG_MULT:
+        Serial.print("config mult ");
+        print_idx_loc(cmd.data.mult.loc);
+        if(cmd.data.mult.use_coeff){
+          Serial.print(" gain coeff=");
+          Serial.print(cmd.data.mult.coeff);
+        }
+        else{
+          Serial.print(" prod");
+        }
+        Serial.print(" in0_rng=");
+        Serial.print(range_to_str(cmd.data.mult.in0_range));
+        Serial.print(" in1_rng=");
+        Serial.print(range_to_str(cmd.data.mult.in1_range));
+        Serial.print(" out_rng=");
+        Serial.print(range_to_str(cmd.data.mult.out_range));
+        break;
+        
       case cmd_type_t::USE_MULT:
         Serial.print("use mult ");
         print_idx_loc(cmd.data.mult.loc);
@@ -461,12 +501,17 @@ void print_command(cmd_t& cmd){
         Serial.print(" out_rng=");
         Serial.print(range_to_str(cmd.data.mult.out_range));
         break;
+
+      case cmd_type_t::CONFIG_DAC:
+        Serial.print("config dac ");
+        print_loc(cmd.data.dac.loc);
+        Serial.print(" val=");
+        Serial.print(cmd.data.dac.value);
+        break;
         
       case cmd_type_t::USE_DAC:
         Serial.print("use dac ");
         print_loc(cmd.data.dac.loc);
-        Serial.print(" val=");
-        Serial.print(cmd.data.dac.value);
         Serial.print(" inv=");
         Serial.print(cmd.data.dac.inv ? "yes" : "no");
         Serial.print(" rng=");
@@ -478,11 +523,20 @@ void print_command(cmd_t& cmd){
         print_loc(cmd.data.integ.loc);
         break;
         
-      case cmd_type_t::USE_INTEG:
-        Serial.print("use integ ");
+      case cmd_type_t::CONFIG_INTEG:
+        Serial.print("config integ ");
         print_loc(cmd.data.integ.loc);
         Serial.print(" ic=");
         Serial.print(cmd.data.integ.value);
+        Serial.print(" in_range=");
+        Serial.print(range_to_str(cmd.data.integ.in_range));
+        Serial.print(" out_range=");
+        Serial.print(range_to_str(cmd.data.integ.out_range));
+        break;
+        
+      case cmd_type_t::USE_INTEG:
+        Serial.print("use integ ");
+        print_loc(cmd.data.integ.loc);
         Serial.print(" inv=");
         Serial.print(cmd.data.integ.inv ? "yes" : "no");
         Serial.print(" in_range=");

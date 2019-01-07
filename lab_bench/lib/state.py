@@ -3,7 +3,7 @@ from devices.sigilent_osc import Sigilent1020XEOscilloscope
 import devices.sigilent_osc as osclib
 
 from lib.base_command import FlushCommand, ArduinoCommand
-from lib.chip_command import AnalogChipCommand
+from lib.chip_command import AnalogChipCommand, Priority
 import lib.util as util
 import time
 import numpy as np
@@ -16,6 +16,10 @@ class State:
             self.arduino = ArduinoDue(native=ard_native)
             self.oscilloscope = Sigilent1020XEOscilloscope(
                 osc_ip, osc_port)
+        else:
+            self.arduino = None
+            self.oscilloscope = None
+
         self.prog = [];
 
         ## State committed to chip
@@ -25,16 +29,14 @@ class State:
         self._use_dac = {}
         self._overflow = {}
         self.use_analog_chip = None;
-        self.inputs = {}
         self.n_dac_samples= None;
         self.n_adc_samples = None;
         self.time_between_samples_s = None;
-        self.ref_func = None;
 
 
         self.reset();
         self.sim_time = None
-        self.period = None
+        self.input_time = None
         self.dummy = validate
 
     def set_overflow(self,handle,oflow):
@@ -44,40 +46,6 @@ class State:
         for handle,oflow in self._overflow.items():
             yield handle,oflow
 
-    def write_input(self,input_id,time_ms,value):
-        if not input_id in self.inputs:
-            self.inputs[input_id] = {'time':[],'value':[]}
-        self.inputs[input_id]['time'].append(time_ms)
-        self.inputs[input_id]['value'].append(value)
-
-    def reference_data(self):
-        if self.ref_func is None:
-            return [],[]
-
-        times = None
-        for input_id,time,value in self.input_data():
-            times = times if not times is None else time
-            assert(len(time) == len(times))
-
-        values = []
-        print("reference: %s" % self.ref_func)
-        if times is None:
-            times = list(np.arange(0,self.sim_time,
-                                   self.time_between_samples_s))
-
-        for idx,time in enumerate(times):
-            args = {'t':time,'i':idx}
-            for input_id,_,value in self.input_data():
-                args['inp%d' % input_id] = value[idx]
-            result = util.eval_func(self.ref_func,args)
-            values.append(result)
-
-
-        return times,values
-
-    def input_data(self):
-        for input_id,data in self.inputs.items():
-            yield input_id,data['time'],data['value']
 
     def reset(self):
         self.prog = []
@@ -111,8 +79,9 @@ class State:
 
 
     def close(self):
-        if not self.dummy:
+        if not self.arduino is None:
             self.arduino.close()
+        if not self.oscilloscope is None:
             self.oscilloscope.close()
 
     def initialize(self):
@@ -140,6 +109,26 @@ class State:
             while not flush_cmd.execute(self):
                 continue
 
+    def order(self,insts):
+        pq = {}
+        priorities = [Priority.FIRST, \
+                      Priority.EARLY, \
+                      Priority.NORMAL, \
+                      Priority.LATE,
+                      Priority.LAST]
+
+        for prio in priorities:
+            pq[prio] = []
+
+        for inst in insts:
+            prio = inst.priority()
+            pq[prio].append(inst)
+
+        for prio in priorities:
+            for inst in pq[prio]:
+                yield inst
+
+
     def enqueue(self,stmt):
         if stmt.test():
             print("[enq] %s" % stmt)
@@ -158,36 +147,23 @@ class State:
                 if not calib_stmt is None:
                     calibs.append(calib_stmt)
 
-        for calib in set(calibs):
+        for calib in self.order(set(calibs)):
+            print("[calibrate] %s" % calib)
             yield calib
 
-    def preexec_chip(self):
+    def analyze_chip(self):
         if not self.use_analog_chip:
             return
 
         hooks = []
         for stmt in self.prog:
             if isinstance(stmt, AnalogChipCommand):
-                hook_stmt = stmt.preexec()
+                hook_stmt = stmt.analyze()
                 if not hook_stmt is None:
                     hooks.append(hook_stmt)
 
-        for hook in set(hooks):
-            yield hook
-
-
-    def postexec_chip(self):
-        if not self.use_analog_chip:
-            return
-
-        hooks = []
-        for stmt in self.prog:
-            if isinstance(stmt, AnalogChipCommand):
-                hook_stmt = stmt.postexec()
-                if not hook_stmt is None:
-                    hooks.append(hook_stmt)
-
-        for hook in set(hooks):
+        for hook in self.order(set(hooks)):
+            print("[analyze] %s" % hook)
             yield hook
 
 
@@ -195,22 +171,31 @@ class State:
         if not self.use_analog_chip:
             return
 
+        teardown = []
         for stmt in self.prog:
             if isinstance(stmt, AnalogChipCommand):
                 dis_stmt = stmt.disable()
                 if not dis_stmt is None:
-                    yield dis_stmt
+                    teardown.append(dis_stmt)
+
+        for tstmt in self.order(set(teardown)):
+            print("[teardown] %s" % tstmt)
+            yield tstmt
 
     def configure_chip(self):
         if not self.use_analog_chip:
             return
 
+        cfg = []
         for stmt in self.prog:
             if isinstance(stmt, AnalogChipCommand):
-                print("[config] %s" % stmt)
                 config_stmt = stmt.configure()
                 if not config_stmt is None:
-                    yield config_stmt
+                    cfg.append(config_stmt)
+
+        for cfgstmt in self.order(set(cfg)):
+            print("[config] %s" % cfgstmt)
+            yield cfgstmt
 
 
 

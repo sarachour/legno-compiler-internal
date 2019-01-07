@@ -1,4 +1,8 @@
+
 #include "Arduino.h"
+
+#ifndef HCDC_DEMO_API_H
+#define HCDC_DEMO_API_H
 
 extern size_t dynamic_memory;
 
@@ -23,6 +27,7 @@ static void error (
 // how much to delay before measurement and how many times to measure
 #define CAL_REPS 65536
 #define FULL_SCALE 1.2
+#endif
 
 #ifndef _PIN
 #define _PIN
@@ -108,3 +113,4 @@ static void error (
 #define _SPI
 #include "spi.h"
 #endif
+
