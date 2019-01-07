@@ -26,6 +26,8 @@ class Fabric::Chip::Tile::Slice {
 		TileInOut * tileOuts;
 		ChipOutput * chipOutput;
 
+    bool calibrate() const;
+
 	private:
 		Slice (
 			Tile * parentTile,
@@ -33,7 +35,6 @@ class Fabric::Chip::Tile::Slice {
 			unsigned char ardAnaDiffChan
 		);
 		~Slice ();
-		bool calibrate() const;
 		Tile * const parentTile;
 		const slice sliceId;
 		/*ANALOG INPUT PINS*/
