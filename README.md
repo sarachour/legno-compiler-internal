@@ -3,8 +3,11 @@
 compilation tools for automated analog configuration generation. `legno.py` is the toplevel file for compilation that contains several subtools:
 
 **arco**: generate abstract chip configurations from differential equations.
-**jaunt**: perform parameter and time scaling on abstract chip configurations to generate concrete chip configurations,
-**srcgen**: generate `grendel` low-level scripts from a concrete chip configuration, given a the name of a math experiment specification (see `bmark/menvs.py`) and a hardware setup specification (`chip/hwenvs.py`). For example, `t20` is a math specification that executes the benchmark for 20 simulation units. If you're not using my oscilloscope, you need to use the `noosc` hardware environment.
+
+**jaunt**: perform parameter and time scaling on abstract chip configurations to generate concrete chip configurations.
+
+**srcgen**: generate `grendel` low-level scripts from a concrete chip configuration, given a the name of a math experiment specification (see `bmark/menvs.py`) and a hardware setup specification (`chip/hwenvs.py`). For example, `t20` is a math specification that executes the benchmark for 20 simulation units. If you're not using the Sigilent1020XE oscilloscope, you need to use the `noosc` hardware environment.
+
 **skelter**: given a library of concrete circuits, perform noise analysis on each one and rank them by noise level (`scores.txt` - higher is better). Can optionally generate a random sampling of `grendel` files (`grendel_list.txt`)
 
 The `run.sh` script is a convenience script that runs the subtools in the correct order. To compile the dampened spring benchmark for 20 simulation units, for example, execute:
