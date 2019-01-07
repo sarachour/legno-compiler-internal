@@ -27,6 +27,8 @@ class HWEnv:
     def output(self,handle):
       return self._outputs[handle]
 
+    def outputs(self):
+      return self._outputs.keys()
 
   def __init__(self,name):
     self.name = name

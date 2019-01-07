@@ -9,9 +9,13 @@ sys.path.insert(0,os.path.abspath("lab_bench"))
 from util import paths
 
 
-def execute_script(script_file):
+def execute_script(ip,script_file):
     print(script_file)
-    exec_cmd = "python3 lab_bench/arduino_client.py --ip %s --script %s" % (args.ip,script_file)
+    if not ip is None:
+        exec_cmd = "python3 lab_bench/arduino_client.py --ip %s --script %s" % (args.ip,script_file)
+    else:
+        exec_cmd = "python3 lab_bench/arduino_client.py --script %s" % (script_file)
+
     print(exec_cmd)
     os.system(exec_cmd)
     print("compare chip result")
@@ -24,7 +28,7 @@ parser.add_argument('--bmark-dir', type=str,default='default',
                        help='directory to output files to.')
 parser.add_argument('--script-list', type=str, default=None,
                     help="list of grendel scripts")
-parser.add_argument('ip', type=str,
+parser.add_argument('--ip', type=str,
                        help='oscilloscope ip.')
 
 
@@ -38,7 +42,7 @@ if args.script_list is None:
         for fname in filelist:
             if fname.endswith('.grendel'):
                 script_file = "%s/%s" % (dirname,fname)
-                execute_script(script_file)
+                execute_script(args.ip,script_file)
 
 else:
     with open(args.script_list,'r') as fh:

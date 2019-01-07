@@ -320,8 +320,9 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
     ))
 
 def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename):
-  if hwenv.use_oscilloscope:
+  if hwenv.use_oscilloscope and len(hwenv.oscilloscope.outputs()) > 0:
     gren.add(parse('osc_setup_trigger'))
+
   gren.add(parse('micro_setup_chip'))
   gren.add(parse('micro_get_overflows'))
   gren.add(parse('micro_run'))
