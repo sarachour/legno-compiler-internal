@@ -4,7 +4,7 @@ import chip.props as prop
 from chip.block import Labels
 import compiler.arco_route as arco_route
 from compiler.arco_rules import get_rules
-import compiler.arco_data as aexpr
+import ops.aop as aexpr
 import random
 import math
 import logging

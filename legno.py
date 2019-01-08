@@ -94,11 +94,9 @@ args = parser.parse_args()
 
 path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
 
-from chip.hcdc import board as hdacv2_board
+from chip.hcdc.hcdcv2_4 import board as hdacv2_board
 
 if args.subparser_name == "arco":
-    from chip.hcdc import board as hdacv2_board
-
     problem = bmark.get_prog(args.benchmark)
 
     for indices,conc_circ in \

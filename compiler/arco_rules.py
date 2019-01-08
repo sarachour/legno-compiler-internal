@@ -1,4 +1,4 @@
-from compiler.arco_data import *
+from ops.aop import *
 
 class Rule:
 
