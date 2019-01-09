@@ -8,6 +8,7 @@ class NOpType(Enum):
   ADD = "+"
   MULT = "*"
   INV = "inv"
+  ZERO = "0"
 
 class NOp:
     def __init__(self,op,args):
@@ -29,9 +30,10 @@ class NOp:
 
 class NFreq(NOp):
 
-  def __init__(self,port):
+  def __init__(self,port,offset=0):
     NOp.__init__(self,NOpType.FREQ,[])
-    self._port port
+    self._port = port
+    self._offset = offset
 
   def __repr__(self):
     return "freq(%s)" % (self._port)
@@ -41,7 +43,7 @@ class NSig(NOp):
 
   def __init__(self,port):
     NOp.__init__(self,NOpType.SIG,[])
-    self._port port
+    self._port = port
 
   def __repr__(self):
     return "sig(%s)" % (self._port)
@@ -58,10 +60,18 @@ class NConstRV(NOp):
     return "N(0,%s)" % self._sigma
 
 
+class NZero(NOp):
+
+  def __init__(self):
+    NOp.__init__(self,NOpType.ZERO,[])
+
+  def __repr__(self):
+    return "0"
+
 class NConstVal(NOp):
 
   def __init__(self,mu):
-    NOp.__init__(self,NOpType.ADD,[])
+    NOp.__init__(self,NOpType.CONST_VAL,[])
     self._mu = mu
 
   def __repr__(self):
@@ -71,7 +81,7 @@ class NMult(NOp):
 
   def __init__(self,args):
     for arg in args:
-      assert(arg.op != OpType.ADD)
+      assert(arg.op != NOpType.ADD)
 
     NOp.__init__(self,NOpType.MULT,args)
 
@@ -79,6 +89,6 @@ class NAdd(NOp):
 
   def __init__(self,args):
     for arg in args:
-      assert(arg.op != OpType.ADD)
+      assert(arg.op != NOpType.ADD)
 
     NOp.__init__(self,NOpType.ADD,args)

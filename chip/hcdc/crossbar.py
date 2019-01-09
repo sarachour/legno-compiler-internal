@@ -4,17 +4,52 @@ import chip.hcdc.util as util
 import lab_bench.lib.chip_command as chipcmd
 import chip.hcdc.globals as glb
 import ops.op as ops
+import ops.nop as nops
+import chip.units as units
 
 def black_box_model_tile(blk):
   print("[TODO] crossbar[tile].blackbox")
-
-
-def black_box_model_cc(blk):
-  print("[TODO] crossbar[cc].blackbox")
+  phys = blk.physical("*","*","out")
+  freqgain = -8.66e-4
+  fcutoff = 10*units.khz
+  phys.set_model(nops.NConstRV(glb.NOMINAL_NOISE))
+  phys.set_delay(glb.NOMINAL_DELAY)
+  phys.set_model(
+    nops.NAdd([
+      nops.NMult([
+        nops.NConstVal(freqgain),
+        nops.NSig('out'),
+        nops.NFreq('in', offset=fcutoff)
+      ]),
+      nops.NConstRV(glb.NOMINAL_NOISE)
+    ]), cstr=(fcutoff,None))
 
 
 def black_box_model_chip(blk):
-  print("[TODO] crossbar[chip].blackbox")
+  print("[TODO] crossbar[tile].blackbox")
+  phys = blk.physical("*","*","out")
+  freqgain = -5.66e-4
+  fcutoff = 10*units.khz
+  phys.set_model(nops.NConstRV(glb.NOMINAL_NOISE))
+  phys.set_delay(glb.NOMINAL_DELAY)
+  phys.set_model(
+    nops.NAdd([
+      nops.NMult([
+        nops.NConstVal(freqgain),
+        nops.NSig('out'),
+        nops.NFreq('in', offset=fcutoff)
+      ]),
+      nops.NConstRV(glb.NOMINAL_NOISE)
+    ]), cstr=(fcutoff,None))
+
+
+
+def black_box_model_cc(blk):
+  black_box_model_tile(blk)
+
+
+
+
 
 tile_out = Block('tile_out',type=Block.BUS) \
 .add_outputs(props.CURRENT,["out"]) \

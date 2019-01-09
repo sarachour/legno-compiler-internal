@@ -1,5 +1,6 @@
 import ops
 from enum import Enum
+import chip.phys as phys
 
 class Labels(Enum):
     CONST_INPUT = 'const-inp';
@@ -143,8 +144,8 @@ class Block:
         self._copies = {}
 
         self._scale_factors = {}
-        self._info = {}
-
+        self._info = {} # operating ranges and values
+        self._physical = {} # physical characteristics
 
         # scale factors
         self._scale_modes = {}
@@ -215,6 +216,16 @@ class Block:
             output = copy_data[output]
 
         return op_data[output]
+
+
+    def physical(self,comp_mode,scale_mode,output):
+        assert(output in self._outputs)
+        ddict = self._make_scale_dict(comp_mode,scale_mode, \
+                                    self._physical)
+        if not output in ddict:
+            ddict[output] = phys.PhysicalModel()
+
+        return ddict[output]
 
 
     def dynamics(self,comp_mode):

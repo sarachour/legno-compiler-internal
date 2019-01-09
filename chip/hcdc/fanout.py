@@ -4,8 +4,9 @@ import chip.hcdc.util as util
 import lab_bench.lib.chip_command as chipcmd
 import chip.hcdc.globals as glb
 import ops.op as ops
+import ops.nop as nops
 import itertools
-
+import chip.units as units
 
 def get_modes():
     opts = [
@@ -22,18 +23,35 @@ def get_modes():
     return modes
 
 def blackbox_model(fanout):
+    def config_phys_model(phys,freqgain):
+        fcutoff = 10*units.khz
+        phys.set_model(nops.NConstRV(glb.NOMINAL_NOISE))
+        phys.set_delay(glb.NOMINAL_DELAY)
+        phys.set_model(
+            nops.NAdd([
+                nops.NMult([
+                    nops.NConstVal(freqgain),
+                    nops.NSig('out'),
+                    nops.NFreq('in', offset=fcutoff)
+                ]),
+                nops.NConstRV(glb.NOMINAL_NOISE)
+            ]), cstr=(fcutoff,None))
+
+
     modes = get_modes()
     print("[TODO]: fanout.blackbox")
-'''
-    for mode in nodes:
+    for mode in modes:
         _,_,_,rng = mode
-        noise_model = nop.NZero()
+        noise_model = nops.NConstRV(glb.NOMINAL_NOISE)
         fmax_model = 20*1000
-        fanout. \
-            .set_blackbox_model("*",mode,"out0",noise_model) \
-            .set_blackbox_model("*",mode,"out1",noise_model) \
-            .set_blackbox_model("*",mode,"out2",noise_model)
-'''
+        if rng == chipcmd.RangeType.MED:
+            freqgain = -6.60e-4
+        else:
+            freqgain = -5.566e-4
+
+        config_phys_model(fanout.physical("*",mode,"out0"),freqgain)
+        config_phys_model(fanout.physical("*",mode,"out1"),freqgain)
+        config_phys_model(fanout.physical("*",mode,"out2"),freqgain)
 
 def scale_model(fanout):
     modes = get_modes()
