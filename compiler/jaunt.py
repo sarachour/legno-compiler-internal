@@ -564,20 +564,20 @@ def bpgen_compute_interval(prob,block,loc,expr):
 
 def bpgen_traverse_expr(prob,block,loc,port,expr):
     inv_tau_scfvar = jop.JVar(prob.TAU,exponent=-1)
-    if expr.op == ops.Op.CONST:
+    if expr.op == ops.OpType.CONST:
         return jop.JConst(1.0)
 
-    elif expr.op == ops.Op.VAR:
+    elif expr.op == ops.OpType.VAR:
         port = expr.name
         scf = prob.get_scf(block.name,loc,port)
         return jop.JVar(scf)
 
-    elif expr.op == ops.Op.MULT:
+    elif expr.op == ops.OpType.MULT:
         expr1 = bpgen_traverse_expr(prob,block,loc,port,expr.arg1)
         expr2 = bpgen_traverse_expr(prob,block,loc,port,expr.arg2)
         return jop.JMult(expr1,expr2)
 
-    elif expr.op == ops.Op.INTEG:
+    elif expr.op == ops.OpType.INTEG:
         # derivative and ic are scaled simialrly
         ic_expr = bpgen_traverse_expr(prob,block,loc,port,expr.init_cond)
         deriv_expr = bpgen_traverse_expr(prob,block,loc,port,expr.deriv)
@@ -669,15 +669,15 @@ def build_data_structures(circ):
     return prob
 
 def gpkit_expr(variables,expr):
-    if expr.op == jop.JOp.VAR:
+    if expr.op == jop.JOpType.VAR:
         return variables[expr.name]**expr.exponent
 
-    elif expr.op == jop.JOp.MULT:
+    elif expr.op == jop.JOpType.MULT:
         e1 = gpkit_expr(variables,expr.arg(0))
         e2 = gpkit_expr(variables,expr.arg(1))
         return e1*e2
 
-    elif expr.op == jop.JOp.CONST:
+    elif expr.op == jop.JOpType.CONST:
         return expr.value
 
     else:

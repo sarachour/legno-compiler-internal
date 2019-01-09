@@ -4,7 +4,7 @@ import chip.props as prop
 from chip.block import Labels
 import compiler.arco_route as arco_route
 from compiler.arco_rules import get_rules
-import ops.aop as aexpr
+import ops.aop as aop
 import random
 import math
 import logging
@@ -17,7 +17,7 @@ logger = logging.getLogger('arco')
 def xform_expr(ast,rules,max_xforms=3):
     inputs_space = []
 
-    if ast.op == aexpr.AOp.INTEG:
+    if ast.op == aop.AOpType.INTEG:
         input_space = list(xform_expr(ast.input(0),rules,
                                       max_xforms=max_xforms))
 
@@ -58,83 +58,83 @@ def xform_expr(ast,rules,max_xforms=3):
 
 def make_abstract(ast):
     import ops.op as mop
-    if ast.op == mop.Op.VAR:
-        return aexpr.AVar(ast.name)
+    if ast.op == mop.OpType.VAR:
+        return aop.AVar(ast.name)
 
-    elif ast.op == mop.Op.MULT:
+    elif ast.op == mop.OpType.MULT:
         e1 = make_abstract(ast.arg1)
         e2 = make_abstract(ast.arg2)
         inputs = []
         constant = 1.0
 
-        if e1.op == aexpr.AOp.CPROD:
+        if e1.op == aop.AOpType.CPROD:
             constant *= e1.value
             e1 = e1.input
 
-        if e2.op == aexpr.AOp.CPROD:
+        if e2.op == aop.AOpType.CPROD:
             constant *= e2.value
             e2 = e2.input
 
-        if e1.op == aexpr.AOp.VPROD:
+        if e1.op == aop.AOpType.VPROD:
             inputs += e1.inputs
 
         else:
             inputs += [e1]
 
-        if e2.op == aexpr.AOp.VPROD:
+        if e2.op == aop.AOpType.VPROD:
             inputs += e2.inputs
         else:
             inputs += [e2]
 
-        red_inputs = list(filter(lambda x: not x.op == aexpr.AOp.CONST, inputs))
+        red_inputs = list(filter(lambda x: not x.op == aop.AOpType.CONST, inputs))
         if constant == 1.0:
-            return aexpr.AProd(red_inputs)
+            return aop.AProd(red_inputs)
         else:
-            return aexpr.AGain(constant,
-                               aexpr.AProd(red_inputs))
+            return aop.AGain(constant,
+                               aop.AProd(red_inputs))
 
-    elif ast.op == mop.Op.ADD:
+    elif ast.op == mop.OpType.ADD:
         e1 = make_abstract(ast.arg1)
         e2 = make_abstract(ast.arg2)
         inputs = []
-        if e1.op == aexpr.AOp.SUM:
+        if e1.op == aop.AOpType.SUM:
             inputs += e1.inputs
         else:
             inputs += [e1]
 
-        if e2.op == aexpr.AOp.SUM:
+        if e2.op == aop.AOpType.SUM:
             inputs += e2.inputs
         else:
             inputs += [e2]
 
-        return aexpr.ASum(inputs)
+        return aop.ASum(inputs)
 
-    elif ast.op == mop.Op.CONST:
-        return aexpr.AGain(ast.value,aexpr.AConst(ast.value))
+    elif ast.op == mop.OpType.CONST:
+        return aop.AGain(ast.value,aop.AConst(ast.value))
 
-    elif ast.op == mop.Op.INTEG:
+    elif ast.op == mop.OpType.INTEG:
         deriv = make_abstract(ast.deriv)
         ic = make_abstract(ast.init_cond)
-        return aexpr.AInteg(deriv,ic)
+        return aop.AInteg(deriv,ic)
 
-    elif ast.op == mop.Op.EXTVAR:
-        return aexpr.AExtVar(ast.name)
+    elif ast.op == mop.OpType.EXTVAR:
+        return aop.AExtVar(ast.name)
 
-    elif ast.op == mop.Op.EMIT:
+    elif ast.op == mop.OpType.EMIT:
         expr = make_abstract(ast.args[0])
-        return aexpr.AFunc(aexpr.AOp.EMIT, [expr])
+        return aop.AFunc(aop.AOpType.EMIT, [expr])
     else:
         raise Exception(ast)
 
 def distribute_consts(ast,const=None):
-    if ast.op == aexpr.AOp.CPROD:
+    if ast.op == aop.AOpType.CPROD:
         value = ast.value if const is None else \
                 ast.value*const
 
         for new_expr in distribute_consts(ast.input,const=value):
             yield new_expr
 
-    elif ast.op == aexpr.AOp.SUM:
+    elif ast.op == aop.AOpType.SUM:
         if not const is None:
             new_input_space = map(lambda inp:
                              list(distribute_consts(inp,const=const)), \
@@ -146,7 +146,7 @@ def distribute_consts(ast,const=None):
         else:
             yield ast
 
-    elif ast.op == aexpr.AOp.VPROD:
+    elif ast.op == aop.AOpType.VPROD:
         if not const is None:
             new_input_space = list(map(lambda inp:
                                 list(distribute_consts(inp,const=const)),
@@ -161,26 +161,26 @@ def distribute_consts(ast,const=None):
         else:
             yield ast
 
-    elif ast.op == aexpr.AOp.CONST:
+    elif ast.op == aop.AOpType.CONST:
         if not const is None:
-            yield aexpr.AGain(const, ast)
+            yield aop.AGain(const, ast)
         else:
             yield ast
 
-    elif ast.op == aexpr.AOp.EXTVAR:
+    elif ast.op == aop.AOpType.EXTVAR:
         if not const is None:
-            yield aexpr.AGain(const, ast)
+            yield aop.AGain(const, ast)
         else:
             yield ast
 
 
-    elif ast.op == aexpr.AOp.VAR:
+    elif ast.op == aop.AOpType.VAR:
         if not const is None:
-            yield aexpr.AGain(const, ast)
+            yield aop.AGain(const, ast)
         else:
             yield ast
 
-    elif ast.op == aexpr.AOp.INTEG:
+    elif ast.op == aop.AOpType.INTEG:
         new_deriv_space = list(distribute_consts(ast.input(0),const=const))
         new_ic_space = list(distribute_consts(ast.input(1),const=const))
 
@@ -188,7 +188,7 @@ def distribute_consts(ast,const=None):
             .product(*[new_deriv_space,new_ic_space]):
             yield ast.make([new_deriv,new_ic])
 
-    elif ast.op == aexpr.AOp.EMIT:
+    elif ast.op == aop.AOpType.EMIT:
         yield ast
 
     else:
@@ -310,8 +310,8 @@ def input_level_combos(level_inputs,sources):
 def tac_integ(board,ast):
     for deriv,deriv_output in to_abs_circ(board,ast.input(0)):
         ic = ast.input(1)
-        if not (ic.op == aexpr.AOp.CPROD and \
-                ic.input.op == aexpr.AOp.CONST):
+        if not (ic.op == aop.AOpType.CPROD and \
+                ic.input.op == aop.AOpType.CONST):
             raise Exception("unexpected ic: <%s>" % ic)
 
         init_cond = ic.value
@@ -389,7 +389,7 @@ def tac_vprod(board,ast):
                     yield out_block_c,out_port
 
 def tac_cprod(board,ast):
-    if ast.input.op == aexpr.AOp.CONST:
+    if ast.input.op == aop.AOpType.CONST:
         for result in to_abs_circ(board,ast.input):
             yield result
     else:
@@ -407,35 +407,35 @@ def tac_cprod(board,ast):
 
 
 def to_abs_circ(board,ast):
-    if ast.op == aexpr.AOp.INTEG:
+    if ast.op == aop.AOpType.INTEG:
         for result in tac_integ(board,ast):
             yield result
 
-    elif ast.op == aexpr.AOp.VPROD:
+    elif ast.op == aop.AOpType.VPROD:
         for result in tac_vprod(board,ast):
             yield result
 
-    elif ast.op == aexpr.AOp.CPROD:
+    elif ast.op == aop.AOpType.CPROD:
         for result in tac_cprod(board,ast):
             yield result
 
-    elif ast.op == aexpr.AOp.CONST:
+    elif ast.op == aop.AOpType.CONST:
         node = acirc.ANode.make_node(board,"tile_dac")
         node.config.set_comp_mode('*')
         node.config.set_dac("in",ast.value)
         yield node,"out"
 
-    elif ast.op == aexpr.AOp.VAR:
+    elif ast.op == aop.AOpType.VAR:
         stub = acirc.AInput(ast.name)
         yield stub,"out"
 
-    elif ast.op == aexpr.AOp.EXTVAR:
+    elif ast.op == aop.AOpType.EXTVAR:
         node = acirc.ANode.make_node(board,"ext_chip_in")
         node.config.set_label("in", ast.name,kind=Labels.DYNAMIC_INPUT)
         node.config.set_comp_mode("*")
         yield node,"out"
 
-    elif ast.op == aexpr.AOp.SUM:
+    elif ast.op == aop.AOpType.SUM:
         new_inputs = list(map(lambda inp: list(to_abs_circ(board,inp)), \
                                  ast.inputs))
 
@@ -448,7 +448,7 @@ def to_abs_circ(board,ast):
 
             yield join,"out"
 
-    elif ast.op == aexpr.AOp.EMIT:
+    elif ast.op == aop.AOpType.EMIT:
         for in_node,in_port in to_abs_circ(board,ast.input(0)):
             node = acirc.ANode.make_node(board,"ext_chip_out")
             node.config.set_comp_mode("*")

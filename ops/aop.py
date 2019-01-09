@@ -1,33 +1,22 @@
+from enum import Enum
+
+class AOpType(Enum):
+
+    SUM = "+"
+    LN = "ln"
+    EXP = "exp"
+    INV = "inv"
+    VPROD = "*"
+    CPROD = ".*"
+    VAR = "v"
+    CONST = "c"
+    SQUARE = "sq"
+    SQRT = "sqrt"
+    INTEG = "integ"
+    EMIT = "emit"
+    EXTVAR = "ev"
 
 class AOp:
-    SUM = 0;
-    LN = 1;
-    EXP = 2;
-    INV = 3;
-    VPROD = 4;
-    CPROD = 5;
-    VAR = 6;
-    CONST = 7;
-    SQUARE = 8;
-    SQRT = 9;
-    INTEG = 10;
-    EMIT = 11;
-    EXTVAR = 12;
-
-    TOSTR = {
-        SUM: "+",
-        LN: "ln",
-        EXP: "exp",
-        INV: "inv",
-        VPROD: "*",
-        CPROD: ".*",
-        VAR: "v",
-        CONST: "c",
-        SQUARE: "sq",
-        SQRT: "sqrt",
-        INTEG: "integ",
-        EMIT: "emit"
-    }
 
     def __init__(self,op,inps):
         for inp in inps:
@@ -72,7 +61,7 @@ class AOp:
 class AExtVar(AOp):
 
     def __init__(self,var):
-        AOp.__init__(self,AOp.EXTVAR,[])
+        AOp.__init__(self,AOpType.EXTVAR,[])
         self._var = var
 
     def make(self,inputs):
@@ -92,7 +81,7 @@ class AExtVar(AOp):
 class AVar(AOp):
 
     def __init__(self,var):
-        AOp.__init__(self,AOp.VAR,[])
+        AOp.__init__(self,AOpType.VAR,[])
         self._var = var
 
     def make(self,inputs):
@@ -111,7 +100,7 @@ class AVar(AOp):
 class AConst(AOp):
 
     def __init__(self,value):
-        AOp.__init__(self,AOp.CONST,[])
+        AOp.__init__(self,AOpType.CONST,[])
         self._value = value
 
     @property
@@ -129,7 +118,7 @@ class AConst(AOp):
 class AGain(AOp):
 
     def __init__(self,value,expr):
-        AOp.__init__(self,AOp.CPROD, [expr])
+        AOp.__init__(self,AOpType.CPROD, [expr])
         assert(isinstance(expr,AOp))
         assert(isinstance(value,float) or \
                isinstance(value,int))
@@ -151,12 +140,12 @@ class AGain(AOp):
         return self._value
 
     def label(self):
-        return AOp.TOSTR[self.op] + ":"+ str(self._value)
+        return AOpType.TOSTR[self.op] + ":"+ str(self._value)
 
 class AProd(AOp):
 
     def __init__(self,inputs):
-        AOp.__init__(self,AOp.VPROD,inputs)
+        AOp.__init__(self,AOpType.VPROD,inputs)
 
     def make(self,inputs):
         return AProd(inputs)
@@ -165,7 +154,7 @@ class AProd(AOp):
 class ASum(AOp):
 
     def __init__(self,inputs):
-        AOp.__init__(self,AOp.SUM,inputs)
+        AOp.__init__(self,AOpType.SUM,inputs)
 
 
     def make(self,inputs):
@@ -175,7 +164,7 @@ class ASum(AOp):
 class AInteg(AOp):
 
     def __init__(self,expr,ic):
-        AOp.__init__(self,AOp.INTEG,[expr,ic])
+        AOp.__init__(self,AOpType.INTEG,[expr,ic])
 
     def make(self,inputs):
         return AInteg(inputs[0],inputs[1])

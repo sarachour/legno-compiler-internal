@@ -1,16 +1,13 @@
 #TODO: refactor this
 #TODO: update gpkit
+
+class JOpType:
+    MULT  = "*"
+    CONST = "const"
+    VAR = "var"
+
 class JOp:
 
-    MULT = 0
-    CONST = 1
-    VAR = 2
-
-    STRMAP = {
-        MULT: "*",
-        CONST: "const",
-        VAR: "var"
-    }
     def __init__(self,op,args):
         self._args = args
         self._op = op
@@ -28,12 +25,12 @@ class JOp:
 
     def __repr__(self):
         argstr = " ".join(map(lambda x : str(x),self._args))
-        return "(%s %s)" % (JOp.STRMAP[self._op],argstr)
+        return "(%s %s)" % (self._op.value,argstr)
 
 class JVar(JOp):
 
     def __init__(self,name,exponent=1.0):
-        JOp.__init__(self,JOp.VAR,[])
+        JOp.__init__(self,JOpType.VAR,[])
         self._name = name
         self._exponent = exponent
 
@@ -55,7 +52,7 @@ class JVar(JOp):
 class JConst(JOp):
 
     def __init__(self,value):
-        JOp.__init__(self,JOp.CONST,[])
+        JOp.__init__(self,JOpType.CONST,[])
         self._value = value
 
 
@@ -72,7 +69,7 @@ class JConst(JOp):
 class JMult(JOp):
 
     def __init__(self,arg1,arg2):
-        JOp.__init__(self,JOp.MULT,[arg1,arg2])
+        JOp.__init__(self,JOpType.MULT,[arg1,arg2])
 
     def factor_const(self):
         c1,x1 = self.arg(0).factor_const()

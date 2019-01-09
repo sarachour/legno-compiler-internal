@@ -10,7 +10,7 @@ class NoiseEnv:
     self._bindings[var] = noise
 
 def nz_expr(expr,config,bindings):
-  if expr.op == op.Op.VAR:
+  if expr.op == op.OpType.VAR:
     if config.has_dac(expr.name):
       coeff = abs(config.dac(expr.name))
     else:
@@ -18,12 +18,12 @@ def nz_expr(expr,config,bindings):
 
     return coeff*bindings[expr.name]
 
-  if expr.op == op.Op.MULT:
+  if expr.op == op.OpType.MULT:
     nz1 = nz_expr(expr.arg1,config,bindings)
     nz2 = nz_expr(expr.arg2,config,bindings)
     return nz1*nz2
 
-  elif expr.op == op.Op.INTEG:
+  elif expr.op == op.OpType.INTEG:
     nz1 = nz_expr(expr.deriv,config,bindings)
     nz2 = nz_expr(expr.init_cond,config,bindings)
     print(nz1,nz2)

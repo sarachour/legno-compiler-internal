@@ -8,22 +8,22 @@ def find_stvars(var,expr,stvars,ics):
   def visit(e):
     return find_stvars(var,e,stvars,ics)
 
-  if expr.op == op.Op.INTEG:
+  if expr.op == op.OpType.INTEG:
     handle = expr.handle
     key = "%s%s" % (var,handle)
     ics[key] = expr.init_cond.value
     stvars[key] = visit(expr.deriv)
     return op.Var(key)
 
-  elif expr.op == op.Op.ADD:
+  elif expr.op == op.OpType.ADD:
     return op.Add(visit(expr.arg1),visit(expr.arg2))
-  elif expr.op == op.Op.MULT:
+  elif expr.op == op.OpType.MULT:
     return op.Mult(visit(expr.arg1),visit(expr.arg2))
-  elif expr.op == op.Op.VAR or \
-       expr.op == op.Op.EXTVAR or \
-       expr.op == op.Op.CONST:
+  elif expr.op == op.OpType.VAR or \
+       expr.op == op.OpType.EXTVAR or \
+       expr.op == op.OpType.CONST:
     return expr
-  elif expr.op == op.Op.EMIT:
+  elif expr.op == op.OpType.EMIT:
     return op.Emit(visit(expr.arg(0)))
 
 def compute_varmap(y,t,fnvars,stvars,extfns,fns):

@@ -1,36 +1,23 @@
 import itertools
 import math
 import ops.interval as interval
+from enum import Enum
+class OpType(Enum):
+    EQ= "="
+    MULT= "*"
+    INTEG= "int"
+    ADD= "+"
+    EXP= "exp"
+    SQRT= "sqrt"
+    LN= "ln"
+    SQUARE= "pow2"
+    CONST= "const"
+    VAR= "var"
+    POW= "pow"
+    EMIT= "emit"
+    EXTVAR= "extvar"
 
 class Op:
-    EQ = 0
-    MULT = 1
-    INTEG = 2
-    ADD = 3
-    EXP = 4
-    LN = 5
-    SQRT = 6
-    SQUARE = 7
-    CONST = 8
-    VAR = 9
-    POW = 10
-    EMIT = 11
-    EXTVAR = 12
-    STRMAP = {
-        EQ: "=",
-        MULT: "*",
-        INTEG: "int",
-        ADD: "+",
-        EXP: "exp",
-        SQRT: "sqrt",
-        LN: "ln",
-        SQUARE: "pow2",
-        CONST: "const",
-        VAR: "var",
-        POW: "pow",
-        EMIT: "emit",
-        EXTVAR: "extvar"
-    }
 
     def __init__(self,op,args):
         for arg in args:
@@ -38,7 +25,7 @@ class Op:
         self._args = args
         self._op = op
         self._is_associative = True \
-                               if op in [Op.MULT, Op.ADD] \
+                               if op in [OpType.MULT, OpType.ADD] \
                                   else False
 
     @property
@@ -90,7 +77,7 @@ class Op:
 
     def __repr__(self):
         argstr = " ".join(map(lambda arg: str(arg),self._args))
-        return "(%s %s)" % (Op.STRMAP[self._op],argstr)
+        return "(%s %s)" % (self._op.value,argstr)
 
     def __eq__(self,other):
         assert(isinstance(other,Op))
@@ -134,7 +121,7 @@ class Op:
                 assigns = []
                 submatches = []
                 for v,e in binding:
-                    if v.op == Op.VAR:
+                    if v.op == OpType.VAR:
                         assigns.append((v.name,e))
                     else:
                         submatches2 = []
@@ -205,7 +192,7 @@ class Integ(Op2):
     def __init__(self,deriv,init_cond,handle=None):
         assert(handle.startswith(":"))
 
-        Op.__init__(self,Op.INTEG,[deriv,init_cond])
+        Op.__init__(self,OpType.INTEG,[deriv,init_cond])
         self._handle = handle
         pass
 
@@ -264,42 +251,42 @@ class Integ(Op2):
 class Ln(Op):
 
     def __init__(self,arg):
-        Op.__init__(self,Op.LN,[arg])
+        Op.__init__(self,OpType.LN,[arg])
         pass
 
 
 class Exp(Op):
 
     def __init__(self,arg):
-        Op.__init__(self,Op.EXP,[arg])
+        Op.__init__(self,OpType.EXP,[arg])
         pass
 
 
 class Pow(BaseExpOp):
 
     def __init__(self,arg1,arg2):
-        Op.__init__(self,Op.POW,[arg1,arg2])
+        Op.__init__(self,OpType.POW,[arg1,arg2])
         pass
 
 
 class Square(BaseExpOp):
 
     def __init__(self,arg):
-        Op.__init__(self,Op.SQUARE,[arg])
+        Op.__init__(self,OpType.SQUARE,[arg])
         pass
 
     def match_op(self,expr, enable_eq=False):
         if expr.op == self._op:
             return True,False,[[(self.base,expr.base)]]
 
-        elif expr.op == Op.POW:
-            if expr.exponent.op == Op.CONST and \
+        elif expr.op == OpType.POW:
+            if expr.exponent.op == OpType.CONST and \
                expr.exponent.value == 2.0:
                 return True,False,[[(self.base,expr.base)]]
 
-            elif expr.exponent.op == Op.MULT and \
+            elif expr.exponent.op == OpType.MULT and \
                  expr.arg1 == expr.arg2 and \
-                 expr.arg1.op == Op.VAR:
+                 expr.arg1.op == OpType.VAR:
                 return True,False,[[(self.base,expr.arg1)]]
 
         return False,None,None
@@ -314,7 +301,7 @@ class Square(BaseExpOp):
 class ExtVar(Op):
 
     def __init__(self,name):
-        Op.__init__(self,Op.EXTVAR,[])
+        Op.__init__(self,OpType.EXTVAR,[])
         self._name = name
 
     @property
@@ -336,18 +323,18 @@ class ExtVar(Op):
 
     def __repr__(self):
         return "(%s %s)" % \
-            (Op.STRMAP[self._op],self._name)
+            (self._op.value,self._name)
 
 
 class Var(Op):
 
     def __init__(self,name):
-        Op.__init__(self,Op.VAR,[])
+        Op.__init__(self,OpType.VAR,[])
         self._name = name
 
     def __repr__(self):
         return "(%s %s)" % \
-            (Op.STRMAP[self._op],self._name)
+            (self._op.value,self._name)
 
     @property
     def name(self):
@@ -379,7 +366,7 @@ class Var(Op):
 class Const(Op):
 
     def __init__(self,value):
-        Op.__init__(self,Op.CONST,[])
+        Op.__init__(self,OpType.CONST,[])
         self._value = value
 
 
@@ -408,14 +395,14 @@ class Const(Op):
 
     def __repr__(self):
         return "(%s %s)" % \
-            (Op.STRMAP[self._op],self._value)
+            (self._op.value,self._value)
 
 
 
 class Sqrt(BaseExpOp):
 
     def __init__(self,arg):
-        Op.__init__(self,Op.SQRT,[arg])
+        Op.__init__(self,OpType.SQRT,[arg])
         pass
 
 
@@ -423,8 +410,8 @@ class Sqrt(BaseExpOp):
         if expr.op == self._op:
             return True,False,[[self.base,expr.base]]
 
-        elif expr.op == Op.POW:
-            if expr.exponent.op == Op.CONST and \
+        elif expr.op == OpType.POW:
+            if expr.exponent.op == OpType.CONST and \
                expr.exponent.value == 0.5:
                 return True,False,[[self.base,expr.base]]
 
@@ -440,7 +427,7 @@ class Sqrt(BaseExpOp):
 class Emit(Op):
 
     def __init__(self,node):
-        Op.__init__(self,Op.EMIT,[node])
+        Op.__init__(self,OpType.EMIT,[node])
         pass
 
     def bandwidth(self,intervals,bandwidths,bindings):
@@ -457,7 +444,7 @@ class Emit(Op):
 class Mult(Op2):
 
     def __init__(self,arg1,arg2):
-        Op2.__init__(self,Op.MULT,[arg1,arg2])
+        Op2.__init__(self,OpType.MULT,[arg1,arg2])
         pass
 
 
@@ -468,12 +455,12 @@ class Mult(Op2):
                   is1.interval.mult(is2.interval))
 
     def bandwidth(self,intervals,bandwidths,bindings):
-        if self.arg1.op == Op.CONST:
+        if self.arg1.op == OpType.CONST:
             value = abs(self.arg1.value)
             f2 = self.arg2.bandwidth(intervals,bandwidths,bindings)
             return f2*value
 
-        elif self.arg2.op == Op.CONST:
+        elif self.arg2.op == OpType.CONST:
             value = abs(self.arg2.value)
             f2 = self.arg1.bandwidth(intervals,bandwidths,bindings)
             return f2*value
@@ -488,7 +475,7 @@ class Mult(Op2):
                 [(self.arg1,expr.arg2),(self.arg2,expr.arg1)]
             ]
 
-        elif expr.op == Op.SQUARE:
+        elif expr.op == OpType.SQUARE:
             return True,False,[
                 [(self.arg1,expr.base),(self.arg2,expr.base)]
             ]
@@ -507,7 +494,7 @@ class Mult(Op2):
 class Add(Op2):
 
     def __init__(self,arg1,arg2):
-        Op.__init__(self,Op.ADD,[arg1,arg2])
+        Op.__init__(self,OpType.ADD,[arg1,arg2])
         pass
 
     def interval(self,bindings):
@@ -540,11 +527,3 @@ class Add(Op2):
 
 
 
-
-EQ = Op.EQ
-MULT = Op.MULT
-INTEG = Op.INTEG
-LN = Op.LN
-SQRT = Op.SQRT
-SQUARE = Op.SQUARE
-EXP = Op.EXP
