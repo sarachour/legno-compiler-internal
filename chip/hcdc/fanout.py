@@ -23,8 +23,13 @@ def get_modes():
     return modes
 
 def blackbox_model(fanout):
-    def config_phys_model(phys,freqgain):
+    def config_phys_model(phys,rng):
         fcutoff = 10*units.khz
+        if rng == chipcmd.RangeType.MED:
+            freqgain = -6.60e-4
+        else:
+            freqgain = -5.566e-4
+
         phys.set_model(nops.NConstRV(glb.NOMINAL_NOISE))
         phys.set_delay(glb.NOMINAL_DELAY)
         phys.set_model(
@@ -43,15 +48,9 @@ def blackbox_model(fanout):
     for mode in modes:
         _,_,_,rng = mode
         noise_model = nops.NConstRV(glb.NOMINAL_NOISE)
-        fmax_model = 20*1000
-        if rng == chipcmd.RangeType.MED:
-            freqgain = -6.60e-4
-        else:
-            freqgain = -5.566e-4
-
-        config_phys_model(fanout.physical("*",mode,"out0"),freqgain)
-        config_phys_model(fanout.physical("*",mode,"out1"),freqgain)
-        config_phys_model(fanout.physical("*",mode,"out2"),freqgain)
+        config_phys_model(fanout.physical("*",mode,"out0"),rng)
+        config_phys_model(fanout.physical("*",mode,"out1"),rng)
+        config_phys_model(fanout.physical("*",mode,"out2"),rng)
 
 def scale_model(fanout):
     modes = get_modes()

@@ -1,9 +1,11 @@
 from chip.block import Block
 import chip.props as props
 import chip.hcdc.util as util
+import chip.units as units
 import lab_bench.lib.chip_command as chipcmd
 import chip.hcdc.globals as glb
 import ops.op as ops
+import ops.nop as nops
 import itertools
 
 def get_modes():
@@ -36,7 +38,31 @@ def get_modes():
   return vga_modes,mul_modes
 
 def black_box_model(mult):
+  def config_phys(phys):
+    fcutoff = 4.0*units.khz
+    freqgain = 1.38e-3
+    phys.set_model(nops.NConstRV(glb.NOMINAL_NOISE))
+    phys.set_delay(glb.NOMINAL_DELAY)
+    phys.set_model(
+      nops.NAdd([
+        nops.NMult([
+          nops.NConstVal(freqgain),
+          nops.NSig('out'),
+          nops.NFreq('in0', offset=fcutoff)
+        ]),
+        nops.NConstRV(glb.NOMINAL_NOISE)
+      ]), cstr=(fcutoff,None))
+
   vga_modes,mul_modes = get_modes()
+  for mode in vga_modes:
+    phys = mult.physical('vga',mode,'out')
+    config_phys(phys)
+
+  for mode in mul_modes:
+    phys = mult.physical('mul',mode,'out')
+    config_phys(phys)
+
+
   print("[TODO] mult.blackbox")
 
 def scale_model(mult):

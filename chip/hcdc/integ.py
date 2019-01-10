@@ -20,7 +20,7 @@ def get_modes():
                                     blacklist))
   return modes
 
-def black_box_model(integ):
+def black_box_model(blk):
   print("[TODO] integ.blackbox")
 
 def scale_model(integ):
