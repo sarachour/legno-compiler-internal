@@ -1,73 +1,120 @@
 import sys
+import os
+import common
+import numpy as np
+sys.path.insert(0,os.path.abspath("../../../"))
+import chip.phys as phys
+import ops.nop as nops
+import json
+
+def make_lin(slope,off,deterministic):
+    if deterministic:
+      return nops.mkadd([
+        nops.mkmult([
+          nops.NConstVal(slope),
+          nops.NFreq(port)
+        ]),
+        nops.NConstVal(off)
+      ])
+    else:
+      return nops.mkadd([
+        nops.mkmult([
+          nops.NConstRV(slope),
+          nops.NFreq(port)
+        ]),
+        nops.NConstRV(off)
+      ])
+
+def to_nop_expr(indep_dict, dep_dict, break_idx, \
+                port, \
+                deterministic=False):
+
+  freq = indep_dict['breaks'][break_idx]
+  print("freq: %s" % freq)
+
+  if not dep_dict is None:
+    dep_slope = dep_dict['slopes'][break_idx]
+    dep_offset = dep_dict['offsets'][break_idx]
+    dep_expr = nops.mkmult([
+      nops.NSig(port),
+      make_lin(dep_slope,dep_offset,deterministic)
+    ])
+    print("dep: %s*F + %s" % (dep_slope,dep_offset))
+
+  indep_slope = indep_dict['slopes'][break_idx]
+  indep_offset = indep_dict['offsets'][break_idx]
+  print("indep: %s*F + %s" % (indep_slope,indep_offset))
+
+  indep_expr = make_lin(indep_slope,indep_offset, \
+                        deterministic)
+  if dep_dict is None:
+    return indep_expr
+  else:
+    return nops.mkadd([
+      dep_expr,
+      indep_expr
+    ])
+
+
 
 
 filename = sys.argv[1]
+port = sys.argv[2]
+breakfile = sys.argv[3]
+outfile = sys.argv[4]
+breaks = []
+with open(breakfile,'r') as fh:
+  for line in fh:
+    breaks.append(float(line.strip()))
 
-header = [
-  'freq','ampl_mu_mv','ampl_mu_pct', \
-  'ampl_std_mv','ampl_std_pct', \
-  'rms_mu_mv','rms_mu_pct', \
-  'rms_computed', 'phase_rad', \
-  'shift_rad', 'shift_deg', \
-  'phase_std_rad', \
-  'phase_std_pct'
-]
-rawdata = {
-  'freqs': [],
-  'ampl_mu': [],
-  'ampl_std': [],
-  'delay_mu': [],
-  'delay_std': [],
-}
-n = 0
+print("=== Read Data ===")
+raw_data = common.load_raw_data(filename)
+data = common.process_raw_data(raw_data)
 
-with open(filename,'r') as fh:
-  fh.readline()
-  for row in fh:
-    args = row.strip().split(",")
-    assert(len(args) == len(header))
-    if args[0] == '':
-      continue
+print("=== Fit Data ===")
+X = raw_data['freqs']
+_,model = common.compute_pwls(X,data,extern_breaks=breaks)
 
-    datum = dict(zip(header,map(lambda a: float(a), args)))
-    rawdata['freqs'].append(datum['freq'])
-    rawdata['delay_mu'].append(datum['shift_rad'])
-    rawdata['delay_std'].append(datum['phase_std_rad'])
-    rawdata['ampl_mu'].append(datum['ampl_mu_mv'])
-    rawdata['ampl_std'].append(datum['ampl_std_mv'])
-    n += 1
+print(breaks)
+ph = phys.PhysicalModel()
+for brk in breaks[:-1]:
+  ph.add_break(brk)
 
-data = {
-  'ampl_bias_indep': [],
-  'ampl_noise_indep': [],
-  'ampl_bias_dep': [],
-  'ampl_noise_dep': [],
-  'delay_mean': [],
-  'delay_std': []
-}
+ph.freeze()
+for idx,this_break in enumerate(breaks[:-1]):
+  print("index",idx)
+  bias_expr = to_nop_expr(model['ampl_bias_indep'],
+                     model['ampl_bias_dep'],
+                          idx,
+                          port=port,
+                          deterministic=True)
 
-max_ampl = max(rawdata['ampl_mu'])
-bias_corr_split = 0.01
-noise_corr_split = 0.3
-for idx in range(len(rawdata['freqs'])):
-  freq = rawdata['freqs'][idx]
-  bias = rawdata['ampl_mu'][idx] - max_ampl
-  bias_uncorr = bias_corr_split*bias
-  bias_corr = ((1.0-bias_corr_split)*bias)/max_ampl
+  noise_expr = to_nop_expr(model['ampl_noise_indep'],
+                           model['ampl_noise_dep'],
+                           idx,
+                           port=port,
+                           deterministic=False)
 
-  noise = rawdata['ampl_std'][idx]
-  noise_uncorr = noise_corr_split*noise
-  noise_corr = ((1.0-noise_corr_split)*noise)/max_ampl
+  delay_mean = to_nop_expr(model['delay_mean'],
+                           None,idx,
+                           port=port,
+                           deterministic=True)
 
-  delay_mu = rawdata['delay_mu'][idx]
-  delay_std = rawdata['delay_std'][idx]
+  delay_std = to_nop_expr(model['delay_std'],
+                           None,idx,
+                           port=port,
+                           deterministic=False)
 
-  data['ampl_bias_indep'].append(bias_uncorr)
-  data['ampl_bias_dep'].append(bias_corr)
-  data['ampl_noise_indep'].append(noise_uncorr)
-  data['ampl_noise_dep'].append(noise_corr)
-  data['delay_mean'].append(delay_mu)
-  data['delay_std'].append(delay_std)
+  delay_expr = nops.mkadd([delay_mean,delay_std])
 
-print("TODO: infer model")
+  subm = ph.stump(this_break)
+  subm.delay = delay_expr
+  subm.noise = noise_expr
+  subm.bias = bias_expr
 
+
+with open(outfile,'w') as fh:
+  obj= ph.to_json()
+  print(obj)
+  objstr = json.dumps(obj,indent=4)
+  fh.write(objstr)
