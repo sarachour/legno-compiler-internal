@@ -1,6 +1,13 @@
 import chip.props as props
 import chip.units as units
 import numpy as np
+import os
+
+def equals(f1,f2):
+    return abs(f1-f2) <= 1e-5
+
+def datapath(filename):
+    return "chip/hcdc/data/%s" % filename
 
 def truncate(f, n):
     '''Truncates/pads a float f to n decimal places without rounding'''

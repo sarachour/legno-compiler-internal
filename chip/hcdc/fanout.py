@@ -1,4 +1,5 @@
 from chip.block import Block
+from chip.phys import PhysicalModel
 import chip.props as props
 import chip.hcdc.util as util
 import lab_bench.lib.chip_command as chipcmd
@@ -24,24 +25,14 @@ def get_modes():
 
 def blackbox_model(fanout):
     def config_phys_model(phys,rng):
-        fcutoff = 10*units.khz
         if rng == chipcmd.RangeType.MED:
-            freqgain = -6.60e-4
+            new_phys =  PhysicalModel.read(util.datapath('fanout1x.bb'))
+        elif rng == chipcmd.RangeType.HIGH:
+            new_phys = PhysicalModel.read(util.datapath('fanout10x.bb'))
         else:
-            freqgain = -5.566e-4
+            raise Exception("unknown physical model")
 
-        phys.set_model(nops.NConstRV(glb.NOMINAL_NOISE))
-        phys.set_delay(glb.NOMINAL_DELAY)
-        phys.set_model(
-            nops.NAdd([
-                nops.NMult([
-                    nops.NConstVal(freqgain),
-                    nops.NSig('out'),
-                    nops.NFreq('in', offset=fcutoff)
-                ]),
-                nops.NConstRV(glb.NOMINAL_NOISE)
-            ]), cstr=(fcutoff,None))
-
+        phys.set_to(new_phys)
 
     modes = get_modes()
     print("[TODO]: fanout.blackbox")

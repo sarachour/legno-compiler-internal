@@ -24,10 +24,30 @@ class NOp:
       args = list(map(lambda arg: arg.to_json(), \
                       self._args))
       return {
-        'op': self.op.name,
+        'op': self.op.value,
         'args': args
       }
 
+
+    @staticmethod
+    def from_json(obj):
+      op = NOpType(obj['op'])
+      if op == NOpType.SIG:
+        return NSig.from_json(obj)
+      elif op == NOpType.FREQ:
+        return NFreq.from_json(obj)
+      elif op == NOpType.CONST_RV:
+        return NConstRV.from_json(obj)
+      elif op == NOpType.CONST_VAL:
+        return NConstVal.from_json(obj)
+      elif op == NOpType.ADD:
+        return NAdd.from_json(obj)
+      elif op == NOpType.MULT:
+        return NMult.from_json(obj)
+      elif op == NOpType.INV:
+        return NInv.from_json(obj)
+      elif op == NOpType.ZERO:
+        return NZero()
 
     @property
     def op(self):
@@ -49,9 +69,14 @@ class NFreq(NOp):
 
   def to_json(self):
     return {
-      'op': self.op.name,
+      'op': self.op.value,
       'port': self._port
     }
+
+  @staticmethod
+  def from_json(obj):
+    return NFreq(obj['port'])
+
 
 class NSig(NOp):
 
@@ -64,9 +89,14 @@ class NSig(NOp):
 
   def to_json(self):
     return {
-      'op': self.op.name,
+      'op': self.op.value,
       'port': self._port
     }
+
+  @staticmethod
+  def from_json(obj):
+    return NSig(obj['port'])
+
 
 
 
@@ -83,9 +113,13 @@ class NConstRV(NOp):
 
   def to_json(self):
     return {
-      'op': self.op.name,
+      'op': self.op.value,
       'sigma': self._sigma
     }
+
+  @staticmethod
+  def from_json(obj):
+    return NConstVal(float(obj['sigma']))
 
 
 
@@ -96,6 +130,11 @@ class NZero(NOp):
 
   def __repr__(self):
     return "0"
+
+  @staticmethod
+  def from_json(obj):
+    return NZero()
+
 
 class NConstVal(NOp):
 
@@ -109,9 +148,13 @@ class NConstVal(NOp):
 
   def to_json(self):
     return {
-      'op': self.op.name,
+      'op': self.op.value,
       'mu': self._mu
     }
+
+  @staticmethod
+  def from_json(obj):
+    return NConstVal(float(obj['mu']))
 
 
 class NMult(NOp):
@@ -143,6 +186,16 @@ class NMult(NOp):
       else:
         yield arg
 
+  @staticmethod
+  def from_json(obj):
+    args = []
+    for arg in obj['args']:
+      node = NOp.from_json(arg)
+      args.append(node)
+
+    return NMult(args)
+
+
 
   def __init__(self,args):
     for arg in args:
@@ -166,6 +219,15 @@ class NAdd(NOp):
           yield term
       else:
         yield arg
+
+  @staticmethod
+  def from_json(obj):
+    args = []
+    for arg in obj['args']:
+      node = NOp.from_json(arg)
+      args.append(node)
+
+    return NAdd(args)
 
 def mkadd(args):
   new_args = []

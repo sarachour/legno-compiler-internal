@@ -1,4 +1,5 @@
 from chip.block import Block
+from chip.phys import PhysicalModel
 import chip.props as props
 import chip.hcdc.util as util
 import chip.units as units
@@ -38,29 +39,30 @@ def get_modes():
   return vga_modes,mul_modes
 
 def black_box_model(mult):
-  def config_phys(phys):
-    fcutoff = 4.0*units.khz
-    freqgain = 1.38e-3
-    phys.set_model(nops.NConstRV(glb.NOMINAL_NOISE))
-    phys.set_delay(glb.NOMINAL_DELAY)
-    phys.set_model(
-      nops.NAdd([
-        nops.NMult([
-          nops.NConstVal(freqgain),
-          nops.NSig('out'),
-          nops.NFreq('in0', offset=fcutoff)
-        ]),
-        nops.NConstRV(glb.NOMINAL_NOISE)
-      ]), cstr=(fcutoff,None))
+  def config_phys(phys,scf):
+    if util.equals(scf, 1.0):
+      new_phys = PhysicalModel.read(util.datapath('mult1x.bb'))
+    elif util.equals(scf, 10.0) or util.equals(scf, 100.0):
+      new_phys = PhysicalModel.read(util.datapath('mult10x.bb'))
+    elif util.equals(scf, 0.1) or util.equals(scf, 0.01):
+      new_phys = PhysicalModel.read(util.datapath('mult1x.bb'))
+    else:
+      raise Exception("unknown scf: %s" % scf)
+
+    phys.set_to(new_phys)
 
   vga_modes,mul_modes = get_modes()
   for mode in vga_modes:
+    in0rng,outrng = mode
+    scf = outrng.coeff()/in0rng.coeff()
     phys = mult.physical('vga',mode,'out')
-    config_phys(phys)
+    config_phys(phys,scf)
 
   for mode in mul_modes:
+    in0rng,in1rng,outrng = mode
+    scf = outrng.coeff()/(in0rng.coeff()*in1rng.coeff())
     phys = mult.physical('mul',mode,'out')
-    config_phys(phys)
+    config_phys(phys,scf)
 
 
   print("[TODO] mult.blackbox")

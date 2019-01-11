@@ -1,3 +1,4 @@
+from chip.phys import PhysicalModel
 from chip.block import Block
 import chip.props as props
 import chip.hcdc.util as util
@@ -10,44 +11,16 @@ import chip.units as units
 def black_box_model_tile(blk):
   print("[TODO] crossbar[tile].blackbox")
   phys = blk.physical("*","*","out")
-  freqgain = -8.66e-4
-  fcutoff = 10*units.khz
-  phys.set_model(nops.NConstRV(glb.NOMINAL_NOISE))
-  phys.set_delay(glb.NOMINAL_DELAY)
-  phys.set_model(
-    nops.NAdd([
-      nops.NMult([
-        nops.NConstVal(freqgain),
-        nops.NSig('out'),
-        nops.NFreq('in', offset=fcutoff)
-      ]),
-      nops.NConstRV(glb.NOMINAL_NOISE)
-    ]), cstr=(fcutoff,None))
-
+  phys.set_to(PhysicalModel.read(util.datapath('tile_xbar.bb')))
 
 def black_box_model_chip(blk):
   print("[TODO] crossbar[tile].blackbox")
   phys = blk.physical("*","*","out")
-  freqgain = -5.66e-4
-  fcutoff = 10*units.khz
-  phys.set_model(nops.NConstRV(glb.NOMINAL_NOISE))
-  phys.set_delay(glb.NOMINAL_DELAY)
-  phys.set_model(
-    nops.NAdd([
-      nops.NMult([
-        nops.NConstVal(freqgain),
-        nops.NSig('out'),
-        nops.NFreq('in', offset=fcutoff)
-      ]),
-      nops.NConstRV(glb.NOMINAL_NOISE)
-    ]), cstr=(fcutoff,None))
-
+  phys.set_to(PhysicalModel.read(util.datapath('global_xbar.bb')))
 
 
 def black_box_model_cc(blk):
   black_box_model_tile(blk)
-
-
 
 
 

@@ -1,6 +1,8 @@
 from chip.block import Block
+from chip.phys import PhysicalModel
 import chip.props as props
 import chip.hcdc.util as util
+
 import lab_bench.lib.chip_command as chipcmd
 import chip.hcdc.globals as glb
 import ops.op as ops
@@ -21,6 +23,23 @@ def get_modes():
   return modes
 
 def black_box_model(blk):
+  def cfg_phys_model(phys,scf):
+    if util.equals(scf, 1.0):
+      new_phys = PhysicalModel.read(util.datapath('integ1x.bb'))
+    elif util.equals(scf, 10.0):
+      new_phys = PhysicalModel.read(util.datapath('integ1x.bb'))
+    elif util.equals(scf, 0.1):
+      new_phys = PhysicalModel.read(util.datapath('integ1x.bb'))
+    else:
+      raise Exception("unknown model: %s" % scf)
+    phys.set_to(new_phys)
+
+  modes = get_modes()
+  for mode in modes:
+    sign,inrng,outrng = mode
+    scf = outrng.coeff()/inrng.coeff()
+    cfg_phys_model(blk.physical("*",mode,"out"),scf)
+
   print("[TODO] integ.blackbox")
 
 def scale_model(integ):
