@@ -212,7 +212,7 @@ class ConcCirc:
 
     def write_circuit(self,filename):
         data = self.to_json()
-        raise Exception("don't save me yet! TODO: bandwidths, taus accurate.")
+        raise Exception("don't save me yet! TODO: bandwidths accurate.")
         with open(filename,'w') as fh:
             strdata = json.dumps(data,indent=4)
             fh.write(strdata)

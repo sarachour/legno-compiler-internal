@@ -60,9 +60,6 @@ class JauntEnv:
         # scaling factor name to port
         self._to_scvar = {}
         self._from_scvar ={}
-        self._to_tauvar = {}
-        self._from_tauvar ={}
-
 
         self._eqs = []
         self._ltes = []
@@ -88,8 +85,8 @@ class JauntEnv:
     def variables(self):
         yield JauntEnv.TAU
 
-        for tauvar in self._from_tauvar.keys():
-            yield tauvar
+        #for tauvar in self._from_tauvar.keys():
+        #    yield tauvar
 
         for scvar in self._from_scvar.keys():
             yield scvar
@@ -101,28 +98,6 @@ class JauntEnv:
     def ltes(self):
         for lhs,rhs in self._ltes:
             yield (lhs,rhs)
-
-
-    def get_tauvar_info(self,tauvar_var):
-        if not tauvar_var in self._from_tauvar:
-            print(self._from_tauvar.keys())
-            raise Exception("not scaling factor table in <%s>" % tauvar_var)
-
-        block_name,loc,port,handle = self._from_tauvar[tauvar_var]
-        return block_name,loc,port,handle
-
-    def get_tauvar(self,block_name,loc,port,handle=None):
-        return self._to_tauvar[(block_name,loc,port,handle)]
-
-    def decl_tauvar(self,block_name,loc,port,handle=None):
-        # create a scaling factor from the variable name
-        var_name = "TV_%s_%s_%s_%s" % (block_name,loc,port,handle)
-        if var_name in self._from_tauvar:
-            return var_name
-
-        self._from_tauvar[var_name] = (block_name,loc,port,handle)
-        self._to_tauvar[(block_name,loc,port,handle)] = var_name
-        return var_name
 
 
     def get_scvar_info(self,scvar_var):
@@ -142,8 +117,6 @@ class JauntEnv:
     def get_scvar(self,block_name,loc,port,handle=None):
         return self._to_scvar[(block_name,loc,port,handle)]
 
-    def is_scvar(self,var):
-        return var in self._from_scvar
 
     def decl_scvar(self,block_name,loc,port,handle=None):
         # create a scaling factor from the variable name
@@ -170,30 +143,6 @@ class JauntEnv:
         self._ltes.append((v2,v1))
 
 
-
-def bp_decl_time_variables(jenv,circ):
-    # define scaling factors
-    for block_name,loc,config in circ.instances():
-        block = circ.board.block(block_name)
-        for output in block.outputs:
-            jenv.decl_tauvar(block_name,loc,output)
-            for handle in block.handles(config.comp_mode,output):
-                jenv.decl_tauvar(block_name,loc,output,handle=handle)
-
-        for inp in block.inputs:
-            jenv.decl_tauvar(block_name,loc,inp)
-
-        for output in block.outputs:
-            for orig in block.copies(config.comp_mode,output):
-                copy_scf = jenv.get_tauvar(block_name,loc,output)
-                orig_scf = jenv.get_tauvar(block_name,loc,orig)
-                jenv.eq(jop.JVar(orig_scf),jop.JVar(copy_scf))
-
-    # set scaling factors connected by a wire equal
-    for sblk,sloc,sport,dblk,dloc,dport in circ.conns():
-        s_scf = jenv.get_tauvar(sblk,sloc,sport)
-        d_scf = jenv.get_tauvar(dblk,dloc,dport)
-        jenv.eq(jop.JVar(s_scf),jop.JVar(d_scf))
 
 
 def bp_decl_scale_variables(jenv,circ):
@@ -313,35 +262,6 @@ def bpgen_scaled_interval_constraint(jenv,scale_expr,math_rng,hw_rng):
                             math_rng.lower,hw_rng.lower)
 
 
-def bpgen_tauvar_traverse_expr(jenv,circ,block,loc,port,expr):
-    if expr.op == ops.OpType.VAR:
-        return jop.JVar(jenv.get_tauvar(block.name,loc,expr.name))
-
-
-    elif expr.op == ops.OpType.MULT:
-        texpr1 = bpgen_tauvar_traverse_expr(jenv,circ,block,loc,port,expr.arg1)
-        texpr2 = bpgen_tauvar_traverse_expr(jenv,circ,block,loc,port,expr.arg2)
-        jenv.eq(texpr1,texpr2)
-        return texpr1
-
-    elif expr.op == ops.OpType.INTEG:
-        # derivative and ic are scaled simialrly
-        texpr_ic = bpgen_tauvar_traverse_expr(jenv,circ,block,loc,port,expr.init_cond)
-        texpr_deriv = bpgen_tauvar_traverse_expr(jenv,circ,block,loc,port,expr.deriv)
-
-        tvar_deriv = jop.JVar(jenv.get_tauvar(block.name,loc,port, \
-                                              handle=expr.deriv_handle))
-        tvar_stvar = jop.JVar(jenv.get_tauvar(block.name,loc,port, \
-                                              handle=expr.handle))
-
-        jenv.eq(tvar_stvar, \
-                jop.JMult(jop.JVar(jenv.TAU,exponent=-1), tvar_deriv))
-
-        jenv.eq(tvar_stvar,texpr_ic)
-        return tvar_stvar
-
-    else:
-        raise Exception("unimplemented: %s" % expr)
 
 def bpgen_scaled_digital_constraint(jenv,scale_expr,math_rng,values,quantize=1):
     lb,ub = math_rng.lower/quantize,math_rng.upper/quantize
@@ -413,13 +333,10 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
 
 def bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr):
   scexpr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,out,expr)
-  tauexpr = bpgen_tauvar_traverse_expr(jenv,circ,block,loc,out,expr)
   scfvar = jop.JVar(jenv.get_scvar(block.name,loc,out))
-  tauvar = jop.JVar(jenv.get_tauvar(block.name,loc,out))
   # coefficient
   coeff = circ.config(block.name,loc).coeff(block,out)
   jenv.eq(scfvar,jop.JMult(jop.JConst(coeff), scexpr))
-  jenv.eq(tauvar,tauexpr)
 
 def bp_generate_problem(jenv,circ,quantize_signals=5):
     for block_name,loc,config in circ.instances():
@@ -468,7 +385,6 @@ def build_jaunt_env(circ):
     jenv = JauntEnv()
     # declare scaling factors
     bp_decl_scale_variables(jenv,circ)
-    bp_decl_time_variables(jenv,circ)
     bp_generate_problem(jenv,circ)
 
     return jenv
@@ -587,12 +503,8 @@ def sp_update_circuit(jenv,circ,assigns):
         if variable.name == jenv.TAU:
             circ.set_tau(tau)
         else:
-            if jenv.is_scvar(variable.name):
-                block_name,loc,port,handle = jenv.get_scvar_info(variable.name)
-                circ.config(block_name,loc).set_scf(port,handle,value)
-            else:
-                block_name,loc,port,handle = jenv.get_tauvar_info(variable.name)
-                circ.config(block_name,loc).set_tau(port,handle,value)
+            block_name,loc,port,handle = jenv.get_scvar_info(variable.name)
+            circ.config(block_name,loc).set_scf(port,handle,value)
 
 
     return circ

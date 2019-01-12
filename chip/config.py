@@ -15,8 +15,6 @@ class Config:
         self._labels = {}
         # scaling factors on ports
         self._scfs = {}
-        # time scaling factor
-        self._taus = {}
         # hardware interval
         self._op_ranges= {}
         # unscaled math interval
@@ -58,9 +56,6 @@ class Config:
           cfg._op_ranges[port] = Interval.from_json(ival)
         for port,bandwidth in obj['bandwidths'].items():
           cfg._bandwidths[port] = bandwidth
-        for port,tau in obj['taus'].items():
-          cfg._tau[port] = tau
-
         return cfg
 
     def to_json(self):
@@ -69,7 +64,6 @@ class Config:
         cfg['scale-mode'] = self._scale_mode
         cfg['dacs'] = {}
         cfg['scfs'] = {}
-        cfg['taus'] = {}
         cfg['labels'] = {}
         cfg['intervals'] = {}
         cfg['op-ranges'] = {}
@@ -84,11 +78,6 @@ class Config:
           cfg['scfs'][port] = {}
           for handle,scf in scfs.items():
             cfg['scfs'][port][handle] = scf
-
-        for port,taus in self._taus.items():
-          cfg['taus'][port] = {}
-          for handle,tau in taus.items():
-            cfg['taus'][port][handle] = scf
 
         for port,ivals in self._intervals.items():
           cfg['intervals'][port] = {}
@@ -115,7 +104,6 @@ class Config:
       cfg._dacs = dict(self._dacs)
       cfg._labels = dict(self._labels)
       cfg._scfs = dict(self._scfs)
-      cfg._taus = dict(self._taus)
       cfg._intervals = dict(self._intervals)
       cfg._bandwidths = dict(self._bandwidths)
       cfg._op_ranges = dict(self._op_ranges)
@@ -158,10 +146,6 @@ class Config:
     def _make(self,dict_,port):
       if not port in dict_:
         dict_[port] = {}
-
-    def set_tau(self,port,tau,handle=None):
-      self._make(self._taus,port)
-      self._taus[port][handle] = tau
 
 
     def set_bandwidth(self,port,bandwidth,handle=None):
@@ -233,13 +217,6 @@ class Config:
             intervals[handle] = ival
 
       return intervals
-
-    def tau(self,port,handle=None):
-      if not port in self._taus or \
-         not handle in self._taus[port]:
-        return None
-
-      return self._taus[port][handle]
 
     def scf(self,port,handle=None):
       if not port in self._scfs or \
