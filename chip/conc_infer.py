@@ -104,8 +104,8 @@ def ival_derive_output_port(env,circ,block,config,loc,port):
                        free_loc,free_port)
 
     # compute intervals
-    varmap = config.intervals()
-    intervals = expr.interval(varmap)
+    ival_map = config.intervals()
+    intervals = expr.interval(ival_map)
 
     if config.interval(port) is None:
         config.set_interval(port,intervals.interval)
