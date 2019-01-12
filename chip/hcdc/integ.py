@@ -48,24 +48,24 @@ def scale_model(integ):
   for mode in modes:
     sign,inrng,outrng = mode
     scf = outrng.coeff()/inrng.coeff()*sign.coeff()
-    integ.set_info("*",mode,['in'],util.make_ana_props(inrng,
+    integ.set_props("*",mode,['in'],util.make_ana_props(inrng,
                                                   glb.ANALOG_MIN, \
                                                   glb.ANALOG_MAX))
-    integ.set_info("*",mode,["ic"],util.make_dig_props(chipcmd.RangeType.MED, \
+    integ.set_props("*",mode,["ic"],util.make_dig_props(chipcmd.RangeType.MED, \
                                                   glb.DAC_MIN,
                                                   glb.DAC_MAX))
-    integ.set_info("*",mode,["out"],util.make_ana_props(outrng,
+    integ.set_props("*",mode,["out"],util.make_ana_props(outrng,
                                                    glb.ANALOG_MIN,
                                                    glb.ANALOG_MAX),\
                     handle=":z")
-    integ.set_info("*",mode,["out"],util.make_ana_props(outrng,
+    integ.set_props("*",mode,["out"],util.make_ana_props(outrng,
                                                    glb.ANALOG_MIN,
                                                    glb.ANALOG_MAX),\
                     handle=":z'")
-    integ.set_info("*",mode,["out"],util.make_ana_props(outrng,
+    integ.set_props("*",mode,["out"],util.make_ana_props(outrng,
                                                    glb.ANALOG_MIN,
                                                    glb.ANALOG_MAX))
-    integ.set_scale_factor("*",mode,"out",scf)
+    integ.set_coeff("*",mode,"out",scf)
 
 
 block = Block('integrator') \

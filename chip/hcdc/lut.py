@@ -12,7 +12,7 @@ block = Block("lut") \
 
 for mode in ['ln','exp','sq','sqrt']:
 
-    block.set_info(mode,"*",["in","out"],  \
+    block.set_props(mode,"*",["in","out"],  \
                       util.make_ana_props(chipcmd.RangeType.MED,\
                                           glb.ANALOG_MIN,
                                           glb.ANALOG_MAX)) \

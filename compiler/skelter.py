@@ -32,6 +32,64 @@ def nz_expr(expr,config,bindings):
   else:
     raise Exception("unhandled: <%s>" % expr)
 
+def na_bandwidths(board,\
+                 circ,block_name,loc,port):
+  raise NotImplementedError
+
+
+def na_intervals(board,\
+                 circ,block_name,loc,port):
+  print(circ)
+  raise NotImplementedError
+
+def noise_analysis_output(nzenv,board,\
+                          circ,block_name,loc,port,visited=[]):
+  block = board.block(block_name)
+  config = circ.config(block_name,loc)
+  expr = block.get_dynamics(config.comp_mode,port)
+  scale_mode = tuple(config.scale_mode) \
+                 if not config.scale_mode is None \
+                 else "*"
+  noise = {}
+  intervals = {}
+  bandwidth = {}
+  for input_var in expr.vars():
+    noise[input_var] = noise_analysis(nzenv,board, \
+                           circ, \
+                           block_name, \
+                           loc, \
+                           input_var,
+                           visited=visited)
+
+  print(config)
+  noise_gen = block.physical(config.comp_mode,scale_mode,port)
+  print("gen expr: %s" % expr)
+  print("prop expr: %s" % expr)
+  intervals = na_intervals(board,circ,block_name,loc,port)
+  bandwidths= na_bandwidths(board,circ,block_name,loc,port)
+  # compute generated noise
+  out_noise = noise_gen.compute(intervals,bandwidths)
+  out_noise += nz_propagate(expr,config,noise)
+  return out_noise
+
+def noise_analysis_input(nzenv,board,\
+                         circ,block_name,loc,port,visited=[]):
+  bindings = []
+  for (sblk,sloc,sport) in \
+      circ.get_conns_by_dest(block_name,loc,port):
+    noise = noise_analysis(nzenv, \
+                           board, \
+                           circ,sblk, \
+                           sloc, \
+                           sport,
+                           visited=visited)
+    bindings.append(noise)
+
+    if len(bindings) == 0:
+      return 0.0
+
+    return sum(bindings)
+
 def noise_analysis(nzenv,board,circ,block_name,loc,port,visited=[]):
   block = board.block(block_name)
   config = circ.config(block_name,loc)
@@ -43,37 +101,12 @@ def noise_analysis(nzenv,board,circ,block_name,loc,port,visited=[]):
 
   print("recurse %s[%s].%s" % (block_name,loc,port))
   if block.is_output(port):
-    expr = block.get_dynamics(config.comp_mode,port)
-    bindings = {}
-    for input_var in expr.vars():
-      noise = noise_analysis(nzenv,board,circ,block_name,loc,input_var,
-                             visited=new_visited)
-      bindings[input_var] = noise
+    return noise_analysis_output(nzenv,board,circ,block_name, \
+                                 loc,port,visited=new_visited)
 
-    print("expr: %s" % expr)
-    print(config)
-    scale_mode = tuple(config.scale_mode) if not config.scale_mode is None \
-                 else "*"
-
-    scf = block.scale_factor(config.comp_mode,\
-                             scale_mode,port)
-    print("scf: %s" % scf)
-    out_noise = nz_expr(expr,config,bindings)*abs(scf)
-    out_noise += 1.0
-    return out_noise
-
-  elif block.is_input(port):
-    bindings = []
-    for (sblk,sloc,sport) in \
-        circ.get_conns_by_dest(block_name,loc,port):
-      noise = noise_analysis(nzenv,board,circ,sblk,sloc,sport,
-                             visited=new_visited)
-      bindings.append(noise)
-
-    if len(bindings) == 0:
-      return 1.0
-
-    return sum(bindings)
+  else:
+    return noise_analysis_input(nzenv,board,circ,block_name, \
+                         loc,port,visited=new_visited)
 
 
 def compute_score(board,circ,block_name,loc,port,noise):

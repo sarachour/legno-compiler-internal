@@ -1,4 +1,4 @@
-from chip.block import Block
+from chip.block import Block, BlockType
 from chip.phys import PhysicalModel
 import chip.props as props
 import chip.hcdc.util as util
@@ -38,7 +38,6 @@ def blackbox_model(fanout):
     print("[TODO]: fanout.blackbox")
     for mode in modes:
         _,_,_,rng = mode
-        noise_model = nops.NConstRV(glb.NOMINAL_NOISE)
         config_phys_model(fanout.physical("*",mode,"out0"),rng)
         config_phys_model(fanout.physical("*",mode,"out1"),rng)
         config_phys_model(fanout.physical("*",mode,"out2"),rng)
@@ -49,11 +48,11 @@ def scale_model(fanout):
     for mode in modes:
         inv0,inv1,inv2,rng = mode
         fanout\
-            .set_scale_factor("*",mode,"out0",inv0.coeff()) \
-            .set_scale_factor("*",mode,"out1",inv1.coeff()) \
-            .set_scale_factor("*",mode,"out2",inv2.coeff())
+            .set_coeff("*",mode,"out0",inv0.coeff()) \
+            .set_coeff("*",mode,"out1",inv1.coeff()) \
+            .set_coeff("*",mode,"out2",inv2.coeff())
         fanout\
-            .set_info("*",mode,["out0","out1","out2","in"],
+            .set_props("*",mode,["out0","out1","out2","in"],
                       util.make_ana_props(rng,
                                           glb.ANALOG_MIN, \
                                           glb.ANALOG_MAX))
@@ -61,7 +60,7 @@ def scale_model(fanout):
     fanout.check()
 
 
-block = Block('fanout',type=Block.COPIER) \
+block = Block('fanout',type=BlockType.COPIER) \
 .add_outputs(props.CURRENT,["out1","out2","out0"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out0",ops.Var("in")) \

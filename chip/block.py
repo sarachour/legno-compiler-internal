@@ -2,134 +2,14 @@ import ops
 from enum import Enum
 import chip.phys as phys
 
-class Labels(Enum):
-    CONST_INPUT = 'const-inp';
-    DYNAMIC_INPUT = 'dyn-inp';
-    OUTPUT = 'out'
-
-class Config:
-
-    def __init__(self):
-        self._comp_mode = None
-        self._scale_mode = None
-        self._dacs = {}
-        self._labels = {}
-
-    @staticmethod
-    def from_json(obj):
-        cfg = Config()
-        cfg._comp_mode = obj['compute-mode']
-        cfg._scale_mode = obj['scale-mode']
-        for dac,value in obj['dacs'].items():
-            cfg._dacs[dac] = value
-        for port,(name,scf,kind_name) in obj['labels'].items():
-            cfg._labels[port] = [name,scf,Labels(kind_name)]
-        return cfg
-
-    def to_json(self):
-        cfg = {}
-        cfg['compute-mode'] = self._comp_mode
-        cfg['scale-mode'] = self._scale_mode
-        cfg['dacs'] = {}
-        cfg['labels'] = {}
-        for dac,value in self._dacs.items():
-            cfg['dacs'][dac] = value
-
-        for port,(name,scf,kind) in self._labels.items():
-            cfg['labels'][port] = [name,scf,kind.value]
-
-        return cfg
-
-    def copy(self):
-        cfg = Config()
-        cfg._comp_mode = self._comp_mode
-        cfg._scale_mode = self._scale_mode
-        cfg._dacs = dict(self._dacs)
-        cfg._labels = dict(self._labels)
-        return cfg
-
-    @property
-    def scale_mode(self):
-        return self._scale_mode
-
-    @property
-    def comp_mode(self):
-        return self._comp_mode
-
-    def set_scale_mode(self,modename):
-        self._scale_mode = modename
-        return self
-
-    def has_dac(self,v):
-        return v in self._dacs
-
-    def dac(self,v):
-        return self._dacs[v]
-
-    def set_comp_mode(self,modename):
-        self._comp_mode = modename
-        return self
-
-    def set_dac(self,dac,value):
-        self._dacs[dac] = value
-        return self
-
-    def set_label(self,port,name,scf=1.0,kind=Labels.OUTPUT):
-        assert(not port in self._labels)
-        self._labels[port] = [name,scf,kind]
-        return self
-
-    def set_scf(self,port,scf):
-        assert(port in self._labels)
-        self._labels[port][1] = scf
-
-    def has_label(self,port):
-        return port in self._labels
-
-    def label(self,port):
-        return self._labels[port][0]
-
-    def label_type(self,port):
-        return self._labels[port][2]
-
-    def values(self):
-        for dac,value in self._dacs.items():
-            yield dac,value
-
-    def labels(self):
-        for port,(name,scf,kind) in self._labels.items():
-            yield port,name,scf,kind
-
-    def scf(self,port):
-        return self._labels[port][1]
-
-    def to_str(self,delim="\n"):
-        s = ""
-        s += "comp-mode: %s" % self._comp_mode
-        s += delim
-        s += "scale-mode: %s" % str(self._scale_mode)
-        s += delim
-        for v,e in self._dacs.items():
-            s += "%s: %s" % (v,e)
-            s += delim
-
-        for l,(n,scf,k) in self._labels.items():
-            s += "%s:[lbl=%s,scf=%s,kind=%s]" % (l,n,scf,k)
-            s += delim
-
-        return s
-
-    def __repr__(self):
-        return self.to_str()
+class BlockType(Enum):
+    ADC = "adc"
+    DAC = "dac"
+    GENERAL = "general"
+    COPIER = "copier"
+    BUS = "bus"
 
 class Block:
-
-    ADC = 0
-    DAC = 1
-    GENERAL = 2
-    COPIER = 3
-    BUS = 4
-
 
     def __init__(self,name,type=None):
         self._name = name
@@ -143,8 +23,8 @@ class Block:
         self._ops = {}
         self._copies = {}
 
-        self._scale_factors = {}
-        self._info = {} # operating ranges and values
+        self._coeffs = {}
+        self._props = {} # operating ranges and values
         self._physical = {} # physical characteristics
 
         # scale factors
@@ -182,9 +62,9 @@ class Block:
 
         return data[scale_mode]
 
-    def scale_factor(self,comp_mode,scale_mode,out):
+    def coeff(self,comp_mode,scale_mode,out):
         data = self._get_scale_dict(comp_mode,scale_mode, \
-                                    self._scale_factors)
+                                    self._coeffs)
         if data is None:
             return 1.0
 
@@ -193,9 +73,9 @@ class Block:
 
         return data[out]
 
-    def set_scale_factor(self,comp_mode,scale_mode,port,value):
+    def set_coeff(self,comp_mode,scale_mode,port,value):
         data = self._make_scale_dict(comp_mode,scale_mode, \
-                                     self._scale_factors)
+                                     self._coeffs)
         data[port] = value
         return self
 
@@ -241,9 +121,9 @@ class Block:
     def signals(self,port):
         return self._signals[port]
 
-    def info(self,comp_mode,scale_mode,port,handle=None):
+    def props(self,comp_mode,scale_mode,port,handle=None):
         data = self._get_scale_dict(comp_mode,scale_mode, \
-                                    self._info)
+                                    self._props)
         return data[port][handle]
 
     def handles(self,comp_mode,port):
@@ -306,16 +186,16 @@ class Block:
             self._ops[mode] = {}
             self._signals[mode] = {}
             self._copies[mode] = {}
-            self._info[mode] = {}
-            self._scale_factors[mode] = {}
+            self._props[mode] = {}
+            self._coeffs[mode] = {}
 
         return self
 
     def set_scale_modes(self,comp_mode,modes):
         self._scale_modes[comp_mode] = modes
         for scale_mode in modes:
-            self._info[comp_mode][scale_mode] = {}
-            self._scale_factors[comp_mode][scale_mode] = {}
+            self._props[comp_mode][scale_mode] = {}
+            self._coeffs[comp_mode][scale_mode] = {}
 
         return self
 
@@ -330,8 +210,8 @@ class Block:
         data[out] = expr
         return self
 
-    def set_info(self,comp_mode,scale_mode,ports,properties,handle=None):
-        data = self._make_scale_dict(comp_mode,scale_mode,self._info)
+    def set_props(self,comp_mode,scale_mode,ports,properties,handle=None):
+        data = self._make_scale_dict(comp_mode,scale_mode,self._props)
 
         for port in ports:
             assert(port in self._inputs or port in self._outputs)
@@ -385,7 +265,7 @@ class Block:
         for comp_mode,data in self._check_comp_dict(self._signals):
             continue
 
-        for comp_mode,scale_mode,data in self._check_scale_dict(self._info):
+        for comp_mode,scale_mode,data in self._check_scale_dict(self._props):
             continue
 
         return self

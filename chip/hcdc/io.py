@@ -1,4 +1,4 @@
-from chip.block import Block
+from chip.block import Block, BlockType
 import chip.props as props
 import chip.hcdc.util as util
 import lab_bench.lib.chip_command as chipcmd
@@ -27,19 +27,19 @@ def scale_model(dac):
    for mode in modes:
       sign,rng = mode
       coeff = sign.coeff()*rng.coeff()*2.0
-      dac.set_scale_factor("*",mode,'out', coeff)
-      dac.set_info("*",mode,["in"], \
+      dac.set_coeff("*",mode,'out', coeff)
+      dac.set_props("*",mode,["in"], \
                    util.make_dig_props(chipcmd.RangeType.MED,
                                   glb.DAC_MIN,
                                   glb.DAC_MAX))
 
-      dac.set_info("*",mode,["out"],\
+      dac.set_props("*",mode,["out"],\
                    util.make_ana_props(rng,
                                        glb.ANALOG_MIN,
                                        glb.ANALOG_MAX))
 
 
-dac = Block('tile_dac',type=Block.DAC) \
+dac = Block('tile_dac',type=BlockType.DAC) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.DIGITAL,["in"]) \
 .set_op("*","out",ops.Var("in"))
@@ -47,13 +47,13 @@ scale_model(dac)
 black_box_model(dac)
 dac.check()
 
-adc = Block('tile_adc',type=Block.ADC) \
+adc = Block('tile_adc',type=BlockType.ADC) \
 .add_outputs(props.DIGITAL,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_info("*","*",["out"],None) \
-.set_info("*","*",["in"],None) \
-.set_scale_factor("*","*","out",1.0)
+.set_props("*","*",["out"],None) \
+.set_props("*","*",["in"],None) \
+.set_coeff("*","*","out",1.0)
 scale_model(adc)
 black_box_model(adc)
 adc.check()

@@ -1,4 +1,5 @@
 import chip.block as block
+from chip.config import Config
 
 
 
@@ -346,7 +347,7 @@ class ABlockInst(ANode):
         self._block = node
         self._inputs = node.inputs
         self._outputs = node.outputs
-        self.config = block.Config()
+        self.config = Config()
         self._used = []
 
     @property

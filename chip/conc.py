@@ -1,4 +1,4 @@
-from chip.block import Config, Labels
+from chip.config import Config, Labels
 import json
 import os
 
@@ -279,8 +279,9 @@ class ConcCirc:
             st = "%s [label=\"%s\"]" % (varfn(idx),label)
             q(st)
 
-            for port,math_label,scf,kind in cfg.labels():
+            for port,math_label,kind in cfg.labels():
                 kind = kind.value
+                scf = cfg.scf(port)
                 label = "%s %s*%s" % (kind,math_label,scf)
                 st = "%s [label=\"%s\"]" % (labelfn(),label)
                 _,portidx = from_id[(blk_name,blk_loc,port)]

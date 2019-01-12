@@ -1,5 +1,5 @@
 from chip.phys import PhysicalModel
-from chip.block import Block
+from chip.block import Block,BlockType
 import chip.props as props
 import chip.hcdc.util as util
 import lab_bench.lib.chip_command as chipcmd
@@ -24,72 +24,72 @@ def black_box_model_cc(blk):
 
 
 
-tile_out = Block('tile_out',type=Block.BUS) \
+tile_out = Block('tile_out',type=BlockType.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_info("*","*",["out","in"], \
+.set_props("*","*",["out","in"], \
           util.make_ana_props(chipcmd.RangeType.HIGH,\
                          glb.ANALOG_MIN,
                          glb.ANALOG_MAX)) \
-.set_scale_factor("*","*","out",1.0) \
+.set_coeff("*","*","out",1.0) \
 .check()
 black_box_model_tile(tile_out)
 
-tile_in = Block('tile_in',type=Block.BUS) \
+tile_in = Block('tile_in',type=BlockType.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_info("*","*",["out","in"], \
+.set_props("*","*",["out","in"], \
           util.make_ana_props(chipcmd.RangeType.HIGH,\
                          glb.ANALOG_MIN,
                          glb.ANALOG_MAX)) \
-.set_scale_factor("*","*","out",1.0) \
+.set_coeff("*","*","out",1.0) \
 .check()
 black_box_model_tile(tile_in)
 
 
-inv_conn = Block('conn_inv',type=Block.BUS) \
+inv_conn = Block('conn_inv',type=BlockType.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_info("*","*",["out","in"], \
+.set_props("*","*",["out","in"], \
           util.make_ana_props(chipcmd.RangeType.HIGH,\
                          glb.ANALOG_MIN,
                          glb.ANALOG_MAX)) \
-.set_scale_factor("*","*","out",-1.0) \
+.set_coeff("*","*","out",-1.0) \
 .check()
 black_box_model_cc(inv_conn)
 
 
-chip_out = Block('chip_out',type=Block.BUS) \
+chip_out = Block('chip_out',type=BlockType.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_info("*","*",["out"], \
+.set_props("*","*",["out"], \
           util.make_ana_props(chipcmd.RangeType.HIGH,\
                          glb.ANALOG_MIN,
                          glb.ANALOG_MAX)) \
-.set_info("*","*",["in"], \
+.set_props("*","*",["in"], \
           util.make_ana_props(chipcmd.RangeType.HIGH,\
                          glb.ANALOG_MIN,
                          glb.ANALOG_MAX)) \
-.set_scale_factor("*","*","out",1.0) \
+.set_coeff("*","*","out",1.0) \
 .check()
 black_box_model_chip(chip_out)
 
-chip_in = Block('chip_in',type=Block.BUS) \
+chip_in = Block('chip_in',type=BlockType.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_info("*","*",["in"], \
+.set_props("*","*",["in"], \
           util.make_ana_props(chipcmd.RangeType.MED,\
                          glb.ANALOG_MIN,
                          glb.ANALOG_MAX)) \
-.set_info("*","*",["out"], \
+.set_props("*","*",["out"], \
           util.make_ana_props(chipcmd.RangeType.MED,\
                          glb.ANALOG_MIN,
                          glb.ANALOG_MAX)) \
-.set_scale_factor("*","*","out",1.0) \
+.set_coeff("*","*","out",1.0) \
 .check()
 black_box_model_chip(chip_in)

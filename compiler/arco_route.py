@@ -1,10 +1,12 @@
-from chip.block import Block, Config
+from chip.block import Block,BlockType
+from chip.config import  Config
 import chip.abs as acirc
 import chip.conc as ccirc
 import sys
 import itertools
 import logging
 logger = logging.getLogger('arco_route')
+
 class RouteGraph:
     class RNode:
         ID = 0;
@@ -15,7 +17,7 @@ class RouteGraph:
             self._block = block
             self._inputs = graph.board.block(block).inputs
             self._outputs = graph.board.block(block).outputs
-            self._passthrough = (graph.board.block(block).type == Block.BUS)
+            self._passthrough = (graph.board.block(block).type == BlockType.BUS)
             self.id = RouteGraph.RNode.ID
             RouteGraph.RNode.ID += 1
             self._config = None

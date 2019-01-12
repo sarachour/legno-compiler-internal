@@ -1,7 +1,7 @@
 import itertools
 import chip.abs as acirc
 import chip.props as prop
-from chip.block import Labels
+from chip.config import Labels
 import compiler.arco_route as arco_route
 from compiler.arco_rules import get_rules
 import ops.aop as aop

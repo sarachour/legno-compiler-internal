@@ -1,7 +1,7 @@
 import chip.hcdc.util as util
 
-NOMINAL_NOISE = 1e-9
-NOMINAL_DELAY = 1e-10
+#NOMINAL_NOISE = 1e-9
+#NOMINAL_DELAY = 1e-10
 
 DAC_SLACK = 1.0/256
 DAC_MIN = util.truncate(-1.0+DAC_SLACK,2)

@@ -74,44 +74,44 @@ def scale_model(mult):
   for mode in mul_modes:
       in0rng,in1rng,outrng = mode
       scf = outrng.coeff()/(in0rng.coeff()*in1rng.coeff())
-      mult.set_info("mul",mode,["in0"],
+      mult.set_props("mul",mode,["in0"],
                     util.make_ana_props(in0rng,
                                         glb.ANALOG_MIN,
                                         glb.ANALOG_MAX))
-      mult.set_info("mul",mode,["in1"],
+      mult.set_props("mul",mode,["in1"],
                     util.make_ana_props(in1rng,
                                         glb.ANALOG_MIN,
                                         glb.ANALOG_MAX))
-      mult.set_info("mul",mode,["coeff"],
+      mult.set_props("mul",mode,["coeff"],
                     util.make_dig_props(chipcmd.RangeType.MED, \
                                         glb.DAC_MIN,
                                         glb.DAC_MAX))
-      mult.set_info("mul",mode,["out"],
+      mult.set_props("mul",mode,["out"],
                     util.make_ana_props(outrng,
                                         glb.ANALOG_MIN,
                                         glb.ANALOG_MAX))
-      mult.set_scale_factor("mul",mode,'out', scf)
+      mult.set_coeff("mul",mode,'out', scf)
 
   for mode in vga_modes:
       in0rng,outrng = mode
       scf = outrng.coeff()/in0rng.coeff()
-      mult.set_info("vga",mode,["in0"],
+      mult.set_props("vga",mode,["in0"],
                     util.make_ana_props(in0rng, \
                                         glb.ANALOG_MIN,
                                         glb.ANALOG_MAX))
-      mult.set_info("vga",mode,["in1"],
+      mult.set_props("vga",mode,["in1"],
                     util.make_ana_props(chipcmd.RangeType.MED, \
                                         glb.ANALOG_MIN,
                                         glb.ANALOG_MAX))
-      mult.set_info("vga",mode,["coeff"],
+      mult.set_props("vga",mode,["coeff"],
                     util.make_dig_props(chipcmd.RangeType.MED,\
                                         glb.DAC_MIN,
                                         glb.DAC_MAX))
-      mult.set_info("vga",mode,["out"],
+      mult.set_props("vga",mode,["out"],
                     util.make_ana_props(outrng, \
                                         glb.ANALOG_MIN,
                                         glb.ANALOG_MAX))
-      mult.set_scale_factor("vga",mode,'out', scf)
+      mult.set_coeff("vga",mode,'out', scf)
 
 
 block = Block('multiplier') \

@@ -1,5 +1,5 @@
 import networkx as nx
-from chip.block import Block
+from chip.block import Block, BlockType
 
 class Layer:
 
@@ -276,7 +276,7 @@ class Board(Layer):
         self._inst_by_position[key].append(block_name)
         self._inst_to_meta[(block_name,key)] = {}
         block = self.block(block_name)
-        if block.type == Block.BUS:
+        if block.type == BlockType.BUS:
             assert(len(block.inputs) == 1)
             assert(len(block.outputs) == 1)
 
