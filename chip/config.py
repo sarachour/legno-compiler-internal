@@ -1,5 +1,5 @@
 from enum import Enum
-
+from ops.interval import Interval
 
 class Labels(Enum):
     CONST_INPUT = 'const-inp';
@@ -13,7 +13,33 @@ class Config:
         self._scale_mode = None
         self._dacs = {}
         self._labels = {}
+        # scaling factors on ports
         self._scfs = {}
+        # time scaling factor
+        self._taus = {}
+        # hardware interval
+        self._op_ranges= {}
+        # unscaled math interval
+        self._intervals = {}
+        # unscaled bandwidth
+        self._bandwidths = {}
+
+    def dynamics(self,block,port):
+      assert(not self._comp_mode is None)
+      assert(not self._scale_mode is None)
+      return block.get_dynamics(self._comp_mode,port, \
+                                scale_mode=self._scale_mode)
+
+    def props(self,block,port,handle=None):
+      assert(not self._comp_mode is None)
+      assert(not self._scale_mode is None)
+      return block.props(self._comp_mode,self._scale_mode,port,handle=handle)
+
+
+    def coeff(self,block,port):
+      assert(not self._comp_mode is None)
+      assert(not self._scale_mode is None)
+      return block.coeff(self._comp_mode,self._scale_mode,port)
 
     @staticmethod
     def from_json(obj):
@@ -21,11 +47,20 @@ class Config:
         cfg._comp_mode = obj['compute-mode']
         cfg._scale_mode = obj['scale-mode']
         for dac,value in obj['dacs'].items():
-            cfg._dacs[dac] = value
-        for port,(name,scf,kind_name) in obj['labels'].items():
-            cfg._labels[port] = [name,Labels(kind_name)]
+          cfg._dacs[dac] = value
+        for port,(name,kind_name) in obj['labels'].items():
+          cfg._labels[port] = [name,Labels(kind_name)]
         for port,scf in obj['scfs'].items():
-            cfg._scfs[port] = scf
+          cfg._scfs[port] = scf
+        for port,ival in obj['intervals'].items():
+          cfg._intervals[port] = Interval.from_json(ival)
+        for port,ival in obj['op-ranges'].items():
+          cfg._op_ranges[port] = Interval.from_json(ival)
+        for port,bandwidth in obj['bandwidths'].items():
+          cfg._bandwidths[port] = bandwidth
+        for port,tau in obj['taus'].items():
+          cfg._tau[port] = tau
+
         return cfg
 
     def to_json(self):
@@ -34,13 +69,42 @@ class Config:
         cfg['scale-mode'] = self._scale_mode
         cfg['dacs'] = {}
         cfg['scfs'] = {}
+        cfg['taus'] = {}
         cfg['labels'] = {}
+        cfg['intervals'] = {}
+        cfg['op-ranges'] = {}
+        cfg['bandwidths'] = {}
+
         for dac,value in self._dacs.items():
             cfg['dacs'][dac] = value
         for port,(name,kind) in self._labels.items():
+
             cfg['labels'][port] = [name,kind.value]
-        for port,scf in self._scfs.items():
-            cfg['scfs'][port] = scf
+        for port,scfs in self._scfs.items():
+          cfg['scfs'][port] = {}
+          for handle,scf in scfs.items():
+            cfg['scfs'][port][handle] = scf
+
+        for port,taus in self._taus.items():
+          cfg['taus'][port] = {}
+          for handle,tau in taus.items():
+            cfg['taus'][port][handle] = scf
+
+        for port,ivals in self._intervals.items():
+          cfg['intervals'][port] = {}
+          for handle,ival in ivals.items():
+            cfg['intervals'][port][handle] = ival.to_json()
+
+        for port,oprngs in self._op_ranges.items():
+          cfg['op-ranges'][port] = {}
+          for handle,oprng in oprngs.items():
+            cfg['op-ranges'][port][handle] = oprng.to_json()
+
+        for port,bws in self._bandwidths.items():
+          cfg['bandwidths'][port] = {}
+          for handle,bw in bws .items():
+            cfg['bandwidths'][port][handle] = bw
+
 
         return cfg
 
@@ -51,6 +115,10 @@ class Config:
       cfg._dacs = dict(self._dacs)
       cfg._labels = dict(self._labels)
       cfg._scfs = dict(self._scfs)
+      cfg._taus = dict(self._taus)
+      cfg._intervals = dict(self._intervals)
+      cfg._bandwidths = dict(self._bandwidths)
+      cfg._op_ranges = dict(self._op_ranges)
       return cfg
 
     @property
@@ -69,6 +137,9 @@ class Config:
       return v in self._dacs
 
     def dac(self,v):
+      if not v in self._dacs:
+        return None
+
       return self._dacs[v]
 
     def set_comp_mode(self,modename):
@@ -84,9 +155,33 @@ class Config:
       self._labels[port] = [name,kind]
       return self
 
-    def set_scf(self,port,scf):
-      assert(port in self._scfs)
-      self._scfs[port] = scf
+    def _make(self,dict_,port):
+      if not port in dict_:
+        dict_[port] = {}
+
+    def set_tau(self,port,tau,handle=None):
+      self._make(self._taus,port)
+      self._taus[port][handle] = tau
+
+
+    def set_bandwidth(self,port,bandwidth,handle=None):
+      self._make(self._bandwidths,port)
+      self._bandwidths[port][handle] = interval
+
+
+    def set_op_range(self,port,op_range,handle=None):
+      self._make(self._op_ranges,port)
+      assert(isinstance(op_range,Interval))
+      self._op_ranges[port][handle] = op_range
+
+
+    def set_interval(self,port,interval,handle=None):
+      self._make(self._intervals,port)
+      self._intervals[port][handle] = interval
+
+    def set_scf(self,port,scf,handle=None):
+      self._make(self._scfs,port)
+      self._scfs[port][handle] = scf
 
     def has_label(self,port):
       return port in self._labels
@@ -95,7 +190,7 @@ class Config:
       return self._labels[port][0]
 
     def label_type(self,port):
-      return self._labels[port][2]
+      return self._labels[port][1]
 
     def values(self):
       for dac,value in self._dacs.items():
@@ -105,11 +200,53 @@ class Config:
       for port,(name,kind) in self._labels.items():
         yield port,name,kind
 
-    def scf(self,port):
-      if not port in self._scfs:
-        return 1.0
+    def bandwidth(self,port,handle=None):
+      if not port in self._bandwidths or \
+         not handle in self._bandwidths[port]:
+        return None
 
-      return self._scfs[port]
+      return self._bandwidths[port][handle]
+
+    def op_range(self,port,handle=None):
+      if not port in self._op_ranges or \
+         not handle in self._op_ranges[port]:
+        return None
+
+      return self._op_ranges[port][handle]
+
+
+    def interval(self,port,handle=None):
+      if not port in self._intervals or \
+         not handle in self._intervals[port]:
+        return None
+
+      return self._intervals[port][handle]
+
+    def intervals(self):
+      intervals = {}
+      for port,handles in self._intervals.items():
+        for handle,ival in handles.items():
+          if handle is None:
+            intervals[port] = ival
+          else:
+            assert(not handle in intervals)
+            intervals[handle] = ival
+
+      return intervals
+
+    def tau(self,port,handle=None):
+      if not port in self._taus or \
+         not handle in self._taus[port]:
+        return None
+
+      return self._taus[port][handle]
+
+    def scf(self,port,handle=None):
+      if not port in self._scfs or \
+         not handle in self._scfs[port]:
+        return None
+
+      return self._scfs[port][handle]
 
     def to_str(self,delim="\n"):
         s = ""

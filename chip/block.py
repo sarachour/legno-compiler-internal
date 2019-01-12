@@ -1,4 +1,4 @@
-import ops
+import ops.op as ops
 from enum import Enum
 import chip.phys as phys
 
@@ -89,14 +89,22 @@ class Block:
             self._signals[port] = prop
 
 
-    def get_dynamics(self,comp_mode,output):
+    def get_dynamics(self,comp_mode,output,scale_mode=None):
         copy_data = self._get_comp_dict(comp_mode,self._copies)
+        coeff = 1.0
+        if not scale_mode is None:
+            coeff = self.coeff(comp_mode,scale_mode,output)
+        else:
+            coeff = 1.0
+
         op_data = self._get_comp_dict(comp_mode,self._ops)
         if output in copy_data:
             output = copy_data[output]
 
-        return op_data[output]
-
+        if coeff == 1.0:
+            return op_data[output]
+        else:
+            return ops.Mult(ops.Const(coeff),op_data[output])
 
     def physical(self,comp_mode,scale_mode,output):
         assert(output in self._outputs)
@@ -108,9 +116,10 @@ class Block:
         return ddict[output]
 
 
-    def dynamics(self,comp_mode):
-        data = self._get_comp_dict(comp_mode,self._ops)
-        for output,expr in data.items():
+    def dynamics(self,comp_mode,scale_mode=None):
+        for output in self._outputs:
+            expr = self.get_dynamics(comp_mode,output, \
+                                     scale_mode=scale_mode)
             yield output,expr
 
     def all_dynamics(self):

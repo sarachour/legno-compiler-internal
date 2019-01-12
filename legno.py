@@ -20,13 +20,6 @@ import bmark.diffeqs as bmark
 #import conc
 #import srcgen
 
-def write_interval_file(filename,tau,intervals):
-    with open(filename,'w') as fh:
-        fh.write("tau=%s\n" % (tau))
-        for (block,loc,port),ival in intervals.items():
-            fh.write("%s[%s].%s = [%s,%s] scf=%s\n" % \
-                     (block,loc,port,ival[0],ival[1],ival[2]))
-
 # TODO: in concrete specification, connection is made to same dest.
 def compile(board,problem):
     files = []
@@ -183,7 +176,7 @@ elif args.subparser_name == "jaunt":
                     conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                obj)
                     n_scaled = 0
-                    for scale_circ,tau,intervals in jaunt.scale(conc_circ, \
+                    for scale_circ in jaunt.scale(conc_circ, \
                                                   noise_analysis=args.noise):
 
                         filename = path_handler.conc_circ_file(circ_bmark,
@@ -194,7 +187,6 @@ elif args.subparser_name == "jaunt":
                                                               circ_indices,
                                                               n_scaled)
 
-                        write_interval_file(filename,tau,intervals)
                         filename = path_handler.conc_graph_file(circ_bmark,
                                                                 circ_indices,
                                                                 n_scaled)

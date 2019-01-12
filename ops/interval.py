@@ -48,6 +48,12 @@ class Interval:
         ub = max(vals)
         return Interval.type_infer(lb,ub)
 
+    def to_json(self):
+        return {
+            'lower':self.lower,
+            'upper':self.upper
+        }
+
     def __repr__(self):
         return "[%s,%s]" % (self._lower,self._upper)
 

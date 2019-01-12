@@ -1,7 +1,8 @@
 #TODO: refactor this
 #TODO: update gpkit
+from enum import Enum
 
-class JOpType:
+class JOpType(Enum):
     MULT  = "*"
     CONST = "const"
     VAR = "var"
@@ -9,6 +10,7 @@ class JOpType:
 class JOp:
 
     def __init__(self,op,args):
+        assert(isinstance(op,JOpType))
         self._args = args
         self._op = op
 

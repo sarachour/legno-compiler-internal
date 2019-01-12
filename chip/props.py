@@ -25,6 +25,7 @@ CURRENT = Properties.CURRENT
 VOLTAGE = Properties.VOLTAGE
 DIGITAL = Properties.DIGITAL
 ANALOG = Properties.ANALOG
+from ops.interval import Interval, IRange, IValue
 
 
 class AnalogProperties(Properties):
@@ -39,7 +40,8 @@ class AnalogProperties(Properties):
         return self
 
     def interval(self):
-        return self._bounds
+        lb,ub,unit = self._bounds
+        return IRange(lb,ub)
 
 
     def check(self):
@@ -63,7 +65,10 @@ class DigitalProperties(Properties):
         return self
 
     def interval(self):
-        return (min(self._values),max(self._values),units.unknown)
+        lb = min(self.values())
+        ub = max(self.values())
+        return IRange(lb,ub)
+
 
     def value(self,value):
         diff = map(lambda x : (x,abs(x-value)),self._values)

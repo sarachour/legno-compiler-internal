@@ -212,6 +212,7 @@ class ConcCirc:
 
     def write_circuit(self,filename):
         data = self.to_json()
+        raise Exception("don't save me yet! TODO: bandwidths, taus accurate.")
         with open(filename,'w') as fh:
             strdata = json.dumps(data,indent=4)
             fh.write(strdata)
@@ -249,6 +250,7 @@ class ConcCirc:
         return to_id,from_id,conns
 
     def write_graph(self,filename,write_png=False):
+        raise Exception("don't save me yet! TODO: bandwidths, taus accurate.")
         to_id,from_id,conns = self._build_dot_data_structures()
         stmts = []
         varfn = lambda idx : "N%d" % idx

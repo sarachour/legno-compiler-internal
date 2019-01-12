@@ -1,6 +1,7 @@
 import itertools
 import chip.abs as acirc
 import chip.props as prop
+import chip.conc_infer as conc_infer
 from chip.config import Labels
 import compiler.arco_route as arco_route
 from compiler.arco_rules import get_rules

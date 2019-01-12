@@ -201,6 +201,10 @@ class Integ(Op2):
         return self._handle
 
     @property
+    def ic_handle(self):
+        return self._handle+"[0]"
+
+    @property
     def deriv_handle(self):
         return self._handle+"\'"
 
@@ -228,6 +232,7 @@ class Integ(Op2):
         assert(not self.handle is None)
         icomb = icond.merge(ideriv, istvar)
         icomb.bind(self.deriv_handle, ideriv.interval)
+        icomb.bind(self.ic_handle, icond.interval)
         return icomb
 
     def state_vars(self):
