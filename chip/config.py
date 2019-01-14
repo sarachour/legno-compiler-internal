@@ -1,5 +1,6 @@
 from enum import Enum
 from ops.interval import Interval
+from ops.bandwidth import Bandwidth
 
 class Labels(Enum):
     CONST_INPUT = 'const-inp';
@@ -48,14 +49,31 @@ class Config:
           cfg._dacs[dac] = value
         for port,(name,kind_name) in obj['labels'].items():
           cfg._labels[port] = [name,Labels(kind_name)]
-        for port,scf in obj['scfs'].items():
-          cfg._scfs[port] = scf
-        for port,ival in obj['intervals'].items():
-          cfg._intervals[port] = Interval.from_json(ival)
-        for port,ival in obj['op-ranges'].items():
-          cfg._op_ranges[port] = Interval.from_json(ival)
-        for port,bandwidth in obj['bandwidths'].items():
-          cfg._bandwidths[port] = bandwidth
+
+        for port,scfs in obj['scfs'].items():
+          cfg._scfs[port] = {}
+          for handle,scf in scfs.items():
+            handle = None if handle == 'null' else handle
+            cfg._scfs[port][handle] = scf
+
+        for port,ivals in obj['intervals'].items():
+          cfg._intervals[port] = {}
+          for handle,ival in ivals.items():
+            handle = None if handle == 'null' else handle
+            cfg._intervals[port][handle] = Interval.from_json(ival)
+
+        for port,ivals in obj['op-ranges'].items():
+          cfg._op_ranges[port] = {}
+          for handle,ival in ivals.items():
+            handle = None if handle == 'null' else handle
+            cfg._op_ranges[port][handle] = Interval.from_json(ival)
+
+        for port,bandwidths in obj['bandwidths'].items():
+          cfg._bandwidths[port] = {}
+          for handle,bandwidth in bandwidths.items():
+            handle = None if handle == 'null' else handle
+            cfg._bandwidths[port][handle] = Bandwidth.from_json(bandwidth)
+
         return cfg
 
     def to_json(self):
@@ -72,8 +90,8 @@ class Config:
         for dac,value in self._dacs.items():
             cfg['dacs'][dac] = value
         for port,(name,kind) in self._labels.items():
-
             cfg['labels'][port] = [name,kind.value]
+
         for port,scfs in self._scfs.items():
           cfg['scfs'][port] = {}
           for handle,scf in scfs.items():
@@ -92,7 +110,7 @@ class Config:
         for port,bws in self._bandwidths.items():
           cfg['bandwidths'][port] = {}
           for handle,bw in bws .items():
-            cfg['bandwidths'][port][handle] = bw
+            cfg['bandwidths'][port][handle] = bw.to_json()
 
 
         return cfg
@@ -262,9 +280,26 @@ class Config:
             s += "%s: %s" % (v,e)
             s += delim
 
-        for l,(n,scf,k) in self._labels.items():
-            s += "%s:[lbl=%s,scf=%s,kind=%s]" % (l,n,scf,k)
+        s += delim
+        for l,(n,k) in self._labels.items():
+            s += "%s:[lbl=%s,kind=%s]" % (l,n,k)
             s += delim
+
+        s += delim
+        for p,scfs in self._scfs.items():
+          for handle,scf in scfs.items():
+            s += "scf %s[%s]: %s" % (p,handle,scf)
+            s += delim
+
+        for p,intervals in self._intervals.items():
+          for handle,ival in intervals.items():
+            s += "ival %s[%s]: %s" % (p,handle,ival)
+            s += delim
+
+        for p,bandwidths in self._bandwidths.items():
+          for handle, bw in bandwidths.items():
+            s += "bw %s[%s]: %s" % (p,handle,bw)
+          s += delim
 
         return s
 

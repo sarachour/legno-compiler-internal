@@ -154,13 +154,6 @@ class ConcCirc:
             circ.conn(sblk,sloc,sport, \
                       dblk,dloc,dport)
 
-        '''
-        for label,(lb,ub) in obj['intervals'].items():
-            circ.set_interval(label,lb,ub)
-
-        for label,bw in obj['bandwidths'].items():
-            circ.set_bandwidth(label,bw)
-        '''
         return circ
 
 
@@ -173,13 +166,6 @@ class ConcCirc:
             'bandwidths':{}
         }
 
-        '''
-        for label,(lb,ub) in self._intervals.items():
-            data_struct['intervals'][label] = (lb,ub)
-
-        for label,bw in self._bandwidths.items():
-            data_struct['bandwidths'][label] = bw
-        '''
         for block,locs in self._configs.items():
             for loc,cfg in locs.items():
                 inst = {'block':block,'loc':loc, \
@@ -199,7 +185,6 @@ class ConcCirc:
 
     def write_circuit(self,filename):
         data = self.to_json()
-        raise Exception("don't save me yet! TODO: bandwidths accurate.")
         with open(filename,'w') as fh:
             strdata = json.dumps(data,indent=4)
             fh.write(strdata)
@@ -237,7 +222,6 @@ class ConcCirc:
         return to_id,from_id,conns
 
     def write_graph(self,filename,write_png=False):
-        raise Exception("don't save me yet! TODO: bandwidths, taus accurate.")
         to_id,from_id,conns = self._build_dot_data_structures()
         stmts = []
         varfn = lambda idx : "N%d" % idx
@@ -271,7 +255,7 @@ class ConcCirc:
             for port,math_label,kind in cfg.labels():
                 kind = kind.value
                 scf = cfg.scf(port)
-                label = "%s %s*%s" % (kind,math_label,scf)
+                label = "%s %s*%.3f t:%.3f" % (kind,math_label,scf,self.tau)
                 st = "%s [label=\"%s\"]" % (labelfn(),label)
                 _,portidx = from_id[(blk_name,blk_loc,port)]
                 q(st)
@@ -280,7 +264,9 @@ class ConcCirc:
                 label_idx += 1
 
             for port,value in cfg.values():
-                st = "%s [label=\"%s\"]" % (valuefn(),value)
+                scf = cfg.scf(port)
+                label = "%.3f*%.3f" % (value,scf)
+                st = "%s [label=\"%s\"]" % (valuefn(),label)
                 q(st)
                 _,portidx = from_id[(blk_name,blk_loc,port)]
                 st = "%s -> %s:%s" % (valuefn(),varfn(idx),portidx)

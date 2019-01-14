@@ -57,7 +57,8 @@ def gen_use_dac(circ,block,locstr,config):
   inv,rng = cast_enum(config.scale_mode,\
                       [chip_cmd.SignType,chip_cmd.RangeType])
 
-  value = config.dac('in')
+  scf = config.scf('in') if config.has_scf('in') else 1.0
+  value = config.dac('in')*scf
   yield chip_cmd.UseDACCmd(chip, \
                             tile, \
                             slce, \
@@ -86,7 +87,10 @@ def gen_use_integrator(circ,block,locstr,config,debug=True):
                                    [chip_cmd.SignType, \
                                     chip_cmd.RangeType, \
                                     chip_cmd.RangeType])
-  init_cond = config.dac('ic')
+
+  scf = config.scf('ic') if config.has_scf('ic') else 1.0
+  init_cond = config.dac('ic')*scf
+
   yield chip_cmd.UseIntegCmd(chip,
                               tile,
                               slce,
@@ -115,7 +119,9 @@ def gen_use_multiplier(circ,block,locstr,config):
   if use_coeff:
     in0_rng,out_rng = cast_enum(config.scale_mode, \
                                 [chip_cmd.RangeType,chip_cmd.RangeType])
-    coeff = config.dac('coeff')
+
+    scf = config.scf('coeff') if config.has_scf('coeff') else 1.0
+    coeff = config.dac('coeff')*scf
     yield chip_cmd.UseMultCmd(chip,
                                tile,
                                slce,

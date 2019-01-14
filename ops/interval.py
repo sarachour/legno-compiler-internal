@@ -71,6 +71,14 @@ class Interval:
         ub = max(vals)
         return Interval.type_infer(lb,ub)
 
+    @staticmethod
+    def from_json(obj):
+        return Interval.type_infer(
+            obj['lower'],
+            obj['upper']
+        )
+
+
     def to_json(self):
         return {
             'lower':self.lower,

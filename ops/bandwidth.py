@@ -46,6 +46,13 @@ class Bandwidth:
     BW = Bandwidth(dA/(2*math.pi*A))
     return BW
 
+  def to_json(self):
+    return {'bandwidth': self._bw}
+
+  @staticmethod
+  def from_json(obj):
+    return Bandwidth(obj['bandwidth'])
+
   def __repr__(self):
     return str(self._bw)
 

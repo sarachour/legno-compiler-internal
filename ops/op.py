@@ -288,9 +288,10 @@ class Integ(Op2):
         # Bernstein's inequality: max(dx/dt) < 2*pi*f_0*A
         # where X(f) = 0 for all f > f_0
 
-        bw_stvar = Var(self._name).bandwidth(bandwidths)
+        bw_stvar = bandwidths[self._handle]
         bw_deriv = self.deriv.bandwidth(bandwidths)
         bw_init_cond = self.init_cond.bandwidth(bandwidths)
+        bwcoll = bw_deriv.merge(bw_init_cond,bw_stvar)
         bwcoll.bind(self.deriv_handle, bw_deriv.bandwidth)
         bwcoll.bind(self.ic_handle, bw_init_cond.bandwidth)
         return bwcoll
