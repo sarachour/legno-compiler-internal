@@ -81,9 +81,14 @@ def benchmark_spring():
     prob.bind("dy1",dy1)
     prob.bind("y",y)
     prob.bind("Y", op.Emit(op.Var("y")))
-    prob.interval("Y",-10,10)
-    prob.interval("y",-10,10)
-    prob.interval("dy1",-10,10)
+    prob.set_interval("Y",-10,10)
+    prob.set_interval("y",-10,10)
+    prob.set_interval("dy1",-10,10)
+    # each state variable is bandlimited.
+    # given |x(t)| <= A
+    # Bernstein's inequality: max(dx/dt) < 2*pi*f_0*A
+    # 
+    # where X(f) = 0 for all f > f_0
     # compute fmin and fmax for each signal.
     prob.compile()
     return prob
@@ -97,8 +102,8 @@ def benchmark_decay():
         ':x')
     prob.bind("x",x)
     prob.bind("X", op.Emit(op.Var("x")))
-    prob.interval("x",0,5)
-    prob.interval("X",0,5)
+    prob.set_interval("x",0,5)
+    prob.set_interval("X",0,5)
 
     prob.compile()
     return prob
@@ -138,8 +143,8 @@ def benchmark_vanderpol():
     prob.bind("y2",
               op.Integ(dy2, op.Const(y2_ic),
                        ":v"))
-    prob.interval("y1",0,5)
-    prob.interval("y2",0,5)
+    prob.set_interval("y1",0,5)
+    prob.set_interval("y2",0,5)
     prob.bind("Y", op.Emit(op.Var("y1")))
 
 def benchmark_inout1():
@@ -148,9 +153,9 @@ def benchmark_inout1():
         op.Mult(op.ExtVar("I"),
                 op.Const(0.5))
     ))
-    prob.bandwidth("I",1e4)
-    prob.interval("I",0,5)
-    prob.interval("O",0,5)
+    prob.set_bandwidth("I",1e4)
+    prob.set_interval("I",0,5)
+    prob.set_interval("O",0,5)
     prob.compile()
     return prob
 
@@ -165,12 +170,12 @@ def benchmark_inout2():
         op.Mult(op.ExtVar("I2"),
                 op.Const(0.8))
     ))
-    prob.bandwidth("I1",1e4)
-    prob.interval("I1",0,5)
-    prob.bandwidth("I2",1e4)
-    prob.interval("I2",0,5)
-    prob.interval("O1",0,5)
-    prob.interval("O2",0,5)
+    prob.set_bandwidth("I1",1e4)
+    prob.set_interval("I1",0,5)
+    prob.set_bandwidth("I2",1e4)
+    prob.set_interval("I2",0,5)
+    prob.set_interval("O1",0,5)
+    prob.set_interval("O2",0,5)
     prob.compile()
     return prob
 

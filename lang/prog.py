@@ -1,4 +1,6 @@
 from ops.interval import Interval
+from ops.bandwidth import Bandwidth
+import util.util as util
 
 class MathEnv:
 
@@ -61,12 +63,18 @@ class MathProg:
             return None
         return self._bindings[v]
 
-    def bandwidth(self,v,b):
+    def interval(self,v):
+        return self._intervals[v]
+
+    def bandwidth(self,v):
+        return self._bandwidths[v]
+
+    def set_bandwidth(self,v,b):
         if not v in self._variables:
             self._variables.append(v)
-        self._bandwidths[v] = b
+        self._bandwidths[v] = Bandwidth(b)
 
-    def interval(self,v,min_v,max_v):
+    def set_interval(self,v,min_v,max_v):
         assert(min_v <= max_v)
         if not v in self._variables:
             self._variables.append(v)
@@ -81,18 +89,37 @@ class MathProg:
             yield v,bw
 
     def compile(self):
-        for variable in self._bindings:
-            assert(variable in self._intervals)
-
         for variable,expr in self._bindings.items():
-            if expr is None \
-               or variable in self._bandwidths:
-                continue
-            bw = expr.bandwidth(self._intervals,\
-                                self._bandwidths,\
-                                self._bindings)
-            self._bandwidths[variable] = bw
+            if not (variable in self._intervals):
+                if expr is None:
+                    raise Exception("cannot infer ival: <%s> has no expression" \
+                                    % variable)
 
+                icoll = expr.interval(self._intervals)
+                self._intervals[v] = icoll.interval
+
+
+        progress = True
+        while progress:
+            progress = False
+            for variable,expr in self._bindings.items():
+                if not (variable in self._bandwidths):
+                    if expr is None:
+                        raise Exception("cannot infer bw: <%s> has no expression" \
+                                        % variable)
+
+                    deps = expr.bwvars()
+                    if util.keys_in_dict(deps,self._bandwidths):
+                        new_ivals = expr.infer_interval(self._intervals[variable], \
+                                                        self._intervals)
+
+                        ival_dict = new_ivals.merge_dict(self._intervals).dict()
+                        bwcoll = expr.infer_bandwidth(ival_dict,bandwidths=self._bandwidths)
+                        self._bandwidths[variable] = bwcoll.bandwidth
+                        progress = True
+
+        assert(util.keys_in_dict(self._bindings.keys(), self._bandwidths))
+        assert(util.keys_in_dict(self._bindings.keys(), self._intervals))
     @property
     def name(self):
         return self._name

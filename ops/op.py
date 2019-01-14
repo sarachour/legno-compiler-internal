@@ -1,7 +1,9 @@
 import itertools
 import math
 import ops.interval as interval
+import ops.bandwidth as bandwidth
 from enum import Enum
+
 class OpType(Enum):
     EQ= "="
     MULT= "*"
@@ -86,6 +88,9 @@ class Op:
     def __hash__(self):
         return hash(str(self))
 
+    def bwvars(self):
+        return self.vars()
+
     def vars(self):
         vars = []
         for arg in self._args:
@@ -100,8 +105,23 @@ class Op:
         else:
             return False,False,None
 
-    def bandwidth(self,intervals,bandwidths,bindings):
-        raise NotImplementedError("unknown bandwidth <%s>" % (str(self)))
+    # infer bandwidth from interval information
+    def infer_interval(self,interval,bound_intervals):
+        raise NotImplementedError("unknown infer-interval <%s>" % (str(self)))
+
+
+    # infer bandwidth from interval information
+    def compute_interval(self,intervals):
+        raise NotImplementedError("unknown compute-interval <%s>" % (str(self)))
+
+
+    # infer bandwidth from interval information
+    def infer_bandwidth(self,intervals,bandwidths={}):
+        raise NotImplementedError("unknown infer-bandwidth <%s>" % (str(self)))
+
+    # compute bandwidth of straight line expression, given bindings
+    def compute_bandwidth(self,bandwidths):
+        raise NotImplementedError("unknown compute-bandwidth <%s>" % (str(self)))
 
     def match(self,expr):
         def is_consistent(assignments):
@@ -223,13 +243,24 @@ class Integ(Op2):
     def toplevel(self):
         return self.handle
 
-    def interval(self,bindings):
+    # infer bandwidth from interval information
+    def infer_interval(self,ival,bound_intervals):
+        ideriv = self.deriv.compute_interval(bound_intervals)
+        icond = self.init_cond.compute_interval(bound_intervals)
+        istvar = interval.IntervalCollection(ival)
+        icomb = icond.merge(ideriv, istvar.interval)
+        icomb.bind(self.deriv_handle, ideriv.interval)
+        icomb.bind(self.handle, ival)
+        icomb.bind(self.ic_handle, icond.interval)
+        return icomb
+
+    def compute_interval(self,intervals):
         assert(not self.handle is None)
         assert(not self.deriv_handle is None)
-        ideriv = self.deriv.interval(bindings)
-        icond = self.init_cond.interval(bindings)
-        istvar = icond.interval.union(bindings[self.handle])
-        assert(not self.handle is None)
+        istvar = intervals[self._handle]
+        ideriv = self.deriv.compute_interval(intervals)
+        icond = self.init_cond.compute_interval(intervals)
+        assert(istvar.contains(icond.interval))
         icomb = icond.merge(ideriv, istvar)
         icomb.bind(self.deriv_handle, ideriv.interval)
         icomb.bind(self.ic_handle, icond.interval)
@@ -240,14 +271,29 @@ class Integ(Op2):
         stvars[self._handle] = self
         return
 
-    def bandwidth(self,intervals,bandwidths,bindings):
-        expr = self.deriv
-        min_val,max_val = self.deriv.interval(intervals).interval
-        tau,time_su = 1.0,1.0
-        # time required to raise 1 unit
-        rise_time = (tau*time_su)/(max_val-min_val)
-        bandwidth = 0.35/rise_time
-        return bandwidth
+    def infer_bandwidth(self,intervals,bandwidths={}):
+        icoll = self.compute_interval(intervals)
+        bw = bandwidth.Bandwidth.integ(icoll.interval, \
+                                  icoll.get(self.deriv_handle))
+        return bandwidth.BandwidthCollection(bw)
+
+    def bwvars(self):
+        return []
+
+    def compute_bandwidth(self,bandwidths):
+        # each state variable is bandlimited.
+        # Bernstein's inequality, Lapidoth
+        # A Foundation in Digital Communication (page 92).
+        # given |x(t)| <= A
+        # Bernstein's inequality: max(dx/dt) < 2*pi*f_0*A
+        # where X(f) = 0 for all f > f_0
+
+        bw_stvar = Var(self._name).bandwidth(bandwidths)
+        bw_deriv = self.deriv.bandwidth(bandwidths)
+        bw_init_cond = self.init_cond.bandwidth(bandwidths)
+        bwcoll.bind(self.deriv_handle, bw_deriv.bandwidth)
+        bwcoll.bind(self.ic_handle, bw_init_cond.bandwidth)
+        return bwcoll
 
     @property
     def deriv(self):
@@ -313,11 +359,12 @@ class ExtVar(Op):
     def name(self):
         return self._name
 
-    def interval(self,bindings):
+    def compute_interval(self,bindings):
         return interval.IntervalCollection(bindings[self._name])
 
-    def bandwidth(self,intervals,bandwidths,bindings):
-        return bandwidths[self._name]
+    def compute_bandwidth(self,bandwidths):
+        assert(self._name in bandwidths)
+        return bandwidth.BandwidthCollection(bandwidths[self._name])
 
     @property
     def name(self):
@@ -345,13 +392,28 @@ class Var(Op):
     def name(self):
         return self._name
 
-    def interval(self,bindings):
-        assert(self._name in bindings)
-        return interval.IntervalCollection(bindings[self._name])
+    def infer_interval(self,this_interval,bound_intervals):
+        assert(this_interval.contains(bound_intervals[self.name]))
+        return interval.IntervalCollection(bound_intervals[self.name])
 
-    def bandwidth(self,intervals,bandwidths,bindings):
-        new_b = dict(filter(lambda el: el[0] != self._name, bindings.items()))
-        return bindings[self._name].bandwidth(intervals,bandwidths,new_b)
+    def compute_interval(self,intervals):
+        if not (self.name in intervals):
+            raise Exception("unknown variable <%s> / var dict <%s>" % \
+                            (self.name,intervals))
+        return interval.IntervalCollection(intervals[self.name])
+
+    def infer_bandwidth(self,intervals,bandwidths={}):
+        if not self.name in bandwidths:
+            raise Exception("unbound  bandwidth <%s>" % self.name)
+
+        return bandwidth.BandwidthCollection(bandwidths[self.name])
+
+
+    def compute_bandwidth(self,bandwidths):
+        if not (self.name in bandwidths):
+            raise Exception("cannot find <%s> in bw-map: <%s>" %\
+                            (self.name,bandwidths))
+        return bandwidth.BandwidthCollection(bandwidths[self.name])
 
     def compute(self,bindings):
         if not self._name in bindings:
@@ -378,13 +440,13 @@ class Const(Op):
     def compute(self,bindings):
         return self._value
 
-    def interval(self,bindings):
+    def compute_interval(self,bindings):
         return interval.IntervalCollection(
             interval.IValue(self._value)
         )
 
-    def bandwidth(self,intervals,bandwidths,bindings):
-        return 0.0
+    def compute_bandwidth(self,bandwidths):
+        return bandwidth.BandwidthCollection(bandwidth.Bandwidth(0))
 
     @property
     def value(self):
@@ -435,11 +497,18 @@ class Emit(Op):
         Op.__init__(self,OpType.EMIT,[node])
         pass
 
-    def bandwidth(self,intervals,bandwidths,bindings):
-        return self.arg(0).bandwidth(intervals,bandwidths,bindings)
+    def infer_bandwidth(self,intervals,bandwidths={}):
+        return self.arg(0).infer_bandwidth(intervals,bandwidths)
 
-    def interval(self,bindings):
-        return self.arg(0).interval(bindings)
+
+    def compute_bandwidth(self,bandwidths):
+        return self.arg(0).compute_bandwidth(bandwidths)
+
+    def infer_interval(self,this_interval,bound_intervals):
+        return self.arg(0).infer_interval(this_interval,bound_intervals)
+
+    def compute_interval(self,intervals):
+        return self.arg(0).interval(intervals)
 
 
     def compute(self,bindings):
@@ -453,25 +522,25 @@ class Mult(Op2):
         pass
 
 
-    def interval(self,bindings):
-        is1 = self.arg1.interval(bindings)
-        is2 = self.arg2.interval(bindings)
+    def infer_bandwidth(self,intervals,bandwidths={}):
+        return self.compute_bandwidth(bandwidths)
+
+    def infer_interval(self,this_interval,bound_intervals):
+        icoll = self.compute_interval(bound_intervals)
+        assert(this_interval.contains(icoll.interval))
+        return icoll
+
+    def compute_interval(self,intervals):
+        is1 = self.arg1.compute_interval(intervals)
+        is2 = self.arg2.compute_interval(intervals)
         return is1.merge(is2,
                   is1.interval.mult(is2.interval))
 
-    def bandwidth(self,intervals,bandwidths,bindings):
-        if self.arg1.op == OpType.CONST:
-            value = abs(self.arg1.value)
-            f2 = self.arg2.bandwidth(intervals,bandwidths,bindings)
-            return f2*value
-
-        elif self.arg2.op == OpType.CONST:
-            value = abs(self.arg2.value)
-            f2 = self.arg1.bandwidth(intervals,bandwidths,bindings)
-            return f2*value
-
-        else:
-            raise Exception("cannot compute bandwidth of nonlinear fxn: <%s>" % self)
+    def compute_bandwidth(self,bandwidths):
+        bw1 = self.arg1.compute_bandwidth(bandwidths)
+        bw2 = self.arg2.compute_bandwidth(bandwidths)
+        return bw1.merge(bw2,
+                         bw1.bandwidth.mult(bw2.bandwidth))
 
     def match_op(self,expr):
         if expr.op == self._op:
@@ -502,17 +571,19 @@ class Add(Op2):
         Op.__init__(self,OpType.ADD,[arg1,arg2])
         pass
 
-    def interval(self,bindings):
-        is1 = self.arg1.interval(bindings)
-        is2 = self.arg2.interval(bindings)
+    def compute_interval(self,bindings):
+        is1 = self.arg1.compute_interval(bindings)
+        is2 = self.arg2.compute_interval(bindings)
         return is1.merge(is2,
                   is1.interval.add(is2.interval))
 
 
-    def bandwidth(self,intervals,bandwidths,bindings):
-        bandwidth1 = self.arg1.bandwidth(intervals,bandwidths,bindings)
-        bandwidth2 = self.arg2.bandwidth(intervals,bandwidths,bindings)
-        return max(bandwidth1,bandwidth2)
+    def compute_bandwidth(self,bandwidths):
+        bw1 = self.arg1.compute_bandwidth(bandwidths)
+        bw2 = self.arg2.compute_bandwidth(bandwidths)
+        return bw1.merge(bw2,
+                         bw1.bandwidth.add(bw2.bandwidth))
+
 
     def match_op(self,expr,enable_eq=False):
         if expr.op == self._op:

@@ -147,10 +147,16 @@ class Config:
       if not port in dict_:
         dict_[port] = {}
 
+    def clear_bandwidths(self):
+      self._bandwidths = {}
+
+    def clear_intervals(self):
+      self._intervals = {}
 
     def set_bandwidth(self,port,bandwidth,handle=None):
       self._make(self._bandwidths,port)
-      self._bandwidths[port][handle] = interval
+      assert(not bandwidth is None)
+      self._bandwidths[port][handle] = bandwidth
 
 
     def set_op_range(self,port,op_range,handle=None):
@@ -184,13 +190,6 @@ class Config:
       for port,(name,kind) in self._labels.items():
         yield port,name,kind
 
-    def bandwidth(self,port,handle=None):
-      if not port in self._bandwidths or \
-         not handle in self._bandwidths[port]:
-        return None
-
-      return self._bandwidths[port][handle]
-
     def op_range(self,port,handle=None):
       if not port in self._op_ranges or \
          not handle in self._op_ranges[port]:
@@ -199,12 +198,34 @@ class Config:
       return self._op_ranges[port][handle]
 
 
+    def bandwidth(self,port,handle=None):
+      if not port in self._bandwidths or \
+         not handle in self._bandwidths[port]:
+        return None
+
+      return self._bandwidths[port][handle]
+
+
     def interval(self,port,handle=None):
       if not port in self._intervals or \
          not handle in self._intervals[port]:
         return None
 
       return self._intervals[port][handle]
+
+
+    def bandwidths(self):
+      bandwidths = {}
+      for port,handles in self._bandwidths.items():
+        for handle,bw in handles.items():
+          if handle is None:
+            bandwidths[port] = bw
+          else:
+            assert(not handle in bandwidths)
+            bandwidths[handle] = bw
+
+      return bandwidths
+
 
     def intervals(self):
       intervals = {}
@@ -217,6 +238,12 @@ class Config:
             intervals[handle] = ival
 
       return intervals
+
+    def has_scf(self,port,handle=None):
+      if not port in self._scfs or \
+         not handle in self._scfs[port]:
+        return False
+      return True
 
     def scf(self,port,handle=None):
       if not port in self._scfs or \

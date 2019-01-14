@@ -163,7 +163,7 @@ elif args.subparser_name == "skelter":
 
 
 elif args.subparser_name == "jaunt":
-
+    prog = bmark.get_prog(args.benchmark)
     circ_dir = path_handler.abs_circ_dir()
     for dirname, subdirlist, filelist in os.walk(circ_dir):
         for fname in filelist:
@@ -176,7 +176,8 @@ elif args.subparser_name == "jaunt":
                     conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                obj)
                     n_scaled = 0
-                    for scale_circ in jaunt.scale(conc_circ, \
+                    for scale_circ in jaunt.scale(prog,
+                                                  conc_circ, \
                                                   noise_analysis=args.noise):
 
                         filename = path_handler.conc_circ_file(circ_bmark,

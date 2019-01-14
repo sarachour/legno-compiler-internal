@@ -9,8 +9,8 @@ class ConcCirc:
         self._tau = 1.0
         self._configs= {}
         self._conns = {}
-        self._intervals = {}
-        self._bandwidths = {}
+        #self._intervals = {}
+        #self._bandwidths = {}
 
     def set_tau(self,value):
         self._tau = value
@@ -18,22 +18,6 @@ class ConcCirc:
     @property
     def tau(self):
         return self._tau
-
-    def set_bandwidth(self,label,bandwidth):
-        self._bandwidths[label] = bandwidth
-
-    def bandwidth(self,label):
-        if not (label in self._bandwidths):
-            raise Exception("unknown bandwidth: %s" % label)
-        return self._bandwidths[label]
-
-    def set_interval(self,label,lb,ub):
-        self._intervals[label] = (lb,ub)
-
-    def interval(self,label):
-        if not (label in self._intervals):
-            raise Exception("unknown interval: %s" % label)
-        return self._intervals[label]
 
     @property
     def board(self):
@@ -170,12 +154,13 @@ class ConcCirc:
             circ.conn(sblk,sloc,sport, \
                       dblk,dloc,dport)
 
+        '''
         for label,(lb,ub) in obj['intervals'].items():
             circ.set_interval(label,lb,ub)
 
         for label,bw in obj['bandwidths'].items():
             circ.set_bandwidth(label,bw)
-
+        '''
         return circ
 
 
@@ -187,12 +172,14 @@ class ConcCirc:
             'intervals':{},
             'bandwidths':{}
         }
+
+        '''
         for label,(lb,ub) in self._intervals.items():
             data_struct['intervals'][label] = (lb,ub)
 
         for label,bw in self._bandwidths.items():
             data_struct['bandwidths'][label] = bw
-
+        '''
         for block,locs in self._configs.items():
             for loc,cfg in locs.items():
                 inst = {'block':block,'loc':loc, \

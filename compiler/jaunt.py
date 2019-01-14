@@ -267,7 +267,6 @@ def bpgen_scaled_digital_constraint(jenv,scale_expr,math_rng,values,quantize=1):
     lb,ub = math_rng.lower/quantize,math_rng.upper/quantize
     lb_val = min(filter(lambda v: same_sign(v,lb), values), \
               key=lambda v: abs(v))
-    print(lb,lb_val)
     ub_val = min(filter(lambda v: same_sign(v,ub), values), \
               key=lambda v: abs(v))
 
@@ -380,8 +379,8 @@ def bp_generate_problem(jenv,circ,quantize_signals=5):
         jenv.lte(jop.JVar(jenv.TAU),jop.JConst(TAU_MAX))
         jenv.gte(jop.JVar(jenv.TAU),jop.JConst(TAU_MIN))
 
-def build_jaunt_env(circ):
-    conc_infer.infer(circ)
+def build_jaunt_env(prog,circ):
+    conc_infer.infer(prog,circ)
     jenv = JauntEnv()
     # declare scaling factors
     bp_decl_scale_variables(jenv,circ)
@@ -495,18 +494,19 @@ def solve_gpkit_problem(gpmodel,timeout=10):
     return sln
 
 
-def sp_update_circuit(jenv,circ,assigns):
+def sp_update_circuit(jenv,prog,circ,assigns):
     bindings = {}
     tau = None
     for variable,value in assigns.items():
-        print("SCF %s = %s" % (variable,value))
         if variable.name == jenv.TAU:
-            circ.set_tau(tau)
+            circ.set_tau(value)
         else:
+            print("SCF %s = %s" % (variable,value))
             block_name,loc,port,handle = jenv.get_scvar_info(variable.name)
-            circ.config(block_name,loc).set_scf(port,handle,value)
+            circ.config(block_name,loc).set_scf(port,handle=handle,scf=value)
 
 
+    conc_infer.infer(prog,circ)
     return circ
 
 
@@ -532,10 +532,10 @@ def iter_scaled_circuits(circ):
         #input()
         yield circ
 
-def scale(circ,noise_analysis=False):
+def scale(prog,circ,noise_analysis=False):
     for orig_circ in iter_scaled_circuits(circ):
         if not noise_analysis:
-            jenv = build_jaunt_env(orig_circ)
+            jenv = build_jaunt_env(prog,orig_circ)
         else:
             raise Exception("unimplemented: noise analysis")
         if jenv is None:
@@ -564,6 +564,6 @@ def scale(circ,noise_analysis=False):
                 skip_opts = True
 
             else:
-                upd_circ = sp_update_circuit(jenv,orig_circ,
-                                         sln['freevariables'])
+                upd_circ = sp_update_circuit(jenv,prog,orig_circ,
+                                             sln['freevariables'])
                 yield upd_circ

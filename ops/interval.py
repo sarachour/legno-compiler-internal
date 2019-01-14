@@ -12,6 +12,14 @@ class Interval:
       return Interval.type_infer(lb,ub)
 
     @property
+    def difference(self):
+        return abs(self.upper-self.lower)
+
+    @property
+    def bound(self):
+        return max(abs(self.lower),abs(self.upper))
+
+    @property
     def lower(self):
         return self._lower
 
@@ -25,6 +33,21 @@ class Interval:
         return IValue(lb)
       else:
         return IRange(lb,ub)
+
+    def contains(self,child):
+        if child.lower >= self.lower and \
+           child.upper <= self.upper:
+            return True
+        else:
+            return False
+
+
+    def scale(self,v):
+        assert(v > 0)
+        return Interval.type_infer(
+            self.lower*v,
+            self.upper*v
+        )
 
     def add(self,i2):
          vals = [
@@ -105,6 +128,9 @@ class IntervalCollection:
   def bindings(self):
     return self._bindings.items()
 
+  def get(self,name):
+      return self._bindings[name]
+
   @property
   def interval(self):
     return self._ival
@@ -122,6 +148,16 @@ class IntervalCollection:
 
     new_ivals.update(new_ival)
     return new_ivals
+
+  def merge_dict(self,other_dict):
+    new_ivals = self.copy()
+    for k,v in other_dict.items():
+        new_ivals.bind(k,v)
+
+    return new_ivals
+
+  def dict(self):
+    return dict(self._bindings)
 
   def __repr__(self):
     st = "ival %s\n" % self._ival

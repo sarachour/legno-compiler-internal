@@ -16,20 +16,13 @@ class IntervalEnv:
   def visit(self,block_name,loc,port,handle=None):
       self._visited[(block_name,loc,port,handle)] = True
 
-def ival_math_dac_ranges(env,circ):
-     for block_name,loc,config in circ.instances():
-        block = circ.board.block(block_name)
-        for port in block.inputs + block.outputs:
-            if config.has_dac(port):
-                value = config.dac(port)
-                mrng = IValue(value)
-                print("val: %s[%s].%s := %s" % (block_name, \
-                                                loc,\
-                                                port, \
-                                                mrng))
-                config.set_interval(port,mrng)
 
-def ival_math_label_ranges(env,circ):
+def clear_bandwidths_and_intervals(circ):
+    for block_name,loc,config in circ.instances():
+      config.clear_bandwidths()
+      config.clear_intervals()
+
+def math_label_ranges(prog,circ):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for port in block.outputs + block.inputs:
@@ -40,12 +33,18 @@ def ival_math_label_ranges(env,circ):
                                                 port).toplevel()
                 else:
                     handle = None
-                lb,ub = circ.interval(label)
-                mrng = IRange(lb,ub)
-                print("lbl: %s[%s].%s := %s" % \
-                      (block_name,loc,port,mrng))
-                config.set_interval(port,mrng,\
+
+                mrng = prog.interval(label)
+                mbw = prog.bandwidth(label)
+                scf = config.scf(port) if config.has_scf(port) else 1.0
+                tau = circ.tau if not circ.tau is None else 1.0
+                print("lbl: %s[%s].%s := %s*%s / tau=%s" % \
+                      (block_name,loc,port,mrng,scf,tau))
+                config.set_interval(port,mrng.scale(scf),\
                                     handle=handle)
+                config.set_bandwidth(port,mbw.timescale(tau),\
+                                    handle=handle)
+
 
 def ival_hardware_classify_ports(circ,variables):
     bound,free = [],[]
@@ -60,33 +59,99 @@ def ival_hardware_classify_ports(circ,variables):
     return free,bound
 
 
-def ival_math_classify_ports(circ,variables):
+def bw_math_classify_ports(circ,variables):
     bound,free = [],[]
     for var in variables:
         block_name,loc,port = var
         config = circ.config(block_name,loc)
-        if not config.interval(port) is None:
-          print("bnd %s[%s].%s = %s" % (block_name,loc,port,config.interval(port)))
+        if not config.bandwidth(port) is None:
           bound.append(var)
         else:
           free.append(var)
 
     return free,bound
 
+
+def ival_math_classify_ports(circ,variables):
+    bound,free = [],[]
+    for var in variables:
+        block_name,loc,port = var
+        config = circ.config(block_name,loc)
+        if not config.interval(port) is None:
+          bound.append(var)
+        else:
+          free.append(var)
+
+    return free,bound
+
+def bw_test_visited(env,block,config,loc,port):
+  expr = block.get_dynamics(config.comp_mode,port, \
+                             scale_mode=config.scale_mode)
+  handles = expr.handles()
+  # test to see if we have computed the interval
+  visited = True
+  if not env.visited(block.name,loc,port):
+    visited = False
+  for handle in handles:
+    if not env.visited(block.name,loc,port,handle=handle):
+      visited = False
+
+  return visited
+
+
+def ival_test_visited(env,block,config,loc,port):
+  expr = block.get_dynamics(config.comp_mode,port, \
+                             scale_mode=config.scale_mode)
+  handles = expr.handles()
+  # test to see if we have computed the interval
+  visited = True
+  if not env.visited(block.name,loc,port):
+    visited = False
+  for handle in handles:
+    if not env.visited(block.name,loc,port,handle=handle):
+      visited = False
+
+  return visited
+
+def bw_derive_output_port(env,circ,block,config,loc,port):
+    expr = block.get_dynamics(config.comp_mode,port, \
+                             scale_mode=config.scale_mode)
+
+    if bw_test_visited(env,block,config,loc,port):
+        print("[visit] skipping %s[%s].%s" \
+              % (block.name,loc,port))
+        return True
+
+    # find intervals for free variables
+    variables = list(map(lambda v: (block.name,loc,v), expr.vars()))
+    free,bound = bw_math_classify_ports(circ, variables)
+    for free_block_name,free_loc,free_port in free:
+      free_block = circ.board.block(free_block_name)
+      bw_derive_port(env,circ,free_block,\
+                       circ.config(free_block.name,free_loc),\
+                       free_loc,free_port)
+
+    env.visit(block.name,loc,port)
+    # compute intervals
+    ival_map = config.intervals()
+    bw_map = config.bandwidths()
+    bandwidths = expr.infer_bandwidth(ival_map,bw_map)
+
+    if config.bandwidth(port) is None:
+      print("bw %s[%s].%s = %s" % (block.name,loc,port,bandwidths.bandwidth))
+      config.set_bandwidth(port,bandwidths.bandwidth)
+
+    for handle,bandwidth in bandwidths.bindings():
+      if not config.bandwidth(port,handle=handle):
+        config.set_bandwidth(port,bandwidth,handle=handle)
+
+
+
 def ival_derive_output_port(env,circ,block,config,loc,port):
     expr = block.get_dynamics(config.comp_mode,port, \
                              scale_mode=config.scale_mode)
 
-    handles = expr.handles()
-    # test to see if we have computed the interval
-    visited = True
-    if not env.visited(block.name,loc,port):
-        visited = False
-    for handle in handles:
-        if not env.visited(block.name,loc,port,handle=handle):
-            visited = False
-
-    if visited:
+    if ival_test_visited(env,block,config,loc,port):
         print("[visit] skipping %s[%s].%s" \
               % (block.name,loc,port))
         return True
@@ -105,7 +170,7 @@ def ival_derive_output_port(env,circ,block,config,loc,port):
 
     # compute intervals
     ival_map = config.intervals()
-    intervals = expr.interval(ival_map)
+    intervals = expr.compute_interval(ival_map)
 
     if config.interval(port) is None:
         config.set_interval(port,intervals.interval)
@@ -119,29 +184,81 @@ def ival_derive_output_port(env,circ,block,config,loc,port):
 
 
 
+def bw_derive_input_port(env,circ,block,config,loc,port):
+    sources = list(circ.get_conns_by_dest(block.name,loc,port))
+    free,bound = bw_math_classify_ports(circ,sources)
+    for free_block_name,free_loc,free_port in free:
+        free_block = circ.board.block(free_block_name)
+        bw_derive_port(env,circ,free_block,
+                            circ.config(free_block.name,free_loc),\
+                            free_loc,free_port)
+
+    scf = config.scf(port) if config.has_scf(port) else 1.0
+    dest_expr = ops.Const(0 if not config.has_dac(port) else \
+                          config.dac(port)*scf)
+
+    dest_bw = dest_expr.compute_bandwidth({}).bandwidth
+
+    for src_block_name,src_loc,src_port in free+bound:
+      config = circ.config(src_block_name,src_loc)
+      src_bw = config.bandwidth(src_port)
+      if(src_bw is None):
+        print("free: <%s>\n" % free)
+        print("bound: <%s>\n" % bound)
+
+        raise Exception("unknown bandwidth: %s[%s].%s" % \
+                        (src_block_name,src_loc,src_port))
+
+      dest_bw = dest_bw.add(src_bw)
+
+    config = circ.config(block.name,loc)
+    config.set_bandwidth(port,dest_bw)
+    print("bw in %s[%s].%s => %s" % (block.name,loc,port,dest_bw))
+
+
+
 def ival_derive_input_port(env,circ,block,config,loc,port):
     sources = list(circ.get_conns_by_dest(block.name,loc,port))
     free,bound = ival_math_classify_ports(circ,sources)
-    assert(len(sources) > 0)
     for free_block_name,free_loc,free_port in free:
         free_block = circ.board.block(free_block_name)
         ival_derive_port(env,circ,free_block,
                             circ.config(free_block.name,free_loc),\
                             free_loc,free_port)
 
-    expr_ival = None
-    if config.has_dac(port):
-      expr_ival = IValue(config.dac(port))
+    scf = config.scf(port) if config.has_scf(port) else 1.0
+    dest_expr = ops.Const(0 if not config.has_dac(port) \
+                          else scf*config.dac(port))
+    dest_ival = dest_expr.compute_interval({}).interval
 
     for src_block_name,src_loc,src_port in free+bound:
       config = circ.config(src_block_name,src_loc)
       src_ival = config.interval(src_port)
-      expr_ival = src_ival if expr_ival is None else \
-                  expr_ival.add(src_ival)
+      if(src_ival is None):
+        print("free: <%s>\n" % free)
+        print("bound: <%s>\n" % bound)
+
+        raise Exception("unknown interval: %s[%s].%s" % \
+                        (src_block_name,src_loc,src_port))
+
+      dest_ival = dest_ival.add(src_ival)
+
 
     config = circ.config(block.name,loc)
-    config.set_interval(port,expr_ival)
-    print("ival in %s[%s].%s => %s" % (block.name,loc,port,expr_ival))
+    config.set_interval(port,dest_ival)
+    print("ival in %s[%s].%s => %s" % (block.name,loc,port,dest_ival))
+
+
+
+def bw_derive_port(env,circ,block,config,loc,port):
+    if block.is_input(port):
+        bw_derive_input_port(env,circ,block,config,loc,port)
+
+    elif block.is_output(port):
+        bw_derive_output_port(env,circ,block,config,loc,port)
+
+    else:
+        raise Exception("what the fuck...")
 
 
 
@@ -164,7 +281,7 @@ def ival_port_to_range(block,config,port,handle=None):
                        port,\
                        handle=handle).interval()
 
-def ival_hw_port_op_ranges(env,circ):
+def hw_port_op_ranges(circ):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         mode = config.comp_mode
@@ -176,21 +293,36 @@ def ival_hw_port_op_ranges(env,circ):
                                            handle=handle)
                 config.set_op_range(port,hwrng,\
                                     handle=handle)
-def bind_intervals(env,circ):
+def bind_intervals(env,prog,circ):
     # bind operating ranges for ports
-    ival_hw_port_op_ranges(env,circ)
-    ival_math_dac_ranges(env,circ)
-    ival_math_label_ranges(env,circ)
+  for block_name,loc,config in circ.instances():
+    block = circ.board.block(block_name)
+    for out_port in block.outputs:
+      ival_derive_port(env,circ,block,config,loc,out_port)
+
+  for block_name,loc,config in circ.instances():
+    block = circ.board.block(block_name)
+    for port in block.outputs + block.inputs:
+      assert(not config.op_range(port) is None)
+
+def bind_bandwidths(env,prog,circ):
+    # bind operating ranges for ports
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for out_port in block.outputs:
-            ival_derive_port(env,circ,block,config,loc,out_port)
+            bw_derive_port(env,circ,block,config,loc,out_port)
 
-    for block_name,loc,config in circ.instances():
-        block = circ.board.block(block_name)
-        for port in block.outputs + block.inputs:
-            assert(not config.op_range(port) is None)
 
-def infer(circ):
+
+def infer(prog,circ):
+  hw_port_op_ranges(circ)
+  # clear any already computed bandwidths and intervals
+  clear_bandwidths_and_intervals(circ)
+  # math label ranges
+  math_label_ranges(prog,circ)
+  print("==== intervals ====")
   env= IntervalEnv()
-  bind_intervals(env,circ)
+  bind_intervals(env,prog,circ)
+  print("==== bandwidths ====")
+  env= IntervalEnv()
+  bind_bandwidths(env,prog,circ)
