@@ -23,10 +23,12 @@ class Config:
         # (scaled) bandwidth
         self._bandwidths = {}
 
-        self._delays = {}
+        self._gen_delays = {}
+        self._prop_delays = {}
         self._gen_noise = {}
         self._prop_noise = {}
-        self._biases = {}
+        self._gen_biases = {}
+        self._prop_biases = {}
 
     def dynamics(self,block,port):
       assert(not self._comp_mode is None)
@@ -194,7 +196,15 @@ class Config:
       return self._gen_noise[port]
 
 
-    def all_propagated_noise(self):
+    def propagated_biases(self):
+      bss = {}
+      for port, bs in self._prop_biases.items():
+        bss[port] = bs
+
+      return bss
+
+
+    def propagated_noises(self):
       nzs = {}
       for port, nz in self._prop_noise.items():
         nzs[port] = nz
@@ -207,6 +217,23 @@ class Config:
       return self._prop_noise[port]
 
 
+    def propagated_noise(self,port):
+      if not port in self._prop_noise:
+          return None
+      return self._prop_noise[port]
+
+    def propagated_bias(self,port):
+      if not port in self._prop_biases:
+          return None
+      return self._prop_biases[port]
+
+
+    def generated_bias(self,port):
+      if not port in self._gen_biases:
+          return None
+      return self._gen_biases[port]
+
+
     def set_generated_noise(self,port,noise):
       self._gen_noise[port] = noise
 
@@ -214,11 +241,15 @@ class Config:
     def set_propagated_noise(self,port,noise):
       self._prop_noise[port] = noise
 
-    def set_bias(self,port,bias):
-      self._biases[port] = bias
+    def set_propagated_bias(self,port,bias):
+      self._prop_biases[port] = bias
 
-    def set_delay(self,port,delay):
-      self._delays[port] = delay
+
+    def set_generated_bias(self,port,bias):
+      self._gen_biases[port] = bias
+
+    def set_generated_delay(self,port,delay):
+      self._gen_delays[port] = delay
 
     def set_bandwidth(self,port,bandwidth,handle=None):
       self._make(self._bandwidths,port)

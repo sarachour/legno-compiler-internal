@@ -15,6 +15,6 @@ def compute(circ):
       noise = phys.noise(freq).compute(freqs,intervals)
       bias = phys.bias(freq).compute(freqs,intervals)
       config.set_generated_noise(output,noise)
-      config.set_bias(output,bias)
-      config.set_delay(output,delay)
+      config.set_generated_bias(output,bias)
+      config.set_generated_delay(output,delay)
 
