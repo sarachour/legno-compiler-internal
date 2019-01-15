@@ -3,34 +3,48 @@ import numpy as np
 import ops.interval as interval
 import compiler.skelt_pass as skellib
 
-def compute_score(board,circ,block_name,loc,port,noise):
-  block = board.block(block_name)
+def compute_max_mismatch(circ):
+  max_mismatch = 0
+  for blkname,loc,config in circ.instances():
+    blk = circ.board.block(blkname)
+    for port in blk.inputs + blk.outputs:
+      mismatch = max(config.delay_mismatches().values())
+      max_mismatch = max(mismatch,max_mismatch)
+
+  return max_mismatch
+
+def compute_snr(circ,block_name,loc,port):
   config = circ.config(block_name,loc)
-  scf = config.scf(port)
-  label = config.label(port)
 
-  mmin,mmax = circ.interval(label)
-  signal_mag = scf*max(abs(mmin),abs(mmax))
-  print(signal_mag)
-  print(noise)
+  config = circ.config(block_name,loc)
+  signal = config.interval(port)
+  noise = config.propagated_noise(port)
+  bias = config.propagated_bias(port)
+  delay = config.propagated_delay(port)
 
-  score = np.log10(signal_mag/noise)
-  if np.isnan(score):
-    input()
+  print("signal: %s" % signal)
+  print("noise : %s" % noise)
+  print("bias : %s" % bias)
+  print("delay : %s" % delay)
 
-  return score
+  snr = np.log10(signal.difference/(noise.difference+bias.difference))
+  return snr
 
 def execute(circ):
   skellib.update_config.compute(circ)
   skellib.prop_noise.compute(circ)
   skellib.prop_bias.compute(circ)
   skellib.delay_mismatch.compute(circ)
-  raise Exception("todo: scoring")
-'''
+
   score = 0
-  for block_name,loc,port,label in endpoints:
-    print("%s[%s].%s := %s" % (block,loc,port,label))
-    this_score = compute_score(board,circ,block_name,loc,port,noise)
-    score += this_score
+  max_mismatch = compute_max_mismatch(circ)
+  print("mismatch: %s" % max_mismatch)
+
+  score += -max_mismatch*1e4
+  for handle,block_name,loc in circ.board.handles():
+      if circ.in_use(block_name,loc):
+        config = circ.config(block_name,loc)
+        for port,label,kind in config.labels():
+          score += compute_snr(circ,block_name,loc,port)
+
   return score
-'''

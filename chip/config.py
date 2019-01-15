@@ -205,6 +205,14 @@ class Config:
       return bss
 
 
+    def delay_mismatches(self):
+      delays = {}
+      for port,delay in self._mismatch_delays.items():
+        delays[port] = delay
+
+      return delays
+
+
     def propagated_delays(self):
       delays = {}
       for port,delay in self._prop_delays.items():
