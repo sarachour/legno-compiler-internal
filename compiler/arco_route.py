@@ -747,12 +747,6 @@ def build_concrete_circuit(graph,prob,fragment_map):
 
         circ = ccirc.ConcCirc(graph.board)
 
-        for variable,(lb,ub) in prob.intervals():
-            circ.set_interval(variable,lb,ub)
-
-        for variable,bw in prob.bandwidths():
-            circ.set_bandwidth(variable,bw)
-
         for node in state.nodes():
             print(node.block_name,node.loc)
             circ.use(node.block_name,node.loc,config=node.config)

@@ -222,6 +222,7 @@ class ConcCirc:
         return to_id,from_id,conns
 
     def write_graph(self,filename,write_png=False):
+        undef_to_one = lambda v: 1.0 if v is None else v
         to_id,from_id,conns = self._build_dot_data_structures()
         stmts = []
         varfn = lambda idx : "N%d" % idx
@@ -254,7 +255,7 @@ class ConcCirc:
 
             for port,math_label,kind in cfg.labels():
                 kind = kind.value
-                scf = cfg.scf(port)
+                scf = undef_to_one(cfg.scf(port))
                 label = "%s %s*%.3f t:%.3f" % (kind,math_label,scf,self.tau)
                 st = "%s [label=\"%s\"]" % (labelfn(),label)
                 _,portidx = from_id[(blk_name,blk_loc,port)]
@@ -264,7 +265,7 @@ class ConcCirc:
                 label_idx += 1
 
             for port,value in cfg.values():
-                scf = cfg.scf(port)
+                scf = undef_to_one(cfg.scf(port))
                 label = "%.3f*%.3f" % (value,scf)
                 st = "%s [label=\"%s\"]" % (valuefn(),label)
                 q(st)

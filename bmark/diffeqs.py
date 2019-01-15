@@ -147,6 +147,9 @@ def benchmark_vanderpol():
     prob.set_interval("y2",0,5)
     prob.bind("Y", op.Emit(op.Var("y1")))
 
+    prob.compile()
+    return prob
+
 def benchmark_inout1():
     prob = MathProg("inout1")
     prob.bind('O', op.Emit(

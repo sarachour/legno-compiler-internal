@@ -12,6 +12,7 @@ import signal
 import random
 import time
 import numpy as np
+import util.util as util
 
 #TODO: what is low range, high range and med range?
 #TODO: setRange: integ.in, integ.out and mult have setRange functions.
@@ -265,15 +266,18 @@ def bpgen_scaled_interval_constraint(jenv,scale_expr,math_rng,hw_rng):
 
 def bpgen_scaled_digital_constraint(jenv,scale_expr,math_rng,values,quantize=1):
     lb,ub = math_rng.lower/quantize,math_rng.upper/quantize
-    lb_val = min(filter(lambda v: same_sign(v,lb), values), \
-              key=lambda v: abs(v))
-    ub_val = min(filter(lambda v: same_sign(v,ub), values), \
-              key=lambda v: abs(v))
+    lb_vals = list(filter(lambda v: same_sign(v,lb), values))
+    ub_vals = list(filter(lambda v: same_sign(v,ub), values))
 
-    bpgen_build_lower_bound(jenv,scale_expr,\
-                            abs(lb),abs(lb_val))
-    bpgen_build_lower_bound(jenv,scale_expr,\
-                            abs(ub),abs(ub_val))
+    if not util.equals(lb,0):
+        lb_val = min(lb_vals, key=lambda v: abs(v))
+        bpgen_build_lower_bound(jenv,scale_expr,\
+                                abs(lb),abs(lb_val))
+
+    if not util.equals(ub,0):
+        ub_val = max(ub_vals, key=lambda v: abs(v))
+        bpgen_build_lower_bound(jenv,scale_expr,\
+                                abs(ub),abs(ub_val))
 
 
 def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):

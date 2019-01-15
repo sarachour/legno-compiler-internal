@@ -95,8 +95,8 @@ class MathProg:
                     raise Exception("cannot infer ival: <%s> has no expression" \
                                     % variable)
 
-                icoll = expr.interval(self._intervals)
-                self._intervals[v] = icoll.interval
+                icoll = expr.compute_interval(self._intervals)
+                self._intervals[variable] = icoll.interval
 
 
         progress = True

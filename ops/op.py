@@ -509,7 +509,7 @@ class Emit(Op):
         return self.arg(0).infer_interval(this_interval,bound_intervals)
 
     def compute_interval(self,intervals):
-        return self.arg(0).interval(intervals)
+        return self.arg(0).compute_interval(intervals)
 
 
     def compute(self,bindings):

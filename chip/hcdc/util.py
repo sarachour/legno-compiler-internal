@@ -2,20 +2,13 @@ import chip.props as props
 import chip.units as units
 import numpy as np
 import os
+import util.util as glbl_util
 
-def equals(f1,f2):
-    return abs(f1-f2) <= 1e-5
+truncate = glbl_util.truncate
+equals = glbl_util.equals
 
 def datapath(filename):
     return "chip/hcdc/data/%s" % filename
-
-def truncate(f, n):
-    '''Truncates/pads a float f to n decimal places without rounding'''
-    s = '{}'.format(f)
-    if 'e' in s or 'E' in s:
-        return '{0:.{1}f}'.format(f, n)
-    i, p, d = s.partition('.')
-    return float('.'.join([i, (d+'0'*n)[:n]]))
 
 
 def make_ana_props(rng,lb,ub):

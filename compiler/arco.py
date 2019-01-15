@@ -323,10 +323,13 @@ def tac_integ(board,ast):
         yield node,"out"
 
 def validate_fragment(frag):
-    def test_inputs(inps):
+    def test_inputs(inps,connected=True):
          for inp in inps:
-            if frag.get_input_conn(inp) is None:
+            if frag.get_input_conn(inp) is None and connected:
                 raise Exception("\n%s\n<<input %s not connected>>" % \
+                                (frag.to_str(),inp))
+            elif not frag.get_input_conn(inp) is None and not connected:
+                raise Exception("\n%s\n<<input %s connected>>" % \
                                 (frag.to_str(),inp))
 
          return True
@@ -337,6 +340,9 @@ def validate_fragment(frag):
                test_inputs(['in0'])
            else:
                test_inputs(['in0','in1'])
+               test_inputs(['coeff'],connected=False)
+        elif frag.block.name == 'tile_dac':
+            test_inputs(['in'],connected=False)
         else:
             raise Exception("unimplemented block: %s" % frag.block.name)
 
@@ -349,6 +355,12 @@ def validate_fragment(frag):
 
     elif isinstance(frag,acirc.AInput):
         return
+
+    elif isinstance(frag,acirc.AJoin):
+        assert(len(list(frag.subnodes())) > 0)
+        for subn in frag.subnodes():
+            validate_fragment(subn)
+
     else:
         raise Exception("unimplemented:validate %s" % frag)
 
