@@ -56,6 +56,12 @@ class PhysicalModelStump:
       'bias': self.bias.to_json()
     }
 
+  def __repr__(self):
+    s = "delay: %s\n" % self.delay
+    s += "noise: %s\n" % self.noise
+    s += "bias: %s\n" % self.bias
+    return s
+
 class PhysicalModel:
 
   def __init__(self):
@@ -106,15 +112,20 @@ class PhysicalModel:
 
     return phys
 
-  def get_stump(self,freq):
+  def _get_index(self,freq):
     if freq < self._breakpoints[0]:
-      self.stump(self._breakpoints[0])
+      return 0
 
     for index,breakpt in enumerate(self._breakpoints):
       if freq >= breakpt:
-        return self.stump(breakpt)
+        return index
 
-    return self.stump(self._breakpoints[-1])
+    return len(self._breakpoints) - 1
+
+
+  def get_stump(self,freq):
+    return self._stumps[self._get_index(freq)]
+
 
   def set_to(self,other):
     assert(isinstance(other,PhysicalModel))
@@ -122,9 +133,57 @@ class PhysicalModel:
     self._stumps = other._stumps
     self._freeze = other._freeze
 
+  def noise(self,freq):
+    if len(self._stumps) == 0:
+      return nops.NZero()
+
+    last_stump = self._get_index(freq)
+    noise = []
+    for i in range(0,last_stump+1):
+      noise.append(self._stumps[i].noise)
+
+    return nops.mkadd(noise)
+
+
+  def bias(self,freq):
+    if len(self._stumps) == 0:
+      return nops.NZero()
+
+    last_stump = self._get_index(freq)
+    biases = []
+    for i in range(0,last_stump+1):
+      biases.append(self._stumps[i].bias)
+
+    return nops.mkadd(biases)
+
+  def delay(self,freq):
+    # delay in degrees. To compute delay in seconds,
+    # delay_deg/freq
+    if len(self._stumps) == 0:
+      return nops.NZero()
+
+    return self.get_stump(freq).delay
+
   @staticmethod
   def read(filename):
     with open(filename,'r') as fh:
       data = fh.read()
       obj = json.loads(data)
       return PhysicalModel.from_json(obj)
+
+  def __repr__(self):
+    last_brk = "-inf"
+    s = ""
+    for idx,brk in enumerate(self._breakpoints):
+      s += "{{ [%s,%s] Hz}}\n" % (last_brk,brk)
+      stump = self._stumps[idx]
+      s += str(stump)
+      s += "\n\n"
+      last_brk = brk
+
+    if len(self._breakpoints) > 0:
+      brk = "inf"
+      s += "{{ [%s,%s] Hz}}\n" % (last_brk,brk)
+      s += str(stump)
+
+    return s

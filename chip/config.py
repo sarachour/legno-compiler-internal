@@ -18,16 +18,27 @@ class Config:
         self._scfs = {}
         # hardware interval
         self._op_ranges= {}
-        # unscaled math interval
+        # (scaled) math interval
         self._intervals = {}
-        # unscaled bandwidth
+        # (scaled) bandwidth
         self._bandwidths = {}
+
+        self._delays = {}
+        self._gen_noise = {}
+        self._prop_noise = {}
+        self._biases = {}
 
     def dynamics(self,block,port):
       assert(not self._comp_mode is None)
       assert(not self._scale_mode is None)
       return block.get_dynamics(self._comp_mode,port, \
                                 scale_mode=self._scale_mode)
+
+    def physical(self,block,port,handle=None):
+      assert(not self._comp_mode is None)
+      assert(not self._scale_mode is None)
+      return block.physical(self._comp_mode,self._scale_mode,port)
+
 
     def props(self,block,port,handle=None):
       assert(not self._comp_mode is None)
@@ -44,7 +55,13 @@ class Config:
     def from_json(obj):
         cfg = Config()
         cfg._comp_mode = obj['compute-mode']
+        if isinstance(cfg._comp_mode, list):
+            cfg._comp_mode = tuple(cfg._comp_mode)
+
         cfg._scale_mode = obj['scale-mode']
+        if isinstance(cfg._scale_mode, list):
+            cfg._scale_mode = tuple(cfg._scale_mode)
+
         for dac,value in obj['dacs'].items():
           cfg._dacs[dac] = value
         for port,(name,kind_name) in obj['labels'].items():
@@ -171,6 +188,38 @@ class Config:
     def clear_intervals(self):
       self._intervals = {}
 
+    def generated_noise(self,port):
+      if not port in self._gen_noise:
+          return None
+      return self._gen_noise[port]
+
+
+    def all_propagated_noise(self):
+      nzs = {}
+      for port, nz in self._prop_noise.items():
+        nzs[port] = nz
+
+      return nzs
+
+    def propagated_noise(self,port):
+      if not port in self._prop_noise:
+          return None
+      return self._prop_noise[port]
+
+
+    def set_generated_noise(self,port,noise):
+      self._gen_noise[port] = noise
+
+
+    def set_propagated_noise(self,port,noise):
+      self._prop_noise[port] = noise
+
+    def set_bias(self,port,bias):
+      self._biases[port] = bias
+
+    def set_delay(self,port,delay):
+      self._delays[port] = delay
+
     def set_bandwidth(self,port,bandwidth,handle=None):
       self._make(self._bandwidths,port)
       assert(not bandwidth is None)
@@ -241,6 +290,19 @@ class Config:
           else:
             assert(not handle in bandwidths)
             bandwidths[handle] = bw
+
+      return bandwidths
+
+
+    def bandwidths(self,time_constant=1.0):
+      bandwidths = {}
+      for port,handles in self._bandwidths.items():
+        for handle,bw in handles.items():
+          if handle is None:
+            bandwidths[port] = bw.timescale(1.0/time_constant)
+          else:
+            assert(not handle in bandwidths)
+            bandwidths[handle] = bw.timescale(1.0/time_constant)
 
       return bandwidths
 

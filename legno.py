@@ -122,7 +122,7 @@ elif args.subparser_name == "skelter":
                    conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                   obj)
 
-                   score = skelter.execute(hdacv2_board,conc_circ)
+                   score = skelter.execute(conc_circ)
                    scores.append(score)
                    filenames.append(fname)
 

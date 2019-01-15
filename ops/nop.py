@@ -1,4 +1,5 @@
 from enum import Enum
+import ops.interval as interval
 
 class NOpType(Enum):
   SIG = "sig"
@@ -19,6 +20,10 @@ class NOp:
 
     def arg(self,i):
         return self._args[i]
+
+    def args(self):
+      for arg in self._args:
+        yield arg
 
     def to_json(self):
       args = list(map(lambda arg: arg.to_json(), \
@@ -49,6 +54,10 @@ class NOp:
       elif op == NOpType.ZERO:
         return NZero()
 
+    def compute(self,freqs,intervals):
+      raise Exception("not-implemented [compute]: %s" % self)
+
+
     @property
     def op(self):
         return self._op
@@ -67,6 +76,9 @@ class NFreq(NOp):
   def __repr__(self):
     return "freq(%s)" % (self._port)
 
+  def compute(self,freqs,intervals):
+    return interval.Interval.type_infer(0.0,freqs[self._port].bandwidth)
+
   def to_json(self):
     return {
       'op': self.op.value,
@@ -83,6 +95,14 @@ class NSig(NOp):
   def __init__(self,port):
     NOp.__init__(self,NOpType.SIG,[])
     self._port = port
+
+  def compute(self,freqs,intervals):
+    ival = intervals[self._port]
+    if ival.lower <= 0.0 and ival.upper >= 0.0:
+      return interval.Interval.type_infer(0.0,ival.bound)
+    else:
+      lower_bnd = min(abs(ival.lower),abs(ival.upper))
+      return interval.Interval.type_infer(lower_bnd,ival.bound)
 
   def __repr__(self):
     return "val(%s)" % (self._port)
@@ -108,6 +128,10 @@ class NConstRV(NOp):
     self._sigma = sigma
 
 
+  def compute(self,freqs,intervals):
+    return interval.Interval.type_infer(0.0,self._sigma)
+
+
   def __repr__(self):
     return "std(%s)" % self._sigma
 
@@ -131,6 +155,10 @@ class NZero(NOp):
   def __repr__(self):
     return "0"
 
+  def compute(self,freqs,intervals):
+    return interval.Interval.type_infer(0.0,0.0)
+
+
   @staticmethod
   def from_json(obj):
     return NZero()
@@ -151,6 +179,10 @@ class NConstVal(NOp):
       'op': self.op.value,
       'mu': self._mu
     }
+
+  def compute(self,freqs,intervals):
+    return interval.Interval.type_infer(self._mu,self._mu)
+
 
   @staticmethod
   def from_json(obj):
@@ -186,6 +218,13 @@ class NMult(NOp):
       else:
         yield arg
 
+  def compute(self,freqs,intervals):
+    result = interval.Interval.type_infer(1.0,1.0)
+    for arg in self.args():
+      result = result.mult(arg.compute(freqs,intervals))
+    return result
+
+
   @staticmethod
   def from_json(obj):
     args = []
@@ -211,6 +250,13 @@ class NAdd(NOp):
       assert(arg.op != NOpType.ADD)
 
     NOp.__init__(self,NOpType.ADD,args)
+
+  def compute(self,freqs,intervals):
+    result = interval.Interval.type_infer(0,0)
+    for arg in self.args():
+      result = result.add(arg.compute(freqs,intervals))
+
+    return result
 
   def terms(self):
     for arg in self._args:
