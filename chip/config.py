@@ -25,6 +25,7 @@ class Config:
 
         self._gen_delays = {}
         self._prop_delays = {}
+        self._mismatch_delays = {}
         self._gen_noise = {}
         self._prop_noise = {}
         self._gen_biases = {}
@@ -204,6 +205,14 @@ class Config:
       return bss
 
 
+    def propagated_delays(self):
+      delays = {}
+      for port,delay in self._prop_delays.items():
+        delays[port] = delay
+
+      return delays
+
+
     def propagated_noises(self):
       nzs = {}
       for port, nz in self._prop_noise.items():
@@ -233,10 +242,22 @@ class Config:
           return None
       return self._gen_biases[port]
 
+    def propagated_delay(self,port):
+      if not port in self._prop_delays:
+          return None
+      return self._prop_delays[port]
 
-    def set_generated_noise(self,port,noise):
-      self._gen_noise[port] = noise
 
+    def delay_mismatch(self,port):
+      if not port in self._mismatch_delays:
+          return None
+      return self._mismatch_delays[port]
+
+
+    def generated_delay(self,port):
+      if not port in self._gen_delays:
+          return None
+      return self._gen_delays[port]
 
     def set_propagated_noise(self,port,noise):
       self._prop_noise[port] = noise
@@ -244,6 +265,14 @@ class Config:
     def set_propagated_bias(self,port,bias):
       self._prop_biases[port] = bias
 
+    def set_delay_mismatch(self,port,delay):
+      self._mismatch_delays[port] = delay
+
+    def set_propagated_delay(self,port,delay):
+      self._prop_delays[port] = delay
+
+    def set_generated_noise(self,port,noise):
+      self._gen_noise[port] = noise
 
     def set_generated_bias(self,port,bias):
       self._gen_biases[port] = bias

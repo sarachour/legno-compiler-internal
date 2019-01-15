@@ -27,7 +27,7 @@ class PropBiasVisitor(Visitor):
         print("[warn] %s[%s].%s has no prop-bias" % \
               (sblk,sloc,sport))
 
-    print("bias out %s[%s].%s = %s" % \
+    print("bias in %s[%s].%s = %s" % \
           (block_name,loc,port,bias))
     config.set_propagated_bias(port,bias)
 
@@ -53,7 +53,7 @@ class PropBiasVisitor(Visitor):
 
     gen_bias = config.generated_bias(port)
     total_bias = prop_bias.interval.add(gen_bias)
-    print("nz out %s[%s].%s = %s" % (block.name,loc,port,total_bias))
+    print("bias out %s[%s].%s = %s" % (block.name,loc,port,total_bias))
     config.set_propagated_bias(port,total_bias)
 
 def compute(circ):

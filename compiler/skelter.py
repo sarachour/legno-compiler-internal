@@ -25,7 +25,7 @@ def execute(circ):
   skellib.prop_noise.compute(circ)
   skellib.prop_bias.compute(circ)
   skellib.delay_mismatch.compute(circ)
-  raise Exception("unimplemented")
+  raise Exception("todo: scoring")
 '''
   score = 0
   for block_name,loc,port,label in endpoints:

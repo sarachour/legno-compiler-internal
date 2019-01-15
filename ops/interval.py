@@ -49,6 +49,11 @@ class Interval:
             self.upper*v
         )
 
+    def nonoverlapping(self,i2):
+        diff1 = abs(i2.lower - self.lower)
+        diff2 = abs(i2.upper - self.upper)
+        return max(diff1,diff2)
+
     def add(self,i2):
          vals = [
             i2.lower+self.lower,
