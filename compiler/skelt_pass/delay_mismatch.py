@@ -47,11 +47,14 @@ class PropDelayVisitor(Visitor):
                            config.propagated_delays().items()))
     gen_delay = config.generated_delay(port)
     if len(pnz_dict) == 0:
+      print("prop-delay %s[%s].%s = %s" % (block_name,loc,port,gen_delay))
       config.set_propagated_delay(port,gen_delay)
     elif len(pnz_dict) > 0:
       propagate_delay = self.compute_propagate(list(pnz_dict.values()))
       mismatch_delay = self.compute_mismatch(list(pnz_dict.values()))
       total_delay = gen_delay.add(propagate_delay)
+      print("out prop-delay %s[%s].%s = %s" % (block_name,loc,port,total_delay))
+      print("out mismatch %s[%s].%s = %s" % (block_name,loc,port,mismatch_delay))
       config.set_propagated_delay(port,total_delay)
       config.set_delay_mismatch(port,mismatch_delay)
 
@@ -68,12 +71,14 @@ class PropDelayVisitor(Visitor):
       delay = circ.config(sblk,sloc).propagated_delay(sport)
       delays.append(delay)
 
-    print("%s[%s].%s = %s" % (block_name,loc,port,delays))
     if len(delays) > 0:
       mismatch_delay = self.compute_mismatch(delays)
       propagate_delay = self.compute_propagate(delays)
       config.set_propagated_delay(port,propagate_delay)
       config.set_delay_mismatch(port,mismatch_delay)
+      print("in prop-delay %s[%s].%s = %s" % (block_name,loc,port,\
+                                              propagate_delay))
+      print("in mismatch %s[%s].%s = %s" % (block_name,loc,port,mismatch_delay))
 
 
 def compute(circ):
