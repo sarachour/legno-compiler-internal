@@ -1,7 +1,7 @@
 import ops.op as op
 import numpy as np
 import ops.interval as interval
-from compiler.skelt_pass.common import Visitor
+from compiler.skelt_pass.visitor import Visitor
 
 
 class PropDelayVisitor(Visitor):
