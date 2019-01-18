@@ -9,19 +9,21 @@ import ops.nop as nops
 import itertools
 import chip.units as units
 
-def get_modes():
-    opts = [
-        [chipcmd.SignType.POS],
-        [chipcmd.SignType.POS],
-        [chipcmd.SignType.POS],
-        chipcmd.RangeType.options()
-    ]
-    blacklist = [
-        (None,None,None,chipcmd.RangeType.LOW)
-    ]
-    modes = list(util.apply_blacklist(itertools.product(*opts),
-                                      blacklist))
+def get_comp_modes():
+    comp_options = [chipcmd.SignType.options(),
+                    chipcmd.SignType.options(),
+                    chipcmd.SignType.options()]
+
+
+    modes = list(itertools.product(*comp_options))
     return modes
+
+def get_scale_modes():
+    blacklist = [
+        chipcmd.RangeType.LOW
+    ]
+    return list(util.apply_blacklist(chipcmd.RangeType.options(), \
+                                     blacklist))
 
 def blackbox_model(fanout):
     def config_phys_model(phys,rng):
@@ -30,41 +32,52 @@ def blackbox_model(fanout):
         elif rng == chipcmd.RangeType.HIGH:
             new_phys = PhysicalModel.read(util.datapath('fanout10x.bb'))
         else:
-            raise Exception("unknown physical model")
+            raise Exception("unknown physical model: %s" % rng)
 
         phys.set_to(new_phys)
 
-    modes = get_modes()
+    comp_modes = get_comp_modes()
+    scale_modes = get_scale_modes()
     print("[TODO]: fanout.blackbox")
-    for mode in modes:
-        _,_,_,rng = mode
-        config_phys_model(fanout.physical("*",mode,"out0"),rng)
-        config_phys_model(fanout.physical("*",mode,"out1"),rng)
-        config_phys_model(fanout.physical("*",mode,"out2"),rng)
+    for c_mode in comp_modes:
+        for rng in scale_modes:
+            config_phys_model(fanout.physical(c_mode,rng,"out0"),rng)
+            config_phys_model(fanout.physical(c_mode,rng,"out1"),rng)
+            config_phys_model(fanout.physical(c_mode,rng,"out2"),rng)
 
 def scale_model(fanout):
-    modes = get_modes()
-    fanout.set_scale_modes("*",modes)
-    for mode in modes:
-        inv0,inv1,inv2,rng = mode
-        fanout\
-            .set_coeff("*",mode,"out0",inv0.coeff()) \
-            .set_coeff("*",mode,"out1",inv1.coeff()) \
-            .set_coeff("*",mode,"out2",inv2.coeff())
-        fanout\
-            .set_props("*",mode,["out0","out1","out2","in"],
-                      util.make_ana_props(rng,
-                                          glb.ANALOG_MIN, \
-                                          glb.ANALOG_MAX))
+    comp_modes = get_comp_modes()
+    scale_modes = get_scale_modes()
+    for comp_mode in comp_modes:
+        fanout.set_scale_modes(comp_mode,scale_modes)
+        for rng in scale_modes:
+            fanout\
+                .set_coeff(comp_mode,rng,"out0",rng.coeff()) \
+                .set_coeff(comp_mode,rng,"out1",rng.coeff()) \
+                .set_coeff(comp_mode,rng,"out2",rng.coeff())
+            fanout\
+                .set_props(comp_mode,rng,["out0","out1","out2","in"],
+                        util.make_ana_props(rng,
+                                            glb.ANALOG_MIN, \
+                                            glb.ANALOG_MAX))
 
     fanout.check()
 
 
 block = Block('fanout',type=BlockType.COPIER) \
+.set_comp_modes(get_comp_modes()) \
 .add_outputs(props.CURRENT,["out1","out2","out0"]) \
-.add_inputs(props.CURRENT,["in"]) \
-.set_op("*","out0",ops.Var("in")) \
-.set_copy("*","out1","out0") \
-.set_copy("*","out2","out0")
+.add_inputs(props.CURRENT,["in"])
+
+do_sign = lambda mode: ops.Var("in") \
+          if mode == chipcmd.SignType.POS \
+          else ops.Mult(ops.Var("in"),ops.Const(-1))
+
+for mode in get_comp_modes():
+    sign0,sign1,sign2 = mode
+    block.set_op(mode,"out0",do_sign(sign0))
+    block.set_op(mode,"out1",do_sign(sign1))
+    block.set_op(mode,"out2",do_sign(sign2))
+
 blackbox_model(block)
 scale_model(block)

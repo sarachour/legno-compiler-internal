@@ -394,6 +394,15 @@ class Var(Op):
         Op.__init__(self,OpType.VAR,[])
         self._name = name
 
+    def coefficient(self):
+        return 1.0
+
+    def sum_terms(self):
+        return [self]
+
+    def prod_terms(self):
+        return [self]
+
     def __repr__(self):
         return "(%s %s)" % \
             (self._op.value,self._name)
@@ -446,6 +455,15 @@ class Const(Op):
         Op.__init__(self,OpType.CONST,[],tag=tag)
         self._value = value
 
+
+    def coefficient(self):
+        return self.value
+
+    def sum_terms(self):
+        return [self]
+
+    def prod_terms(self):
+        return []
 
     def compute(self,bindings):
         return self._value
@@ -531,6 +549,14 @@ class Mult(Op2):
         Op2.__init__(self,OpType.MULT,[arg1,arg2])
         pass
 
+    def coefficient(self):
+        return self.arg1.coefficient()*self.arg2.coefficient()
+
+    def prod_terms(self):
+        return self.arg1.prod_terms()+self.arg2.prod_terms()
+
+    def sum_terms(self):
+        return [self]
 
     def infer_bandwidth(self,intervals,bandwidths={}):
         return self.compute_bandwidth(bandwidths)
@@ -580,6 +606,15 @@ class Add(Op2):
     def __init__(self,arg1,arg2):
         Op.__init__(self,OpType.ADD,[arg1,arg2])
         pass
+
+    def coefficient(self):
+        return 1.0
+
+    def prod_terms(self):
+        return [self]
+
+    def sum_terms(self):
+        return self.arg1.sum_terms() + self.arg2.sum_terms()
 
     def compute_interval(self,bindings):
         is1 = self.arg1.compute_interval(bindings)

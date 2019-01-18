@@ -46,7 +46,7 @@ class AOp:
         return ctor(inputs)
 
     def label(self):
-        return AOp.TOSTR[self.op]
+        return self.op.value
 
     def tostr(self,delim='\n',indent='   ',prefix=''):
         argstr = ""
@@ -112,7 +112,7 @@ class AConst(AOp):
 
 
     def label(self):
-        return str("<#>")
+        return str("%.3e" % self._value)
 
 
 class AGain(AOp):
@@ -140,7 +140,7 @@ class AGain(AOp):
         return self._value
 
     def label(self):
-        return AOpType.TOSTR[self.op] + ":"+ str(self._value)
+        return self.op.value + " "+ str(self._value)
 
 class AProd(AOp):
 

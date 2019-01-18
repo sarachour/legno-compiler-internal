@@ -31,6 +31,11 @@ class RangeType(str,Enum):
     LOW = 'low'
 
     @staticmethod
+    def option_names():
+        for opt in RangeType.options():
+            yield opt.name
+
+    @staticmethod
     def options():
         yield RangeType.MED
         yield RangeType.LOW
@@ -76,11 +81,17 @@ class RangeType(str,Enum):
             raise Exception("unknown")
 
     def __repr__(self):
-        return self.abbrev()
+        return self.name
 
 class SignType(str,Enum):
     POS = 'pos'
     NEG = 'neg'
+
+    @staticmethod
+    def option_names():
+        for opt in SignType.options():
+            yield opt.name
+
 
     @staticmethod
     def options():

@@ -39,7 +39,9 @@ class Block:
         return d[comp_mode]
 
     def _make_scale_dict(self,comp_mode,scale_mode,d):
-        assert(comp_mode in self._comp_modes)
+        if not (comp_mode in self._comp_modes):
+            raise Exception("%s not in <%s>" % \
+                            (comp_mode,self._comp_modes))
         data = self._make_comp_dict(comp_mode,d)
 
         if not scale_mode in data:
@@ -197,8 +199,8 @@ class Block:
         return self._scale_modes[comp_mode]
 
     def set_comp_modes(self,modes):
-        self._comp_modes = modes
-        for mode in modes:
+        self._comp_modes = list(modes)
+        for mode in self._comp_modes:
             self._ops[mode] = {}
             self._signals[mode] = {}
             self._copies[mode] = {}
@@ -208,8 +210,12 @@ class Block:
         return self
 
     def set_scale_modes(self,comp_mode,modes):
-        self._scale_modes[comp_mode] = modes
-        for scale_mode in modes:
+        if not comp_mode in self._props:
+            raise Exception("not in comps <%s> : <%s>" % \
+                            (comp_mode,self._scale_modes))
+
+        self._scale_modes[comp_mode] = list(modes)
+        for scale_mode in self._scale_modes[comp_mode]:
             self._props[comp_mode][scale_mode] = {}
             self._coeffs[comp_mode][scale_mode] = {}
 

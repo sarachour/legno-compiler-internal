@@ -1,11 +1,19 @@
-# Chip
+# TODO
 
-1. there's no tile output 0.0.0.2.2
-2. mult and dac also have value ranges, support m and l there
-3. determine if ordering things has a significant impact
-4. implement recalibrate statements for integ, mults, dacs
-5. reduce maximum initial condition (1 is clearly not valid)
-6. get to bottom of saturationissue.
+1. move positive/negative config to arco.
+   - integ, fanout -> fanout is tricky because it's a copier. maybe have a special negate function that finds configuration for copier that negates signal, input for negated signal.
+   - remove sign completely: dac
+   - augment arco to handle fanouts
+   
+2. remove positive/negative from jaunt scale config for fanout/integ.
+4. Test spring, test vanderpohl
+5. implement reprissilator
+
+- Changes to note
+
+1. ic is scaled by output port
+2. constants with the scf tag are incorperated by Jaunt.
+3. Vanderpohl wasn't working at all.
 
 # Bugs 
 

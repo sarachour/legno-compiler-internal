@@ -2,6 +2,7 @@
 calibrate
 transform
 outputs
+*.grendel-list
 *.json
 *.png
 .#*.py

@@ -38,6 +38,8 @@ def apply_blacklist(options,blacklist):
 
             if match:
                 return True
+
+
         return False
 
     for opt in options:
