@@ -6,12 +6,12 @@ import numpy as np
 from util import paths
 from chip.conc import ConcCirc
 import json
-from chip.hcdc import board as hdacv2_board
+from chip.hcdc.hcdcv2_4 import board as hdacv2_board
 import matplotlib.pyplot as plt
 
 
 def plot_out(ph,script_file,out_data):
-  bmark,indices,scale_index, menv_name, hwenv_name = \
+  bmark,indices,scale_index, opt,menv_name, hwenv_name = \
                 ph.grendel_file_to_args(script_file)
 
 
@@ -23,6 +23,7 @@ def plot_out(ph,script_file,out_data):
   plt.legend()
   outfile = ph.plot(bmark,indices, \
                     scale_index, \
+                    opt,
                     menv_name, \
                     hwenv_name, \
                     tag='out')
@@ -32,7 +33,7 @@ def plot_out(ph,script_file,out_data):
   plt.clf()
 
 def plot_ref(ph,script_file,ref_data):
-  bmark,indices,scale_index, menv_name, hwenv_name = \
+  bmark,indices,scale_index, opt, menv_name, hwenv_name = \
                 ph.grendel_file_to_args(script_file)
 
   for var,series in ref_data.items():
@@ -43,6 +44,7 @@ def plot_ref(ph,script_file,ref_data):
                     scale_index, \
                     menv_name, \
                     hwenv_name, \
+                    opt, \
                     tag='ref')
 
 
@@ -51,7 +53,7 @@ def plot_ref(ph,script_file,ref_data):
 
 
 def plot_compare(ph,script_file,out_data,ref_data,circ):
-  bmark,indices,scale_index, menv_name, hwenv_name = \
+  bmark,indices,scale_index,opt, menv_name, hwenv_name = \
                 ph.grendel_file_to_args(script_file)
 
   for var,series in ref_data.items():
@@ -91,6 +93,7 @@ def plot_compare(ph,script_file,out_data,ref_data,circ):
   plt.legend()
   outfile = ph.plot(bmark,indices, \
                     scale_index, \
+                    opt,
                     menv_name, \
                     hwenv_name, \
                     tag='comp')
@@ -109,12 +112,12 @@ def execute(script_file):
   dirs = script_file.split("/")
   bmark_dir,bmark,outfile = dirs[2],dirs[3],dirs[-1]
   ph= paths.PathHandler(bmark_dir,bmark)
-  bmark,indices,scale_index, menv_name, hwenv_name = \
+  bmark,indices,scale_index,opt, menv_name, hwenv_name = \
                 ph.grendel_file_to_args(outfile)
 
 
   ref_file = ph.reference_waveform_file(bmark,menv_name)
-  circ_file = ph.conc_circ_file(bmark,indices,scale_index)
+  circ_file = ph.conc_circ_file(bmark,indices,scale_index,opt)
 
   ref = read_data(ref_file)
   circ = ConcCirc.from_json(hdacv2_board,
@@ -124,10 +127,10 @@ def execute(script_file):
   ref_data = {}
   for var,ref_values in ref.items():
     out_file = ph.measured_waveform_file(bmark,indices,
-                                        scale_index,
-                                        menv_name,
-                                        hwenv_name,
-                                        var)
+                                         scale_index,
+                                         opt,
+                                         menv_name,
+                                         hwenv_name, var)
     if ph.has_file(out_file):
       print(out_file)
       out = read_data(out_file)

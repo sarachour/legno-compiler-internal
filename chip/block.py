@@ -91,7 +91,6 @@ class Block:
 
     def get_dynamics(self,comp_mode,output,scale_mode=None):
         copy_data = self._get_comp_dict(comp_mode,self._copies)
-        coeff = 1.0
         if not scale_mode is None:
             coeff = self.coeff(comp_mode,scale_mode,output)
         else:
@@ -101,10 +100,18 @@ class Block:
         if output in copy_data:
             output = copy_data[output]
 
+        expr = op_data[output]
         if coeff == 1.0:
-            return op_data[output]
+            return expr
         else:
-            return ops.Mult(ops.Const(coeff),op_data[output])
+            if expr.op == ops.OpType.INTEG:
+                ic_coeff = self.coeff(comp_mode,scale_mode,"%s:ic" % output)
+                return ops.Integ(\
+                                 ops.Mult(ops.Const(coeff,tag='scf'),expr.deriv),\
+                                 ops.Mult(ops.Const(ic_coeff,tag='scf'),expr.init_cond),\
+                                 expr.handle)
+            else:
+                return ops.Mult(ops.Const(coeff,tag='scf'),expr)
 
     def physical(self,comp_mode,scale_mode,output):
         assert(output in self._outputs)

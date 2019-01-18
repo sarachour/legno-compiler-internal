@@ -65,6 +65,7 @@ class Interval:
          ub = max(vals)
          return Interval.type_infer(lb,ub)
 
+
     def mult(self,i2):
         vals = [
             i2.lower*self.lower,

@@ -8,7 +8,7 @@ import itertools
 
 def get_modes():
    opts = [
-      chipcmd.SignType.options(),
+      [chipcmd.SignType.POS],
       chipcmd.RangeType.options()
    ]
    blacklist = [

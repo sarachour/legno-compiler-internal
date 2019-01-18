@@ -36,35 +36,30 @@ class PathHandler:
         self.REF_WAVEFORM_FILE_DIR = self.BMARK_DIR + "/ref-waveform"
 
 
-    def interval_file(self,bmark,indices,scale_index):
+
+    def conc_circ_file(self,bmark,indices,scale_index,opt):
       index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.CONC_CIRC_DIR+ "/%s_%s_s%s.ivals" % \
-        (self._bmark,index_str,scale_index)
+      return self.CONC_CIRC_DIR+ "/%s_%s_s%s_%s.circ" % \
+        (self._bmark,index_str,scale_index,opt)
 
 
-    def conc_circ_file(self,bmark,indices,scale_index):
+    def conc_graph_file(self,bmark,indices,scale_index,opt):
       index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.CONC_CIRC_DIR+ "/%s_%s_s%s.circ" % \
-        (self._bmark,index_str,scale_index)
+      return self.CONC_GRAPH_DIR+ "/%s_%s_s%s_%s.dot" % \
+        (self._bmark,index_str,scale_index,opt)
 
 
-    def conc_graph_file(self,bmark,indices,scale_index):
+    def plot(self,bmark,indices,scale_index,opt,menv_name,henv_name,tag):
       index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.CONC_GRAPH_DIR+ "/%s_%s_s%s.dot" % \
-        (self._bmark,index_str,scale_index)
-
-
-    def plot(self,bmark,indices,scale_index,menv_name,henv_name,tag):
-      index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.PLOT_DIR+ "/%s_%s_s%s_%s_%s_%s.png" % \
-        (self._bmark,index_str,scale_index,menv_name,henv_name,\
+      return self.PLOT_DIR+ "/%s_%s_s%s_%s_%s_%s_%s.png" % \
+        (self._bmark,index_str,scale_index,opt,menv_name,henv_name,\
          tag)
 
 
-    def grendel_file(self,bmark,indices,scale_index,menv_name,henv_name):
+    def grendel_file(self,bmark,indices,scale_index,opt,menv_name,henv_name):
       index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.GRENDEL_FILE_DIR+ "/%s_%s_s%s_%s_%s.grendel" % \
-        (self._bmark,index_str,scale_index,menv_name,henv_name)
+      return self.GRENDEL_FILE_DIR+ "/%s_%s_s%s_%s_%s_%s.grendel" % \
+        (self._bmark,index_str,scale_index,opt,menv_name,henv_name)
 
 
     def reference_waveform_file(self,bmark,menv_name):
@@ -75,11 +70,11 @@ class PathHandler:
       return self.MEAS_WAVEFORM_FILE_DIR
 
 
-    def measured_waveform_file(self,bmark,indices,scale_index,\
+    def measured_waveform_file(self,bmark,indices,scale_index,opt,\
                                menv_name,hwenv_name,variable):
       index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.MEAS_WAVEFORM_FILE_DIR+ "/%s_%s_s%s_%s_%s_%s.json" % \
-        (self._bmark,index_str,scale_index,menv_name,hwenv_name,variable)
+      return self.MEAS_WAVEFORM_FILE_DIR+ "/%s_%s_s%s_%s_%s_%s_%s.json" % \
+        (self._bmark,index_str,scale_index,opt,menv_name,hwenv_name,variable)
 
 
     def measured_waveform_files(self,bmark,indices,scale_index,\
@@ -99,33 +94,36 @@ class PathHandler:
       basename = name.split(".json")[0]
       args = basename.split("_")
       bmark = args[0]
-      indices = list(map(lambda token: int(token), args[1:-4]))
-      scale_index = int(args[-4].split('s')[1])
+      indices = list(map(lambda token: int(token), args[1:-5]))
+      scale_index = int(args[-5].split('s')[1])
+      opt = args[-4]
       menv_name = args[-3]
       hwenv_name = args[-2]
       var_name = args[-1]
 
-      return bmark,indices,scale_index,menv_name,hwenv_name,var_name
+      return bmark,indices,scale_index,opt,menv_name,hwenv_name,var_name
 
 
     def grendel_file_to_args(self,name):
       basename = name.split(".grendel")[0]
       args = basename.split("_")
       bmark = args[0]
-      indices = list(map(lambda token: int(token), args[1:-3]))
-      scale_index = int(args[-3].split('s')[1])
+      indices = list(map(lambda token: int(token), args[1:-4]))
+      scale_index = int(args[-4].split('s')[1])
+      opt = args[-3]
       menv_name = args[-2]
       hwenv_name = args[-1]
-      return bmark,indices,scale_index,menv_name,hwenv_name
+      return bmark,indices,scale_index,opt,menv_name,hwenv_name
 
 
     def conc_circ_to_args(self,name):
       basename = name.split(".circ")[0]
       args = basename.split("_")
       bmark = args[0]
-      indices = list(map(lambda token: int(token), args[1:-1]))
-      scale_index = int(args[-1].split('s')[1])
-      return bmark,indices,scale_index
+      indices = list(map(lambda token: int(token), args[1:-2]))
+      scale_index = int(args[-2].split('s')[1])
+      opt = args[-1]
+      return bmark,indices,scale_index,opt
 
 
     def abs_circ_to_args(self,name):

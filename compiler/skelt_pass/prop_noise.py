@@ -46,6 +46,8 @@ class PropNoiseVisitor(Visitor):
     if expr.op == op.OpType.INTEG:
       prop_noise = expr.deriv.compute_interval(pnz_dict)
     else:
+      print(pnz_dict)
+      print(expr)
       prop_noise = expr.compute_interval(pnz_dict)
 
     gen_noise = config.generated_noise(port)

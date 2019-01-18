@@ -8,8 +8,9 @@ def compute_max_mismatch(circ):
   for blkname,loc,config in circ.instances():
     blk = circ.board.block(blkname)
     for port in blk.inputs + blk.outputs:
-      mismatch = max(config.delay_mismatches().values())
-      max_mismatch = max(mismatch,max_mismatch)
+      mismatches = config.delay_mismatches().values()
+      if len(mismatches) > 0:
+        max_mismatch = max(max_mismatch,max(mismatches))
 
   return max_mismatch
 
@@ -40,6 +41,7 @@ def execute(circ):
   max_mismatch = compute_max_mismatch(circ)
   print("mismatch: %s" % max_mismatch)
 
+  # mismatch in seconds
   score += -max_mismatch*1e4
   for handle,block_name,loc in circ.board.handles():
       if circ.in_use(block_name,loc):

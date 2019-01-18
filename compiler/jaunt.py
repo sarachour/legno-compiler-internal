@@ -283,7 +283,10 @@ def bpgen_scaled_digital_constraint(jenv,scale_expr,math_rng,values,quantize=1):
 def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
     config = circ.config(block.name,loc)
     if expr.op == ops.OpType.CONST:
-        return jop.JConst(1.0)
+        if expr.tag == 'scf':
+            return jop.JConst(expr.value)
+        else:
+            return jop.JConst(1.0)
 
     elif expr.op == ops.OpType.VAR:
         scvar = jenv.get_scvar(block.name,loc,expr.name)
@@ -337,14 +340,12 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
 def bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr):
   scexpr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,out,expr)
   scfvar = jop.JVar(jenv.get_scvar(block.name,loc,out))
-  # coefficient
-  coeff = circ.config(block.name,loc).coeff(block,out)
-  jenv.eq(scfvar,jop.JMult(jop.JConst(coeff), scexpr))
+  jenv.eq(scfvar,scexpr)
 
 def bp_generate_problem(jenv,circ,quantize_signals=5):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
-        for out,expr in block.dynamics(config.comp_mode):
+        for out,expr in block.dynamics(config.comp_mode,config.scale_mode):
             bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr)
 
         for port in block.outputs + block.inputs:
@@ -570,4 +571,4 @@ def scale(prog,circ,noise_analysis=False):
             else:
                 upd_circ = sp_update_circuit(jenv,prog,orig_circ,
                                              sln['freevariables'])
-                yield upd_circ
+                yield opt,upd_circ

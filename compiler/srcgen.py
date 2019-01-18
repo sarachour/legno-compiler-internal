@@ -336,7 +336,7 @@ def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename):
   gren.add(parse('micro_teardown_chip'))
 
 
-  circ_bmark,circ_indices,circ_scale_index,_,_ = \
+  circ_bmark,circ_indices,circ_scale_index,circ_opt,_,_ = \
                     path_handler.grendel_file_to_args(filename)
 
 
@@ -348,6 +348,7 @@ def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename):
     filename = path_handler.measured_waveform_file(circ_bmark, \
                                                    circ_indices, \
                                                    circ_scale_index, \
+                                                   circ_opt,
                                                    menv.name, \
                                                    hwenv.name, \
                                                    info['label'])

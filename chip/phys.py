@@ -133,28 +133,34 @@ class PhysicalModel:
     self._stumps = other._stumps
     self._freeze = other._freeze
 
+
+  def get_stumps(self,freq):
+    brks = self._breakpoints
+    yield (0,min(brks[0],freq)),self._stumps[0]
+
+    for idx,fmin in enumerate(brks[:-2]):
+      fmax = brks[idx+1]
+      if freq >= fmin:
+        yield (fmin,min(fmax,freq)),self._stumps[idx]
+
+    if freq > brks[-1]:
+      yield (brks[-1],freq),self._stumps[-1]
+
   def noise(self,freq):
     if len(self._stumps) == 0:
-      return nops.NZero()
+      yield (0,freq),nops.NZero()
+      return
 
-    last_stump = self._get_index(freq)
-    noise = []
-    for i in range(0,last_stump+1):
-      noise.append(self._stumps[i].noise)
-
-    return nops.mkadd(noise)
-
+    for (fmin,fmax),stump in self.get_stumps(freq):
+      yield (fmin,fmax),stump.noise
 
   def bias(self,freq):
     if len(self._stumps) == 0:
-      return nops.NZero()
+      yield (0,freq),nops.NZero()
+      return
 
-    last_stump = self._get_index(freq)
-    biases = []
-    for i in range(0,last_stump+1):
-      biases.append(self._stumps[i].bias)
-
-    return nops.mkadd(biases)
+    for (fmin,fmax),stump in self.get_stumps(freq):
+      yield (fmin,fmax),stump.bias
 
   def delay(self,freq):
     # delay in degrees. To compute delay in seconds,

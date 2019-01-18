@@ -1,5 +1,5 @@
 from lang.prog import MathProg
-from ops import op
+from ops import op, opparse
 '''
 def benchmark_smmrxn():
     prob = MathProg("smmrxn")
@@ -61,13 +61,68 @@ def benchmark_bmmrxn():
     return prob
 '''
 
+def parse(expr,ic, handle,params):
+    deriv = opparse.parse(expr.format(**params))
+    const = params[ic]
+    return op.Integ(deriv,op.Const(const),handle=handle)
+
 def benchmark_p53stoch():
     raise Exception("not implemented")
 
 
 def benchmark_reprissilator():
-    raise Exception("not implemented")
+    LacLm_ic = 0.5
+    clm_ic = 0.25
+    TetRm_ic = 0.12
 
+    kd_mrna = 0.15051499783
+    a0_tr = 0.0005
+    prob = MathProg("repri")
+
+    '''
+    LacLm_dt = op.Op.parse("((%f + (TRLacLp)) - (%f*(LacLm)))", % (a0_tr, kd_mrna))
+    clm_dt = op.Op.parse("((%f + (TRclp)) - (%f*(clm)))", % (a0_tr, kd_mrna))
+    TetRm_dt = op.Op.parse("((%f + (TRTetRp)) - (%f*(TetRm)))", % (a0_tr, kd_mrna))
+
+    prob.bind("LacLm",op.Integ(LacLm_dt,LAcLm_ic))
+    prob.bind("clm",op.Integ(clm_dt,clm_ic))
+    prob.bind("TetRm",op.Integ(TetRm_dt,TetRm_ic))
+
+    LacLp_ic = 60
+    clp_ic = 20
+    TetRp_ic = 40
+
+    k_tl = 3.01029995664
+    kd_prot = 0.03010299956
+    LacLp_dt = op.Op.parse("((%f*(LacLm)) - (%f*(LacLp)))" % (k_tl, kd_prot))
+    clp_dt = op.Op.parse("((%f*(clm)) - (%f*(clp)))" % (k_tl, kd_prot))
+    TetRp_dt = op.Op.parse("((%f*(TetRm)) - (%f*(TetRp)))" % (k_tl, kd_prot))
+
+    prob.bind("LacLp",op.Integ(LacLp_dt,LAcLp_ic))
+    prob.bind("clp",op.Integ(clp_dt,clp_ic))
+    prob.bind("TetRp",op.Integ(TetRp_dt,TetRp_ic))
+
+    n = 2
+    a_tr  = 0.4995
+    # K = Kd**2
+    K = 20
+    Kmp = math.sqrt(K)
+
+    TRTetR_ic = a_tr
+    # kf*(a_tr-*TetRp)*TetRp^2 - k_d*ITetRp
+    # 2 TetRp + Act -> INH_TetRp, INH_TetRp + ACT_TetRp = a_tr
+    # Act(0) = a_tr, Act' = k_d*(a_tr-Act) - k_f*Act*TetRp^2
+    #------------------------------
+    ACT_TetRp_dt = op.Op.parse("((%f)*(%f-ACTTetRp))-(%f*(ACTTetRp*(TetRp*TetRp)))" * (kf,a_tr,kd))
+    ACT_clp_dt = op.Op.parse("((%f)*(%f-ACTclp))-(%f*(ACTclp*(clp*clp)))" * (kf,a_tr,kd))
+    ACT_LacLp_dt = op.Op.parse("((%f)*(%f-ACTLacLp))-(%f*(ACTLacLp*(LacLp*LacLp)))" * (kf,a_tr,kd))
+
+    prob.bind("ACTTetRp", op.Integ(ACT_TetRp_dt,a_tr))
+    prob.bind("ACTclp", op.Integ(ACT_clp_dt,a_tr))
+    prob.bind("ACTLacLp", op.Integ(ACT_LacLp_dt,a_tr))
+    raise Exception("not implemented")
+    '''
+    return prob
 
 def benchmark_spring():
     prob = MathProg("spring")
@@ -84,30 +139,8 @@ def benchmark_spring():
     prob.set_interval("Y",-10,10)
     prob.set_interval("y",-10,10)
     prob.set_interval("dy1",-10,10)
-    # each state variable is bandlimited.
-    # given |x(t)| <= A
-    # Bernstein's inequality: max(dx/dt) < 2*pi*f_0*A
-    # 
-    # where X(f) = 0 for all f > f_0
-    # compute fmin and fmax for each signal.
     prob.compile()
     return prob
-
-'''
-def benchmark_decay():
-    prob = MathProg("decay")
-    x = op.Integ(
-        op.Mult(op.Var("x"),op.Const(-0.05)), \
-        op.Const(5), \
-        ':x')
-    prob.bind("x",x)
-    prob.bind("X", op.Emit(op.Var("x")))
-    prob.set_interval("x",0,5)
-    prob.set_interval("X",0,5)
-
-    prob.compile()
-    return prob
-'''
 
 def benchmark_vanderpol():
     # y'' - u(1-y^2)*y'+y = 0
@@ -115,38 +148,20 @@ def benchmark_vanderpol():
     # y1' = y2
     # y2' = u*(1-y1*y1)*y2 - y1
     prob = MathProg("vanderpol")
-    mu = 1000
-    y1_ic = 2
-    y2_ic = 0
-    dy1 = op.Var("y2")
-    dy2 = op.Add(
-        op.Mult(
-            op.Mult(
-                op.Const(-mu),
-                op.Var("y2")
-            ),
-            op.Add(
-                op.Const(-1),
-                op.Mult(op.Var('y1'),
-                        op.Var('y1'))
-            )
-        ),
-        op.Mult(
-            op.Const(-1),
-            op.Var('y1')
-        )
-    )
-
-    prob.bind("y1",
-              op.Integ(dy1, op.Const(y1_ic),
-                       ":u"))
-    prob.bind("y2",
-              op.Integ(dy2, op.Const(y2_ic),
-                       ":v"))
-    prob.set_interval("y1",0,5)
-    prob.set_interval("y2",0,5)
-    prob.bind("Y", op.Emit(op.Var("y1")))
-
+    params = {
+        'mu': 5.0,
+        'Y0': 0.5,
+        'X0': 0.0,
+        'time': 100
+    }
+    Y = parse('(Y*{mu}*(1.0-X*X) - X)','Y0',':v',params)
+    X = parse('Y','X0',':u',params)
+    prob.bind("X",X)
+    prob.bind("Y",Y)
+    prob.bind("y",op.Emit(op.Var("Y")))
+    prob.set_interval("X",-3,3)
+    prob.set_interval("Y",-9,9)
+    prob.set_interval("y",-9,9)
     prob.compile()
     return prob
 

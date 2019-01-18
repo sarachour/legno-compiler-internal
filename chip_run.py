@@ -51,4 +51,4 @@ else:
                 continue
 
             script_file = line.strip()
-            execute_script(script_file)
+            execute_script(args.ip,script_file)

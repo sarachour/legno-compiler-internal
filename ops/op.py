@@ -21,14 +21,19 @@ class OpType(Enum):
 
 class Op:
 
-    def __init__(self,op,args):
+    def __init__(self,op,args,tag=None):
         for arg in args:
             assert(isinstance(arg,Op))
         self._args = args
         self._op = op
+        self._tag = tag
         self._is_associative = True \
                                if op in [OpType.MULT, OpType.ADD] \
                                   else False
+
+    @property
+    def tag(self):
+        return self._tag
 
     @property
     def op(self):
@@ -260,7 +265,11 @@ class Integ(Op2):
         istvar = intervals[self._handle]
         ideriv = self.deriv.compute_interval(intervals)
         icond = self.init_cond.compute_interval(intervals)
-        assert(istvar.contains(icond.interval))
+        print(icond,istvar)
+        if not (istvar.contains(icond.interval)):
+            raise Exception("stvar does not contain ic: stvar=%s, ic=%s, expr=%s" % \
+                            (istvar,icond,self))
+
         icomb = icond.merge(ideriv, istvar)
         icomb.bind(self.deriv_handle, ideriv.interval)
         icomb.bind(self.ic_handle, icond.interval)
@@ -289,8 +298,8 @@ class Integ(Op2):
         # where X(f) = 0 for all f > f_0
 
         bw_stvar = bandwidths[self._handle]
-        bw_deriv = self.deriv.bandwidth(bandwidths)
-        bw_init_cond = self.init_cond.bandwidth(bandwidths)
+        bw_deriv = self.deriv.compute_bandwidth(bandwidths)
+        bw_init_cond = self.init_cond.compute_bandwidth(bandwidths)
         bwcoll = bw_deriv.merge(bw_init_cond,bw_stvar)
         bwcoll.bind(self.deriv_handle, bw_deriv.bandwidth)
         bwcoll.bind(self.ic_handle, bw_init_cond.bandwidth)
@@ -433,8 +442,8 @@ class Var(Op):
 
 class Const(Op):
 
-    def __init__(self,value):
-        Op.__init__(self,OpType.CONST,[])
+    def __init__(self,value,tag=None):
+        Op.__init__(self,OpType.CONST,[],tag=tag)
         self._value = value
 
 

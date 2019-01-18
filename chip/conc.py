@@ -256,7 +256,7 @@ class ConcCirc:
             for port,math_label,kind in cfg.labels():
                 kind = kind.value
                 scf = undef_to_one(cfg.scf(port))
-                label = "%s %s*%.3f t:%.3f" % (kind,math_label,scf,self.tau)
+                label = "%s %s*%.3e t:%.3e" % (kind,math_label,scf,self.tau)
                 st = "%s [label=\"%s\"]" % (labelfn(),label)
                 _,portidx = from_id[(blk_name,blk_loc,port)]
                 q(st)
@@ -266,7 +266,7 @@ class ConcCirc:
 
             for port,value in cfg.values():
                 scf = undef_to_one(cfg.scf(port))
-                label = "%.3f*%.3f" % (value,scf)
+                label = "%.3f*%.3e" % (value,scf)
                 st = "%s [label=\"%s\"]" % (valuefn(),label)
                 q(st)
                 _,portidx = from_id[(blk_name,blk_loc,port)]

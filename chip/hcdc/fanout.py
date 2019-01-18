@@ -11,9 +11,9 @@ import chip.units as units
 
 def get_modes():
     opts = [
-        chipcmd.SignType.options(),
-        chipcmd.SignType.options(),
-        chipcmd.SignType.options(),
+        [chipcmd.SignType.POS],
+        [chipcmd.SignType.POS],
+        [chipcmd.SignType.POS],
         chipcmd.RangeType.options()
     ]
     blacklist = [

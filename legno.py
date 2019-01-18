@@ -117,8 +117,6 @@ elif args.subparser_name == "skelter":
                print('<<<< %s >>>>' % fname)
                with open("%s/%s" % (dirname,fname),'r') as fh:
                    obj = json.loads(fh.read())
-                   circ_bmark,circ_indices,circ_scale_index = \
-                    path_handler.conc_circ_to_args(fname)
                    conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                   obj)
 
@@ -145,18 +143,20 @@ elif args.subparser_name == "skelter":
         for ind in sorted_subinds:
             score = scores[ind]
             conc_filename = filenames[ind]
-            circ_bmark,circ_indices,circ_scale_index = \
+            circ_bmark,circ_indices,circ_scale_index,opt = \
                     path_handler.conc_circ_to_args(conc_filename)
             gren_filename = path_handler.grendel_file(circ_bmark, \
                                                       circ_indices, \
                                                       circ_scale_index, \
+                                                      opt, \
                                                       menv,
                                                       hwenv)
             print(gren_filename,score)
             assert(path_handler.has_file(gren_filename))
             files.append((gren_filename,score))
 
-        with open("grendel_scripts.txt",'w') as fh:
+        script_file = "run_%s.grendel-list" % args.benchmark
+        with open(script_file,'w') as fh:
             for filename,score in files:
                 fh.write("# %f\n" % score)
                 fh.write("%s\n" % filename)
@@ -176,25 +176,22 @@ elif args.subparser_name == "jaunt":
                     conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                obj)
                     n_scaled = 0
-                    for scale_circ in jaunt.scale(prog,
+                    for idx,(opt,scale_circ) in enumerate(jaunt.scale(prog,
                                                   conc_circ, \
-                                                  noise_analysis=args.noise):
+                                                  noise_analysis=args.noise)):
 
                         filename = path_handler.conc_circ_file(circ_bmark,
                                                                circ_indices,
-                                                               n_scaled)
+                                                               idx,
+                                                               opt)
                         scale_circ.write_circuit(filename)
-                        filename = path_handler.interval_file(circ_bmark,
-                                                              circ_indices,
-                                                              n_scaled)
 
                         filename = path_handler.conc_graph_file(circ_bmark,
                                                                 circ_indices,
-                                                                n_scaled)
+                                                                n_scaled,
+                                                                opt)
                         scale_circ.write_graph(filename,write_png=True)
-                        n_scaled += 1
-                        #input()
-                        if n_scaled >= args.scale_circuits:
+                        if idx >= args.scale_circuits:
                             break
 
 elif args.subparser_name == "execprog":
@@ -213,11 +210,12 @@ elif args.subparser_name == "srcgen":
            if fname.endswith('.circ'):
                print('<<<< %s >>>>' % fname)
                with open("%s/%s" % (dirname,fname),'r') as fh:
-                   circ_bmark,circ_indices,circ_scale_index = \
+                   circ_bmark,circ_indices,circ_scale_index,circ_opt = \
                     path_handler.conc_circ_to_args(fname)
                    filename = path_handler.grendel_file(circ_bmark, \
                                                         circ_indices, \
                                                         circ_scale_index, \
+                                                        circ_opt,
                                                         menv.name,
                                                         hwenv.name)
 

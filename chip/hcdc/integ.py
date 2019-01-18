@@ -10,7 +10,7 @@ import itertools
 
 def get_modes():
   opts = [
-    chipcmd.SignType.options(),
+    [chipcmd.SignType.POS],
     chipcmd.RangeType.options(),
     chipcmd.RangeType.options()
   ]
@@ -66,6 +66,7 @@ def scale_model(integ):
                                                    glb.ANALOG_MIN,
                                                    glb.ANALOG_MAX))
     integ.set_coeff("*",mode,"out",scf)
+    integ.set_coeff("*",mode,"out:ic",outrng.coeff())
 
 
 block = Block('integrator') \
