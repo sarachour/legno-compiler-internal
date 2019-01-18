@@ -32,10 +32,46 @@ class AOp:
     def input(self,v):
         return self._inputs[v]
 
+    def _xform_inputs(self,inputs,rules,n_rules):
+        if len(inputs) == 0:
+            yield n_rules,[]
+            return
+
+        inp = inputs[0]
+        for n_left,new_inp in inp.xform(rules,n_rules):
+            if len(inputs) > 1:
+                for rec_n_left, rec_new_inps in \
+                    self._xform_inputs(inputs[1:],
+                                       rules,
+                                       n_left):
+
+                    yield rec_n_left,[new_inp]+rec_new_inps
+
+            else:
+                yield n_left,[new_inp]
+
+    def xform(self,rules,n_rules):
+        nodes = []
+        for n_rules_left, new_inps in \
+            self._xform_inputs(self.inputs,rules,n_rules):
+            this_node = self.make(new_inps)
+            if not str(this_node) in nodes:
+                yield n_rules,this_node
+                nodes.append(str(this_node))
+
+            if n_rules > 0:
+                for rule in rules:
+                    for new_node in rule.apply(this_node):
+                        if not str(new_node) in nodes:
+                            yield n_rules-1,new_node
+                            nodes.append(str(new_node))
+
     @property
     def op(self):
         return self._op
 
+    def hash(self):
+        return hash(str(self))
     def vars(self):
         vars = []
         for inp in self.inputs:
@@ -80,12 +116,17 @@ class AExtVar(AOp):
 
 class AVar(AOp):
 
-    def __init__(self,var):
+    def __init__(self,var,coeff=1.0):
         AOp.__init__(self,AOpType.VAR,[])
         self._var = var
+        self._coeff = coeff
 
     def make(self,inputs):
-        return AVar(self._var)
+        return AVar(self._var,self._coeff)
+
+    @property
+    def coefficient(self):
+        return self._coeff
 
     @property
     def name(self):

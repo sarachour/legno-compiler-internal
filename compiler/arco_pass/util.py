@@ -1,6 +1,7 @@
 import chip.props as prop
 import itertools
 import chip.abs as acirc
+import random
 
 def enumerate_tree(block,n,max_blocks=None,
                    permute_input=False,prop=prop.CURRENT):

@@ -31,57 +31,45 @@ class Rule:
             yield self.apply_args(ast,args)
 
 
+class RNegateFanout(Rule):
 
-class RReplicateExpr(Rule):
+    def __init__(self,board):
+        Rule.__init__(self,"negate_fanout")
+        coeffs = []
+        block = board.block('fanout')
+        for mode in block.comp_modes:
+            for _,expr in block.dynamics(mode):
+                coeffs.append(expr.coefficient())
 
-    def __init__(self):
-        Rule.__init__(self,"double_expr")
-
-    def apply_args(self,ast,args):
-        return ASum([ast]*args)
+        self._opts = set(coeffs)
 
     def generate_args(self,ast):
-        if ast.op == AOp.VAR or ast.op == AOp.SUM:
-            yield 2
-            yield 3
+        if ast.op == AOpType.CPROD and \
+           ast.value in self._opts:
+            if ast.input.op == AOpType.VAR:
+                yield 1
+            elif ast.input.op == AOpType.VPROD:
+                for idx,inp in enumerate(ast.input.inputs):
+                    if inp.op == AOpType.VAR:
+                        yield idx
 
-class RSumGain(Rule):
+    def apply_args(self,ast,term_idx):
+        if ast.input.op == AOpType.VAR:
+            return AVar(ast.input.name, ast.value)
 
-    def __init__(self):
-        Rule.__init__(self,"sum-gain")
-
-    def group_alike(self,expr):
-        if expr.op == AOp.CPROD:
-            return expr.value,expr.input
-        else:
-            return 1.0,expr
-
-    def apply_args(self,ast,group_expr):
-        inputs = []
-        for inp in ast.inputs:
-            for const_val,expr,matches in self.group_alike(inp):
-                if expr == group_expr:
-                    inputs.append(AGain(const_val,Sum([expr]*len(matches))))
+        if ast.input.op == AOpType.VPROD:
+            new_args = []
+            for idx,inp in enumerate(ast.input.inputs):
+                if idx == term_idx:
+                    new_args.append(AVar(inp.name,ast.value))
                 else:
-                    inputs.append(inp)
+                    new_args.append(inp)
+            return AProd(new_args)
 
-        return Sum(inputs)
 
-    def generate_args(self,ast):
-        if ast.op != AOp.SUM:
-            return
+        raise Exception("unhandled: %s" % ast)
 
-        groups = list(filter(lambda group: len(group[1]) > 1,
-                        self.group_by(self.group_alike,ast.inputs)))
-
-        if len(groups) == 0:
-            return
-
-        for (_,expr),_ in groups:
-            yield expr
-
-def get_rules():
+def get_rules(board):
     rules = []
-    #rules.append(RSumGain())
-    #rules.append(RReplicateExpr())
+    rules.append(RNegateFanout(board))
     return rules

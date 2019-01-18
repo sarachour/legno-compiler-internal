@@ -77,6 +77,7 @@ def compute(circ):
     intervals = config.intervals()
     for output in block.outputs:
       print("%s[%s].%s" % (blk_name,loc,config))
+      print(blk_name,output)
       phys = config.physical(block,output)
       freq = freqs[output].bandwidth
       delay = compute_delay(phys,output,freqs,intervals)

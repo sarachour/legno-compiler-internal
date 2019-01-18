@@ -402,7 +402,7 @@ class Config:
 
     def to_str(self,delim="\n"):
         s = ""
-        s += "comp-mode: %s" % self._comp_mode
+        s += "comp-mode: %s" % str(self._comp_mode)
         s += delim
         s += "scale-mode: %s" % str(self._scale_mode)
         s += delim

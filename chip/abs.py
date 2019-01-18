@@ -158,13 +158,19 @@ class ANode:
 
 class AInput(ANode):
 
-    def __init__(self,name):
+    def __init__(self,name,coeff=1.0):
         ANode.__init__(self)
         self._name = name
         self._source = None
+        self._coeff = coeff
 
     def set_source(self,node,output):
         self._source = (node,output)
+
+    @property
+    def coefficient(self):
+        return self._coeff
+
 
     @property
     def label(self):
@@ -182,7 +188,7 @@ class AInput(ANode):
             return "%d.%s" % (self._id,self._name)
 
     def _copy(self,engine):
-        node = AInput(self._name)
+        node = AInput(self._name,self._coeff)
         success = engine.register(self,node)
         if not success:
             return eng.get(self)

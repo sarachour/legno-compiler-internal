@@ -65,8 +65,6 @@ def tac_cprod(board,ast):
         # hail mary, assume we can scale our way around this
         #    yield qnode,qnode_output
 
-        print("value",ast.value)
-        input()
         for qnode,qnode_output in to_abs_circ(board,ast.input):
             node = acirc.ANode.make_node(board,"multiplier")
             node.config.set_comp_mode("vga")\
@@ -78,8 +76,6 @@ def tac_cprod(board,ast):
 
 
 def to_abs_circ(board,ast):
-    print(ast)
-    input("TODO: handle constant propagation")
     if ast.op == aop.AOpType.INTEG:
         for result in tac_integ(board,ast):
             yield result
@@ -99,7 +95,7 @@ def to_abs_circ(board,ast):
         yield node,"out"
 
     elif ast.op == aop.AOpType.VAR:
-        stub = acirc.AInput(ast.name)
+        stub = acirc.AInput(ast.name,ast.coefficient)
         yield stub,"out"
 
     elif ast.op == aop.AOpType.EXTVAR:

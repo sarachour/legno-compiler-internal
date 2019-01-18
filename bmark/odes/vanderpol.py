@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 def vanderpol():
   def dt(t,vs):
-    u = 5
+    u = 1.2
     X = vs[0]
     Y = vs[1]
 

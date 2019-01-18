@@ -149,7 +149,7 @@ def benchmark_vanderpol():
     # y2' = u*(1-y1*y1)*y2 - y1
     prob = MathProg("vanderpol")
     params = {
-        'mu': 5.0,
+        'mu': 1.2,
         'Y0': 0.5,
         'X0': 0.0,
         'time': 100
@@ -159,9 +159,9 @@ def benchmark_vanderpol():
     prob.bind("X",X)
     prob.bind("Y",Y)
     prob.bind("y",op.Emit(op.Var("Y")))
-    prob.set_interval("X",-3,3)
-    prob.set_interval("Y",-9,9)
-    prob.set_interval("y",-9,9)
+    prob.set_interval("X",-2.2,2.2)
+    prob.set_interval("Y",-3.2,3.2)
+    prob.set_interval("y",-3.2,3.2)
     prob.compile()
     return prob
 

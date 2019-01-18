@@ -83,10 +83,13 @@ def gen_get_integrator_status(circ,block,locstr):
 
 def gen_use_integrator(circ,block,locstr,config,debug=True):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
-  inv,in_rng,out_rng = cast_enum(config.scale_mode,
-                                   [chip_cmd.SignType, \
-                                    chip_cmd.RangeType, \
-                                    chip_cmd.RangeType])
+  inv,= cast_enum([config.comp_mode],
+                  [chip_cmd.SignType])
+
+
+  in_rng,out_rng = cast_enum(config.scale_mode,
+                             [chip_cmd.RangeType, \
+                              chip_cmd.RangeType])
 
   scf = config.scf('ic') if config.has_scf('ic') else 1.0
   init_cond = config.dac('ic')*scf
@@ -155,14 +158,13 @@ def gen_use_multiplier(circ,block,locstr,config):
                                out_range=out_rng)
 
 def gen_use_fanout(circ,block,locstr,config):
-  INV_MAP = {'pos':False,'neg':True}
-
   chip,tile,slce,index =gen_unpack_loc(circ,locstr)
-  inv0,inv1,inv2,in_rng = cast_enum(config.scale_mode,
+  inv0,inv1,inv2 = cast_enum(config.comp_mode,
                                     [chip_cmd.SignType,
                                      chip_cmd.SignType,
-                                     chip_cmd.SignType,
-                                     chip_cmd.RangeType])
+                                     chip_cmd.SignType])
+  in_rng, = cast_enum([config.scale_mode], [chip_cmd.RangeType])
+
   yield chip_cmd.UseFanoutCmd(chip,tile,slce,index,
                                in_range=in_rng,
                                inv0=inv0,

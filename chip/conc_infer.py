@@ -149,7 +149,7 @@ def bw_derive_output_port(env,circ,block,config,loc,port):
 
 def ival_derive_output_port(env,circ,block,config,loc,port):
     expr = block.get_dynamics(config.comp_mode,port, \
-                             scale_mode=config.scale_mode)
+                              scale_mode=None)
 
     if ival_test_visited(env,block,config,loc,port):
         print("[visit] skipping %s[%s].%s" \
@@ -170,6 +170,7 @@ def ival_derive_output_port(env,circ,block,config,loc,port):
 
     # compute intervals
     ival_map = config.intervals()
+    print(ival_map)
     intervals = expr.compute_interval(ival_map)
 
     if config.interval(port) is None:
