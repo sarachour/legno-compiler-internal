@@ -128,16 +128,14 @@ class RouteDFSContext:
         return self._nodes_by_fragment_id[(frag.namespace,frag.id)]
 
 
-    def resolve_constraint(self,cstr):
-        sn,sp,dn,dp = cstr
+    def resolve_constraint(self,sn,sp,dn,dp):
         key = "%s.%s.%s->%s.%s.%s" % (sn.namespace,sn.id,sp,
                                       dn.namespace,dn.id,dp)
         assert(not key in self._resolved)
         self._resolved.append(key)
 
     def unresolved_constraints(self):
-        for cstr in self._state.constraints():
-            sn,sp,dn,dp = cstr
+        for sn,sp,dn,dp in self._state.constraints():
             key = "%s.%s.%s->%s.%s.%s" % (sn.namespace,sn.id,sp, \
                                           dn.namespace,dn.id,dp)
             if not key in self._resolved:
@@ -217,16 +215,27 @@ class RouteDFSContext:
 
 class DFSResolveConstraint(DFSAction):
 
-    def __init__(self,cstr):
+    def __init__(self,snode,sport,dnode,dport):
         DFSAction.__init__(self)
-        self._cstr = cstr
+        assert(isinstance(sport,str))
+        assert(isinstance(dport,str))
+        assert(isinstance(snode,acirc.ABlockInst))
+        assert(isinstance(dnode,acirc.ABlockInst))
+        assert(sport in snode.block.outputs)
+        assert(dport in dnode.block.inputs)
+        self._src_node = snode
+        self._dst_node = dnode
+        self._src_port = sport
+        self._dst_port = dport
 
 
     def apply(self,ctx):
-        ctx.resolve_constraint(self._cstr)
+        ctx.resolve_constraint(self._src_node,self._src_port, \
+                               self._dst_node,self._dst_port)
 
     def __repr__(self):
-        return "rslv %s" % (self._cstr)
+        return "rslv %s.%s -> %s.%s" % (self._src_node.name,self._src_port,
+                                        self._dst_node.name,self._dst_port)
 
 
 
@@ -245,9 +254,13 @@ class DFSUseNode(DFSAction):
         ctx.use_node(self._node,self._config,self._frag)
 
     def __repr__(self):
+        if self._frag is None:
+            return "%s [null]" % self._node
+
         if self._frag.id is None:
             raise Exception("fragment has no id <%s>" % self._frag)
-        return "%s [%s.%d]" % (self._node,self._namespace,self._frag.id)
+
+        return "%s [%d]" % (self._node,self._frag.id)
 
 class DFSConnNode(DFSAction):
 
@@ -299,10 +312,24 @@ class DFSState:
 
     def context(self):
         ctx = self.new_ctx()
+        idx = 0
+        try:
+            for frame in self._stack:
+                for op in frame:
+                    op.apply(ctx)
+                    idx += 1
 
-        for frame in self._stack:
-            for op in frame:
-                op.apply(ctx)
+        except Exception as e:
+            j = 0
+            for frame in self._stack:
+                for op in frame:
+                    if j < idx:
+                        print(op)
+                    elif j == idx:
+                        print("[[%s]]" % op)
+                    j += 1
+                print("-----")
+            raise e
 
         return ctx
 
@@ -485,7 +512,7 @@ def tac_abs_rslv_constraints(graph,ctx,cutoff,debug=False):
 
         base_ctx=ctx.copy()
         for cstr in cstrs:
-            step = DFSResolveConstraint(cstr)
+            step = DFSResolveConstraint(*cstr)
             base_ctx.add(step)
 
         for blk,loc in intermediate_nodes:

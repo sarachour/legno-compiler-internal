@@ -149,10 +149,14 @@ class ANode:
 
     def to_str(self,internal_id=False,delim='\n',\
                prefix='',postfix='',indent='  ',printed=[]):
+        if self.id in printed:
+            return prefix + indent + self.header() + delim + "{...}" + postfix
+
         subnodes = list(self.subnodes())
+        subnode_ids = list(map(lambda s: s.id, subnodes))
         substr = ""
         for s in subnodes:
-            if s in printed:
+            if s.id in printed:
                 substr += prefix + indent + s.header() + delim + postfix
             else:
                 substr += s.to_str(internal_id,
@@ -160,7 +164,7 @@ class ANode:
                                    prefix=prefix+indent, \
                                    postfix=postfix,
                                    indent=indent,
-                                   printed=printed+subnodes+[self])
+                                   printed=printed+subnode_ids+[self.id])
 
         ident = "%s." % self._namespace if self._namespace else ""
         ident += "%d." % self._internal_id if internal_id else ""
