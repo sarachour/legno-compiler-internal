@@ -12,6 +12,12 @@ class ANode:
             self._map = {}
 
         def get(self,node):
+            if not node.id in self._map:
+                for ident in self._map.keys():
+                    print(ident)
+                print("\nnode: %s" % node)
+                raise Exception("<%d> not in copy context [%s]" %\
+                                (node.id,node))
             return self._map[node.id]
 
         def register(self,node,new_node):
@@ -59,7 +65,11 @@ class ANode:
         self._namespace = ns
 
     def contains(self,n):
-        return n in self.nodes()
+        for node in self.nodes():
+            if node.id == n.id:
+                return True
+
+        return False
 
     def nodes(self):
         return set(self._nodes())

@@ -2,6 +2,7 @@ import chip.props as prop
 import itertools
 import chip.abs as acirc
 import random
+import math
 
 def enumerate_tree(block,n,max_blocks=None,
                    permute_input=False,prop=prop.CURRENT):
@@ -45,64 +46,129 @@ def enumerate_tree(block,n,max_blocks=None,
 
             yield counts
 
-def build_tree_from_levels(board,levels,block,
+def bitree_split(fan,levels_):
+  n_comps = list(levels_[1:])
+  max_comps = list(map(lambda idx: fan**(idx+1), \
+                range(0,len(n_comps))))
+
+  for fan_id in range(0,fan):
+    new_n_cmps = []
+    print(n_comps,max_comps)
+    for max_cmp,n_cmp in zip(max_comps,n_comps):
+      value = n_cmp if n_cmp < max_cmp else max_cmp
+      new_n_cmps.append(math.ceil(value/fan))
+
+    yield new_n_cmps
+
+    for idx,new_n_cmp in enumerate(new_n_cmps):
+      n_comps[idx] -= new_n_cmp
+
+
+
+def build_input_tree_from_levels(board,levels,block,inports,outport,mode='?'):
+  def mknode():
+    node = acirc.ANode.make_node(board,block.name)
+    node.config.set_comp_mode(mode)
+    return node
+
+  def recurse(levels,depth=0):
+    assert(levels[0] <= 1)
+    if levels[0] == 0:
+      return [],None
+
+    curr_node = mknode()
+    # cannot connect more nodes than number of inputs
+    free_ports = []
+    offset = 0
+    if len(levels) > 1:
+      for inport_id,new_levels in \
+          enumerate(bitree_split(len(inports),levels)):
+        ch_free_ports,child_node = recurse(new_levels,depth=depth+1)
+        free_ports += ch_free_ports
+        if not child_node is None:
+          offset = inport_id+1
+          acirc.ANode.connect(child_node,outport,
+            curr_node,inports[inport_id]
+          )
+
+    for inport_id in range(offset,len(inports)):
+      free_ports.append((depth,curr_node,inports[inport_id]))
+
+    return free_ports,curr_node
+
+  free_ports,curr_node = recurse(levels)
+  free_port_levels = {}
+  for level,node,port in free_ports:
+    if not level in free_port_levels:
+      free_port_levels[level] = []
+    free_port_levels[level].append((node,port))
+
+  return free_port_levels,curr_node,outport
+
+
+def build_output_tree_from_levels(board,levels,block,outports,inport,mode='?'):
+  def mknode():
+    node = acirc.ANode.make_node(board,block.name)
+    node.config.set_comp_mode(mode)
+    return node
+
+  def recurse(levels,depth=0):
+    assert(levels[0] <= 1)
+    if levels[0] == 0:
+      return [],None
+
+    curr_node = mknode()
+    # cannot connect more nodes than number of inputs
+    free_ports = []
+    offset = 0
+    if len(levels) > 1:
+      for outport_id,new_levels in \
+          enumerate(bitree_split(len(outports),levels)):
+        ch_free_ports,child_node = recurse(new_levels,depth=depth+1)
+        free_ports += ch_free_ports
+        if not child_node is None:
+          offset = outport_id+1
+          acirc.ANode.connect(
+              child_node,inports[outport_id],
+              curr_node,outport
+          )
+
+    for outport_id in range(offset,len(outports)):
+      free_ports.append((depth,curr_node,outports[outport_id]))
+
+    return free_ports,curr_node
+
+  free_ports,curr_node = recurse(levels)
+  free_port_levels = {}
+  for level,node,port in free_ports:
+    if not level in free_port_levels:
+      free_port_levels[level] = []
+    free_port_levels[level].append((node,port))
+
+  return free_port_levels,curr_node,inport
+
+
+def build_tree_from_levels(board,levels,block,inputs,output,
                            input_tree=False,
                            mode='?',
                            prop=None):
     blocks = []
     free_ports = {}
 
-    par_ports = block.by_signal(prop,block.outputs) if input_tree \
-       else block.by_signal(prop,block.inputs)
+    if input_tree:
+      free_ports,root_node,root_port = \
+        build_input_tree_from_levels(board,levels,block,inputs,output,mode=mode)
+    else:
+      free_ports,root_node,root_port = \
+        build_output_tree_from_levels(board,levels,block,inputs,output,mode=mode)
 
-    assert(len(par_ports) == 1)
-    par_port = par_ports[0]
+    for level in free_ports:
+      for node,port in free_ports[level]:
+        if not root_node.contains(node):
+          raise Exception("level: <%s> not in <%s>" % \
+                          (node,root_node))
 
-    child_ports = block.by_signal(prop,block.inputs) if input_tree \
-                  else block.by_signal(prop,block.outputs)
-
-    # build all the nodes for each level, and all of the inputs, outputs
-    nodes = {}
-    parents = {}
-    children = {}
-    for level_idx,n_nodes in enumerate(levels):
-        nodes[level_idx] = []
-        parents[level_idx] = []
-        children[level_idx] = []
-        for idx in range(0,n_nodes):
-            node = acirc.ANode.make_node(board,block.name)
-            node.config.set_comp_mode(mode)
-            nodes[level_idx].append(node)
-            parents[level_idx].append((node,par_port))
-
-            for port in child_ports:
-                children[level_idx].append((node,port))
-
-    # connect nodes across levels
-    for level_idx,n_nodes in enumerate(levels):
-        if level_idx == 0:
-            free_ports[level_idx] = children[level_idx]
-        else:
-            offset = 0;
-            last_level_idx = level_idx - 1
-            for par_node in nodes[last_level_idx]:
-                ch_node,ch_port = children[level_idx][offset]
-                if input_tree:
-                    acirc.ANode.connect(
-                        par_node,par_port,
-                        ch_node,ch_port
-                    )
-                else:
-                    acirc.ANode.connect(
-                        ch_node,ch_port,
-                        par_node,par_port
-                    )
-                offset += 1
-
-            free_ports[level_idx] = children[level_idx][offset:]
-
-
-    return free_ports,nodes[len(levels)-1][0],par_port
+    return free_ports,root_node,root_port
 
 
 def input_level_combos(level_inputs,sources):
@@ -112,7 +178,17 @@ def input_level_combos(level_inputs,sources):
 
     for combo in itertools.permutations(input_ports,len(sources)):
         assigns = list(zip(combo,sources))
-        yield assigns
+        unused = []
+        for blk,port in input_ports:
+          assigned = False
+          for (blk2,port2),_ in assigns:
+            if blk.id == blk2.id and port == port2:
+              assigned = True
+
+          if not assigned:
+            unused.append((blk,port))
+
+        yield unused,assigns
 
 
 
@@ -129,19 +205,22 @@ def validate_fragment(frag):
          return True
 
     if isinstance(frag, acirc.ABlockInst):
-        if frag.block.name == 'multiplier':
-           if frag.config.comp_mode == 'vga':
-               test_inputs(['in0'])
-           else:
-               test_inputs(['in0','in1'])
-               test_inputs(['coeff'],connected=False)
-        elif frag.block.name == 'tile_dac':
-            test_inputs(['in'],connected=False)
+      if frag.block.name == 'multiplier':
+        print(frag.id,frag.config.comp_mode)
+        if frag.config.comp_mode == 'vga':
+          test_inputs(['in0'])
+          test_inputs(['in1','coeff'],connected=False)
         else:
-            raise Exception("unimplemented block: %s" % frag.block.name)
+          test_inputs(['in0','in1'])
+          test_inputs(['coeff'],connected=False)
+      elif frag.block.name == 'tile_dac':
+        test_inputs(['in'],connected=False)
+      else:
+        raise Exception("unimplemented block: %s" % frag.block.name)
 
-        for subn in frag.subnodes():
-            validate_fragment(subn)
+
+      for subn in frag.subnodes():
+        validate_fragment(subn)
 
     elif isinstance(frag,acirc.AConn):
         snode,sport = frag.source

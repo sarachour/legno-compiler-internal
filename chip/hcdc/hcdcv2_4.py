@@ -13,6 +13,22 @@ from chip.hcdc.fanout import block as fanout
 import chip.hcdc.globals as glb
 from chip.board import Board
 
+def test_board(board):
+    mult = board.block('multiplier')
+    print("inst1 <-> inst0")
+    assert(board.route_exists(mult.name,board.position_string([0,0,0,1]),'out',
+                            mult.name,board.position_string([0,0,0,0]),'in0'))
+    print("slice1 <-> slice0")
+    assert(board.route_exists(mult.name,board.position_string([0,0,1,1]),'out',
+                            mult.name,board.position_string([0,0,0,0]),'in0'))
+    print("tile1 <-> tile0")
+    assert(board.route_exists(mult.name,board.position_string([0,1,1,1]),'out',
+                            mult.name,board.position_string([0,0,0,0]),'in0', cutoff=5))
+    print("chip1 <-> chip0")
+    assert(board.route_exists(mult.name,board.position_string([1,1,1,1]),'out',
+                            mult.name,board.position_string([1,0,0,0]),'in0',cutoff=7))
+
+
 def connect(hw,scope1,block1,scope2,block2,negs=[]):
     for loc1 in hw.block_locs(scope1,block1.name):
         for loc2 in hw.block_locs(scope2,block2.name):
@@ -188,7 +204,6 @@ def make_board():
                 for block1 in [tile_out]:
                     for block2 in [tile_in]:
                         connect(hw,tile1_layer,block1,tile2_layer,block2)
-
         for tile_no in range(0,n_tiles):
             tile_layer = chip_layer.layer(tile_no)
             for block1 in [mult,integ,fanout,tile_dac,tile_in]:
@@ -219,3 +234,4 @@ def make_board():
     return hw
 
 board = make_board()
+test_board(board)

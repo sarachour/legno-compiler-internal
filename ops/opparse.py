@@ -42,6 +42,8 @@ def from_infix(infix):
     return op.Mult(lhs,rhs)
   elif this_op == '-':
     return op.Add(lhs,op.Mult(op.Const(-1),rhs))
+  elif this_op == '+':
+    return op.Add(lhs,rhs)
   else:
     raise Exception("unknown: %s" % str(infix))
 

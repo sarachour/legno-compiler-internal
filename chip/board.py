@@ -225,6 +225,12 @@ class Board(Layer):
 
         return posstr
 
+    def route_exists(self,sblk,skey,sport,dblk,dkey,dport,cutoff=3):
+        for route in self.find_routes(sblk,skey,sport,
+                                      dblk,dkey,dport,cutoff=cutoff):
+            return True
+        return False
+
     def find_routes(self,sblk,skey,sport,dblk,dkey,dport,cutoff=3):
         assert(isinstance(skey,str))
         assert(isinstance(dkey,str))

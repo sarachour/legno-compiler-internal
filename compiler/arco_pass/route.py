@@ -424,7 +424,7 @@ def tac_abs_get_resolutions(graph,ctx,cutoff,debug=False):
                 dest_rnode.block_name,dest_rnode.loc,dest_port,
                 cutoff=cutoff
         ))
-        print("%s -> %s" % (src_rnode,dest_rnode))
+        print("%s.%s -> %s.%s" % (src_rnode,src_port,dest_rnode,dest_port))
         all_routes = []
         for path in paths:
             route = []
@@ -741,8 +741,7 @@ def build_concrete_circuit(graph,prob,fragment_map):
                                         variables, \
                                         fragment_map,
                                         ctx=starting_ctx,
-                                        cutoff=3)):
-        print("-> routed circuit %d" % idx)
+                                        cutoff=7)):
         state = result.context()
 
         circ = ccirc.ConcCirc(graph.board)

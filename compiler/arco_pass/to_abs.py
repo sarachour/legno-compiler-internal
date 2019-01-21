@@ -1,23 +1,18 @@
-import ops.aop as aop
-import chip.abs as acirc
-import lab_bench.lib.chip_command as chipcmd
-import itertools
-import compiler.arco_pass.util as arco_util
-import chip.props as prop
-import itertools
 
 def tac_integ(board,ast):
     for deriv,deriv_output in to_abs_circ(board,ast.input(0)):
         ic = ast.input(1)
-        if not ic.op == aop.AOpType.CONST:
+        if not (ic.op == aop.AOpType.CPROD and \
+                ic.input.op == aop.AOpType.CONST):
             raise Exception("unexpected ic: <%s>" % ic)
 
         init_cond = ic.value
         node = acirc.ANode.make_node(board,"integrator")
-        node.config.set_comp_mode(chipcmd.SignType.POS)
+        node.config.set_comp_mode("*")
         node.config.set_dac("ic",init_cond)
         acirc.ANode.connect(deriv,deriv_output,node,"in")
         yield node,"out"
+
 
 def tac_vprod(board,ast):
     if len(ast.inputs) == 1:
@@ -27,9 +22,9 @@ def tac_vprod(board,ast):
     else:
         multiplier = board.block("multiplier")
         for levels in \
-            arco_util.enumerate_tree(multiplier,len(ast.inputs),
-                                          permute_input=True,
-                                          prop=prop.CURRENT):
+            enumerate_tree(multiplier,len(ast.inputs),
+                           permute_input=True,
+                           prop=prop.CURRENT):
 
             new_inputs = list(map(lambda inp: \
                                   list(to_abs_circ(board,inp)), \
@@ -37,38 +32,23 @@ def tac_vprod(board,ast):
             # for each combination of inputs
             for combo in itertools.product(*new_inputs):
                 free_ports,out_block,out_port = \
-                                                arco_util.build_tree_from_levels(
+                                                build_tree_from_levels(
                                                     board,
                                                     levels,
                                                     multiplier,
-                                                    inputs=['in0','in1'],
-                                                    output='out',
                                                     input_tree=True,
                                                     mode='mul',
                                                     prop=prop.CURRENT
                                                 )
 
-                for unused,assigns in arco_util.input_level_combos(free_ports,combo):
-                    # only consider assigns where the free ports are in1s
-                    if len(unused) > 0 and \
-                       len(list((filter(lambda args: args[1] != 'in1',unused)))) > 0:
-                        continue
-
+                for assigns in input_level_combos(free_ports,combo):
                     out_block_c,copier = out_block.copy()
-                    for blk,port in unused:
-                        print("free %d.%s" % (blk.id,port))
-                        new_blk = copier.get(blk)
-                        new_blk.config.set_comp_mode('vga')
-                        new_blk.config.set_dac('coeff',1.0)
-
                     for (_dstblk,dstport),(_srcblk,srcport) in assigns:
-                        print("used %d.%s" % (_dstblk.id,dstport))
                         dstblk = copier.get(_dstblk)
                         srcblk,_ = _srcblk.copy()
                         acirc.ANode.connect(srcblk,srcport, \
                                             dstblk,dstport)
-
-                    arco_util.validate_fragment(out_block_c)
+                    validate_fragment(out_block_c)
                     yield out_block_c,out_port
 
 def tac_cprod(board,ast):
@@ -91,6 +71,8 @@ def tac_cprod(board,ast):
 
 
 def to_abs_circ(board,ast):
+    print(ast)
+    input("TODO: handle constant propagation")
     if ast.op == aop.AOpType.INTEG:
         for result in tac_integ(board,ast):
             yield result
@@ -110,7 +92,7 @@ def to_abs_circ(board,ast):
         yield node,"out"
 
     elif ast.op == aop.AOpType.VAR:
-        stub = acirc.AInput(ast.name,ast.coefficient)
+        stub = acirc.AInput(ast.name)
         yield stub,"out"
 
     elif ast.op == aop.AOpType.EXTVAR:

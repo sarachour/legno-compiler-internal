@@ -144,7 +144,8 @@ class PhysicalModel:
         yield (fmin,min(fmax,freq)),self._stumps[idx]
 
     if freq > brks[-1]:
-      yield (brks[-1],freq),self._stumps[-1]
+      idx = len(brks)-1
+      yield (brks[idx],freq),self._stumps[idx]
 
   def noise(self,freq):
     if len(self._stumps) == 0:

@@ -16,20 +16,23 @@ def copy_signal(board,node,output,n_copies,label,max_fanouts):
     for levels in arco_util.enumerate_tree(fanout,n_copies,
                                  max_blocks=max_fanouts,
                                  permute_input=False):
-        free_ports,c_node,c_output = arco_util.build_tree_from_levels(board,
-                                                            levels,
-                                                            fanout,
-                                                            input_tree=False,
-                                                            mode='*',
-                                                            prop=prop.CURRENT
-        )
+        free_ports,c_node,c_input = arco_util\
+                                     .build_tree_from_levels(board,
+                                                             levels,
+                                                             fanout,
+                                                             ['out1','out0','out2'],
+                                                             'in',
+                                                             input_tree=False,
+                                                             mode='*',
+                                                             prop=prop.CURRENT
+                                     )
         for level,ports in free_ports.items():
             for port_node,port in ports:
                 port_node.config.set_label(port,label,kind=Labels.OUTPUT)
 
         new_node,_ = node.copy()
-        acirc.ANode.connect(new_node,output,c_node,c_output)
-        yield free_ports,c_node,c_output
+        acirc.ANode.connect(new_node,output,c_node,c_input)
+        yield free_ports,c_node,c_input
 
 
 
