@@ -5,6 +5,7 @@ import chip.conc as ccirc
 import sys
 import itertools
 import logging
+import compiler.arco_pass.util as arco_util
 logger = logging.getLogger('arco_route')
 
 class RouteGraph:
@@ -497,6 +498,12 @@ def tac_abs_get_resolutions(graph,ctx,cutoff,debug=False):
                 if sb == db and sl == dl:
                     continue
                 conns.append((this_route[i], this_route[i+1]))
+
+        if arco_util.has_duplicates(nodes):
+            print("=== skipping ===")
+            for node,cnts in arco_util.counts(nodes).items():
+                print("%s: %d" % (node,cnts))
+            continue
 
         yield cstr_list,nodes,conns
 

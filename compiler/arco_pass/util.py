@@ -4,6 +4,29 @@ import chip.abs as acirc
 import random
 import math
 
+def sample(optmap):
+    choice = {}
+    for var_name,choices in optmap.items():
+        idx = random.randint(0,len(choices)-1)
+        choice[var_name] = idx
+
+    return choice
+
+def counts(lst):
+    els = {}
+    for el in lst:
+        if not el in els:
+            els[el] = 0
+        els[el] += 1
+    return els
+
+def has_duplicates(lst):
+    els = counts(lst)
+    for el,cnt in els.items():
+        if cnt > 1:
+             return True
+    return False
+
 def enumerate_tree(block,n,max_blocks=None,
                    permute_input=False,prop=prop.CURRENT):
     nels = len(block.by_signal(prop,block.inputs)) if permute_input \
@@ -236,11 +259,3 @@ def validate_fragment(frag):
 
     else:
         raise Exception("unimplemented:validate %s" % frag)
-
-def sample(optmap):
-    choice = {}
-    for var_name,choices in optmap.items():
-        idx = random.randint(0,len(choices)-1)
-        choice[var_name] = idx
-
-    return choice
