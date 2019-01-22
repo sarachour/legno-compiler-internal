@@ -57,6 +57,7 @@ class ArduinoCommand(Command):
     # 1=only print commands
     # 0=run commands
     DEBUG = 0
+    #DEBUG = 1
 
     def __init__(self,typ=cstructs.cmd_t()):
         Command.__init__(self)

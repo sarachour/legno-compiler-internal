@@ -94,6 +94,7 @@ def circ_use_dac_t():
         "loc" / circ_loc_t(),
         "inv" / cstruct.Int8ul,
         "out_range" / cstruct.Int8ul,
+        cstruct.Padding(3),
         "value" / cstruct.Float32l
     )
 

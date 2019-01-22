@@ -55,11 +55,9 @@ def plot_ref(ph,script_file,ref_data):
 def plot_compare(ph,script_file,out_data,ref_data,circ):
   bmark,indices,scale_index,opt, menv_name, hwenv_name = \
                 ph.grendel_file_to_args(script_file)
-
   for var,series in ref_data.items():
     plt.plot(series['t'],series['v'],\
              label=("ref-%s" % var))
-
   scfs = {}
   for handle,block,loc in hdacv2_board.handles():
     if circ.in_use(block,loc):

@@ -137,7 +137,7 @@ elif args.subparser_name == "skelter":
         hwenv = args.hw_env
         subinds = np.random.choice(sorted_indices,15)
         subscores = list(map(lambda i: scores[i], subinds))
-        sorted_subinds = map(lambda i: subinds[i], np.argsort(subscores))
+        sorted_subinds = map(lambda i: subinds[i], np.argsort(subscores)[::-1])
 
         files = []
         for ind in sorted_subinds:

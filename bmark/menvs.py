@@ -1,4 +1,11 @@
 from lang.prog import MathEnv
+def short_time():
+  exp = MathEnv('t2')
+  exp.set_sim_time(2)
+  exp.set_input_time(2)
+  return exp
+
+
 def med_time():
   exp = MathEnv('t20')
   exp.set_sim_time(20)
@@ -37,6 +44,7 @@ def long_sin2():
   return exp
 
 MATH_ENVS = [
+  short_time(),
   med_time(),
   long_time(),
   medlong_time(),
