@@ -62,6 +62,7 @@ class AOp:
             if n_rules > 0:
                 for rule in rules:
                     for new_node in rule.apply(this_node):
+                        print("%s -> %s" % (this_node,new_node))
                         if not str(new_node) in nodes:
                             yield n_rules-1,new_node
                             nodes.append(str(new_node))
@@ -163,6 +164,7 @@ class AGain(AOp):
 
     def __init__(self,value,expr):
         AOp.__init__(self,AOpType.CPROD, [expr])
+        assert(not isinstance(expr,AGain))
         assert(isinstance(expr,AOp))
         assert(isinstance(value,float) or \
                isinstance(value,int))
@@ -177,7 +179,10 @@ class AGain(AOp):
         return self._inputs[0]
 
     def make(self,inputs):
-        return AGain(self._value,inputs[0])
+        if self._value != 1.0:
+            return AGain(self._value,inputs[0])
+        else:
+            return inputs[0]
 
     @property
     def value(self):
@@ -195,6 +200,35 @@ class AProd(AOp):
         return AProd(inputs)
 
 
+    @staticmethod
+    def terms(obj):
+        if isinstance(obj,AProd):
+            for inp in obj.inputs:
+                if isinstance(inp,AProd):
+                    for t in AProd.terms(inp):
+                        yield t
+                else:
+                    yield inp
+
+        else:
+            yield obj
+
+    def make(self,inputs):
+        return AProd.make(inputs)
+
+    @staticmethod
+    def make(inputs):
+        terms = []
+        for inp in inputs:
+            for t in AProd.terms(inp):
+                terms.append(t)
+
+        if len(terms) > 1:
+            return AProd(terms)
+        else:
+            return terms[0]
+
+
 class ASum(AOp):
 
     def __init__(self,inputs):
@@ -203,8 +237,30 @@ class ASum(AOp):
         AOp.__init__(self,AOpType.SUM,inputs)
 
 
+    @staticmethod
+    def terms(obj):
+        if isinstance(obj,ASum):
+            for inp in obj.inputs:
+                if isinstance(inp,ASum):
+                    for t in ASum.terms(inp):
+                        yield t
+                else:
+                    yield inp
+
+        else:
+            yield obj
+
     def make(self,inputs):
-        return ASum(inputs)
+        return ASum.make(inputs)
+
+    @staticmethod
+    def make(inputs):
+        terms = []
+        for inp in inputs:
+            for t in ASum.terms(inp):
+                terms.append(t)
+
+        return ASum(terms)
 
 
 class AInteg(AOp):

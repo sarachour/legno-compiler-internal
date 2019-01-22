@@ -26,8 +26,8 @@ class Rule:
     # test if this transformation is applicable
     def apply(self,ast):
         assert(isinstance(ast,AOp))
-
         for args in self.generate_args(ast):
+            print("xform[%s]: %s" % (self.name,args))
             yield self.apply_args(ast,args)
 
 
@@ -58,6 +58,10 @@ class RNegateFanout(Rule):
            ast.value in self._opts:
             if ast.input.op == AOpType.VAR:
                 yield 1
+            elif ast.input.op == AOpType.SUM:
+                if self.vars_and_consts(ast.input.inputs):
+                    yield 1
+
             elif ast.input.op == AOpType.VPROD:
                 for idx,inp in enumerate(ast.input.inputs):
                     if inp.op == AOpType.VAR:
@@ -70,16 +74,19 @@ class RNegateFanout(Rule):
         if inp.op == AOpType.VAR:
             return AVar(inp.name,coeff)
         elif inp.op == AOpType.SUM:
-            return ASum(list(map(lambda t: self.process_term(t,coeff), \
+            return ASum.make(list(map(lambda t: self.process_term(t,coeff), \
                                  inp.inputs)))
         else:
             raise Exception("unhandled process: <%s>" % inp)
 
     def apply_args(self,ast,term_idx):
         if ast.input.op == AOpType.VAR:
-            return AVar(ast.input.name, ast.value)
+            return self.process_term(ast.input,ast.value)
 
-        if ast.input.op == AOpType.VPROD:
+        elif ast.input.op == AOpType.SUM:
+            return self.process_term(ast.input,ast.value)
+
+        elif ast.input.op == AOpType.VPROD:
             new_args = []
             for idx,inp in enumerate(ast.input.inputs):
                 if idx == term_idx:
@@ -88,7 +95,7 @@ class RNegateFanout(Rule):
                 else:
                     new_args.append(inp)
 
-            return AProd(new_args)
+            return AProd.make(new_args)
 
 
         raise Exception("unhandled: %s" % ast)

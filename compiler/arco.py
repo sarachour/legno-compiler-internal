@@ -48,8 +48,6 @@ def compile_compute_fragments(board,prob,n_xforms):
         for dist_abs_expr in arcolib_aop.distribute_consts(abs_expr):
             for n_xforms,xform_abs_expr in dist_abs_expr.xform(rules,n_xforms):
                 xform_map[var].append(xform_abs_expr)
-                print(xform_abs_expr)
-                input()
                 for node,output in arcolib_acirc.to_abs_circ(board,xform_abs_expr):
                     if isinstance(node,acirc.ABlockInst):
                         node.config.set_label(output,var,kind=Labels.OUTPUT)
