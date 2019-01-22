@@ -473,6 +473,9 @@ class Const(Op):
             interval.IValue(self._value)
         )
 
+    def infer_bandwidth(self,intervals,bandwidths):
+        return self.compute_bandwidth(bandwidths)
+
     def compute_bandwidth(self,bandwidths):
         return bandwidth.BandwidthCollection(bandwidth.Bandwidth(0))
 
@@ -621,6 +624,13 @@ class Add(Op2):
         is2 = self.arg2.compute_interval(bindings)
         return is1.merge(is2,
                   is1.interval.add(is2.interval))
+
+
+    def infer_bandwidth(self,intervals,bandwidths):
+        bw1 = self.arg1.infer_bandwidth(intervals,bandwidths)
+        bw2 = self.arg2.infer_bandwidth(intervals,bandwidths)
+        return bw1.merge(bw2,
+                         bw1.bandwidth.add(bw2.bandwidth))
 
 
     def compute_bandwidth(self,bandwidths):

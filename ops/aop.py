@@ -136,7 +136,10 @@ class AVar(AOp):
         return [self._var]
 
     def label(self):
-        return str(self._var)
+        if self._coeff == 1.0:
+            return str(self._var)
+        else:
+            return "%s*%f" % (self._var,self._coeff)
 
 class AConst(AOp):
 
@@ -195,6 +198,8 @@ class AProd(AOp):
 class ASum(AOp):
 
     def __init__(self,inputs):
+        for inp in inputs:
+            assert(not isinstance(inp,ASum))
         AOp.__init__(self,AOpType.SUM,inputs)
 
 

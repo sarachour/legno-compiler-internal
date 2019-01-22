@@ -125,7 +125,7 @@ def to_abs_circ(board,ast):
 
         for combo in itertools.product(*new_inputs):
             join = acirc.AJoin()
-            for node,out in combo:
+            for (node,out),term_ast in zip(combo,ast.inputs):
                 nnode,_ = node.copy()
                 assert(not nnode is None)
                 acirc.ANode.connect(nnode,out,join,"in")

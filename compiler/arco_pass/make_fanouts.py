@@ -9,7 +9,7 @@ def copy_signal(board,node,output,n_copies,label,max_fanouts):
     if n_copies <= 1:
         #assert(not isinstance(node,acirc.AJoin))
         sources ={0:[(node,output)]}
-        yield sources,node,output
+        yield sources,node
         return
 
     fanout = board.block("fanout")
@@ -30,9 +30,10 @@ def copy_signal(board,node,output,n_copies,label,max_fanouts):
             for port_node,port in ports:
                 port_node.config.set_label(port,label,kind=Labels.OUTPUT)
 
-        new_node,_ = node.copy()
+        new_node,ctx = node.copy()
         acirc.ANode.connect(new_node,output,c_node,c_input)
-        yield free_ports,c_node,c_input
+
+        yield free_ports,c_node
 
 
 
@@ -46,36 +47,52 @@ def get_valid_modes(mode_map,scf_map):
     if is_match:
       yield mode
 
-def connect_stubs_to_sources(board,source_map,node_map,output_map,mapping):
-    refs,stubs = count_var_refs(node_map)
-    coeff_map = {}
-    for (node,output), input_stub in mapping:
-        input_stub.set_source(node,output)
-        assert(node.block.name == 'fanout')
-        assert(isinstance(node,acirc.ABlockInst))
-        if not node.id in coeff_map:
-          coeff_map[node.id] = {
-            'block':node.block,'config':node.config,'coeffs': {}
-          }
-        coeff_map[node.id]['coeffs'][output] = input_stub.coefficient
+def cs2s_join(board,node,outputs,stubs):
+    assert(len(outputs) == 1)
+    assert(len(stubs) == 1)
+    output,stub = outputs[0],stubs[0]
+    assert(stub.coefficient == 1.0)
 
-    # compute the scaling factors for each mode of the fanout block
-    mode_scfs = {}
-    block = board.block('fanout')
+def cs2s_blockinst(board,node,outputs,stubs):
+    block = node.block
+    config = node.config
+    coeffs = {}
+    for output,stub in zip(outputs,stubs):
+        coeffs[output] = stub.coefficient
+
+    scfs = dict(map(lambda mode: (mode,{}) ,block.comp_modes))
     for mode in block.comp_modes:
-      mode_scfs[mode] = {}
-      for out in block.outputs:
-        expr = block.get_dynamics(mode,out)
-        scf = expr.coefficient()
-        mode_scfs[mode][out] = scf
+        for out in block.outputs:
+            scfs[mode][out] = block.get_dynamics(mode,out).coefficient()
+
 
     # find a computation mode for fanout that fits the negations of the inputs.
-    for node_id,data in coeff_map.items():
-      print(node_id,data['coeffs'])
-      valid_modes = list(get_valid_modes(mode_scfs,data['coeffs']))
-      assert(len(valid_modes) > 0)
-      data['config'].set_comp_mode(valid_modes[0])
+    valid_modes = list(get_valid_modes(scfs,coeffs))
+    assert(len(valid_modes) > 0)
+    config.set_comp_mode(valid_modes[0])
 
+
+def connect_stubs_to_sources(board,node_map,mapping):
+    groups = arco_util.group_by(mapping, key=lambda args: args[0][0].id)
+    for group in groups.values():
+        assert(arco_util.all_same(map(lambda n: n[0][0].id, group)))
+        node = group[0][0][0]
+        outputs = list(map(lambda args: args[0][1],group))
+        stubs = list(map(lambda args: args[1],group))
+        for output,input_stub in zip(outputs,stubs):
+            input_stub.set_source(node,output)
+
+        if isinstance(node,acirc.ABlockInst):
+            cs2s_blockinst(board,node,outputs,stubs)
+
+        elif isinstance(node,acirc.AJoin):
+            cs2s_join(board,node,outputs,stubs)
+        else:
+            raise Exception("unknown: %s" % node)
+        #print(node.to_str())
+        #input()
+
+    print("==========")
     for (node,output),inp in mapping:
         in_varmap = \
             any(map(lambda other_node: other_node.contains(inp), \
@@ -113,6 +130,7 @@ def match_stubs_to_sources(sources,stubs):
         outputs = []
         indexes = {}
         invalid = False
+        # compute output dictionary
         for var_name,level in choice:
             if not (var_name,level) in indexes:
                 indexes[(var_name,level)] = 0
@@ -123,10 +141,13 @@ def match_stubs_to_sources(sources,stubs):
                 invalid = True
                 break
 
-            outputs.append(outs_on_level[idx])
+            out_block,out_port = outs_on_level[idx]
+            outputs.append((out_block,out_port))
             indexes[(var_name,level)] += 1
 
         if not invalid:
+            for (outp,port),stub in zip(outputs,all_stubs):
+                print("%s port=%s :> %s" % (outp.name,port,stub))
             yield list(zip(outputs,all_stubs))
 
 

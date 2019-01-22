@@ -110,10 +110,16 @@ class MathProg:
 
                     deps = expr.bwvars()
                     if util.keys_in_dict(deps,self._bandwidths):
-                        new_ivals = expr.infer_interval(self._intervals[variable], \
-                                                        self._intervals)
+                        print("--> inferring <%s>" % variable)
+                        all_bound = all(map(lambda v: v in self._intervals, \
+                                            expr.handles() + expr.vars()))
+                        if not all_bound:
+                            new_ivals = expr.infer_interval(self._intervals[variable], \
+                                                            self._intervals)
+                            ival_dict = new_ivals.merge_dict(self._intervals).dict()
+                        else:
+                            ival_dict = self._intervals
 
-                        ival_dict = new_ivals.merge_dict(self._intervals).dict()
                         bwcoll = expr.infer_bandwidth(ival_dict,bandwidths=self._bandwidths)
                         self._bandwidths[variable] = bwcoll.bandwidth
                         progress = True

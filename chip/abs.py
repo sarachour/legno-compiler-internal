@@ -150,10 +150,9 @@ class ANode:
     def to_str(self,internal_id=False,delim='\n',\
                prefix='',postfix='',indent='  ',printed=[]):
         if self.id in printed:
-            return prefix + indent + self.header() + delim + "{...}" + postfix
+            return prefix + indent + self.header() +  " {...}" + postfix + delim
 
         subnodes = list(self.subnodes())
-        subnode_ids = list(map(lambda s: s.id, subnodes))
         substr = ""
         for s in subnodes:
             if s.id in printed:
@@ -164,7 +163,7 @@ class ANode:
                                    prefix=prefix+indent, \
                                    postfix=postfix,
                                    indent=indent,
-                                   printed=printed+subnode_ids+[self.id])
+                                   printed=printed+[self.id])
 
         ident = "%s." % self._namespace if self._namespace else ""
         ident += "%d." % self._internal_id if internal_id else ""
@@ -249,6 +248,10 @@ class AJoin(ANode):
         else:
             return "%d.join" % (self._id)
 
+    def add_parent(self,n):
+        assert(not isinstance(n,AJoin))
+        ANode.add_parent(self,n)
+
     def dest(self):
         if len(self._children) == 0:
             return None
@@ -307,6 +310,9 @@ class AConn(ANode):
         if isinstance(self._src_node,ABlockInst):
             assert(self._src_port in self._src_node.block.outputs)
 
+        # AJoins may not be on both sides of connections.
+        assert(not (isinstance(src_node,AJoin) and \
+                    isinstance(dst_node,AJoin)))
         self._src_node.add_child(self)
 
         if isinstance(self._dst_node,ABlockInst):

@@ -8,11 +8,19 @@ def mab_mult(ast):
   constant = ast.coefficient()
   mop_terms = ast.prod_terms()
   aop_terms = list(map(lambda mop: make_abstract(mop), mop_terms))
-  if constant == 1.0:
-      return aop.AProd(aop_terms)
+
+  # unwrap if one term
+  if len(aop_terms) == 1:
+    aop_expr = aop_terms[0]
   else:
-      return aop.AGain(constant,
-                          aop.AProd(aop_terms))
+    aop_expr = aop.AProd(aop_terms)
+
+  # wrap if constant expression
+  if constant == 1.0:
+    return aop_expr
+  else:
+    return aop.AGain(constant,
+                     aop_expr)
 
 
 def mab_sum(ast):

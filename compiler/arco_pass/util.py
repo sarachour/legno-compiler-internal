@@ -4,6 +4,87 @@ import chip.abs as acirc
 import random
 import math
 
+class TryObject:
+
+    def __init__(self,name,n_succ,n_fail):
+        self._max_succ = n_succ
+        self._max_fail = n_fail
+        self._n_succ = 0
+        self._n_fail = 0
+        self._name = name
+        self._next_iter = False
+
+    def succeed(self):
+        if self.successes_left()  \
+           and self._next_iter:
+            self._n_succ += 1
+            self._next_iter = False
+
+    def fail(self):
+        if self.failures_left():
+            self._n_fail += 1
+
+    def clear(self):
+        self._n_succ = 0
+        self._n_fail = 0
+
+    def iterate(self,gen,do_succeed=True):
+        if not self.successes_left() or \
+               not self.failures_left():
+            return
+
+        succeeded = False
+        for result in gen:
+            self._next_iter = True
+            if do_succeed:
+                self.succeed()
+            yield result
+            succeeded = True
+            if not self._max_succ is None:
+                print(self)
+
+            if not self.successes_left() or \
+               not self.failures_left():
+                break
+
+        if not succeeded:
+            if not self._max_fail is None:
+                print(self)
+            self.fail()
+
+
+    def enumerate(self,gen,do_succeed=True):
+        for idx,result in enumerate(self.iterate(gen,do_succeed)):
+            yield idx,result
+
+    def failures_left(self):
+        if self._max_fail is None:
+            return True
+
+        return self._n_fail < self._max_fail
+
+    def successes_left(self):
+        if self._max_succ is None:
+            return True
+
+        return self._n_succ < self._max_succ
+
+    def __repr__(self):
+        rpr = "[%s] " % self._name
+        if not self._max_succ is None:
+            rpr += "succ=%d/%d " % (self._n_succ,self._max_succ)
+        if not self._max_fail is None:
+            rpr += "fail=%d/%d " % (self._n_fail,self._max_fail)
+
+        return rpr
+
+def all_same(gen):
+    value = gen.__next__()
+    for item in gen:
+        if item != value:
+            return False
+    return True
+
 def sample(optmap):
     choice = {}
     for var_name,choices in optmap.items():
@@ -11,6 +92,17 @@ def sample(optmap):
         choice[var_name] = idx
 
     return choice
+
+def group_by(generator,key):
+    items = {}
+    for el in generator:
+        el_key = key(el)
+        if not el_key in items:
+            items[el_key] = []
+
+        items[el_key].append(el)
+
+    return items
 
 def counts(lst):
     els = {}
@@ -110,8 +202,9 @@ def build_input_tree_from_levels(board,levels,block,inports,outport,mode='?'):
         free_ports += ch_free_ports
         if not child_node is None:
           offset = inport_id+1
-          acirc.ANode.connect(child_node,outport,
-            curr_node,inports[inport_id]
+          acirc.ANode.connect(
+              child_node,outport,
+              curr_node,inports[inport_id]
           )
 
     for inport_id in range(offset,len(inports)):
@@ -152,13 +245,12 @@ def build_output_tree_from_levels(board,levels,block,outports,inport,mode='?'):
         if not child_node is None:
           offset = outport_id+1
           acirc.ANode.connect(
-              child_node,inports[outport_id],
-              curr_node,outport
+              curr_node,outports[outport_id],
+              child_node,inport
           )
 
     for outport_id in range(offset,len(outports)):
       free_ports.append((depth,curr_node,outports[outport_id]))
-
     return free_ports,curr_node
 
   free_ports,curr_node = recurse(levels)
@@ -167,6 +259,7 @@ def build_output_tree_from_levels(board,levels,block,outports,inport,mode='?'):
     if not level in free_port_levels:
       free_port_levels[level] = []
     free_port_levels[level].append((node,port))
+
 
   return free_port_levels,curr_node,inport
 

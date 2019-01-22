@@ -12,7 +12,7 @@ class RouteGraph:
     class RNode:
         ID = 0;
 
-        def __init__(self,graph,block,loc):
+        def __init__(self,graph,block,loc,fragment=None):
             self._graph = graph
             self._loc = loc
             self._block = block
@@ -22,10 +22,29 @@ class RouteGraph:
             self.id = RouteGraph.RNode.ID
             RouteGraph.RNode.ID += 1
             self._config = None
+            self._fragment = fragment
+
+        def clear(self):
+            self._fragment = None
+            self._config = None
 
         def set_config(self,c):
             assert(not c is None)
             self._config = c
+
+
+        def set_fragment(self,f):
+            assert(f is None or isinstance(f, acirc.ANode))
+            if not self._fragment is None and f.id != self._fragment.id:
+                r = "new: %s\n\n" % f.header()
+                r += "old: %s\n\n" % self._fragment.header()
+                raise Exception("fragment already assigned to <%s>\n\n%s" % (self,r))
+            self._fragment = f
+
+        @property
+        def fragment(self):
+            return self._fragment
+
         @property
         def config(self):
             if (self._config is None):
@@ -40,9 +59,14 @@ class RouteGraph:
         def block_name(self):
             return self._block
 
+        @staticmethod
+        def to_key(block,loc):
+            return "%s.%s" % (block,loc)
+
+
         @property
         def key(self):
-            return "%s.%s" % (self._block,self._loc)
+            return RouteGraph.RNode.to_key(self._block,self._loc)
 
         def input_key(self,inp):
             return "I.%s.%s" % (self.key,inp)
@@ -60,13 +84,16 @@ class RouteGraph:
                 yield self.output_key(out)
 
         def __repr__(self):
-            return "%d.%s%s" % (self.id,self._block,self._loc)
+            fragstr = self._fragment.id if not self._fragment is None else "none"
+            return "%d.%s%s [%s]" % (self.id,self._block,self._loc,fragstr)
 
-    def __init__(self,board):
+    def __init__(self,board,cutoff,max_failures,max_resolutions):
         self._nodes = {}
         self._nodes_by_block = {}
         self.board = board
-
+        self.cutoff = cutoff
+        self.try_search = arco_util.TryObject("search",n_succ=None,n_fail=max_failures)
+        self.try_resolve = arco_util.TryObject("rslv",n_succ=None,n_fail=max_resolutions)
 
     def add_node(self,block_name,loc):
         assert(isinstance(loc,str))
@@ -76,6 +103,10 @@ class RouteGraph:
 
         self._nodes_by_block[block_name].append(node.key)
         self._nodes[node.key] = node
+
+    def clear(self):
+        for node in self._nodes.values():
+            node.clear()
 
     def get_node(self,block_name,loc):
         node = RouteGraph.RNode(self,block_name,loc)
@@ -95,11 +126,15 @@ class RouteGraph:
 
 
 GRAPHS = {}
-def build_instance_graph(board):
+def build_instance_graph(board,cutoff,max_failures,max_resolutions):
     if board.name in GRAPHS:
         return GRAPHS[board.name]
 
-    graph = RouteGraph(board)
+    graph = RouteGraph(board,
+                       max_failures=max_failures,
+                       max_resolutions=max_resolutions,
+                       cutoff=cutoff)
+
     for block,loc,metadata in board.instances():
         graph.add_node(block,loc)
 
@@ -117,16 +152,17 @@ class RouteDFSContext:
 
     def __init__(self,state):
         self._state = state
-        self._nodes_by_block = {}
-        self._nodes_by_fragment_id = {}
+        self._block_to_nodes = {}
+        self._node_to_fragid = {}
+        self._fragid_to_node = {}
         self._conns = {}
         self._resolved = []
 
     def get_node_by_fragment(self,frag):
-        if not (frag.namespace,frag.id) in self._nodes_by_fragment_id:
+        if not (frag.namespace,frag.id) in self._fragid_to_node:
             return None
 
-        return self._nodes_by_fragment_id[(frag.namespace,frag.id)]
+        return self._fragid_to_node[(frag.namespace,frag.id)]
 
 
     def resolve_constraint(self,sn,sp,dn,dp):
@@ -144,8 +180,8 @@ class RouteDFSContext:
 
 
     def nodes(self):
-        for block in self._nodes_by_block:
-            for node in self._nodes_by_block[block]:
+        for block in self._block_to_nodes:
+            for node in self._block_to_nodes[block].values():
                 yield node
 
     def conns(self):
@@ -153,19 +189,20 @@ class RouteDFSContext:
             yield n1,p1,n2,p2
 
     def nodes_of_block(self,block):
-        if not block in self._nodes_by_block:
+        if not block in self._block_to_nodes:
             return []
 
-        return self._nodes_by_block[block]
+        return self._block_to_nodes[block].values()
 
     @property
     def frag_ids(self):
-        return self._nodes_by_fragment_id.keys()
+        return self._fragid_to_node.keys()
+
 
     def in_use(self,board,block_name,loc):
-        if not block_name in self._nodes_by_block:
+        if not block_name in self._block_to_nodes:
             return False
-        for node in self._nodes_by_block[block_name]:
+        for node in self._block_to_nodes[block_name]:
             if node.loc == loc:
                 return True
 
@@ -174,15 +211,15 @@ class RouteDFSContext:
     def unused_node(self, block_name,loc,fragment=None):
         if not fragment is None:
             if (fragment.namespace,fragment.id) in \
-               self._nodes_by_fragment_id:
+               self._fragid_to_node:
                 return False
 
-        if not block_name in self._nodes_by_block:
+        if not block_name in self._block_to_nodes:
             return True
 
-        for cnode in self._nodes_by_block[block_name]:
-            if(cnode.loc == loc):
-                return False
+        if RouteGraph.RNode.to_key(block_name,loc) in \
+           self._block_to_nodes[block_name]:
+            return False
 
         return True
 
@@ -191,26 +228,41 @@ class RouteDFSContext:
         if not self.unused_node(node.block_name,node.loc,fragment):
             raise Exception("node is already in context")
 
-        if not fragment is None:
-            self._nodes_by_fragment_id[(fragment.namespace,fragment.id)] \
-                = node
+        assert(self.unused_node(node.block_name,node.loc))
+        for other_node in self._fragid_to_node.values():
+            if other_node.block_name == node.block_name \
+               and other_node.loc == node.loc:
+                raise Exception("node already mapped to another fragment")
 
         node.set_config(config)
-        if not node.block_name in self._nodes_by_block:
-            self._nodes_by_block[node.block_name] = []
+        node.set_fragment(fragment)
+        # fragment id
+        if not fragment is None:
+            self._fragid_to_node[(fragment.namespace,fragment.id)] = node
+            self._node_to_fragid[node.key] = (fragment.namespace,fragment.id)
 
-        self._nodes_by_block[node.block_name].append(node)
+        if not node.block_name in self._block_to_nodes:
+            self._block_to_nodes[node.block_name] = {}
+
+        assert(not node.key in self._block_to_nodes)
+        self._block_to_nodes[node.block_name][node.key] = node
+
 
     def conn_node(self,node1,port1,node2,port2):
+        #assert(self._block_to_nodes[node1.block_name][node1.key].id == node1.id)
+        #assert(self._block_to_nodes[node2.block_name][node2.key].id == node2.id)
+
         if (node1.output_key(port1) in self._conns):
-            _,_,old_node2,old_port2 = self._conns[node1.output_key(port1)]
+            old_node1,old_port1,old_node2,old_port2 = \
+                                    self._conns[node1.output_key(port1)]
             if old_node2.id == node2.id and old_port2 == port2:
                 return
 
-            print("src:  %s.%s" % (node1,port1))
-            print("new-dest: %s.%s" % (node2,port2))
-            print("old-dest: %s.%s" % (old_node2,old_port2))
-            raise Exception("<%s,%s> already connected." % (node1,port1))
+            r = "new-src:  %s.%s [%s]\n" % (node1,port1,node1.output_key(port1))
+            r += "new-dest: %s.%s\n" % (node2,port2)
+            r += "old-src:  %s.%s [%s]\n" % (old_node1,old_port1,old_node1.output_key(old_port1))
+            r += "old-dest: %s.%s\n" % (old_node2,old_port2)
+            raise Exception("<%s,%s> already connected.\n\n%s" % (node1,port1,r))
         self._conns[node1.output_key(port1)] = (node1,port1,node2,port2)
 
 
@@ -261,7 +313,7 @@ class DFSUseNode(DFSAction):
         if self._frag.id is None:
             raise Exception("fragment has no id <%s>" % self._frag)
 
-        return "%s [%d]" % (self._node,self._frag.id)
+        return "use %s [%d]" % (self._node,self._frag.id)
 
 class DFSConnNode(DFSAction):
 
@@ -275,7 +327,7 @@ class DFSConnNode(DFSAction):
         ctx.conn_node(self._n1,self._p1,self._n2,self._p2)
 
     def __repr__(self):
-        return "(%s.%s)->(%s.%s)" % (self._n1,self._p1,self._n2,self._p2)
+        return "conn (%s.%s)->(%s.%s)" % (self._n1,self._p1,self._n2,self._p2)
 
 class DFSState:
     def __init__(self):
@@ -305,6 +357,11 @@ class DFSState:
             self._stack.append(self._frame)
         self._frame = []
 
+    def clear(self):
+        self._stack = []
+        self._frame = []
+        self._ctx = None
+
     def pop(self):
         self._stack = self._stack[:-1]
 
@@ -322,6 +379,7 @@ class DFSState:
 
         except Exception as e:
             j = 0
+            print("////////")
             for frame in self._stack:
                 for op in frame:
                     if j < idx:
@@ -335,11 +393,12 @@ class DFSState:
         return ctx
 
     def __repr__(self):
-        rep = ""
+        rep = "/////////////"
         for frame in self._stack:
             for op in frame:
                 rep += str(op) + "\n"
             rep += "-----\n"
+        rep += "/////////////"
         return rep
 
 
@@ -420,20 +479,19 @@ def create_instance_set_identifier(route):
     raise NotImplementedError
 
 
-def tac_abs_input(graph,namespace,fragment,ctx,cutoff):
+def tac_abs_input(graph,namespace,fragment,ctx):
     assert(not fragment.source is None)
     new_frag,output = fragment.source
     new_namespace = fragment.label
     for new_ctx in traverse_abs_circuit(graph,
                                         new_namespace,
                                         new_frag,
-                                        ctx=ctx, \
-                                        cutoff=cutoff):
+                                        ctx=ctx):
         yield new_ctx
 
 
 
-def tac_abs_get_resolutions(graph,ctx,cutoff,debug=False):
+def tac_abs_get_resolutions(graph,ctx):
     choice_list = []
     route_list = []
     node_list = []
@@ -450,10 +508,10 @@ def tac_abs_get_resolutions(graph,ctx,cutoff,debug=False):
         paths= list(graph.board.find_routes(
                 src_rnode.block_name,src_rnode.loc,src_port,
                 dest_rnode.block_name,dest_rnode.loc,dest_port,
-                cutoff=cutoff
+                cutoff=graph.cutoff
         ))
-        print("%s.%s -> %s.%s" % (src_rnode,src_port,dest_rnode,dest_port))
         all_routes = []
+        n_choices = 1.0
         for path in paths:
             route = []
             for i in range(0,len(path)-1):
@@ -474,14 +532,14 @@ def tac_abs_get_resolutions(graph,ctx,cutoff,debug=False):
                 nodes.append(new_nodes)
                 routes.append(route)
 
+        n_choices *= len(routes)
         choice_list.append(range(0,len(routes)))
         route_list.append(routes)
         node_list.append(nodes)
         cstr_list.append(cstr)
 
 
-    for route_options in route_list:
-        if len(route_options) == 0:
+        if n_choices == 0:
             print("-> no valid routes exist")
             break
 
@@ -508,9 +566,9 @@ def tac_abs_get_resolutions(graph,ctx,cutoff,debug=False):
         yield cstr_list,nodes,conns
 
 
-def tac_abs_rslv_constraints(graph,ctx,cutoff,debug=False):
+def tac_abs_rslv_constraints(graph,ctx):
     for cstrs,intermediate_nodes,conns in \
-        tac_abs_get_resolutions(graph,ctx,cutoff,debug=debug):
+        graph.try_resolve.iterate(tac_abs_get_resolutions(graph,ctx)):
         if len(cstrs) == 0:
             assert(len(intermediate_nodes) == 0)
             assert(len(conns) == 0)
@@ -524,7 +582,7 @@ def tac_abs_rslv_constraints(graph,ctx,cutoff,debug=False):
 
         for blk,loc in intermediate_nodes:
             node = RouteGraph.RNode(graph,blk,loc)
-            print("use %s.%s.%d" % (node.block_name,node.loc,node.id))
+            print("use %s" % (node))
             cfg = Config()
             cfg.set_comp_mode("*")
             step = DFSUseNode(node,
@@ -532,9 +590,12 @@ def tac_abs_rslv_constraints(graph,ctx,cutoff,debug=False):
                               fragment=None)
             base_ctx.add(step)
 
+        base_ctx.commit()
+        print("-- new conns --")
         for (sblk,sloc,sport),(dblk,dloc,dport) in conns:
-            src_node = RouteGraph.RNode(graph,sblk,sloc)
-            dest_node = RouteGraph.RNode(graph,dblk,dloc)
+            src_node = graph.get_node(sblk,sloc)
+            dest_node = graph.get_node(dblk,dloc)
+            print("%s.%s -> %s.%s" % (src_node,sport,dest_node,dport))
             step = DFSConnNode(src_node,sport, \
                                dest_node,dport)
             base_ctx.add(step)
@@ -543,8 +604,9 @@ def tac_abs_rslv_constraints(graph,ctx,cutoff,debug=False):
         yield base_ctx
 
 
+    graph.try_resolve.clear()
 
-def tac_abs_block_inst(graph,namespace,fragment,ctx=None,cutoff=1):
+def tac_abs_block_inst(graph,namespace,fragment,ctx=None):
     node = ctx.context().get_node_by_fragment(fragment)
     if not node is None:
         yield ctx
@@ -554,81 +616,75 @@ def tac_abs_block_inst(graph,namespace,fragment,ctx=None,cutoff=1):
     free_nodes = list(graph.nodes_of_block(fragment.block.name,
                                            used=used_nodes))
 
-    print("use %s.%d" % (namespace,fragment.id))
     for node in free_nodes:
         base_ctx=ctx.copy()
         base_ctx.add(DFSUseNode(node,fragment,
                                     fragment.config))
         base_ctx.commit()
-        for new_base_ctx in tac_abs_rslv_constraints(graph, ctx=base_ctx,\
-                                                 cutoff=cutoff):
+        for new_base_ctx in graph.try_search.iterate(tac_abs_rslv_constraints(graph, \
+                                                                              ctx=base_ctx)):
             for new_ctx in tac_iterate_over_sources(graph,\
                                                     namespace,
                                                     new_base_ctx,
-                                                    src_list=fragment.subnodes(),
-                                                    cutoff=cutoff):
+                                                    src_list=fragment.subnodes()):
                 yield new_ctx
 
         #ctx.pop()
 
 
-def tac_abs_conn(graph,namespace,fragment,ctx,cutoff):
+def tac_abs_conn(graph,namespace,fragment,ctx):
     for new_ctx in tac_iterate_over_sources(graph,namespace, \
-                                        src_list=fragment.subnodes(),
-                                        ctx=ctx,\
-                                        cutoff=cutoff):
+                                            src_list=fragment.subnodes(),
+                                            ctx=ctx):
         yield new_ctx
 
-def tac_abs_join(graph,namespace,fragment,ctx,cutoff):
+def tac_abs_join(graph,namespace,fragment,ctx):
     for new_ctx in tac_iterate_over_sources(graph,namespace, \
-                                        ctx=ctx,\
-                                        src_list=fragment.subnodes(), \
-                                        cutoff=cutoff):
+                                            ctx=ctx,\
+                                            src_list=fragment.subnodes()):
         yield new_ctx
 
 '''
 resolve the join source to a node
 '''
 
-def tac_iterate_over_sources(graph,namespace,ctx, src_list,cutoff=1):
+def tac_iterate_over_sources(graph,namespace,ctx, src_list):
     src_list = list(src_list)
     if len(src_list) == 0:
         yield ctx
     else:
         src_frag = src_list[0]
         for new_ctx in \
-            traverse_abs_circuit(graph,
-                                 namespace,
-                                 src_frag,
-                                 ctx=ctx,
-                                 cutoff=cutoff):
-            for very_new_ctx in tac_iterate_over_sources(graph,
-                                                            namespace,
-                                                            new_ctx,
-                                                            src_list[1:],
-                                                            cutoff):
+            graph.try_search.iterate(traverse_abs_circuit(graph,
+                                                          namespace,
+                                                          src_frag,
+                                                          ctx=ctx)):
+            for very_new_ctx in graph.try_search.iterate(tac_iterate_over_sources(graph,
+                                                                                  namespace,
+                                                                                  new_ctx,
+                                                                                  src_list[1:])):
                 yield very_new_ctx
 
 
 
 
-def traverse_abs_circuit(graph,namespace,fragment,ctx=None,cutoff=1):
+def traverse_abs_circuit(graph,namespace,fragment,ctx=None):
     assert(isinstance(ctx,RouteDFSState))
     if isinstance(fragment,acirc.ABlockInst):
-        for ctx in tac_abs_block_inst(graph,namespace,fragment,ctx,cutoff):
-            yield ctx
+        for new_ctx in tac_abs_block_inst(graph,namespace,fragment,ctx):
+            yield new_ctx
 
     elif isinstance(fragment,acirc.AConn):
-        for ctx in tac_abs_conn(graph,namespace,fragment,ctx,cutoff):
-            yield ctx
+        for new_ctx in tac_abs_conn(graph,namespace,fragment,ctx):
+            yield new_ctx
 
     elif isinstance(fragment,acirc.AInput):
-        for ctx in tac_abs_input(graph,namespace,fragment,ctx,cutoff):
-            yield ctx
+        for new_ctx in tac_abs_input(graph,namespace,fragment,ctx):
+            yield new_ctx
 
     elif isinstance(fragment,acirc.AJoin):
-        for ctx in tac_abs_join(graph,namespace,fragment,ctx,cutoff):
-            yield ctx
+        for new_ctx in tac_abs_join(graph,namespace,fragment,ctx):
+            yield new_ctx
 
     else:
         raise Exception(fragment)
@@ -728,26 +784,24 @@ def derive_abs_circuit_constraints(fragment_map):
             yield (sn,sp,dn,dp)
 
 
-def traverse_abs_circuits(graph,variables,fragment_map,ctx=None,cutoff=1):
+def traverse_abs_circuits(graph,variables,fragment_map,ctx=None):
     variable = variables[0]
     fragment = fragment_map[variable]
     print(">>> compute variable [%s] <<<" % variable)
     for result in \
-        traverse_abs_circuit(graph,variable,fragment,
-                             ctx=ctx,
-                             cutoff=cutoff):
+        graph.try_search.iterate(traverse_abs_circuit(graph,variable,fragment,
+                                                   ctx=ctx)):
         if len(variables) > 1:
-            for subresult in traverse_abs_circuits(graph,
-                                                   variables[1:],
-                                                   fragment_map,
-                                                   ctx=result,
-                                                   cutoff=cutoff):
+            for subresult in graph.try_search.iterate(traverse_abs_circuits(graph,
+                                                                            variables[1:],
+                                                                            fragment_map,
+                                                                            ctx=result)):
                 yield subresult
 
         else:
-
             for new_result in \
-                tac_abs_rslv_constraints(graph,result,cutoff,debug=True):
+                graph.try_search.iterate(tac_abs_rslv_constraints(graph,
+                                                                  result)):
                 unresolved = list(new_result.context().unresolved_constraints())
                 total = len(new_result.constraints())
                 if len(unresolved) > 0:
@@ -770,14 +824,11 @@ def build_concrete_circuit(graph,prob,fragment_map):
     print("# cstrs: %s" % len(all_cstrs))
     print(">>> route circuit <<<")
     starting_ctx = RouteDFSState(fragment_map,all_cstrs)
-    for idx,result in \
-        enumerate(traverse_abs_circuits(graph, \
-                                        variables, \
-                                        fragment_map,
-                                        ctx=starting_ctx,
-                                        cutoff=7)):
+    for idx,result in enumerate(traverse_abs_circuits(graph, \
+                                                    variables, \
+                                                    fragment_map,
+                                                    ctx=starting_ctx)):
         state = result.context()
-
         circ = ccirc.ConcCirc(graph.board)
 
         for node in state.nodes():
@@ -788,15 +839,22 @@ def build_concrete_circuit(graph,prob,fragment_map):
             circ.conn(n1.block_name,n1.loc,p1,
                       n2.block_name,n2.loc,p2)
 
+        starting_ctx.clear()
+        graph.clear()
         yield circ
 
     return
 
 GRAPH = {}
-def route(board,prob,node_map,timeout=30):
+def route(board,prob,node_map,cutoff=7,max_failures=None,max_resolutions=None):
     #sys.setrecursionlimit(1000)
-    graph = build_instance_graph(board)
+    graph = build_instance_graph(board,
+                                 cutoff=cutoff,
+                                 max_failures=max_failures,
+                                 max_resolutions=max_resolutions)
     logger.info('--- concrete circuit ---')
     for conc_circ in build_concrete_circuit(graph,prob,node_map):
         print("<<<< CONCRETE CIRCUIT >>>>")
         yield conc_circ
+
+    graph.try_search.clear()

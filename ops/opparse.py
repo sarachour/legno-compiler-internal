@@ -24,6 +24,24 @@ expr = infixNotation( operand,
      (plusop, 2, opAssoc.LEFT),]
     )
 
+def _build_expr(expr,terms,ctor):
+  if len(terms) == 0:
+    return expr
+  else:
+    rhs = build_expr(terms,ctor)
+    return ctor(expr,rhs)
+
+def build_expr(exprs,ctor):
+  if len(exprs) == 1:
+    return exprs[0]
+  else:
+    return _build_expr(exprs[0],exprs[1:],ctor)
+
+def get_terms(ops,terms,sel_op):
+  for op,term in zip(ops,terms):
+    if op == sel_op:
+      yield term
+
 def from_infix(infix):
   if isinstance(infix,str):
     return op.Var(infix)
@@ -33,19 +51,33 @@ def from_infix(infix):
     return from_infix(infix[0])
 
   assert(len(infix) >= 3)
-  lhs = from_infix(infix[0])
-  rhs = from_infix(infix[2:])
-  assert(isinstance(lhs,op.Op))
-  assert(isinstance(rhs,op.Op))
-  this_op = infix[1]
-  if this_op == '*':
-    return op.Mult(lhs,rhs)
-  elif this_op == '-':
-    return op.Add(lhs,op.Mult(op.Const(-1),rhs))
-  elif this_op == '+':
-    return op.Add(lhs,rhs)
+  terms = list(map(lambda i: from_infix(infix[i]), \
+              range(0,len(infix),2)))
+  ops = [None]+list(map(lambda i: infix[i], \
+                        range(1,len(infix),2)))
+
+  if ops[1] == '-' or ops[1] == '+':
+    ops[0] = '+'
+    sub_terms = list(get_terms(ops,terms,'-'))
+    add_terms = list(get_terms(ops,terms,'+'))
+    add_expr = build_expr(add_terms,op.Add)
+    sub_expr = build_expr(sub_terms,op.Add)
+
+    if len(sub_terms) > 0 and len(add_terms) > 0:
+      return op.Add(add_expr,op.Mult(op.Const(-1),sub_expr))
+
+    elif len(sub_terms) > 0 and len(add_terms) == 0:
+      return op.Mult(op.Const(-1),sub_expr)
+
+    elif len(sub_terms) == 0 and len(add_terms) > 0:
+      return add_expr
+
+  elif ops[1] == '*':
+    ops[0] = '*'
+    return build_expr(terms,op.Mult)
   else:
     raise Exception("unknown: %s" % str(infix))
+
 
 def parse(strrepr):
   args = ''.join(strrepr.split())

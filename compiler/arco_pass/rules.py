@@ -43,6 +43,16 @@ class RNegateFanout(Rule):
 
         self._opts = set(coeffs)
 
+    def vars_and_consts(self,terms):
+        for term in terms:
+            if term.op == AOpType.VAR:
+                continue
+            elif term.op == AOpType.CONST:
+                continue
+            else:
+                return False
+        return True
+
     def generate_args(self,ast):
         if ast.op == AOpType.CPROD and \
            ast.value in self._opts:
@@ -52,6 +62,18 @@ class RNegateFanout(Rule):
                 for idx,inp in enumerate(ast.input.inputs):
                     if inp.op == AOpType.VAR:
                         yield idx
+                    elif inp.op == AOpType.SUM \
+                         and self.vars_and_consts(inp.inputs):
+                        yield idx
+
+    def process_term(self,inp,coeff):
+        if inp.op == AOpType.VAR:
+            return AVar(inp.name,coeff)
+        elif inp.op == AOpType.SUM:
+            return ASum(list(map(lambda t: self.process_term(t,coeff), \
+                                 inp.inputs)))
+        else:
+            raise Exception("unhandled process: <%s>" % inp)
 
     def apply_args(self,ast,term_idx):
         if ast.input.op == AOpType.VAR:
@@ -61,9 +83,11 @@ class RNegateFanout(Rule):
             new_args = []
             for idx,inp in enumerate(ast.input.inputs):
                 if idx == term_idx:
-                    new_args.append(AVar(inp.name,ast.value))
+                    new_term = self.process_term(inp,ast.value)
+                    new_args.append(new_term)
                 else:
                     new_args.append(inp)
+
             return AProd(new_args)
 
 
