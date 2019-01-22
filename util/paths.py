@@ -2,6 +2,8 @@
 import os
 from enum import Enum
 
+import util.config as config
+
 class PathHandler:
     def __init__(self,name,bmark):
         self.set_root_dir(name,bmark)
@@ -24,7 +26,7 @@ class PathHandler:
         self._bmark = bmark
 
     def set_root_dir(self,name,bmark):
-        self.ROOT_DIR = "outputs/legno/%s" % name
+        self.ROOT_DIR = "%s/legno/%s" % (config.OUTPUT_PATH,name)
         self.BMARK_DIR = self.ROOT_DIR + ("/%s" % bmark)
         self.ABS_CIRC_DIR = self.BMARK_DIR + "/abs-circ"
         self.ABS_GRAPH_DIR = self.BMARK_DIR + "/abs-graph"

@@ -537,6 +537,11 @@ def iter_scaled_circuits(circ):
         #input()
         yield circ
 
+def files(scale_inds):
+    for idx in scale_inds:
+        for opt in JauntObjectiveFunction.methods():
+            yield idx,opt
+
 def scale(prog,circ,noise_analysis=False):
     for orig_circ in iter_scaled_circuits(circ):
         if not noise_analysis:

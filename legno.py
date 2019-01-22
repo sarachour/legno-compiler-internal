@@ -176,23 +176,33 @@ elif args.subparser_name == "jaunt":
                     conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                obj)
 
-                    for idx,(opt,scale_circ) in enumerate(jaunt.scale(prog,
-                                                  conc_circ, \
-                                                  noise_analysis=args.noise)):
-
+                    already_written = True
+                    for idx,opt in jaunt.files(range(0,args.scale_circuits)):
                         filename = path_handler.conc_circ_file(circ_bmark,
                                                                circ_indices,
                                                                idx,
                                                                opt)
-                        scale_circ.write_circuit(filename)
+                        if not path_handler.has_file(filename):
+                            already_written = False
 
-                        filename = path_handler.conc_graph_file(circ_bmark,
+                    if not already_written:
+                        for idx,(opt,scale_circ) in enumerate(jaunt.scale(prog,
+                                                    conc_circ, \
+                                                    noise_analysis=args.noise)):
+
+                            filename = path_handler.conc_circ_file(circ_bmark,
                                                                 circ_indices,
                                                                 idx,
                                                                 opt)
-                        scale_circ.write_graph(filename,write_png=True)
-                        if idx >= args.scale_circuits:
-                            break
+                            scale_circ.write_circuit(filename)
+
+                            filename = path_handler.conc_graph_file(circ_bmark,
+                                                                    circ_indices,
+                                                                    idx,
+                                                                    opt)
+                            scale_circ.write_graph(filename,write_png=True)
+                            if idx >= args.scale_circuits:
+                                break
 
 elif args.subparser_name == "execprog":
    prog = bmark.get_prog(args.benchmark)

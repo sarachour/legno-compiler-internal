@@ -9,12 +9,14 @@ sys.path.insert(0,os.path.abspath("lab_bench"))
 from util import paths
 
 
-def execute_script(ip,script_file):
+def execute_script(ip,script_file,native=False):
     print(script_file)
     if not ip is None:
         exec_cmd = "python3 lab_bench/arduino_client.py --ip %s --script %s" % (args.ip,script_file)
+        exec_cmd += " --native" if native else ""
     else:
         exec_cmd = "python3 lab_bench/arduino_client.py --script %s" % (script_file)
+        exec_cmd += " --native" if native else ""
 
     print(exec_cmd)
     os.system(exec_cmd)
@@ -30,6 +32,9 @@ parser.add_argument('--script-list', type=str, default=None,
                     help="list of grendel scripts")
 parser.add_argument('--ip', type=str,
                        help='oscilloscope ip.')
+parser.add_argument('--native', action='store_true',
+                       help='use ttyACM0.')
+
 
 
 
@@ -42,7 +47,7 @@ if args.script_list is None:
         for fname in filelist:
             if fname.endswith('.grendel'):
                 script_file = "%s/%s" % (dirname,fname)
-                execute_script(args.ip,script_file)
+                execute_script(args.ip,script_file,native=args.native)
 
 else:
     with open(args.script_list,'r') as fh:
