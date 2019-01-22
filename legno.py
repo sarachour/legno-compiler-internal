@@ -175,7 +175,7 @@ elif args.subparser_name == "jaunt":
                     obj = json.loads(fh.read())
                     conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                obj)
-                    n_scaled = 0
+
                     for idx,(opt,scale_circ) in enumerate(jaunt.scale(prog,
                                                   conc_circ, \
                                                   noise_analysis=args.noise)):
@@ -188,7 +188,7 @@ elif args.subparser_name == "jaunt":
 
                         filename = path_handler.conc_graph_file(circ_bmark,
                                                                 circ_indices,
-                                                                n_scaled,
+                                                                idx,
                                                                 opt)
                         scale_circ.write_graph(filename,write_png=True)
                         if idx >= args.scale_circuits:
