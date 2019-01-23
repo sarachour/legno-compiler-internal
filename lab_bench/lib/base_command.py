@@ -52,7 +52,6 @@ class Command:
         raise NotImplementedError
 
 class ArduinoResponseType(Enum):
-    LISTEN = "listen"
     PROCESS = "process"
     DEBUG = "debug"
     DONE = "done"
@@ -248,10 +247,6 @@ class ArduinoCommand(Command):
             line = ard.readline()
             if self.is_response(line):
                 resp = self.parse_response(line)
-                if resp.type == ArduinoResponseType.LISTEN:
-                    assert(state == ArduinoResponseState.PENDING)
-                    continue
-
                 if resp.type == ArduinoResponseType.PROCESS:
                     assert(state == ArduinoResponseState.PENDING)
                     state = ArduinoResponseState.PROCESSED
@@ -328,7 +323,6 @@ class ArduinoCommand(Command):
         if not state.dummy:
             #print("execute: %s [%d]" % (self,len(cdata)))
             # twenty bytes
-            #self.waitfor(state,ArduinoResponseType.LISTEN)
             state.arduino.write_bytes(cdata)
             state.arduino.write_newline()
             return self.get_response(state)

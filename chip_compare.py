@@ -108,7 +108,7 @@ def read_data(path):
 
 def execute(script_file):
   dirs = script_file.split("/")
-  bmark_dir,bmark,outfile = dirs[2],dirs[3],dirs[-1]
+  bmark_dir,bmark,outfile = dirs[-4],dirs[-3],dirs[-1]
   ph= paths.PathHandler(bmark_dir,bmark)
   bmark,indices,scale_index,opt, menv_name, hwenv_name = \
                 ph.grendel_file_to_args(outfile)
