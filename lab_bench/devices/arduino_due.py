@@ -9,7 +9,7 @@ class ArduinoDue:
         if not native:
             self._serial_port = '/dev/tty.usbmodem1411';
         else:
-            self._serial_port = 'dev/ttyACM0'
+            self._serial_port = '/dev/ttyACM0'
 
         self._comm = None
 
@@ -19,14 +19,18 @@ class ArduinoDue:
 
     def open(self):
         print("%s:%s" % (self._serial_port,self._baud_rate))
-        self._comm= serial.Serial(self._serial_port, self._baud_rate)
+        self._comm= serial.Serial(self._serial_port,
+                                  self._baud_rate)
+        print(self._comm)
         self.flush()
         return True
 
     def readline(self):
         line_bytes = self._comm.readline()
         line_valid_bytes = bytearray(filter(lambda b: b<128, line_bytes))
-        return line_valid_bytes.decode('utf-8')
+        strline = line_valid_bytes.decode('utf-8')
+        print(strline)
+        return strline
 
     def reads_available(self):
         return self._comm.in_waiting > 0
@@ -42,7 +46,7 @@ class ArduinoDue:
     def writeline(self,string):
         msg = "%s\r\n" % string
         self.write(msg)
-
+        
     def write_newline(self):
         self.write("\r\n")
 
@@ -52,10 +56,12 @@ class ArduinoDue:
 
     def write_bytes(self,byts):
         isinstance(byts,bytearray)
-        nbytes = 0;
-        for i in range(0,len(byts), 32):
-            nbytes += self._comm.write(byts[i:i+32])
-            time.sleep(0.01)
+        #nbytes = 0;
+        #for i in range(0,len(byts), 32):
+        #    nbytes += self._comm.write(byts[i:i+32])
+        #    time.sleep(0.1)
+        print("writing %d bytes" % len(byts))
+        nbytes = self._comm.write(byts)
         print("wrote %d bytes" % nbytes)
         self._comm.flush()
 
