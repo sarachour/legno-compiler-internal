@@ -1,6 +1,8 @@
 import serial
 import time
 import re
+import tqdm
+import np
 
 class ArduinoDue:
 
@@ -20,7 +22,11 @@ class ArduinoDue:
     def open(self):
         print("%s:%s" % (self._serial_port,self._baud_rate))
         self._comm= serial.Serial(self._serial_port, self._baud_rate)
-        time.sleep(2)
+
+        delta = 0.02
+        for _ in tqdm(np.linspace(0,2.0,delta)):
+            time.sleep(delta)
+
         self.flush()
         return True
 
@@ -62,49 +68,3 @@ class ArduinoDue:
 
     def write(self,msg):
         self.write_bytes(msg.encode())
-'''
-    def try_process(self):
-        found_process = False
-        while True:
-            line = self.try_readline()
-            if line is None:
-                return None
-            if "::process::" in line:
-                found_process = True
-
-            elif found_process:
-                return line
-
-
-    def process(self):
-        while True:
-            line = self.readline()
-
-            if "::process::" in line:
-                return True
-
-
-            if not "::listen::" in line:
-                print(line)
-
-    def listen(self):
-        while True:
-            line = self.readline()
-            if "::listen::" in line:
-                return True
-
-    def synchronize(self):
-        data = self.readline()
-        if "::wait::" in data:
-            print("[[Arduino Due is waiting for input]]")
-            input("   Press key when ready:")
-            self.writeline('x')
-            line = self.readline()
-            assert("::recv::" in line)
-
-        elif "::done::" in data:
-            print("[[Arduino Due is finished]]")
-
-        else:
-            print("[[Arduino Due is desynchronized. Please reprogram device]]")
-'''
