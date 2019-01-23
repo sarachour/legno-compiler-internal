@@ -8,6 +8,10 @@ sys.path.insert(0,os.path.abspath("lab_bench"))
 
 from util import paths
 
+def ping_user(email,benchmark,script_list):
+    msg = "benchmark=%s"
+    cmd = "mail -s \"job finished\" %s  <<< \"%s\"" % (email, msg)
+    os.system(cmd)
 
 def execute_script(ip,script_file,native=False):
     print(script_file)
@@ -32,11 +36,10 @@ parser.add_argument('--script-list', type=str, default=None,
                     help="list of grendel scripts")
 parser.add_argument('--ip', type=str,
                        help='oscilloscope ip.')
+parser.add_argument('--email', type=str,
+                       help='email address.')
 parser.add_argument('--native', action='store_true',
                        help='use ttyACM0.')
-
-
-
 
 args = parser.parse_args()
 
@@ -57,3 +60,6 @@ else:
 
             script_file = line.strip()
             execute_script(args.ip,script_file,native=args.native)
+
+if not args.email is None:
+    ping_user(args.email,args.benchmark,args.script_list)
