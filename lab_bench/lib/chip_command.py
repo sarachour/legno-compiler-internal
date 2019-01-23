@@ -404,11 +404,7 @@ class AnalogChipCommand(ArduinoCommand):
         if state.dummy:
             return
 
-        resp = ArduinoCommand.execute_command(self,state)
-        print("cmd> %s" % resp)
-        line = state.arduino.readline()
-        print("resp> %s" % line)
-        return resp
+        return ArduinoCommand.execute_command(self,state)
 
 class DisableCmd(AnalogChipCommand):
 
@@ -804,9 +800,8 @@ class GetIntegStatusCmd(AnalogChipCommand):
 
         resp = AnalogChipCommand.apply(self,state)
         handle = "integ.%s" % self.loc
-        oflow_val = int(state.arduino.readline())
-        oflow = True if oflow_val == 1 else False
-        print("overflow_val: %s" % oflow_val)
+        oflow = True if resp.data(0) == 1 else False
+        print("overflow_val: %s" % oflow)
         state.set_overflow(handle, oflow)
 
 

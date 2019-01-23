@@ -147,15 +147,12 @@ class MicroGetTimeDeltaCmd(ArduinoCommand):
 
 
     def execute(self,state):
-        if state.dummy:
-            return;
-
-        line = ArduinoCommand.execute(self,state)
-        resp = state.arduino.readline()
-        tb_samples = float(resp.strip())
-        print("time_delta: %s" % tb_samples)
-        state.time_between_samples_s = tb_samples
-        return tb_samples
+        resp = ArduinoCommand.execute(self,state)
+        if not resp is None:
+            tb_samples = resp.data(0)
+            print("time_delta: %s" % tb_samples)
+            state.time_between_samples_s = tb_samples
+            return tb_samples
 
 
 class MicroGetNumADCSamplesCmd(ArduinoCommand):
@@ -190,15 +187,12 @@ class MicroGetNumADCSamplesCmd(ArduinoCommand):
 
 
     def execute(self,state):
-        if state.dummy:
-            return
-
-        line = ArduinoCommand.execute(self,state)
-        resp = state.arduino.readline()
-        n_samples = int(resp.strip())
-        print("n-adc=%s" % n_samples)
-        state.n_adc_samples = n_samples
-        return n_samples
+        resp = ArduinoCommand.execute(self,state)
+        if not resp is None:
+            n_samples = resp.data(0)
+            print("n-adc=%s" % n_samples)
+            state.n_adc_samples = n_samples
+            return n_samples
 
 
 class MicroGetNumDACSamplesCmd(ArduinoCommand):
@@ -235,15 +229,12 @@ class MicroGetNumDACSamplesCmd(ArduinoCommand):
 
 
     def execute(self,state):
-        if state.dummy:
-            return
-
-        line = ArduinoCommand.execute(self,state)
-        resp = state.arduino.readline()
-        n_samples = int(resp.strip())
-        print("n-dac=%s" % n_samples)
-        state.n_dac_samples = n_samples
-        return n_samples
+        resp = ArduinoCommand.execute(self,state)
+        if not resp is None:
+            n_samples = resp.data(0)
+            print("n-dac=%s" % n_samples)
+            state.n_dac_samples = n_samples
+            return n_samples
 
 
 class MicroGetADCValuesCmd(ArduinoCommand):
@@ -269,23 +260,22 @@ class MicroGetADCValuesCmd(ArduinoCommand):
             self._variable,
             self._filename)
 
-    def execute_read_op(self,state,adc_id,n,offset):
-        data_header = build_exp_ctype({
+    def build_ctype(self):
+        n,offset=self._args
+        build_exp_ctype({
             'type':enums.ExpCmdType.GET_ADC_VALUES.name,
             'args':{
-                'ints':[adc_id,n,offset],
+                'ints':[self._adc_id,n,offset],
             },
             'flag':False
         })
-        VAL_TO_VOLTS = 3.3
-        data_header_t = self._c_type
-        byts = data_header_t.build(data_header)
-        line = self.write_to_arduino(state,byts)
-        line = state.arduino.readline()
-        data = list(map(lambda tok: float(tok)*VAL_TO_VOLTS, \
-                   line.split()[1:]))
 
-        assert(len(data) <= n)
+    def execute_read_op(self,state,n,offset):
+        self._args = (n,offset)
+        resp = ArduinoCommand.execute(self,state)
+        VAL_TO_VOLTS = 3.3
+        array = resp.data(0)
+        data = list(map(lambda val: val*VAL_TO_VOLTS, array))
         return data
 
     @staticmethod
@@ -294,7 +284,7 @@ class MicroGetADCValuesCmd(ArduinoCommand):
                                args, \
                         MicroGetADCValuesCmd)
 
-    def execute(self,state):
+    def execute_command(self,state):
         n = state.n_adc_samples
         buf = []
         chunksize_bytes = 1000;
@@ -305,7 +295,6 @@ class MicroGetADCValuesCmd(ArduinoCommand):
         values = np.zeros(n)
         for offset in range(0,n,chunksize_shorts):
             datum = self.execute_read_op(state,
-                                         self._adc_id,
                                          chunksize_shorts,
                                          offset)
             for i,value in enumerate(datum):
@@ -326,7 +315,6 @@ class MicroUseDACCmd(ArduinoCommand):
         ArduinoCommand.__init__(self)
         self._dac_id = dac_id
         self._periodic = bool(periodic)
-
 
 
     @staticmethod
@@ -350,7 +338,7 @@ class MicroUseDACCmd(ArduinoCommand):
 
     def execute(self,state):
         state.use_dac(self._dac_id)
-        ArduinoCommand.execute(self,state)
+        return ArduinoCommand.execute(self,state)
 
 
     @staticmethod
@@ -391,9 +379,9 @@ class MicroSetDACValuesCmd(ArduinoCommand):
                         MicroSetDACValuesCmd)
 
 
-
-    def execute_write_op(self,state,buf,offset):
-        data_header = build_exp_ctype({
+    def build_ctype(self):
+        buf,offset = self._args
+        return build_exp_ctype({
             'type':enums.ExpCmdType.SET_DAC_VALUES.name,
             'args':{
                 'ints':[self.dac_id,len(buf),offset],
@@ -401,14 +389,14 @@ class MicroSetDACValuesCmd(ArduinoCommand):
             'flag': False
         })
 
-        data_header_t = self._c_type
-        data_body_t = construct.Array(len(buf),
-                                      construct.Float32l)
-        byts_h = data_header_t.build(data_header)
-        byts_d = data_body_t.build(buf)
-        resp = self.write_to_arduino(state,byts_h + byts_d)
-        print("resp:> %s" % resp)
+    def build_dtype(self,buf):
+        return construct.Array(len(buf),
+                        construct.Float32l)
 
+    def execute_write_op(self,state,buf,offset):
+        self._args = (buf,offset)
+        resp = self.execute(state,{'raw_data':buf})
+        return resp
 
     def compute_value(self,state,idx):
         delta = state.time_between_samples_s
@@ -961,14 +949,7 @@ class MicroRunCmd(ArduinoCommand):
 
 
     def execute(self,state):
-        line = ArduinoCommand.execute(self,state)
-        if not state.dummy:
-            while line is None or not "::done::" in line:
-                print("resp:> %s" % line)
-                line = state.arduino.readline()
-            print("resp:> %s" % line)
-            print("<done>")
-            #input("<press enter to continue>")
+        resp = ArduinoCommand.execute(self,state)
 
     def __repr__(self):
         return self.name()

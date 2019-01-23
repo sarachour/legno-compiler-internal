@@ -61,7 +61,7 @@ class ArduinoDue:
 
     def write(self,msg):
         self.write_bytes(msg.encode())
-
+'''
     def try_process(self):
         found_process = False
         while True:
@@ -106,3 +106,4 @@ class ArduinoDue:
 
         else:
             print("[[Arduino Due is desynchronized. Please reprogram device]]")
+'''

@@ -35,12 +35,12 @@ void setup() {
 }
 
 void loop() {
-  if(read_mode()){
+  if(comm::read_mode()){
     cmd_t cmd;
-    int nbytes = read_bytes((byte *) &cmd,sizeof(cmd_t));
+    int nbytes = comm::read_bytes((byte *) &cmd,sizeof(cmd_t));
     float * inbuf = NULL;
     bool debug = cmd.test == 0 ? false : true;
-    Serial.println("::process::");
+    comm::process_command();
     switch(cmd.type){
       case cmd_type_t::CIRC_CMD:
         assert(this_fabric != NULL);
@@ -49,38 +49,36 @@ void loop() {
           circ::exec_command(this_fabric,cmd.data.circ_cmd);
         }
         else{
-          Serial.print("DEBUG:");
           circ::print_command(cmd.data.circ_cmd);
-          Serial.println(0);
+          comm::response("debug",0);
         }
         break;
       case cmd_type_t::EXPERIMENT_CMD:
-        inbuf = (float*) get_data_ptr(nbytes);
+        inbuf = (float*) comm::get_data_ptr(nbytes);
         if(!debug){
           experiment::print_command(cmd.data.exp_cmd,inbuf);
           experiment::exec_command(&this_experiment,this_fabric,cmd.data.exp_cmd,inbuf);
         }
         else{
-          Serial.print("DEBUG:");
           experiment::print_command(cmd.data.exp_cmd,inbuf);
-          Serial.println(0);
+          comm::response("debug",0);
         }
         // in the event the fabric has not been initialized, initialize it
         break;
       case cmd_type_t::FLUSH_CMD:
-        Serial.println("::flush::");
+        comm::response("flushed",0);
         break;
       default:
+        comm::print_header();
         Serial.print(cmd.type);
-        Serial.println(" <unknown>");
+        Serial.println(" unknown");
         break;
     }
-    reset();
+    comm::reset();
   }
   else{
-    Serial.print(write_pos());
-    Serial.println("::listen::");
-    listen();
+    comm::listen_command();
+    comm::listen();
     delay(30);
   }
   

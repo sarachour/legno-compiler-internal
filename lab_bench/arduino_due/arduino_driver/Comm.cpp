@@ -1,7 +1,10 @@
 #include "Comm.h"
 #include <Arduino.h>
 
+namespace comm {
+  
 #define BUFSIZ 1024
+
 byte INBUF[BUFSIZ];
 int WPOS=0;
 int RPOS=0;
@@ -9,6 +12,54 @@ bool DONE=false;
 
 bool read_mode(){
   return DONE;
+}
+void header(){
+  Serial.print("\nAC:>");
+}
+void print_header(){
+  header();
+  Serial.print("[msg]");
+}
+void listen_command(){
+  header();
+  Serial.print("[listen]");
+  Serial.print(" pos=");
+  Serial.println(write_pos());
+}
+void process_command(){
+  header();
+  Serial.println("[process]");
+}
+void done_command(){
+  header();
+  Serial.println("[done]");
+}
+
+void payload(){
+  header();
+  Serial.print("[array]");
+}
+void data(const char * msg,const char * type_sig){
+  header();
+  Serial.print("[data][");
+  Serial.print(type_sig);
+  Serial.print("] ");  
+  Serial.println(msg);
+}
+void response(const char * msg,int args){
+  header();
+  Serial.print("[resp][");
+  Serial.print(args);
+  Serial.print("]");
+  Serial.println(msg);
+}
+void error(const char * msg){
+  while(1){
+     header();
+     Serial.print("[error]");
+     Serial.println(msg);
+     delay(100);
+  }
 }
 void reset(){
   DONE = false;
@@ -20,6 +71,7 @@ int write_pos(){
 }
 void listen(){
   if(DONE){
+    print_header();
     Serial.println("<found endline>");
     return;
   }
@@ -86,3 +138,4 @@ uint8_t read_byte(){
   return value;
 }
 
+}

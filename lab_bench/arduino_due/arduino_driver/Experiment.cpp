@@ -118,8 +118,11 @@ void enable_dac(experiment_t * expr, byte dac_id,bool periodic){
 }
 
 void print_adc_values(experiment_t * expr, int adc_id, int nels, int offset){
+  char buf[32];
   int n = nels + offset <= expr->adc_samples ? nels : expr->adc_samples - offset;
-  Serial.print(n);
+  sprintf(buf,"%d",n);
+  comm::data(buf,"F");
+  comm::payload();
   int adc_offset = expr->adc_offsets[adc_id];
   if(adc_offset >= 0 and expr->compute_offsets){
     for(int idx=offset; idx < offset+n; idx+=1){
@@ -202,7 +205,7 @@ void reset_experiment(experiment_t * expr){
 }
 void run_experiment(experiment_t * expr, Fabric * fab){
   if(not expr->compute_offsets){
-      Serial.println("[error] must compute offsets beforehand");
+      comm::error("must compute offsets beforehand");
       return;
   }
   IDX = 0;
@@ -212,6 +215,7 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   N_OSC = expr->osc_samples;
   FABRIC = fab;
   EXPERIMENT = expr;
+  comm::print_header();
   Serial.print(N_OSC);
   Serial.print("/");
   Serial.println(N);
@@ -234,6 +238,7 @@ void run_experiment(experiment_t * expr, Fabric * fab){
     Timer3.start(expr->time_between_samps_us);
   }
   while(IDX < N){
+    comm::print_header();
     Serial.print("waiting idx=");
     Serial.println(IDX);
     delay(500);
@@ -244,7 +249,7 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   }
   analogWrite(DAC0, 0); 
   analogWrite(DAC1, 0); 
-  Serial.println("::done::");
+  comm::done_command();
 }
 
 void set_sim_time(experiment_t * expr, float sim_time, float period_time, float frame_time){
@@ -274,55 +279,74 @@ void set_dac_values(experiment_t* expr, float * inbuf, int dac_id, int n, int of
   }
 }
 void exec_command(experiment_t* expr, Fabric* fab, cmd_t& cmd, float * inbuf){
+  char buf[128];
   switch(cmd.type){
     case cmd_type_t::RESET:
       reset_experiment(expr);
+      comm::response("resetted",0);
       break;
     case cmd_type_t::RUN:
       run_experiment(expr,fab);
+      comm::response("ran",0);
       break;
     case cmd_type_t::USE_ANALOG_CHIP:
       enable_analog_chip(expr);
+      comm::response("use_analog_chip=true",0);
       break;
     case cmd_type_t::USE_DAC:
       enable_dac(expr,cmd.args.ints[0],cmd.flag);
+      comm::response("use_dac=true",0);
       break;
     case cmd_type_t::USE_ADC:
       enable_adc(expr,cmd.args.ints[0]);
+      comm::response("use_adc=true",0);
       break;
     case cmd_type_t::USE_OSC:
       enable_oscilloscope(expr);
+      comm::response("enable_trigger=true",0);
       break;
     case cmd_type_t::SET_SIM_TIME:
       set_sim_time(expr,cmd.args.floats[0],cmd.args.floats[1],cmd.args.floats[2]);
+      comm::response("set simulation time",0);
       break;
 
     case cmd_type_t::COMPUTE_OFFSETS:
       compute_offsets(expr);
+      comm::response("computed offsets",0);
       break;
     case cmd_type_t::SET_DAC_VALUES:
       set_dac_values(expr,inbuf,cmd.args.ints[0],cmd.args.ints[1],cmd.args.ints[2]);
+      comm::response("set dac values",0);
       break;
 
     case cmd_type_t::GET_ADC_VALUES:
+      comm::response("get adc values",1);
       print_adc_values(expr,cmd.args.ints[0],cmd.args.ints[1],cmd.args.ints[2]);
       break;
 
     case cmd_type_t::GET_TIME_BETWEEN_SAMPLES:
-      Serial.println(expr->time_between_samps_us*1e-6,12);
+      comm::response("get time between samples",1);
+      sprintf(buf,"%g",expr->time_between_samps_us*1e-6);
+      comm::data(buf,"f");
       break;
       
     case cmd_type_t::GET_NUM_DAC_SAMPLES:
-      Serial.println(expr->dac_samples);
+      comm::response("get num dac samples",1);
+      sprintf(buf,"%d",expr->dac_samples);
+      comm::data(buf,"i");
       break;
+      
     case cmd_type_t::GET_NUM_ADC_SAMPLES:
-      Serial.println(expr->adc_samples);
+      comm::response("get num adc samples",1);
+      sprintf(buf,"%d",expr->adc_samples);
+      comm::data(buf,"i");
       break;
   }
 }
 
 
 void print_command(cmd_t& cmd, float* inbuf){
+  comm::print_header();
   switch(cmd.type){
     case cmd_type_t::SET_SIM_TIME:
       Serial.print("set_sim_time sim=");

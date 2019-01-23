@@ -1,6 +1,7 @@
 #define _DUE
 #include <HCDC_DEMO_API.h>
 #include "Circuit.h"
+#include "Comm.h"
 #include <assert.h>
 
 char HCDC_DEMO_BOARD = 4;
@@ -22,8 +23,7 @@ Fabric::Chip::Tile::Slice::Multiplier* get_mult(Fabric * fab, circ_loc_idx1_t& l
         mult = &slice->muls[1];
         break;
      default:
-       Serial.println("unknown...");
-       exit(1);
+       comm::error("unknown multiplier index (not 0 or 1).");
        break;
   }
   return mult;
@@ -40,8 +40,7 @@ Fabric::Chip::Tile::Slice::Fanout* get_fanout(Fabric * fab, circ_loc_idx1_t& loc
         fanout = &slice->fans[1];
         break;
      default:
-       Serial.println("unknown...");
-       exit(1);
+       comm::error("unknown fanout index (not 0 or 1).");
        break;
   }
   return fanout;
@@ -50,8 +49,7 @@ Fabric::Chip::Tile::Slice::Fanout* get_fanout(Fabric * fab, circ_loc_idx1_t& loc
 Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab, uint16_t& btype, circ_loc_idx2_t& loc){
   switch(btype){
     case DAC:
-      Serial.println("dac has no input port");
-      exit(1);
+      comm::error("dac has no input port");
       break;
 
     case MULT:
@@ -63,8 +61,7 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab,
            return get_mult(fab,loc.idxloc)->in1;
            break;
         default:
-           Serial.println("unknown mult input");
-           exit(1);
+           comm::error("unknown mult input");
            break;
     
       }
@@ -91,13 +88,11 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab,
         break;
         
    case CHIP_INPUT:
-        Serial.println("no input port for chip_input");
-        exit(1);
+        comm::error("no input port for chip_input");
         break;
 
    case LUT:
-        Serial.println("unhandled: lut");
-        exit(1);
+        comm::error("unhandled: lut");
         break;
     
   }
@@ -141,8 +136,7 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_output_port(Fabric * fab
               break;    
          
            default:
-              Serial.println("unknown fanout output");
-              exit(1);
+              comm::error("unknown fanout output");
               break;
     
         }
@@ -152,13 +146,11 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_output_port(Fabric * fab
         break;
         
    case CHIP_OUTPUT:
-        Serial.println("no output port for chip_output");
-        exit(1);
+        comm::error("no output port for chip_output");
         break;
 
    case LUT:
-        Serial.println("unhandled: lut");
-        exit(1);
+        comm::error("unhandled: lut");
         break;
     
   }
@@ -188,9 +180,8 @@ void load_range(uint8_t range, bool * lo, bool * hi){
       *hi = true;
       break;
     default:
-      Serial.println("[ERROR] unknown range");
-      exit(1);
-      
+      comm::error("[ERROR] unknown range");
+      break;
   }
   
 }
@@ -240,7 +231,7 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         dac = get_slice(fab,dacd.loc)->dac;
         scf = load_scf(dacd.out_range);
         dac->setConstant(dacd.value*scf);
-        Serial.println("configured dac");
+        comm::response("configured dac",0);
         break;
         
       case cmd_type_t::USE_DAC:
@@ -249,7 +240,7 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         dac->setEnable(true);
         dac->out0->setInv(dacd.inv);
         //dac->setConstant(dacd.value);
-        Serial.println("enabled dac");
+        comm::response("enabled dac",0);
         break;
       
       case cmd_type_t::CONFIG_MULT:
@@ -261,7 +252,7 @@ void exec_command(Fabric * fab, cmd_t& cmd){
           scf = load_scf(multd.out_range)/load_scf(multd.in0_range);
           mult->setGain(multd.coeff*scf);
         }
-        Serial.println("configured mult");
+        comm::response("configured mult",0);
         break;
         
       case cmd_type_t::USE_MULT:
@@ -279,7 +270,7 @@ void exec_command(Fabric * fab, cmd_t& cmd){
            mult->in1->setRange(lo2,hi2);
            mult->out0->setRange(lo3,hi3);
         }
-        Serial.println("enabled mult");
+        comm::response("enabled mult",0);
         break;
  
         
@@ -293,7 +284,7 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         fanout->out0->setInv(fod.inv[0]);
         fanout->out1->setInv(fod.inv[1]);
         fanout->out2->setInv(fod.inv[2]);
-        Serial.println("enabled fanout");
+        comm::response("enabled fanout",0);
         break;
    
     case cmd_type_t::CONFIG_INTEG:
@@ -301,7 +292,7 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         integ = get_slice(fab,integd.loc)->integrator;
         scf = load_scf(integd.out_range)/load_scf(integd.in_range);
         integ->setInitial(integd.value*scf);
-        Serial.println("configured integ");
+        comm::response("configured integ",0);
         break;
         
     case cmd_type_t::USE_INTEG:
@@ -314,40 +305,40 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         load_range(integd.out_range, &lo2, &hi2);
         integ->in0->setRange(lo1,hi1);
         integ->out0->setRange(lo2,hi2);
-        Serial.println("enabled integ");
+        comm::response("enabled integ",0);
         break;
 
     case cmd_type_t::GET_INTEG_STATUS:
         integ = get_slice(fab,cmd.data.circ_loc)->integrator;
-        Serial.println("retrieved exception");
-        Serial.println(integ->getException() ? 1 : 0);
+        comm::response("retrieved exception",1);
+        comm::data(integ->getException() ? "1" : "0", "i");
         break;
         
     case cmd_type_t::DISABLE_DAC:
         dac = get_slice(fab,cmd.data.circ_loc)->dac;
         dac->setEnable(false);
-        Serial.println("disabled dac");
+        comm::response("disabled dac",0);
         break;
 
     case cmd_type_t::DISABLE_MULT:
         multd = cmd.data.mult;
         mult = get_mult(fab,multd.loc);
         mult->setEnable(false);
-        Serial.println("disabled mult");
+        comm::response("disabled mult",0);
         break;
 
     case cmd_type_t::DISABLE_FANOUT:
         fod = cmd.data.fanout;
         fanout = get_fanout(fab,fod.loc);
         fanout->setEnable(false);
-        Serial.println("disabled fanout");
+        comm::response("disabled fanout",0);
         break;
 
     case cmd_type_t::DISABLE_INTEG:
         integd = cmd.data.integ;
         integ = get_slice(fab,integd.loc)->integrator;
         integ->setEnable(false);
-        Serial.println("disabled integ");
+        comm::response("disabled integ",0);
         break;
 
     case cmd_type_t::CONNECT:
@@ -355,7 +346,7 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         src = get_output_port(fab,connd.src_blk,connd.src_loc);
         dst = get_input_port(fab,connd.dst_blk,connd.dst_loc);
         Fabric::Chip::Connection(src,dst).setConn();
-        Serial.println("connected");
+        comm::response("connected",0);
         break;
 
     case cmd_type_t::BREAK:
@@ -363,18 +354,17 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         src = get_output_port(fab,connd.src_blk,connd.src_loc);
         dst = get_input_port(fab,connd.dst_blk,connd.dst_loc);
         Fabric::Chip::Connection(src,dst).brkConn();
-        Serial.println("disconnected");
+        comm::response("disconnected",0);
         break;
         
     case cmd_type_t::CALIBRATE:
         slice = get_slice(fab,cmd.data.circ_loc);
         assert(slice->calibrate());
-        Serial.println("calibrated");
+        comm::response("calibrated",0);
         break;
         
     default:
-      Serial.println("[ERROR] unknown command");
-      exit(1);
+      comm::error("unknown command");
       break;
   }
   
@@ -452,6 +442,7 @@ void print_block(uint8_t type){
 #define range_to_str(code) (code == 2 ? "h" : (code == 1 ? "m" : (code == 0 ? "l" : "?")))
 
 void print_command(cmd_t& cmd){
+  comm::print_header();
   switch(cmd.type){
       case cmd_type_t::USE_FANOUT:
         Serial.print("use fanout ");
