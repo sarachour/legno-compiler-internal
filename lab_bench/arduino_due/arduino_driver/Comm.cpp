@@ -9,6 +9,7 @@ byte INBUF[BUFSIZ];
 int WPOS=0;
 int RPOS=0;
 int MSGNO = 0;
+int TRYNO = 0;
 bool DONE=false;
 
 
@@ -80,20 +81,24 @@ void listen(){
     Serial.println("<found endline>");
     return;
   }
-  for(int i=0; i < MAX_TRIES; i += 1){
-    while(Serial.available() > 0){
-      char recv = Serial.read();
-      INBUF[WPOS] = recv;
-      WPOS += 1;
-      if(recv == '\n' and INBUF[WPOS-2] == '\r'){
-        DONE = true;
-        RPOS = 0;
-        WPOS -= 2;
-        MSGNO += 1;
-        return;
-      }
+
+  if(TRYNO % MAX_TRIES == 0){ 
+     comm::listen_command();
+  }
+  TRYNO += 1;
+  while(Serial.available() > 0){
+    char recv = Serial.read();
+    INBUF[WPOS] = recv;
+    WPOS += 1;
+    if(recv == '\n' and INBUF[WPOS-2] == '\r'){
+      DONE = true;
+      RPOS = 0;
+      WPOS -= 2;
+      MSGNO += 1;
+      return;
     }
   }
+  
 }
 
 void* get_data_ptr(int offset){

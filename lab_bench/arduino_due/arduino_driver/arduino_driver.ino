@@ -77,7 +77,6 @@ void loop() {
     comm::reset();
   }
   else{
-    comm::listen_command();
     comm::listen();
   }
   

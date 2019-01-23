@@ -286,7 +286,7 @@ class ArduinoCommand(Command):
                         return this_resp
 
                 elif resp.type == ArduinoResponseType.MESSAGE:
-                    print(resp.message)
+                    print("[msg] %s" % resp.message)
 
                 elif resp.type == ArduinoResponseType.DONE:
                     print("<simulation finished>")
@@ -297,6 +297,7 @@ class ArduinoCommand(Command):
 
                 else:
                     raise Exception("unhandled: %s" % line)
+
 
 
     def try_waitfor(self,st,type_):

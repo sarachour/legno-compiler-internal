@@ -1,8 +1,8 @@
 import serial
 import time
 import re
-import tqdm
-import np
+from tqdm import tqdm
+import numpy as np
 
 class ArduinoDue:
 
@@ -11,7 +11,7 @@ class ArduinoDue:
         if not native:
             self._serial_port = '/dev/tty.usbmodem1411';
         else:
-            self._serial_port = 'dev/ttyACM0'
+            self._serial_port = '/dev/ttyACM0'
 
         self._comm = None
 
@@ -33,7 +33,9 @@ class ArduinoDue:
     def readline(self):
         line_bytes = self._comm.readline()
         line_valid_bytes = bytearray(filter(lambda b: b<128, line_bytes))
-        return line_valid_bytes.decode('utf-8')
+        strline = line_valid_bytes.decode('utf-8')
+        print(strline)
+        return strline
 
     def reads_available(self):
         return self._comm.in_waiting > 0
@@ -60,10 +62,14 @@ class ArduinoDue:
     def write_bytes(self,byts):
         isinstance(byts,bytearray)
         nbytes = 0;
-        for i in range(0,len(byts), 32):
-            nbytes += self._comm.write(byts[i:i+32])
+        BATCH = 1
+        byte_gen = tqdm(range(0,len(byts)))
+        for i in byte_gen:
+            byte_gen.set_description("writing byte %d" % i)
+            nbytes += self._comm.write(byts[i:i+1])
+            self._comm.flush()
             time.sleep(0.01)
-        print("wrote %d bytes" % nbytes)
+
         self._comm.flush()
 
     def write(self,msg):
