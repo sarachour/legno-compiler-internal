@@ -21,7 +21,7 @@ class ArduinoDue:
         print("%s:%s" % (self._serial_port,self._baud_rate))
         self._comm= serial.Serial(self._serial_port,
                                   self._baud_rate)
-        print(self._comm)
+        time.sleep(2)
         self.flush()
         return True
 
@@ -46,7 +46,7 @@ class ArduinoDue:
     def writeline(self,string):
         msg = "%s\r\n" % string
         self.write(msg)
-        
+
     def write_newline(self):
         self.write("\r\n")
 
@@ -56,12 +56,12 @@ class ArduinoDue:
 
     def write_bytes(self,byts):
         isinstance(byts,bytearray)
-        #nbytes = 0;
-        #for i in range(0,len(byts), 32):
-        #    nbytes += self._comm.write(byts[i:i+32])
-        #    time.sleep(0.1)
-        print("writing %d bytes" % len(byts))
-        nbytes = self._comm.write(byts)
+        nbytes = 0;
+        BATCH = 1
+        for i in range(0,len(byts)):
+            nbytes += self._comm.write(byts[i:i+1])
+            self._comm.flush()
+            time.sleep(0.01)
         print("wrote %d bytes" % nbytes)
         self._comm.flush()
 

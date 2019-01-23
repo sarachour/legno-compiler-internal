@@ -8,7 +8,9 @@ namespace comm {
 byte INBUF[BUFSIZ];
 int WPOS=0;
 int RPOS=0;
+int MSGNO = 0;
 bool DONE=false;
+
 
 bool read_mode(){
   return DONE;
@@ -24,7 +26,9 @@ void listen_command(){
   header();
   Serial.print("[listen]");
   Serial.print(" pos=");
-  Serial.println(write_pos());
+  Serial.print(write_pos());
+  Serial.print(" msg#=");
+  Serial.println(MSGNO);
 }
 void process_command(){
   header();
@@ -69,21 +73,25 @@ void reset(){
 int write_pos(){
   return WPOS;
 }
+#define MAX_TRIES 10000
 void listen(){
   if(DONE){
     print_header();
     Serial.println("<found endline>");
     return;
   }
-  while(Serial.available() > 0){
-    char recv = Serial.read();
-    INBUF[WPOS] = recv;
-    WPOS += 1;
-    if(recv == '\n' and INBUF[WPOS-2] == '\r'){
-      DONE = true;
-      RPOS = 0;
-      WPOS -= 2;
-      return;
+  for(int i=0; i < MAX_TRIES; i += 1){
+    while(Serial.available() > 0){
+      char recv = Serial.read();
+      INBUF[WPOS] = recv;
+      WPOS += 1;
+      if(recv == '\n' and INBUF[WPOS-2] == '\r'){
+        DONE = true;
+        RPOS = 0;
+        WPOS -= 2;
+        MSGNO += 1;
+        return;
+      }
     }
   }
 }

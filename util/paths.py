@@ -27,7 +27,9 @@ class PathHandler:
 
     def set_root_dir(self,name,bmark):
         self.ROOT_DIR = "%s/legno/%s" % (config.OUTPUT_PATH,name)
+        print("ROOT_DIR: %s" % self.ROOT_DIR)
         self.BMARK_DIR = self.ROOT_DIR + ("/%s" % bmark)
+        print("BMARK_DIR: %s" % self.BMARK_DIR)
         self.ABS_CIRC_DIR = self.BMARK_DIR + "/abs-circ"
         self.ABS_GRAPH_DIR = self.BMARK_DIR + "/abs-graph"
         self.CONC_CIRC_DIR = self.BMARK_DIR + "/conc-circ"

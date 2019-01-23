@@ -79,7 +79,6 @@ void loop() {
   else{
     comm::listen_command();
     comm::listen();
-    delay(30);
   }
   
   
