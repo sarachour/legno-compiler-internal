@@ -56,4 +56,4 @@ else:
                 continue
 
             script_file = line.strip()
-            execute_script(args.ip,script_file)
+            execute_script(args.ip,script_file,native=args.native)

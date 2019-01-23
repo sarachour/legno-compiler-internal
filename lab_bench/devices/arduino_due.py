@@ -34,7 +34,6 @@ class ArduinoDue:
         line_bytes = self._comm.readline()
         line_valid_bytes = bytearray(filter(lambda b: b<128, line_bytes))
         strline = line_valid_bytes.decode('utf-8')
-        print(strline)
         return strline
 
     def reads_available(self):
