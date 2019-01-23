@@ -1,1 +1,1 @@
-PATH="outputs/"
+OUTPUT_PATH="outputs/"

@@ -20,6 +20,7 @@ class ArduinoDue:
     def open(self):
         print("%s:%s" % (self._serial_port,self._baud_rate))
         self._comm= serial.Serial(self._serial_port, self._baud_rate)
+        time.sleep(2)
         self.flush()
         return True
 
