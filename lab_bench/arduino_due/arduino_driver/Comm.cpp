@@ -23,14 +23,6 @@ void print_header(){
   header();
   Serial.print("[msg]");
 }
-void listen_command(){
-  header();
-  Serial.print("[listen]");
-  Serial.print(" pos=");
-  Serial.print(write_pos());
-  Serial.print(" msg#=");
-  Serial.println(MSGNO);
-}
 void process_command(){
   header();
   Serial.println("[process]");
@@ -74,7 +66,6 @@ void reset(){
 int write_pos(){
   return WPOS;
 }
-#define MAX_TRIES 10000
 void listen(){
   if(DONE){
     print_header();
@@ -82,10 +73,6 @@ void listen(){
     return;
   }
 
-  if(TRYNO % MAX_TRIES == 0){ 
-     comm::listen_command();
-  }
-  TRYNO += 1;
   while(Serial.available() > 0){
     char recv = Serial.read();
     INBUF[WPOS] = recv;

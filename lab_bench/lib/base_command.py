@@ -328,7 +328,7 @@ class ArduinoCommand(Command):
         if not state.dummy:
             #print("execute: %s [%d]" % (self,len(cdata)))
             # twenty bytes
-            self.waitfor(state,ArduinoResponseType.LISTEN)
+            #self.waitfor(state,ArduinoResponseType.LISTEN)
             state.arduino.write_bytes(cdata)
             state.arduino.write_newline()
             return self.get_response(state)

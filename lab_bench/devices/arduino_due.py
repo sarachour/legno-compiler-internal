@@ -23,8 +23,10 @@ class ArduinoDue:
         print("%s:%s" % (self._serial_port,self._baud_rate))
         self._comm= serial.Serial(self._serial_port, self._baud_rate)
 
-        delta = 0.02
-        for _ in tqdm(np.linspace(0,2.0,delta)):
+        startup_time = 2.0
+        n_divs = 100
+        delta = startup_time/n_divs
+        for _ in tqdm(np.linspace(0,startup_time,n_divs)):
             time.sleep(delta)
 
         self.flush()
