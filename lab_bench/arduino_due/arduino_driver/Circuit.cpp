@@ -155,16 +155,7 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_output_port(Fabric * fab
     
   }
 }
-float load_scf(uint8_t range){
-    switch(range){
-      case 0:
-        return 0.1;
-      case 1:
-        return 1.0;
-      case 2:
-        return 10.0; 
-    }
-}
+
 void load_range(uint8_t range, bool * lo, bool * hi){
   switch(range){
     case 0:
@@ -216,7 +207,6 @@ void exec_command(Fabric * fab, cmd_t& cmd){
   bool lo1,hi1;
   bool lo2,hi2;
   bool lo3,hi3;
-  float scf;
   Fabric::Chip::Tile::Slice* slice;
   Fabric::Chip::Tile::Slice::Dac* dac;
   Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -234,7 +224,7 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         comm::print_header();
         Serial.print(" coefficient=");
         Serial.println(dacd.value);
-        comm::response("configured dac",0);
+        comm::response("configured dac (direct)",0);
         break;
         
       case cmd_type_t::USE_DAC:
@@ -257,7 +247,7 @@ void exec_command(Fabric * fab, cmd_t& cmd){
           load_range(multd.out_range, &lo1, &hi1);
           comm::test(mult->setGainDirect(multd.coeff,hi1),"failed to set gain");
         }
-        comm::response("configured mult",0);
+        comm::response("configured mult [direct]",0);
         break;
         
       case cmd_type_t::USE_MULT:
@@ -297,7 +287,7 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         integ = get_slice(fab,integd.loc)->integrator;
         load_range(integd.out_range, &lo1, &hi1);
         comm::test(integ->setInitialDirect(integd.value, hi1),"failed to set integ value");
-        comm::response("configured integ",0);
+        comm::response("configured integ [direct]",0);
         break;
         
     case cmd_type_t::USE_INTEG:
