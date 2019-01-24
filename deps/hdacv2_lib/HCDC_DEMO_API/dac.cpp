@@ -78,6 +78,16 @@ void Fabric::Chip::Tile::Slice::Dac::setConstantCode (
 	parentSlice->parentTile->controllerHelperTile ( selLine, cfgTile );
 }
 
+bool Fabric::Chip::Tile::Slice::Dac::setConstantDirect(float constant,
+                                                       bool hiRange){
+  if(-1.0000001 < constant && constant< 127.0/128.0){
+    setConstantCode(round(constant*128.0+128.0));
+		return calibrateTarget(hiRange, constant);
+  }
+  else{
+    return false;
+  }
+}
 bool Fabric::Chip::Tile::Slice::Dac::setConstant (
 	float constant // floating point representation of desired constant
 	// -10.0 to 10.0 are valid

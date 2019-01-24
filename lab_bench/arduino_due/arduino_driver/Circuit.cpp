@@ -229,8 +229,11 @@ void exec_command(Fabric * fab, cmd_t& cmd){
       case cmd_type_t::CONFIG_DAC:
         dacd = cmd.data.dac; 
         dac = get_slice(fab,dacd.loc)->dac;
-        scf = load_scf(dacd.out_range);
-        dac->setConstant(dacd.value*scf);
+        load_range(multd.out_range, &lo1, &hi1);
+        comm::test(dac->setConstantDirect(dacd.value,hi1),"failed to set dac value");
+        comm::print_header();
+        Serial.print(" coefficient=");
+        Serial.println(dacd.value);
         comm::response("configured dac",0);
         break;
         
@@ -239,7 +242,8 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         dac = get_slice(fab,dacd.loc)->dac;
         dac->setEnable(true);
         dac->out0->setInv(dacd.inv);
-        //dac->setConstant(dacd.value);
+        load_range(multd.out_range, &lo1, &hi1);
+        dac->setHiRange(hi1);
         comm::response("enabled dac",0);
         break;
       
@@ -249,8 +253,9 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         multd = cmd.data.mult;
         mult = get_mult(fab,multd.loc);
         if(multd.use_coeff){
-          scf = load_scf(multd.out_range)/load_scf(multd.in0_range);
-          mult->setGain(multd.coeff*scf);
+          // determine if we're in the high or low output range.
+          load_range(multd.out_range, &lo1, &hi1);
+          comm::test(mult->setGainDirect(multd.coeff,hi1),"failed to set gain");
         }
         comm::response("configured mult",0);
         break;
@@ -263,12 +268,12 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         mult->setEnable(true);
         mult->setVga(multd.use_coeff);
         load_range(multd.in0_range, &lo1, &hi1);
-        load_range(multd.out_range, &lo2, &hi2);
-        load_range(multd.in1_range, &lo3, &hi3);
+        load_range(multd.in1_range, &lo2, &hi2);
+        load_range(multd.out_range, &lo3, &hi3);
+        mult->in0->setRange(lo1,hi1);
+        mult->out0->setRange(lo3,hi3);
         if(not multd.use_coeff){
-           mult->in0->setRange(lo1,hi1);
            mult->in1->setRange(lo2,hi2);
-           mult->out0->setRange(lo3,hi3);
         }
         comm::response("enabled mult",0);
         break;
@@ -290,8 +295,8 @@ void exec_command(Fabric * fab, cmd_t& cmd){
     case cmd_type_t::CONFIG_INTEG:
         integd = cmd.data.integ;
         integ = get_slice(fab,integd.loc)->integrator;
-        scf = load_scf(integd.out_range)/load_scf(integd.in_range);
-        integ->setInitial(integd.value*scf);
+        load_range(integd.out_range, &lo1, &hi1);
+        comm::test(integ->setInitialDirect(integd.value, hi1),"failed to set integ value");
         comm::response("configured integ",0);
         break;
         

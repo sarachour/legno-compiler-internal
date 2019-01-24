@@ -61,6 +61,18 @@ void Fabric::Chip::Tile::Slice::Integrator::setInitialCode (
 	setParam2 ();
 }
 
+bool Fabric::Chip::Tile::Slice::Integrator::setInitialDirect(float initial,
+                                                             bool hiRange)
+{
+  if(-1.0000001 < initial && initial < 127.0/128.0){
+    setInitialCode(initial*128.0+128.0);
+		return calibrateTarget(hiRange, initial);
+  }
+  else{
+    return false;
+  }
+}
+
 bool Fabric::Chip::Tile::Slice::Integrator::setInitial (
 	float initial // floating point representation of desired initial condition
 	// -10.0 to 10.0 are valid

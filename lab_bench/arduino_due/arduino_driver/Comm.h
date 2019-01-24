@@ -4,6 +4,7 @@
 
 namespace comm {
 
+void test(bool result, const char * error_msg);
 void print_header();
 void done_command();
 void listen_command();

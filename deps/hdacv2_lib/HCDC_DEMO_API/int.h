@@ -17,7 +17,11 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 			unsigned char initialCode // fixed point representation of desired initial condition
 			// 0 to 255 are valid
 		);
-		bool setInitial (
+    bool setInitialDirect (
+                     float initial, // floating point representation of desired initial condition
+                     bool hirange// -1.0 to 1.0 are valid
+                     );
+    bool setInitial (
 			float initial // floating point representation of desired initial condition
 			// -10.0 to 10.0 are valid
 		);

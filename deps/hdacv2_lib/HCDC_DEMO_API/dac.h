@@ -31,7 +31,12 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 			unsigned char constantCode // fixed point representation of desired constant
 			// 0 to 255 are valid
 		);
-		bool setConstant (
+    bool setConstantDirect (
+                      float constant, // floating point representation of desired constant
+                      bool hiRange
+                      // -10.0 to 10.0 are valid
+    );
+    bool setConstant (
 			float constant // floating point representation of desired constant
 			// -10.0 to 10.0 are valid
 		);

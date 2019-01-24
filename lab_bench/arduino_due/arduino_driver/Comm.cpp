@@ -58,6 +58,15 @@ void error(const char * msg){
      delay(100);
   }
 }
+
+void test(bool result, const char * msg){
+  if(result){
+    return;
+  }
+  else{
+    error(msg);
+  }
+}
 void reset(){
   DONE = false;
   WPOS = 0;

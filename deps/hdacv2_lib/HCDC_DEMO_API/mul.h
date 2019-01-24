@@ -6,7 +6,11 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 			unsigned char gainCode // fixed point representation of desired gain
 			// 0 to 255 are valid
 		);
-		bool setGain (
+    bool setGainDirect (
+                        float gain,// floating point representation of desired gain
+                        bool hirange
+    );
+    bool setGain (
 			float gain // floating point representation of desired gain
 			// -100.0 to 100.0 are valid
 		);

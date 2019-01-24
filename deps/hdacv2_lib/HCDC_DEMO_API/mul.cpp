@@ -30,6 +30,16 @@ void Fabric::Chip::Tile::Slice::Multiplier::setGainCode (
 	setParam2 ();
 }
 
+bool Fabric::Chip::Tile::Slice::Multiplier::setGainDirect(float gain, bool hiRange){
+  if(-1.0000001 < gain && gain < 127.0/128.0){
+    setGainCode(gain*128.0+128.0);
+		return calibrateTarget(hiRange, gain);
+  }
+  else{
+    return false;
+  }
+}
+
 bool Fabric::Chip::Tile::Slice::Multiplier::setGain (
 	float gain // floating point representation of desired gain
 	// -100.0 to 100.0 are valid
