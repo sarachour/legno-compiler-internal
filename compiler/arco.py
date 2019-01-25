@@ -172,7 +172,6 @@ def compile(board,prob,depth=3, \
         for merge_idx,source_map,node_map in \
             try_merge.iterate(compile_combine_fragments(subcircuits_optmap),do_succeed=False):
 
-            print("< TESTED UP TO HERE>")
             refs,stubs = arcolib_mkfan.count_var_refs(node_map)
             n_conc = 0;
             print(">>> compute matches from stubs to sources <<<")
