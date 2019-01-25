@@ -21,9 +21,9 @@ def microbenchmark_simple_osc(name,omega):
     }
     # t20
     prob = MathProg("micro-osc-%s" % name)
-    P = parse("V", "V0", ":a", params)
-    V = parse("A", "A0", ":b", params)
-    A = parse("{omega}*P", "P0", ":c", params)
+    P = parse("V", "P0", ":a", params)
+    V = parse("A", "V0", ":b", params)
+    A = parse("{omega}*P", "A0", ":c", params)
     scf1 = omega*omega if omega >= 1.0 else 1.0
     scf2 = omega if omega >= 1.0 else 1.0
     prob.bind("P", P)
