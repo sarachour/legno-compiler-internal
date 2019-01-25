@@ -62,7 +62,8 @@ class PropIntervalVisitor(Visitor):
 
 
   def is_free(self,config,variable):
-    return config.interval(variable) is None
+    return config.interval(variable) is None \
+            or config.interval(variable).unbounded()
 
   def input_port(self,block_name,loc,port):
     Visitor.input_port(self,block_name,loc,port)
@@ -91,22 +92,12 @@ class PropIntervalVisitor(Visitor):
     print("ival in %s[%s].%s => %s" % (block_name,loc,port,dest_ival))
 
 
-  def _update_intervals(self,expr,config,port,test_valid=False):
+  def _update_intervals(self,expr,config,port):
     intervals = expr.compute_interval(config.intervals())
-
-    if test_valid and intervals.interval.unbounded():
-        print(config)
-        print(intervals)
-        raise Exception("unbounded interval.")
 
     config.set_interval(port,intervals.interval)
 
     for handle,interval in intervals.bindings():
-      if test_valid and interval.unbounded():
-        print(config)
-        print(intervals)
-        raise Exception("unbounded interval.")
-
       config.set_interval(port, \
                           interval,handle=handle)
 
@@ -121,15 +112,12 @@ class PropIntervalVisitor(Visitor):
 
     self._update_intervals(expr,config,port)
     Visitor.output_port(self,block_name,loc,port)
-    self._update_intervals(expr,config,port,test_valid=True)
+    self._update_intervals(expr,config,port)
 
   def is_valid(self):
     circ = self._circ
     valid = True
     for block_name,loc,config in circ.instances():
-      print("==== %s[%s] ====" % (block_name,loc))
-      print(config)
-
       for ival in config.intervals().values():
         if ival.unbounded():
            valid = False
@@ -138,6 +126,7 @@ class PropIntervalVisitor(Visitor):
 def compute(prog,circ):
   visitor = PropIntervalVisitor(prog,circ)
   visitor.all()
-  visitor.clear()
-  visitor.all()
-  assert(visitor.is_valid())
+  while(not visitor.is_valid()):
+      print("-> recomputing intervals");
+      visitor.clear()
+      visitor.all()
