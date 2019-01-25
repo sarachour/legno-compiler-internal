@@ -24,15 +24,19 @@ def microbenchmark_simple_osc(name,omega):
     P = parse("V", "P0", ":a", params)
     V = parse("A", "V0", ":b", params)
     A = parse("{omega}*P", "A0", ":c", params)
+
     scf1 = omega*omega if omega >= 1.0 else 1.0
     scf2 = omega if omega >= 1.0 else 1.0
     prob.bind("P", P)
     prob.bind("V", V)
     prob.bind("A", A)
     prob.bind("Loc", op.Emit(op.Var("P")))
-    prob.set_interval("A",-0.12*scf1,0.12*scf1)
-    prob.set_interval("P",-0.12*scf2,0.12*scf2)
-    prob.set_interval("V",-0.12*scf2,0.12*scf2)
+    # most accurately, 0.1
+    base_bnd = 0.1
+    base_bnd = 0.25
+    prob.set_interval("A",-base_bnd*scf1,base_bnd*scf1)
+    prob.set_interval("P",-base_bnd*scf2,base_bnd*scf2)
+    prob.set_interval("V",-base_bnd*scf2,base_bnd*scf2)
     prob.compile()
     return prob
 

@@ -8,10 +8,7 @@ import math
 def micro_simple_osc(name,omega):
   def dt(t,vs):
     P,V,A = vs[0],vs[1],vs[2]
-    vs[1] = vs[2]
-    vs[0] = vs[1]
-    vs[2] = -omega*omega*P
-    return vs
+    return [V, A, -omega*omega*P]
 
   def ic():
     P,V,A = 0.1,0.0,0.0
@@ -25,13 +22,13 @@ def micro_simple_osc(name,omega):
 
   return dt,ic,plot
 
-n = 10000.0
 for name,omega in [('one',1),('double',2),('half',0.5),('quad',4)]:
-  dt,ic,plot = micro_simple_osc(name,omega)
+  dtfun,ic,plot = micro_simple_osc(name,omega)
   time,init_cond = ic()
-  r = ode(dt).set_integrator('zvode',method='bdf')
-  r.set_initial_value(init_cond,t=0.0)
+  n = 100000.0*time
   dt = time/n
+  r = ode(dtfun).set_integrator('zvode',method='bdf')
+  r.set_initial_value(init_cond,t=0.0)
   T = []
   Y = list(map(lambda _: [], init_cond))
 
