@@ -161,7 +161,6 @@ elif args.subparser_name == "skelter":
                 fh.write("# %f\n" % score)
                 fh.write("%s\n" % filename)
 
-
 elif args.subparser_name == "jaunt":
     prog = bmark.get_prog(args.benchmark)
     circ_dir = path_handler.abs_circ_dir()
