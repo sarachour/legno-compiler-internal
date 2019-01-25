@@ -1,37 +1,5 @@
 from lang.prog import MathProg
 from ops import op, opparse
-'''
-def benchmark_smmrxn():
-    prob = MathProg("smmrxn")
-    kf = 0.5
-    kr = 0.1
-    E0 = 1.2
-    S0 = 2.4
-    ES = op.Integ(op.Add(
-        op.Mult(op.Const(kf),
-                op.Mult(op.Var("S"),op.Var("E"))),
-        op.Mult(op.Const(-1*kr),op.Var("ES"))), op.Const(0),
-                  handle=':z')
-
-    E = op.Add(op.Const(E0),
-               op.Mult(op.Var("ES"), op.Const(-1)))
-
-    S = op.Add(op.Const(S0),
-               op.Mult(op.Var("ES"), op.Const(-1)))
-
-    prob.bind("E",E)
-    prob.bind("S",S)
-    prob.bind("ES",ES)
-    prob.interval("E",0,E0)
-    prob.interval("S",0,S0)
-    prob.interval("ES",0,min(E0,S0))
-    prob.interval("enz-sub",0,min(E0,S0))
-    prob.bind("enz-sub", op.Emit(op.Var("ES")))
-    prob.compile()
-    return prob
-
-
-'''
 
 def parse_fn(expr,params):
     expr_conc = expr.format(**params)
@@ -49,21 +17,19 @@ def microbenchmark_simple_osc(name,omega):
         'P0': 0.1,
         'V0' :0.0,
         'A0' :0.0,
-        'omega': omega
+        'omega': -1*omega*omega
     }
     # t20
     prob = MathProg("micro-osc-%s" % name)
     P = parse("V", "V0", ":a", params)
     V = parse("A", "A0", ":b", params)
-    if omega == 1.0:
-        A = parse("P", "P0", ":c", params)
-    else:
-        A = parse("{omega}*P", "P0", ":c", params)
+    A = parse("{omega}*P", "P0", ":c", params)
     scf1 = omega*omega if omega >= 1.0 else 1.0
     scf2 = omega if omega >= 1.0 else 1.0
     prob.bind("P", P)
     prob.bind("V", V)
     prob.bind("A", A)
+    prob.bind("Loc", op.Emit(op.Var("P")))
     prob.set_interval("A",-0.12*scf1,0.12*scf1)
     prob.set_interval("P",-0.12*scf2,0.12*scf2)
     prob.set_interval("V",-0.12*scf2,0.12*scf2)
