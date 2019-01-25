@@ -51,7 +51,7 @@ def microbenchmark_simple_osc(name,omega):
         'A0' :0.0,
         'omega': omega
     }
-    prob = MathProg("micro_osc_%s" % name)
+    prob = MathProg("micro-osc-%s" % name)
     P = parse("V", "V0", ":a", params)
     V = parse("A", "A0", ":b", params)
     if omega == 1.0:
