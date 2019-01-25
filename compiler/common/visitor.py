@@ -15,6 +15,10 @@ class Visitor:
   def is_free(self,config,variable):
     raise NotImplementedError
 
+  @property
+  def circ(self):
+    return self._circ
+
   def classify(self,block_name,loc,variables):
     free,bound = [],[]
     config = self._circ.config(block_name,loc)
@@ -53,6 +57,11 @@ class Visitor:
       if self.is_free(circ.config(sblk,sloc),sport):
         self.port(sblk,sloc,sport)
 
+  def block(self,block_name,loc):
+    circ = self._circ
+    block = circ.board.block(block_name)
+    for out_port in block.outputs:
+      self.output_port(block_name,loc,out_port)
 
   def port(self,block_name,loc,port):
     circ = self._circ
@@ -72,3 +81,8 @@ class Visitor:
         for port,label,kind in config.labels():
           self.port(block_name,loc,port)
 
+
+  def all(self):
+    circ = self._circ
+    for block_name,loc,config in circ.instances():
+      self.block(block_name,loc)

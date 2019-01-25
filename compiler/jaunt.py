@@ -1,6 +1,6 @@
 import chip.props as props
 from chip.conc import ConcCirc
-import chip.conc_infer as conc_infer
+from compiler.common import infer
 from chip.config import Labels
 import ops.op as ops
 import gpkit
@@ -385,7 +385,9 @@ def bp_generate_problem(jenv,circ,quantize_signals=5):
         jenv.gte(jop.JVar(jenv.TAU),jop.JConst(TAU_MIN))
 
 def build_jaunt_env(prog,circ):
-    conc_infer.infer(prog,circ)
+    infer.clear(circ)
+    infer.infer_intervals(prog,circ)
+    infer.infer_bandwidths(prog,circ)
     jenv = JauntEnv()
     # declare scaling factors
     bp_decl_scale_variables(jenv,circ)
@@ -511,7 +513,8 @@ def sp_update_circuit(jenv,prog,circ,assigns):
             circ.config(block_name,loc).set_scf(port,handle=handle,scf=value)
 
 
-    conc_infer.infer(prog,circ)
+    infer.infer_intervals(prog,circ)
+    infer.infer_bandwidths(prog,circ)
     return circ
 
 

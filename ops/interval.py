@@ -27,9 +27,22 @@ class Interval:
     def upper(self):
         return self._upper
 
+
+    def unbounded(self):
+        return Interval.isinf(self.lower) \
+            or Interval.isinf(self.upper)
+
+    @staticmethod
+    def isinf(num):
+        return num == float('inf') or num == float('-inf')
+
     @staticmethod
     def type_infer(lb,ub):
-      if abs(lb - ub) < 1e-6:
+      if Interval.isinf(lb) \
+         or Interval.isinf(ub):
+        return IUnknown()
+
+      elif abs(lb - ub) < 1e-6:
         return IValue(lb)
       else:
         return IRange(lb,ub)
@@ -120,6 +133,10 @@ class IRange(Interval):
   def __init__(self,min_value,max_value):
     Interval.__init__(self,min_value,max_value)
 
+class IUnknown(Interval):
+
+  def __init__(self):
+    Interval.__init__(self,float('-inf'),float('inf'))
 
 class IntervalCollection:
 

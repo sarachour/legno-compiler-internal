@@ -270,7 +270,7 @@ class Integ(Op2):
         icond = self.init_cond.compute_interval(intervals)
         print(icond,istvar)
         if not (istvar.contains(icond.interval)):
-            raise Exception("stvar does not contain ic: stvar=%s, ic=%s, expr=%s" % \
+            print("[WARN] stvar does not contain ic: stvar=%s, ic=%s, expr=%s" % \
                             (istvar,icond,self))
 
         icomb = icond.merge(ideriv, istvar)
@@ -420,9 +420,9 @@ class Var(Op):
 
     def compute_interval(self,intervals):
         if not (self.name in intervals):
-            raise Exception("unknown variable <%s> / var dict <%s>" % \
-                            (self.name,intervals))
-        return interval.IntervalCollection(intervals[self.name])
+            return interval.IntervalCollection(interval.IUnknown())
+        else:
+            return interval.IntervalCollection(intervals[self.name])
 
     def infer_bandwidth(self,intervals,bandwidths={}):
         if not self.name in bandwidths:

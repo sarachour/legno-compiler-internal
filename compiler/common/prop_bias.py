@@ -1,7 +1,7 @@
 import ops.op as op
 import numpy as np
 import ops.interval as interval
-from compiler.skelt_pass.visitor import Visitor
+from compiler.common.visitor import Visitor
 
 class PropBiasVisitor(Visitor):
 

@@ -32,7 +32,7 @@ def compute_snr(circ,block_name,loc,port):
   return snr
 
 def execute(circ):
-  skellib.update_config.compute(circ)
+  skellib.gen_phys.compute(circ)
   skellib.prop_noise.compute(circ)
   skellib.prop_bias.compute(circ)
   skellib.delay_mismatch.compute(circ)

@@ -1,7 +1,6 @@
 import itertools
 import chip.abs as acirc
 import chip.props as prop
-import chip.conc_infer as conc_infer
 from chip.config import Labels
 import ops.aop as aop
 import random
