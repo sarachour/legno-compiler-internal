@@ -5,6 +5,9 @@ class Visitor:
     self._visited = {}
     self._circ = circ
 
+  def clear(self):
+    self._visited = {}
+
   def visit(self,blkname,loc,port):
     print("visit %s[%s].%s" % (blkname,loc,port))
     self._visited[(blkname,loc,port)] = True
@@ -37,7 +40,6 @@ class Visitor:
 
     expr = config.dynamics(block,port)
     free,bound = self.classify(block_name,loc,expr.vars())
-    print("free=%s\tbound=%s" % (free,bound))
     if self.visited(block.name,loc,port):
       return
 

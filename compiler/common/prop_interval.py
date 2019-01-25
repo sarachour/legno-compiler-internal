@@ -138,4 +138,6 @@ class PropIntervalVisitor(Visitor):
 def compute(prog,circ):
   visitor = PropIntervalVisitor(prog,circ)
   visitor.all()
+  visitor.clear()
+  visitor.all()
   assert(visitor.is_valid())
