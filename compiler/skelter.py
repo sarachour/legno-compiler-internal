@@ -1,7 +1,7 @@
 import ops.op as op
 import numpy as np
 import ops.interval as interval
-import compiler.skelt_pass as skellib
+from compiler.common import gen_phys,prop_noise,prop_bias,delay_mismatch
 
 def compute_max_mismatch(circ):
   max_mismatch = 0
@@ -32,10 +32,10 @@ def compute_snr(circ,block_name,loc,port):
   return snr
 
 def execute(circ):
-  skellib.gen_phys.compute(circ)
-  skellib.prop_noise.compute(circ)
-  skellib.prop_bias.compute(circ)
-  skellib.delay_mismatch.compute(circ)
+  gen_phys.compute(circ)
+  prop_noise.compute(circ)
+  prop_bias.compute(circ)
+  delay_mismatch.compute(circ)
 
   score = 0
   max_mismatch = compute_max_mismatch(circ)
