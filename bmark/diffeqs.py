@@ -33,7 +33,7 @@ def microbenchmark_simple_osc(name,omega):
     prob.bind("Loc", op.Emit(op.Var("P")))
     # most accurately, 0.1
     base_bnd = 0.1
-    base_bnd = 0.25
+    base_bnd = 2.5
     prob.set_interval("A",-base_bnd*scf1,base_bnd*scf1)
     prob.set_interval("P",-base_bnd*scf2,base_bnd*scf2)
     prob.set_interval("V",-base_bnd*scf2,base_bnd*scf2)
