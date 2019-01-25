@@ -44,6 +44,30 @@ def parse(expr,ic, handle,params):
     const = params[ic]
     return op.Integ(deriv,op.Const(const),handle=handle)
 
+def microbenchmark_simple_osc(name,omega):
+    params = {
+        'P0': 0.1,
+        'V0' :0.0,
+        'A0' :0.0,
+        'omega': omega
+    }
+    prob = MathProg("micro_osc_%s" % name)
+    P = parse("V", "V0", ":a", params)
+    V = parse("A", "A0", ":b", params)
+    if omega == 1.0:
+        A = parse("P", "P0", ":c", params)
+    else:
+        A = parse("{omega}*P", "P0", ":c", params)
+    scf1 = omega*omega if omega >= 1.0 else 1.0
+    scf2 = omega if omega >= 1.0 else 1.0
+    prob.bind("P", P)
+    prob.bind("V", V)
+    prob.bind("A", A)
+    prob.set_interval("A",-0.12*scf1,0.12*scf1)
+    prob.set_interval("P",-0.12*scf2,0.12*scf2)
+    prob.set_interval("V",-0.12*scf2,0.12*scf2)
+    return prob
+
 def benchmark_bmmrxn():
     prob = MathProg("bmmrxn")
     params = {
@@ -237,7 +261,8 @@ BMARKS = [
     benchmark_inout2(),
     benchmark_vanderpol(),
     benchmark_bmmrxn(),
-    benchmark_reprissilator()
+    benchmark_reprissilator(),
+    microbenchmark_simple_osc("microosc1",1.0)
 ]
 
 def get_prog(name):

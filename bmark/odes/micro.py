@@ -7,14 +7,15 @@ import math
 
 def micro_simple_osc(name,omega):
   def dt(t,vs):
-    P,V = vs[0],vs[1]
-    vs[1] = -omega*omega*P
+    P,V,A = vs[0],vs[1],vs[2]
+    vs[1] = vs[2]
     vs[0] = vs[1]
+    vs[2] = -omega*omega*P
     return vs
 
   def ic():
-    P,V = 1.0,10.0
-    return 10,[P,V]
+    P,V,A = 0.1,0.0,0.0
+    return 10,[P,V,A]
 
   def plot(t,y):
     for yser,lbl in zip(y,['P','V','A']):
@@ -25,7 +26,7 @@ def micro_simple_osc(name,omega):
   return dt,ic,plot
 
 n = 10000.0
-for name,omega in [('one',1),('double',2),('half',0.5)]:
+for name,omega in [('one',1),('double',2),('half',0.5),('quad',4)]:
   dt,ic,plot = micro_simple_osc(name,omega)
   time,init_cond = ic()
   r = ode(dt).set_integrator('zvode',method='bdf')
