@@ -91,14 +91,25 @@ class PropIntervalVisitor(Visitor):
     print("ival in %s[%s].%s => %s" % (block_name,loc,port,dest_ival))
 
 
-  def _update_intervals(self,expr,config,port):
+  def _update_intervals(self,expr,config,port,test_valid=False):
     intervals = expr.compute_interval(config.intervals())
+
+    if test_valid and intervals.interval.unbounded():
+        print(config)
+        print(intervals)
+        raise Exception("unbounded interval.")
 
     config.set_interval(port,intervals.interval)
 
     for handle,interval in intervals.bindings():
+      if test_valid and interval.unbounded():
+        print(config)
+        print(intervals)
+        raise Exception("unbounded interval.")
+
       config.set_interval(port, \
                           interval,handle=handle)
+
 
 
   def output_port(self,block_name,loc,port):
@@ -110,7 +121,7 @@ class PropIntervalVisitor(Visitor):
 
     self._update_intervals(expr,config,port)
     Visitor.output_port(self,block_name,loc,port)
-    self._update_intervals(expr,config,port)
+    self._update_intervals(expr,config,port,test_valid=True)
 
   def is_valid(self):
     circ = self._circ
