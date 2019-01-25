@@ -62,7 +62,8 @@ class PropIntervalVisitor(Visitor):
 
 
   def is_free(self,config,variable):
-    return config.interval(variable) is None
+    return config.interval(variable) is None \
+            or config.interval(variable).unbounded()
 
   def input_port(self,block_name,loc,port):
     Visitor.input_port(self,block_name,loc,port)
@@ -121,7 +122,7 @@ class PropIntervalVisitor(Visitor):
 
     self._update_intervals(expr,config,port)
     Visitor.output_port(self,block_name,loc,port)
-    self._update_intervals(expr,config,port,test_valid=True)
+    self._update_intervals(expr,config,port)
 
   def is_valid(self):
     circ = self._circ
@@ -138,4 +139,7 @@ class PropIntervalVisitor(Visitor):
 def compute(prog,circ):
   visitor = PropIntervalVisitor(prog,circ)
   visitor.all()
-  assert(visitor.is_valid())
+  while(not visitor.is_valid()):
+      print("-> recomputing intervals");
+      visitor.clear()
+      visitor.all()
