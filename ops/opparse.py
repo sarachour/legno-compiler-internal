@@ -49,6 +49,8 @@ def from_infix(infix):
     return op.Const(infix)
   elif len(infix) == 1:
     return from_infix(infix[0])
+  elif len(infix) == 2 and infix[0] == '-':
+    return op.Mult(op.Const(-1),from_infix(infix[1]))
 
   assert(len(infix) >= 3)
   terms = list(map(lambda i: from_infix(infix[i]), \
