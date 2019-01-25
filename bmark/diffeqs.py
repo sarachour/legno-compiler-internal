@@ -51,6 +51,7 @@ def microbenchmark_simple_osc(name,omega):
         'A0' :0.0,
         'omega': omega
     }
+    # t20
     prob = MathProg("micro-osc-%s" % name)
     P = parse("V", "V0", ":a", params)
     V = parse("A", "A0", ":b", params)
@@ -66,6 +67,7 @@ def microbenchmark_simple_osc(name,omega):
     prob.set_interval("A",-0.12*scf1,0.12*scf1)
     prob.set_interval("P",-0.12*scf2,0.12*scf2)
     prob.set_interval("V",-0.12*scf2,0.12*scf2)
+    prob.compile()
     return prob
 
 def benchmark_bmmrxn():
@@ -262,7 +264,9 @@ BMARKS = [
     benchmark_vanderpol(),
     benchmark_bmmrxn(),
     benchmark_reprissilator(),
-    microbenchmark_simple_osc("one",1.0)
+    microbenchmark_simple_osc("one",1.0),
+    microbenchmark_simple_osc("quad",4.0),
+    microbenchmark_simple_osc("quarter",0.25)
 ]
 
 def get_prog(name):
