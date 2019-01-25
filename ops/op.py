@@ -237,6 +237,9 @@ class Integ(Op2):
     def init_cond(self):
         return self.arg2
 
+    def coefficient(self):
+        return self.deriv.coefficient()
+
     def handles(self):
         ch = Op.handles(self)
         assert(not self.handle in ch and \
