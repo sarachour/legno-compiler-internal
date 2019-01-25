@@ -262,7 +262,7 @@ BMARKS = [
     benchmark_vanderpol(),
     benchmark_bmmrxn(),
     benchmark_reprissilator(),
-    microbenchmark_simple_osc("microosc1",1.0)
+    microbenchmark_simple_osc("one",1.0)
 ]
 
 def get_prog(name):
