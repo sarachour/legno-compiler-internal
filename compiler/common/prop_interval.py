@@ -114,11 +114,15 @@ class PropIntervalVisitor(Visitor):
 
   def is_valid(self):
     circ = self._circ
+    valid = True
     for block_name,loc,config in circ.instances():
+      print("==== %s[%s] ====" % (block_name,loc))
+      print(config)
+
       for ival in config.intervals().values():
         if ival.unbounded():
-          return False
-    return True
+           valid = False
+    return valid
 
 def compute(prog,circ):
   visitor = PropIntervalVisitor(prog,circ)

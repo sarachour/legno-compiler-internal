@@ -75,7 +75,7 @@ This method runs a single grendel script:
 # Installing Legno Dependences
 Install pip3
 
-      sudo apt-get install python3 python3-pip python3-tk graphviz
+      sudo apt-get install python3 python3-pip python3-tk graphviz mailutils
 
 The Legno compiler requires `python3` and `pip3`. Install the dependences with the following command:
 
@@ -83,7 +83,7 @@ The Legno compiler requires `python3` and `pip3`. Install the dependences with t
       
 You need the the following `lab-bench` dependencies for the compiler to interface nicely with the lab bench tooling:
 
-      pip3 install parse construct sklearn fastdtw
+      pip3 install parse construct sklearn fastdtw tqdm
      
 Install the dependences for GPKit:
 
