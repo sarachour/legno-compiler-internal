@@ -1,4 +1,46 @@
 import os
+import colorlover
+
+def undef_to_one(v):
+  return 1.0 if v is None else v
+
+class Shader:
+
+  def __init__(self):
+    self._min = 0
+    self._max = max(self.all_values())*2
+    self._n = 500
+    sch = colorlover.scales['9']['seq']['BuPu']
+    self._scheme = colorlover.interp(sch,500)
+
+  def all_values(self):
+    raise NotImplementedError
+
+  def to_color(self,value):
+    pct = (value-self._min)/(self._max-self._min)
+    bin_no = min(int(pct*self._n), self._n-1)
+    color = self._scheme[bin_no]
+    r,g,b = colorlover.to_numeric(colorlover.to_rgb([color]))[0]
+    hexval = "#{0:02x}{1:02x}{2:02x}".format(int(r),int(g),int(b))
+    return hexval
+
+class IntervalShader(Shader):
+
+  def __init__(self,circ):
+    self._circ = circ
+    Shader.__init__(self)
+
+  def all_values(self):
+    for name,loc,cfg in self._circ.instances():
+      for port,ival in cfg.intervals().items():
+          value = ival.spread*undef_to_one(cfg.scf(port))
+          print("%s[%s].%s = %s" % (name,loc,port,value))
+          yield value
+
+  def get_port_color(self,name,loc,port):
+    cfg = self._circ.config(name,loc)
+    ival = cfg.interval(port)
+    return self.to_color(ival.spread*cfg.scf(port))
 
 class DotFileCtx:
 
@@ -8,6 +50,7 @@ class DotFileCtx:
     self.circ = circ
     self._id_to_data = {}
     self._blockloc_to_id = {}
+    self._colors = IntervalShader(circ)
 
   def bind(self,name,loc,config):
     ident = len(self._id_to_data)
@@ -19,10 +62,10 @@ class DotFileCtx:
     self._blockloc_to_id[(name,loc)] = ident
 
   def get_port_color(self,name,loc,port):
-    return '"#eeffee"'
+    return self._colors.get_port_color(name,loc,port)
 
   def get_block_color(self,name,loc):
-    return '"#1effee"'
+    return '#1effee'
 
   def get_id(self,name,loc):
     return self._blockloc_to_id[(name,loc)]
@@ -55,9 +98,6 @@ class DotFileCtx:
     else:
         raise Exception("can't find port: %s" % str(port))
 
-
-def undef_to_one(v):
-  return 1.0 if v is None else v
 
 def build_environment(circ,color_method = None):
   env = DotFileCtx(circ)
@@ -97,7 +137,7 @@ def build_block(env,block_name,block_loc,cfg):
         body_handle = env.body_handle(block_name,block_loc)
         env.qn('%s [' % port_handle)
         env.qn('shape=invtriangle',2)
-        env.qn('fillcolor=%s' % color,2)
+        env.qn('fillcolor=\"%s\"' % color,2)
         env.qn('style=filled',2)
         env.qn("label=<%s>" % (inp),2)
         env.qn(']')
@@ -113,7 +153,8 @@ def build_block(env,block_name,block_loc,cfg):
     body_handle = env.body_handle(block_name,block_loc)
     env.qn('%s [' % body_handle,1)
     env.qn('shape=record',2)
-    env.qn('fillcolor=%s' % env.get_block_color(block_name,block_loc),2)
+    env.qn('fillcolor=\"%s\"' % \
+           env.get_block_color(block_name,block_loc),2)
     env.qn('style=filled',2)
     env.qn('shape=record',2)
     env.qn('label=<%s>' % html,2)
@@ -126,7 +167,7 @@ def build_block(env,block_name,block_loc,cfg):
         env.qn('%s [' % port_handle)
         env.qn('shape=invtriangle',1)
         env.qn("label=<%s>" % (out),1)
-        env.qn('fillcolor=%s' % color,1)
+        env.qn('fillcolor=\"%s\"' % color,1)
         env.qn('style=filled',1)
         env.qn(']')
         env.qc('%s -> %s' %(body_handle,port_handle),1)

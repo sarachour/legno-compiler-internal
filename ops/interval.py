@@ -12,7 +12,7 @@ class Interval:
       return Interval.type_infer(lb,ub)
 
     @property
-    def difference(self):
+    def spread(self):
         return abs(self.upper-self.lower)
 
     @property
