@@ -13,6 +13,14 @@ class Shader:
     sch = colorlover.scales['9']['seq']['BuPu']
     self._scheme = colorlover.interp(sch,500)
 
+  @staticmethod
+  def get_shader(circ,method):
+    if method == 'interval':
+      return IntervalShader(circ)
+    elif method is None:
+      return GenericShader()
+    else:
+      raise Exception("unknown shader: <%s>" % method)
   def all_values(self):
     raise NotImplementedError
 
@@ -23,6 +31,28 @@ class Shader:
     r,g,b = colorlover.to_numeric(colorlover.to_rgb([color]))[0]
     hexval = "#{0:02x}{1:02x}{2:02x}".format(int(r),int(g),int(b))
     return hexval
+
+  def get_block_color(self,name,loc):
+    raise NotImplementedError
+
+  def get_port_color(self,name,loc,port):
+    raise NotImplementedError
+
+
+class GenericShader(Shader):
+
+  def __init__(self):
+    Shader.__init__(self)
+
+  def all_values(self):
+    yield 0
+
+  def get_block_color(self,name,loc):
+    return "#ffffff"
+
+  def get_port_color(self,name,loc,port):
+    return "#ffffff"
+
 
 class IntervalShader(Shader):
 
@@ -37,6 +67,9 @@ class IntervalShader(Shader):
           print("%s[%s].%s = %s" % (name,loc,port,value))
           yield value
 
+  def get_block_color(self,name,loc):
+    return "#ffffff"
+
   def get_port_color(self,name,loc,port):
     cfg = self._circ.config(name,loc)
     ival = cfg.interval(port)
@@ -44,13 +77,13 @@ class IntervalShader(Shader):
 
 class DotFileCtx:
 
-  def __init__(self,circ):
+  def __init__(self,circ,method):
     self._node_stmts = []
     self._conn_stmts = []
     self.circ = circ
     self._id_to_data = {}
     self._blockloc_to_id = {}
-    self._colors = IntervalShader(circ)
+    self._colors = Shader.get_shader(circ,method)
 
   def bind(self,name,loc,config):
     ident = len(self._id_to_data)
@@ -65,7 +98,7 @@ class DotFileCtx:
     return self._colors.get_port_color(name,loc,port)
 
   def get_block_color(self,name,loc):
-    return '#1effee'
+    return self._colors.get_block_color(name,loc)
 
   def get_id(self,name,loc):
     return self._blockloc_to_id[(name,loc)]
@@ -99,8 +132,8 @@ class DotFileCtx:
         raise Exception("can't find port: %s" % str(port))
 
 
-def build_environment(circ,color_method = None):
-  env = DotFileCtx(circ)
+def build_environment(circ,color_method=None):
+  env = DotFileCtx(circ,method=color_method)
   for block_name,loc,config in circ.instances():
       '''
       colors = {}
