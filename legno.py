@@ -114,14 +114,22 @@ elif args.subparser_name == "skelter":
     for dirname, subdirlist, filelist in os.walk(circ_dir):
         for fname in filelist:
            if fname.endswith('.circ'):
+ 
+               circ_bmark,circ_indices,circ_scale_index,opt = \
+                                                              path_handler.conc_circ_to_args(fname)
+
+               skelt_circ = path_handler.skelt_circ_file(circ_bmark,
+                                                         circ_indices,
+                                                         circ_scale_index,
+                                                         opt)
+               if path_handler.has_file(skelt_circ):
+                   continue
+
                print('<<<< %s >>>>' % fname)
                with open("%s/%s" % (dirname,fname),'r') as fh:
                    obj = json.loads(fh.read())
                    conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                   obj)
-                   circ_bmark,circ_indices,circ_scale_index,opt = \
-                        path_handler.conc_circ_to_args(fname)
-
                    skelter.execute(conc_circ)
                    for method in ['interval','scaled-interval', \
                                   'gen-delay','prop-delay', \
