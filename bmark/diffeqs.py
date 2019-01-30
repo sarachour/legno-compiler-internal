@@ -16,27 +16,22 @@ def microbenchmark_simple_osc(name,omega):
     params = {
         'P0': 0.1,
         'V0' :0.0,
-        'A0' :0.0,
         'omega': -1*omega*omega
     }
     # t20
     prob = MathProg("micro-osc-%s" % name)
     P = parse("V", "P0", ":a", params)
-    V = parse("A", "V0", ":b", params)
-    A = parse("{omega}*P", "A0", ":c", params)
+    V = parse("{omega}*P", "V0", ":b", params)
 
-    scf1 = omega*omega if omega >= 1.0 else 1.0
-    scf2 = omega if omega >= 1.0 else 1.0
+    scf = omega if omega >= 1.0 else 1.0
     prob.bind("P", P)
     prob.bind("V", V)
-    prob.bind("A", A)
     prob.bind("Loc", op.Emit(op.Var("P")))
     # most accurately, 0.1
-    base_bnd = 0.1
-    base_bnd = 2.5
-    prob.set_interval("A",-base_bnd*scf1,base_bnd*scf1)
-    prob.set_interval("P",-base_bnd*scf2,base_bnd*scf2)
-    prob.set_interval("V",-base_bnd*scf2,base_bnd*scf2)
+    #base_bnd = 0.1
+    base_bnd = 0.12
+    prob.set_interval("P",-base_bnd,base_bnd)
+    prob.set_interval("V",-base_bnd*scf,base_bnd*scf)
     prob.compile()
     return prob
 

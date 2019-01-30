@@ -7,15 +7,15 @@ import math
 
 def micro_simple_osc(name,omega):
   def dt(t,vs):
-    P,V,A = vs[0],vs[1],vs[2]
-    return [V, A, -omega*omega*P]
+    P,V = vs[0],vs[1]
+    return [V, -omega*omega*P]
 
   def ic():
-    P,V,A = 0.1,0.0,0.0
-    return 10,[P,V,A]
+    P,V = 0.1,0.0
+    return 10,[P,V]
 
   def plot(t,y):
-    for yser,lbl in zip(y,['P','V','A']):
+    for yser,lbl in zip(y,['P','V']):
       plt.plot(t,yser)
       plt.savefig("micro_%s_%s.png" % (name,lbl))
       plt.clf()

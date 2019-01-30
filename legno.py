@@ -68,8 +68,6 @@ scriptgen_subp.add_argument('--math-env', type=str,default='t20',
                        help='math environment.')
 scriptgen_subp.add_argument('--hw-env', type=str,default='default', \
                         help='hardware environment')
-scriptgen_subp.add_argument('--gen-script-list', action='store_true',
-                        help='generate a script list')
 
 
 
@@ -250,7 +248,7 @@ elif args.subparser_name == "execprog":
 elif args.subparser_name == "srcgen":
    menv = menvs.get_math_env(args.math_env)
    hwenv = hwenvs.get_hw_env(args.hw_env)
-   circ_dir = path_handler.conc_circ_dir()
+   circ_dir = path_handler.skelt_circ_dir()
    for dirname, subdirlist, filelist in os.walk(circ_dir):
        for fname in filelist:
            if fname.endswith('.circ'):
