@@ -5,6 +5,8 @@ def undef_to_one(v):
   return 1.0 if v is None else v
 
 class Shader:
+  IGNORE = "ignore"
+  ERROR = "error"
 
   def __init__(self):
     self._min = 0
@@ -17,6 +19,10 @@ class Shader:
   def get_shader(circ,method):
     if method == 'interval':
       return IntervalShader(circ)
+    elif method == 'scaled-interval':
+      return ScaledIntervalShader(circ)
+    elif method == 'scale-factor':
+      return ScaleFactorShader(circ)
     elif method == 'gen-delay':
       return GenDelayShader(circ)
     elif method == 'prop-delay':
@@ -35,8 +41,7 @@ class Shader:
       return GenericShader()
     else:
       raise Exception("unknown shader: <%s>" % method)
-  def all_values(self):
-    raise NotImplementedError
+
 
   def to_color(self,value):
     if self._max == self._min:
@@ -49,11 +54,59 @@ class Shader:
     hexval = "#{0:02x}{1:02x}{2:02x}".format(int(r),int(g),int(b))
     return hexval
 
+  def white(self):
+    return "#ffffff"
+
+  def red(self):
+    return "#f8585a"
+
   def get_block_color(self,name,loc):
-    raise NotImplementedError
+    value = self.get_block_value(name,loc)
+    if value == Shader.IGNORE:
+      return self.white()
+    elif value == Shader.ERROR:
+      return self.red()
+    else:
+      return self.to_color(value)
 
   def get_port_color(self,name,loc,port):
+    value = self.get_port_value(name,loc,port)
+    if value == Shader.IGNORE:
+      return self.white()
+    elif value == Shader.ERROR:
+      return self.red()
+    else:
+      return self.to_color(value)
+
+  def is_value(self,v):
+    return not v == Shader.IGNORE and \
+      not v == Shader.ERROR
+
+  def all_values(self):
     raise NotImplementedError
+
+  def get_block_value(self,name,loc):
+    return Shader.IGNORE
+
+  def get_port_value(self,name,loc,port):
+    return Shader.IGNORE
+
+class CircShader(Shader):
+
+  def __init__(self,circ):
+    self.circ = circ
+    Shader.__init__(self)
+
+  def all_values(self):
+    for block_name,loc,cfg in self.circ.instances():
+      value = self.get_block_value(block_name,loc)
+      if self.is_value(value):
+        yield value
+      block = self.circ.board.block(block_name)
+      for port in block.inputs + block.outputs:
+        value = self.get_port_value(block_name,loc,port)
+        if self.is_value(value):
+          yield value
 
 
 class GenericShader(Shader):
@@ -64,198 +117,148 @@ class GenericShader(Shader):
   def all_values(self):
     yield 0
 
-  def get_block_color(self,name,loc):
-    return "#ffffff"
 
-  def get_port_color(self,name,loc,port):
-    return "#ffffff"
-
-
-class DelayMismatchShader(Shader):
+class DelayMismatchShader(CircShader):
 
   def __init__(self,circ):
-    self._circ = circ
-    Shader.__init__(self)
+    CircShader.__init__(self,circ)
 
-  def all_values(self):
-    for name,loc,cfg in self._circ.instances():
-      for port,value in cfg.delay_mismatches():
-        yield value
-
-  def get_block_color(self,name,loc):
-    return "#ffffff"
-
-  def get_port_color(self,name,loc,port):
-    cfg = self._circ.config(name,loc)
+  def get_port_value(self,name,loc,port):
+    cfg = self.circ.config(name,loc)
     ival = cfg.delay_mismatch(port)
     if ival is None:
-      return '#f8585a'
+      return Shader.ERROR
     else:
-      return self.to_color(ival)
+      return ival
 
 
-class PropDelayShader(Shader):
+class PropDelayShader(CircShader):
 
   def __init__(self,circ):
-    self._circ = circ
-    Shader.__init__(self)
+    CircShader.__init__(self,circ)
 
-  def all_values(self):
-    for name,loc,cfg in self._circ.instances():
-      for port,value in cfg.propagated_delays():
-        yield value.bound
-
-  def get_block_color(self,name,loc):
-    return "#ffffff"
-
-  def get_port_color(self,name,loc,port):
-    cfg = self._circ.config(name,loc)
+  def get_port_value(self,name,loc,port):
+    cfg = self.circ.config(name,loc)
     ival = cfg.propagated_delay(port)
     if ival is None:
-      return '#f8585a'
+      return Shader.ERROR
     else:
-      return self.to_color(ival.bound)
+      return ival.bound
 
-class PropBiasShader(Shader):
+class PropBiasShader(CircShader):
 
   def __init__(self,circ):
-    self._circ = circ
-    Shader.__init__(self)
+    CircShader.__init__(self,circ)
 
-  def all_values(self):
-    for name,loc,cfg in self._circ.instances():
-      for port,value in cfg.propagated_biases():
-        yield value.bound
 
-  def get_block_color(self,name,loc):
-    return "#ffffff"
-
-  def get_port_color(self,name,loc,port):
-    cfg = self._circ.config(name,loc)
+  def get_port_value(self,name,loc,port):
+    cfg = self.circ.config(name,loc)
     ival = cfg.propagated_bias(port)
     if ival is None:
-      return '#f8585a'
+      return Shader.ERROR
     else:
-      return self.to_color(ival.bound)
+      return ival.bound
 
 
 
-class GenBiasShader(Shader):
+class GenBiasShader(CircShader):
 
   def __init__(self,circ):
-    self._circ = circ
-    Shader.__init__(self)
+    CircShader.__init__(self,circ)
 
-  def all_values(self):
-    for name,loc,cfg in self._circ.instances():
-      for port,value in cfg.generated_biases():
-        yield value.bound
-
-  def get_block_color(self,name,loc):
-    return "#ffffff"
-
-  def get_port_color(self,name,loc,port):
-    cfg = self._circ.config(name,loc)
+  def get_port_value(self,name,loc,port):
+    cfg = self.circ.config(name,loc)
     ival = cfg.generated_bias(port)
     if ival is None:
-      return '#f8585a'
+      return Shader.ERROR
     else:
-      return self.to_color(ival.bound)
+      return ival.bound
 
 
-class PropNoiseShader(Shader):
+class PropNoiseShader(CircShader):
 
   def __init__(self,circ):
-    self._circ = circ
-    Shader.__init__(self)
+    CircShader.__init__(self,circ)
 
-  def all_values(self):
-    for name,loc,cfg in self._circ.instances():
-      for port,value in cfg.propagated_noises():
-        yield value.bound
-
-  def get_block_color(self,name,loc):
-    return "#ffffff"
-
-  def get_port_color(self,name,loc,port):
-    cfg = self._circ.config(name,loc)
+  def get_port_value(self,name,loc,port):
+    cfg = self.circ.config(name,loc)
     ival = cfg.propagated_noise(port)
     if ival is None:
-      return '#f8585a'
+      return Shader.ERROR
     else:
-      return self.to_color(ival.bound)
+      return ival.bound
 
 
 
-class GenNoiseShader(Shader):
+class GenNoiseShader(CircShader):
 
   def __init__(self,circ):
-    self._circ = circ
-    Shader.__init__(self)
+    CircShader.__init__(self,circ)
 
-  def all_values(self):
-    for name,loc,cfg in self._circ.instances():
-      for port,value in cfg.generated_noises():
-        yield value.bound
-
-  def get_block_color(self,name,loc):
-    return "#ffffff"
-
-  def get_port_color(self,name,loc,port):
-    cfg = self._circ.config(name,loc)
+  def get_port_value(self,name,loc,port):
+    cfg = self.circ.config(name,loc)
     ival = cfg.generated_noise(port)
     if ival is None:
-      return '#f8585a'
+      return Shader.ERROR
     else:
-      return self.to_color(ival.bound)
+      return ival.bound
 
 
-class GenDelayShader(Shader):
+class GenDelayShader(CircShader):
 
   def __init__(self,circ):
-    self._circ = circ
-    Shader.__init__(self)
+    CircShader.__init__(self,circ)
 
-  def all_values(self):
-    for name,loc,cfg in self._circ.instances():
-      for port,value in cfg.generated_delays():
-        yield value.bound
-
-  def get_block_color(self,name,loc):
-    return "#ffffff"
-
-  def get_port_color(self,name,loc,port):
-    cfg = self._circ.config(name,loc)
+  def get_port_value(self,name,loc,port):
+    cfg = self.circ.config(name,loc)
     ival = cfg.generated_delay(port)
     if ival is None:
-      return '#f8585a'
+      return Shader.ERROR
     else:
-      return self.to_color(ival.bound)
+      return ival.bound
 
-
-class IntervalShader(Shader):
+class ScaleFactorShader(CircShader):
 
   def __init__(self,circ):
-    self._circ = circ
-    Shader.__init__(self)
+    CircShader.__init__(self,circ)
 
-  def all_values(self):
-    for name,loc,cfg in self._circ.instances():
-      for port,ival in cfg.intervals().items():
-          value = ival.spread*undef_to_one(cfg.scf(port))
-          print("%s[%s].%s = %s" % (name,loc,port,value))
-          yield value
-
-  def get_block_color(self,name,loc):
-    return "#ffffff"
-
-  def get_port_color(self,name,loc,port):
-    cfg = self._circ.config(name,loc)
-    ival = cfg.interval(port)
-    if ival is None:
-      return '#f8585a'
+  def get_port_value(self,name,loc,port):
+    cfg = self.circ.config(name,loc)
+    scf = cfg.scf(port)
+    if scf is None:
+      return Shader.ERROR
     else:
-      return self.to_color(ival.spread*cfg.scf(port))
+      return scf
+
+
+class ScaledIntervalShader(CircShader):
+
+  def __init__(self,circ):
+    CircShader.__init__(self,circ)
+
+  def get_port_value(self,name,loc,port):
+    cfg = self.circ.config(name,loc)
+    ival = cfg.interval(port)
+    scf = cfg.scf(port)
+    if ival is None or scf is None:
+      return Shader.ERROR
+    else:
+      return ival.bound
+
+
+class IntervalShader(CircShader):
+
+  def __init__(self,circ):
+    CircShader.__init__(self,circ)
+
+  def get_port_value(self,name,loc,port):
+    cfg = self.circ.config(name,loc)
+    ival = cfg.interval(port)
+    scf = cfg.scf(port)
+    if ival is None or scf is None:
+      return Shader.ERROR
+    else:
+      return ival.bound/scf
 
 class DotFileCtx:
 
@@ -265,7 +268,7 @@ class DotFileCtx:
     self.circ = circ
     self._id_to_data = {}
     self._blockloc_to_id = {}
-    self._colors = Shader.get_shader(circ,method)
+    self.shader = Shader.get_shader(circ,method)
 
   def bind(self,name,loc,config):
     ident = len(self._id_to_data)
@@ -275,12 +278,6 @@ class DotFileCtx:
       'config': config
     }
     self._blockloc_to_id[(name,loc)] = ident
-
-  def get_port_color(self,name,loc,port):
-    return self._colors.get_port_color(name,loc,port)
-
-  def get_block_color(self,name,loc):
-    return self._colors.get_block_color(name,loc)
 
   def get_id(self,name,loc):
     return self._blockloc_to_id[(name,loc)]
@@ -320,10 +317,30 @@ def build_environment(circ,color_method=None):
       env.bind(block_name,loc,config)
 
   return env
- 
 
-def build_block(env,block_name,block_loc,cfg):
-    body = '''
+def build_port(env,block_name,block_loc,port):
+  color = env.shader.get_port_color(block_name,block_loc,port)
+  port_handle = env.port_handle(block_name,block_loc,port)
+  caption_handle = "%s_caption" % port_handle
+
+  value = env.shader.get_port_value(block_name,block_loc,port)
+  if isinstance(value,float):
+    value = '%.03e' % value
+  env.qn('%s [' % caption_handle,1)
+  env.qn('shape=plaintext',2)
+  env.qn('label=<%s>' % (value), 2)
+  env.qn(']',1)
+  env.qn('%s [' % port_handle,1)
+  env.qn('shape=invtriangle',2)
+  env.qn('fillcolor=\"%s\"' % color,2)
+  env.qn('style=filled',2)
+  env.qn("label=<%s>" % (port),2)
+  env.qn(']',1)
+  env.qc('%s->%s [style=dashed]' % (caption_handle,port_handle))
+  return port_handle
+
+def build_body(env,block_name,block_loc,cfg):
+  body = '''
     <table border="0">
     <tr><td>{block_name}</td><td>{block_loc}</td></tr>
     <tr>
@@ -332,51 +349,41 @@ def build_block(env,block_name,block_loc,cfg):
     </tr>
     </table>
     '''
+
+  params = {
+      'block_name':block_name,
+      'block_loc':block_loc,
+      'scale_mode':cfg.scale_mode,
+      'comp_mode':cfg.comp_mode
+  }
+  color = env.shader.get_block_color(block_name,block_loc)
+  html = body.format(**params)
+  body_handle = env.body_handle(block_name,block_loc)
+  env.qn('%s [' % body_handle,1)
+  env.qn('shape=record',2)
+  env.qn('fillcolor=\"%s\"' % color,2)
+  env.qn('style=filled',2)
+  env.qn('shape=record',2)
+  env.qn('label=<%s>' % html,2)
+  env.qn(']',1)
+  return body_handle
+
+def build_block(env,block_name,block_loc,cfg):
     blkidx = env.get_id(block_name,block_loc)
     block = env.circ.board.block(block_name)
     env.qn('subgraph cluster%d {' % blkidx)
     env.qn('style=filled')
     env.qn('color=lightgrey')
     env.qn('rank=same')
+    body_handle = env.body_handle(block_name,block_loc)
     for inp in block.inputs:
-        color = env.get_port_color(block_name,block_loc,inp)
-        port_handle = env.port_handle(block_name,block_loc,inp)
-        body_handle = env.body_handle(block_name,block_loc)
-        env.qn('%s [' % port_handle)
-        env.qn('shape=invtriangle',2)
-        env.qn('fillcolor=\"%s\"' % color,2)
-        env.qn('style=filled',2)
-        env.qn("label=<%s>" % (inp),2)
-        env.qn(']')
+        port_handle = build_port(env,block_name,block_loc,inp)
         env.qc('%s -> %s' %(port_handle,body_handle),1)
 
-    params = {
-        'block_name':block_name,
-        'block_loc':block_loc,
-        'scale_mode':cfg.scale_mode,
-        'comp_mode':cfg.comp_mode
-    }
-    html = body.format(**params)
-    body_handle = env.body_handle(block_name,block_loc)
-    env.qn('%s [' % body_handle,1)
-    env.qn('shape=record',2)
-    env.qn('fillcolor=\"%s\"' % \
-           env.get_block_color(block_name,block_loc),2)
-    env.qn('style=filled',2)
-    env.qn('shape=record',2)
-    env.qn('label=<%s>' % html,2)
-    env.qn(']',1)
+    build_body(env,block_name,block_loc,cfg)
 
     for out in block.outputs:
-        color = env.get_port_color(block_name,block_loc,out)
-        port_handle = env.port_handle(block_name,block_loc,out)
-        body_handle = env.body_handle(block_name,block_loc)
-        env.qn('%s [' % port_handle)
-        env.qn('shape=invtriangle',1)
-        env.qn("label=<%s>" % (out),1)
-        env.qn('fillcolor=\"%s\"' % color,1)
-        env.qn('style=filled',1)
-        env.qn(']')
+        port_handle = build_port(env,block_name,block_loc,out)
         env.qc('%s -> %s' %(body_handle,port_handle),1)
 
     env.qn("}")

@@ -229,11 +229,17 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   if(expr->use_analog_chip){
     circ::commit_config(fab);
     circ::finalize_config(fab);
+    comm::print_header();
+    Serial.println("wrote config");
+    comm::print_header();
+    Serial.println("toggle sda");
     _toggle_SDA();
     circ::execute(fab);
     Timer3.start(expr->time_between_samps_us);
   }
   else{
+    comm::print_header();
+    Serial.println("toggle sda");
     _toggle_SDA();
     Timer3.start(expr->time_between_samps_us);
   }

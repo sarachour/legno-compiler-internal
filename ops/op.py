@@ -268,7 +268,6 @@ class Integ(Op2):
         istvar = intervals[self._handle]
         ideriv = self.deriv.compute_interval(intervals)
         icond = self.init_cond.compute_interval(intervals)
-        print(icond,istvar)
         if not (istvar.contains(icond.interval)):
             print("[WARN] stvar does not contain ic: stvar=%s, ic=%s, expr=%s" % \
                             (istvar,icond,self))

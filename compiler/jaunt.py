@@ -512,7 +512,7 @@ def sp_update_circuit(jenv,prog,circ,assigns):
             block_name,loc,port,handle = jenv.get_scvar_info(variable.name)
             circ.config(block_name,loc).set_scf(port,handle=handle,scf=value)
 
-
+    infer.clear(circ)
     infer.infer_intervals(prog,circ)
     infer.infer_bandwidths(prog,circ)
     return circ

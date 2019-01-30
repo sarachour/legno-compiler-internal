@@ -39,6 +39,9 @@ class PropIntervalVisitor(Visitor):
     prog,circ = self._prog,self.circ
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
+        if not block_name == 'integrator':
+          continue
+
         for port in block.outputs + block.inputs:
             if config.has_label(port):
                 label = config.label(port)
@@ -54,6 +57,7 @@ class PropIntervalVisitor(Visitor):
                 tau = circ.tau if not circ.tau is None else 1.0
                 print("lbl: %s[%s].%s := %s*%s / tau=%s" % \
                       (block_name,loc,port,mrng,scf,tau))
+
                 config.set_interval(port,mrng.scale(scf),\
                                     handle=handle)
                 config.set_bandwidth(port,mbw.timescale(tau),\
@@ -70,7 +74,7 @@ class PropIntervalVisitor(Visitor):
     circ = self._circ
     config = circ.config(block_name,loc)
     scf = config.scf(port) if config.has_scf(port) else 1.0
-    dest_expr = ops.Const(0 if not config.has_dac(port) \
+    dest_expr = ops.Const(0.0 if not config.has_dac(port) \
                           else scf*config.dac(port))
     dest_ival = dest_expr.compute_interval({}).interval
 
@@ -87,10 +91,8 @@ class PropIntervalVisitor(Visitor):
 
       dest_ival = dest_ival.add(src_ival)
 
-
     config.set_interval(port,dest_ival)
     print("ival in %s[%s].%s => %s" % (block_name,loc,port,dest_ival))
-
 
   def _update_intervals(self,expr,config,port):
     intervals = expr.compute_interval(config.intervals())

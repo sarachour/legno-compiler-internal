@@ -125,8 +125,10 @@ elif args.subparser_name == "skelter":
                         path_handler.conc_circ_to_args(fname)
 
                    skelter.execute(conc_circ)
-                   for method in ['interval','gen-delay','prop-delay', \
-                                  'delay-mismatch','gen-noise','prop-noise',\
+                   for method in ['interval','scaled-interval', \
+                                  'gen-delay','prop-delay', \
+                                  'scale-factor','delay-mismatch', \
+                                  'gen-noise','prop-noise',\
                                   'gen-bias','prop-bias']:
 
                        filename = path_handler.skelt_graph_file(circ_bmark,
