@@ -8,7 +8,7 @@ def compute_max_mismatch(circ):
   for blkname,loc,config in circ.instances():
     blk = circ.board.block(blkname)
     for port in blk.inputs + blk.outputs:
-      mismatches = config.delay_mismatches().values()
+      mismatches = dict(config.delay_mismatches()).values()
       if len(mismatches) > 0:
         max_mismatch = max(max_mismatch,max(mismatches))
 
@@ -28,15 +28,10 @@ def compute_snr(circ,block_name,loc,port):
   print("bias : %s" % bias)
   print("delay : %s" % delay)
 
-  snr = np.log10(signal.difference/(noise.difference+bias.difference))
+  snr = np.log10(signal.spread/(noise.spread+bias.spread))
   return snr
 
-def execute(circ):
-  gen_phys.compute(circ)
-  prop_noise.compute(circ)
-  prop_bias.compute(circ)
-  delay_mismatch.compute(circ)
-
+def rank(circ):
   score = 0
   max_mismatch = compute_max_mismatch(circ)
   print("mismatch: %s" % max_mismatch)
@@ -50,3 +45,9 @@ def execute(circ):
           score += compute_snr(circ,block_name,loc,port)
 
   return score
+
+def execute(circ):
+  gen_phys.compute(circ)
+  prop_noise.compute(circ)
+  prop_bias.compute(circ)
+  delay_mismatch.compute(circ)

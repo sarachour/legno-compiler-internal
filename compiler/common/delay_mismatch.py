@@ -44,7 +44,7 @@ class PropDelayVisitor(Visitor):
     expr = config.dynamics(block,port)
 
     pnz_dict = dict(filter(lambda args: args[0] in expr.vars(), \
-                           config.propagated_delays().items()))
+                           config.propagated_delays()))
     gen_delay = config.generated_delay(port)
     if len(pnz_dict) == 0:
       print("prop-delay %s[%s].%s = %s" % (block_name,loc,port,gen_delay))

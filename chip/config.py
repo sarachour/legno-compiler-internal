@@ -65,73 +65,93 @@ class Config:
         if isinstance(cfg._scale_mode, list):
             cfg._scale_mode = tuple(cfg._scale_mode)
 
-        for dac,value in obj['dacs'].items():
-          cfg._dacs[dac] = value
-        for port,(name,kind_name) in obj['labels'].items():
-          cfg._labels[port] = [name,Labels(kind_name)]
+        def get_port_dict(data,topobj,objkey,fn=lambda x: x):
+            if not objkey in topobj:
+                return
 
-        for port,scfs in obj['scfs'].items():
-          cfg._scfs[port] = {}
-          for handle,scf in scfs.items():
-            handle = None if handle == 'null' else handle
-            cfg._scfs[port][handle] = scf
+            obj = topobj[objkey]
+            for port,value in obj.items():
+                data[port] = fn(value)
 
-        for port,ivals in obj['intervals'].items():
-          cfg._intervals[port] = {}
-          for handle,ival in ivals.items():
-            handle = None if handle == 'null' else handle
-            cfg._intervals[port][handle] = Interval.from_json(ival)
+        def get_port_handle_dict(data,topobj,objkey,fn=lambda x: x):
+            if not objkey in topobj:
+                return
 
-        for port,ivals in obj['op-ranges'].items():
-          cfg._op_ranges[port] = {}
-          for handle,ival in ivals.items():
-            handle = None if handle == 'null' else handle
-            cfg._op_ranges[port][handle] = Interval.from_json(ival)
+            obj = topobj[objkey]
+            for port,datum in obj.items():
+                data[port] = {}
+                for handle,value in datum.items():
+                    handle = None if handle == 'null' else handle
+                    data[port][handle] = fn(value)
 
-        for port,bandwidths in obj['bandwidths'].items():
-          cfg._bandwidths[port] = {}
-          for handle,bandwidth in bandwidths.items():
-            handle = None if handle == 'null' else handle
-            cfg._bandwidths[port][handle] = Bandwidth.from_json(bandwidth)
-
+        get_port_dict(cfg._dacs, obj,'dacs')
+        get_port_dict(cfg._labels, obj,'labels', \
+                      lambda v: [v[0],Labels(v[1])])
+        get_port_handle_dict(cfg._scfs, obj, 'scfs')
+        get_port_handle_dict(cfg._intervals, obj, 'intervals', \
+                             lambda v: Interval.from_json(v))
+        get_port_handle_dict(cfg._op_ranges, obj, 'op-ranges', \
+                             lambda v: Interval.from_json(v))
+        get_port_handle_dict(cfg._bandwidths, obj, 'bandwidths', \
+                             lambda v: Bandwidth.from_json(v))
+        get_port_dict(cfg._gen_noise, obj, 'gen-noise', \
+                      lambda v: Interval.from_json(v))
+        get_port_dict(cfg._prop_noise, obj, 'prop-noise', \
+                      lambda v: Interval.from_json(v))
+        get_port_dict(cfg._gen_biases, obj,'gen-bias', \
+                      lambda v: Interval.from_json(v))
+        get_port_dict(cfg._prop_biases, obj,'prop-bias', \
+                      lambda v: Interval.from_json(v))
+        get_port_dict(cfg._gen_delays, obj,'gen-delay', \
+                      lambda v: Interval.from_json(v))
+        get_port_dict(cfg._prop_delays, obj,'prop-delay', \
+                      lambda v: Interval.from_json(v))
+        get_port_dict(cfg._mismatch_delays, obj,'mismatch-delay')
         return cfg
 
     def to_json(self):
         cfg = {}
         cfg['compute-mode'] = self._comp_mode
         cfg['scale-mode'] = self._scale_mode
-        cfg['dacs'] = {}
-        cfg['scfs'] = {}
-        cfg['labels'] = {}
-        cfg['intervals'] = {}
-        cfg['op-ranges'] = {}
-        cfg['bandwidths'] = {}
 
-        for dac,value in self._dacs.items():
-            cfg['dacs'][dac] = value
-        for port,(name,kind) in self._labels.items():
-            cfg['labels'][port] = [name,kind.value]
+        def set_port_dict(key,data,fn=lambda x: x):
+            cfg[key] = {}
+            for port,value in data.items():
+                cfg[key][port] = fn(value)
 
-        for port,scfs in self._scfs.items():
-          cfg['scfs'][port] = {}
-          for handle,scf in scfs.items():
-            cfg['scfs'][port][handle] = scf
+        def set_port_handle_dict(key,data,fn=lambda x: x):
+            cfg[key] = {}
+            for port,datum in data.items():
+                cfg[key][port] = {}
+                for handle,value in datum.items():
+                    cfg[key][port][handle] = fn(value)
 
-        for port,ivals in self._intervals.items():
-          cfg['intervals'][port] = {}
-          for handle,ival in ivals.items():
-            cfg['intervals'][port][handle] = ival.to_json()
+        set_port_dict('dacs',self._dacs)
+        set_port_dict('labels', self._labels,
+                      lambda args: [args[0],args[1].value])
 
-        for port,oprngs in self._op_ranges.items():
-          cfg['op-ranges'][port] = {}
-          for handle,oprng in oprngs.items():
-            cfg['op-ranges'][port][handle] = oprng.to_json()
+        set_port_handle_dict('scfs',self._scfs)
+        set_port_handle_dict('intervals',self._intervals, \
+                             lambda value: value.to_json())
 
-        for port,bws in self._bandwidths.items():
-          cfg['bandwidths'][port] = {}
-          for handle,bw in bws .items():
-            cfg['bandwidths'][port][handle] = bw.to_json()
+        set_port_handle_dict('op-ranges', self._op_ranges, \
+                             lambda value: value.to_json())
+        set_port_handle_dict('bandwidths', self._bandwidths, \
+                             lambda value: value.to_json())
 
+        set_port_dict('gen-noise',self._gen_noise,
+                      lambda value: value.to_json())
+        set_port_dict('prop-noise',self._prop_noise,
+                      lambda value: value.to_json())
+        set_port_dict('gen-bias',self._gen_biases,
+                      lambda value: value.to_json())
+        set_port_dict('prop-bias',self._prop_biases,
+                      lambda value: value.to_json())
+        set_port_dict('gen-delay',self._gen_delays,
+                      lambda value: value.to_json())
+        set_port_dict('prop-delay',self._prop_delays,
+                      lambda value: value.to_json())
+        set_port_dict('mismatch-delay',self._mismatch_delays)
 
         return cfg
 
@@ -196,76 +216,63 @@ class Config:
           return None
       return self._gen_noise[port]
 
+    def generated_noises(self):
+        for port,noise in self._gen_noise.items():
+            yield port,noise
 
-    def propagated_biases(self):
-      bss = {}
-      for port, bs in self._prop_biases.items():
-        bss[port] = bs
-
-      return bss
-
-
-    def delay_mismatches(self):
-      delays = {}
-      for port,delay in self._mismatch_delays.items():
-        delays[port] = delay
-
-      return delays
-
-
-    def propagated_delays(self):
-      delays = {}
-      for port,delay in self._prop_delays.items():
-        delays[port] = delay
-
-      return delays
-
+    def propagated_noise(self,port):
+      if not port in self._prop_noise:
+          return None
+      return self._prop_noise[port]
 
     def propagated_noises(self):
-      nzs = {}
-      for port, nz in self._prop_noise.items():
-        nzs[port] = nz
-
-      return nzs
-
-    def propagated_noise(self,port):
-      if not port in self._prop_noise:
-          return None
-      return self._prop_noise[port]
-
-
-    def propagated_noise(self,port):
-      if not port in self._prop_noise:
-          return None
-      return self._prop_noise[port]
+        for port,value in self._prop_noise.items():
+            yield port,value
 
     def propagated_bias(self,port):
       if not port in self._prop_biases:
           return None
       return self._prop_biases[port]
 
+    def propagated_biases(self):
+        for port,value in self._prop_biases.items():
+            yield port,value
 
     def generated_bias(self,port):
       if not port in self._gen_biases:
           return None
       return self._gen_biases[port]
 
+    def generated_biases(self):
+        for port,bias in self._gen_biases.items():
+            yield port,bias
+
     def propagated_delay(self,port):
       if not port in self._prop_delays:
           return None
       return self._prop_delays[port]
 
+    def propagated_delays(self):
+        for port,delay in self._prop_delays.items():
+            yield port,delay
 
     def delay_mismatch(self,port):
       if not port in self._mismatch_delays:
           return None
       return self._mismatch_delays[port]
 
+    def delay_mismatches(self):
+        for port,value in self._mismatch_delays.items():
+            yield port,value
 
     def generated_delay(self,port):
       if not port in self._gen_delays:
           return None
       return self._gen_delays[port]
+
+    def generated_delays(self):
+        for port,delay in self._gen_delays.items():
+            yield port,delay
 
     def set_propagated_noise(self,port,noise):
       self._prop_noise[port] = noise

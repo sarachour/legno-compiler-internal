@@ -13,6 +13,8 @@ class PathHandler:
             self.ABS_CIRC_DIR,
             self.CONC_CIRC_DIR,
             self.CONC_GRAPH_DIR,
+            self.SKELT_CIRC_DIR,
+            self.SKELT_GRAPH_DIR,
             self.ABS_GRAPH_DIR,
             self.REF_WAVEFORM_FILE_DIR,
             self.MEAS_WAVEFORM_FILE_DIR,
@@ -34,11 +36,25 @@ class PathHandler:
         self.ABS_GRAPH_DIR = self.BMARK_DIR + "/abs-graph"
         self.CONC_CIRC_DIR = self.BMARK_DIR + "/conc-circ"
         self.CONC_GRAPH_DIR = self.BMARK_DIR + "/conc-graph"
+        self.SKELT_CIRC_DIR = self.BMARK_DIR + "/skelt-circ"
+        self.SKELT_GRAPH_DIR = self.BMARK_DIR + "/skelt-graph"
         self.GRENDEL_FILE_DIR = self.BMARK_DIR + "/grendel"
         self.PLOT_DIR = self.BMARK_DIR + "/plots"
         self.MEAS_WAVEFORM_FILE_DIR = self.BMARK_DIR + "/out-waveform"
         self.REF_WAVEFORM_FILE_DIR = self.BMARK_DIR + "/ref-waveform"
 
+
+
+    def skelt_circ_file(self,bmark,indices,scale_index,opt):
+      index_str = "_".join(map(lambda ind : str(ind),indices))
+      return self.SKELT_CIRC_DIR+ "/%s_%s_s%s_%s.circ" % \
+        (self._bmark,index_str,scale_index,opt)
+
+
+    def skelt_graph_file(self,bmark,indices,scale_index,opt):
+      index_str = "_".join(map(lambda ind : str(ind),indices))
+      return self.SKELT_GRAPH_DIR+ "/%s_%s_s%s_%s.dot" % \
+        (self._bmark,index_str,scale_index,opt)
 
 
     def conc_circ_file(self,bmark,indices,scale_index,opt):
@@ -150,6 +166,10 @@ class PathHandler:
 
     def grendel_file_dir(self):
         return self.GRENDEL_FILE_DIR
+
+
+    def skelt_circ_dir(self):
+        return self.SKELT_CIRC_DIR
 
 
     def conc_circ_dir(self):

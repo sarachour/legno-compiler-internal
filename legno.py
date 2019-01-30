@@ -61,13 +61,15 @@ jaunt_subp.add_argument('--scale-circuits', type=int,default=15,
 
 
 ref_subp = subparsers.add_parser('skelter', help='perform noise analysis')
-ref_subp.add_argument('--math-env', type=str,default='t20',
-                       help='math environment.')
-ref_subp.add_argument('--hw-env', type=str,default='default', \
-                        help='hardware environment')
-ref_subp.add_argument('--gen-script-list', action='store_true',
-                        help='generate a script list')
 
+
+scriptgen_subp = subparsers.add_parser('scriptgen', help='generate grendel scripts')
+scriptgen_subp.add_argument('--math-env', type=str,default='t20',
+                       help='math environment.')
+scriptgen_subp.add_argument('--hw-env', type=str,default='default', \
+                        help='hardware environment')
+scriptgen_subp.add_argument('--gen-script-list', action='store_true',
+                        help='generate a script list')
 
 
 
@@ -119,47 +121,80 @@ elif args.subparser_name == "skelter":
                    obj = json.loads(fh.read())
                    conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                   obj)
+                   circ_bmark,circ_indices,circ_scale_index,opt = \
+                        path_handler.conc_circ_to_args(fname)
 
-                   score = skelter.execute(conc_circ)
+                   skelter.execute(conc_circ)
+                   for method in ['interval','gen-delay','prop-delay', \
+                                  'delay-mismatch','gen-noise','prop-noise',\
+                                  'gen-bias','prop-bias']:
+
+                       filename = path_handler.skelt_graph_file(circ_bmark,
+                                                               circ_indices,
+                                                               circ_scale_index,
+                                                               "%s-%s" % (opt,method))
+                       conc_circ.write_graph(filename,\
+                                             write_png=True,\
+                                             color_method=method)
+
+                   filename = path_handler.skelt_circ_file(circ_bmark,
+                                                           circ_indices,
+                                                           circ_scale_index,
+                                                           opt)
+                   conc_circ.write_circuit(filename)
+
+elif args.subparser_name == 'scriptgen':
+    menv = args.math_env
+    hwenv = args.hw_env
+    scores = []
+    filenames = []
+    circ_dir = path_handler.skelt_circ_dir()
+    for dirname, subdirlist, filelist in os.walk(circ_dir):
+        for fname in filelist:
+           if fname.endswith('.circ'):
+               print('<<<< %s >>>>' % fname)
+               with open("%s/%s" % (dirname,fname),'r') as fh:
+                   obj = json.loads(fh.read())
+                   conc_circ = ConcCirc.from_json(hdacv2_board, \
+                                                  obj)
+                   score = skelter.rank(conc_circ)
                    scores.append(score)
                    filenames.append(fname)
 
-
     sorted_indices = np.argsort(scores)
-    with open('scores.txt','w') as fh:
+    script_file = "rank_%s.txt" % args.benchmark
+    with open(script_file,'w') as fh:
         for ind in sorted_indices:
-            line = "%s\t\t %s" % (scores[ind], filenames[ind])
+            line = "%s\n%s\n" % (scores[ind], filenames[ind])
             fh.write("%s\n" % line)
             print(line)
 
-    if args.gen_script_list:
-        menv = args.math_env
-        hwenv = args.hw_env
-        subinds = np.random.choice(sorted_indices,15)
-        subscores = list(map(lambda i: scores[i], subinds))
-        sorted_subinds = map(lambda i: subinds[i], np.argsort(subscores)[::-1])
+    subinds = np.random.choice(sorted_indices,15)
+    subscores = list(map(lambda i: scores[i], subinds))
+    sorted_subinds = map(lambda i: subinds[i], np.argsort(subscores)[::-1])
+    sorted_indices = np.argsort(scores)
 
-        files = []
-        for ind in sorted_subinds:
-            score = scores[ind]
-            conc_filename = filenames[ind]
-            circ_bmark,circ_indices,circ_scale_index,opt = \
-                    path_handler.conc_circ_to_args(conc_filename)
-            gren_filename = path_handler.grendel_file(circ_bmark, \
-                                                      circ_indices, \
-                                                      circ_scale_index, \
-                                                      opt, \
-                                                      menv,
-                                                      hwenv)
-            print(gren_filename,score)
-            assert(path_handler.has_file(gren_filename))
-            files.append((gren_filename,score))
+    files = []
+    for ind in sorted_subinds:
+        score = scores[ind]
+        conc_filename = filenames[ind]
+        circ_bmark,circ_indices,circ_scale_index,opt = \
+                path_handler.conc_circ_to_args(conc_filename)
+        gren_filename = path_handler.grendel_file(circ_bmark, \
+                                                    circ_indices, \
+                                                    circ_scale_index, \
+                                                    opt, \
+                                                    menv,
+                                                    hwenv)
+        print(gren_filename,score)
+        assert(path_handler.has_file(gren_filename))
+        files.append((gren_filename,score))
 
-        script_file = "run_%s.grendel-list" % args.benchmark
-        with open(script_file,'w') as fh:
-            for filename,score in files:
-                fh.write("# %f\n" % score)
-                fh.write("%s\n" % filename)
+    script_file = "batch_%s.grendel-list" % args.benchmark
+    with open(script_file,'w') as fh:
+        for filename,score in files:
+            fh.write("# %f\n" % score)
+            fh.write("%s\n" % filename)
 
 elif args.subparser_name == "jaunt":
     prog = bmark.get_prog(args.benchmark)

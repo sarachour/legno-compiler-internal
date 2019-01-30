@@ -17,6 +17,20 @@ class Shader:
   def get_shader(circ,method):
     if method == 'interval':
       return IntervalShader(circ)
+    elif method == 'gen-delay':
+      return GenDelayShader(circ)
+    elif method == 'prop-delay':
+      return PropDelayShader(circ)
+    elif method == 'delay-mismatch':
+      return DelayMismatchShader(circ)
+    elif method == 'gen-noise':
+      return GenNoiseShader(circ)
+    elif method == 'prop-noise':
+      return PropNoiseShader(circ)
+    elif method == 'gen-bias':
+      return GenBiasShader(circ)
+    elif method == 'prop-bias':
+      return PropBiasShader(circ)
     elif method is None:
       return GenericShader()
     else:
@@ -25,6 +39,9 @@ class Shader:
     raise NotImplementedError
 
   def to_color(self,value):
+    if self._max == self._min:
+      return "#fffffff"
+
     pct = (value-self._min)/(self._max-self._min)
     bin_no = min(int(pct*self._n), self._n-1)
     color = self._scheme[bin_no]
@@ -54,6 +71,168 @@ class GenericShader(Shader):
     return "#ffffff"
 
 
+class DelayMismatchShader(Shader):
+
+  def __init__(self,circ):
+    self._circ = circ
+    Shader.__init__(self)
+
+  def all_values(self):
+    for name,loc,cfg in self._circ.instances():
+      for port,value in cfg.delay_mismatches():
+        yield value
+
+  def get_block_color(self,name,loc):
+    return "#ffffff"
+
+  def get_port_color(self,name,loc,port):
+    cfg = self._circ.config(name,loc)
+    ival = cfg.delay_mismatch(port)
+    if ival is None:
+      return '#f8585a'
+    else:
+      return self.to_color(ival)
+
+
+class PropDelayShader(Shader):
+
+  def __init__(self,circ):
+    self._circ = circ
+    Shader.__init__(self)
+
+  def all_values(self):
+    for name,loc,cfg in self._circ.instances():
+      for port,value in cfg.propagated_delays():
+        yield value.bound
+
+  def get_block_color(self,name,loc):
+    return "#ffffff"
+
+  def get_port_color(self,name,loc,port):
+    cfg = self._circ.config(name,loc)
+    ival = cfg.propagated_delay(port)
+    if ival is None:
+      return '#f8585a'
+    else:
+      return self.to_color(ival.bound)
+
+class PropBiasShader(Shader):
+
+  def __init__(self,circ):
+    self._circ = circ
+    Shader.__init__(self)
+
+  def all_values(self):
+    for name,loc,cfg in self._circ.instances():
+      for port,value in cfg.propagated_biases():
+        yield value.bound
+
+  def get_block_color(self,name,loc):
+    return "#ffffff"
+
+  def get_port_color(self,name,loc,port):
+    cfg = self._circ.config(name,loc)
+    ival = cfg.propagated_bias(port)
+    if ival is None:
+      return '#f8585a'
+    else:
+      return self.to_color(ival.bound)
+
+
+
+class GenBiasShader(Shader):
+
+  def __init__(self,circ):
+    self._circ = circ
+    Shader.__init__(self)
+
+  def all_values(self):
+    for name,loc,cfg in self._circ.instances():
+      for port,value in cfg.generated_biases():
+        yield value.bound
+
+  def get_block_color(self,name,loc):
+    return "#ffffff"
+
+  def get_port_color(self,name,loc,port):
+    cfg = self._circ.config(name,loc)
+    ival = cfg.generated_bias(port)
+    if ival is None:
+      return '#f8585a'
+    else:
+      return self.to_color(ival.bound)
+
+
+class PropNoiseShader(Shader):
+
+  def __init__(self,circ):
+    self._circ = circ
+    Shader.__init__(self)
+
+  def all_values(self):
+    for name,loc,cfg in self._circ.instances():
+      for port,value in cfg.propagated_noises():
+        yield value.bound
+
+  def get_block_color(self,name,loc):
+    return "#ffffff"
+
+  def get_port_color(self,name,loc,port):
+    cfg = self._circ.config(name,loc)
+    ival = cfg.propagated_noise(port)
+    if ival is None:
+      return '#f8585a'
+    else:
+      return self.to_color(ival.bound)
+
+
+
+class GenNoiseShader(Shader):
+
+  def __init__(self,circ):
+    self._circ = circ
+    Shader.__init__(self)
+
+  def all_values(self):
+    for name,loc,cfg in self._circ.instances():
+      for port,value in cfg.generated_noises():
+        yield value.bound
+
+  def get_block_color(self,name,loc):
+    return "#ffffff"
+
+  def get_port_color(self,name,loc,port):
+    cfg = self._circ.config(name,loc)
+    ival = cfg.generated_noise(port)
+    if ival is None:
+      return '#f8585a'
+    else:
+      return self.to_color(ival.bound)
+
+
+class GenDelayShader(Shader):
+
+  def __init__(self,circ):
+    self._circ = circ
+    Shader.__init__(self)
+
+  def all_values(self):
+    for name,loc,cfg in self._circ.instances():
+      for port,value in cfg.generated_delays():
+        yield value.bound
+
+  def get_block_color(self,name,loc):
+    return "#ffffff"
+
+  def get_port_color(self,name,loc,port):
+    cfg = self._circ.config(name,loc)
+    ival = cfg.generated_delay(port)
+    if ival is None:
+      return '#f8585a'
+    else:
+      return self.to_color(ival.bound)
+
+
 class IntervalShader(Shader):
 
   def __init__(self,circ):
@@ -73,7 +252,10 @@ class IntervalShader(Shader):
   def get_port_color(self,name,loc,port):
     cfg = self._circ.config(name,loc)
     ival = cfg.interval(port)
-    return self.to_color(ival.spread*cfg.scf(port))
+    if ival is None:
+      return '#f8585a'
+    else:
+      return self.to_color(ival.spread*cfg.scf(port))
 
 class DotFileCtx:
 
@@ -135,14 +317,6 @@ class DotFileCtx:
 def build_environment(circ,color_method=None):
   env = DotFileCtx(circ,method=color_method)
   for block_name,loc,config in circ.instances():
-      '''
-      colors = {}
-      for input_port in blk.inputs:
-        colors[input_port] = '"#ed13fe"'
-      for output_port in blk.outputs:
-        colors[output_port] = '"#000eff"'
-      colors['body'] = '"#eef1ee"'
-      '''
       env.bind(block_name,loc,config)
 
   return env

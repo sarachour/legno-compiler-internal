@@ -37,7 +37,7 @@ class PropNoiseVisitor(Visitor):
     config = circ.config(block_name,loc)
     expr = config.dynamics(block,port)
 
-    pnz_dict = config.propagated_noises()
+    pnz_dict = dict(config.propagated_noises())
     for var in expr.vars():
       if not var in pnz_dict:
         pnz_dict[var] = interval.Interval.type_infer(0,0)

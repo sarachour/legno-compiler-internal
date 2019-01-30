@@ -39,7 +39,7 @@ class PropBiasVisitor(Visitor):
     config = circ.config(block_name,loc)
     expr = config.dynamics(block,port)
 
-    pbias_dict = config.propagated_biases()
+    pbias_dict = dict(config.propagated_biases())
     for var in expr.vars():
       if not var in pbias_dict:
         pbias_dict[var] = interval.Interval.type_infer(0,0)
