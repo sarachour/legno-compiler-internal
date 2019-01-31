@@ -53,14 +53,12 @@ class PropIntervalVisitor(Visitor):
 
                 mrng = prog.interval(label)
                 mbw = prog.bandwidth(label)
-                scf = config.scf(port) if config.has_scf(port) else 1.0
-                tau = circ.tau if not circ.tau is None else 1.0
-                print("lbl: %s[%s].%s := %s*%s / tau=%s" % \
-                      (block_name,loc,port,mrng,scf,tau))
+                print("lbl: %s[%s].%s := %s" % \
+                      (block_name,loc,port,mrng))
 
-                config.set_interval(port,mrng.scale(scf),\
+                config.set_interval(port,mrng,\
                                     handle=handle)
-                config.set_bandwidth(port,mbw.timescale(tau),\
+                config.set_bandwidth(port,mbw,\
                                     handle=handle)
 
 
@@ -73,9 +71,8 @@ class PropIntervalVisitor(Visitor):
     Visitor.input_port(self,block_name,loc,port)
     circ = self._circ
     config = circ.config(block_name,loc)
-    scf = config.scf(port) if config.has_scf(port) else 1.0
     dest_expr = ops.Const(0.0 if not config.has_dac(port) \
-                          else scf*config.dac(port))
+                          else config.dac(port))
     dest_ival = dest_expr.compute_interval({}).interval
 
     for src_block_name,src_loc,src_port in \
@@ -94,10 +91,16 @@ class PropIntervalVisitor(Visitor):
     config.set_interval(port,dest_ival)
     print("ival in %s[%s].%s => %s" % (block_name,loc,port,dest_ival))
 
-  def _update_intervals(self,expr,config,port):
-    intervals = expr.compute_interval(config.intervals())
+  def _update_intervals(self,block_name,loc,port):
+    circ = self._circ
+    block = circ.board.block(block_name)
+    config = circ.config(block_name,loc)
+    expr = block.get_dynamics(config.comp_mode,port, \
+                              scale_mode=config.scale_mode)
 
+    intervals = expr.compute_interval(config.intervals())
     config.set_interval(port,intervals.interval)
+    print("ival out %s[%s].%s => %s" % (block_name,loc,port,intervals.interval))
 
     for handle,interval in intervals.bindings():
       config.set_interval(port, \
@@ -106,15 +109,9 @@ class PropIntervalVisitor(Visitor):
 
 
   def output_port(self,block_name,loc,port):
-    circ = self._circ
-    block = circ.board.block(block_name)
-    config = circ.config(block_name,loc)
-    expr = block.get_dynamics(config.comp_mode,port, \
-                              scale_mode=None)
-
-    self._update_intervals(expr,config,port)
+    self._update_intervals(block_name,loc,port)
     Visitor.output_port(self,block_name,loc,port)
-    self._update_intervals(expr,config,port)
+    self._update_intervals(block_name,loc,port)
 
   def is_valid(self):
     circ = self._circ

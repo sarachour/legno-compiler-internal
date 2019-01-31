@@ -1,5 +1,6 @@
 import chip.props as props
 from chip.conc import ConcCirc
+import lab_bench.lib.chip_command as chipcmd
 from compiler.common import infer
 from chip.config import Labels
 import ops.op as ops
@@ -346,6 +347,7 @@ def bp_generate_problem(jenv,circ,quantize_signals=5):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for out,expr in block.dynamics(config.comp_mode,config.scale_mode):
+            print("%s=%s" % (out,expr))
             bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr)
 
         for port in block.outputs + block.inputs:
@@ -512,9 +514,6 @@ def sp_update_circuit(jenv,prog,circ,assigns):
             block_name,loc,port,handle = jenv.get_scvar_info(variable.name)
             circ.config(block_name,loc).set_scf(port,handle=handle,scf=value)
 
-    infer.clear(circ)
-    infer.infer_intervals(prog,circ)
-    infer.infer_bandwidths(prog,circ)
     return circ
 
 
@@ -537,7 +536,6 @@ def iter_scaled_circuits(circ):
             circ.config(block_name,loc) \
                 .set_scale_mode(scale_mode)
 
-        #input()
         yield circ
 
 def files(scale_inds):
