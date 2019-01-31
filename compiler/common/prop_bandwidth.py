@@ -33,8 +33,9 @@ class PropBandwidthVisitor(Visitor):
 
 
 
-  def is_free(self,config,variable):
-    return config.bandwidth(variable) is None
+  def is_free(self,block_name,loc,port):
+    config = self._circ.config(block_name,loc)
+    return config.bandwidth(port) is None
 
   def input_port(self,block_name,loc,port):
     Visitor.input_port(self,block_name,loc,port)

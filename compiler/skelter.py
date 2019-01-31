@@ -1,7 +1,7 @@
 import ops.op as op
 import numpy as np
 import ops.interval as interval
-from compiler.common import gen_phys,prop_noise,prop_bias,delay_mismatch
+from compiler.common import gen_phys,prop_noise,prop_bias,delay_mismatch, infer_symbolic
 
 def compute_max_mismatch(circ):
   max_mismatch = 0
@@ -47,6 +47,7 @@ def rank(circ):
   return score
 
 def execute(circ):
+  infer_symbolic.compute(circ)
   gen_phys.compute(circ)
   prop_noise.compute(circ)
   prop_bias.compute(circ)

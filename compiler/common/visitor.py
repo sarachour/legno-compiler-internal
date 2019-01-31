@@ -15,7 +15,7 @@ class Visitor:
   def visited(self,blkname,loc,port):
     return (blkname,loc,port) in self._visited
 
-  def is_free(self,config,variable):
+  def is_free(self,block_name,loc,port):
     raise NotImplementedError
 
   @property
@@ -24,9 +24,8 @@ class Visitor:
 
   def classify(self,block_name,loc,variables):
     free,bound = [],[]
-    config = self._circ.config(block_name,loc)
     for variable in variables:
-      if self.is_free(config,variable):
+      if self.is_free(block_name,loc,variable):
         free.append(variable)
       else:
         bound.append(variable)
@@ -56,7 +55,7 @@ class Visitor:
     self.visit(block.name,loc,port)
     for sblk,sloc,sport in \
       circ.get_conns_by_dest(block_name,loc,port):
-      if self.is_free(circ.config(sblk,sloc),sport):
+      if self.is_free(sblk,sloc,sport):
         self.port(sblk,sloc,sport)
 
   def block(self,block_name,loc):

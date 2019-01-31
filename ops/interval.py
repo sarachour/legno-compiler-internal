@@ -11,6 +11,14 @@ class Interval:
       ub = max(self.upper,i2.upper)
       return Interval.type_infer(lb,ub)
 
+    def intersection(self,i2):
+        upper = min(i2.upper,self.upper)
+        lower = max(i2.lower,self.lower)
+        if upper <= lower:
+            return 0.0
+        else:
+            return upper - lower
+
     @property
     def spread(self):
         return abs(self.upper-self.lower)
@@ -34,16 +42,23 @@ class Interval:
 
     @staticmethod
     def isinf(num):
-        return num == float('inf') or num == float('-inf')
+        return num == float('inf') \
+            or num == float('-inf') \
+            or num is None
 
     @staticmethod
     def type_infer(lb,ub):
       if Interval.isinf(lb) \
-         or Interval.isinf(ub):
+         and Interval.isinf(ub):
         return IUnknown()
+
+      elif Interval.isinf(ub):
+        assert(not Interval.isinf(lb))
+        return ILowerBound(lb)
 
       elif abs(lb - ub) < 1e-6:
         return IValue(lb)
+
       else:
         return IRange(lb,ub)
 
@@ -132,6 +147,12 @@ class IRange(Interval):
 
   def __init__(self,min_value,max_value):
     Interval.__init__(self,min_value,max_value)
+
+class ILowerBound(Interval):
+
+  def __init__(self,min_value):
+    Interval.__init__(self,min_value,float('inf'))
+
 
 class IUnknown(Interval):
 

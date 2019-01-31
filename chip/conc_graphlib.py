@@ -243,7 +243,7 @@ class ScaledIntervalShader(CircShader):
     if ival is None or scf is None:
       return Shader.ERROR
     else:
-      return ival.bound
+      return ival.bound*scf
 
 
 class IntervalShader(CircShader):
@@ -258,7 +258,7 @@ class IntervalShader(CircShader):
     if ival is None or scf is None:
       return Shader.ERROR
     else:
-      return ival.bound/scf
+      return ival.bound
 
 class DotFileCtx:
 

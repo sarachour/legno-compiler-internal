@@ -63,9 +63,10 @@ class PropIntervalVisitor(Visitor):
 
 
 
-  def is_free(self,config,variable):
-    return config.interval(variable) is None \
-            or config.interval(variable).unbounded()
+  def is_free(self,block_name,loc,port):
+    config = self._circ.config(block_name,loc)
+    return config.interval(port) is None \
+            or config.interval(port).unbounded()
 
   def input_port(self,block_name,loc,port):
     Visitor.input_port(self,block_name,loc,port)
