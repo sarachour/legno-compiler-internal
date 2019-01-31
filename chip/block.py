@@ -64,21 +64,23 @@ class Block:
 
         return data[scale_mode]
 
-    def coeff(self,comp_mode,scale_mode,out):
+    def coeff(self,comp_mode,scale_mode,out,handle=None):
         data = self._get_scale_dict(comp_mode,scale_mode, \
                                     self._coeffs)
-        if data is None:
+        if data is None or \
+           not out in data or \
+           not handle in data[out]:
             return 1.0
 
-        if not out in data:
-            return 1.0
+        return data[out][handle]
 
-        return data[out]
-
-    def set_coeff(self,comp_mode,scale_mode,port,value):
+    def set_coeff(self,comp_mode,scale_mode,port,value,handle=None):
         data = self._make_scale_dict(comp_mode,scale_mode, \
                                      self._coeffs)
-        data[port] = value
+        if not port in data:
+            data[port] = {}
+
+        data[port][handle] = value
         return self
 
     @property
@@ -90,30 +92,50 @@ class Block:
             assert(not port in self._signals)
             self._signals[port] = prop
 
+    def _wrap_coeff(self,coeff,expr):
+        if coeff == 1.0:
+            return expr
+        else:
+            return ops.Mult(ops.Const(coeff,tag='scf'),expr)
+
+    def _perform_scale(self,comp_mode,scale_mode,output,expr):
+        def recurse(e):
+            return self._perform_scale(comp_mode,scale_mode,output,e)
+
+        if expr.op == ops.OpType.INTEG:
+            ic_coeff = self.coeff(comp_mode,scale_mode,output,expr.ic_handle)
+            deriv_coeff = self.coeff(comp_mode,scale_mode,output,expr.deriv_handle)
+            stvar_coeff = self.coeff(comp_mode,scale_mode,output,expr.handle)
+            return self._wrap_coeff(stvar_coeff,
+                                    ops.Integ(\
+                                              self._wrap_coeff(deriv_coeff,\
+                                                               recurse(expr.deriv)),
+                                              self._wrap_coeff(ic_coeff,\
+                                                               recurse(expr.init_cond)),
+                                              expr.handle
+                                    )
+            )
+
+        elif expr.op == ops.OpType.MULT:
+            return ops.Mult(
+                recurse(expr.arg1), recurse(expr.arg2)
+            )
+        else:
+            return expr
 
     def get_dynamics(self,comp_mode,output,scale_mode=None):
         copy_data = self._get_comp_dict(comp_mode,self._copies)
-        if not scale_mode is None:
-            coeff = self.coeff(comp_mode,scale_mode,output)
-        else:
-            coeff = 1.0
-
         op_data = self._get_comp_dict(comp_mode,self._ops)
         if output in copy_data:
             output = copy_data[output]
 
         expr = op_data[output]
-        if coeff == 1.0:
+        if scale_mode is None:
             return expr
-        else:
-            if expr.op == ops.OpType.INTEG:
-                ic_coeff = self.coeff(comp_mode,scale_mode,"%s:ic" % output)
-                return ops.Integ(\
-                                 ops.Mult(ops.Const(coeff,tag='scf'),expr.deriv),\
-                                 ops.Mult(ops.Const(ic_coeff,tag='scf'),expr.init_cond),\
-                                 expr.handle)
-            else:
-                return ops.Mult(ops.Const(coeff,tag='scf'),expr)
+
+        return self._wrap_coeff(self.coeff(comp_mode,scale_mode,output), \
+                                self._perform_scale(comp_mode,scale_mode,output,expr))
+
 
     def physical(self,comp_mode,scale_mode,output):
         assert(output in self._outputs)

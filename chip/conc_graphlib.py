@@ -326,17 +326,18 @@ def build_port(env,block_name,block_loc,port):
   value = env.shader.get_port_value(block_name,block_loc,port)
   if isinstance(value,float):
     value = '%.03e' % value
-  env.qn('%s [' % caption_handle,1)
-  env.qn('shape=plaintext',2)
-  env.qn('label=<%s>' % (value), 2)
-  env.qn(']',1)
+    env.qn('%s [' % caption_handle,1)
+    env.qn('shape=plaintext',2)
+    env.qn('label=<%s>' % (value), 2)
+    env.qn(']',1)
+    env.qc('%s->%s [style=dashed]' % (caption_handle,port_handle))
+
   env.qn('%s [' % port_handle,1)
   env.qn('shape=invtriangle',2)
   env.qn('fillcolor=\"%s\"' % color,2)
   env.qn('style=filled',2)
   env.qn("label=<%s>" % (port),2)
   env.qn(']',1)
-  env.qc('%s->%s [style=dashed]' % (caption_handle,port_handle))
   return port_handle
 
 def build_body(env,block_name,block_loc,cfg):
@@ -416,7 +417,13 @@ def build_label(env,block,loc,cfg,port,math_label,kind):
 
 
 def build_value(env,block,loc,cfg,port,value):
-    body = '{value:.3f}*{scf:.3f}'
+    body = '''
+    <table border="0">
+    <tr><td>val: {value:.3e}</td></tr>
+    <tr><td><font color="#5D6D7E">scf:{scf:.3e}</font></td></tr>
+    </table>
+    '''
+
     port_handle = env.port_handle(block,loc,port)
     value_handle = "%s_value" % (port_handle)
 

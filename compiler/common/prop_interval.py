@@ -95,8 +95,9 @@ class PropIntervalVisitor(Visitor):
     circ = self._circ
     block = circ.board.block(block_name)
     config = circ.config(block_name,loc)
+    # don't apply any coefficients
     expr = block.get_dynamics(config.comp_mode,port, \
-                              scale_mode=config.scale_mode)
+                              scale_mode=None)
 
     intervals = expr.compute_interval(config.intervals())
     config.set_interval(port,intervals.interval)

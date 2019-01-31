@@ -308,7 +308,6 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
                                               handle=expr.handle))
         jenv.eq(scexpr_ic,scvar_state)
         jenv.eq(scexpr_deriv,scvar_deriv)
-
         scexpr_integ = jop.JMult(jop.JVar(jenv.TAU,exponent=-1)
                                  ,scvar_deriv)
 
@@ -317,6 +316,7 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
         # ranges are contained
         deriv_mrng = config.interval(port,expr.deriv_handle)
         deriv_hwrng = config.op_range(port,expr.deriv_handle)
+
         bpgen_scaled_interval_constraint(jenv, \
                                          scvar_deriv,
                                          deriv_mrng,
@@ -324,12 +324,16 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
 
         st_mrng = config.interval(port,expr.handle)
         st_hwrng = config.op_range(port,expr.handle)
+
         bpgen_scaled_interval_constraint(jenv,scvar_state,\
-                                         st_mrng,st_hwrng)
+                                         st_mrng,\
+                                         st_hwrng)
 
         ic_mrng = config.interval(port,expr.ic_handle)
+
         bpgen_scaled_interval_constraint(jenv,scvar_state, \
-                                         ic_mrng,st_hwrng)
+                                         ic_mrng,
+                                         st_hwrng)
         # the handles for deriv and stvar are the same
         jenv.use_tau()
         return scvar_state
@@ -339,9 +343,13 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
 
 
 def bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr):
-  scexpr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,out,expr)
-  scfvar = jop.JVar(jenv.get_scvar(block.name,loc,out))
-  jenv.eq(scfvar,scexpr)
+    scexpr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,out,expr)
+    scfvar = jop.JVar(jenv.get_scvar(block.name,loc,out))
+    config = circ.config(block.name,loc)
+    hwrng = config.op_range(out)
+    mrng = config.interval(out)
+    jenv.eq(scfvar,scexpr)
+    bpgen_scaled_interval_constraint(jenv,scfvar,mrng,hwrng)
 
 def bp_generate_problem(jenv,circ,quantize_signals=5):
     for block_name,loc,config in circ.instances():
