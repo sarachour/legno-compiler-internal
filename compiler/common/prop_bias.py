@@ -1,60 +1,36 @@
 import ops.op as op
 import numpy as np
 import ops.interval as interval
-from compiler.common.visitor import Visitor
+from compiler.common.visitor_symbolic import SymbolicInferenceVisitor, \
+  MathPropagator
 
-class PropBiasVisitor(Visitor):
+class PropBiasVisitor(SymbolicInferenceVisitor):
 
   def __init__(self,circ):
-    Visitor.__init__(self,circ)
+    SymbolicInferenceVisitor.__init__(self,circ,\
+                                      MathPropagator)
 
-  def is_free(self,config,variable):
-    return config.propagated_bias(variable) is None
+  def get_generate_expr(self,stump):
+    return stump.bias
 
-  def input_port(self,block_name,loc,port):
-    Visitor.input_port(self,block_name,loc,port)
-    circ = self._circ
-    config = circ.config(block_name,loc)
-
-    bias = interval.Interval.type_infer(0,0)
-    for sblk,sloc,sport in \
-      circ.get_conns_by_dest(block_name,loc,port):
-
-      src_bias = circ.config(sblk,sloc).propagated_bias(sport)
-      if not src_bias is None:
-        bias = bias.add(src_bias)
-      else:
-        print("[warn] %s[%s].%s has no prop-bias" % \
-              (sblk,sloc,sport))
-
-    print("bias in %s[%s].%s = %s" % \
-          (block_name,loc,port,bias))
-    config.set_propagated_bias(port,bias)
+  def get_propagate_model(self,block_name,loc,port):
+    config = self._circ.config(block_name,loc)
+    return config.propagated_bias(port)
 
 
-  def output_port(self,block_name,loc,port):
-    Visitor.output_port(self,block_name,loc,port)
-    circ = self._circ
-    block = circ.board.block(block_name)
-    config = circ.config(block_name,loc)
-    expr = config.dynamics(block,port)
+  def get_generate_model(self,block_name,loc,port):
+    config = self._circ.config(block_name,loc)
+    return config.generated_bias(port)
 
-    pbias_dict = dict(config.propagated_biases())
-    for var in expr.vars():
-      if not var in pbias_dict:
-        pbias_dict[var] = interval.Interval.type_infer(0,0)
+  def set_propagate_model(self,block_name,loc,port,gen_model):
+    config = self._circ.config(block_name,loc)
+    config.set_propagated_bias(port,gen_model)
 
 
-    # if integral, strip integral sign.
-    if expr.op == op.OpType.INTEG:
-      prop_bias = expr.deriv.compute_interval(pbias_dict)
-    else:
-      prop_bias = expr.compute_interval(pbias_dict)
+  def set_generate_model(self,block_name,loc,port,gen_model):
+    config = self._circ.config(block_name,loc)
+    config.set_generated_bias(port,gen_model)
 
-    gen_bias = config.generated_bias(port)
-    total_bias = prop_bias.interval.add(gen_bias)
-    print("bias out %s[%s].%s = %s" % (block.name,loc,port,total_bias))
-    config.set_propagated_bias(port,total_bias)
 
 def compute(circ):
-  PropBiasVisitor(circ).toplevel()
+  PropBiasVisitor(circ).all()

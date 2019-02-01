@@ -15,9 +15,9 @@ class Interval:
         upper = min(i2.upper,self.upper)
         lower = max(i2.lower,self.lower)
         if upper <= lower:
-            return 0.0
+            return Interval.type_infer(0,0)
         else:
-            return upper - lower
+            return Interval.type_infer(lower,upper)
 
     @property
     def spread(self):

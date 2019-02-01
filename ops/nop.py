@@ -3,10 +3,13 @@ import ops.interval as interval
 
 class NOpType(Enum):
   SIG = "sig"
+  SEL = "sel"
   FREQ = "freq"
   CONST_RV = "crv"
   CONST_VAL = "cval"
   ADD = "+"
+  MAX = "max"
+  MIN = "min"
   MULT = "*"
   INV = "inv"
   ZERO = "0"
@@ -17,6 +20,9 @@ class NOp:
       self._args = args
       self._op = op
 
+
+    def zero(self):
+      return False
 
     def arg(self,i):
         return self._args[i]
@@ -115,6 +121,9 @@ class NFreq(NVar):
   def square(self):
     return NFreq(self._port,self._power*2)
 
+  def sqrt(self):
+    return NFreq(self._port,self._power*0.5)
+
   def variance(self):
     return NZero()
 
@@ -127,9 +136,6 @@ class NSig(NVar):
 
   def __init__(self,port,power=1.0):
     NVar.__init__(self,NOpType.SIG,port,power)
-
-  def square(self):
-    return NSig(self._port,self._power*2)
 
   def compute(self,freqs,intervals):
     ival = intervals[self._port]
@@ -150,6 +156,11 @@ class NSig(NVar):
   def variance(self):
     return NZero()
 
+  def sqrt(self):
+    return NSig(self._port,self._power*0.5)
+
+  def square(self):
+    return NSig(self._port,self._power*2)
 
 
 
@@ -161,6 +172,8 @@ class NConstRV(NOp):
     # standard deviation
     self._sigma = sigma
 
+  def zero(self):
+    return self._sigma == 0.0
 
   def variance(self):
     return NConstVal(self._sigma**2)
@@ -192,6 +205,15 @@ class NZero(NOp):
   def __init__(self):
     NOp.__init__(self,NOpType.ZERO,[])
 
+  def zero(self):
+    return True
+
+  def sqrt(self):
+    return self
+
+  def square(self):
+    return self
+
   def variance(self):
     return self
 
@@ -199,7 +221,7 @@ class NZero(NOp):
     return self
 
   def __repr__(self):
-    return "0"
+    return "zero()"
 
   def compute(self,freqs,intervals):
     return interval.Interval.type_infer(0.0,0.0)
@@ -217,11 +239,21 @@ class NConstVal(NOp):
     assert(isinstance(mu,float))
     self._mu = mu
 
+  def zero(self):
+    return self._mu == 0.0
+
+
   def variance(self):
     return NZero()
 
   def mean(self):
     return self
+
+  def square(self):
+    return NConstVal(self._mu**2)
+
+  def sqrt(self):
+    return NConstVal(self._mu**0.5)
 
   def __repr__(self):
     return "mu(%s)" % (self._mu)
@@ -277,37 +309,41 @@ class NMult(NOp):
     return result
 
 
-  def variance(self):
-    variances = list(
-      filter(
-        lambda var: var.op != NOpType.ZERO,
-        map(
-          lambda arg: arg.variance(),
-          self.args()
-        )
-      )
-    )
-    means = list(
-      filter(
-        lambda var: var.op != NOpType.ZERO,
-        map(
-          lambda arg: arg.mean().square(),
-          self.args()
-        )
-      )
-    )
+  def nonzero(self,args):
+    return list(filter(lambda var: var.op != NOpType.ZERO, \
+                       args))
 
-    if len(variances) == 0:
-      return NOpType.ZERO
-    elif len(variances) == 1:
-      return NMult(means + variances)
+  def variance(self):
+    means = []
+    variance = None
+    for arg in self.args():
+      var,mean = arg.variance(),arg.mean()
+      if var.zero() and mean.zero():
+        return NZero
+      elif var.zero() and not mean.zero():
+        means.append(mean)
+      elif not var.zero() and mean.zero():
+        assert(variance is None)
+        variance = var
+
+    if variance is None:
+      return NZero()
     else:
-      raise Exception("cannot propagate multiple vars: %s" % \
-      (self))
+      return NMult(means + [variance])
+
 
   def mean(self):
-    return NMult(list(map(lambda arg: arg.mean(), \
-                          self.args())))
+    means = []
+    for arg in self.args():
+      mean = arg.mean()
+      if mean.zero():
+        return NZero()
+      means.append(mean)
+
+    return NMult(means)
+
+  def sqrt(self):
+    return mkmult(list(map(lambda arg: arg.sqrt(), self.args())))
 
   @staticmethod
   def from_json(obj):
@@ -321,15 +357,36 @@ class NMult(NOp):
 
 
   def __init__(self,args):
+    assert(len(args) > 1)
     for arg in args:
       assert(arg.op != NOpType.ADD and \
              arg.op != NOpType.MULT)
 
     NOp.__init__(self,NOpType.MULT,args)
 
+class NSelect(NOp):
+
+  def __init__(self,args):
+    assert(len(args) > 1)
+    for arg in args:
+      assert(arg.op != NOpType.SEL)
+
+    self._args = args
+    NOp.__init__(self,NOpType.SEL,args)
+
+  def terms(self):
+    for arg in self._args:
+      if arg.op == NOpType.SEL:
+        for term in arg.terms():
+          yield term
+      else:
+        yield arg
+
+
 class NAdd(NOp):
 
   def __init__(self,args):
+    assert(len(args) > 1)
     for arg in args:
       assert(arg.op != NOpType.ADD)
 
@@ -342,6 +399,11 @@ class NAdd(NOp):
 
     return result
 
+  # upper bound
+  def sqrt(self):
+    # sqrt(a+b) < sqrt(a) + sqrt(b)
+    return mkadd(list(map(lambda arg: arg.sqrt(), self.args())))
+
   def terms(self):
     for arg in self._args:
       if arg.op == NOpType.ADD:
@@ -351,12 +413,23 @@ class NAdd(NOp):
         yield arg
 
   def variance(self):
-    return mkadd(list(map(lambda arg: arg.variance(), \
-                          self.args())))
+    variances = []
+    for arg in self.args():
+      variance = arg.variance()
+      if not variance.zero():
+        variances.append(variance)
+
+    return mkadd(variances)
+
 
   def mean(self):
-    return NAdd(list(map(lambda arg: arg.mean(), \
-                         self.args())))
+    means = []
+    for arg in self.args():
+      mean = arg.mean()
+      if not mean.zero():
+        means.append(mean)
+
+    return mkadd(means)
 
   @staticmethod
   def from_json(obj):
@@ -367,15 +440,61 @@ class NAdd(NOp):
 
     return NAdd(args)
 
+def mkmin(args):
+  new_args = []
+  for arg in args:
+    if arg.op == NOpType.MIN:
+      for term in arg.terms():
+        new_args.append(term)
+    elif arg.op == NOpType.ZERO:
+      return NZero()
+    else:
+      new_args.append(arg)
+
+  if len(new_args) == 0:
+    return NZero()
+  elif len(new_args) == 1:
+    return new_args[0]
+  else:
+    return NSelect(new_args)
+
+
+def mksel(args):
+  new_args = []
+  for arg in args:
+    if arg.op == NOpType.SEL:
+      for term in arg.terms():
+        new_args.append(term)
+    elif arg.op == NOpType.ZERO:
+      continue
+    else:
+      new_args.append(arg)
+
+  if len(new_args) == 0:
+    return NZero()
+  elif len(new_args) == 1:
+    return new_args[0]
+  else:
+    return NSelect(new_args)
+
+
 def mkadd(args):
   new_args = []
   for arg in args:
     if arg.op == NOpType.ADD:
       for term in arg.terms():
         new_args.append(term)
+    elif arg.op == NOpType.ZERO:
+      continue
     else:
       new_args.append(arg)
-  return NAdd(new_args)
+
+  if len(new_args) == 0:
+    return NZero()
+  elif len(new_args) == 1:
+    return new_args[0]
+  else:
+    return NAdd(new_args)
 
 
 def mkmult(args):
@@ -387,6 +506,8 @@ def mkmult(args):
     elif arg.op == NOpType.MULT:
       for term in arg.terms():
         coeff.append(term)
+    elif arg.op == NOpType.ZERO:
+      return NZero()
     else:
       coeff.append(arg)
 
