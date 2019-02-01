@@ -6,7 +6,7 @@ from chip.config import Labels
 import ops.op as ops
 import gpkit
 import itertools
-import compiler.jaunt_gen_noise_circ as jnoise
+import compiler.jaunt_pass.phys_opt as jaunt_phys_opt
 import ops.jop as jop
 import ops.op as op
 import signal
@@ -36,31 +36,36 @@ class JauntObjectiveFunction():
     def set_objective(self,name):
         self.method = name
 
-    def objective(self,varmap):
+    def objective(self,circuit,varmap):
         if self.method == 'fast':
-            return self.fast(varmap)
+            gen = self.fast(varmap)
         elif self.method == 'slow':
-            return self.slow(varmap)
+            gen = self.slow(varmap)
         elif self.method == 'max':
-            return self.max_dynamic_range(varmap)
+            gen = self.max_dynamic_range(varmap)
+        elif self.method == 'lo-noise':
+            gen = jaunt_phys_opt.low_noise(circuit,self.jenv,varmap)
         else:
             raise NotImplementedError
+
+        for cstrs,obj in gen:
+            yield cstrs,obj
 
     def slow(self,varmap):
         objective = varmap[self.jenv.TAU]
         print(objective)
-        return objective
+        yield [],objective
 
     def fast(self,varmap):
         objective = 1.0/varmap[self.jenv.TAU]
         print(objective)
-        return objective
+        yield [],objective
 
     def max_dynamic_range(self,varmap):
         objective = 1.0/varmap[self.jenv.TAU]
         for scvar in self.jenv.scvars():
             objective += 1.0/varmap[scvar]
-        return objective
+        yield [],objective
 
 
 class JauntEnv:
@@ -496,10 +501,9 @@ def build_gpkit_problem(circ,jenv,jopt):
         return None
 
     print("==== Objective Fxn [%s] ====" % jopt.method)
-    objective = jopt.objective(variables)
-    print(objective)
-    model = gpkit.Model(objective,gpkit_cstrs)
-    return model
+    for objective_cstrs, objective in jopt.objective(circ,variables):
+        model = gpkit.Model(objective,gpkit_cstrs + objective_cstrs)
+        yield model
 
 def solve_gpkit_problem(gpmodel,timeout=10):
     def handle_timeout(signum,frame):
@@ -561,6 +565,7 @@ def files(scale_inds):
             yield idx,opt
 
 
+
 def scale_circuit(prog,circ,methods):
     assert(isinstance(circ,ConcCirc))
     jenv = build_jaunt_env(prog,circ)
@@ -568,26 +573,31 @@ def scale_circuit(prog,circ,methods):
     skip_opts = False
     for opt in methods:
         jopt.method = opt
-        gpprob = build_gpkit_problem(circ,jenv,jopt)
-        if gpprob is None:
-            return
+        slns = []
+        for idx,gpprob in enumerate(build_gpkit_problem(circ,jenv,jopt)):
+            if gpprob is None:
+                continue
 
-        sln = solve_gpkit_problem(gpprob)
-        if sln is None:
-            print("[[FAILURE]]")
-            skip_opts = True
+            sln = solve_gpkit_problem(gpprob)
+            if sln is None:
+                print("[[FAILURE]]")
+                continue
 
-        elif not 'freevariables' in sln:
-            print("[[FAILURE]]")
-            succ,result = sln
-            assert(result is None)
-            assert(succ == False)
-            return
+            elif not 'freevariables' in sln:
+                print("[[FAILURE]]")
+                succ,result = sln
+                assert(result is None)
+                assert(succ == False)
+                continue
 
-        else:
-            upd_circ = sp_update_circuit(jenv,prog,circ,
-                                         sln['freevariables'])
-            yield opt,upd_circ
+            else:
+                slns.append(sln)
+
+
+        best_sln = compute_best_sln(slns)
+        upd_circ = sp_update_circuit(jenv,prog,circ,
+                                    best_sln['freevariables'])
+        yield opt,upd_circ
 
 def physical_scale(prog,circ):
     for opt,circ in scale_circuit(prog,circ,\
