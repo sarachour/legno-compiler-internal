@@ -19,6 +19,10 @@ class Interval:
         else:
             return Interval.type_infer(lower,upper)
 
+    @staticmethod
+    def zero():
+        return Interval.type_infer(0,0)
+
     @property
     def spread(self):
         return abs(self.upper-self.lower)
@@ -70,6 +74,12 @@ class Interval:
             return False
 
 
+    def negate(self):
+        return Interval.type_infer(
+            -self.upper,
+            -self.lower
+        )
+
     def scale(self,v):
         assert(v > 0)
         return Interval.type_infer(
@@ -120,7 +130,7 @@ class Interval:
         }
 
     def __repr__(self):
-        return "[%s,%s]" % (self._lower,self._upper)
+        return "[%.3e,%.3e]" % (self._lower,self._upper)
 
     def __iter__(self):
         yield self.lower
@@ -141,7 +151,7 @@ class IValue(Interval):
 
 
     def __repr__(self):
-      return "[%s]" % self._value
+      return "[%.3e]" % self._value
 
 class IRange(Interval):
 

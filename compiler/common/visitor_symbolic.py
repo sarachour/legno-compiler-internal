@@ -25,6 +25,11 @@ class PiecewiseSymbolicModel:
   def add_expr(self,freq_range,expr):
     self.add_dist(freq_range,expr.mean(),expr.variance())
 
+  def functions(self):
+    for idx, ival in enumerate(self._intervals):
+      m,v = self._model[idx]
+      yield ival,m,v
+
   def intervals(self):
     for ival in self._intervals:
       yield ival
@@ -47,6 +52,17 @@ class PiecewiseSymbolicModel:
         i += 1
       else:
         j += 1
+
+  def to_json(self):
+    obj = []
+    for ival,mean,variance in self.functions():
+      obj.append({
+        'interval': ival.to_json(),
+        'mean': mean.to_json(),
+        'variance': variance.to_json()
+      })
+
+    return obj
 
   def __repr__(self):
     s = ""
@@ -161,6 +177,7 @@ class SymbolicInferenceVisitor(Visitor):
     gen_model = PiecewiseSymbolicModel()
     for freq_range,stump in phys.stumps():
       gen_expr = self.get_generate_expr(stump)
+      gen_expr.bind_instance(block_name,loc)
       gen_model.add_expr(freq_range,gen_expr)
     if len(list(phys.stumps())) == 0:
       gen_model.add_expr(

@@ -1,5 +1,6 @@
 import os
 import colorlover
+import compiler.common.evaluator_symbolic as evaluator
 
 def undef_to_one(v):
   return 1.0 if v is None else v
@@ -61,7 +62,7 @@ class Shader:
     return "#f8585a"
 
   def get_block_color(self,name,loc):
-    value = self.get_block_value(name,loc)
+    value,_ = self.get_block_value(name,loc)
     if value == Shader.IGNORE:
       return self.white()
     elif value == Shader.ERROR:
@@ -70,7 +71,7 @@ class Shader:
       return self.to_color(value)
 
   def get_port_color(self,name,loc,port):
-    value = self.get_port_value(name,loc,port)
+    value,_ = self.get_port_value(name,loc,port)
     if value == Shader.IGNORE:
       return self.white()
     elif value == Shader.ERROR:
@@ -86,10 +87,10 @@ class Shader:
     raise NotImplementedError
 
   def get_block_value(self,name,loc):
-    return Shader.IGNORE
+    return Shader.IGNORE,None
 
   def get_port_value(self,name,loc,port):
-    return Shader.IGNORE
+    return Shader.IGNORE,None
 
 class CircShader(Shader):
 
@@ -97,14 +98,24 @@ class CircShader(Shader):
     self.circ = circ
     Shader.__init__(self)
 
+  def normal_label(self,mean,variance):
+    html = '''
+    <table border="0">
+    <tr><td>mu:{mean}</td></tr>
+    <tr><td>std:{variance}</td></tr>
+    </table>
+    '''
+    params = {'mean':mean,'variance':variance}
+    return html.format(**params)
+
   def all_values(self):
     for block_name,loc,cfg in self.circ.instances():
-      value = self.get_block_value(block_name,loc)
+      value,_ = self.get_block_value(block_name,loc)
       if self.is_value(value):
         yield value
       block = self.circ.board.block(block_name)
       for port in block.inputs + block.outputs:
-        value = self.get_port_value(block_name,loc,port)
+        value,_ = self.get_port_value(block_name,loc,port)
         if self.is_value(value):
           yield value
 
@@ -125,11 +136,13 @@ class DelayMismatchShader(CircShader):
 
   def get_port_value(self,name,loc,port):
     cfg = self.circ.config(name,loc)
-    ival = cfg.delay_mismatch(port)
+    ival = cfg.propagated_delay(port)
     if ival is None:
-      return Shader.ERROR
+      return Shader.ERROR,"skip"
     else:
-      return ival
+      mean,vari = evaluator \
+                  .evaluate_delay_mismatch(self.circ,name,loc,port)
+      return mean.bound,self.normal_label(mean,vari)
 
 
 class PropDelayShader(CircShader):
@@ -141,9 +154,12 @@ class PropDelayShader(CircShader):
     cfg = self.circ.config(name,loc)
     ival = cfg.propagated_delay(port)
     if ival is None:
-      return Shader.ERROR
+      return Shader.ERROR,"skip"
     else:
-      return ival.bound
+      mean,vari = evaluator \
+                  .evaluate_propagated_delay(self.circ,name,loc,port)
+      return mean.bound,self.normal_label(mean,vari)
+
 
 class PropBiasShader(CircShader):
 
@@ -155,9 +171,12 @@ class PropBiasShader(CircShader):
     cfg = self.circ.config(name,loc)
     ival = cfg.propagated_bias(port)
     if ival is None:
-      return Shader.ERROR
+      return Shader.ERROR,"skip"
     else:
-      return ival.bound
+      mean,vari = evaluator \
+                  .evaluate_propagated_bias(self.circ,name,loc,port)
+      label = "N(%s,%s)" % (mean,vari)
+      return mean.bound,self.normal_label(mean,vari)
 
 
 
@@ -170,9 +189,12 @@ class GenBiasShader(CircShader):
     cfg = self.circ.config(name,loc)
     ival = cfg.generated_bias(port)
     if ival is None:
-      return Shader.ERROR
+      return Shader.ERROR,"skip"
     else:
-      return ival.bound
+      mean,vari = evaluator \
+                  .evaluate_generated_bias(self.circ,name,loc,port)
+      return mean.bound,self.normal_label(mean,vari)
+
 
 
 class PropNoiseShader(CircShader):
@@ -184,9 +206,13 @@ class PropNoiseShader(CircShader):
     cfg = self.circ.config(name,loc)
     ival = cfg.propagated_noise(port)
     if ival is None:
-      return Shader.ERROR
+      return Shader.ERROR,"skip"
     else:
-      return ival.bound
+      mean,vari = evaluator \
+                  .evaluate_propagated_noise(self.circ,name,loc,port)
+      label = "N(%s,%s)" % (mean,vari)
+      return vari.bound,self.normal_label(mean,vari)
+
 
 
 
@@ -199,9 +225,13 @@ class GenNoiseShader(CircShader):
     cfg = self.circ.config(name,loc)
     ival = cfg.generated_noise(port)
     if ival is None:
-      return Shader.ERROR
+      return Shader.ERROR,"skip"
     else:
-      return ival.bound
+      mean,vari = evaluator \
+                  .evaluate_generated_noise(self.circ,name,loc,port)
+      label = "N(%s,%s)" % (mean,vari)
+      return vari.bound,self.normal_label(mean,vari)
+
 
 
 class GenDelayShader(CircShader):
@@ -211,11 +241,13 @@ class GenDelayShader(CircShader):
 
   def get_port_value(self,name,loc,port):
     cfg = self.circ.config(name,loc)
-    ival = cfg.generated_delay(port)
-    if ival is None:
-      return Shader.ERROR
+    model = cfg.generated_delay(port)
+    if model is None:
+      return Shader.ERROR,"skip"
     else:
-      return ival.bound
+      mean,vari = evaluator \
+                  .evaluate_generated_delay(self.circ,name,loc,port)
+      return mean.bound,self.normal_label(mean,vari)
 
 class ScaleFactorShader(CircShader):
 
@@ -226,9 +258,9 @@ class ScaleFactorShader(CircShader):
     cfg = self.circ.config(name,loc)
     scf = cfg.scf(port)
     if scf is None:
-      return Shader.ERROR
+      return Shader.ERROR,"skip"
     else:
-      return scf
+      return scf,"%s" % scf
 
 
 class ScaledIntervalShader(CircShader):
@@ -241,9 +273,9 @@ class ScaledIntervalShader(CircShader):
     ival = cfg.interval(port)
     scf = cfg.scf(port)
     if ival is None or scf is None:
-      return Shader.ERROR
+      return Shader.ERROR,"skip"
     else:
-      return ival.bound*scf
+      return ival.bound*scf,"%s*%.3e" % (ival,scf)
 
 
 class IntervalShader(CircShader):
@@ -256,9 +288,9 @@ class IntervalShader(CircShader):
     ival = cfg.interval(port)
     scf = cfg.scf(port)
     if ival is None or scf is None:
-      return Shader.ERROR
+      return Shader.ERROR,"skip"
     else:
-      return ival.bound
+      return ival.bound, "%s" % ival
 
 class DotFileCtx:
 
@@ -323,12 +355,11 @@ def build_port(env,block_name,block_loc,port):
   port_handle = env.port_handle(block_name,block_loc,port)
   caption_handle = "%s_caption" % port_handle
 
-  value = env.shader.get_port_value(block_name,block_loc,port)
-  if isinstance(value,float):
-    value = '%.03e' % value
+  value,label = env.shader.get_port_value(block_name,block_loc,port)
+  if not label is None:
     env.qn('%s [' % caption_handle,1)
     env.qn('shape=plaintext',2)
-    env.qn('label=<%s>' % (value), 2)
+    env.qn('label=<%s>' % (label), 2)
     env.qn(']',1)
     env.qc('%s->%s [style=dashed]' % (caption_handle,port_handle))
 
