@@ -53,6 +53,17 @@ class PiecewiseSymbolicModel:
       else:
         j += 1
 
+  @staticmethod
+  def from_json(obj):
+    model = PiecewiseSymbolicModel()
+    for el in obj:
+      mean = nop.NOp.from_json(el['mean'])
+      variance = nop.NOp.from_json(el['variance'])
+      ival = interval.Interval.from_json(el['interval'])
+      model.add_dist(ival,mean,variance)
+
+    return model
+
   def to_json(self):
     obj = []
     for ival,mean,variance in self.functions():

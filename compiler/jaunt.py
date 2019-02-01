@@ -25,9 +25,16 @@ class JauntObjectiveFunction():
         #return ['fast','slow','max']
         return ['fast','slow']
 
+    @staticmethod
+    def physical_methods():
+        return ['lo-noise','hi-noise']
+
     def __init__(self,jenv):
         self.method = 'fast'
         self.jenv = jenv
+
+    def set_objective(self,name):
+        self.method = name
 
     def objective(self,varmap):
         if self.method == 'fast':
@@ -36,6 +43,8 @@ class JauntObjectiveFunction():
             return self.slow(varmap)
         elif self.method == 'max':
             return self.max_dynamic_range(varmap)
+        else:
+            raise NotImplementedError
 
     def slow(self,varmap):
         objective = varmap[self.jenv.TAU]
@@ -551,38 +560,42 @@ def files(scale_inds):
         for opt in JauntObjectiveFunction.methods():
             yield idx,opt
 
-def scale(prog,circ,noise_analysis=False):
-    for orig_circ in iter_scaled_circuits(circ):
-        if not noise_analysis:
-            jenv = build_jaunt_env(prog,orig_circ)
-        else:
-            raise Exception("unimplemented: noise analysis")
-        if jenv is None:
-            continue
 
-        skip_opts = False
-        jopt = JauntObjectiveFunction(jenv)
-        gpprob = build_gpkit_problem(orig_circ,jenv,jopt)
+def scale_circuit(prog,circ,methods):
+    assert(isinstance(circ,ConcCirc))
+    jenv = build_jaunt_env(prog,circ)
+    jopt = JauntObjectiveFunction(jenv)
+    skip_opts = False
+    for opt in methods:
+        jopt.method = opt
+        gpprob = build_gpkit_problem(circ,jenv,jopt)
         if gpprob is None:
-            continue
+            return
 
-        for opt in JauntObjectiveFunction.methods():
-            if skip_opts:
-                continue
-            jopt.method = opt
-            sln = solve_gpkit_problem(gpprob)
-            if sln is None:
-                print("[[FAILURE]]")
-                skip_opts = True
+        sln = solve_gpkit_problem(gpprob)
+        if sln is None:
+            print("[[FAILURE]]")
+            skip_opts = True
 
-            elif not 'freevariables' in sln:
-                print("[[FAILURE]]")
-                succ,result = sln
-                assert(result is None)
-                assert(succ == False)
-                skip_opts = True
+        elif not 'freevariables' in sln:
+            print("[[FAILURE]]")
+            succ,result = sln
+            assert(result is None)
+            assert(succ == False)
+            return
 
-            else:
-                upd_circ = sp_update_circuit(jenv,prog,orig_circ,
-                                             sln['freevariables'])
-                yield opt,upd_circ
+        else:
+            upd_circ = sp_update_circuit(jenv,prog,circ,
+                                         sln['freevariables'])
+            yield opt,upd_circ
+
+def physical_scale(prog,circ):
+    for opt,circ in scale_circuit(prog,circ,\
+                                  JauntObjectiveFunction.physical_methods()):
+        yield opt,circ
+
+def scale(prog,circ):
+    for orig_circ in iter_scaled_circuits(circ):
+        for opt,scaled_circ in scale_circuit(prog,orig_circ,\
+                                      JauntObjectiveFunction.methods()):
+            yield opt,scaled_circ
