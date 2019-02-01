@@ -77,8 +77,7 @@ def exec_jaunt(hdacv2_board, args):
 
               if not already_written:
                 for idx,(opt,scale_circ) in enumerate(jaunt.scale(prog,
-                                                                  conc_circ, \
-                                                                  noise_analysis=args.noise)):
+                                                                  conc_circ)):
                   filename = path_handler.conc_circ_file(circ_bmark,
                                                          circ_indices,
                                                          idx,
