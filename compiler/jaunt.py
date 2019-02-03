@@ -27,7 +27,7 @@ class JauntObjectiveFunction():
 
     @staticmethod
     def physical_methods():
-        return ['lo-noise','hi-noise']
+        return ['lo-noise', 'lo-bias', 'lo-delay']
 
     def __init__(self,jenv):
         self.method = 'fast'
@@ -44,7 +44,15 @@ class JauntObjectiveFunction():
         elif self.method == 'max':
             gen = self.max_dynamic_range(varmap)
         elif self.method == 'lo-noise':
-            gen = jaunt_phys_opt.low_noise(circuit,self.jenv,varmap)
+            gen = jaunt_phys_opt.low_noise(circuit,\
+                                           self.jenv,varmap)
+        elif self.method == 'lo-delay':
+            gen = jaunt_phys_opt.low_delay(circuit,\
+                                           self.jenv,varmap)
+        elif self.method == 'lo-bias':
+            gen = jaunt_phys_opt.low_bias(circuit,\
+                                          self.jenv,varmap)
+
         else:
             raise NotImplementedError
 
@@ -502,7 +510,9 @@ def build_gpkit_problem(circ,jenv,jopt):
 
     print("==== Objective Fxn [%s] ====" % jopt.method)
     for objective_cstrs, objective in jopt.objective(circ,variables):
-        model = gpkit.Model(objective,gpkit_cstrs + objective_cstrs)
+        model = gpkit.Model(objective, \
+                            list(gpkit_cstrs) +
+                            list(objective_cstrs))
         yield model
 
 def solve_gpkit_problem(gpmodel,timeout=10):
@@ -518,6 +528,11 @@ def solve_gpkit_problem(gpmodel,timeout=10):
         return None
     except TimeoutError as te:
         print("Timeout: cvxopt timed out or hung")
+        signal.alarm(0)
+        return None
+
+    except ValueError as ve:
+        print("ValueError: %s" % ve)
         signal.alarm(0)
         return None
 
@@ -565,6 +580,16 @@ def files(scale_inds):
             yield idx,opt
 
 
+def compute_best_sln(slns):
+    if len(slns) == 0:
+        return None
+
+    elif len(slns) == 1:
+        return slns[0]
+
+    else:
+        idx = np.argmin(map(lambda sln: sln['cost'],slns))
+        return slns[idx]
 
 def scale_circuit(prog,circ,methods):
     assert(isinstance(circ,ConcCirc))
@@ -595,6 +620,9 @@ def scale_circuit(prog,circ,methods):
 
 
         best_sln = compute_best_sln(slns)
+        if best_sln is None:
+            return None
+
         upd_circ = sp_update_circuit(jenv,prog,circ,
                                     best_sln['freevariables'])
         yield opt,upd_circ

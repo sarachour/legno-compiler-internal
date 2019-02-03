@@ -14,20 +14,6 @@ import compiler.legno_util as legno_util
 #import conc
 #import srcgen
 
-# TODO: in concrete specification, connection is made to same dest.
-def compile(board,problem):
-    files = []
-    prob = benchmark1()
-    for idx1,idx2,circ in compile(hdacv2_board,prob):
-        srcgen.Logger.DEBUG = True
-        srcgen.Logger.NATIVE = True
-        circ.name = "%s_%d_%d" % (circ_name,idx1,idx2)
-        labels,circ_cpp, circ_h = srcgen.generate(circ)
-        files = []
-        files.append((labels,circ.name,circ_cpp,circ_h))
-        srcgen.write_file(experiment,files,out_name,
-                        circs=[circ])
-
 
 
 parser = argparse.ArgumentParser(description='Legno compiler.')

@@ -19,6 +19,8 @@ class PiecewiseSymbolicModel:
     if idx > 0:
       self._intervals[idx-1].upper == freq_range.lower
 
+    assert(not mean is None)
+    assert(not variance is None)
     self._intervals.append(freq_range)
     self._model[idx] = (mean,variance)
 
@@ -30,9 +32,20 @@ class PiecewiseSymbolicModel:
       m,v = self._model[idx]
       yield ival,m,v
 
+  def function(self,idx):
+    m,v = self._model[idx]
+    ival = self._intervals[idx]
+    return ival,m,v
+
+  def interval(self,idx):
+    return self._intervals[idx]
+
   def intervals(self):
     for ival in self._intervals:
       yield ival
+
+  def size(self):
+    return len(self._intervals)
 
   def join(self,other):
     is1 = list(self.intervals())

@@ -24,6 +24,10 @@ class NOp:
     def zero(self):
       return False
 
+    def is_posynomial(self):
+      return all(map(lambda arg: arg.is_posynomial(), \
+                    self.args()))
+
     def vars(self):
       allvars = []
       for arg in self.args():
@@ -39,7 +43,6 @@ class NOp:
 
     def sqrt(self):
       raise Exception("sqrt-unimpl: %s" % self)
-
 
     def square(self):
       raise Exception("square-unimpl: %s" % self)
@@ -72,6 +75,10 @@ class NOp:
         return NInv.from_json(obj)
       elif op == NOpType.ZERO:
         return NZero()
+      elif op == NOpType.SEL:
+        return NSelect.from_json(obj)
+      else:
+        raise Exception("unknown: %s" % obj)
 
     def compute(self,freqs,intervals):
       raise Exception("not-implemented [compute]: %s" % self)
@@ -103,6 +110,14 @@ class NVar(NOp):
     self._power = power
     self._instance = (block,loc)
     NOp.__init__(self,op,[])
+
+
+  def is_posynomial(self):
+      return True
+
+  @property
+  def power(self):
+    return self._power
 
   @property
   def port(self):
@@ -151,6 +166,8 @@ class NVar(NOp):
     return {
       'op': self.op.value,
       'port':self._port,
+      'block': self._instance[0],
+      'loc': self._instance[1],
       'power': self._power
     }
 
@@ -182,7 +199,10 @@ class NFreq(NVar):
 
   @staticmethod
   def from_json(obj):
-    return NFreq(obj['port'],obj['power'])
+    return NFreq(obj['port'],
+                 obj['power'],
+                 obj['block'],
+                 obj['loc'])
 
 
 class NSig(NVar):
@@ -205,7 +225,11 @@ class NSig(NVar):
 
   @staticmethod
   def from_json(obj):
-    return NSig(obj['port'],obj['power'])
+    return NSig(obj['port'],
+                 obj['power'],
+                 obj['block'],
+                 obj['loc'])
+
 
   def copy(self):
     return NVar.copy(self,NSig(self._port))
@@ -225,6 +249,14 @@ class NConstRV(NOp):
     assert(isinstance(sigma,float))
     # standard deviation
     self._sigma = sigma
+
+  def is_posynomial(self):
+      return self._sigma >= 0.0
+
+
+  @property
+  def sigma(self):
+    return self._sigma
 
   def zero(self):
     return self._sigma == 0.0
@@ -265,6 +297,10 @@ class NZero(NOp):
   def sqrt(self):
     return self
 
+  def is_posynomial(self):
+      return True
+
+
   def square(self):
     return self
 
@@ -295,6 +331,13 @@ class NConstVal(NOp):
 
   def zero(self):
     return self._mu == 0.0
+
+  @property
+  def mu(self):
+    return self._mu
+
+  def is_posynomial(self):
+      return self._mu >= 0.0
 
 
   def variance(self):
@@ -451,6 +494,15 @@ class NSelect(NOp):
 
     return result
 
+
+  @staticmethod
+  def from_json(obj):
+    args = []
+    for arg in obj['args']:
+      node = NOp.from_json(arg)
+      args.append(node)
+
+    return NSelect(args)
 
   def compute_max(self,values):
     result = None

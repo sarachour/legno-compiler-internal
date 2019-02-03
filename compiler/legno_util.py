@@ -8,6 +8,20 @@ import os
 import time
 import json
 
+# TODO: in concrete specification, connection is made to same dest.
+def compile(board,problem):
+    files = []
+    prob = benchmark1()
+    for idx1,idx2,circ in compile(hdacv2_board,prob):
+        srcgen.Logger.DEBUG = True
+        srcgen.Logger.NATIVE = True
+        circ.name = "%s_%d_%d" % (circ_name,idx1,idx2)
+        labels,circ_cpp, circ_h = srcgen.generate(circ)
+        files = []
+        files.append((labels,circ.name,circ_cpp,circ_h))
+        srcgen.write_file(experiment,files,out_name,
+                        circs=[circ])
+
 def exec_ref(hdacv2_board, args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
   prog = bmark.get_prog(args.benchmark)
@@ -50,7 +64,18 @@ def exec_jaunt_phys(hdacv2_board,args):
           conc_circ = ConcCirc.from_json(hdacv2_board, \
                                          obj)
           for opt,scaled_circ in jaunt.physical_scale(prog,conc_circ):
-            print(opt)
+            filename = path_handler.conc_circ_file(circ_bmark,
+                                                   circ_indices,
+                                                   circ_scale_index,
+                                                   opt)
+            scaled_circ.write_circuit(filename)
+            filename = path_handler.conc_graph_file(circ_bmark,
+                                                    circ_indices,
+                                                    circ_scale_index,
+                                                    opt)
+            scaled_circ.write_graph(filename,write_png=True)
+
+
 
 def exec_jaunt(hdacv2_board, args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
