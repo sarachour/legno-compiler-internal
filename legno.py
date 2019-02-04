@@ -43,7 +43,8 @@ jaunt_subp.add_argument('--scale-circuits', type=int,default=15,
                        help='number of scaled circuits to generate.')
 
 
-ref_subp = subparsers.add_parser('skelter', help='perform noise analysis')
+skelt_subp = subparsers.add_parser('skelter', help='perform noise analysis')
+skelt_subp = subparsers.add_parser('graph', help='perform noise analysis')
 
 
 scriptgen_subp = subparsers.add_parser('scriptgen', help='generate grendel scripts')
@@ -73,6 +74,9 @@ from chip.hcdc.hcdcv2_4 import board as hdacv2_board
 
 if args.subparser_name == "arco":
     legno_util.exec_arco(hdacv2_board, args)
+
+elif args.subparser_name == "graph":
+    legno_util.exec_graph(hdacv2_board,args)
 
 elif args.subparser_name == "skelter":
     legno_util.exec_skelter(hdacv2_board,args)

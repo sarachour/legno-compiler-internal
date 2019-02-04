@@ -208,6 +208,40 @@ def exec_scriptgen(hdacv2_board,args):
           fh.write("%s\n" % filename)
 
 
+def exec_graph(hdacv2_board, args):
+  path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
+  circ_dir = path_handler.skelt_circ_dir()
+  scores = []
+  filenames = []
+  for dirname, subdirlist, filelist in os.walk(circ_dir):
+    for fname in filelist:
+      if fname.endswith('.circ'):
+        circ_bmark,circ_indices,circ_scale_index,opt = \
+                                                       path_handler.conc_circ_to_args(fname)
+
+        skelt_circ = path_handler.skelt_circ_file(circ_bmark,
+                                                  circ_indices,
+                                                  circ_scale_index,
+                                                  opt)
+        print('<<<< %s >>>>' % fname)
+        with open("%s/%s" % (dirname,fname),'r') as fh:
+          obj = json.loads(fh.read())
+          conc_circ = ConcCirc.from_json(hdacv2_board, \
+                                                  obj)
+          for method in ['interval','scaled-interval', \
+                         'gen-delay','prop-delay', \
+                         'scale-factor','delay-mismatch', \
+                         'gen-noise','prop-noise',\
+                         'gen-bias','prop-bias']:
+
+            filename = path_handler.skelt_graph_file(circ_bmark,
+                                                     circ_indices,
+                                                     circ_scale_index,
+                                                     "%s-%s" % (opt,method))
+            conc_circ.write_graph(filename,\
+                                  write_png=True,\
+                                  color_method=method)
+
 def exec_skelter(hdacv2_board, args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
   circ_dir = path_handler.conc_circ_dir()
@@ -232,20 +266,6 @@ def exec_skelter(hdacv2_board, args):
           conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                   obj)
           skelter.execute(conc_circ)
-          for method in ['interval','scaled-interval', \
-                         'gen-delay','prop-delay', \
-                         'scale-factor','delay-mismatch', \
-                         'gen-noise','prop-noise',\
-                         'gen-bias','prop-bias']:
-
-            filename = path_handler.skelt_graph_file(circ_bmark,
-                                                     circ_indices,
-                                                     circ_scale_index,
-                                                     "%s-%s" % (opt,method))
-            conc_circ.write_graph(filename,\
-                                  write_png=True,\
-                                  color_method=method)
-
           filename = path_handler.skelt_circ_file(circ_bmark,
                                                   circ_indices,
                                                   circ_scale_index,
