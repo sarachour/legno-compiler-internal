@@ -197,19 +197,30 @@ class SymbolicInferenceVisitor(Visitor):
     config = self._circ.config(block_name,loc)
     phys = config.physical(block,port)
 
+    # build a symbolic handle
+    handle_model = PiecewiseSymbolicModel()
+    handle_model.add_expr(
+      interval.Interval.type_infer(0,None),
+      nop.NRef(port,block_name,loc)
+    )
+
     # compute generated noise
     gen_model = PiecewiseSymbolicModel()
     for freq_range,stump in phys.stumps():
       gen_expr = self.get_generate_expr(stump)
       gen_expr.bind_instance(block_name,loc)
       gen_model.add_expr(freq_range,gen_expr)
+
     if len(list(phys.stumps())) == 0:
       gen_model.add_expr(
         interval.Interval.type_infer(0,None),
         nop.NZero()
       )
+
+    # build a symbolic propagated model
+    sym_prop_model = self._prop.plus(gen_model,handle_model)
     self.set_generate_model(block_name,loc,port,gen_model)
-    self.set_propagate_model(block_name,loc,port,gen_model)
+    self.set_propagate_model(block_name,loc,port,sym_prop_model)
     Visitor.output_port(self,block_name,loc,port)
 
     # compute propagated noise

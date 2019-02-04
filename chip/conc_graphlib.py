@@ -1,6 +1,6 @@
 import os
 import colorlover
-import compiler.common.evaluator_symbolic as evaluator
+import compiler.common.evaluator_symbolic as evalsym
 
 def undef_to_one(v):
   return 1.0 if v is None else v
@@ -94,8 +94,9 @@ class Shader:
 
 class CircShader(Shader):
 
-  def __init__(self,circ):
+  def __init__(self,circ,evaluator):
     self.circ = circ
+    self.evaluate = evaluator
     Shader.__init__(self)
 
   def normal_label(self,mean,variance):
@@ -119,6 +120,12 @@ class CircShader(Shader):
         if self.is_value(value):
           yield value
 
+  def get_port_value(self,name,loc,port):
+    m,v = self.evaluate.get(name,loc,port)
+    if m is None:
+      return Shader.ERROR,"skip"
+    else:
+      return m,self.normal_label(m,v)
 
 class GenericShader(Shader):
 
@@ -132,127 +139,56 @@ class GenericShader(Shader):
 class DelayMismatchShader(CircShader):
 
   def __init__(self,circ):
-    CircShader.__init__(self,circ)
-
-  def get_port_value(self,name,loc,port):
-    cfg = self.circ.config(name,loc)
-    ival = cfg.propagated_delay(port)
-    if ival is None:
-      return Shader.ERROR,"skip"
-    else:
-      mean,vari = evaluator \
-                  .evaluate_delay_mismatch(self.circ,name,loc,port)
-      return mean.bound,self.normal_label(mean,vari)
+    CircShader.__init__(self,circ,\
+                        evalsym.delay_mismatch_evaluator(circ))
 
 
 class PropDelayShader(CircShader):
 
   def __init__(self,circ):
-    CircShader.__init__(self,circ)
-
-  def get_port_value(self,name,loc,port):
-    cfg = self.circ.config(name,loc)
-    ival = cfg.propagated_delay(port)
-    if ival is None:
-      return Shader.ERROR,"skip"
-    else:
-      mean,vari = evaluator \
-                  .evaluate_propagated_delay(self.circ,name,loc,port)
-      return mean.bound,self.normal_label(mean,vari)
-
+    CircShader.__init__(self,circ, \
+                        evalsym.propagated_delay_evaluator(circ))
 
 class PropBiasShader(CircShader):
 
   def __init__(self,circ):
-    CircShader.__init__(self,circ)
-
-
-  def get_port_value(self,name,loc,port):
-    cfg = self.circ.config(name,loc)
-    ival = cfg.propagated_bias(port)
-    if ival is None:
-      return Shader.ERROR,"skip"
-    else:
-      mean,vari = evaluator \
-                  .evaluate_propagated_bias(self.circ,name,loc,port)
-      label = "N(%s,%s)" % (mean,vari)
-      return mean.bound,self.normal_label(mean,vari)
+    CircShader.__init__(self,circ, \
+                        evalsym.propagated_bias_evaluator(circ))
 
 
 
 class GenBiasShader(CircShader):
 
   def __init__(self,circ):
-    CircShader.__init__(self,circ)
-
-  def get_port_value(self,name,loc,port):
-    cfg = self.circ.config(name,loc)
-    ival = cfg.generated_bias(port)
-    if ival is None:
-      return Shader.ERROR,"skip"
-    else:
-      mean,vari = evaluator \
-                  .evaluate_generated_bias(self.circ,name,loc,port)
-      return mean.bound,self.normal_label(mean,vari)
-
+    CircShader.__init__(self,circ, \
+                        evalsym.generated_bias_evaluator(circ))
 
 
 class PropNoiseShader(CircShader):
 
   def __init__(self,circ):
-    CircShader.__init__(self,circ)
-
-  def get_port_value(self,name,loc,port):
-    cfg = self.circ.config(name,loc)
-    ival = cfg.propagated_noise(port)
-    if ival is None:
-      return Shader.ERROR,"skip"
-    else:
-      mean,vari = evaluator \
-                  .evaluate_propagated_noise(self.circ,name,loc,port)
-      label = "N(%s,%s)" % (mean,vari)
-      return vari.bound,self.normal_label(mean,vari)
-
+    CircShader.__init__(self,circ, \
+                        evalsym.propagated_noise_evaluator(circ))
 
 
 
 class GenNoiseShader(CircShader):
 
   def __init__(self,circ):
-    CircShader.__init__(self,circ)
-
-  def get_port_value(self,name,loc,port):
-    cfg = self.circ.config(name,loc)
-    ival = cfg.generated_noise(port)
-    if ival is None:
-      return Shader.ERROR,"skip"
-    else:
-      mean,vari = evaluator \
-                  .evaluate_generated_noise(self.circ,name,loc,port)
-      label = "N(%s,%s)" % (mean,vari)
-      return vari.bound,self.normal_label(mean,vari)
-
+    CircShader.__init__(self,circ, \
+                        evalsym.generated_noise_evaluator(circ))
 
 
 class GenDelayShader(CircShader):
 
   def __init__(self,circ):
-    CircShader.__init__(self,circ)
-
-  def get_port_value(self,name,loc,port):
-    cfg = self.circ.config(name,loc)
-    model = cfg.generated_delay(port)
-    if model is None:
-      return Shader.ERROR,"skip"
-    else:
-      mean,vari = evaluator \
-                  .evaluate_generated_delay(self.circ,name,loc,port)
-      return mean.bound,self.normal_label(mean,vari)
+    CircShader.__init__(self,circ, \
+                        evalsym.generated_delay_evaluator(circ))
 
 class ScaleFactorShader(CircShader):
 
   def __init__(self,circ):
-    CircShader.__init__(self,circ)
+    CircShader.__init__(self,circ,None)
 
   def get_port_value(self,name,loc,port):
     cfg = self.circ.config(name,loc)
@@ -266,7 +202,7 @@ class ScaleFactorShader(CircShader):
 class ScaledIntervalShader(CircShader):
 
   def __init__(self,circ):
-    CircShader.__init__(self,circ)
+    CircShader.__init__(self,circ,None)
 
   def get_port_value(self,name,loc,port):
     cfg = self.circ.config(name,loc)
@@ -281,7 +217,7 @@ class ScaledIntervalShader(CircShader):
 class IntervalShader(CircShader):
 
   def __init__(self,circ):
-    CircShader.__init__(self,circ)
+    CircShader.__init__(self,circ,None)
 
   def get_port_value(self,name,loc,port):
     cfg = self.circ.config(name,loc)

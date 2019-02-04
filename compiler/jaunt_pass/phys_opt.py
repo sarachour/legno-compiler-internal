@@ -39,9 +39,32 @@ def gpkit_value(val):
   else:
     return -val
 
-def gpkit_expr(jenv,varmap,circ,ival,expr,last_index=False):
+def gpkit_ref_expr(jenv,varmap,circ,ival,expr,last_index=False):
+  variables = expr.vars()
+  result = 1.0
+  for var in variables:
+    # values
+    if expr.op == nop.NOpType.SIG:
+      block,loc = expr.instance
+      port = expr.port
+      scvarname = jenv.get_scvar(block,loc,port)
+      expo = expr.power
+      result *= (varmap[scvarname])**expo
+
+    elif expr.op == nop.NOpType.FREQ:
+      expo = expr.power
+      if last_index:
+        result *= varmap['tau']**expo
+
+      elif expr.op == nop.NOpType.REF:
+        continue
+
+  return result
+
+
+def gpkit_expr(jenv,varmap,circ,ival,expr,refs,last_index=False):
   def recurse(e):
-    return gpkit_expr(jenv,varmap,circ,ival,e,last_index=False)
+    return gpkit_expr(jenv,varmap,circ,ival,e,refs,last_index=False)
 
   if expr.op == nop.NOpType.ZERO:
     return 0
@@ -63,6 +86,11 @@ def gpkit_expr(jenv,varmap,circ,ival,expr,last_index=False):
     if last_index:
       value *= varmap['tau']
     return value
+
+  elif expr.op == nop.NOpType.REF:
+    block,loc = expr.instance
+    port = expr.port
+    return refs[(block,loc,port)]
 
   # values
   elif expr.op == nop.NOpType.CONST_VAL:
@@ -88,12 +116,39 @@ def gpkit_expr(jenv,varmap,circ,ival,expr,last_index=False):
   else:
     raise Exception(expr)
 
-def compute_objective(varmap,jenv,circ, \
-                      block_name,loc,port,model,idx,method,
+def compute_reference(varmap,jenv,circ, \
+                      block_name,loc,port,model,refs,idx,method,
                       last_index=False):
   ival,mean,variance = model.function(idx)
-  gpkit_mean = gpkit_expr(jenv,varmap,circ,ival,mean,last_index)
-  gpkit_variance = gpkit_expr(jenv,varmap,circ,ival,variance,last_index)
+  gpkit_mean = gpkit_ref_expr(jenv,varmap,circ,ival,mean, \
+                              last_index)
+  gpkit_variance = gpkit_ref_expr(jenv,varmap,circ,ival,variance, \
+                                  last_index)
+  # compute signal
+  scvarname = jenv.get_scvar(block_name,loc,port)
+  scival = circ.config(block_name,loc).interval(port)
+  signal = varmap[scvarname]*scival.bound
+
+  if method == 'low_snr':
+    return gpkit_mean*signal**(-1) + \
+      gpkit_variance*signal**(-1)
+
+  elif method == 'low':
+    return gpkit_mean + gpkit_variance
+
+  else:
+    raise Exception(method)
+
+
+
+def compute_objective(varmap,jenv,circ, \
+                      block_name,loc,port,model,refs,idx,method,
+                      last_index=False):
+  ival,mean,variance = model.function(idx)
+  gpkit_mean = gpkit_expr(jenv,varmap,circ,ival,mean,
+                          refs,last_index)
+  gpkit_variance = gpkit_expr(jenv,varmap,circ,ival,variance,
+                              refs,last_index)
   # compute signal
   scvarname = jenv.get_scvar(block_name,loc,port)
   scival = circ.config(block_name,loc).interval(port)
@@ -117,6 +172,16 @@ def compute(varmap,jenv,circ,models,ports,method='low-snr'):
   for indices in zip(*options):
     cstrs = []
     objs = []
+    refs = {}
+    for idx,model,(block_name,loc,port) \
+        in zip(indices,models,ports):
+      total_ref = 0
+      for k in range(0,idx+1):
+        ref = compute_reference(varmap,jenv,circ, \
+                                block_name,loc,port,model,refs,idx,method)
+        total_ref += ref
+      refs[(block_name,loc,port)] = ref
+
     for idx,model,(block_name,loc,port) \
         in zip(indices,models,ports):
       config = circ.config(block_name,loc)
@@ -132,7 +197,7 @@ def compute(varmap,jenv,circ,models,ports,method='low-snr'):
       total_obj = 0
       for k in range(0,idx+1):
         obj = compute_objective(varmap,jenv,circ, \
-                          block_name,loc,port,model,idx,method)
+                                block_name,loc,port,model,refs,idx,method)
         total_obj += obj
 
       if total_obj != 0:

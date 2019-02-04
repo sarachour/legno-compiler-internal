@@ -59,6 +59,9 @@ def exec_jaunt_phys(hdacv2_board,args):
         circ_bmark,circ_indices,circ_scale_index,circ_opt = \
            path_handler.conc_circ_to_args(fname)
 
+        if circ_opt in jaunt.JauntObjectiveFunction.physical_methods():
+          continue
+
         with open("%s/%s" % (dirname,fname),'r') as fh:
           obj = json.loads(fh.read())
           conc_circ = ConcCirc.from_json(hdacv2_board, \

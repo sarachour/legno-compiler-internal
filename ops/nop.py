@@ -13,6 +13,7 @@ class NOpType(Enum):
   MULT = "*"
   INV = "inv"
   ZERO = "0"
+  REF = "ref"
 
 class NOp:
     def __init__(self,op,args):
@@ -77,6 +78,8 @@ class NOp:
         return NZero()
       elif op == NOpType.SEL:
         return NSelect.from_json(obj)
+      elif op == NOpType.REF:
+        return NRef.from_json(obj)
       else:
         raise Exception("unknown: %s" % obj)
 
@@ -89,6 +92,11 @@ class NOp:
 
     def variance(self):
       raise NotImplementedError
+
+    def concretize(self,ref_dict):
+      for arg in self.args():
+        arg.concretize(ref_dict)
+
 
     def bind_instance(self,block_name,loc):
       for arg in self.args():
@@ -170,6 +178,47 @@ class NVar(NOp):
       'loc': self._instance[1],
       'power': self._power
     }
+
+class NRef(NVar):
+
+  def __init__(self,port,block=None,loc=None):
+    NVar.__init__(self,NOpType.REF,port,1.0,block,loc)
+    self._value = None
+
+  def concretize(self,ref_dict):
+    block,loc = self.instance
+    if block is None or loc is None:
+      key = self.port
+    else:
+      key = (block,loc,self.port)
+
+    if not key in ref_dict:
+      raise Exception("<%s> not in reference map" % (key))
+
+    self._value = ref_dict[key]
+    assert(isinstance(self._value, NOp))
+
+  def compute(self,freqs,intervals):
+    if self._value is None:
+      raise Exception("[error] cannot directly compute ref.")
+    else:
+      return self._value.compute(freqs,intervals)
+
+  def copy(self):
+    return NVar.copy(self,NRef(self._port))
+
+  def mean(self):
+    return self.copy()
+
+  def variance(self):
+    return NZero()
+
+  @staticmethod
+  def from_json(obj):
+    return NRef(obj['port'],
+                 obj['block'],
+                 obj['loc'])
+
 
 class NFreq(NVar):
 
