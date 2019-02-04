@@ -1,4 +1,4 @@
-import profile
+import cProfile
 
 def keys_in_dict(keys,dict_):
   for key in keys:
@@ -21,4 +21,9 @@ def truncate(f, n):
   return float('.'.join([i, (d+'0'*n)[:n]]))
 
 def profile(fn):
-  profile.run("fn();")
+  cp = cProfile.Profile()
+  cp.enable()
+  fn()
+  cp.disable()
+  cp.print_stats()
+  input("continue.")
