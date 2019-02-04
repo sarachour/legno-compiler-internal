@@ -305,7 +305,7 @@ class Config:
 
         return test('_gen_delays') and \
             test('_gen_noise') and \
-            test('gen_biases') and 
+            test('_gen_biases') and  \
             test('_prop_delays') and \
             test('_prop_biases') and \
             test('_prop_noise')

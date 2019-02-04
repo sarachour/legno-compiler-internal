@@ -270,7 +270,7 @@ def exec_skelter(hdacv2_board, args):
                                                   circ_indices,
                                                   circ_scale_index,
                                                   opt)
-          conc_circ.write_circuit(filename)
+            conc_circ.write_circuit(filename)
 
 
 
