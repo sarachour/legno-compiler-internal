@@ -1,6 +1,9 @@
 import sys
 import os
 import numpy as np
+import bmark.diffeqs as bmark
+import bmark.menvs as menvs
+import util.paths as paths
 
 sys.path.insert(0,os.path.abspath("lab_bench"))
 
@@ -84,6 +87,7 @@ elif args.subparser_name == "jaunt":
         legno_util.exec_jaunt(hdacv2_board,args)
 
 elif args.subparser_name == "execprog":
+   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
    prog = bmark.get_prog(args.benchmark)
    menv = menvs.get_math_env(args.math_env)
    execprog.execute(path_handler,

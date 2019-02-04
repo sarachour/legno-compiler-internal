@@ -103,21 +103,21 @@ def exec_jaunt(hdacv2_board, args):
             if not path_handler.has_file(filename):
               already_written = False
 
-              if not already_written:
-                for idx,(opt,scale_circ) in enumerate(jaunt.scale(prog,
-                                                                  conc_circ)):
-                  filename = path_handler.conc_circ_file(circ_bmark,
-                                                         circ_indices,
-                                                         idx,
-                                                         opt)
-                  scale_circ.write_circuit(filename)
-                  filename = path_handler.conc_graph_file(circ_bmark,
-                                                          circ_indices,
-                                                          idx,
-                                                          opt)
-                  scale_circ.write_graph(filename,write_png=True)
-                  if idx >= args.scale_circuits:
-                    break
+      if not already_written:
+        for idx2,(opt,scale_circ) in enumerate(jaunt.scale(prog,
+                                                          conc_circ)):
+          filename = path_handler.conc_circ_file(circ_bmark,
+                                                 circ_indices,
+                                                 idx2,
+                                                 opt)
+          scale_circ.write_circuit(filename)
+          filename = path_handler.conc_graph_file(circ_bmark,
+                                                  circ_indices,
+                                                  idx,
+                                                  opt)
+          scale_circ.write_graph(filename,write_png=True)
+          if idx2 >= args.scale_circuits:
+            break
 
 
 def exec_srcgen(hdacv2_board,args):
