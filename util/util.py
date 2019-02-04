@@ -1,3 +1,4 @@
+import profile
 
 def keys_in_dict(keys,dict_):
   for key in keys:
@@ -18,3 +19,6 @@ def truncate(f, n):
     return '{0:.{1}f}'.format(f, n)
   i, p, d = s.partition('.')
   return float('.'.join([i, (d+'0'*n)[:n]]))
+
+def profile(fn):
+  profile.run("fn();")

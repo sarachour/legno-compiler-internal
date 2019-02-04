@@ -7,6 +7,7 @@ from compiler.common.visitor_symbolic  \
   PiecewiseSymbolicModel, \
   SymbolicInferenceVisitor, \
   MathPropagator
+import util.util as util
 
 class PropNoiseVisitor(SymbolicInferenceVisitor):
 
@@ -37,5 +38,6 @@ class PropNoiseVisitor(SymbolicInferenceVisitor):
 
 
 def compute(circ):
-  PropNoiseVisitor(circ).all()
+  fn = lambda _: PropNoiseVisitor(circ).all()
+  util.profile(fn)
 

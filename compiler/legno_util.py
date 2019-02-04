@@ -7,6 +7,7 @@ from chip.conc import ConcCirc
 import os
 import time
 import json
+import shutil
 
 # TODO: in concrete specification, connection is made to same dest.
 def compile(board,problem):
@@ -260,17 +261,19 @@ def exec_skelter(hdacv2_board, args):
         if path_handler.has_file(skelt_circ):
           continue
 
-        print('<<<< %s >>>>' % fname)
         with open("%s/%s" % (dirname,fname),'r') as fh:
           obj = json.loads(fh.read())
           conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                   obj)
           if conc_circ.has_physical_model():
+            print('<<<< %s >>>>' % fname)
             filename = path_handler.skelt_circ_file(circ_bmark,
                                                   circ_indices,
                                                   circ_scale_index,
                                                   opt)
-            conc_circ.write_circuit(filename)
+            src = "%s/%s" % (dirname,fname)
+            dest = filename
+            shutil.copyfile(src,dest)
 
 
 
