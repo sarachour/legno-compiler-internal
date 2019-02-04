@@ -71,9 +71,10 @@ def scale_model(integ):
       integ.set_props(comp_mode,scale_mode,["out"],util.make_ana_props(outrng,
                                                                        glb.ANALOG_MIN,
       glb.ANALOG_MAX))
-      integ.set_coeff(comp_mode,scale_mode,"out",scf)
-      integ.set_coeff(comp_mode,scale_mode,"out:ic",outrng.coeff())
-
+      integ.set_coeff(comp_mode,scale_mode,"out",scf,handle=':z\'')
+      integ.set_coeff(comp_mode,scale_mode,"out",outrng.coeff(),':z[0]')
+      integ.set_coeff(comp_mode,scale_mode,"out",1.0,handle=':z')
+      integ.set_coeff(comp_mode,scale_mode,"out",1.0)
 
 block = Block('integrator') \
 .set_comp_modes(get_comp_modes()) \

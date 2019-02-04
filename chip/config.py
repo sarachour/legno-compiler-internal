@@ -1,6 +1,7 @@
 from enum import Enum
 from ops.interval import Interval
 from ops.bandwidth import Bandwidth
+from compiler.common.visitor_symbolic import PiecewiseSymbolicModel
 
 class Labels(Enum):
     CONST_INPUT = 'const-inp';
@@ -95,18 +96,18 @@ class Config:
         get_port_handle_dict(cfg._bandwidths, obj, 'bandwidths', \
                              lambda v: Bandwidth.from_json(v))
         get_port_dict(cfg._gen_noise, obj, 'gen-noise', \
-                      lambda v: Interval.from_json(v))
+                      lambda v: PiecewiseSymbolicModel.from_json(v))
         get_port_dict(cfg._prop_noise, obj, 'prop-noise', \
-                      lambda v: Interval.from_json(v))
+                      lambda v: PiecewiseSymbolicModel.from_json(v))
         get_port_dict(cfg._gen_biases, obj,'gen-bias', \
-                      lambda v: Interval.from_json(v))
+                      lambda v: PiecewiseSymbolicModel.from_json(v))
         get_port_dict(cfg._prop_biases, obj,'prop-bias', \
-                      lambda v: Interval.from_json(v))
+                      lambda v: PiecewiseSymbolicModel.from_json(v))
         get_port_dict(cfg._gen_delays, obj,'gen-delay', \
-                      lambda v: Interval.from_json(v))
+                      lambda v: PiecewiseSymbolicModel.from_json(v))
         get_port_dict(cfg._prop_delays, obj,'prop-delay', \
-                      lambda v: Interval.from_json(v))
-        get_port_dict(cfg._mismatch_delays, obj,'mismatch-delay')
+                      lambda v: PiecewiseSymbolicModel.from_json(v))
+        #get_port_dict(cfg._mismatch_delays, obj,'mismatch-delay')
         return cfg
 
     def to_json(self):

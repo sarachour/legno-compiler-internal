@@ -10,30 +10,7 @@ class PropDelayVisitor(Visitor):
     Visitor.__init__(self,circ)
 
   def is_free(self,config,variable):
-    return config.delay_mismatch(variable) is None or \
-      config.propagated_delay(variable) is None
-
-
-  def compute_propagate(self,delay_list):
-    if len(delay_list) == 1:
-      return delay_list[0]
-
-    delay = delay_list[0]
-    for next_delay in delay_list[1:]:
-      delay.union(next_delay)
-
-    return delay
-
-  def compute_mismatch(self,delay_list):
-    if len(delay_list) == 1:
-      return 0.0
-
-    mismatches = []
-    for d1 in delay_list:
-      for d2 in delay_list:
-        mismatches.append(d1.nonoverlapping(d2))
-
-    return max(mismatches)
+    return config.delay_mismatch(variable) is None
 
 
   def output_port(self,block_name,loc,port):
@@ -44,7 +21,7 @@ class PropDelayVisitor(Visitor):
     expr = config.dynamics(block,port)
 
     pnz_dict = dict(filter(lambda args: args[0] in expr.vars(), \
-                           config.propagated_delays()))
+                           config.propagated_delays())))
     gen_delay = config.generated_delay(port)
     if len(pnz_dict) == 0:
       print("prop-delay %s[%s].%s = %s" % (block_name,loc,port,gen_delay))

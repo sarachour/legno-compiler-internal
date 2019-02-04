@@ -11,6 +11,18 @@ class Interval:
       ub = max(self.upper,i2.upper)
       return Interval.type_infer(lb,ub)
 
+    def intersection(self,i2):
+        upper = min(i2.upper,self.upper)
+        lower = max(i2.lower,self.lower)
+        if upper <= lower:
+            return Interval.type_infer(0,0)
+        else:
+            return Interval.type_infer(lower,upper)
+
+    @staticmethod
+    def zero():
+        return Interval.type_infer(0,0)
+
     @property
     def spread(self):
         return abs(self.upper-self.lower)
@@ -34,16 +46,23 @@ class Interval:
 
     @staticmethod
     def isinf(num):
-        return num == float('inf') or num == float('-inf')
+        return num == float('inf') \
+            or num == float('-inf') \
+            or num is None
 
     @staticmethod
     def type_infer(lb,ub):
       if Interval.isinf(lb) \
-         or Interval.isinf(ub):
+         and Interval.isinf(ub):
         return IUnknown()
+
+      elif Interval.isinf(ub):
+        assert(not Interval.isinf(lb))
+        return ILowerBound(lb)
 
       elif abs(lb - ub) < 1e-6:
         return IValue(lb)
+
       else:
         return IRange(lb,ub)
 
@@ -54,6 +73,12 @@ class Interval:
         else:
             return False
 
+
+    def negate(self):
+        return Interval.type_infer(
+            -self.upper,
+            -self.lower
+        )
 
     def scale(self,v):
         assert(v > 0)
@@ -105,7 +130,7 @@ class Interval:
         }
 
     def __repr__(self):
-        return "[%s,%s]" % (self._lower,self._upper)
+        return "[%.3e,%.3e]" % (self._lower,self._upper)
 
     def __iter__(self):
         yield self.lower
@@ -126,12 +151,18 @@ class IValue(Interval):
 
 
     def __repr__(self):
-      return "[%s]" % self._value
+      return "[%.3e]" % self._value
 
 class IRange(Interval):
 
   def __init__(self,min_value,max_value):
     Interval.__init__(self,min_value,max_value)
+
+class ILowerBound(Interval):
+
+  def __init__(self,min_value):
+    Interval.__init__(self,min_value,float('inf'))
+
 
 class IUnknown(Interval):
 

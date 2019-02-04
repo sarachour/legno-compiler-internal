@@ -33,7 +33,8 @@ class ConcCirc:
 
     def instances(self):
         for block_name in self._configs:
-            for loc,config in self._configs[block_name].items():
+            for loc,config in \
+                self._configs[block_name].items():
                 yield block_name,loc,config
 
 
@@ -191,5 +192,9 @@ class ConcCirc:
             fh.write(strdata)
 
 
-    def write_graph(self,filename,color_method=None,write_png=False):
-        graphlib.write_graph(self,filename,color_method,write_png)
+    def write_graph(self,filename,
+                    color_method=None,
+                    write_png=False):
+        graphlib.write_graph(self,filename, \
+                             color_method, \
+                             write_png)

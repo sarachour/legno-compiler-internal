@@ -1,61 +1,41 @@
 import ops.op as op
+import ops.nop as nop
 import numpy as np
 import ops.interval as interval
-from compiler.common.visitor import Visitor
+from compiler.common.visitor_symbolic  \
+  import ExpressionPropagator, \
+  PiecewiseSymbolicModel, \
+  SymbolicInferenceVisitor, \
+  MathPropagator
 
-class PropNoiseVisitor(Visitor):
+class PropNoiseVisitor(SymbolicInferenceVisitor):
 
   def __init__(self,circ):
-    Visitor.__init__(self,circ)
+    SymbolicInferenceVisitor.__init__(self,circ,\
+                                      MathPropagator)
 
-  def is_free(self,config,variable):
-    return config.propagated_noise(variable) is None
+  def get_generate_expr(self,stump):
+    return stump.noise
 
-  def input_port(self,block_name,loc,port):
-    Visitor.input_port(self,block_name,loc,port)
-    circ = self._circ
-    config = circ.config(block_name,loc)
-
-    noise = interval.Interval.type_infer(0,0)
-    for sblk,sloc,sport in \
-      circ.get_conns_by_dest(block_name,loc,port):
-
-      src_nz = circ.config(sblk,sloc).propagated_noise(sport)
-      if not src_nz is None:
-        noise = noise.add(src_nz)
-      else:
-        print("[warn] %s[%s].%s has no prop-noise" % (sblk,sloc,sport))
-
-    print("nz in %s[%s].%s = %s" % (block_name,loc,port,noise))
-    config.set_propagated_noise(port,noise)
+  def get_propagate_model(self,block_name,loc,port):
+    config = self._circ.config(block_name,loc)
+    return config.propagated_noise(port)
 
 
-  def output_port(self,block_name,loc,port):
-    Visitor.output_port(self,block_name,loc,port)
-    circ = self._circ
-    block = circ.board.block(block_name)
-    config = circ.config(block_name,loc)
-    expr = config.dynamics(block,port)
+  def get_generate_model(self,block_name,loc,port):
+    config = self._circ.config(block_name,loc)
+    return config.generated_noise(port)
 
-    pnz_dict = dict(config.propagated_noises())
-    for var in expr.vars():
-      if not var in pnz_dict:
-        pnz_dict[var] = interval.Interval.type_infer(0,0)
+  def set_propagate_model(self,block_name,loc,port,gen_model):
+    config = self._circ.config(block_name,loc)
+    config.set_propagated_noise(port,gen_model)
 
-    # if integral, strip integral sign.
-    if expr.op == op.OpType.INTEG:
-      prop_noise = expr.deriv.compute_interval(pnz_dict)
-    else:
-      print(pnz_dict)
-      print(expr)
-      prop_noise = expr.compute_interval(pnz_dict)
 
-    gen_noise = config.generated_noise(port)
-    total_noise = prop_noise.interval.add(gen_noise)
-    print("nz out %s[%s].%s = %s" % (block.name,loc,port,total_noise))
-    config.set_propagated_noise(port,total_noise)
-
+  def set_generate_model(self,block_name,loc,port,gen_model):
+    config = self._circ.config(block_name,loc)
+    config.set_generated_noise(port,gen_model)
 
 
 def compute(circ):
-  PropNoiseVisitor(circ).toplevel()
+  PropNoiseVisitor(circ).all()
+

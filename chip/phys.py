@@ -1,4 +1,5 @@
 import ops.nop as nops
+from ops.interval import Interval
 import json
 
 class PhysicalModelStump:
@@ -133,6 +134,18 @@ class PhysicalModel:
     self._stumps = other._stumps
     self._freeze = other._freeze
 
+  def stumps(self):
+    minf = 0
+    brks = self._breakpoints
+    for idx,_ in enumerate(self._breakpoints):
+      yield Interval.type_infer(minf,brks[idx]), \
+        self._stumps[idx]
+
+      minf = brks[idx]
+
+    if len(brks) > 0:
+      yield Interval.type_infer(brks[len(brks)-1],None), \
+        self._stumps[len(brks)-1]
 
   def get_stumps(self,freq):
     brks = self._breakpoints

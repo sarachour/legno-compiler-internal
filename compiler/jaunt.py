@@ -1,11 +1,12 @@
 import chip.props as props
 from chip.conc import ConcCirc
+import lab_bench.lib.chip_command as chipcmd
 from compiler.common import infer
 from chip.config import Labels
 import ops.op as ops
 import gpkit
 import itertools
-import compiler.jaunt_gen_noise_circ as jnoise
+import compiler.jaunt_pass.phys_opt as jaunt_phys_opt
 import ops.jop as jop
 import ops.op as op
 import signal
@@ -24,33 +25,55 @@ class JauntObjectiveFunction():
         #return ['fast','slow','max']
         return ['fast','slow']
 
+    @staticmethod
+    def physical_methods():
+        return ['lo-noise', 'lo-bias', 'lo-delay']
+
     def __init__(self,jenv):
         self.method = 'fast'
         self.jenv = jenv
 
-    def objective(self,varmap):
+    def set_objective(self,name):
+        self.method = name
+
+    def objective(self,circuit,varmap):
         if self.method == 'fast':
-            return self.fast(varmap)
+            gen = self.fast(varmap)
         elif self.method == 'slow':
-            return self.slow(varmap)
+            gen = self.slow(varmap)
         elif self.method == 'max':
-            return self.max_dynamic_range(varmap)
+            gen = self.max_dynamic_range(varmap)
+        elif self.method == 'lo-noise':
+            gen = jaunt_phys_opt.low_noise(circuit,\
+                                           self.jenv,varmap)
+        elif self.method == 'lo-delay':
+            gen = jaunt_phys_opt.low_delay(circuit,\
+                                           self.jenv,varmap)
+        elif self.method == 'lo-bias':
+            gen = jaunt_phys_opt.low_bias(circuit,\
+                                          self.jenv,varmap)
+
+        else:
+            raise NotImplementedError
+
+        for cstrs,obj in gen:
+            yield cstrs,obj
 
     def slow(self,varmap):
         objective = varmap[self.jenv.TAU]
         print(objective)
-        return objective
+        yield [],objective
 
     def fast(self,varmap):
         objective = 1.0/varmap[self.jenv.TAU]
         print(objective)
-        return objective
+        yield [],objective
 
     def max_dynamic_range(self,varmap):
         objective = 1.0/varmap[self.jenv.TAU]
         for scvar in self.jenv.scvars():
             objective += 1.0/varmap[scvar]
-        return objective
+        yield [],objective
 
 
 class JauntEnv:
@@ -307,7 +330,6 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
                                               handle=expr.handle))
         jenv.eq(scexpr_ic,scvar_state)
         jenv.eq(scexpr_deriv,scvar_deriv)
-
         scexpr_integ = jop.JMult(jop.JVar(jenv.TAU,exponent=-1)
                                  ,scvar_deriv)
 
@@ -316,6 +338,7 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
         # ranges are contained
         deriv_mrng = config.interval(port,expr.deriv_handle)
         deriv_hwrng = config.op_range(port,expr.deriv_handle)
+
         bpgen_scaled_interval_constraint(jenv, \
                                          scvar_deriv,
                                          deriv_mrng,
@@ -323,12 +346,16 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
 
         st_mrng = config.interval(port,expr.handle)
         st_hwrng = config.op_range(port,expr.handle)
+
         bpgen_scaled_interval_constraint(jenv,scvar_state,\
-                                         st_mrng,st_hwrng)
+                                         st_mrng,\
+                                         st_hwrng)
 
         ic_mrng = config.interval(port,expr.ic_handle)
+
         bpgen_scaled_interval_constraint(jenv,scvar_state, \
-                                         ic_mrng,st_hwrng)
+                                         ic_mrng,
+                                         st_hwrng)
         # the handles for deriv and stvar are the same
         jenv.use_tau()
         return scvar_state
@@ -338,14 +365,19 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
 
 
 def bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr):
-  scexpr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,out,expr)
-  scfvar = jop.JVar(jenv.get_scvar(block.name,loc,out))
-  jenv.eq(scfvar,scexpr)
+    scexpr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,out,expr)
+    scfvar = jop.JVar(jenv.get_scvar(block.name,loc,out))
+    config = circ.config(block.name,loc)
+    hwrng = config.op_range(out)
+    mrng = config.interval(out)
+    jenv.eq(scfvar,scexpr)
+    bpgen_scaled_interval_constraint(jenv,scfvar,mrng,hwrng)
 
 def bp_generate_problem(jenv,circ,quantize_signals=5):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for out,expr in block.dynamics(config.comp_mode,config.scale_mode):
+            print("%s=%s" % (out,expr))
             bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr)
 
         for port in block.outputs + block.inputs:
@@ -477,10 +509,11 @@ def build_gpkit_problem(circ,jenv,jopt):
         return None
 
     print("==== Objective Fxn [%s] ====" % jopt.method)
-    objective = jopt.objective(variables)
-    print(objective)
-    model = gpkit.Model(objective,gpkit_cstrs)
-    return model
+    for objective_cstrs, objective in jopt.objective(circ,variables):
+        model = gpkit.Model(objective, \
+                            list(gpkit_cstrs) +
+                            list(objective_cstrs))
+        yield model
 
 def solve_gpkit_problem(gpmodel,timeout=10):
     def handle_timeout(signum,frame):
@@ -498,6 +531,11 @@ def solve_gpkit_problem(gpmodel,timeout=10):
         signal.alarm(0)
         return None
 
+    except ValueError as ve:
+        print("ValueError: %s" % ve)
+        signal.alarm(0)
+        return None
+
     return sln
 
 
@@ -512,9 +550,6 @@ def sp_update_circuit(jenv,prog,circ,assigns):
             block_name,loc,port,handle = jenv.get_scvar_info(variable.name)
             circ.config(block_name,loc).set_scf(port,handle=handle,scf=value)
 
-    infer.clear(circ)
-    infer.infer_intervals(prog,circ)
-    infer.infer_bandwidths(prog,circ)
     return circ
 
 
@@ -537,7 +572,6 @@ def iter_scaled_circuits(circ):
             circ.config(block_name,loc) \
                 .set_scale_mode(scale_mode)
 
-        #input()
         yield circ
 
 def files(scale_inds):
@@ -545,38 +579,61 @@ def files(scale_inds):
         for opt in JauntObjectiveFunction.methods():
             yield idx,opt
 
-def scale(prog,circ,noise_analysis=False):
-    for orig_circ in iter_scaled_circuits(circ):
-        if not noise_analysis:
-            jenv = build_jaunt_env(prog,orig_circ)
-        else:
-            raise Exception("unimplemented: noise analysis")
-        if jenv is None:
-            continue
 
-        skip_opts = False
-        jopt = JauntObjectiveFunction(jenv)
-        gpprob = build_gpkit_problem(orig_circ,jenv,jopt)
-        if gpprob is None:
-            continue
+def compute_best_sln(slns):
+    if len(slns) == 0:
+        return None
 
-        for opt in JauntObjectiveFunction.methods():
-            if skip_opts:
+    elif len(slns) == 1:
+        return slns[0]
+
+    else:
+        idx = np.argmin(map(lambda sln: sln['cost'],slns))
+        return slns[idx]
+
+def scale_circuit(prog,circ,methods):
+    assert(isinstance(circ,ConcCirc))
+    jenv = build_jaunt_env(prog,circ)
+    jopt = JauntObjectiveFunction(jenv)
+    skip_opts = False
+    for opt in methods:
+        jopt.method = opt
+        slns = []
+        for idx,gpprob in enumerate(build_gpkit_problem(circ,jenv,jopt)):
+            if gpprob is None:
                 continue
-            jopt.method = opt
+
             sln = solve_gpkit_problem(gpprob)
             if sln is None:
                 print("[[FAILURE]]")
-                skip_opts = True
+                continue
 
             elif not 'freevariables' in sln:
                 print("[[FAILURE]]")
                 succ,result = sln
                 assert(result is None)
                 assert(succ == False)
-                skip_opts = True
+                continue
 
             else:
-                upd_circ = sp_update_circuit(jenv,prog,orig_circ,
-                                             sln['freevariables'])
-                yield opt,upd_circ
+                slns.append(sln)
+
+
+        best_sln = compute_best_sln(slns)
+        if best_sln is None:
+            return None
+
+        upd_circ = sp_update_circuit(jenv,prog,circ,
+                                    best_sln['freevariables'])
+        yield opt,upd_circ
+
+def physical_scale(prog,circ):
+    for opt,circ in scale_circuit(prog,circ,\
+                                  JauntObjectiveFunction.physical_methods()):
+        yield opt,circ
+
+def scale(prog,circ):
+    for orig_circ in iter_scaled_circuits(circ):
+        for opt,scaled_circ in scale_circuit(prog,orig_circ,\
+                                      JauntObjectiveFunction.methods()):
+            yield opt,scaled_circ

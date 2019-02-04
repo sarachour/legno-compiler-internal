@@ -214,7 +214,7 @@ class BaseExpOp(Op):
 
 class Integ(Op2):
 
-    def __init__(self,deriv,init_cond,handle=None):
+    def __init__(self,deriv,init_cond,handle):
         assert(handle.startswith(":"))
 
         Op.__init__(self,OpType.INTEG,[deriv,init_cond])
