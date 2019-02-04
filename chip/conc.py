@@ -76,6 +76,12 @@ class ConcCirc:
             yield sblock,sloc,sport
 
 
+    def has_physical_model(self):
+        for _,_,config in self.instances():
+            if not config.has_physical_model():
+                return False
+
+        return True
 
     def conns_by_dest(self):
         srcs = {}

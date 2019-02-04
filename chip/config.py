@@ -296,6 +296,20 @@ class Config:
     def set_generated_delay(self,port,delay):
       self._gen_delays[port] = delay
 
+    def has_physical_model(self):
+        def test(key):
+            if len(getattr(self,key).keys()) == 0:
+                return False
+            else:
+                return True
+
+        return test('_gen_delays') and \
+            test('_gen_noise') and \
+            test('gen_biases') and 
+            test('_prop_delays') and \
+            test('_prop_biases') and \
+            test('_prop_noise')
+
     def set_bandwidth(self,port,bandwidth,handle=None):
       self._make(self._bandwidths,port)
       assert(not bandwidth is None)

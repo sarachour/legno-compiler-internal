@@ -265,6 +265,33 @@ def exec_skelter(hdacv2_board, args):
           obj = json.loads(fh.read())
           conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                   obj)
+          if conc_circ.has_physical_model():
+            filename = path_handler.skelt_circ_file(circ_bmark,
+                                                  circ_indices,
+                                                  circ_scale_index,
+                                                  opt)
+          conc_circ.write_circuit(filename)
+
+
+
+  for dirname, subdirlist, filelist in os.walk(circ_dir):
+    for fname in filelist:
+      if fname.endswith('.circ'):
+        circ_bmark,circ_indices,circ_scale_index,opt = \
+                                                       path_handler.conc_circ_to_args(fname)
+
+        skelt_circ = path_handler.skelt_circ_file(circ_bmark,
+                                                  circ_indices,
+                                                  circ_scale_index,
+                                                  opt)
+        if path_handler.has_file(skelt_circ):
+          continue
+
+        print('<<<< %s >>>>' % fname)
+        with open("%s/%s" % (dirname,fname),'r') as fh:
+          obj = json.loads(fh.read())
+          conc_circ = ConcCirc.from_json(hdacv2_board, \
+                                                  obj)
           skelter.execute(conc_circ)
           filename = path_handler.skelt_circ_file(circ_bmark,
                                                   circ_indices,
