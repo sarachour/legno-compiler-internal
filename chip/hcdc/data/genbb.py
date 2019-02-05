@@ -30,6 +30,7 @@ def make_posy(model,port,idx,deterministic,dependent=False):
     get = lambda key : model[key][idx]
     x,y,w = get('x'),get('y'),get('w')
     u,v = get('u'),get('v')
+
     # x*f^u + y*f^v + w
     result = nops.mkadd([
         nops.mkmult([
@@ -38,7 +39,7 @@ def make_posy(model,port,idx,deterministic,dependent=False):
         ]),
         nops.mkmult([
             make_const(y,deterministic),
-            make_freq(port,v)
+            make_freq(port,-v)
         ]),
         make_const(w,deterministic)
     ])

@@ -5,9 +5,9 @@ import json
 class PhysicalModelStump:
 
   def __init__(self):
-    self._delay = nops.zero()
-    self._noise = nops.zero()
-    self._bias = nops.zero()
+    self._delay = nops.mkzero()
+    self._noise = nops.mkzero()
+    self._bias = nops.mkzero()
 
   @property
   def noise(self):
@@ -162,7 +162,7 @@ class PhysicalModel:
 
   def noise(self,freq):
     if len(self._stumps) == 0:
-      yield (0,freq),nops.zero()
+      yield (0,freq),nops.mkzero()
       return
 
     for (fmin,fmax),stump in self.get_stumps(freq):
@@ -170,7 +170,7 @@ class PhysicalModel:
 
   def bias(self,freq):
     if len(self._stumps) == 0:
-      yield (0,freq),nops.zero()
+      yield (0,freq),nops.mkzero()
       return
 
     for (fmin,fmax),stump in self.get_stumps(freq):
@@ -180,7 +180,7 @@ class PhysicalModel:
     # delay in degrees. To compute delay in seconds,
     # delay_deg/freq
     if len(self._stumps) == 0:
-      return nops.zero()
+      return nops.mkzero()
 
     return self.get_stump(freq).delay
 

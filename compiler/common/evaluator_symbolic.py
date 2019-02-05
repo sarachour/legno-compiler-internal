@@ -60,7 +60,7 @@ class Evaluator:
         value = self.reference(block,inst,port,tag)
         if value is None:
           value = 0
-        ref_dict[(block,inst,port)] = nop.NConstVal(value)
+        ref_dict[(block,inst,port)] = nop.mkconst(value)
       else:
         raise Exception("unknown")
 

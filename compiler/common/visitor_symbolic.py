@@ -3,7 +3,9 @@ import ops.nop as nop
 import numpy as np
 import ops.interval as interval
 from compiler.common.visitor import Visitor
-
+import zlib
+import json
+import binascii
 
 class PiecewiseSymbolicModel:
 
@@ -21,6 +23,8 @@ class PiecewiseSymbolicModel:
 
     assert(not mean is None)
     assert(not variance is None)
+    assert(isinstance(mean,nop.NOp))
+    assert(isinstance(variance,nop.NOp))
     self._intervals.append(freq_range)
     self._model[idx] = (mean,variance)
 
@@ -67,8 +71,11 @@ class PiecewiseSymbolicModel:
         j += 1
 
   @staticmethod
-  def from_json(obj):
+  def from_json(hexstr):
     model = PiecewiseSymbolicModel()
+    byte_obj = binascii.unhexlify(hexstr)
+    comp_obj = zlib.decompress(byte_obj)
+    obj = json.loads(str(comp_obj,'utf-8'))
     for el in obj:
       mean = nop.NOp.from_json(el['mean'])
       variance = nop.NOp.from_json(el['variance'])
@@ -86,7 +93,9 @@ class PiecewiseSymbolicModel:
         'variance': variance.to_json()
       })
 
-    return obj
+    byte_obj=json.dumps(obj).encode('utf-8')
+    comp_obj = zlib.compress(byte_obj,3)
+    return str(binascii.hexlify(comp_obj), 'utf-8')
 
   def __repr__(self):
     s = ""
@@ -182,7 +191,7 @@ class SymbolicInferenceVisitor(Visitor):
     model = PiecewiseSymbolicModel()
     model.add_expr(
       interval.Interval.type_infer(0,None),
-      nop.NZero()
+      nop.mkzero()
     )
     for sblk,sloc,sport in \
       circ.get_conns_by_dest(block_name,loc,port):
@@ -214,7 +223,7 @@ class SymbolicInferenceVisitor(Visitor):
     if len(list(phys.stumps())) == 0:
       gen_model.add_expr(
         interval.Interval.type_infer(0,None),
-        nop.NZero()
+        nop.mkzero()
       )
 
     # build a symbolic propagated model
@@ -239,12 +248,15 @@ class MathPropagator(ExpressionPropagator):
   def const(self,value):
     model = PiecewiseSymbolicModel()
     freq_range = interval.Interval.type_infer(0,None)
-    model.add_expr(freq_range,nop.NConstVal(value))
+    model.add_expr(freq_range,nop.mkconst(value))
     return model
 
-  def covariance(self,v1,v2):
+  def covariance(self,v1,v2,correlated=False):
     # cov < sqrt(v1*v2)
-    return nop.mkmult([v1.sqrt(),v2.sqrt()])
+    if correlated:
+      return nop.mkmult([v1.sqrt(),v2.sqrt()])
+    else:
+      return nop.mkzero()
 
   def integ(self,deriv,ic):
     return deriv
@@ -255,7 +267,7 @@ class MathPropagator(ExpressionPropagator):
       # compute mean
       u = nop.mkadd([u1,u2])
       # compute variance: cov <= sqrt(var1*var2)
-      cov = nop.mkmult([nop.NConstVal(2.0), \
+      cov = nop.mkmult([nop.mkconst(2.0), \
                         self.covariance(v1,v2)])
       v = nop.mkadd([v1,v2,cov])
       model.add_dist(ival,u,v)
@@ -268,7 +280,7 @@ class MathPropagator(ExpressionPropagator):
       # compute mean
       u = nop.mkmult([u1,u2])
       # compute variance
-      cov = nop.mkmult([nop.NConstVal(2.0), \
+      cov = nop.mkmult([nop.mkconst(2.0), \
                         self.covariance(v1,v2), \
                         u1,u2])
       t1 = nop.mkmult([u1.square(),v2])

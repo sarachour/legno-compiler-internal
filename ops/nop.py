@@ -24,7 +24,7 @@ class NOp:
     def mult_hash(self):
       raise Exception("no mult_hash: %s" % self)
 
-    def zero(self):
+    def is_zero(self):
       return False
 
     def coeff(self):
@@ -71,16 +71,10 @@ class NOp:
         return NFreq.from_json(obj)
       elif op == NOpType.CONST_RV:
         return NConstRV.from_json(obj)
-      elif op == NOpType.CONST_VAL:
-        return NConstVal.from_json(obj)
       elif op == NOpType.ADD:
         return NAdd.from_json(obj)
       elif op == NOpType.MULT:
         return NMult.from_json(obj)
-      elif op == NOpType.INV:
-        return NInv.from_json(obj)
-      elif op == NOpType.ZERO:
-        return NZero()
       elif op == NOpType.SEL:
         return NSelect.from_json(obj)
       elif op == NOpType.REF:
@@ -154,6 +148,9 @@ class NVar(NOp):
   @property
   def instance(self):
     return self._instance
+
+  def add_like_term(self,rv):
+    return mkmult([rv,self])
 
   def bind_instance(self,block_name,loc):
     self._instance = (block_name,loc)
@@ -234,7 +231,7 @@ class NRef(NVar):
     return self.copy()
 
   def variance(self):
-    return NZero()
+    return mkzero()
 
   @staticmethod
   def from_json(obj):
@@ -258,6 +255,7 @@ class NFreq(NVar):
     if not label in freqs:
       raise Exception("not bound: %s, %s" % (label,freqs.keys()))
 
+    bw = freqs[label].bandwidth
     return interval.Interval.type_infer(0.0, \
                   freqs[label].bandwidth)
 
@@ -268,7 +266,7 @@ class NFreq(NVar):
     return self.copy()
 
   def variance(self):
-    return NZero()
+    return mkzero()
 
   @staticmethod
   def from_json(obj):
@@ -312,7 +310,7 @@ class NSig(NVar):
     return self.copy()
 
   def variance(self):
-    return NZero()
+    return mkzero()
 
 
 class NConstRV(NOp):
@@ -338,6 +336,9 @@ class NConstRV(NOp):
   def coeff(self):
     return self._mu,self._sigma
 
+  def terms(self):
+    yield self
+
   @property
   def mu(self):
     return self._mu
@@ -346,28 +347,48 @@ class NConstRV(NOp):
   def sigma(self):
     return self._sigma
 
-  def zero(self):
+  def is_zero(self):
     return self._sigma == 0.0 and self._mu == 0.0
 
-  def constant(self,v):
+  def is_constant(self,v):
     return self._sigma == 0.0 and self._mu == v
 
-  def one(self):
-    return self.constant(1.0)
+  def is_one(self):
+    return self.is_constant(1.0)
 
   def variance(self):
     return NConstRV(self._sigma**2,0)
 
   def mean(self):
-    return self._mu
+    return NConstRV(self._mu,0)
+
+  def sqrt(self):
+    if self._sigma == 0.0:
+      return NConstRV(self._mu**0.5,0.0)
+    else:
+      return NConstRV(self._mu**0.5,0.5*self._mu**(-0.5)*self._sigma)
+
+  def square(self):
+    return NConstRV(self._mu**2,2*self._sigma*self._mu)
+
+  def mult(self,other):
+    assert(other.op == NOpType.CONST_RV)
+    mu = self.mu*other.mu
+    cov = 0.0
+    # cov = 2.0*self.std*other.std
+    var = (self.mu**2)*(other.sigma**2) + \
+          (other.mu**2)*(self.sigma**2)
+    var += cov
+    return NConstRV(mu,math.sqrt(var))
 
   def compute(self,freqs,intervals):
-    return interval.Interval.type_infer(0.0,self._sigma)
+    return interval.Interval.type_infer(self.mu-self.sigma*3,\
+                                        self.mu+self.sigma*3)
 
 
   def __repr__(self):
     return "rv(%.3e,%.3e)" % \
-      (self._mu,self._sigma)
+      (self.mu,self.sigma)
 
   def to_json(self):
     return {
@@ -425,13 +446,12 @@ class NMult(NOp):
 
 
   def coeff(self):
-    mu,std = 1.0,0.0
+    rv = mkone()
     for arg in self.args():
       cmu,cstd = arg.coeff()
-      mu = cmu*mu
-      std = math.sqrt((cmu*std)**2 + (mu*cstd)**2 + 2*std*cstd)
+      rv = rv.mult(NConstRV(cmu,cstd))
 
-    return mu,std
+    return rv.mu, rv.sigma
 
   def sum_hash(self):
     hashes = list(filter(lambda h: not h is None,
@@ -441,7 +461,7 @@ class NMult(NOp):
     return "|".join(hashes)
 
   def nonzero(self,args):
-    return list(filter(lambda var: var.op != NOpType.ZERO, \
+    return list(filter(lambda var: not var.zero(), \
                        args))
 
   def variance(self):
@@ -449,16 +469,16 @@ class NMult(NOp):
     variance = None
     for arg in self.args():
       var,mean = arg.variance(),arg.mean()
-      if var.zero() and mean.zero():
-        return zero()
-      elif var.zero() and not mean.zero():
+      if var.is_zero() and mean.is_zero():
+        return mkzero()
+      elif var.is_zero() and not mean.is_zero():
         means.append(mean)
-      elif not var.zero() and mean.zero():
+      elif not var.is_zero() and mean.is_zero():
         assert(variance is None)
         variance = var
 
     if variance is None:
-      return NZero()
+      return mkzero()
     else:
       return NMult(means + [variance])
 
@@ -467,8 +487,8 @@ class NMult(NOp):
     means = []
     for arg in self.args():
       mean = arg.mean()
-      if mean.zero():
-        return zero()
+      if mean.is_zero():
+        return mkzero()
       means.append(mean)
 
     return NMult(means)
@@ -620,7 +640,7 @@ class NAdd(NOp):
     variances = []
     for arg in self.args():
       variance = arg.variance()
-      if not variance.zero():
+      if not variance.is_zero():
         variances.append(variance)
 
     return mkadd(variances)
@@ -630,7 +650,7 @@ class NAdd(NOp):
     means = []
     for arg in self.args():
       mean = arg.mean()
-      if not mean.zero():
+      if not mean.is_zero():
         means.append(mean)
 
     return mkadd(means)
@@ -644,38 +664,19 @@ class NAdd(NOp):
 
     return NAdd(args)
 
-def mkmin(args):
-  new_args = []
-  for arg in args:
-    if arg.op == NOpType.MIN:
-      for term in arg.terms():
-        new_args.append(term)
-    elif arg.op == NOpType.ZERO:
-      return zero()
-    else:
-      new_args.append(arg)
-
-  if len(new_args) == 0:
-    return zero()
-  elif len(new_args) == 1:
-    return new_args[0]
-  else:
-    return NSelect(new_args)
-
-
 def mksel(args):
   new_args = []
   for arg in args:
     if arg.op == NOpType.SEL:
       for term in arg.terms():
         new_args.append(term)
-    elif arg.op == NOpType.ZERO:
+    elif arg.is_zero():
       continue
     else:
       new_args.append(arg)
 
   if len(new_args) == 0:
-    return zero()
+    return mkzero()
   elif len(new_args) == 1:
     return new_args[0]
   else:
@@ -694,37 +695,43 @@ def _construct_const_rv(ctor,coeffs):
 
 def _wrap_add(consts,args):
   rv = _construct_const_rv(NAdd,consts)
-  if len(args) == 0 and rv.zero():
-    return zero()
-  elif len(args) == 0 and not rv.zero():
+  if len(args) == 0 and rv.is_zero():
+    return mkzero()
+  elif len(args) == 0 and not rv.is_zero():
     return rv
-  elif rv.zero() and len(args) == 1:
+  elif rv.is_zero() and len(args) == 1:
     return args[0]
-  elif rv.zero() and len(args) > 1:
+  elif rv.is_zero() and len(args) > 1:
     return NAdd(args)
   else:
     return NAdd([rv] + args)
 
 def _wrap_mult(consts,args,use_mkmult=False):
   rv = _construct_const_rv(NMult,consts)
-  if len(args) == 0 or rv.zero():
-    return zero()
+  if rv.is_zero():
+    return mkzero()
 
-  elif not rv.one():
+  if len(args) == 0:
+    return rv
+
+  elif not rv.is_one():
     if use_mkmult:
-      print(rv,args)
       return mkmult([rv]+args)
     else:
       return NMult([rv]+args)
 
-  elif rv.one() and len(args) == 1:
+  elif rv.is_one() and len(args) == 1:
     return args[0]
 
-def zero():
+def mkzero():
   return NConstRV(0.0,0.0)
 
-def one():
-  return NConstRV(1.0,0.0)
+def mkconst(c):
+  return NConstRV(c,0.0)
+
+
+def mkone():
+  return mkconst(1.0)
 
 
 def distribute(sums,coeff=[]):
@@ -733,7 +740,6 @@ def distribute(sums,coeff=[]):
     new_terms = []
     for term1 in expr.terms():
       for term2 in state.terms():
-        print("distribute %s*%s" % (term1,term2))
         new_terms.append(mkmult([term1,term2]))
 
     state = NAdd(new_terms)
@@ -741,7 +747,6 @@ def distribute(sums,coeff=[]):
 
   new_terms = []
   for term in state.terms():
-    print("scale %s*%s" % (term,coeff))
     new_terms.append(mkmult([term] + coeff))
   state = NAdd(new_terms)
 
@@ -752,16 +757,14 @@ def mkmult(args):
   sums = []
   terms = []
   expos = {}
-  coeffs = [one()]
+  coeffs = [mkone()]
 
   def add_term(term):
-    print(term)
     if term.op == NOpType.CONST_RV:
       coeffs.append(term)
 
     else:
       hashv = term.mult_hash()
-      print("hash: %s" % hashv)
       if not hashv in expos:
         expos[hashv] = 1.0
         terms.append(term)
@@ -774,19 +777,19 @@ def mkmult(args):
     elif arg.op == NOpType.MULT:
       for term in arg.terms():
         add_term(term)
-    elif arg.zero():
-      return zero()
+    elif arg.is_zero():
+      return mkzero()
     else:
       add_term(arg)
 
-  print(terms)
   expr = _wrap_mult(coeffs,terms)
   if len(sums) > 0:
-    result = distribute(sums,coeff=list(expr.terms()))
+    expr_terms= list(expr.terms())
+    result = distribute(sums,coeff=expr_terms)
   else:
     result = expr
 
-  #print("mkmult %s->%s" % (args,result))
+  #print("mkmult OLD:%s\n\nNEW:%s\n\n" % (args,result))
   #input()
   return result
 
@@ -794,7 +797,7 @@ def mkadd(args):
   terms = []
   coeffs = {}
   def add_term(term):
-    if term.zero():
+    if term.is_zero():
       return
     else:
       hashv = term.sum_hash()
@@ -821,6 +824,6 @@ def mkadd(args):
     final_terms += [term.add_like_term(NConstRV(mu,std))]
 
   result = _wrap_add([],final_terms)
-  #print("mkadd %s->%s" % (args,result))
+  #print("mkadd OLD:%s\n\nNEW:%s\n\n" % (args,result))
   #input()
   return result

@@ -32,7 +32,7 @@ class DelayPropagator(ExpressionPropagator):
   def const(self,v):
     freq_range = interval.Interval.type_infer(0,None)
     model = PiecewiseSymbolicModel()
-    model.add_expr(freq_range,nop.NZero())
+    model.add_expr(freq_range,nop.mkzero())
     return model
 
 class PropDelayVisitor(SymbolicInferenceVisitor):

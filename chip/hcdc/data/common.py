@@ -99,13 +99,12 @@ def predict_posy(pdict,maxf,f,n):
     u,v = get('u'),get('v')
     w = get('w')
 
-    value = x*(f**u) + y*(f**v) + w
+    value = x*(f**u) + y*(f**(-1*v)) + w
     return value
 
   def freq_break(i):
     bsc = pdict['bsc']
-    boff = pdict['boff']
-    return divs[i]*bsc + boff
+    return divs[i]*bsc
 
   def compute_first(f,i):
     return compute_value(f,i)*(f < freq_break(i+1))
@@ -137,10 +136,10 @@ def compute_posy(prefix,X,data,n=5,extern_breaks=None):
   params = []
   lb,ub= [],[]
   unk = (-np.inf,np.inf)
-  params += ['bsc','boff']
-  lb += [1e-3,0.0]
-  ub += [1.0,max(X)/10]
-  init_conds += [1.0,0.0]
+  params += ['bsc']
+  lb += [1e-3]
+  ub += [1.0]
+  init_conds += [1.0]
 
   for i in range(0,n):
     params += ['x[%d]'%i,'y[%d]' % i,
@@ -153,13 +152,13 @@ def compute_posy(prefix,X,data,n=5,extern_breaks=None):
     lb += [vmin,vmin]
     ub += [cmax,cmax]
     # u, v and q
-    lb += [vmin,-vmax]
-    ub += [vmax,vmin]
+    lb += [vmin,vmin]
+    ub += [vmax,vmax]
     # w
     lb += [0]
     ub += [np.inf]
     init_conds += [1.0,1.0]
-    init_conds += [1.0,-1.0]
+    init_conds += [1.0,1.0]
     init_conds += [0.0]
 
   def posy_fit(f,*pvals):
@@ -187,7 +186,7 @@ def compute_posy(prefix,X,data,n=5,extern_breaks=None):
        'w': list(map(lambda i: abs(model['w[%d]'%i]),range(0,n)))
      }
 
-  breaks = breaks_posy(max(X),n)*model['bsc'] + model['boff']
+  breaks = breaks_posy(max(X),n)*model['bsc']
   breaks[0] = 0
   pwls['breaks'] = breaks
 
