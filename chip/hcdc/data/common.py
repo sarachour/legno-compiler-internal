@@ -3,6 +3,7 @@ import os
 import pwlf
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy
 
 def load_raw_data(filename):
   header = [
@@ -76,18 +77,124 @@ def process_raw_data(raw_data):
   return data
 
 
-def plot_pwl(X,Y,model):
+def plot_pwl(name,X,Y,model):
   #slopes = do_fit.slopes
   #offsets = do_fit.beta
   YH = model.predict(X)
   plt.scatter(X,Y,label='data')
   plt.plot(X,YH,label='fit')
-  plt.savefig('fit.png')
+  plt.savefig(name)
   plt.clf()
-  input()
+
+def breaks_posy(fmax,n):
+  divs = np.linspace(0,fmax,n+1)[:-1]
+  return divs
+
+def predict_posy(pdict,maxf,f,n):
+  divs = breaks_posy(maxf,n)
+  def compute_value(f,i):
+    get = lambda name : pdict['%s[%d]' % (name,i)]
+
+    x,y = get('x'),get('y')
+    u,v = get('u'),get('v')
+    w = get('w')
+
+    value = x*(f**u) + y*(f**v) + w
+    return value
+
+  def freq_break(i):
+    bsc = pdict['bsc']
+    boff = pdict['boff']
+    return divs[i]*bsc + boff
+
+  def compute_first(f,i):
+    return compute_value(f,i)*(f < freq_break(i+1))
+
+  def compute_next(f,i):
+    return compute_value(f,i)\
+      *(f < freq_break(i+1))*(f >= freq_break(i))
+
+  def compute_last(f,i):
+    return compute_value(f,i)*(f >= freq_break(i))
 
 
-def compute_pwls(X,data,n=3,extern_breaks=None):
+  y = compute_first(f,0)
+  for i in range(1,n-1):
+    y += compute_next(f,i)
+
+  y += compute_last(f,n-1)
+  return y
+
+def plot_posy(name,X,Y,model,n):
+  YH = list(map(lambda x: predict_posy(model,max(X),x,n), X))
+  plt.scatter(X,Y,label='data')
+  plt.plot(X,YH,label='fit')
+  plt.savefig(name)
+  plt.clf()
+
+def compute_posy(prefix,X,data,n=5,extern_breaks=None):
+  init_conds = []
+  params = []
+  lb,ub= [],[]
+  unk = (-np.inf,np.inf)
+  params += ['bsc','boff']
+  lb += [1e-3,0.0]
+  ub += [1.0,max(X)/10]
+  init_conds += [1.0,0.0]
+
+  for i in range(0,n):
+    params += ['x[%d]'%i,'y[%d]' % i,
+               'v[%d]'%i,'u[%d]'%i,
+               'w[%d]'%i]
+    vmin = 1e-6
+    vmax = 2
+    cmax = 100.0
+    # x, y and z
+    lb += [vmin,vmin]
+    ub += [cmax,cmax]
+    # u, v and q
+    lb += [vmin,-vmax]
+    ub += [vmax,vmin]
+    # w
+    lb += [0]
+    ub += [np.inf]
+    init_conds += [1.0,1.0]
+    init_conds += [1.0,-1.0]
+    init_conds += [0.0]
+
+  def posy_fit(f,*pvals):
+    pdict = dict(zip(params,pvals))
+    return predict_posy(pdict,max(f),f,n)
+
+
+  pwls = {}
+  for field in data.keys():
+     print("==== %s ====" % field)
+     Y = abs(np.array(data[field]))
+     popt_pw, pcov = scipy.optimize.curve_fit(posy_fit,\
+                                              X, Y,
+                                              p0=init_conds,
+                                              bounds=(lb,ub))
+
+     model = dict(zip(params,popt_pw))
+     plot_posy('%s_%s.png' % (prefix,field), X, Y, model, n)
+
+     pwls[field] = {
+       'x': list(map(lambda i: abs(model['x[%d]'%i]),range(0,n))),
+       'y': list(map(lambda i: abs(model['y[%d]'%i]),range(0,n))),
+       'u': list(map(lambda i: abs(model['u[%d]'%i]),range(0,n))),
+       'v': list(map(lambda i: abs(model['v[%d]'%i]),range(0,n))),
+       'w': list(map(lambda i: abs(model['w[%d]'%i]),range(0,n)))
+     }
+
+  breaks = breaks_posy(max(X),n)*model['bsc'] + model['boff']
+  breaks[0] = 0
+  pwls['breaks'] = breaks
+
+
+  return pwls
+'''
+def compute_pwls(basename,X,data,n=3,extern_breaks=None):
 
   all_breaks = []
   pwls = {}
@@ -97,7 +204,6 @@ def compute_pwls(X,data,n=3,extern_breaks=None):
     do_fit = pwlf.PiecewiseLinFit(X,Y,sorted_data=True)
     if extern_breaks is None:
       breaks = do_fit.fit(n)
-      all_breaks += list(breaks)
     else:
       do_fit.fit_with_breaks(extern_breaks)
       breaks = extern_breaks
@@ -109,6 +215,9 @@ def compute_pwls(X,data,n=3,extern_breaks=None):
       'breaks': breaks,
       'model':do_fit
     }
+    plot_pwl('%s_%s.png' % (basename,field), X, Y, do_fit)
 
+  
+  return pwls
 
-  return all_breaks,pwls
+'''

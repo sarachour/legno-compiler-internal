@@ -5,6 +5,7 @@ import numpy as np
 
 from sklearn.cluster import MeanShift,estimate_bandwidth
 
+N_BREAKS=6
 def compute_new_breaks(all_breaks,nbins=5):
   break_array = np.array(all_breaks).reshape(-1, 1)
   bandwidth = estimate_bandwidth(break_array)
@@ -28,7 +29,7 @@ for dirname, subdirlist, filelist in os.walk(filedir):
 
              X = raw_data['freqs']
              data = common.process_raw_data(raw_data)
-             breaks,_ = common.compute_pwls(X,data,n=3)
+             breaks,_ = common.compute_pwls(X,data,n=N_BREAKS)
              all_breaks.append(breaks)
 
 new_breaks = compute_new_breaks(all_breaks)

@@ -7,103 +7,127 @@ import chip.phys as phys
 import ops.nop as nops
 import json
 
-def make_lin(slope,off,deterministic):
+def make_const(v,deterministic):
     if deterministic:
-      return nops.mkadd([
-        nops.mkmult([
-          nops.NConstVal(slope),
-          nops.NFreq(port)
-        ]),
-        nops.NConstVal(off)
-      ])
+        return nops.NConstRV(v,0.0)
     else:
-      return nops.mkadd([
+        return nops.NConstRV(0.0,v)
+
+def make_freq(port,expo):
+    return nops.NFreq(port,power=expo)
+
+def make_lin(port,slope,off,deterministic):
+    return nops.mkadd([
         nops.mkmult([
-          nops.NConstRV(slope),
-          nops.NFreq(port)
+            make_const(slope,deterministic),
+            make_freq(port,1.0)
         ]),
-        nops.NConstRV(off)
-      ])
+        make_const(off,deterministic)
+
+    ])
+
+def make_posy(model,port,idx,deterministic,dependent=False):
+    get = lambda key : model[key][idx]
+    x,y,w = get('x'),get('y'),get('w')
+    u,v = get('u'),get('v')
+    # x*f^u + y*f^v + w
+    result = nops.mkadd([
+        nops.mkmult([
+            make_const(x,deterministic),
+            make_freq(port,u)
+        ]),
+        nops.mkmult([
+            make_const(y,deterministic),
+            make_freq(port,v)
+        ]),
+        make_const(w,deterministic)
+    ])
+    if dependent:
+        result = nops.mkmult([result,nops.NSig(port)])
+
+    return result
+
+def make_expr(model,port,method,idx,deterministic=True,dependent=False):
+    if method == 'posy':
+        return make_posy(model,port,idx,
+                         deterministic=deterministic,
+                         dependent=dependent)
+    elif method == 'lin':
+        return make_lin(model,port,idx,
+                        deterministic=deterministic,
+                        dependent=dependent)
+
+    else:
+        raise Exception("unknown")
 
 def to_nop_expr(indep_dict, dep_dict, break_idx, \
-                port, \
+                port, method,\
                 deterministic=False):
 
-  freq = indep_dict['breaks'][break_idx]
-  print("freq: %s" % freq)
+    indep_expr = make_expr(indep_dict,port,method,break_idx,\
+                           deterministic,dependent=False)
+    if not dep_dict is None:
+        dep_expr = make_expr(dep_dict,port,method,break_idx, \
+                             deterministic,dependent=True)
 
-  if not dep_dict is None:
-    dep_slope = dep_dict['slopes'][break_idx]
-    dep_offset = dep_dict['offsets'][break_idx]
-    dep_expr = nops.mkmult([
-      nops.NSig(port),
-      make_lin(dep_slope,dep_offset,deterministic)
-    ])
-    print("dep: %s*F + %s" % (dep_slope,dep_offset))
+        return nops.mkadd([dep_expr,indep_expr])
 
-  indep_slope = indep_dict['slopes'][break_idx]
-  indep_offset = indep_dict['offsets'][break_idx]
-  print("indep: %s*F + %s" % (indep_slope,indep_offset))
+    else:
+        return indep_expr
 
-  indep_expr = make_lin(indep_slope,indep_offset, \
-                        deterministic)
-  if dep_dict is None:
-    return indep_expr
-  else:
-    return nops.mkadd([
-      dep_expr,
-      indep_expr
-    ])
-
-
-
+print("=== Read Data ===")
 
 filename = sys.argv[1]
 port = sys.argv[2]
-breakfile = sys.argv[3]
-outfile = sys.argv[4]
-breaks = []
-with open(breakfile,'r') as fh:
-  for line in fh:
-    breaks.append(float(line.strip()))
+outfile = sys.argv[3]
+basename = filename.split(".")[0]
 
-print("=== Read Data ===")
 raw_data = common.load_raw_data(filename)
 data = common.process_raw_data(raw_data)
+max_n = 5
 
 print("=== Fit Data ===")
 X = raw_data['freqs']
-_,model = common.compute_pwls(X,data,extern_breaks=breaks)
 
-print(breaks)
+method = 'posy'
+if method == 'posy':
+    model = common.compute_posy(basename,X,data,n=max_n)
+else:
+    raise Exception("unimpl")
+
 ph = phys.PhysicalModel()
-for brk in breaks[:-1]:
-  ph.add_break(brk)
+for brk in model['breaks']:
+    print("break: %d" % brk)
+    ph.add_break(brk)
 
 ph.freeze()
-for idx,this_break in enumerate(breaks[:-1]):
-  print("index",idx)
+for idx,this_break in enumerate(model['breaks']):
+  print("break %f / idx %d"  % (this_break,idx))
   bias_expr = to_nop_expr(model['ampl_bias_indep'],
-                     model['ampl_bias_dep'],
+                          model['ampl_bias_dep'],
                           idx,
                           port=port,
+                          method=method,
                           deterministic=True)
 
   noise_expr = to_nop_expr(model['ampl_noise_indep'],
                            model['ampl_noise_dep'],
                            idx,
                            port=port,
+                           method=method,
                            deterministic=False)
 
   delay_mean = to_nop_expr(model['delay_mean'],
                            None,idx,
                            port=port,
+                           method=method,
                            deterministic=True)
 
   delay_std = to_nop_expr(model['delay_std'],
-                           None,idx,
-                           port=port,
-                           deterministic=False)
+                          None,idx,
+                          port=port,
+                          method=method,
+                          deterministic=False)
 
   delay_expr = nops.mkadd([delay_mean,delay_std])
 
@@ -115,6 +139,5 @@ for idx,this_break in enumerate(breaks[:-1]):
 
 with open(outfile,'w') as fh:
   obj= ph.to_json()
-  print(obj)
   objstr = json.dumps(obj,indent=4)
   fh.write(objstr)
