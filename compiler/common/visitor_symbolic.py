@@ -108,6 +108,9 @@ class PiecewiseSymbolicModel:
     self.cstrs.decl(idx)
     return idx
 
+  def size(self):
+    return len(self._model.keys())
+
   def add_expr(self,expr):
     return self.add_dist(expr.mean(),expr.variance())
 
@@ -141,6 +144,14 @@ class PiecewiseSymbolicModel:
 
     return model
 
+  def is_posynomial(self):
+    for m,v in self._model.values():
+      if not m.is_posynomial() and not m.is_zero():
+        return False
+      if not v.is_posynomial() and not v.is_zero():
+        return False
+    return True
+
   def models(self):
     for idx,(mean,variance) in self._model.items():
       cstrs = self.cstrs.constraints(idx)
@@ -160,11 +171,11 @@ class PiecewiseSymbolicModel:
 
   def __repr__(self):
     s = ""
-    for idx,ival in enumerate(self._intervals):
-      m,v = self._model[idx]
-      s += "=== %s ===\n" % ival
+    for idx,(m,v) in self._model.items():
+      s += "=== %d ===\n" % idx
       s += "mean: %s\n" % m
       s += "vari: %s\n" % v
+      s += "cstrs: %s\n" % self.cstrs.constraints(idx)
 
     return s
 
@@ -305,7 +316,8 @@ class MathPropagator(ExpressionPropagator):
 
   def const(self,value):
     model = PiecewiseSymbolicModel()
-    model.add_expr(nop.mkconst(value))
+    model.add_expr(nop.mkconst(abs(value)))
+    assert(model.is_posynomial() or value == 0.0)
     return model
 
   def covariance(self,v1,v2,correlated=False):
@@ -316,6 +328,7 @@ class MathPropagator(ExpressionPropagator):
       return nop.mkzero()
 
   def integ(self,deriv,ic):
+    assert(deriv.is_posynomial())
     return deriv
 
   def plus(self,m1,m2):

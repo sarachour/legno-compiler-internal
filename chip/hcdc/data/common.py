@@ -49,7 +49,7 @@ def process_raw_data(raw_data):
     'delay_mean': [],
     'delay_std': []
   }
-
+  mv_to_ua = lambda mv: mv/1500*2.0
   max_ampl = max(raw_data['ampl_mu'])
   bias_corr_split = 0.01
   noise_corr_split = 0.3
@@ -60,6 +60,7 @@ def process_raw_data(raw_data):
     bias_uncorr = bias_corr_split*bias
     bias_corr = ((1.0-bias_corr_split)*bias)/max_ampl
 
+    # mV RMS Error
     noise = raw_data['ampl_std'][idx]
     noise_uncorr = noise_corr_split*noise
     noise_corr = ((1.0-noise_corr_split)*noise)/max_ampl
@@ -67,9 +68,9 @@ def process_raw_data(raw_data):
     delay_mu = raw_data['delay_mu'][idx]
     delay_std = raw_data['delay_std'][idx]
 
-    data['ampl_bias_indep'].append(bias_uncorr)
+    data['ampl_bias_indep'].append(mv_to_ua(bias_uncorr))
     data['ampl_bias_dep'].append(bias_corr)
-    data['ampl_noise_indep'].append(noise_uncorr)
+    data['ampl_noise_indep'].append(mv_to_ua(noise_uncorr))
     data['ampl_noise_dep'].append(noise_corr)
     data['delay_mean'].append(delay_mu)
     data['delay_std'].append(delay_std)
@@ -179,18 +180,16 @@ def compute_posy(prefix,X,data,n=5,extern_breaks=None):
      plot_posy('%s_%s.png' % (prefix,field), X, Y, model, n)
 
      pwls[field] = {
-       'x': list(map(lambda i: abs(model['x[%d]'%i]),range(0,n))),
-       'y': list(map(lambda i: abs(model['y[%d]'%i]),range(0,n))),
-       'u': list(map(lambda i: abs(model['u[%d]'%i]),range(0,n))),
-       'v': list(map(lambda i: abs(model['v[%d]'%i]),range(0,n))),
-       'w': list(map(lambda i: abs(model['w[%d]'%i]),range(0,n)))
+       'x': list(map(lambda i: model['x[%d]'%i],range(0,n))),
+       'y': list(map(lambda i: model['y[%d]'%i],range(0,n))),
+       'u': list(map(lambda i: model['u[%d]'%i],range(0,n))),
+       'v': list(map(lambda i: model['v[%d]'%i],range(0,n))),
+       'w': list(map(lambda i: model['w[%d]'%i],range(0,n)))
      }
 
-  breaks = breaks_posy(max(X),n)*model['bsc']
-  breaks[0] = 0
+  breaks = list(breaks_posy(max(X),n)[1:]*model['bsc'])
+  breaks.append(max(breaks)*2)
   pwls['breaks'] = breaks
-
-
   return pwls
 '''
 def compute_pwls(basename,X,data,n=3,extern_breaks=None):
