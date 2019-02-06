@@ -30,7 +30,11 @@ def make_posy(model,port,idx,deterministic,dependent=False):
     get = lambda key : model[key][idx]
     x,y,w = get('x'),get('y'),get('w')
     u,v = get('u'),get('v')
-
+    assert(x >= 0.0)
+    assert(y >= 0.0)
+    assert(w >= 0.0)
+    assert(u >= 0.0)
+    assert(v >= 0.0)
     # x*f^u + y*f^v + w
     result = nops.mkadd([
         nops.mkmult([
@@ -86,7 +90,6 @@ basename = filename.split(".")[0]
 raw_data = common.load_raw_data(filename)
 data = common.process_raw_data(raw_data)
 max_n = 5
-
 print("=== Fit Data ===")
 X = raw_data['freqs']
 
@@ -96,9 +99,8 @@ if method == 'posy':
 else:
     raise Exception("unimpl")
 
-ph = phys.PhysicalModel()
+ph = phys.PhysicalModel(port)
 for brk in model['breaks']:
-    print("break: %d" % brk)
     ph.add_break(brk)
 
 ph.freeze()

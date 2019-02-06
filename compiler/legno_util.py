@@ -8,6 +8,7 @@ import os
 import time
 import json
 import shutil
+import numpy as np
 
 # TODO: in concrete specification, connection is made to same dest.
 def compile(board,problem):
@@ -264,7 +265,6 @@ def exec_skelter(hdacv2_board, args):
           continue
 
         with open("%s/%s" % (dirname,fname),'r') as fh:
-          print('<<<< %s >>>>' % fname)
           obj = json.loads(fh.read())
           conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                   obj)

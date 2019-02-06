@@ -276,24 +276,37 @@ class Config:
             yield port,delay
 
     def set_propagated_noise(self,port,noise):
+      assert(noise.is_posynomial())
       self._prop_noise[port] = noise
 
     def set_propagated_bias(self,port,bias):
-      self._prop_biases[port] = bias
+        if not (bias.is_posynomial()):
+            raise Exception("not posynomial: %s" % bias)
+
+        self._prop_biases[port] = bias
 
     def set_delay_mismatch(self,port,delay):
+      assert(delay.is_posynomial())
       self._mismatch_delays[port] = delay
 
     def set_propagated_delay(self,port,delay):
+      assert(delay.is_posynomial())
       self._prop_delays[port] = delay
 
     def set_generated_noise(self,port,noise):
+      if not (noise.is_posynomial()):
+          raise Exception("not posynomial: %s" % noise)
+
       self._gen_noise[port] = noise
 
     def set_generated_bias(self,port,bias):
+      if not (bias.is_posynomial()):
+          raise Exception("not posynomial: %s" % bias)
+
       self._gen_biases[port] = bias
 
     def set_generated_delay(self,port,delay):
+      assert(delay.is_posynomial())
       self._gen_delays[port] = delay
 
     def has_physical_model(self):

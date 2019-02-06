@@ -33,13 +33,14 @@ def gpkit_mult(expr):
   raise NotImplementedError
 
 def gpkit_value(val):
+
   if val > 0:
     return val
   # any terms with negative values is approximated as a flat line
   else:
     return -val
 
-def gpkit_ref_expr(jenv,varmap,circ,ival,expr,last_index=False):
+def gpkit_ref_expr(jenv,varmap,circ,expr,last_index=False):
   variables = expr.vars()
   result = 1.0
   for var in variables:
@@ -62,49 +63,47 @@ def gpkit_ref_expr(jenv,varmap,circ,ival,expr,last_index=False):
   return result
 
 
-def gpkit_expr(jenv,varmap,circ,ival,expr,refs,last_index=False):
+def gpkit_expr(jenv,varmap,circ,expr,refs,cstrs,nstdevs=3):
   def recurse(e):
-    return gpkit_expr(jenv,varmap,circ,ival,e,refs,last_index=False)
+    return gpkit_expr(jenv,varmap,circ,e,refs,cstrs,nstdevs)
 
-  if expr.op == nop.NOpType.ZERO:
-    return 0
-
-  # variables
-  elif expr.op == nop.NOpType.SIG:
+  if isinstance(expr,nop.NVar):
+    # variables
     block,loc = expr.instance
     port = expr.port
-    scvarname = jenv.get_scvar(block,loc,port)
-    scival = circ.config(block,loc).interval(port)
     expo = expr.power
-    result = (varmap[scvarname]*scival.bound)**expo
-    return result
+    config = circ.config(block,loc)
+    if expr.op == nop.NOpType.SIG:
+      scvarname = jenv.get_scvar(block,loc,port)
+      scival = config.interval(port)
+      result = (varmap[scvarname]*scival.bound)**expo
+      return result
 
-  elif expr.op == nop.NOpType.FREQ:
-    expo = expr.power
-    value = (ival.spread*circ.board.time_constant)**(expo+1)
-    value *= 1.0/(expo+1)
-    if last_index:
-      value *= varmap['tau']
-    return value
+    elif expr.op == nop.NOpType.FREQ:
+      # compute integral
+      fmax = circ.config(block,loc).bandwidth(port).bandwidth
+      frng = cstrs[(block,loc,port)]
+      fweight = (fmax-frng.lower)/frng.spread
+      fweight = 0.0 if fweight <= 0.0 else fweight
+      value = fweight*varmap['tau']**expo
+      return value
 
-  elif expr.op == nop.NOpType.REF:
-    block,loc = expr.instance
-    port = expr.port
-    return refs[(block,loc,port)]
+    elif expr.op == nop.NOpType.REF:
+      block,loc = expr.instance
+      port = expr.port
+      return refs[(block,loc,port)]
 
   # values
-  elif expr.op == nop.NOpType.CONST_VAL:
-    return gpkit_value(expr.mu)
-
   elif expr.op == nop.NOpType.CONST_RV:
-    return gpkit_value(expr.sigma)
+    return gpkit_value(expr.sigma*nstdevs+expr.mu)
 
   # expressions
   elif expr.op == nop.NOpType.MULT:
+    if not (expr.is_posynomial()):
+      raise Exception("not posynomial: %s" % expr)
     result = 1.0
-    expo = 1 if expr.is_posynomial() else -1
     for arg in expr.args():
-      result *= recurse(arg)**expo
+      result *= recurse(arg)
     return result
 
   elif expr.op == nop.NOpType.ADD:
@@ -119,10 +118,10 @@ def gpkit_expr(jenv,varmap,circ,ival,expr,refs,last_index=False):
 def compute_reference(varmap,jenv,circ, \
                       block_name,loc,port,model,refs,idx,method,
                       last_index=False):
-  ival,mean,variance = model.function(idx)
-  gpkit_mean = gpkit_ref_expr(jenv,varmap,circ,ival,mean, \
+  mean,variance = model.model(idx)
+  gpkit_mean = gpkit_ref_expr(jenv,varmap,circ,mean, \
                               last_index)
-  gpkit_variance = gpkit_ref_expr(jenv,varmap,circ,ival,variance, \
+  gpkit_variance = gpkit_ref_expr(jenv,varmap,circ,variance, \
                                   last_index)
   # compute signal
   scvarname = jenv.get_scvar(block_name,loc,port)
@@ -144,11 +143,12 @@ def compute_reference(varmap,jenv,circ, \
 def compute_objective(varmap,jenv,circ, \
                       block_name,loc,port,model,refs,idx,method,
                       last_index=False):
-  ival,mean,variance = model.function(idx)
-  gpkit_mean = gpkit_expr(jenv,varmap,circ,ival,mean,
-                          refs,last_index)
-  gpkit_variance = gpkit_expr(jenv,varmap,circ,ival,variance,
-                              refs,last_index)
+  mean,variance = model.model(idx)
+  cstrs = model.cstrs.constraints(idx)
+  gpkit_mean = gpkit_expr(jenv,varmap,circ,mean,
+                          refs,cstrs)
+  gpkit_variance = gpkit_expr(jenv,varmap,circ,variance,
+                              refs,cstrs)
   # compute signal
   scvarname = jenv.get_scvar(block_name,loc,port)
   scival = circ.config(block_name,loc).interval(port)
@@ -170,9 +170,10 @@ def compute(varmap,jenv,circ,models,ports,method='low-snr'):
   Jtau = varmap['tau']
   #for indices in itertools.product(*options):
   for indices in zip(*options):
-    cstrs = []
+    gpkit_cstrs = []
     objs = []
     refs = {}
+    # compute references for propagation
     for idx,model,(block_name,loc,port) \
         in zip(indices,models,ports):
       total_ref = 0
@@ -182,35 +183,37 @@ def compute(varmap,jenv,circ,models,ports,method='low-snr'):
         total_ref += ref
       refs[(block_name,loc,port)] = ref
 
+    # compute constraints
     for idx,model,(block_name,loc,port) \
         in zip(indices,models,ports):
-      config = circ.config(block_name,loc)
-      fmax = config.bandwidth(port).fmax
 
-      ival = model.interval(idx)
-      term = Jtau*fmax*time_constant
-      if not util.pos_inf(ival.upper):
-        cstrs.append(term <= ival.upper)
-      if ival.lower > 0:
-        cstrs.append(term >= ival.lower)
+      cstrs = model.cstrs.constraints(idx)
+      for (cstr_block,cstr_loc,cstr_port),ival in cstrs.items():
+        config = circ.config(cstr_block,cstr_loc)
+        fmax = config.bandwidth(cstr_port).fmax
+        term = Jtau*fmax*time_constant
+        if not util.pos_inf(ival.upper):
+          gpkit_cstrs.append(term <= ival.upper)
+        if ival.lower > 0:
+          gpkit_cstrs.append(term >= ival.lower)
 
-      total_obj = 0
+      gpkit_obj = 0
       for k in range(0,idx+1):
         obj = compute_objective(varmap,jenv,circ, \
                                 block_name,loc,port,model,refs,idx,method)
-        total_obj += obj
+        gpkit_obj += obj
 
-      if total_obj != 0:
-        objs.append(total_obj)
+      if gpkit_obj != 0:
+        objs.append(gpkit_obj)
 
 
     # minimizes function
-    final_obj = 0
+    gpkit_obj = 0
     for obj in objs:
-      final_obj += obj
+      gpkit_obj += obj
 
     # noise to signal ratio (NSR)
-    yield cstrs,final_obj
+    yield gpkit_cstrs,gpkit_obj
 
 
 def low_noise(circuit,jenv,varmap):

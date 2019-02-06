@@ -781,6 +781,9 @@ def mkmult(args):
       expos[hashv] += term.power
 
   for arg in args:
+    if not (arg.is_posynomial()):
+      raise Exception("mkmult: term not posy: %s" % arg)
+
     if arg.op == NOpType.ADD:
       sums.append(arg)
     elif arg.op == NOpType.MULT:
@@ -798,6 +801,7 @@ def mkmult(args):
   else:
     result = expr
 
+  assert(result.is_posynomial())
   #print("mkmult OLD:%s\n\nNEW:%s\n\n" % (args,result))
   #input()
   return result
@@ -820,6 +824,7 @@ def mkadd(args):
 
 
   for arg in args:
+    assert(arg.is_posynomial())
     if arg.op == NOpType.ADD:
       for term in arg.terms():
         add_term(term)
@@ -833,6 +838,7 @@ def mkadd(args):
     final_terms += [term.add_like_term(NConstRV(mu,std))]
 
   result = _wrap_add([],final_terms)
+  assert(result.is_posynomial())
   #print("mkadd OLD:%s\n\nNEW:%s\n\n" % (args,result))
   #input()
   return result

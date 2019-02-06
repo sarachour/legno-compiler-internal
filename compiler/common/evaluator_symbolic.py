@@ -49,15 +49,12 @@ class Evaluator:
       assert(not inst is None)
       port = var.port
       if var.op == nop.NOpType.FREQ:
-        print("freq %s[%s].%s" % (block,inst,port))
         bandwidth_dict[(block,inst,port)] = self.freq(block,inst,port)
 
       elif var.op == nop.NOpType.SIG:
-        print("sig %s[%s].%s" % (block,inst,port))
         interval_dict[(block,inst,port)] = self.interval(block,inst,port)
 
       elif var.op == nop.NOpType.REF:
-        print("ref %s[%s].%s" % (block,inst,port))
         value = self.reference(block,inst,port,tag)
         value = 0 if value is None else value
         ref_dict[(block,inst,port)] = nop.mkconst(value)
@@ -66,10 +63,6 @@ class Evaluator:
 
     expr.concretize(ref_dict)
 
-    print("ref: %s" % ref_dict)
-    print("bw: %s" % bandwidth_dict)
-    print("ival: %s" % interval_dict)
-    print("expr: %s" % expr)
     for (block,inst,port),bw in bandwidth_dict.items():
       assert((block,inst,port) in cstrs)
       fmax = bw.bandwidth
