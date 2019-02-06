@@ -229,11 +229,13 @@ def exec_graph(hdacv2_board, args):
           obj = json.loads(fh.read())
           conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                   obj)
-          for method in ['interval','scaled-interval', \
+          methods = ['interval','scaled-interval', \
                          'gen-delay','prop-delay', \
                          'scale-factor','delay-mismatch', \
                          'gen-noise','prop-noise',\
-                         'gen-bias','prop-bias']:
+                         'gen-bias','prop-bias']
+
+          for method in methods:
 
             filename = path_handler.skelt_graph_file(circ_bmark,
                                                      circ_indices,
@@ -262,6 +264,7 @@ def exec_skelter(hdacv2_board, args):
           continue
 
         with open("%s/%s" % (dirname,fname),'r') as fh:
+          print('<<<< %s >>>>' % fname)
           obj = json.loads(fh.read())
           conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                   obj)

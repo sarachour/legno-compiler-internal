@@ -37,10 +37,11 @@ class Evaluator:
   def set_reference(self,block_name,loc,port,tag,expr):
     self._refs[(block_name,loc,port,tag)] = expr
 
-  def evaluate_expr(self,block_name,loc,port,expr,tag):
+  def evaluate_expr(self,block_name,loc,port,cstrs,expr,tag):
     variables = expr.vars()
     interval_dict = {}
     bandwidth_dict = {}
+    freq_dict = {}
     ref_dict = {}
     for var in variables:
       block,inst = var.instance
@@ -58,17 +59,37 @@ class Evaluator:
       elif var.op == nop.NOpType.REF:
         print("ref %s[%s].%s" % (block,inst,port))
         value = self.reference(block,inst,port,tag)
-        if value is None:
-          value = 0
-        ref_dict[(block,inst,port)] = nop.NConstVal(value)
+        value = 0 if value is None else value
+        ref_dict[(block,inst,port)] = nop.mkconst(value)
       else:
         raise Exception("unknown")
 
     expr.concretize(ref_dict)
-    result = expr.compute(bandwidth_dict, \
-                        interval_dict)
+
+    print("ref: %s" % ref_dict)
+    print("bw: %s" % bandwidth_dict)
+    print("ival: %s" % interval_dict)
+    print("expr: %s" % expr)
+    for (block,inst,port),bw in bandwidth_dict.items():
+      assert((block,inst,port) in cstrs)
+      fmax = bw.bandwidth
+      frng = cstrs[(block,inst,port)]
+      if frng.contains_value(fmax):
+        freq_dict[(block,inst,port)] = interval.Interval \
+                                               .type_infer(frng.lower,fmax)
+      elif fmax > frng.upper:
+        freq_dict[(block,inst,port)] = frng
+
+      else:
+        return None
+
+    result = expr.compute(freq_dict, \
+                          interval_dict,integral=True)
     assert(not result is None)
-    return result
+    if result.spread == 0:
+      return result
+    else:
+      return result
 
   def _evaluate_port(self,block_name,loc,port):
     config = self.circ.config(block_name,loc)
@@ -83,25 +104,24 @@ class Evaluator:
     freq = self.freq(block_name,loc,port).fmax
     res_mean = interval.Interval.zero()
     res_variance = interval.Interval.zero()
-    for freq_range,mean,variance in model.functions():
-      if freq < freq_range.lower:
-        self.set_reference(block_name,loc,port,'mean',
-                           res_mean.bound)
-        self.set_reference(block_name,loc,port,'variance',\
-                           res_variance.bound)
-        return res_mean,res_variance
-
-      this_mean = self.evaluate_expr(block_name,loc,port, \
+    for constraints,mean,variance in model.models():
+      this_mean = self.evaluate_expr(block_name,loc,port,constraints, \
                                      mean,'mean')
-      this_variance = self.evaluate_expr(block_name,loc,port, \
+      this_variance = self.evaluate_expr(block_name,loc,port,constraints, \
                                          variance,'variance')
+
+      if this_mean is None or this_variance is None:
+        continue
+
       res_mean = res_mean.add(this_mean)
       res_variance = res_variance.add(this_variance)
 
+    fmax = self.freq(block_name,loc,port).bandwidth
+    fmax = 1.0 if fmax == 0.0 else fmax
     self.set_reference(block_name,loc,port,'mean',
-                       res_mean.bound)
+                       res_mean.bound/fmax)
     self.set_reference(block_name,loc,port,'variance',\
-                       res_variance.bound)
+                       res_variance.bound/fmax)
 
 
   def _evaluate(self):
@@ -175,7 +195,7 @@ def configure_propagated_delay(model):
     for arg in e.args():
       configure(arg)
 
-  for _,m,v in model.functions():
+  for _,m,v in model.models():
     configure(m)
     configure(v)
 
@@ -194,7 +214,7 @@ def configure_mismatch(model):
     for arg in e.args():
       configure(arg,mismatch=new_mismatch)
 
-  for _,m,v in model.functions():
+  for _,m,v in model.models():
     configure(m)
     configure(v)
 

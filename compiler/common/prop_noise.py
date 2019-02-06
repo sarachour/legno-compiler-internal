@@ -39,5 +39,5 @@ class PropNoiseVisitor(SymbolicInferenceVisitor):
 
 def compute(circ):
   fn = lambda : PropNoiseVisitor(circ).all()
+  #util.profile(fn)
   fn()
-

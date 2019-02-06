@@ -125,7 +125,7 @@ class CircShader(Shader):
     if m is None:
       return Shader.ERROR,"skip"
     else:
-      return m,self.normal_label(m,v)
+      return m+v,self.normal_label(m,v)
 
 class GenericShader(Shader):
 

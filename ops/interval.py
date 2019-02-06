@@ -66,6 +66,10 @@ class Interval:
       else:
         return IRange(lb,ub)
 
+    def contains_value(self,value):
+        return value <= self.upper and \
+            value >= self.lower
+
     def contains(self,child):
         if child.lower >= self.lower and \
            child.upper <= self.upper:
@@ -91,6 +95,13 @@ class Interval:
         diff1 = abs(i2.lower - self.lower)
         diff2 = abs(i2.upper - self.upper)
         return max(diff1,diff2)
+
+    def power(self,v):
+        if v == 1.0:
+            return self
+        else:
+            print(v)
+            raise Exception("?")
 
     def add(self,i2):
          vals = [
@@ -138,13 +149,16 @@ class Interval:
 
 class IValue(Interval):
 
-  def __init__(self,value):
-    self._value = value
-    Interval.__init__(self,value,value)
+    def __init__(self,value):
+        self._value = value
+        Interval.__init__(self,value,value)
 
     @property
     def value(self):
-      return self._value
+        return self._value
+
+    def power(self,v):
+        return IValue(self.value**v)
 
     def __iter__(self):
       yield self.lower
