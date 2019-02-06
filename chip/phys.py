@@ -65,11 +65,16 @@ class PhysicalModelStump:
 
 class PhysicalModel:
 
-  def __init__(self):
+  def __init__(self,port):
     # stumps, indexed by starting breakpoint
     self._stumps = {}
     self._breakpoints = []
     self._freeze = False
+    self._port = port
+
+  @property
+  def port(self):
+    return self._port
 
   def freeze(self):
     self._freeze = True
@@ -96,12 +101,13 @@ class PhysicalModel:
 
     return {
       'breakpoints': list(self._breakpoints),
-      'stumps': stumpdict
+      'stumps': stumpdict,
+      'port': self._port
     }
 
   @staticmethod
   def from_json(obj):
-    phys = PhysicalModel()
+    phys = PhysicalModel(obj['port'])
     for breakpt in obj['breakpoints']:
       phys.add_break(breakpt)
 
@@ -133,6 +139,7 @@ class PhysicalModel:
     self._breakpoints = other._breakpoints
     self._stumps = other._stumps
     self._freeze = other._freeze
+    self._port = other._port
 
   def stumps(self):
     minf = 0

@@ -142,7 +142,7 @@ class Block:
         ddict = self._make_scale_dict(comp_mode,scale_mode, \
                                     self._physical)
         if not output in ddict:
-            ddict[output] = phys.PhysicalModel()
+            ddict[output] = phys.PhysicalModel(output)
 
         return ddict[output]
 
