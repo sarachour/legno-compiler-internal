@@ -2,6 +2,7 @@ import ops.op as op
 import numpy as np
 import ops.interval as interval
 import compiler.common.evaluator_symbolic as evaluator
+from compiler.common import prop_noise, prop_bias, prop_delay
 
 def compute_snr(nz_eval,circ,block_name,loc,port):
   config = circ.config(block_name,loc)

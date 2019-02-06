@@ -89,6 +89,7 @@ class AnalyticalModelManager:
 def build_manager():
     mgr = AnalyticalModelManager()
 
+    '''
     am = AnalyticalModel('adc0',1,1)
     am.scriptgen.bind_expr(0,'inp0*0.6534')
     am.scriptgen.bind_iface(0,lambda f: "set_due_dac_values 0 %s" % f)
@@ -147,5 +148,6 @@ def build_manager():
     am.scriptgen.set_getter(0,
                        lambda name: 'get_osc_values direct %s' % name)
     mgr.register(am)
+    '''
 
     return mgr
