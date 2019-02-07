@@ -8,9 +8,6 @@ class ScriptGenerator:
         self._iface = {}
         self._prog = {'preamble':{},'config':{},'getter':{}}
 
-    def bind_expr(self,idx,expr):
-        self._rels[idx] = expr
-
     def bind_iface(self,idx,iface):
         self._iface[idx] = (iface)
 
@@ -23,38 +20,65 @@ class ScriptGenerator:
     def set_preamble(self,idx,preamble):
         self._prog['preamble'][idx] = preamble
 
+    def default_preamble(self):
+        return lambda sim_time: ['reset',
+                                 'micro_use_due_dac 0',
+                                 'osc_set_volt_range 0 -1.5 2.5',
+                                 'osc_set_volt_range 1 -1.5 2.5',
+                                 'osc_set_sim_time %f' % sim_time
+                                 'micro_set_sim_time %f %f' % (sim_time,sim_time),
+                                 'micro_compute_offsets',
+                                 'micro_get_num_adc_samples',
+                                 'micro_get_num_dac_samples',
+                                 'micro_get_time_delta',
+                                 'micro_use_chip',
+                                 'osc_setup_trigger'
+                              ]
+
+    def default_posthook(self):
+        return lambda : [
+            'micro_get_overflows',
+            'micro_teardown_chip'
+        ]
+
     def generate(self,sim_time,input_period,ins,out,paths):
         prog = []
         def q(stmt):
             prog.append(stmt)
 
         q('reset')
-        q('set_ref_func %s' % self._rels[out])
-        q('set_sim_time %f %f' % (sim_time,input_period))
+        q('micro_set_sim_time %f %f' % (sim_time,input_period))
         q('get_num_adc_samples')
         q('get_num_dac_samples')
         q('get_time_between_samples')
         q('use_osc')
-        preamble = self._prog['preamble'][out]
+        if out in self._prog['preamble']:
+            preamble = self._prog['preamble'][out]
+        else:
+            preamble = self.default_preamble()
+
         getter = self._prog['getter'][out]
         config = self._prog['config'][out] \
                if out in self._prog['config'] else None
 
-        prog += preamble
-        q('compute_offsets')
+        for stmt in preamble(sim_time):
+            q(stmt)
+
         for inp,iface_fn in self._iface.items():
             q(iface_fn(ins[inp]))
 
-
         if not config is None:
-            q('use_chip')
             for stmt in config:
                 q(stmt)
 
-        for path in paths:
+        for idx,path in enumerate(paths):
             # run experiment
             q('run')
             q(getter(path))
+            if idx == len(paths) - 1:
+                for stmt in self.default_posthook():
+                    q(stmt)
+
             yield prog
             prog = []
 
@@ -89,6 +113,16 @@ class AnalyticalModelManager:
 def build_manager():
     mgr = AnalyticalModelManager()
 
+    am = AnalyticalModel('adc0',1,1)
+    am.scriptgen.bind_iface(0,lambda f: "set_due_dac_values 0 %s" % f)
+    am.scriptgen.set_config(0,
+                       ['mkconn chip_input 0 3 2 chip_output 0 3 2'])
+    am.scriptgen.set_getter(0,
+                            lambda args: 'get_osc_values differential 0 1 %s %s' \
+                            % (args[0],args[1]))
+    mgr.register(am)
+
+    '''
     am = AnalyticalModel('adc0',1,1)
     am.scriptgen.bind_expr(0,'inp0*0.6534')
     am.scriptgen.bind_iface(0,lambda f: "set_due_dac_values 0 %s" % f)
@@ -147,5 +181,6 @@ def build_manager():
     am.scriptgen.set_getter(0,
                        lambda name: 'get_osc_values direct %s' % name)
     mgr.register(am)
+    '''
 
     return mgr

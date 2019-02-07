@@ -79,7 +79,7 @@ Install pip3
 
 The Legno compiler requires `python3` and `pip3`. Install the dependences with the following command:
 
-      pip3 install matplotlib scipy numpy pwlf networkx cvxopt
+      pip3 install matplotlib scipy numpy pwlf networkx cvxopt colorlover
       
 You need the the following `lab-bench` dependencies for the compiler to interface nicely with the lab bench tooling:
 
@@ -119,3 +119,9 @@ Figure out what thet name of your usb device. If it's `ttyACM0`, then use the `-
 - Legno currently does not use the LUT component in its configurations.
 - Legno makes use of a hardware specification of the HCDC hardware for compilation (`chip/hcdc.py`).
 - make sure all benchmarks/hardware environments/math environments are one word, no spaces or special characters.
+
+# Installing Moira Dependencies
+
+Install the following packages
+
+      pip3 install tinydb

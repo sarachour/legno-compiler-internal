@@ -333,7 +333,7 @@ class NConstRV(NOp):
     self._mu = mu
 
   def is_posynomial(self):
-    return self._mu-self._sigma >= 0.0
+    return self._mu >= 0.0 and self._sigma >= 0.0
 
   def add_like_term(self,rv):
     return NConstRV(self.mu + rv.mu,
@@ -781,7 +781,7 @@ def mkmult(args):
       expos[hashv] += term.power
 
   for arg in args:
-    if not (arg.is_posynomial()):
+    if not (arg.is_posynomial()) and not arg.is_zero():
       raise Exception("mkmult: term not posy: %s" % arg)
 
     if arg.op == NOpType.ADD:
