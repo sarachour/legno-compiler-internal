@@ -15,6 +15,7 @@ class AOpType(Enum):
     INTEG = "integ"
     EMIT = "emit"
     EXTVAR = "ev"
+    SPECIAL = "special"
 
 class AOp:
 
@@ -274,10 +275,18 @@ class AInteg(AOp):
 
 class AFunc(AOp):
 
-    def __init__(self,kind,inputs):
+    def __init__(self,kind,inputs,expr=None):
         AOp.__init__(self,kind,inputs)
+        self._expr = expr
 
     def make(self,inputs):
         return AFunc(self._op,inputs)
+
+
+
+    def __repr__(self):
+        argstr = " ".join(map(lambda x: str(x), self._inputs))
+        funstr = str(self._expr)
+        return "(%s %s {%s})" % (self.label(),argstr,funstr)
 
 

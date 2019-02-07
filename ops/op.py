@@ -604,6 +604,14 @@ class Call(Op):
         Op.__init__(self,OpType.CALL,[self._expr])
         assert(expr.op == OpType.FUNC)
 
+    @property
+    def func(self):
+        return self._func
+
+    @property
+    def values(self):
+        for v in self._params:
+            yield v
 
     def concretize(self):
         return self._expr
@@ -628,6 +636,7 @@ class Func(Op):
         self._expr = expr
         self._vars = params
 
+   
     def apply(self,values):
         assert(len(values) == len(self._vars))
         assigns = dict(zip(self._vars,values))
