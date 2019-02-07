@@ -320,6 +320,19 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
         expr2 = bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr.arg2)
         return jop.JMult(expr1,expr2)
 
+    elif expr.op == ops.OpType.SGN:
+        bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr.arg(0))
+        return jop.JConst(1.0)
+
+    elif expr.op == ops.OpType.ABS:
+        expr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr.arg(0))
+        return expr
+
+    elif expr.op == ops.OpType.SQRT:
+        expr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr.arg(0))
+        return jop.expo(expr,0.5)
+
+
     elif expr.op == ops.OpType.INTEG:
         # derivative and ic are scaled simialrly
         scexpr_ic = bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr.init_cond)
@@ -376,7 +389,8 @@ def bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr):
 def bp_generate_problem(jenv,circ,quantize_signals=5):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
-        for out,expr in block.dynamics(config.comp_mode,config.scale_mode):
+        for out in block.outputs:
+            expr = config.dynamics(block,out)
             print("%s=%s" % (out,expr))
             bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr)
 

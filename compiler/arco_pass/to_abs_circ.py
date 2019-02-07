@@ -1,4 +1,5 @@
 import ops.aop as aop
+import ops.op as op
 import chip.abs as acirc
 import lab_bench.lib.chip_command as chipcmd
 import itertools
@@ -145,7 +146,11 @@ def to_abs_circ(board,ast):
             dac_node = acirc.ANode.make_node(board,'tile_dac')
             adc_node = acirc.ANode.make_node(board,'tile_adc')
             lut_node = acirc.ANode.make_node(board,'lut')
-            lut_node.config.set_expr(ast.expr)
+            assert(not ast.expr is None)
+            lut_node.config.set_expr("out", \
+                                     op.Call([op.Var('in')],ast.expr).concretize())
+            for node in [dac_node,adc_node,lut_node]:
+                node.config.set_comp_mode("*")
             acirc.ANode.connect(in_node,in_port,adc_node,'in')
             acirc.ANode.connect(adc_node,'out',lut_node,'in')
             acirc.ANode.connect(lut_node,'out',dac_node,'in')

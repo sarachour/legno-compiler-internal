@@ -9,12 +9,12 @@ block = Block("lut") \
            .add_inputs(props.DIGITAL,["in"]) \
            .add_outputs(props.DIGITAL,["out"])
 
-mode = "*"
-block.set_props(mode,"*",["in","out"],  \
+
+block.set_scale_modes("*",["*"])
+block.set_props("*","*",["in","out"],  \
                 util.make_dig_props(chipcmd.RangeType.MED,\
                                     glb.DAC_MIN,
                                     glb.DAC_MAX)) \
-     .set_scale_modes(mode,["*"])
 
-block.set_op(mode,"out",ops.Func(["in"],None)) \
+block.set_op("*","out",ops.Func(["in"],None)) \
 .check()

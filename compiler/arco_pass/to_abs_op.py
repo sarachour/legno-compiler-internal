@@ -56,7 +56,8 @@ def make_abstract(ast):
 
     elif ast.op == mop.OpType.CALL:
       values = list(map(lambda v: make_abstract(v),ast.values))
-      return aop.AFunc(aop.AOpType.SPECIAL, values, ast.func)
+      assert(not ast.func is None)
+      return aop.AFunc(aop.AOpType.SPECIAL, values, expr=ast.func)
     else:
         raise Exception(ast)
 

@@ -280,7 +280,7 @@ class AFunc(AOp):
         self._expr = expr
 
     def make(self,inputs):
-        return AFunc(self._op,inputs)
+        return AFunc(self._op,inputs,self._expr)
 
 
 

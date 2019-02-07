@@ -2,6 +2,7 @@ from enum import Enum
 from ops.interval import Interval
 from ops.bandwidth import Bandwidth
 from compiler.common.visitor_symbolic import PiecewiseSymbolicModel
+from ops.op import Op
 
 class Labels(Enum):
     CONST_INPUT = 'const-inp';
@@ -31,16 +32,29 @@ class Config:
         self._prop_noise = {}
         self._gen_biases = {}
         self._prop_biases = {}
-        self._expr = None
+        self._exprs = {}
 
-    def set_expr(self,expr):
-        self._expr = expr
+    def set_expr(self,port,expr):
+        self._exprs[port] = expr
+
+    def expr(self,port):
+        return self._exprs[port]
+
+    def has_expr(self,port):
+        return port in self._exprs
 
     def dynamics(self,block,port):
       assert(not self._comp_mode is None)
       assert(not self._scale_mode is None)
-      return block.get_dynamics(self._comp_mode,port, \
-                                scale_mode=self._scale_mode)
+      if not self.has_expr(port):
+        return block.get_dynamics(self._comp_mode,port, \
+                                    scale_mode=self._scale_mode)
+      else:
+        expr = self.expr(port)
+        comp_mode = self._comp_mode
+        scale_mode = self._scale_mode
+        coeff = block.coeff(comp_mode,scale_mode,port)
+        return block.scaled_dynamics(comp_mode,scale_mode,port,expr)
 
     def physical(self,block,port,handle=None):
       assert(not self._comp_mode is None)
@@ -69,8 +83,6 @@ class Config:
         cfg._scale_mode = obj['scale-mode']
         if isinstance(cfg._scale_mode, list):
             cfg._scale_mode = tuple(cfg._scale_mode)
-
-        cfg._expr = Op.from_json(obj['expr'])
 
         def get_port_dict(data,topobj,objkey,fn=lambda x: x):
             if not objkey in topobj:
@@ -101,6 +113,8 @@ class Config:
                              lambda v: Interval.from_json(v))
         get_port_handle_dict(cfg._bandwidths, obj, 'bandwidths', \
                              lambda v: Bandwidth.from_json(v))
+        get_port_dict(cfg._exprs, obj, 'exprs', \
+                      lambda v: Op.from_json(v))
         get_port_dict(cfg._gen_noise, obj, 'gen-noise', \
                       lambda v: PiecewiseSymbolicModel.from_json(v))
         get_port_dict(cfg._prop_noise, obj, 'prop-noise', \
@@ -120,8 +134,6 @@ class Config:
         cfg = {}
         cfg['compute-mode'] = self._comp_mode
         cfg['scale-mode'] = self._scale_mode
-        cfg['expr'] = self._expr.to_json() \
-                      if not self._expr is None else None
 
         def set_port_dict(key,data,fn=lambda x: x):
             cfg[key] = {}
@@ -148,6 +160,8 @@ class Config:
         set_port_handle_dict('bandwidths', self._bandwidths, \
                              lambda value: value.to_json())
 
+        set_port_dict('exprs',self._exprs,
+                      lambda value: value.to_json())
         set_port_dict('gen-noise',self._gen_noise,
                       lambda value: value.to_json())
         set_port_dict('prop-noise',self._prop_noise,
@@ -174,6 +188,7 @@ class Config:
       cfg._intervals = dict(self._intervals)
       cfg._bandwidths = dict(self._bandwidths)
       cfg._op_ranges = dict(self._op_ranges)
+      cfg._exprs = dict(self._exprs)
       return cfg
 
     @property

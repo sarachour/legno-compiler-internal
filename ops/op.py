@@ -107,6 +107,32 @@ class Op:
 
         return vars
 
+    def to_json(self):
+      args = list(map(lambda arg: arg.to_json(), \
+                      self._args))
+      return {
+        'op': self.op.value,
+        'args': args
+      }
+
+    @staticmethod
+    def from_json(obj):
+        op = OpType(obj['op'])
+        if op == OpType.VAR:
+            return Var.from_json(obj)
+        elif op == OpType.FUNC:
+            return Func.from_json(obj)
+        elif op == OpType.MULT:
+            return Mult.from_json(obj)
+        elif op == OpType.SGN:
+            return Sgn.from_json(obj)
+        elif op == OpType.ABS:
+            return Abs.from_json(obj)
+        elif op == OpType.SQRT:
+            return Sqrt.from_json(obj)
+        else:
+            raise Exception("unimpl: %s" % obj)
+
     def match_op(self,expr):
         if expr.op == self._op:
             return True,False,[zip(self._args,expr.args)]
@@ -327,6 +353,11 @@ class ExtVar(Op):
         assert(self._name in bandwidths)
         return bandwidth.BandwidthCollection(bandwidths[self._name])
 
+    @staticmethod
+    def from_json(obj):
+        return ExtVar(obj['name'])
+
+
     @property
     def name(self):
         return self._name
@@ -338,6 +369,10 @@ class ExtVar(Op):
         return "(%s %s)" % \
             (self._op.value,self._name)
 
+    def to_json(self):
+        obj = Op.to_json(self)
+        obj['name'] = self._name
+        return obj
 
 class Var(Op):
 
@@ -354,9 +389,19 @@ class Var(Op):
     def prod_terms(self):
         return [self]
 
+    def to_json(self):
+        obj = Op.to_json(self)
+        obj['name'] = self._name
+        return obj
+
+
     def __repr__(self):
         return "(%s %s)" % \
             (self._op.value,self._name)
+
+    @staticmethod
+    def from_json(obj):
+        return Var(obj['name'])
 
     @property
     def name(self):
@@ -484,6 +529,11 @@ class Mult(Op2):
         Op2.__init__(self,OpType.MULT,[arg1,arg2])
         pass
 
+
+    @staticmethod
+    def from_json(obj):
+        return Mult(Op.from_json(obj['args'][0]),
+                    Op.from_json(obj['args'][1]))
 
     def coefficient(self):
         return self.arg1.coefficient()*self.arg2.coefficient()
@@ -625,6 +675,16 @@ class Call(Op):
     def compute_interval(self,ivals):
         return self.concretize().compute_interval(ivals)
 
+    def to_json(self):
+        obj = Op.to_json(self)
+        pars = []
+        for par in self._params:
+            pars.append(par.to_json())
+        obj['expr'] = self._expr.to_json()
+        obj['values'] = pars
+        return obj
+
+
     def __repr__(self):
         pars = " ".join(map(lambda p: str(p), self._params))
         return "call %s %s" % (pars,self._func)
@@ -636,7 +696,18 @@ class Func(Op):
         self._expr = expr
         self._vars = params
 
-   
+    def to_json(self):
+        obj = Op.to_json(self)
+        obj['expr'] = self._expr.to_json()
+        obj['vars'] = self._vars
+        return obj
+
+    @staticmethod
+    def from_json(obj):
+        expr = Op.from_json(obj['expr'])
+        varnames = obj['vars']
+        return Func(list(varnames),expr)
+
     def apply(self,values):
         assert(len(values) == len(self._vars))
         assigns = dict(zip(self._vars,values))
@@ -651,6 +722,11 @@ class Abs(Op):
     def __init__(self,arg):
         Op.__init__(self,OpType.ABS,[arg])
         pass
+
+    @staticmethod
+    def from_json(obj):
+        return Abs(Op.from_json(obj['args'][0]))
+
 
     def substitute(self,args):
         return Abs(self.arg(0).substitute(args))
@@ -674,6 +750,10 @@ class Sgn(Op):
     def __init__(self,arg):
         Op.__init__(self,OpType.SGN,[arg])
         pass
+
+    @staticmethod
+    def from_json(obj):
+        return Sgn(Op.from_json(obj['args'][0]))
 
     def substitute(self,assigns):
         return Sgn(self.arg(0).substitute(assigns))
@@ -729,6 +809,11 @@ class Sqrt(Op):
     def __init__(self,arg):
         Op.__init__(self,OpType.SQRT,[arg])
         pass
+
+
+    @staticmethod
+    def from_json(obj):
+        return Sqrt(Op.from_json(obj['args'][0]))
 
 
     # bandwidth is infinite if number is ever negative

@@ -79,3 +79,11 @@ class JMult(JOp):
         return c1*c2,JMult(x1,x2)
 
 
+
+def expo(jexpr, factor):
+    if jexpr.op == JOpType.CONST:
+        return JConst(jexpr.value**factor)
+    elif jexpr.op == JOpType.VAR:
+        return JVar(jexpr.name,jexpr.exponent*factor)
+    else:
+        raise Exception("exponentiate: not-impl %s" % jexpr)

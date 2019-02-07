@@ -123,6 +123,14 @@ class Block:
         else:
             return expr
 
+
+    def scaled_dynamics(self,comp_mode,scale_mode,output,expr):
+        if scale_mode is None:
+            return expr
+
+        return self._wrap_coeff(self.coeff(comp_mode,scale_mode,output), \
+                                self._perform_scale(comp_mode,scale_mode,output,expr))
+
     def get_dynamics(self,comp_mode,output,scale_mode=None):
         copy_data = self._get_comp_dict(comp_mode,self._copies)
         op_data = self._get_comp_dict(comp_mode,self._ops)
@@ -130,11 +138,7 @@ class Block:
             output = copy_data[output]
 
         expr = op_data[output]
-        if scale_mode is None:
-            return expr
-
-        return self._wrap_coeff(self.coeff(comp_mode,scale_mode,output), \
-                                self._perform_scale(comp_mode,scale_mode,output,expr))
+        return self.scaled_dynamics(comp_mode,scale_mode,output,expr)
 
 
     def physical(self,comp_mode,scale_mode,output):
