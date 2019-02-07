@@ -1,10 +1,10 @@
 import chip.units as units
 
 class Properties:
-    CURRENT = 0
-    VOLTAGE = 1
-    DIGITAL = 2
-    ANALOG = 3
+    CURRENT = 'current'
+    VOLTAGE = 'voltage'
+    DIGITAL = 'digital'
+    ANALOG = 'analog'
 
     def __init__(self,typ):
         typ = Properties.ANALOG if Properties.is_analog(typ) else typ

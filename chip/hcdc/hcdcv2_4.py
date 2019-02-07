@@ -1,4 +1,3 @@
-from chip.hcdc.lut import block as multifun
 from chip.hcdc.integ import block as integ
 from chip.hcdc.mult import block as mult
 from chip.hcdc.crossbar import tile_in, tile_out, \
@@ -9,6 +8,7 @@ from chip.hcdc.extern import block_out as ext_chip_out
 from chip.hcdc.io import dac as tile_dac
 from chip.hcdc.io import adc as tile_adc
 from chip.hcdc.fanout import block as fanout
+from chip.hcdc.lut import block as lut
 
 import chip.hcdc.globals as glb
 from chip.board import Board
@@ -30,6 +30,7 @@ def test_board(board):
 
 
 def connect(hw,scope1,block1,scope2,block2,negs=[]):
+    count = 0
     for loc1 in hw.block_locs(scope1,block1.name):
         for loc2 in hw.block_locs(scope2,block2.name):
             for outport in block1.outputs:
@@ -39,6 +40,10 @@ def connect(hw,scope1,block1,scope2,block2,negs=[]):
                     if outprop == inprop:
                         hw.conn(block1.name,loc1,outport,
                                 block2.name,loc2,inport)
+                        count += 1
+
+    if count == 0:
+        print("no connections made: %s to %s" % (block1.name,block2.name))
 
 def connect_adj_list(hw,block1,block2,adjlist):
     for loc1,loc2,sign in adjlist:
@@ -78,7 +83,7 @@ def make_board():
                     and (slice_no == 2 or slice_no == 3)
 
     hw = Board("HDACv2",Board.CURRENT_MODE)
-    hw.add([multifun,integ,tile_dac,tile_adc,mult,fanout] + \
+    hw.add([lut,integ,tile_dac,tile_adc,mult,fanout] + \
            [tile_in,tile_out,chip_in,chip_out,inv_conn] + \
            [ext_chip_in,ext_chip_out])
 
@@ -204,8 +209,12 @@ def make_board():
                 for block1 in [tile_out]:
                     for block2 in [tile_in]:
                         connect(hw,tile1_layer,block1,tile2_layer,block2)
+
+        # connect components in each tile
         for tile_no in range(0,n_tiles):
             tile_layer = chip_layer.layer(tile_no)
+
+            # compute
             for block1 in [mult,integ,fanout,tile_dac,tile_in]:
                 for block2 in [mult,integ,fanout,tile_adc,tile_out]:
                     # FIXME: connect all to all
@@ -221,12 +230,12 @@ def make_board():
 
 
             for block1 in [tile_adc]:
-                for block2 in [multifun]:
+                for block2 in [lut]:
                     #FIXME: connect all to all
                     connect(hw,tile_layer,block1,tile_layer,block2)
 
 
-            for block1 in [multifun]:
+            for block1 in [lut]:
                 for block2 in [tile_dac]:
                     #FIXME: connect all to all
                     connect(hw,tile_layer,block1,tile_layer,block2)

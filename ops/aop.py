@@ -284,6 +284,11 @@ class AFunc(AOp):
 
 
 
+    @property
+    def expr(self):
+        return self._expr
+
+
     def __repr__(self):
         argstr = " ".join(map(lambda x: str(x), self._inputs))
         funstr = str(self._expr)

@@ -41,7 +41,8 @@ class ANode:
 
             nn = self._map[node.id]
             assert(not nn is None)
-            assert(str(nn) == str(node))
+            if not (str(nn) == str(node)):
+                raise Exception("not equal:\n%s\n\n%s\n\n" % (str(nn),str(node)))
             return nn
 
     def __init__(self):

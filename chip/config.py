@@ -31,6 +31,10 @@ class Config:
         self._prop_noise = {}
         self._gen_biases = {}
         self._prop_biases = {}
+        self._expr = None
+
+    def set_expr(self,expr):
+        self._expr = expr
 
     def dynamics(self,block,port):
       assert(not self._comp_mode is None)
@@ -65,6 +69,8 @@ class Config:
         cfg._scale_mode = obj['scale-mode']
         if isinstance(cfg._scale_mode, list):
             cfg._scale_mode = tuple(cfg._scale_mode)
+
+        cfg._expr = Op.from_json(obj['expr'])
 
         def get_port_dict(data,topobj,objkey,fn=lambda x: x):
             if not objkey in topobj:
@@ -114,6 +120,8 @@ class Config:
         cfg = {}
         cfg['compute-mode'] = self._comp_mode
         cfg['scale-mode'] = self._scale_mode
+        cfg['expr'] = self._expr.to_json() \
+                      if not self._expr is None else None
 
         def set_port_dict(key,data,fn=lambda x: x):
             cfg[key] = {}

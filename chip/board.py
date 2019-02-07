@@ -241,11 +241,13 @@ class Board(Layer):
         assert(skey in self._key_to_pos)
         assert(dkey in self._key_to_pos)
         if not self._routes.has_node((sblk,skey,sport)):
-            raise Exception("source <%s.%s.%s> not in board" % \
-                            (sblk,skey,sport))
+            insts = list(self.instances_of_block(sblk))
+            raise Exception("find_routes: source <%s.%s.%s> not in board [%d insts]" % \
+                            (sblk,skey,sport, len(insts)))
 
         if not self._routes.has_node((dblk,dkey,dport)):
-            raise Exception("dest <%s.%s.%s> not in board" % \
+            insts = list(self.instances_of_block(dblk))
+            raise Exception("find_routes: dest <%s.%s.%s> not in board" % \
                             (dblk,dkey,dport))
 
 

@@ -139,5 +139,16 @@ def to_abs_circ(board,ast):
             acirc.ANode.connect(in_node,in_port,node,"in")
             yield node,"out"
 
+    elif ast.op == aop.AOpType.SPECIAL:
+        assert(len(ast.inputs) == 1)
+        for in_node, in_port in to_abs_circ(board,ast.input(0)):
+            dac_node = acirc.ANode.make_node(board,'tile_dac')
+            adc_node = acirc.ANode.make_node(board,'tile_adc')
+            lut_node = acirc.ANode.make_node(board,'lut')
+            lut_node.config.set_expr(ast.expr)
+            acirc.ANode.connect(in_node,in_port,adc_node,'in')
+            acirc.ANode.connect(adc_node,'out',lut_node,'in')
+            acirc.ANode.connect(lut_node,'out',dac_node,'in')
+            yield dac_node,'out'
     else:
         raise Exception("unsupported: %s" % ast)
