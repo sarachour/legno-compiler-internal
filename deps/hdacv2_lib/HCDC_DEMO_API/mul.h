@@ -8,8 +8,9 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 		);
     bool setGainDirect (
                         float gain,// floating point representation of desired gain
-                        bool hirange
-    );
+                        bool hirange,
+                        bool setBias
+                        );
     bool setGain (
 			float gain // floating point representation of desired gain
 			// -100.0 to 100.0 are valid

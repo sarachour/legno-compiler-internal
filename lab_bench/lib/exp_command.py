@@ -395,7 +395,7 @@ class MicroSetDACValuesCmd(ArduinoCommand):
 
     def execute_write_op(self,state,buf,offset):
         self._args = (buf,offset)
-        resp = self.execute(state,{'raw_data':buf})
+        resp = ArduinoCommand.execute_command(self,state,raw_data=buf)
         return resp
 
     def compute_value(self,state,idx):

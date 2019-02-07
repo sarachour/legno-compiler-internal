@@ -32,6 +32,7 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 			bool hiRange // 20 uA mode
 		);
 		unsigned char getData () const;
+		unsigned char getStatusCode() const;
 		bool getException() const;
 	private:
 		class AdcIn;

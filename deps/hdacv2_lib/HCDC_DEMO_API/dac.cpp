@@ -79,10 +79,13 @@ void Fabric::Chip::Tile::Slice::Dac::setConstantCode (
 }
 
 bool Fabric::Chip::Tile::Slice::Dac::setConstantDirect(float constant,
-                                                       bool hiRange){
+                                                       bool hiRange,
+                                                       bool setBias){
   if(-1.0000001 < constant && constant< 127.0/128.0){
     setConstantCode(round(constant*128.0+128.0));
-		return calibrateTarget(hiRange, constant);
+    if(setBias){
+		   return calibrateTarget(hiRange, constant);
+    }
   }
   else{
     return false;

@@ -44,9 +44,10 @@ void loop() {
     switch(cmd.type){
       case cmd_type_t::CIRC_CMD:
         assert(this_fabric != NULL);
+        inbuf = (float*) comm::get_data_ptr(nbytes);
         if(!debug){
           circ::print_command(cmd.data.circ_cmd);
-          circ::exec_command(this_fabric,cmd.data.circ_cmd);
+          circ::exec_command(this_fabric,cmd.data.circ_cmd,inbuf);
         }
         else{
           circ::print_command(cmd.data.circ_cmd);

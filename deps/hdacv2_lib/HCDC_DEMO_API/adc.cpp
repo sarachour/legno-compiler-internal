@@ -27,6 +27,26 @@ unsigned char Fabric::Chip::Tile::Slice::ChipAdc::getData () const {
 	return result;
 }
 
+unsigned char Fabric::Chip::Tile::Slice::ChipAdc::getStatusCode() const {
+	unsigned char exceptionVector;
+	parentSlice->parentTile->readExp ( exceptionVector );
+	// bits 4-5: L ADC exception
+	// bits 6-7: R ADC exception
+	// bits 5,7: ADC underflow
+	// bits 4,6: ADC overflow
+	// Serial.print (exceptionVector);
+	// Serial.print (" ");
+  unsigned char code = 0;
+  if(parentSlice->sliceId == slice0){
+    code += bitRead(exceptionVector,4) == 0b1 ? 1 : 0;
+    code += bitRead(exceptionVector,5) == 0b1 ? 2 : 0;
+  }
+  else{
+    code += bitRead(exceptionVector,6) == 0b1 ? 1 : 0;
+    code += bitRead(exceptionVector,7) == 0b1 ? 2 : 0;
+  }
+  return code;
+}
 bool Fabric::Chip::Tile::Slice::ChipAdc::getException () const {
 	unsigned char exceptionVector;
 	parentSlice->parentTile->readExp ( exceptionVector );
@@ -37,7 +57,7 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::getException () const {
 	// Serial.print (exceptionVector);
 	// Serial.print (" ");
 	bool result = (parentSlice->sliceId==slice0) ?
-		bitRead (exceptionVector, 4) == 0b1 || 
+		bitRead (exceptionVector, 4) == 0b1 ||
 		bitRead (exceptionVector, 5) == 0b1
 	:
 		bitRead (exceptionVector, 6) == 0b1 ||

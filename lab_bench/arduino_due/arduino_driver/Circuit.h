@@ -24,6 +24,7 @@ typedef enum cmd_type {
     USE_FANOUT,
     USE_INTEG,
     USE_LUT,
+    USE_ADC,
     /*disable components*/
     DISABLE_DAC,
     DISABLE_MULT,
@@ -36,6 +37,7 @@ typedef enum cmd_type {
     CALIBRATE,
     /*debug*/
     GET_INTEG_STATUS,
+    GET_ADC_STATUS,
     /*set values*/
     CONFIG_DAC,
     CONFIG_MULT,
@@ -68,6 +70,13 @@ typedef struct use_integ {
 } cmd_use_integ_t;
 
 
+typedef enum dac_source {
+  DS_MEM,
+  DS_EXT,
+  DS_LUT0,
+  DS_LUT1
+} dac_source_t;
+
 typedef struct use_dac {
    circ_loc_t loc;
    uint8_t inv;
@@ -83,6 +92,22 @@ typedef struct use_mult {
   uint8_t out_range;
   float coeff;
 } cmd_use_mult_t;
+
+typedef enum lut_source {
+  LS_EXT,
+  LS_ADC0,
+  LS_ADC1
+} lut_source_t;
+
+typedef struct use_lut {
+  circ_loc_t loc;
+  uint8_t source;
+} cmd_use_lut_t;
+
+typedef struct use_adc {
+  circ_loc_t loc;
+  uint8_t in_range;
+} cmd_use_adc_t;
 
 typedef struct use_fanout {
   circ_loc_idx1_t loc;
@@ -102,6 +127,8 @@ typedef union cmddata {
   cmd_use_integ_t integ;
   cmd_use_mult_t mult;
   cmd_use_dac_t dac;
+  cmd_use_lut_t lut;
+  cmd_use_adc_t adc;
   cmd_connection_t conn;
   circ_loc_t circ_loc;
   circ_loc_idx1_t circ_loc_idx1;
@@ -120,7 +147,7 @@ void execute(Fabric * fab);
 void finish(Fabric * fab);
 
 void print_command(cmd_t& cmd);
-void exec_command(Fabric * fab, cmd_t& cmd);
+void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf);
 
 }
 #endif CIRCUIT_H

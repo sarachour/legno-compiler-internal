@@ -177,6 +177,50 @@ void load_range(uint8_t range, bool * lo, bool * hi){
   
 }
 
+void load_dac_source(uint8_t source, bool * mem, bool * ext, bool * lut0, bool * lut1){
+  *lut0 = false;
+  *lut1 = false;
+  *mem = false;
+  *ext = false;
+  switch(source){
+    case circ::DS_MEM:
+      *mem = true;
+      break;
+    case circ::DS_EXT:
+      *ext = true;
+      break;
+    case circ::DS_LUT0:
+      *lut0 = true;
+      break;
+    case circ::DS_LUT1:
+      *lut1 = true;
+      break;
+    default:
+      comm::error("[ERROR] unknown source");
+  }
+  
+}
+
+void load_lut_source(uint8_t source, bool * ext, bool * adc0, bool * adc1){
+  *adc0 = false;
+  *adc1 = false;
+  *ext = false;
+  switch(source){
+    case circ::LS_EXT:
+      *ext = true;
+      break;
+    case circ::LS_ADC0:
+      *adc0 = true;
+      break;
+    case circ::LS_ADC1:
+      *adc1 = true;
+      break;
+    default:
+      comm::error("[ERROR] unknown source");
+  }
+  
+}
+
 void commit_config(Fabric * fab){
    fab->cfgCommit();
 }
@@ -198,20 +242,27 @@ Fabric* setup_board(){
   return fabric;
 }
 
-void exec_command(Fabric * fab, cmd_t& cmd){
+void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   cmd_use_dac_t dacd;
   cmd_use_mult_t multd;
   cmd_use_fanout_t fod;
   cmd_use_integ_t integd;
+  cmd_use_lut_t lutd;
+  cmd_use_adc_t adcd;
   cmd_connection_t connd;
   bool lo1,hi1;
   bool lo2,hi2;
   bool lo3,hi3;
+  bool s1,s2,s3,s4;
+  uint8_t byteval;
+  char buf[16];
   Fabric::Chip::Tile::Slice* slice;
   Fabric::Chip::Tile::Slice::Dac* dac;
   Fabric::Chip::Tile::Slice::Multiplier * mult;
   Fabric::Chip::Tile::Slice::Fanout * fanout;
   Fabric::Chip::Tile::Slice::Integrator* integ;
+  Fabric::Chip::Tile::Slice::LookupTable* lut;
+  Fabric::Chip::Tile::Slice::ChipAdc * adc;
   Fabric::Chip::Tile::Slice::FunctionUnit::Interface* src;
   Fabric::Chip::Tile::Slice::FunctionUnit::Interface* dst;
   
@@ -220,11 +271,21 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         dacd = cmd.data.dac; 
         dac = get_slice(fab,dacd.loc)->dac;
         load_range(multd.out_range, &lo1, &hi1);
-        comm::test(dac->setConstantDirect(dacd.value,hi1),"failed to set dac value");
+        comm::test(dac->setConstantDirect(dacd.value,hi1,true), 
+           "failed to set dac value");
         comm::print_header();
         Serial.print(" coefficient=");
         Serial.println(dacd.value);
         comm::response("configured dac (direct)",0);
+        break;
+        
+      case cmd_type_t::USE_ADC:
+        adcd = cmd.data.adc; 
+        adc = get_slice(fab,dacd.loc)->adc;
+        adc->setEnable(true);
+        load_range(adcd.in_range, &lo1, &hi1);
+        comm::response("enabled adc",0);
+        adc->setHiRange(hi1);
         break;
         
       case cmd_type_t::USE_DAC:
@@ -234,6 +295,10 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         dac->out0->setInv(dacd.inv);
         load_range(multd.out_range, &lo1, &hi1);
         dac->setHiRange(hi1);
+        load_dac_source(lutd.source, &s1, &s2, &s3, &s4);
+        dac->setSource(s1,s2,s3,s4);
+        comm::test(dac->setConstantDirect(dacd.value,hi1,false), 
+           "failed to set dac value");
         comm::response("enabled dac",0);
         break;
       
@@ -245,7 +310,8 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         if(multd.use_coeff){
           // determine if we're in the high or low output range.
           load_range(multd.out_range, &lo1, &hi1);
-          comm::test(mult->setGainDirect(multd.coeff,hi1),"failed to set gain");
+          comm::test(mult->setGainDirect(multd.coeff, hi1, true),
+             "failed to set gain");
         }
         comm::response("configured mult [direct]",0);
         break;
@@ -264,6 +330,10 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         mult->out0->setRange(lo3,hi3);
         if(not multd.use_coeff){
            mult->in1->setRange(lo2,hi2);
+        }
+        else{
+          comm::test(mult->setGainDirect(multd.coeff, hi3, false),
+             "failed to set gain");
         }
         comm::response("enabled mult",0);
         break;
@@ -286,7 +356,8 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         integd = cmd.data.integ;
         integ = get_slice(fab,integd.loc)->integrator;
         load_range(integd.out_range, &lo1, &hi1);
-        comm::test(integ->setInitialDirect(integd.value, hi1),"failed to set integ value");
+        comm::test(integ->setInitialDirect(integd.value, hi1, true),
+            "failed to set integ value");
         comm::response("configured integ [direct]",0);
         break;
         
@@ -300,13 +371,32 @@ void exec_command(Fabric * fab, cmd_t& cmd){
         load_range(integd.out_range, &lo2, &hi2);
         integ->in0->setRange(lo1,hi1);
         integ->out0->setRange(lo2,hi2);
+        comm::test(integ->setInitialDirect(integd.value, hi2, false),
+            "failed to set integ value");
         comm::response("enabled integ",0);
         break;
 
     case cmd_type_t::GET_INTEG_STATUS:
         integ = get_slice(fab,cmd.data.circ_loc)->integrator;
-        comm::response("retrieved exception",1);
+        comm::response("retrieved integ exception",1);
         comm::data(integ->getException() ? "1" : "0", "i");
+        break;
+    case cmd_type_t::GET_ADC_STATUS:
+        adc = get_slice(fab,cmd.data.circ_loc)->adc;
+        comm::response("retrieved  lut exception",1);
+        sprintf(buf,"%d",adc->getStatusCode());
+        comm::data(buf, "i");
+        break;
+        
+    case cmd_type_t::USE_LUT:
+        lutd = cmd.data.lut;
+        lut = get_slice(fab,lutd.loc)->lut; 
+        load_lut_source(lutd.source, &s1, &s2, &s3);
+        lut->setSource(s1,s2,s3);
+        for(int data_idx=0; data_idx < 256; data_idx+=1){
+          byteval = round(inbuf[data_idx]*128.0 + 128.0);
+          lut->setLut(data_idx,byteval);
+        }
         break;
         
     case cmd_type_t::DISABLE_DAC:

@@ -19,7 +19,8 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 		);
     bool setInitialDirect (
                      float initial, // floating point representation of desired initial condition
-                     bool hirange// -1.0 to 1.0 are valid
+                     bool hirange, // -1.0 to 1.0 are valid
+                     bool setBias
                      );
     bool setInitial (
 			float initial // floating point representation of desired initial condition

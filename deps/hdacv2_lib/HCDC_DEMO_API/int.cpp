@@ -62,11 +62,14 @@ void Fabric::Chip::Tile::Slice::Integrator::setInitialCode (
 }
 
 bool Fabric::Chip::Tile::Slice::Integrator::setInitialDirect(float initial,
-                                                             bool hiRange)
+                                                             bool hiRange,
+                                                             bool setBias)
 {
   if(-1.0000001 < initial && initial < 127.0/128.0){
     setInitialCode(initial*128.0+128.0);
-		return calibrateTarget(hiRange, initial);
+    if(setBias){
+      return calibrateTarget(hiRange, initial);
+    }
   }
   else{
     return false;
