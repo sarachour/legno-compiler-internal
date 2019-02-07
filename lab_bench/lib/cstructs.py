@@ -119,7 +119,7 @@ def circ_use_lut_t():
 
 def circ_use_adc_t():
     return cstruct.Struct(
-        "loc": circ_loc_t(),
+        "loc" / circ_loc_t(),
         "in_range" / cstruct.Int8ul
     )
 

@@ -9,15 +9,22 @@ class OpType(Enum):
     MULT= "*"
     INTEG= "int"
     ADD= "+"
-    EXP= "exp"
-    SQRT= "sqrt"
-    LN= "ln"
-    SQUARE= "pow2"
     CONST= "const"
     VAR= "var"
     POW= "pow"
     EMIT= "emit"
     EXTVAR= "extvar"
+
+    FUNC = "func"
+    CALL = "call"
+    SGN = "sgn"
+    ABS = "abs"
+    COS = "cos"
+    SIN = "sin"
+    SQRT= "sqrt"
+    LN= "ln"
+    EXP= "exp"
+    SQUARE= "pow2"
 
 class Op:
 
@@ -59,9 +66,6 @@ class Op:
 
     def toplevel(self):
         return None
-
-    def compute(self,bindings={}):
-        raise Exception("compute not implemented: %s" % self)
 
     def arg(self,idx):
         return self._args[idx]
@@ -109,6 +113,13 @@ class Op:
 
         else:
             return False,False,None
+
+
+    def substitute(self,bindings={}):
+        raise Exception("substitute not implemented: %s" % self)
+
+    def compute(self,bindings={}):
+        raise Exception("compute not implemented: %s" % self)
 
     # infer bandwidth from interval information
     def infer_interval(self,interval,bound_intervals):
@@ -198,18 +209,6 @@ class Op2(Op):
 
     def compute_op2(self,arg1,arg2):
         raise Exception("compute_op2 not implemented: %s" % self)
-
-class BaseExpOp(Op):
-    def __init__(self,op,args):
-        Op2.__init__(self,op,args)
-
-    @property
-    def base(self):
-        return self._args[0]
-
-    @property
-    def exponent(self):
-        return self._args[1]
 
 
 class Integ(Op2):
@@ -311,56 +310,6 @@ class Integ(Op2):
     def deriv(self):
         return self.arg1
 
-class Ln(Op):
-
-    def __init__(self,arg):
-        Op.__init__(self,OpType.LN,[arg])
-        pass
-
-
-class Exp(Op):
-
-    def __init__(self,arg):
-        Op.__init__(self,OpType.EXP,[arg])
-        pass
-
-
-class Pow(BaseExpOp):
-
-    def __init__(self,arg1,arg2):
-        Op.__init__(self,OpType.POW,[arg1,arg2])
-        pass
-
-
-class Square(BaseExpOp):
-
-    def __init__(self,arg):
-        Op.__init__(self,OpType.SQUARE,[arg])
-        pass
-
-    def match_op(self,expr, enable_eq=False):
-        if expr.op == self._op:
-            return True,False,[[(self.base,expr.base)]]
-
-        elif expr.op == OpType.POW:
-            if expr.exponent.op == OpType.CONST and \
-               expr.exponent.value == 2.0:
-                return True,False,[[(self.base,expr.base)]]
-
-            elif expr.exponent.op == OpType.MULT and \
-                 expr.arg1 == expr.arg2 and \
-                 expr.arg1.op == OpType.VAR:
-                return True,False,[[(self.base,expr.arg1)]]
-
-        return False,None,None
-
-
-
-    @property
-    def exponent(self):
-        return Const(2)
-
-
 class ExtVar(Op):
 
     def __init__(self,name):
@@ -434,7 +383,11 @@ class Var(Op):
         if not (self.name in bandwidths):
             raise Exception("cannot find <%s> in bw-map: <%s>" %\
                             (self.name,bandwidths))
+
         return bandwidth.BandwidthCollection(bandwidths[self.name])
+
+    def substitute(self,assigns):
+        return assigns[self._name]
 
     def compute(self,bindings):
         if not self._name in bindings:
@@ -499,29 +452,6 @@ class Const(Op):
 
 
 
-class Sqrt(BaseExpOp):
-
-    def __init__(self,arg):
-        Op.__init__(self,OpType.SQRT,[arg])
-        pass
-
-
-    def match_op(self,expr,enable_eq=False):
-        if expr.op == self._op:
-            return True,False,[[self.base,expr.base]]
-
-        elif expr.op == OpType.POW:
-            if expr.exponent.op == OpType.CONST and \
-               expr.exponent.value == 0.5:
-                return True,False,[[self.base,expr.base]]
-
-        return False,False,None
-
-
-    @property
-    def exponent(self):
-        return Const(0.5)
-
 
 
 class Emit(Op):
@@ -554,6 +484,7 @@ class Mult(Op2):
         Op2.__init__(self,OpType.MULT,[arg1,arg2])
         pass
 
+
     def coefficient(self):
         return self.arg1.coefficient()*self.arg2.coefficient()
 
@@ -562,6 +493,10 @@ class Mult(Op2):
 
     def sum_terms(self):
         return [self]
+
+    def substitute(self,assigns):
+        return Mult(self.arg1.substitute(assigns),
+                    self.arg2.substitute(assigns))
 
     def infer_bandwidth(self,intervals,bandwidths={}):
         return self.compute_bandwidth(bandwidths)
@@ -659,4 +594,190 @@ class Add(Op2):
         return arg1+arg2
 
 
+
+
+class Call(Op):
+    def __init__(self, params, expr):
+        self._func = expr
+        self._params = params
+        self._expr = self._func.apply(self._params)
+        Op.__init__(self,OpType.CALL,[self._expr])
+        assert(expr.op == OpType.FUNC)
+
+
+    def concretize(self):
+        return self._expr
+
+    def infer_bandwidth(self,intervals,bandwidths):
+        return self.concretize().infer_bandwidth(intervals,bandwidths)
+
+    def compute_bandwidth(self,bws):
+        return self.concretize().compute_bandwidth(bws)
+
+    def compute_interval(self,ivals):
+        return self.concretize().compute_interval(ivals)
+
+    def __repr__(self):
+        pars = " ".join(map(lambda p: str(p), self._params))
+        return "call %s %s" % (pars,self._func)
+
+
+class Func(Op):
+    def __init__(self, params, expr):
+        Op.__init__(self,OpType.FUNC,[])
+        self._expr = expr
+        self._vars = params
+
+    def apply(self,values):
+        assert(len(values) == len(self._vars))
+        assigns = dict(zip(self._vars,values))
+        return self._expr.substitute(assigns)
+
+    def __repr__(self):
+        pars = " ".join(map(lambda p: str(p), self._vars))
+        return "lambd(%s).(%s)" % (pars,self._expr)
+
+class Abs(Op):
+
+    def __init__(self,arg):
+        Op.__init__(self,OpType.ABS,[arg])
+        pass
+
+    def substitute(self,args):
+        return Abs(self.arg(0).substitute(args))
+
+    def compute_interval(self,ivals):
+        ivalcoll = self.arg(0).compute_interval(ivals)
+        ivalcoll.update(ivalcoll.interval.abs())
+        return ivalcoll
+
+
+    # bandwidth is infinite if number is ever negative
+    def compute_bandwidth(self,bws):
+        bwcoll = self.arg(0).compute_bandwidth(bws)
+        # 2*sin(pi*a/2)*gamma(alpha+1)/(2*pi*eta)^{alpha+1}
+        bwcoll.update(bandwidth.InfBandwidth())
+        return bwcoll
+
+
+class Sgn(Op):
+
+    def __init__(self,arg):
+        Op.__init__(self,OpType.SGN,[arg])
+        pass
+
+    def substitute(self,assigns):
+        return Sgn(self.arg(0).substitute(assigns))
+
+    def compute_bandwidth(self,bws):
+        bwcoll = self.arg(0).compute_bandwidth(bws)
+        bwcoll.update(bandwidth.Bandwidth(0))
+        return bwcoll
+
+    def compute_interval(self,ivals):
+        ivalcoll = self.arg(0).compute_interval(ivals)
+        new_ival = ivalcoll.interval.sgn()
+        ivalcoll.update(new_ival)
+        return ivalcoll
+
+class Ln(Op):
+
+    def __init__(self,arg):
+        Op.__init__(self,OpType.LN,[arg])
+        pass
+
+
+class Exp(Op):
+
+    def __init__(self,arg):
+        Op.__init__(self,OpType.EXP,[arg])
+        pass
+
+
+class Sin(Op):
+
+    def __init__(self,arg1):
+        Op.__init__(self,OpType.SIN,[arg1])
+        pass
+
+class Cos(Op):
+
+    def __init__(self,arg1):
+        Op.__init__(self,OpType.COS,[arg1])
+        pass
+
+
+
+class Pow(Op):
+
+    def __init__(self,arg1,arg2):
+        Op.__init__(self,OpType.POW,[arg1,arg2])
+        pass
+
+
+class Sqrt(Op):
+
+    def __init__(self,arg):
+        Op.__init__(self,OpType.SQRT,[arg])
+        pass
+
+
+    # bandwidth is infinite if number is ever negative
+    def compute_bandwidth(self,bws):
+        bwcoll = self.arg(0).compute_bandwidth(bws)
+        # 2*sin(pi*a/2)*gamma(alpha+1)/(2*pi*eta)^{alpha+1}
+        bwcoll.update(bandwidth.InfBandwidth())
+        return bwcoll
+
+    def compute_interval(self,ivals):
+        ivalcoll = self.arg(0).compute_interval(ivals)
+        ivalcoll.update(ivalcoll.interval.sqrt())
+        return ivalcoll
+
+    def match_op(self,expr,enable_eq=False):
+        if expr.op == self._op:
+            return True,False,[[self.base,expr.base]]
+
+        elif expr.op == OpType.POW:
+            if expr.exponent.op == OpType.CONST and \
+               expr.exponent.value == 0.5:
+                return True,False,[[self.base,expr.base]]
+
+        return False,False,None
+
+
+    @property
+    def exponent(self):
+        return Const(0.5)
+
+    def substitute(self,args):
+        return Sqrt(self.arg(0).substitute(args))
+
+class Square(Op):
+
+    def __init__(self,arg):
+        Op.__init__(self,OpType.SQUARE,[arg])
+        pass
+
+    def match_op(self,expr, enable_eq=False):
+        if expr.op == self._op:
+            return True,False,[[(self.base,expr.base)]]
+
+        elif expr.op == OpType.POW:
+            if expr.exponent.op == OpType.CONST and \
+               expr.exponent.value == 2.0:
+                return True,False,[[(self.base,expr.base)]]
+
+            elif expr.exponent.op == OpType.MULT and \
+                 expr.arg1 == expr.arg2 and \
+                 expr.arg1.op == OpType.VAR:
+                return True,False,[[(self.base,expr.arg1)]]
+
+        return False,None,None
+
+
+
+    @property
+    def exponent(self):
+        return Const(2)
 

@@ -1,3 +1,4 @@
+import math
 
 class Interval:
 
@@ -95,6 +96,45 @@ class Interval:
         diff1 = abs(i2.lower - self.lower)
         diff2 = abs(i2.upper - self.upper)
         return max(diff1,diff2)
+
+
+    def contains_zero(self):
+        return self.lower <= 0 or self.upper >= 0
+
+
+    def crosses_zero(self):
+        return self.lower < 0 and self.upper > 0
+
+    def negative(self):
+        return self.lower < 0 and self.upper < 0
+
+    def positive(self):
+        return self.lower >= 0 and self.upper >= 0
+
+    def sgn(self):
+        if self.crosses_zero():
+            return Interval.type_infer(-1,1)
+        elif self.positive():
+            return Interval.type_infer(1,1)
+        elif self.negative():
+            return Interval.type_infer(-1,-1)
+
+
+    def abs(self):
+        upper = max(abs(self.lower),abs(self.upper))
+        lower = min(abs(self.lower),abs(self.upper))
+        if self.crosses_zero():
+            return Interval.type_infer(0,upper)
+        else:
+            return Interval.type_infer(lower,upper)
+
+    def sqrt(self):
+        assert(not self.crosses_zero())
+        assert(not self.negative())
+        lower = math.sqrt(self.lower)
+        upper = math.sqrt(self.upper)
+        return Interval.type_infer(lower,upper)
+
 
     def power(self,v):
         if v == 1.0:

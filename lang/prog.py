@@ -1,7 +1,7 @@
 from ops.interval import Interval
 from ops.bandwidth import Bandwidth
 import util.util as util
-
+import sys
 class MathEnv:
 
     def __init__(self,name):
@@ -120,12 +120,14 @@ class MathProg:
                         else:
                             ival_dict = self._intervals
 
-                        bwcoll = expr.infer_bandwidth(ival_dict,bandwidths=self._bandwidths)
+                        bwcoll = expr.infer_bandwidth(ival_dict, \
+                                                      bandwidths=self._bandwidths)
                         self._bandwidths[variable] = bwcoll.bandwidth
                         progress = True
 
         assert(util.keys_in_dict(self._bindings.keys(), self._bandwidths))
         assert(util.keys_in_dict(self._bindings.keys(), self._intervals))
+
     @property
     def name(self):
         return self._name
@@ -145,3 +147,4 @@ class StochMathProg:
 
     def bind_stoch(self,var,variance,dist,op):
         self._stoch[var] = (variance,dist,op)
+

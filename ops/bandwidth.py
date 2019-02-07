@@ -56,6 +56,12 @@ class Bandwidth:
   def __repr__(self):
     return str(self._bw)
 
+
+class InfBandwidth(Bandwidth):
+
+  def __init__(self):
+    Bandwidth.__init__(self,float('inf'))
+
 class BandwidthCollection:
 
   def __init__(self,bw):
@@ -101,3 +107,4 @@ class BandwidthCollection:
       st += "  %s: %s\n" % (bnd,bw)
 
     return st
+

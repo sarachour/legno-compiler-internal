@@ -7,7 +7,7 @@ import math
 
 number = Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?") \
          .setParseAction(lambda t: float(t[0]))
-variable = Word(alphas)
+variable = Word(alphas,alphanums+'_')
 operand = number | variable
 
 expop = Literal('^')

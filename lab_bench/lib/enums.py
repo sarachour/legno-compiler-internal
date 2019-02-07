@@ -18,6 +18,7 @@ class CircCmdType(Enum):
     USE_FANOUT = 'use_fanout';
     USE_INTEG = 'use_integ';
     USE_LUT = 'use_lut';
+    USE_ADC = 'use_adc';
     DISABLE_DAC = 'disable_dac';
     DISABLE_MULT = 'disable_mult';
     DISABLE_INTEG = 'disable_integ';
@@ -27,6 +28,7 @@ class CircCmdType(Enum):
     BREAK = 'break';
     CALIBRATE = 'calibrate';
     GET_INTEG_STATUS = 'get_integ_status';
+    GET_ADC_STATUS = 'get_adc_status';
     CONFIG_INTEG = 'config_integ';
     CONFIG_DAC = 'config_dac';
     CONFIG_MULT = 'config_mult';
