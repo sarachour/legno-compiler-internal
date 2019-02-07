@@ -68,17 +68,17 @@ def adc_scale_model(dac):
    dac.set_scale_modes("*",modes)
    for mode in modes:
       sign,rng = mode
-      coeff = sign.coeff()*rng.coeff()*2.0
+      coeff = sign.coeff()*rng.coeff()*0.5
       dac.set_coeff("*",mode,'out', coeff)
+      dac.set_props("*",mode,["in"],\
+                   util.make_ana_props(rng,
+                                       glb.ANALOG_MIN,
+                                       glb.ANALOG_MAX))
       dac.set_props("*",mode,["out"], \
                    util.make_dig_props(chipcmd.RangeType.MED,
                                   glb.DAC_MIN,
                                   glb.DAC_MAX))
 
-      dac.set_props("*",mode,["in"],\
-                   util.make_ana_props(rng,
-                                       glb.ANALOG_MIN,
-                                       glb.ANALOG_MAX))
 
 
 adc = Block('tile_adc',type=BlockType.ADC) \

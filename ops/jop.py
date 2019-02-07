@@ -48,8 +48,10 @@ class JVar(JOp):
         return self._name
 
     def __repr__(self):
-        return "(var %s)" % self._name
-
+        if self._exponent == 1.0:
+            return "(var %s)" % self._name
+        else:
+            return "(var %s exp=%f)" % (self._name,self._exponent)
 
 class JConst(JOp):
 

@@ -330,8 +330,8 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
 
     elif expr.op == ops.OpType.SQRT:
         expr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr.arg(0))
-        return jop.expo(expr,0.5)
-
+        new_expr = jop.expo(expr,0.5)
+        return new_expr
 
     elif expr.op == ops.OpType.INTEG:
         # derivative and ic are scaled simialrly
@@ -497,7 +497,6 @@ def build_gpkit_problem(circ,jenv,jopt):
         result = gp_lhs == gp_rhs
         msg="%s == %s" % (lhs,rhs)
         constraints.append((gp_lhs == gp_rhs,msg))
-
     for lhs,rhs in jenv.ltes():
         gp_lhs = gpkit_expr(variables,lhs)
         gp_rhs = gpkit_expr(variables,rhs)
