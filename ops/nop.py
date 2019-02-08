@@ -47,11 +47,17 @@ class NOp:
       for arg in self._args:
         yield arg
 
-    def sqrt(self):
-      raise Exception("sqrt-unimpl: %s" % self)
 
-    def square(self):
-      raise Exception("square-unimpl: %s" % self)
+    def exponent(self,p, toplevel=True):
+      if p == 1.0:
+        return self
+      if self.is_zero() and p > 0:
+        return self
+      if self.is_zero() and p <= 0:
+        raise Exception("cannot raise 0^%s" % p)
+
+      if toplevel:
+        raise Exception("unhandled: base=%s ,expo=%s" % (self.op,p))
 
     def to_json(self):
       args = list(map(lambda arg: arg.to_json(), \
@@ -161,16 +167,6 @@ class NVar(NOp):
     n._power = self._power
     return n
 
-  def sqrt(self):
-    node = self.copy()
-    node._power = self._power*0.5
-    return node
-
-  def square(self):
-    node = self.copy()
-    node._power = self._power*2
-    return node
-
   def vars(self):
     return [self]
 
@@ -277,6 +273,13 @@ class NFreq(NVar):
   def variance(self):
     return mkzero()
 
+  def exponent(self,p):
+    result = NOp.exponent(self,p,toplevel=False)
+    if not result is None:
+      return result
+
+    return NFreq(self.port,self.power*p,self.instance[0],self.instance[1])
+
   @staticmethod
   def from_json(obj):
     return NFreq(obj['port'],
@@ -309,6 +312,13 @@ class NSig(NVar):
                  obj['power'],
                  obj['block'],
                  obj['loc'])
+
+  def exponent(self,p):
+    result = NOp.exponent(self,p,toplevel=False)
+    if not result is None:
+      return result
+
+    return NSig(self.port,self.power*p,self.instance[0],self.instance[1])
 
 
   def copy(self):
@@ -368,17 +378,19 @@ class NConstRV(NOp):
   def variance(self):
     return NConstRV(self._sigma**2,0)
 
+  def exponent(self,p):
+    result = NOp.exponent(self,p,toplevel=False)
+    if not result is None:
+      return result
+
+    mean = self.mu**p
+    variance = abs(p*self.mu**(p-1)*self.sigma)
+    assert(mean >= 0)
+    assert(variance >= 0)
+    return NConstRV(mean,variance)
+
   def mean(self):
     return NConstRV(self._mu,0)
-
-  def sqrt(self):
-    if self._sigma == 0.0:
-      return NConstRV(self._mu**0.5,0.0)
-    else:
-      return NConstRV(self._mu**0.5,0.5*self._mu**(-0.5)*self._sigma)
-
-  def square(self):
-    return NConstRV(self._mu**2,2*self._sigma*self._mu)
 
   def mult(self,other):
     assert(other.op == NOpType.CONST_RV)
@@ -430,6 +442,15 @@ class NMult(NOp):
           yield term
       else:
         yield arg
+
+  def exponent(self,p):
+    result = NOp.exponent(self,p,toplevel=False)
+    if not result is None:
+      return result
+
+    #real analysis: 2^p(a^p+b^p)
+    terms = list(map(lambda t: t.exponent(p),self.terms()))
+    return mkmult(terms)
 
   def add_like_term(self,rv):
     assert(rv.op == NOpType.CONST_RV)
@@ -501,13 +522,6 @@ class NMult(NOp):
       means.append(mean)
 
     return NMult(means)
-
-  def square(self):
-    return NMult(list(map(lambda arg: arg.square(), self.args())))
-
-
-  def sqrt(self):
-    return NMult(list(map(lambda arg: arg.sqrt(), self.args())))
 
   @staticmethod
   def from_json(obj):
@@ -618,24 +632,16 @@ class NAdd(NOp):
 
     return result
 
-  # upper bound
-  def square(self):
-    # square(a+b) < sqrt(a) + sqrt(b)
-    terms = []
-    for arg1 in self.args():
-      for arg2 in self.args():
-        if arg1 == arg2:
-          terms.append(arg1.square())
-        else:
-          terms.append(mkmult([arg1,arg2]))
+  def exponent(self,p):
+    result = NOp.exponent(self,p,toplevel=False)
+    if not result is None:
+      return result
 
-    return mkadd(terms)
+    #real analysis: 2^p(a^p+b^p)
+    terms = list(map(lambda t: t.exponent(p),self.terms()))
+    coeff = 2**p
+    return mkmult([mkconst(coeff), NAdd(terms)])
 
-
-  # upper bound
-  def sqrt(self):
-    # sqrt(a+b) < sqrt(a) + sqrt(b)
-    return mkadd(list(map(lambda arg: arg.sqrt(), self.args())))
 
   def terms(self):
     for arg in self._args:
@@ -761,6 +767,20 @@ def distribute(sums,coeff=[]):
 
   return state
 
+def expo(arg,exponent):
+  if arg.is_zero() and exponent > 0:
+    return arg
+  elif arg.is_zero() and exponent <= 0:
+    raise Exception("cannot raise zero to negative power: %s" % exponent)
+
+  if exponent == 1.0:
+    return arg
+
+  if exponent > 1.0:
+    # (a+b)^p <= 2^p(a^p+b^p) where 1 < p < infty
+    
+    print(arg)
+    raise NotImplementedError
 
 def mkmult(args):
   sums = []

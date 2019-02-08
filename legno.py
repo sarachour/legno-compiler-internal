@@ -56,14 +56,8 @@ scriptgen_subp.add_argument('--hw-env', type=str,default='default', \
 
 
 ref_subp = subparsers.add_parser('execprog', help='compute reference signal')
-ref_subp.add_argument('math_env', type=str,
-                       help='math environment.')
-
-
 
 gren_subp = subparsers.add_parser('srcgen', help='generate grendel.')
-gren_subp.add_argument('math_env', type=str,
-                       help='math environment.')
 gren_subp.add_argument('hw_env', type=str, \
                         help='hardware environment')
 

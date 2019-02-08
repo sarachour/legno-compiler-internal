@@ -22,8 +22,15 @@ BMARKS = [
     vanderpol.model()
 ]
 
+def get_math_env(name):
+    for menv,bmark in BMARKS:
+        if bmark.name == name:
+            return menv
+
+    raise Exception("unknown benchmark: <%s>" % name)
+
 def get_prog(name):
-    for bmark in BMARKS:
+    for _,bmark in BMARKS:
         if bmark.name == name:
             return bmark
 

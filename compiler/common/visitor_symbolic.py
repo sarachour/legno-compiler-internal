@@ -196,18 +196,32 @@ class ExpressionPropagator:
   def integ(self,m1,m2):
     raise NotImplementedError
 
+  def sqrt(self,m):
+    raise NotImplementedError
+
+  def abs(self,m):
+    raise NotImplementedError
+
+  def sgn(self,m):
+    raise NotImplementedError
+
+
   def propagate(self,block_name,loc,port,expr):
     def recurse(e):
       return self.propagate(block_name,loc,port,e)
 
+    self.block = block_name
+    self.loc = loc
     if expr.op == op.OpType.INTEG:
       m1 = recurse(expr.deriv)
       m2 = recurse(expr.init_cond)
+      self.expr = expr
       return self.integ(m1,m2)
 
     elif expr.op == op.OpType.MULT:
       m1 = recurse(expr.arg1)
       m2 = recurse(expr.arg2)
+      self.expr = expr
       return self.mult(m1,m2)
 
     elif expr.op == op.OpType.VAR:
@@ -217,7 +231,24 @@ class ExpressionPropagator:
       return model
 
     elif expr.op == op.OpType.CONST:
+      self.expr = expr
       return self.const(expr.value)
+
+    elif expr.op == op.OpType.SGN:
+      m1 = recurse(expr.arg(0))
+      self.expr = expr
+      return self.sgn(m1)
+
+    elif expr.op == op.OpType.SQRT:
+      m1 = recurse(expr.arg(0))
+      self.expr = expr
+      return self.sqrt(m1)
+
+    elif expr.op == op.OpType.ABS:
+      m1 = recurse(expr.arg(0))
+      self.expr = expr
+      return self.abs(m1)
+
 
     else:
       raise Exception("unimplemented: %s" % (expr))
@@ -331,6 +362,41 @@ class MathPropagator(ExpressionPropagator):
     assert(deriv.is_posynomial())
     return deriv
 
+  def abs(self,m):
+    return m
+
+  def sqrt(self,m):
+    model = PiecewiseSymbolicModel()
+    for cstrs,u1,v1 in m.models():
+      u = u1.exponent(0.5)
+      v = v1.exponent(0.5)
+      idx = model.add_dist(u,v)
+      model.cstrs.add_all(idx,cstrs)
+
+    return model
+
+  def mksigexpr(self,expr):
+    if expr.op == op.OpType.VAR:
+      return nop.NSig(expr.name,
+                      power=1.0,
+                      block=self.block,
+                      loc=self.loc)
+    else:
+      raise NotImplementedError("mksigexpr: not implemented: %s" % expr)
+
+  def sgn(self,m):
+    # the smaller the magnitude of the signal
+    # the higher the chance of a flip is.
+    model = PiecewiseSymbolicModel()
+    coeff = self.mksigexpr(self.expr.arg(0)).exponent(-1)
+    for cstrs,u1,v1 in m.models():
+      u = nop.mkmult([coeff,u1])
+      v = nop.mkmult([coeff,v1])
+      idx = model.add_dist(u,v)
+      model.cstrs.add_all(idx,cstrs)
+
+    return model
+
   def plus(self,m1,m2):
     model = PiecewiseSymbolicModel()
     for cstrs,(u1,v1),(u2,v2) in m1.join(m2):
@@ -354,8 +420,8 @@ class MathPropagator(ExpressionPropagator):
       cov = nop.mkmult([nop.mkconst(2.0), \
                         self.covariance(v1,v2), \
                         u1,u2])
-      t1 = nop.mkmult([u1.square(),v2])
-      t2 = nop.mkmult([u2.square(),v1])
+      t1 = nop.mkmult([u1,u1,v2])
+      t2 = nop.mkmult([u2,u2,v1])
       v = nop.mkadd([
         t1,t2,cov
       ])

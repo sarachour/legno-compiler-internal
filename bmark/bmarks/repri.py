@@ -1,7 +1,7 @@
 from lang.prog import MathProg
 from ops import op, opparse
 from bmark.bmarks.common import *
-
+import bmark.menvs as menvs
 
 def model():
     K = 40.0
@@ -80,4 +80,5 @@ def model():
     prob.set_interval("Aclp",0,act_bnd)
     prob.set_interval("ATetRp",0,act_bnd)
     prob.compile()
-    return prob
+    menv = menvs.get_math_env('t2k')
+    return menv,prob

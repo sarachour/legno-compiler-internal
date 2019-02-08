@@ -1,4 +1,3 @@
-import bmark.menvs as menvs
 import bmark.hwenvs as hwenvs
 import bmark.diffeqs as bmark
 from util import paths
@@ -27,7 +26,7 @@ def compile(board,problem):
 def exec_ref(hdacv2_board, args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
   prog = bmark.get_prog(args.benchmark)
-  menv = menvs.get_math_env(args.math_env)
+  menv = bmark.get_math_env(args.benchmark)
   execprog.execute(path_handler,
                    prog,
                    menv)
@@ -124,7 +123,7 @@ def exec_jaunt(hdacv2_board, args):
 
 def exec_srcgen(hdacv2_board,args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
-  menv = menvs.get_math_env(args.math_env)
+  menv = bmark.get_math_env(args.benchmark)
   hwenv = hwenvs.get_hw_env(args.hw_env)
   circ_dir = path_handler.skelt_circ_dir()
   for dirname, subdirlist, filelist in os.walk(circ_dir):

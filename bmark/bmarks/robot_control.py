@@ -2,6 +2,7 @@ from lang.prog import MathProg
 from ops import op, opparse
 from bmark.bmarks.common import *
 import math
+import bmark.menvs as menvs
 
 def model():
   prob = MathProg("robot")
@@ -30,6 +31,6 @@ def model():
   prob.set_bandwidth("W",10)
   prob.set_interval("X",-pos,pos)
   prob.set_interval("Y",-pos,pos)
-
   prob.compile()
-  return prob
+  menv = menvs.get_math_env('t2')
+  return menv,prob

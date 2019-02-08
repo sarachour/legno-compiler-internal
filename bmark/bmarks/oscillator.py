@@ -1,6 +1,7 @@
 from lang.prog import MathProg
 from ops import op, opparse
 from bmark.bmarks.common import *
+import bmark.menvs as menvs
 
 
 def model():
@@ -26,4 +27,5 @@ def model():
     prob.set_interval("P",-10,10)
     prob.set_interval("Loc",-10,10)
     prob.compile()
-    return prob
+    menv = menvs.get_math_env('t20')
+    return menv,prob

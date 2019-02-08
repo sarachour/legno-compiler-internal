@@ -21,6 +21,15 @@ class DelayPropagator(ExpressionPropagator):
 
     return model
 
+  def sgn(self,m):
+    return m
+
+  def sqrt(self,m):
+    return m
+
+  def abs(self,m):
+    return m
+
   def plus(self,m1,m2):
     return self.sel(m1,m2)
 

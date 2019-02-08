@@ -1,7 +1,7 @@
 from lang.prog import MathProg
 from ops import op, opparse
 from bmark.bmarks.common import *
-
+import bmark.menvs as menvs
 
 def model():
   params = {
@@ -40,4 +40,6 @@ def model():
 
   prob.bind('PosA', op.Emit(op.Var('PA')))
   prob.compile()
-  return prob
+
+  menv = menvs.get_math_env('t20')
+  return menv,prob
