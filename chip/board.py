@@ -151,35 +151,6 @@ class Board(Layer):
                 return handle
         return None
 
-    def _set_meta(self,key,value):
-        self._metadata[key] = value
-
-    def _meta(self,key):
-        return self._metadata[key]
-    '''
-    def set_inst_meta(self,block_name,pos,key,value):
-        assert(isinstance(pos,str))
-        meta = self._inst_to_meta[(block_name,pos)]
-        meta[key] = value
-
-    def inst_meta(self,block_name,posstr,key):
-        assert(isinstance(posstr,str))
-
-        if not pos in self._inst_by_block[block_name]:
-            for key in self._inst_by_block[block_name].keys():
-                print(key)
-
-            raise Exception("position <%s> not available for block <%s>" % (posstr,block_name))
-        _,meta = self._inst_by_block[block_name][posstr]
-        if not (key in meta):
-            for in_key in meta:
-                print(in_key)
-            raise Exception("<%s> not in metadata for %s.%s" % \
-                            (key,block_name,posstr))
-
-        return meta[key]
-    '''
-
     def add(self,block_specs):
         for blk in block_specs:
             assert(not blk.name in self._blocks)

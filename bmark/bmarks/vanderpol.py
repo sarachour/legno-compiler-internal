@@ -1,6 +1,7 @@
 from bmark.bmarks.common import *
 from lang.prog import MathProg
 from ops import op, opparse
+import bmark.menvs as menvs
 
 def model():
     # y'' - u(1-y^2)*y'+y = 0
@@ -24,4 +25,5 @@ def model():
     prob.set_interval("Y",-3.2,3.2)
     prob.set_interval("y",-3.2,3.2)
     prob.compile()
-    return prob
+    menv = menvs.get_math_env('t20')
+    return menv,prob

@@ -11,7 +11,8 @@ def block_type_t():
         BlockType.MULT.name:5,
         BlockType.INTEG.name:6,
         BlockType.FANOUT.name:7,
-        BlockType.LUT.name:8
+        BlockType.LUT.name:8,
+        BlockType.ADC.name:9
     }
     return cstruct.Enum(cstruct.Int16ul,**kwargs)
 

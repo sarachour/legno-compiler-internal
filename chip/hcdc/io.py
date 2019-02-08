@@ -49,11 +49,10 @@ dac.check()
 
 def adc_get_modes():
    opts = [
-      [chipcmd.SignType.POS],
       chipcmd.RangeType.options()
    ]
    blacklist = [
-      (None,chipcmd.RangeType.LOW)
+      (chipcmd.RangeType.LOW,)
    ]
    modes = list(util.apply_blacklist(itertools.product(*opts),
                                      blacklist))
@@ -67,8 +66,8 @@ def adc_scale_model(dac):
    modes = adc_get_modes()
    dac.set_scale_modes("*",modes)
    for mode in modes:
-      sign,rng = mode
-      coeff = sign.coeff()*rng.coeff()*0.5
+      rng, = mode
+      coeff = (1.0/rng.coeff())*0.5
       dac.set_coeff("*",mode,'out', coeff)
       dac.set_props("*",mode,["in"],\
                    util.make_ana_props(rng,

@@ -139,6 +139,75 @@ def compute_reference(varmap,jenv,circ, \
     raise Exception(method)
 
 
+class FrequencyScorecard:
+
+  def __init__(self):
+    self._failures = []
+    self._successes= []
+    self._entry = {}
+    self._failure = False
+
+  def record(self,block,loc,port,freq_ival,fmax):
+    if((block,loc,port) in self._entry):
+      prev_ival,prev_fmax = self._entry[(block,loc,port)]
+      if prev_ival.equals(freq_ival) and \
+         fmax == prev_fmax:
+        return
+      else:
+        print(prev_ival,prev_fmax)
+        print(freq_ival,fmax)
+        input()
+
+    self._entry[(block,loc,port)] = (freq_ival,fmax)
+
+  def overlapping(self):
+    isect = None
+    for iv,fm in self._entry.values():
+      ival = iv.scale(1/fm)
+      if isect is None:
+        isect = ival
+      else:
+        isect =isect.intersection(ival)
+
+    if isect.spread == 0:
+      return False
+    return True
+
+  def failed(self):
+    return self._failure
+
+  def clear(self):
+    self._entry = {}
+    self._failure = False
+
+  def classify(self,is_success):
+    if is_success:
+      self._successes.append(self._entry)
+    else:
+      self._failures.append(self._entry)
+    self.clear()
+
+  def viable(self):
+    if len(self._failures) == 0:
+      return True
+
+    for failure in self._failures:
+      one_above = False
+      for (block,loc,port),(ival,_) in failure.items():
+        this_ival,_ = self._entry[(block,loc,port)]
+        # this interval is above the previous one
+        if this_ival.lower >= ival.lower:
+          one_above = True
+
+      if one_above:
+        return False
+
+    for failure in self._failures:
+      print(failure)
+
+    return True
+
+
 
 def compute_objective(varmap,jenv,circ, \
                       block_name,loc,port,model,refs,idx,method,
@@ -169,6 +238,7 @@ def compute(varmap,jenv,circ,models,ports,method='low-snr'):
   time_constant = 1.0/circ.board.time_constant
   Jtau = varmap['tau']
   #for indices in itertools.product(*options):
+  scorecard = FrequencyScorecard()
   for indices in zip(*options):
     gpkit_cstrs = []
     objs = []
@@ -192,9 +262,11 @@ def compute(varmap,jenv,circ,models,ports,method='low-snr'):
         config = circ.config(cstr_block,cstr_loc)
         fmax = config.bandwidth(cstr_port).fmax
         term = Jtau*fmax*time_constant
+        scorecard.record(cstr_block,cstr_loc,cstr_port,ival,fmax)
         if not util.pos_inf(ival.upper):
           gpkit_cstrs.append(term <= ival.upper)
         if ival.lower > 0:
+          print(term,ival.lower)
           gpkit_cstrs.append(term >= ival.lower)
 
       gpkit_obj = 0
@@ -207,14 +279,22 @@ def compute(varmap,jenv,circ,models,ports,method='low-snr'):
         objs.append(gpkit_obj)
 
 
+    # build the model
+    if not scorecard.overlapping() or scorecard.failed():
+      scorecard.clear()
+      continue
+
     # minimizes function
     gpkit_obj = 0
     for obj in objs:
       gpkit_obj += obj
 
     # noise to signal ratio (NSR)
-    yield gpkit_cstrs,gpkit_obj
-
+    if scorecard.viable():
+      yield gpkit_cstrs,gpkit_obj
+      scorecard.classify(jenv.solved())
+    else:
+      scorecard.clear()
 
 def low_noise(circuit,jenv,varmap):
   ports = get_integrator_ports(circuit)

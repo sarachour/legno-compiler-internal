@@ -68,6 +68,9 @@ class ConcCirc:
         return True
 
     def get_conns_by_dest(self,tblk,tloc,tport):
+        assert(isinstance(tblk,str))
+        assert(isinstance(tloc,str))
+        assert(isinstance(tport,str))
         for (sblock,sloc,sport), \
             (dblock,dloc,dport) in self._conns.items():
             if tblk != dblock or tloc != dloc or tport != dport:

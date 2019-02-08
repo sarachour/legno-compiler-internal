@@ -28,15 +28,63 @@ class Priority(str,Enum):
 class LUTSourceType(str,Enum):
     EXTERN = 'extern'
     ADC0 = "adc0"
-    DAC0 = "dac0"
+    ADC1 = "adc1"
+    def abbrev(self):
+        if self == LUTSourceType.EXTERN:
+            return "ext"
+        elif self == LUTSourceType.ADC0:
+            return "adc0"
+        elif self == LUTSourceType.ADC1:
+            return "adc1"
+        else:
+            raise Exception("not handled: %s" % self)
+
+
+    @staticmethod
+    def from_abbrev(msg):
+        if msg == 'ext':
+            return LUTSourceType.EXTERN
+        elif msg == 'adc0':
+            return LUTSourceType.ADC0
+        elif msg == 'adc1':
+            return LUTSourceType.ADC1
+        else:
+            raise Exception("not handled: %s" % self)
+
 
 class DACSourceType(str,Enum):
     # default
-    MEM = 'mem'
-    EXTERN = 'extern'
-    ADC0 = "lut0"
-    DAC0 = "lut0"
+    MEM = 'memory'
+    EXTERN = 'external'
+    LUT0 = "lut0"
+    LUT1 = "lut1"
 
+
+
+    @staticmethod
+    def from_abbrev(msg):
+        if msg == 'mem':
+            return DACSourceType.MEM
+        elif msg == 'ext':
+            return DACSourceType.EXTERN
+        elif msg == 'lut0':
+            return DACSourceType.LUT0
+        elif msg == 'lut1':
+            return DACSourceType.LUT1
+        else:
+            raise Exception("not handled: %s" % self)
+
+    def abbrev(self):
+        if self == DACSourceType.MEM:
+            return "mem"
+        elif self == DACSourceType.EXTERN:
+            return "ext"
+        elif self == DACSourceType.LUT0:
+            return "lut0"
+        elif self == DACSourceType.LUT1:
+            return "lut1"
+        else:
+            raise Exception("not handled: %s" % self)
 
 
 class RangeType(str,Enum):
@@ -219,7 +267,7 @@ def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
 
     if not source is None:
         cmd += " src "
-        cmd += "{source:W}"
+        cmd += "{source}"
 
     if n_signs > 0:
         cmd += " sgn "
@@ -240,7 +288,7 @@ def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
         cmd += " {debug:w}"
 
     if expr:
-        cmd += " {expr}"
+        cmd += " {vars} {expr}"
 
     cmd = cmd.strip()
     result = parselib.parse(cmd,line)
@@ -267,6 +315,13 @@ def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
 
     if debug:
         result['debug'] = DEBUG[result['debug']]
+
+
+    if expr:
+        args = result['vars'].split('[')[1] \
+                             .split(']')[0].split()
+        result['vars'] = args
+
 
     return OptionalValue.value(result)
 
@@ -660,7 +715,7 @@ class ConstVal:
 
 class UseLUTCmd(UseCommand):
 
-    def __init__(self,chip,tile,slice,expr,
+    def __init__(self,chip,tile,slice,variables,expr,
                  source=LUTSourceType.EXTERN):
         UseCommand.__init__(self,
                             enums.BlockType.LUT,
@@ -669,9 +724,11 @@ class UseLUTCmd(UseCommand):
         if not self._loc.index is None:
             self.fail("dac has no index <%d>" % loc.index)
 
-        assert(len(values) == 256)
         self._source = source
         self._expr = expr
+        self._variables = variables
+        if not (len(self._variables) == 1):
+            raise Exception('unexpected number of variables: %s' % variables)
 
     @staticmethod
     def desc():
@@ -694,6 +751,7 @@ class UseLUTCmd(UseCommand):
                 data['chip'],
                 data['tile'],
                 data['slice'],
+                data['vars'],
                 data['expr'],
                 source=data['source']
             )
@@ -718,12 +776,13 @@ class UseLUTCmd(UseCommand):
         return 'use_lut'
 
     def __repr__(self):
-        st = "%s %s %s src %s %s" % \
+        vstr = ",".join(self._variables)
+        st = "%s %s %s %s src %s [%s] %s" % \
               (self.name(),
                self.loc.chip,self.loc.tile, \
                self.loc.slice,
                self._source.abbrev(),
-               self._expr)
+               vstr,self._expr)
         return st
 
 
@@ -733,7 +792,8 @@ class UseLUTCmd(UseCommand):
 
         values = [0.0]*256
         for idx,v in enumerate(np.linspace(-1.0,1.0,256)):
-            value = util.eval_func(self.expr,{'x':v})
+            assigns = zip(self._variables,[v])
+            value = util.eval_func(self.expr,assigns)
             values[idx] = value
 
         resp = self.execute_command(state,values)
@@ -742,31 +802,24 @@ class UseLUTCmd(UseCommand):
 
 class UseADCCmd(UseCommand):
 
-    def __init__(self,chip,tile,slice,value,
-                 source=DACSourceType.MEM,
-                 out_range=RangeType.MED,inv=SignType.POS):
+    def __init__(self,chip,tile,slice,
+                 in_range=RangeType.MED):
         UseCommand.__init__(self,
                             enums.BlockType.ADC,
                             CircLoc(chip,tile,slice))
 
-        if value < -1.0 or value > 1.0:
-            self.fail("value not in [-1,1]: %s" % value)
         if not self._loc.index is None:
-            self.fail("dac has no index <%d>" % loc.index)
+            self.fail("adc has no index <%d>" % loc.index)
 
-        assert(isinstance(inv,SignType))
-        assert(isinstance(out_range,RangeType))
-        if out_range == RangeType.LOW:
-            raise Exception("incompatible: low output")
+        assert(isinstance(in_range,RangeType))
+        if in_range == RangeType.LOW:
+            raise Exception("incompatible: low input")
 
-        self._out_range = out_range
-        self._value = value
-        self._inv = inv
-        self._source = source
+        self._in_range = in_range
 
     @staticmethod
     def desc():
-        return "use a constant dac block on the hdacv2 board"
+        return "use a constant adc block on the hdacv2 board"
 
 
     @staticmethod
@@ -775,19 +828,15 @@ class UseADCCmd(UseCommand):
 
     @staticmethod
     def _parse(args,cls):
-        result = parse_pattern_block(args,1,1,1,
-                                     cls.name(),
-                                     source=DACSourceType)
+        result = parse_pattern_block(args,0,0,1,
+                                     cls.name())
         if result.success:
             data = result.value
             return cls(
                 data['chip'],
                 data['tile'],
                 data['slice'],
-                data['value0'],
-                source=data['source'],
-                inv=data['sign0'],
-                out_range=data['range0']
+                in_range=data['range0']
             )
         else:
             raise Exception(result.message)
@@ -796,33 +845,25 @@ class UseADCCmd(UseCommand):
         # inverting flips the sign for some wacky reason, given the byte
         # representation is signed
         return build_circ_ctype({
-            'type':enums.CircCmdType.USE_DAC.name,
+            'type':enums.CircCmdType.USE_ADC.name,
             'data':{
-                'dac':{
+                'adc':{
                     'loc':self._loc.build_ctype(),
-                    'value':self._value,
-                    # for whatever screwy reason, with inversion disabled
-                    # 255=-1.0 and 0=1.0
-                    'source':self._source.code(),
-                    'inv':self._inv.code(),
-                    'out_range':self._out_range.code()
+                    'in_range':self._out_range.code()
                 }
             }
         })
 
     @staticmethod
     def name():
-        return 'use_dac'
+        return 'use_adc'
 
     def __repr__(self):
-        st = "%s %s %s %s src %s sgn %s val %s rng %s" % \
+        st = "%s %s %s %s rng %s" % \
               (self.name(),
                self.loc.chip,self.loc.tile, \
                self.loc.slice,
-               self._source.abbrev(),
-               self._inv.abbrev(),
-               self._value,
-               self._out_range.abbrev())
+               self._in_range.abbrev())
         return st
 
 
@@ -830,7 +871,8 @@ class UseDACCmd(UseCommand):
 
     def __init__(self,chip,tile,slice,value,
                  source=DACSourceType.MEM,
-                 out_range=RangeType.MED,inv=SignType.POS):
+                 out_range=RangeType.MED,
+                 inv=SignType.POS):
         UseCommand.__init__(self,
                             enums.BlockType.DAC,
                             CircLoc(chip,tile,slice))
@@ -918,8 +960,9 @@ class ConfigDACCmd(UseDACCmd):
                  source=DACSourceType.MEM, \
                  inv=SignType.POS):
         UseDACCmd.__init__(self,chip,tile,slice,value,
-                           out_range,\
-                           inv)
+                           out_range=out_range,\
+                           source=source, \
+                           inv=inv)
 
 
     def build_ctype(self):
@@ -952,6 +995,67 @@ class ConfigDACCmd(UseDACCmd):
     def parse(args):
         return UseDACCmd._parse(args,ConfigDACCmd)
 
+
+
+class GetADCStatusCmd(AnalogChipCommand):
+    def __init__(self,chip,tile,slice):
+        AnalogChipCommand.__init__(self)
+        self._loc = CircLoc(chip,tile,slice)
+
+    @property
+    def loc(self):
+        return self._loc
+
+    @staticmethod
+    def name():
+        return 'get_adc_status'
+
+    @staticmethod
+    def parse(args):
+        result = parse_pattern_block(args,0,0,0,
+                                     GetADCStatusCmd.name(),
+                                     debug=False)
+        if result.success:
+            data = result.value
+            return GetADCStatusCmd(
+                data['chip'],
+                data['tile'],
+                data['slice']
+            )
+        else:
+            raise Exception(result.message)
+
+
+    def analyze(self):
+        return self
+
+    def build_ctype(self):
+        # inverting flips the sign for some wacky reason, given the byte
+        # representation is signed
+        return build_circ_ctype({
+            'type':enums.CircCmdType.GET_ADC_STATUS.name,
+            'data':{
+                'circ_loc':self._loc.build_ctype()
+            }
+        })
+
+    def apply(self,state):
+        if state.dummy:
+            return
+
+        resp = AnalogChipCommand.apply(self,state)
+        handle = "adc.%s" % self.loc
+        code = resp.data(0)
+        print("status_val: %s" % code)
+        state.set_status(handle, code)
+
+
+
+    def __repr__(self):
+        st = "get_adc_status %s %s %s" % \
+              (self.loc.chip,self.loc.tile, \
+               self.loc.slice)
+        return st
 
 
 class GetIntegStatusCmd(AnalogChipCommand):
@@ -1003,8 +1107,8 @@ class GetIntegStatusCmd(AnalogChipCommand):
         resp = AnalogChipCommand.apply(self,state)
         handle = "integ.%s" % self.loc
         oflow = True if resp.data(0) == 1 else False
-        print("overflow_val: %s" % oflow)
-        state.set_overflow(handle, oflow)
+        print("status_val: %s" % oflow)
+        state.set_status(handle, oflow)
 
 
 

@@ -2,6 +2,7 @@ import lab_bench.lib.chip_command as chip_cmd
 import lab_bench.lib.exp_command as exp_cmd
 import lab_bench.lib.command as toplevel_cmd
 from lang.hwenv import DiffPinMode
+import ops.op as op
 
 class GrendelProg:
 
@@ -11,7 +12,9 @@ class GrendelProg:
   def validate(self,cmd):
     cmdstr = str(cmd)
     args = cmdstr.split()
-    assert(cmd.__class__.name() == args[0])
+    if not (cmd.__class__.name() == args[0]):
+      raise Exception("class %s doesn't return correct name (expected %s)" % \
+                      (cmd.__class__.name(), args[0]))
     test = cmd.__class__.parse(args)
     if(test is None):
       raise Exception("failed to validate: %s" % cmd)
@@ -52,26 +55,55 @@ def gen_unpack_loc(circ,locstr):
 
   return chip,tile,slce,index
 
-def gen_use_dac(circ,block,locstr,config):
+def gen_use_lut(circ,block,locstr,config,source):
+  chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
+  expr = op.to_python(config.expr('out'))
+  variables = config.expr('out').vars()
+  yield chip_cmd.UseLUTCmd(chip,tile,slce,variables,expr, \
+                           source=source)
+
+def gen_use_adc(circ,block,locstr,config):
+  chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
+  rng = cast_enum(config.scale_mode,\
+                  [chip_cmd.RangeType])
+
+  yield chip_cmd.UseADCCmd(chip,tile,slce,
+                           in_range=rng[0])
+
+def gen_use_dac(circ,block,locstr,config,source):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   inv,rng = cast_enum(config.scale_mode,\
                       [chip_cmd.SignType,chip_cmd.RangeType])
 
   scf = config.scf('in') if config.has_scf('in') else 1.0
-  value = config.dac('in')*scf
+  if not config.dac('in') is None:
+    value = config.dac('in')*scf
+  else:
+    assert(not source == chip_cmd.DACSourceType.MEM)
+    value = 0.0
+
   yield chip_cmd.UseDACCmd(chip, \
-                            tile, \
-                            slce, \
-                            value=value, \
-                            inv=inv, \
-                            out_range=rng)
+                           tile, \
+                           slce, \
+                           value=value, \
+                           inv=inv, \
+                           out_range=rng,
+                           source=source)
 
   yield chip_cmd.ConfigDACCmd(chip, \
-                            tile, \
-                            slce, \
-                            value=value, \
-                            inv=inv, \
-                            out_range=rng)
+                              tile, \
+                              slce, \
+                              value=value, \
+                              inv=inv, \
+                              out_range=rng,
+                              source=source)
+
+
+def gen_get_adc_status(circ,block,locstr):
+  chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
+  return chip_cmd.GetADCStatusCmd(chip,
+                                  tile,
+                                  slce)
 
 
 def gen_get_integrator_status(circ,block,locstr):
@@ -172,12 +204,57 @@ def gen_use_fanout(circ,block,locstr,config):
                                inv2=inv2)
 
 
+def is_same_tile(circ,loc1,loc2):
+  inds1 = circ.board.key_to_loc(loc1)
+  inds2 = circ.board.key_to_loc(loc2)
+  for i in range(0,3):
+    if inds1[i] != inds2[i]:
+      return False
+  return True
+
 def gen_block(gprog,circ,block,locstr,config):
   if block.name == 'multiplier':
     generator = gen_use_multiplier(circ,block,locstr,config)
 
   elif block.name == 'tile_dac':
-    generator = gen_use_dac(circ,block,locstr,config)
+    sources = list(circ.get_conns_by_dest(block.name,locstr,'in'))
+    assert(len(sources) <= 1)
+    source = chip_cmd.DACSourceType.MEM
+    if len(sources) == 1:
+      sblk,sloc,sport = sources[0]
+      assert(sblk == 'lut')
+      assert(is_same_tile(circ,sloc,locstr))
+      sliceno = circ.board.key_to_loc(sloc)[3]
+      if sliceno == 0:
+        source = chip_cmd.DACSourceType.LUT0
+      elif sliceno == 2:
+        source = chip_cmd.DACSourceType.LUT1
+      else:
+        raise Exception("unfamiliar slice: %s" % sliceno)
+
+    generator = gen_use_dac(circ,block,locstr,config,source)
+
+  elif block.name == 'tile_adc':
+    sources = list(circ.get_conns_by_dest(block.name,locstr,'in'))
+    generator = gen_use_adc(circ,block,locstr,config)
+    cmd = gen_get_adc_status(circ,block,locstr)
+    gprog.add(cmd)
+
+  elif block.name == 'lut':
+    sources = list(circ.get_conns_by_dest(block.name,locstr,'in'))
+    assert(len(sources) == 1)
+    sblk,sloc,sport = sources[0]
+    assert(sblk == 'tile_adc')
+    assert(is_same_tile(circ,sloc,locstr))
+    sliceno = circ.board.key_to_loc(sloc)[3]
+    if sliceno == 0:
+      source = chip_cmd.LUTSourceType.ADC0
+    elif sliceno == 2:
+      source = chip_cmd.LUTSourceType.ADC1
+    else:
+      raise Exception("unfamiliar slice: %s" % sliceno)
+
+    generator = gen_use_lut(circ,block,locstr,config,source)
 
   elif block.name == 'integrator':
     generator = gen_use_integrator(circ,block,locstr,config, \
@@ -204,15 +281,16 @@ def gen_block(gprog,circ,block,locstr,config):
 
 def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
   TO_BLOCK_TYPE = {
-    'dac': 'dac',
+    'lut': 'lut',
     'integrator': 'integ',
     'fanout': 'fanout',
     'tile_out': 'tile_output',
     'tile_in': 'tile_input',
     'tile_dac': 'dac',
+    'tile_adc': 'adc',
     'multiplier':'mult',
     'ext_chip_in': 'chip_input',
-    'ext_chip_out': 'chip_output'
+    'ext_chip_out': 'chip_output',
   }
   TO_PORT_ID = {
     'in' : 0,
@@ -223,6 +301,13 @@ def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
     'out1' : 1,
     'out2' : 2
   }
+
+  # these connections are not analog
+  if sblk == 'lut' and dblk == 'tile_dac':
+    return
+  if sblk == 'tile_adc' and dblk == 'lut':
+    return
+
   chip,tile,slce,index =gen_unpack_loc(circ,slocstr)
   src_port = TO_PORT_ID[sport]
   src_loc = chip_cmd.CircPortLoc(chip,tile,slce,src_port,index=index)

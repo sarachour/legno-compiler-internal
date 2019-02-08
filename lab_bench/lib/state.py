@@ -39,11 +39,11 @@ class State:
         self.input_time = None
         self.dummy = validate
 
-    def set_overflow(self,handle,oflow):
-        self._overflow[handle] = oflow
+    def set_status(self,handle,oflow):
+        self._status[handle] = oflow
 
-    def overflows(self):
-        for handle,oflow in self._overflow.items():
+    def statuses(self):
+        for handle,oflow in self._status.items():
             yield handle,oflow
 
 

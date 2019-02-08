@@ -128,7 +128,6 @@ class PathHandler:
       basename = name.split(".grendel")[0]
       args = basename.split("_")
       bmark = args[0]
-      print(args)
       indices = list(map(lambda token: int(token), args[1:-4]))
       scale_index = int(args[-4].split('s')[1])
       opt = args[-3]

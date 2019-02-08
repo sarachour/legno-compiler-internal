@@ -13,7 +13,8 @@ typedef enum block_type {
   MULT,
   INTEG,
   FANOUT,
-  LUT
+  LUT,
+  ADC
 } block_type_t;
 
 // TODO interpreter for commands

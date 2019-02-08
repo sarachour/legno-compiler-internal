@@ -2,6 +2,7 @@ from enum import Enum
 
 class BlockType(Enum):
     DAC = 'dac';
+    ADC = 'adc';
     CHIP_INPUT = 'chip_input';
     CHIP_OUTPUT = 'chip_output';
     TILE_INPUT = "tile_input";

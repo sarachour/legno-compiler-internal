@@ -22,6 +22,8 @@ def model():
   prob.bind('DEG',DEG)
   prob.bind('X',X)
   prob.bind('Y',Y)
+  prob.bind('SIN', op.Call(['DEG'], sin_fn))
+  prob.bind('COS', op.Call(['DEG'], cos_fn))
   prob.bind('Rot', op.Emit(op.Var('Y')))
   prob.set_interval("DEG",-2*math.pi,2*math.pi)
   pos = 100

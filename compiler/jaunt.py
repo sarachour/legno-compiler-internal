@@ -93,6 +93,13 @@ class JauntEnv:
         self._metavar = 0
         self._failed = False
         self._use_tau = False
+        self._solved = False
+
+    def set_solved(self,solved_problem):
+        self._solved = solved_problem
+
+    def solved(self):
+        return self._solved
 
     def use_tau(self):
         self._use_tau = True
@@ -619,6 +626,7 @@ def scale_circuit(prog,circ,methods):
             sln = solve_gpkit_problem(gpprob)
             if sln is None:
                 print("[[FAILURE]]")
+                jenv.set_solved(False)
                 continue
 
             elif not 'freevariables' in sln:
@@ -626,9 +634,11 @@ def scale_circuit(prog,circ,methods):
                 succ,result = sln
                 assert(result is None)
                 assert(succ == False)
+                jenv.set_solved(False)
                 continue
 
             else:
+                jenv.set_solved(True)
                 slns.append(sln)
 
 

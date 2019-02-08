@@ -4,6 +4,26 @@ import ops.interval as interval
 import ops.bandwidth as bandwidth
 from enum import Enum
 
+def to_python(e):
+    if e.op == OpType.VAR:
+        return e.name
+    elif e.op == OpType.MULT:
+        a1 = to_python(e.arg1)
+        a2 = to_python(e.arg2)
+        return "(%s)*(%s)" % (a1,a2)
+    elif e.op == OpType.SGN:
+        a = to_python(e.arg(0))
+        return "math.copysign(%s)" % a
+    elif e.op == OpType.SQRT:
+        a = to_python(e.arg(0))
+        return "math.sqrt(%s)" % a
+    elif e.op == OpType.ABS:
+        a = to_python(e.arg(0))
+        return "abs(%s)" % a
+
+    else:
+        raise Exception("unimpl: %s" % e)
+
 class OpType(Enum):
     EQ= "="
     MULT= "*"
@@ -105,7 +125,7 @@ class Op:
         for arg in self._args:
             vars += arg.vars()
 
-        return vars
+        return list(set(vars))
 
     def to_json(self):
       args = list(map(lambda arg: arg.to_json(), \

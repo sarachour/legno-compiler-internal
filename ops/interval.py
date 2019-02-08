@@ -71,6 +71,9 @@ class Interval:
         return value <= self.upper and \
             value >= self.lower
 
+    def above(self,other):
+        return self.lower >= other.upper
+
     def contains(self,child):
         if child.lower >= self.lower and \
            child.upper <= self.upper:
@@ -154,6 +157,10 @@ class Interval:
          ub = max(vals)
          return Interval.type_infer(lb,ub)
 
+
+    def equals(self,other):
+        return self.upper == other.upper and \
+            self.lower == other.lower
 
     def mult(self,i2):
         vals = [

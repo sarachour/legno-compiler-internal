@@ -283,7 +283,7 @@ def exec_skelter(hdacv2_board, args):
     for fname in filelist:
       if fname.endswith('.circ'):
         circ_bmark,circ_indices,circ_scale_index,opt = \
-                                                       path_handler.conc_circ_to_args(fname)
+                            path_handler.conc_circ_to_args(fname)
 
         skelt_circ = path_handler.skelt_circ_file(circ_bmark,
                                                   circ_indices,
