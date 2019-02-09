@@ -24,8 +24,8 @@ def execute_script(ip,script_file,native=False):
 
     print(exec_cmd)
     os.system(exec_cmd)
-    print("compare chip result")
-    chip_compare.execute(script_file)
+    #print("compare chip result")
+    #chip_compare.execute(script_file)
     time.sleep(1)
 
 parser = argparse.ArgumentParser(description='toplevel chip runner.')

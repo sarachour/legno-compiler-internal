@@ -51,7 +51,7 @@ void loop() {
         }
         else{
           circ::print_command(cmd.data.circ_cmd);
-          comm::response("debug",0);
+          circ::debug_command(this_fabric,cmd.data.circ_cmd,inbuf);
         }
         break;
       case cmd_type_t::EXPERIMENT_CMD:
@@ -62,7 +62,7 @@ void loop() {
         }
         else{
           experiment::print_command(cmd.data.exp_cmd,inbuf);
-          comm::response("debug",0);
+          experiment::debug_command(&this_experiment,this_fabric,cmd.data.exp_cmd,inbuf);
         }
         // in the event the fabric has not been initialized, initialize it
         break;

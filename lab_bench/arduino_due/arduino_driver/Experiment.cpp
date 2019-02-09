@@ -284,6 +284,66 @@ void set_dac_values(experiment_t* expr, float * inbuf, int dac_id, int n, int of
       store_value(expr,buf_idx + idx, value);
   }
 }
+
+
+void debug_command(experiment_t* expr, Fabric* fab, cmd_t& cmd, float * inbuf){
+  char buf[128];
+  switch(cmd.type){
+    case cmd_type_t::RESET:
+      comm::response("[dbg] resetted",0);
+      break;
+    case cmd_type_t::RUN:
+      comm::response("[dbg] ran",0);
+      break;
+    case cmd_type_t::USE_ANALOG_CHIP:
+      comm::response("[dbg] use_analog_chip=true",0);
+      break;
+    case cmd_type_t::USE_DAC:
+      comm::response("[dbg] use_dac=true",0);
+      break;
+    case cmd_type_t::USE_ADC:
+      comm::response("[dbg] use_adc=true",0);
+      break;
+    case cmd_type_t::USE_OSC:
+      comm::response("[dbg] enable_trigger=true",0);
+      break;
+    case cmd_type_t::SET_SIM_TIME:
+      comm::response("[dbg] set simulation time",0);
+      break;
+
+    case cmd_type_t::COMPUTE_OFFSETS:
+      comm::response("[dbg] computed offsets",0);
+      break;
+    case cmd_type_t::SET_DAC_VALUES:
+      comm::response("[dbg] set dac values",0);
+      break;
+
+    case cmd_type_t::GET_ADC_VALUES:
+      comm::response("[dbg] get adc values",1);
+      comm::data("3","F");
+      comm::payload();
+      Serial.println(" 0.3 0.5 0.7");
+      break;
+
+    case cmd_type_t::GET_TIME_BETWEEN_SAMPLES:
+      comm::response("[dbg] get time between samples",1);
+      comm::data("0.1","f");
+      break;
+      
+    case cmd_type_t::GET_NUM_DAC_SAMPLES:
+      comm::response("get num dac samples",1);
+      comm::data("10","i");
+      break;
+      
+    case cmd_type_t::GET_NUM_ADC_SAMPLES:
+      comm::response("get num adc samples",1);
+      comm::data("15","i");
+      break;
+  }
+}
+
+
+
 void exec_command(experiment_t* expr, Fabric* fab, cmd_t& cmd, float * inbuf){
   char buf[128];
   switch(cmd.type){

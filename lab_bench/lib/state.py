@@ -27,12 +27,11 @@ class State:
 
         self._use_adc = {};
         self._use_dac = {}
-        self._overflow = {}
         self.use_analog_chip = None;
         self.n_dac_samples= None;
         self.n_adc_samples = None;
         self.time_between_samples_s = None;
-
+        self._status = {}
 
         self.reset();
         self.sim_time = None

@@ -5,7 +5,7 @@
 
 namespace circ {
 typedef enum block_type {
-  DAC,
+  TILE_DAC,
   CHIP_INPUT,
   CHIP_OUTPUT,
   TILE_INPUT,
@@ -14,7 +14,7 @@ typedef enum block_type {
   INTEG,
   FANOUT,
   LUT,
-  ADC
+  TILE_ADC
 } block_type_t;
 
 // TODO interpreter for commands
@@ -149,6 +149,7 @@ void finish(Fabric * fab);
 
 void print_command(cmd_t& cmd);
 void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf);
+void debug_command(Fabric * fab, cmd_t& cmd, float* inbuf);
 
 }
 #endif CIRCUIT_H

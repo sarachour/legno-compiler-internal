@@ -5,6 +5,7 @@ from lib.base_command import Command,ArduinoCommand, OptionalValue
 import lib.util as util
 import numpy as np
 from enum import Enum
+import construct
 
 class Priority(str,Enum):
     FIRST = "first"
@@ -29,6 +30,20 @@ class LUTSourceType(str,Enum):
     EXTERN = 'extern'
     ADC0 = "adc0"
     ADC1 = "adc1"
+
+
+
+    def code(self):
+        if self == LUTSourceType.EXTERN:
+            return 0
+        elif self == LUTSourceType.ADC0:
+            return 1
+        elif self == LUTSourceType.ADC1:
+            return 2
+        else:
+            raise Exception("unknown: %s" % self)
+
+
     def abbrev(self):
         if self == LUTSourceType.EXTERN:
             return "ext"
@@ -60,6 +75,18 @@ class DACSourceType(str,Enum):
     LUT1 = "lut1"
 
 
+
+    def code(self):
+        if self == DACSourceType.MEM:
+            return 0
+        elif self == DACSourceType.EXTERN:
+            return 1
+        elif self == DACSourceType.LUT0:
+            return 2
+        elif self == DACSourceType.LUT1:
+            return 3
+        else:
+            raise Exception("unknown: %s" % self)
 
     @staticmethod
     def from_abbrev(msg):
@@ -482,11 +509,11 @@ class AnalogChipCommand(ArduinoCommand):
     def execute_command(self,state):
         raise Exception("cannot directly execute analog chip command")
 
-    def apply(self,state):
+    def apply(self,state,raw_data=None):
         if state.dummy:
             return
 
-        return ArduinoCommand.execute_command(self,state)
+        return ArduinoCommand.execute_command(self,state,raw_data=raw_data)
 
 class DisableCmd(AnalogChipCommand):
 
@@ -730,6 +757,10 @@ class UseLUTCmd(UseCommand):
         if not (len(self._variables) == 1):
             raise Exception('unexpected number of variables: %s' % variables)
 
+    @property
+    def expr(self):
+        return self._expr
+
     @staticmethod
     def desc():
         return "use a lut block on the hdacv2 board"
@@ -757,6 +788,11 @@ class UseLUTCmd(UseCommand):
             )
         else:
             raise Exception(result.message)
+
+    def build_dtype(self,buf):
+        return construct.Array(len(buf),
+                        construct.Float32l)
+
 
     def build_ctype(self):
         # inverting flips the sign for some wacky reason, given the byte
@@ -792,12 +828,12 @@ class UseLUTCmd(UseCommand):
 
         values = [0.0]*256
         for idx,v in enumerate(np.linspace(-1.0,1.0,256)):
-            assigns = zip(self._variables,[v])
+            assigns = dict(zip(self._variables,[v]))
             value = util.eval_func(self.expr,assigns)
             values[idx] = value
 
-        resp = self.execute_command(state,values)
-        return ersp
+        resp = AnalogChipCommand.apply(self,state,raw_data=values)
+        return resp
 
 
 class UseADCCmd(UseCommand):
@@ -849,7 +885,7 @@ class UseADCCmd(UseCommand):
             'data':{
                 'adc':{
                     'loc':self._loc.build_ctype(),
-                    'in_range':self._out_range.code()
+                    'in_range':self._in_range.code()
                 }
             }
         })

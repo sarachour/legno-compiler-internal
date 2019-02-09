@@ -6,20 +6,26 @@ from enum import Enum
 
 def to_python(e):
     if e.op == OpType.VAR:
-        return e.name
+        varname = "%s_" % e.name
+        return [varname],varname
+
     elif e.op == OpType.MULT:
-        a1 = to_python(e.arg1)
-        a2 = to_python(e.arg2)
-        return "(%s)*(%s)" % (a1,a2)
+        vs1,a1 = to_python(e.arg1)
+        vs2,a2 = to_python(e.arg2)
+        v = list(set(vs1+vs2))
+        return v,"(%s)*(%s)" % (a1,a2)
+
     elif e.op == OpType.SGN:
-        a = to_python(e.arg(0))
-        return "math.copysign(%s)" % a
+        v,a = to_python(e.arg(0))
+        return v,"math.copysign(1,%s)" % a
+
     elif e.op == OpType.SQRT:
-        a = to_python(e.arg(0))
-        return "math.sqrt(%s)" % a
+        v,a = to_python(e.arg(0))
+        return v,"math.sqrt(%s)" % a
+
     elif e.op == OpType.ABS:
-        a = to_python(e.arg(0))
-        return "abs(%s)" % a
+        v,a = to_python(e.arg(0))
+        return v,"abs(%s)" % a
 
     else:
         raise Exception("unimpl: %s" % e)
@@ -809,11 +815,60 @@ class Sin(Op):
         Op.__init__(self,OpType.SIN,[arg1])
         pass
 
+    def substitute(self,args):
+        return Sin(self.arg(0).substitute(args))
+
+    @staticmethod
+    def from_json(obj):
+        return Cos(Op.from_json(obj['args'][0]))
+
+    # bandwidth is infinite if number is ever negative
+    def compute_bandwidth(self,bws):
+        bwcoll = self.arg(0).compute_bandwidth(bws)
+        # 2*sin(pi*a/2)*gamma(alpha+1)/(2*pi*eta)^{alpha+1}
+        bwcoll.update(bandwidth.InfBandwidth())
+        return bwcoll
+
+    def compute_interval(self,ivals):
+        ivalcoll = self.arg(0).compute_interval(ivals)
+        ivalcoll.update(interval.Interval.type_infer(-1,1))
+        return ivalcoll
+
+    def infer_bandwidth(self,intervals,bandwidths={}):
+        return self.compute_bandwidth(bandwidths).bandwidth
+
+
 class Cos(Op):
 
     def __init__(self,arg1):
         Op.__init__(self,OpType.COS,[arg1])
         pass
+
+    @staticmethod
+    def from_json(obj):
+        return Cos(Op.from_json(obj['args'][0]))
+
+
+    def substitute(self,args):
+        return Cos(self.arg(0).substitute(args))
+
+    # bandwidth is infinite if number is ever negative
+    def compute_bandwidth(self,bws):
+        bwcoll = self.arg(0).compute_bandwidth(bws)
+        # 2*sin(pi*a/2)*gamma(alpha+1)/(2*pi*eta)^{alpha+1}
+        bwcoll.update(bandwidth.InfBandwidth())
+        return bwcoll
+
+    def compute_interval(self,ivals):
+        ivalcoll = self.arg(0).compute_interval(ivals)
+        ivalcoll.update(interval.Interval.type_infer(-1,1))
+        return ivalcoll
+
+
+    def infer_bandwidth(self,intervals,bandwidths={}):
+        return self.compute_bandwidth(bandwidths).bandwidth
+
+
 
 
 

@@ -15,15 +15,18 @@ COMMANDS = [
     # dac/adc commands
     ConfigDACCmd,
     UseDACCmd,
+    UseADCCmd,
+    UseLUTCmd,
     UseIntegCmd,
     ConfigIntegCmd,
     UseMultCmd,
     ConfigMultCmd,
     GetIntegStatusCmd,
+    GetADCStatusCmd,
     UseFanoutCmd,
     MakeConnCmd,
+    # circuit commands that are automatically generated
     #DisableCmd,
-    MakeConnCmd,
     #BreakConnCmd,
     #CalibrateCmd,
     # experiment commands dispatched to microcontroller
@@ -31,10 +34,10 @@ COMMANDS = [
     MicroRunCmd,
     MicroTeardownChipCmd,
     MicroSetupChipCmd,
-    MicroGetOverflowCmd,
+    MicroGetStatusCmd,
     MicroUseOscCmd,
-    MicroUseDACCmd,
-    MicroUseADCCmd,
+    MicroUseArdDACCmd,
+    MicroUseArdADCCmd,
     MicroUseAnalogChipCmd,
     MicroSetSimTimeCmd,
     MicroSetDACValuesCmd,
@@ -48,7 +51,7 @@ COMMANDS = [
     OscSetVoltageRangeCmd,
     OscSetupTrigger,
     OscSetSimTimeCmd
-    # virtual commands
+    # virtual commands, deprecated
     #SetReferenceFunction
 ]
 

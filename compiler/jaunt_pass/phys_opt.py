@@ -153,16 +153,23 @@ class FrequencyScorecard:
       if prev_ival.equals(freq_ival) and \
          fmax == prev_fmax:
         return
+      elif prev_fmax == fmax:
+        isect = freq_ival.intersection(prev_ival)
+        if isect.spread > 0:
+          freq_ival = isect
+        else:
+          self._failure = True
       else:
-        print(prev_ival,prev_fmax)
-        print(freq_ival,fmax)
-        input()
+        self._failure = True
 
     self._entry[(block,loc,port)] = (freq_ival,fmax)
 
   def overlapping(self):
     isect = None
     for iv,fm in self._entry.values():
+      if util.is_inf(fm):
+        continue
+
       ival = iv.scale(1/fm)
       if isect is None:
         isect = ival
@@ -262,11 +269,13 @@ def compute(varmap,jenv,circ,models,ports,method='low-snr'):
         config = circ.config(cstr_block,cstr_loc)
         fmax = config.bandwidth(cstr_port).fmax
         term = Jtau*fmax*time_constant
+        if util.is_inf(fmax):
+          continue
+
         scorecard.record(cstr_block,cstr_loc,cstr_port,ival,fmax)
         if not util.pos_inf(ival.upper):
           gpkit_cstrs.append(term <= ival.upper)
         if ival.lower > 0:
-          print(term,ival.lower)
           gpkit_cstrs.append(term >= ival.lower)
 
       gpkit_obj = 0

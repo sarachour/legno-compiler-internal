@@ -57,8 +57,7 @@ def gen_unpack_loc(circ,locstr):
 
 def gen_use_lut(circ,block,locstr,config,source):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
-  expr = op.to_python(config.expr('out'))
-  variables = config.expr('out').vars()
+  variables,expr = op.to_python(config.expr('out'))
   yield chip_cmd.UseLUTCmd(chip,tile,slce,variables,expr, \
                            source=source)
 

@@ -27,3 +27,6 @@ def profile(fn):
   cp.disable()
   cp.print_stats()
   input("continue.")
+
+def is_inf(v):
+  return v == float('inf')

@@ -66,6 +66,7 @@ void reset_experiment(experiment_t * expr);
 void enable_dac(experiment_t * expr, byte dac_id);
 short* get_adc_values(experiment_t * expr, byte adc_id, int& num_samples);
 void exec_command(experiment_t * expr, Fabric * fab, cmd_t& cmd, float* inbuf);
+void debug_command(experiment_t * expr, Fabric * fab, cmd_t& cmd, float* inbuf);
 void print_command(cmd_t& cmd, float* inbuf);
 }
 #endif

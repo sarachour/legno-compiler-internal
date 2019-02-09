@@ -79,14 +79,14 @@ class MicroResetCmd(ArduinoCommand):
 
 
 
-class MicroUseADCCmd(ArduinoCommand):
+class MicroUseArdADCCmd(ArduinoCommand):
     def __init__(self,adc_no):
         ArduinoCommand.__init__(self)
         self._adc_id = adc_no
 
     @staticmethod
     def name():
-        return "micro_use_adc"
+        return "micro_use_ard_adc"
 
     @staticmethod
     def desc():
@@ -104,7 +104,7 @@ class MicroUseADCCmd(ArduinoCommand):
 
     @staticmethod
     def parse(args):
-        return strict_do_parse("{adc_no:d}", args, MicroUseADCCmd)
+        return strict_do_parse("{adc_no:d}", args, MicroUseArdADCCmd)
 
     def execute(self,state):
         state.use_adc(self._adc_id)
@@ -309,7 +309,7 @@ class MicroGetADCValuesCmd(ArduinoCommand):
             fh.write(json.dumps(obj,indent=4))
 
 
-class MicroUseDACCmd(ArduinoCommand):
+class MicroUseArdDACCmd(ArduinoCommand):
 
     def __init__(self,dac_id,periodic):
         ArduinoCommand.__init__(self)
@@ -319,7 +319,7 @@ class MicroUseDACCmd(ArduinoCommand):
 
     @staticmethod
     def name():
-        return 'micro_use_dac'
+        return 'micro_use_ard_dac'
 
     @staticmethod
     def desc():
@@ -344,7 +344,7 @@ class MicroUseDACCmd(ArduinoCommand):
     @staticmethod
     def parse(args):
         return strict_do_parse("{dac_id:d} {periodic}", args, \
-                        MicroUseDACCmd)
+                        MicroUseArdDACCmd)
 
     def __repr__(self):
         return "%s %d %s" % (self.name(),self._dac_id, \
@@ -863,23 +863,23 @@ class MicroSetupChipCmd(ArduinoCommand):
             stmt.apply(state)
 
 
-class MicroGetOverflowCmd(ArduinoCommand):
+class MicroGetStatusCmd(ArduinoCommand):
 
     def __init__(self):
         ArduinoCommand.__init__(self)
 
     @staticmethod
     def name():
-        return 'micro_get_overflows'
+        return 'micro_get_status'
 
     @staticmethod
     def desc():
-        return "[microcontroller] get chip integrator overflows."
+        return "[microcontroller] get chip integrator and adc status."
 
 
     @staticmethod
     def parse(args):
-        return strict_do_parse("",args,MicroGetOverflowCmd)
+        return strict_do_parse("",args,MicroGetStatusCmd)
 
     def __repr__(self):
         return self.name()
@@ -889,8 +889,8 @@ class MicroGetOverflowCmd(ArduinoCommand):
             stmt.apply(state)
 
         print("==== overflow summary ====")
-        for handle,oflow in state.overflows():
-            print("%s overflow=%s" % (handle,oflow))
+        for handle,oflow in state.statuses():
+            print("%s status=%s" % (handle,oflow))
         print("=========")
 
 

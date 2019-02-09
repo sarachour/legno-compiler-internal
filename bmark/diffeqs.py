@@ -8,6 +8,8 @@ import bmark.bmarks.bmmrxn as bmmrxn
 import bmark.bmarks.bmmrxn as gentoggle
 import bmark.bmarks.inout as inout
 import bmark.bmarks.vanderpol as vanderpol
+import bmark.bmarks.heat as heat
+import bmark.bmarks.pendulum as pendulum
 
 BMARKS = [
     inout.model1(),
@@ -17,10 +19,16 @@ BMARKS = [
     simple_osc.model("quarter",0.25),
     spring.model(),
     oscillator.model(),
+    pendulum.model(),
     robot_control.model(),
     repri.model(),
-    vanderpol.model()
+    vanderpol.model(),
+    heat.model(4),
+    heat.model(8),
+    heat.model(16)
 ]
+
+# energy model: page 26 of thesis, chapter 2
 
 def get_math_env(name):
     for menv,bmark in BMARKS:

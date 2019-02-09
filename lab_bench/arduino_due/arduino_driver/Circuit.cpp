@@ -48,10 +48,14 @@ Fabric::Chip::Tile::Slice::Fanout* get_fanout(Fabric * fab, circ_loc_idx1_t& loc
 
 Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab, uint16_t& btype, circ_loc_idx2_t& loc){
   switch(btype){
-    case DAC:
+    case TILE_DAC:
       comm::error("dac has no input port");
       break;
 
+    case TILE_ADC:
+      return get_slice(fab,loc.idxloc.loc)->adc->in0;
+      break;
+      
     case MULT:
        switch(loc.idx2){
          case 0:
@@ -101,7 +105,7 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab,
 
 Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_output_port(Fabric * fab, uint16_t& btype, circ_loc_idx2_t& loc){
   switch(btype){
-    case DAC:
+    case TILE_DAC:
       return get_slice(fab,loc.idxloc.loc)->dac->out0; 
       break;
 
@@ -241,7 +245,88 @@ Fabric* setup_board(){
   Fabric* fabric = new Fabric();
   return fabric;
 }
+void debug_command(Fabric * fab, cmd_t& cmd, float* inbuf){
+  switch(cmd.type){
+      case cmd_type_t::CONFIG_DAC:
+        comm::response("[dbg] configured dac (direct)",0);
+        break;
+        
+      case cmd_type_t::USE_ADC:
+        comm::response("[dbg] enabled adc",0);
+        break;
+        
+      case cmd_type_t::USE_DAC:
+        comm::response("[dbg] enabled dac",0);
+        break;
+      
+      case cmd_type_t::CONFIG_MULT:
+        comm::response("[dbg] configured mult [direct]",0);
+        break;
+        
+      case cmd_type_t::USE_MULT:
+        comm::response("[dbg] enabled mult",0);
+        break;
+ 
+        
+      case cmd_type_t::USE_FANOUT:
+        comm::response("[dbg] enabled fanout",0);
+        break;
+   
+    case cmd_type_t::CONFIG_INTEG:
+        comm::response("[dbg] configured integ [direct]",0);
+        break;
+        
+    case cmd_type_t::USE_INTEG:
+        comm::response("[dbg] enabled integ",0);
+        break;
 
+    case cmd_type_t::GET_INTEG_STATUS:
+        comm::response("[dbg] retrieved integ exception",1);
+        comm::data("0", "i");
+        break;
+    case cmd_type_t::GET_ADC_STATUS:
+        comm::response("[dbg] retrieved  lut exception",1);
+        comm::data("0", "i");
+        break;
+        
+    case cmd_type_t::USE_LUT:
+        comm::response("[dbg] use lut",0);
+        break;
+        
+    case cmd_type_t::DISABLE_DAC:
+        comm::response("[dbg] disabled dac",0);
+        break;
+
+    case cmd_type_t::DISABLE_MULT:
+        comm::response("[dbg] disabled mult",0);
+        break;
+
+    case cmd_type_t::DISABLE_FANOUT:
+        comm::response("[dbg] disabled fanout",0);
+        break;
+
+    case cmd_type_t::DISABLE_INTEG:
+        comm::response("[dbg] disabled integ",0);
+        break;
+
+    case cmd_type_t::CONNECT:
+        comm::response("[dbg] connected",0);
+        break;
+
+    case cmd_type_t::BREAK:
+        comm::response("[dbg] disconnected",0);
+        break;
+        
+    case cmd_type_t::CALIBRATE:
+        comm::response("[dbg] calibrated",0);
+        break;
+        
+    default:
+      comm::error("unknown command");
+      break;
+  }
+  
+}
 void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   cmd_use_dac_t dacd;
   cmd_use_mult_t multd;
@@ -283,9 +368,9 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
         adcd = cmd.data.adc; 
         adc = get_slice(fab,dacd.loc)->adc;
         adc->setEnable(true);
+        adc->setHiRange(hi1);
         load_range(adcd.in_range, &lo1, &hi1);
         comm::response("enabled adc",0);
-        adc->setHiRange(hi1);
         break;
         
       case cmd_type_t::USE_DAC:
@@ -397,6 +482,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
           byteval = round(inbuf[data_idx]*128.0 + 128.0);
           lut->setLut(data_idx,byteval);
         }
+        comm::response("[dbg] use lut",0);
         break;
         
     case cmd_type_t::DISABLE_DAC:
@@ -480,7 +566,7 @@ void print_port_loc(circ_loc_idx2_t& loc){
 
 void print_block(uint8_t type){
   switch(type){
-    case block_type::DAC:
+    case block_type::TILE_DAC:
       Serial.print("dac");
       break;
       
@@ -516,6 +602,9 @@ void print_block(uint8_t type){
       Serial.print("lut");
       break;
 
+    case block_type::TILE_ADC:
+      Serial.print("adc");
+      break;
     default:
       Serial.print("unknown<");
       Serial.print(type);

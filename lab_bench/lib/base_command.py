@@ -196,9 +196,14 @@ class ArduinoCommand(Command):
     HEADER = "AC:>"
     # 1=only print commands
     # 0=run commands
-    #DEBUG = 0
     DEBUG = 0
 
+    @staticmethod
+    def set_debug(debug):
+        if debug:
+            ArduinoCommand.DEBUG = 1
+        else:
+            ArduinoCommand.DEBUG = 0
 
     def __init__(self,typ=cstructs.cmd_t()):
         Command.__init__(self)
@@ -337,7 +342,7 @@ class ArduinoCommand(Command):
         header_data = self._c_type.build(header_type)
         if not raw_data is None:
             body_type = self.build_dtype(raw_data)
-            body_data = data_type.build(raw_data)
+            body_data = body_type.build(raw_data)
             rawbuf = header_data + body_data
 
         else:
