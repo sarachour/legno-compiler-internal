@@ -48,14 +48,16 @@ def circ_cmd_type():
         CircCmdType.DISABLE_INTEG.name:8,
         CircCmdType.DISABLE_FANOUT.name:9,
         CircCmdType.DISABLE_LUT.name:10,
-        CircCmdType.CONNECT.name:11,
-        CircCmdType.BREAK.name:12,
-        CircCmdType.CALIBRATE.name:13,
-        CircCmdType.GET_INTEG_STATUS.name:14,
-        CircCmdType.GET_ADC_STATUS.name:15,
-        CircCmdType.CONFIG_DAC.name:16,
-        CircCmdType.CONFIG_MULT.name:17,
-        CircCmdType.CONFIG_INTEG.name:18
+        CircCmdType.DISABLE_ADC.name:11,
+        CircCmdType.CONNECT.name:12,
+        CircCmdType.BREAK.name:13,
+        CircCmdType.CALIBRATE.name:14,
+        CircCmdType.GET_INTEG_STATUS.name:15,
+        CircCmdType.GET_ADC_STATUS.name:16,
+        CircCmdType.CONFIG_DAC.name:17,
+        CircCmdType.CONFIG_MULT.name:18,
+        CircCmdType.CONFIG_INTEG.name:19,
+        CircCmdType.WRITE_LUT.name:20
 
     }
     return cstruct.Enum(cstruct.Int24ul,
@@ -112,6 +114,14 @@ def circ_use_mult_t():
         "coeff" / cstruct.Float32l
     )
 
+def circ_write_lut_t():
+    return cstruct.Struct(
+        "loc" / circ_loc_t(),
+        "offset" / cstruct.Int8ul,
+        "n" / cstruct.Int8ul
+    )
+
+
 def circ_use_lut_t():
     return cstruct.Struct(
         "loc" / circ_loc_t(),
@@ -151,6 +161,7 @@ def circ_cmd_data():
         mult=circ_use_mult_t(),
         dac=circ_use_dac_t(),
         lut=circ_use_lut_t(),
+        write_lut=circ_write_lut_t(),
         adc=circ_use_adc_t(),
         conn=circ_connection_t()
     )
@@ -197,6 +208,5 @@ def cmd_t():
         "type" / cmd_type_t(),
         cstruct.Padding(2),
         "data" / cmd_data_t(),
-        cstruct.Padding(4)
     )
 #

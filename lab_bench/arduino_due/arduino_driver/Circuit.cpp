@@ -246,6 +246,7 @@ Fabric* setup_board(){
   return fabric;
 }
 void debug_command(Fabric * fab, cmd_t& cmd, float* inbuf){
+  cmd_write_lut_t wrlutd;
   switch(cmd.type){
       case cmd_type_t::CONFIG_DAC:
         comm::response("[dbg] configured dac (direct)",0);
@@ -292,11 +293,35 @@ void debug_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     case cmd_type_t::USE_LUT:
         comm::response("[dbg] use lut",0);
         break;
+
+    case cmd_type_t::WRITE_LUT:
+       wrlutd = cmd.data.write_lut;
+       comm::print_header();
+       Serial.print(wrlutd.n);
+       Serial.print(" offset=");
+       Serial.println(wrlutd.offset);
+       for(int data_idx=0; data_idx < wrlutd.n; data_idx+=1){
+          comm::print_header();
+          Serial.print(data_idx+wrlutd.offset);
+          Serial.print("=");
+          Serial.print(inbuf[data_idx]);
+        }
+        comm::response("[dbg] write lut",0);
+        
+        break;
         
     case cmd_type_t::DISABLE_DAC:
         comm::response("[dbg] disabled dac",0);
         break;
-
+    
+    case cmd_type_t::DISABLE_ADC:
+        comm::response("[dbg] disabled adc",0);
+        break;
+    
+    case cmd_type_t::DISABLE_LUT:
+        comm::response("[dbg] disabled lut",0);
+        break;
+         
     case cmd_type_t::DISABLE_MULT:
         comm::response("[dbg] disabled mult",0);
         break;
@@ -333,6 +358,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   cmd_use_fanout_t fod;
   cmd_use_integ_t integd;
   cmd_use_lut_t lutd;
+  cmd_write_lut_t wrlutd;
   cmd_use_adc_t adcd;
   cmd_connection_t connd;
   bool lo1,hi1;
@@ -356,8 +382,10 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
         dacd = cmd.data.dac; 
         dac = get_slice(fab,dacd.loc)->dac;
         load_range(multd.out_range, &lo1, &hi1);
-        comm::test(dac->setConstantDirect(dacd.value,hi1,true), 
-           "failed to set dac value");
+        if(dacd.source == circ::dac_source::DS_MEM){
+          comm::test(dac->setConstantDirect(dacd.value,hi1,true), 
+             "failed to set dac value");
+        }
         comm::print_header();
         Serial.print(" coefficient=");
         Serial.println(dacd.value);
@@ -366,10 +394,10 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
         
       case cmd_type_t::USE_ADC:
         adcd = cmd.data.adc; 
-        adc = get_slice(fab,dacd.loc)->adc;
+        adc = get_slice(fab,adcd.loc)->adc;
         adc->setEnable(true);
-        adc->setHiRange(hi1);
         load_range(adcd.in_range, &lo1, &hi1);
+        adc->setHiRange(hi1);
         comm::response("enabled adc",0);
         break;
         
@@ -380,10 +408,12 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
         dac->out0->setInv(dacd.inv);
         load_range(multd.out_range, &lo1, &hi1);
         dac->setHiRange(hi1);
-        load_dac_source(lutd.source, &s1, &s2, &s3, &s4);
+        load_dac_source(dacd.source, &s1, &s2, &s3, &s4);
         dac->setSource(s1,s2,s3,s4);
-        comm::test(dac->setConstantDirect(dacd.value,hi1,false), 
-           "failed to set dac value");
+        if(dacd.source == circ::dac_source::DS_MEM){
+          comm::test(dac->setConstantDirect(dacd.value,hi1,false), 
+            "failed to set dac value");
+        }
         comm::response("enabled dac",0);
         break;
       
@@ -478,11 +508,21 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
         lut = get_slice(fab,lutd.loc)->lut; 
         load_lut_source(lutd.source, &s1, &s2, &s3);
         lut->setSource(s1,s2,s3);
-        for(int data_idx=0; data_idx < 256; data_idx+=1){
+        comm::response("use lut",0);
+        break;
+        
+    case cmd_type_t::WRITE_LUT:
+        wrlutd = cmd.data.write_lut;
+        lut = get_slice(fab,wrlutd.loc)->lut; 
+        for(int data_idx=0; data_idx < wrlutd.n; data_idx+=1){
           byteval = round(inbuf[data_idx]*128.0 + 128.0);
+          comm::print_header();
+          Serial.print(data_idx+wrlutd.offset);
+          Serial.print("=");
+          Serial.println(inbuf[data_idx]);
           lut->setLut(data_idx,byteval);
         }
-        comm::response("[dbg] use lut",0);
+        comm::response("write lut",0);
         break;
         
     case cmd_type_t::DISABLE_DAC:
@@ -491,6 +531,18 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
         comm::response("disabled dac",0);
         break;
 
+    case cmd_type_t::DISABLE_ADC:
+        adc = get_slice(fab,cmd.data.circ_loc)->adc;
+        adc->setEnable(false);
+        comm::response("disabled adc",0);
+        break;
+
+     case cmd_type_t::DISABLE_LUT:
+        lut = get_slice(fab,cmd.data.circ_loc)->lut;
+        lut->setEnable(false);
+        comm::response("disabled lut",0);
+        break;
+        
     case cmd_type_t::DISABLE_MULT:
         multd = cmd.data.mult;
         mult = get_mult(fab,multd.loc);
@@ -673,6 +725,13 @@ void print_command(cmd_t& cmd){
         Serial.print(" val=");
         Serial.print(cmd.data.dac.value);
         break;
+
+      case cmd_type_t::USE_ADC:
+        Serial.print("use adc ");
+        print_loc(cmd.data.adc.loc);
+        Serial.print(" rng=");
+        Serial.print(range_to_str(cmd.data.adc.in_range));
+        break;
         
       case cmd_type_t::USE_DAC:
         Serial.print("use dac ");
@@ -681,6 +740,13 @@ void print_command(cmd_t& cmd){
         Serial.print(cmd.data.dac.inv ? "yes" : "no");
         Serial.print(" rng=");
         Serial.print(range_to_str(cmd.data.dac.out_range));
+        Serial.print(" val=");
+        Serial.print(cmd.data.dac.value);
+        break;
+        
+      case cmd_type_t::GET_ADC_STATUS:
+        Serial.print("get adc status ");
+        print_loc(cmd.data.adc.loc);
         break;
         
       case cmd_type_t::GET_INTEG_STATUS:
@@ -714,6 +780,16 @@ void print_command(cmd_t& cmd){
         
       case cmd_type_t::USE_LUT:
         Serial.print("use lut ");
+        print_loc(cmd.data.circ_loc);
+        break;
+      
+      case cmd_type_t::WRITE_LUT:
+        Serial.print("write lut ");
+        print_loc(cmd.data.circ_loc);
+        break;
+        
+      case cmd_type_t::DISABLE_ADC:
+        Serial.print("disable adc ");
         print_loc(cmd.data.circ_loc);
         break;
         

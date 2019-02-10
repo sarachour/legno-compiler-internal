@@ -156,7 +156,7 @@ def exec_srcgen(hdacv2_board,args):
 
 def exec_scriptgen(hdacv2_board,args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
-  menv = args.math_env
+  menv = bmark.get_math_env(args.benchmark)
   hwenv = args.hw_env
   scores = []
   filenames = []
@@ -177,9 +177,8 @@ def exec_scriptgen(hdacv2_board,args):
   script_file = "rank_%s.txt" % args.benchmark
   with open(script_file,'w') as fh:
       for ind in sorted_indices:
-          line = "%s\n%s\n" % (scores[ind], filenames[ind])
+          line = "%s,%s\n" % (scores[ind], filenames[ind])
           fh.write("%s\n" % line)
-          print(line)
 
   subinds = np.random.choice(sorted_indices,15)
   subscores = list(map(lambda i: scores[i], subinds))
@@ -196,10 +195,11 @@ def exec_scriptgen(hdacv2_board,args):
                                                   circ_indices, \
                                                   circ_scale_index, \
                                                   opt, \
-                                                  menv,
+                                                  menv.name,
                                                   hwenv)
-      print(gren_filename,score)
-      assert(path_handler.has_file(gren_filename))
+      if not (path_handler.has_file(gren_filename)):
+          raise Exception("no file: %s" % gren_filename)
+
       files.append((gren_filename,score))
 
   script_file = "batch_%s.grendel-list" % args.benchmark

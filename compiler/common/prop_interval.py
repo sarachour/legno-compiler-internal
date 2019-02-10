@@ -39,7 +39,8 @@ class PropIntervalVisitor(Visitor):
     prog,circ = self._prog,self.circ
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
-        if not block_name == 'integrator':
+        if not block_name == 'integrator' and \
+           not block_name == 'ext_chip_in':
           continue
 
         for port in block.outputs + block.inputs:
@@ -55,7 +56,6 @@ class PropIntervalVisitor(Visitor):
                 mbw = prog.bandwidth(label)
                 print("lbl: %s[%s].%s := %s" % \
                       (block_name,loc,port,mrng))
-
                 config.set_interval(port,mrng,\
                                     handle=handle)
                 config.set_bandwidth(port,mbw,\

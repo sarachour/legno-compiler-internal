@@ -3,6 +3,16 @@ from ops import op, opparse
 from bmark.bmarks.common import *
 import bmark.menvs as menvs
 
+def model0():
+    prob = MathProg("inout0")
+    prob.bind('O', op.Emit(op.ExtVar("I")))
+    prob.set_bandwidth("I",1e4)
+    prob.set_interval("I",-1.0,1.0)
+    prob.compile()
+    menv = menvs.get_math_env('t2ksin0')
+    return menv,prob
+
+
 def model1():
     prob = MathProg("inout1")
     prob.bind('O', op.Emit(

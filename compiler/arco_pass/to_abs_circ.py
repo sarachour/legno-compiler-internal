@@ -6,6 +6,7 @@ import itertools
 import compiler.arco_pass.util as arco_util
 import chip.props as prop
 import itertools
+from chip.config import Labels
 
 def tac_integ(board,ast):
     for deriv,deriv_output in to_abs_circ(board,ast.input(0)):

@@ -12,9 +12,13 @@ def compute_snr(nz_eval,circ,block_name,loc,port):
   signal = config.interval(port).scale(scf)
   noise_mean,noise_var = nz_eval.get(block_name,loc,port)
 
-  snr = np.log10(signal.bound/(noise_var))
   print("signal: %s" % signal)
   print("noise: %s" % noise_var)
+
+  if noise_var == 0:
+    return 100
+
+  snr = np.log10(signal.bound/noise_var)
   print("snr: %s" % snr)
   return snr
 

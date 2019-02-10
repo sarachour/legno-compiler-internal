@@ -3,7 +3,7 @@
 
 namespace comm {
   
-#define BUFSIZ 1024
+#define BUFSIZ 512
 
 byte INBUF[BUFSIZ];
 int WPOS=0;
@@ -99,6 +99,14 @@ void listen(){
 
 void* get_data_ptr(int offset){
    return &INBUF[offset];
+}
+void print_data(int offset){
+   for(int idx=offset; idx < WPOS; idx += 1){
+      print_header();
+      Serial.print(idx);
+      Serial.print(" ");
+      Serial.println(INBUF[idx],HEX);
+   }
 }
 int get_input(uint8_t* buf, int n_bytes){
   if(not DONE){

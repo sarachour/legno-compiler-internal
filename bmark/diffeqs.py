@@ -12,6 +12,7 @@ import bmark.bmarks.heat as heat
 import bmark.bmarks.pendulum as pendulum
 
 BMARKS = [
+    inout.model0(),
     inout.model1(),
     inout.model2(),
     simple_osc.model("one",1.0),

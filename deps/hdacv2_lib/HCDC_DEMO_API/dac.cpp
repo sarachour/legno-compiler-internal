@@ -86,6 +86,9 @@ bool Fabric::Chip::Tile::Slice::Dac::setConstantDirect(float constant,
     if(setBias){
 		   return calibrateTarget(hiRange, constant);
     }
+    else{
+      return true;
+    }
   }
   else{
     return false;

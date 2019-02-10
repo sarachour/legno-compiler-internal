@@ -25,6 +25,7 @@ class CircCmdType(Enum):
     DISABLE_INTEG = 'disable_integ';
     DISABLE_FANOUT = 'disable_fanout';
     DISABLE_LUT = 'disable_lut';
+    DISABLE_ADC = 'disable_adc';
     CONNECT = 'connect';
     BREAK = 'break';
     CALIBRATE = 'calibrate';
@@ -33,7 +34,7 @@ class CircCmdType(Enum):
     CONFIG_INTEG = 'config_integ';
     CONFIG_DAC = 'config_dac';
     CONFIG_MULT = 'config_mult';
-
+    WRITE_LUT = "write_lut"
 
 class ExpCmdType(Enum):
     RESET = 'reset';

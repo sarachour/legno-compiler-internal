@@ -25,6 +25,14 @@ def long_time():
   exp.set_input_time(2000)
   return exp
 
+def long_sin0():
+  exp = MathEnv('t2ksin0')
+  exp.set_sim_time(2000)
+  exp.set_input_time(2000)
+  exp.set_input('I','1.0*math.sin(0.01*t)')
+  return exp
+
+
 
 def long_sin1():
   exp = MathEnv('t2ksin1')
@@ -48,6 +56,7 @@ MATH_ENVS = [
   med_time(),
   long_time(),
   medlong_time(),
+  long_sin0(),
   long_sin1(),
   long_sin2()
 ]

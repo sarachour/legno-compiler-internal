@@ -58,8 +58,8 @@ def gen_unpack_loc(circ,locstr):
 def gen_use_lut(circ,block,locstr,config,source):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   variables,expr = op.to_python(config.expr('out'))
-  yield chip_cmd.UseLUTCmd(chip,tile,slce,variables,expr, \
-                           source=source)
+  yield chip_cmd.UseLUTCmd(chip,tile,slce,source=source)
+  yield chip_cmd.WriteLUTCmd(chip,tile,slce,variables,expr)
 
 def gen_use_adc(circ,block,locstr,config):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
@@ -390,7 +390,7 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
 
   for handle,info in dacs_in_use.items():
     in_no = hwenv.dac(handle)
-    gren.add(parse('micro_use_dac %d %s' % \
+    gren.add(parse('micro_use_ard_dac %d %s' % \
                    (in_no,info['periodic'])))
 
 
@@ -416,9 +416,9 @@ def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename):
     gren.add(parse('osc_setup_trigger'))
 
   gren.add(parse('micro_setup_chip'))
-  gren.add(parse('micro_get_overflows'))
+  gren.add(parse('micro_get_status'))
   gren.add(parse('micro_run'))
-  gren.add(parse('micro_get_overflows'))
+  gren.add(parse('micro_get_status'))
   gren.add(parse('micro_teardown_chip'))
 
 

@@ -36,6 +36,9 @@ bool Fabric::Chip::Tile::Slice::Multiplier::setGainDirect(float gain, bool hiRan
     if(setBias){
       return calibrateTarget(hiRange, gain);
     }
+    else{
+      return true;
+    }
   }
   else{
     return false;

@@ -6,6 +6,7 @@ import lib.util as util
 import numpy as np
 from enum import Enum
 import construct
+import math
 
 class Priority(str,Enum):
     FIRST = "first"
@@ -506,14 +507,11 @@ class AnalogChipCommand(ArduinoCommand):
     def configure(self):
         return None
 
-    def execute_command(self,state):
-        raise Exception("cannot directly execute analog chip command")
-
-    def apply(self,state,raw_data=None):
+    def apply(self,state):
         if state.dummy:
             return
-
-        return ArduinoCommand.execute_command(self,state,raw_data=raw_data)
+        resp = ArduinoCommand.execute(self,state)
+        return resp
 
 class DisableCmd(AnalogChipCommand):
 
@@ -553,6 +551,22 @@ class DisableCmd(AnalogChipCommand):
                     'circ_loc':self._loc.build_ctype()
                 }
             })
+        if self._block == enums.BlockType.LUT:
+            return build_circ_ctype({
+                'type':enums.CircCmdType.DISABLE_LUT.name,
+                'data':{
+                    'circ_loc':self._loc.build_ctype()
+                }
+            })
+
+        if self._block == enums.BlockType.ADC:
+            return build_circ_ctype({
+                'type':enums.CircCmdType.DISABLE_ADC.name,
+                'data':{
+                    'circ_loc':self._loc.build_ctype()
+                }
+            })
+
         elif self._block == enums.BlockType.MULT:
             return build_circ_ctype({
                 'type':enums.CircCmdType.DISABLE_MULT.name,
@@ -578,7 +592,7 @@ class DisableCmd(AnalogChipCommand):
             return build_circ_ctype({
                 'type':enums.CircCmdType.DISABLE_LUT.name,
                 'data':{
-                    'circ_loc':self._loc.build
+                    'circ_loc':self._loc.build_ctype()
                 }
             })
         else:
@@ -740,9 +754,109 @@ class ConstVal:
             near_val = neg_near_val
         return near_val,inv,code
 
+class WriteLUTCmd(UseCommand):
+
+    def __init__(self,chip,tile,slice,variables,expr):
+        UseCommand.__init__(self,
+                            enums.BlockType.LUT,
+                            CircLoc(chip,tile,slice))
+
+        if not self._loc.index is None:
+            self.fail("lut has no index <%d>" % loc.index)
+
+        self._expr = expr
+        self._variables = variables
+        if not (len(self._variables) == 1):
+            raise Exception('unexpected number of variables: %s' % variables)
+
+    @property
+    def expr(self):
+        return self._expr
+
+    @staticmethod
+    def desc():
+        return "write data to lut block on the hdacv2 board"
+
+
+    @staticmethod
+    def parse(args):
+        return WriteLUTCmd._parse(args,WriteLUTCmd)
+
+    @staticmethod
+    def _parse(args,cls):
+        result = parse_pattern_block(args,0,0,0,
+                                     cls.name(),
+                                     source=None,
+                                     expr=True)
+        if result.success:
+            data = result.value
+            return cls(
+                data['chip'],
+                data['tile'],
+                data['slice'],
+                data['vars'],
+                data['expr']
+            )
+        else:
+            raise Exception(result.message)
+
+    def build_dtype(self,buf):
+        return construct.Array(len(buf),
+                        construct.Float32l)
+
+
+    def build_ctype(self,offset=None,n=None):
+        # inverting flips the sign for some wacky reason, given the byte
+        # representation is signed
+        return build_circ_ctype({
+            'type':enums.CircCmdType.WRITE_LUT.name,
+            'data':{
+                'write_lut':{
+                    'loc':self._loc.build_ctype(),
+                    'offset':offset,
+                    'n':n
+                }
+            }
+        })
+
+    @staticmethod
+    def name():
+        return 'write_lut'
+
+    def __repr__(self):
+        vstr = ",".join(self._variables)
+        st = "%s %s %s %s [%s] %s" % \
+              (self.name(),
+               self.loc.chip,self.loc.tile, \
+               self.loc.slice,
+               vstr,self._expr)
+        return st
+
+
+
+    def apply(self,state):
+        if state.dummy:
+            return
+
+        values = [-256.0]*256
+        for idx,v in enumerate(np.linspace(-1.0,1.0,256)):
+            assigns = dict(zip(self._variables,[v]))
+            value = util.eval_func(self.expr,assigns)
+            values[idx] = float(value)
+
+
+        resp = ArduinoCommand.execute(self,state,
+                                        {
+                                            'raw_data':list(values),
+                                            'n_data_bytes':128,
+                                            'elem_size':4
+                                        })
+        return resp
+
+
 class UseLUTCmd(UseCommand):
 
-    def __init__(self,chip,tile,slice,variables,expr,
+    def __init__(self,chip,tile,slice,
                  source=LUTSourceType.EXTERN):
         UseCommand.__init__(self,
                             enums.BlockType.LUT,
@@ -752,10 +866,6 @@ class UseLUTCmd(UseCommand):
             self.fail("dac has no index <%d>" % loc.index)
 
         self._source = source
-        self._expr = expr
-        self._variables = variables
-        if not (len(self._variables) == 1):
-            raise Exception('unexpected number of variables: %s' % variables)
 
     @property
     def expr(self):
@@ -775,23 +885,17 @@ class UseLUTCmd(UseCommand):
         result = parse_pattern_block(args,0,0,0,
                                      cls.name(),
                                      source=LUTSourceType,
-                                     expr=True)
+                                     expr=False)
         if result.success:
             data = result.value
             return cls(
                 data['chip'],
                 data['tile'],
                 data['slice'],
-                data['vars'],
-                data['expr'],
                 source=data['source']
             )
         else:
             raise Exception(result.message)
-
-    def build_dtype(self,buf):
-        return construct.Array(len(buf),
-                        construct.Float32l)
 
 
     def build_ctype(self):
@@ -812,27 +916,18 @@ class UseLUTCmd(UseCommand):
         return 'use_lut'
 
     def __repr__(self):
-        vstr = ",".join(self._variables)
-        st = "%s %s %s %s src %s [%s] %s" % \
+        st = "%s %s %s %s src %s" % \
               (self.name(),
                self.loc.chip,self.loc.tile, \
                self.loc.slice,
-               self._source.abbrev(),
-               vstr,self._expr)
+               self._source.abbrev())
         return st
 
 
     def apply(self,state):
         if state.dummy:
             return
-
-        values = [0.0]*256
-        for idx,v in enumerate(np.linspace(-1.0,1.0,256)):
-            assigns = dict(zip(self._variables,[v]))
-            value = util.eval_func(self.expr,assigns)
-            values[idx] = value
-
-        resp = AnalogChipCommand.apply(self,state,raw_data=values)
+        resp = AnalogChipCommand.apply(self,state)
         return resp
 
 

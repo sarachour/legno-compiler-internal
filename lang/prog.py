@@ -1,5 +1,5 @@
 from ops.interval import Interval
-from ops.bandwidth import Bandwidth
+from ops.bandwidth import Bandwidth, BandwidthCollection
 import util.util as util
 import sys
 class MathEnv:
@@ -67,7 +67,9 @@ class MathProg:
         return self._intervals[v]
 
     def bandwidth(self,v):
-        return self._bandwidths[v]
+        bw = self._bandwidths[v]
+        assert(isinstance(bw,Bandwidth))
+        return bw
 
     def set_bandwidth(self,v,b):
         if not v in self._variables:

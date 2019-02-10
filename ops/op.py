@@ -368,12 +368,25 @@ class ExtVar(Op):
         Op.__init__(self,OpType.EXTVAR,[])
         self._name = name
 
+    def coefficient(self):
+        return 1.0
+
+    def sum_terms(self):
+        return [self]
+
+    def prod_terms(self):
+        return [self]
+
     @property
     def name(self):
         return self._name
 
     def compute_interval(self,bindings):
         return interval.IntervalCollection(bindings[self._name])
+
+
+    def infer_bandwidth(self,intervals,bandwidths):
+        return bandwidth.BandwidthCollection(bandwidths[self._name])
 
     def compute_bandwidth(self,bandwidths):
         assert(self._name in bandwidths)
@@ -394,6 +407,11 @@ class ExtVar(Op):
     def __repr__(self):
         return "(%s %s)" % \
             (self._op.value,self._name)
+
+    @staticmethod
+    def from_json(obj):
+        return ExtVar(obj['name'])
+
 
     def to_json(self):
         obj = Op.to_json(self)

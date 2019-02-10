@@ -32,6 +32,7 @@ typedef enum cmd_type {
     DISABLE_INTEG,
     DISABLE_FANOUT,
     DISABLE_LUT,
+    DISABLE_ADC,
     /*connection*/
     CONNECT,
     BREAK,
@@ -42,7 +43,8 @@ typedef enum cmd_type {
     /*set values*/
     CONFIG_DAC,
     CONFIG_MULT,
-    CONFIG_INTEG
+    CONFIG_INTEG,
+    WRITE_LUT
 } cmd_type_t;
 
 typedef struct circ_loc {
@@ -80,6 +82,7 @@ typedef enum dac_source {
 
 typedef struct use_dac {
    circ_loc_t loc;
+   uint8_t source;
    uint8_t inv;
    uint8_t out_range;
    float value;
@@ -105,6 +108,13 @@ typedef struct use_lut {
   uint8_t source;
 } cmd_use_lut_t;
 
+
+typedef struct write_lut {
+  circ_loc_t loc;
+  uint8_t offset;
+  uint8_t n;
+} cmd_write_lut_t;
+
 typedef struct use_adc {
   circ_loc_t loc;
   uint8_t in_range;
@@ -129,6 +139,7 @@ typedef union cmddata {
   cmd_use_mult_t mult;
   cmd_use_dac_t dac;
   cmd_use_lut_t lut;
+  cmd_write_lut_t write_lut;
   cmd_use_adc_t adc;
   cmd_connection_t conn;
   circ_loc_t circ_loc;

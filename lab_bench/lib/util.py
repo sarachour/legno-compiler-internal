@@ -7,6 +7,11 @@ class RoundMode(Enum):
     DOWN = "down"
     NEAREST = "nearest"
 
+def compute_pad_bytes(n,x):
+    over = n % x
+    left = x - over
+    return left
+
 def find_closest(array,value,round_mode):
     sel_value = None
     if round_mode == RoundMode.NEAREST:

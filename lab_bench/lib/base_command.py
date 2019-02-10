@@ -1,8 +1,10 @@
 import lib.cstructs as cstructs
+import lib.util as util
 import time
 import lib.enums as enums
 from enum import Enum
 import re
+import math
 
 class OptionalValue:
 
@@ -85,6 +87,26 @@ class GenericArduinoResponse:
 
     def __repr__(self):
         return "generic-resp(%s)" % self.type.value
+
+class ErrorArduinoResponse(GenericArduinoResponse):
+
+    def __init__(self,msg):
+        GenericArduinoResponse.__init__(self,ArduinoResponseType.ERROR)
+        self._msg = msg
+
+    @property
+    def message(self):
+        return self._msg
+
+    def __repr__(self):
+        return "message-resp(%s)" % \
+            (self._msg)
+
+    @staticmethod
+    def parse(args):
+        msg = args[0]
+        return ErrorArduinoResponse(msg)
+
 
 class MessageArduinoResponse(GenericArduinoResponse):
 
@@ -212,7 +234,7 @@ class ArduinoCommand(Command):
     def build_dtype(self,rawbuf):
         raise NotImplementedError
 
-    def build_ctype(self):
+    def build_ctype(self,offset,n):
         raise NotImplementedError
 
 
@@ -234,6 +256,8 @@ class ArduinoCommand(Command):
         elif typ == ArduinoResponseType.PAYLOAD:
             return PayloadArduinoResponse.parse(args[1:])
 
+        elif typ == ArduinoResponseType.ERROR:
+            return ErrorArduinoResponse.parse(args[1:])
         else:
             return GenericArduinoResponse(typ)
 
@@ -334,28 +358,48 @@ class ArduinoCommand(Command):
 
         return None
 
-    def execute_command(self,state,raw_data=None):
+    def execute_command(self,state,raw_data=None,n_data_bytes=1000,elem_size=4):
         if state.dummy:
             return None
 
-        header_type= self.build_ctype()
-        header_data = self._c_type.build(header_type)
+        def construct_bytes(offset=None,n=None):
+            if not raw_data is None:
+                header_type= self.build_ctype(offset=offset,n=n)
+                header_data = self._c_type.build(header_type)
+                # pad to fill up rest of struct before tacking on data.
+                n_pad = util.compute_pad_bytes(len(header_data),24)
+                pad_data = bytearray([0]*n_pad)
+                # data
+                chunk = raw_data[offset:offset+n]
+                body_type = self.build_dtype(chunk)
+                body_data = body_type.build(chunk)
+                rawbuf = header_data+pad_data+body_data
+
+            else:
+                header_type= self.build_ctype()
+                header_data = self._c_type.build(header_type)
+                rawbuf = header_data
+
+            return rawbuf
+
         if not raw_data is None:
-            body_type = self.build_dtype(raw_data)
-            body_data = body_type.build(raw_data)
-            rawbuf = header_data + body_data
+            chunk_size = math.floor(n_data_bytes/elem_size)
+            offset = 0
+            n_els = len(raw_data)
+            resps = []
+            while offset < n_els:
+                n = chunk_size if n_els-offset >= chunk_size \
+                    else n_els-offset
+                rawbuf = construct_bytes(offset,n)
+                resp = self.write_to_arduino(state,rawbuf)
+                resps.append(resp)
+                offset += n
+            return resps
 
         else:
-            rawbuf = header_data
-
-        rep = ""
-        for byt in rawbuf:
-            rep += str(int(byt)) + " "
-
-        print("cmd:> %s" % rep)
-        resp = self.write_to_arduino(state,rawbuf)
-        print("resp:> %s" % resp)
-        return resp
+            rawbuf = construct_bytes()
+            resp = self.write_to_arduino(state,rawbuf)
+            return resp
 
         return None
 

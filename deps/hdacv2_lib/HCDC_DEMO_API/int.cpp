@@ -70,6 +70,9 @@ bool Fabric::Chip::Tile::Slice::Integrator::setInitialDirect(float initial,
     if(setBias){
       return calibrateTarget(hiRange, initial);
     }
+    else{
+      return true;
+    }
   }
   else{
     return false;

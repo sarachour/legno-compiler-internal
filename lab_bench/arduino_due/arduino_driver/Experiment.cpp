@@ -50,15 +50,14 @@ inline void write_dac1_value(experiment_t * expr, int idx){
   int i = idx < N_DAC or expr->periodic_dac[1] ? (idx % N_DAC) : N_DAC-1;
   analogWrite(DAC1, get_value(expr,expr->dac_offsets[1] + i )); 
 }
-inline void _toggle_SDA(){
+void _toggle_SDA(){
   SDA_VAL = SDA_VAL == HIGH ? LOW : HIGH;
   digitalWrite(SDA,SDA_VAL);
-}
-inline void drive_sda_clock(int idx){
-   if(idx % N_OSC == 0 or idx >= N){
-      _toggle_SDA();
+  while(digitalRead(SDA) != SDA_VAL){
+     digitalWrite(SDA,SDA_VAL);
   }
 }
+
 void _update_wave(){
   int idx = IDX;
   IDX += 1;
@@ -233,8 +232,8 @@ void run_experiment(experiment_t * expr, Fabric * fab){
     Serial.println("wrote config");
     comm::print_header();
     Serial.println("toggle sda");
-    _toggle_SDA();
     circ::execute(fab);
+    _toggle_SDA();
     Timer3.start(expr->time_between_samps_us);
   }
   else{
@@ -246,7 +245,9 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   while(IDX < N){
     comm::print_header();
     Serial.print("waiting idx=");
-    Serial.println(IDX);
+    Serial.print(IDX);
+    Serial.print("/");
+    Serial.println(N);
     delay(500);
   }
   Timer3.stop();
@@ -281,6 +282,10 @@ void set_dac_values(experiment_t* expr, float * inbuf, int dac_id, int n, int of
   for(int idx = 0; idx < n; idx+=1){
       // 4096, zero at 2047
       unsigned short value = (unsigned short) (inbuf[idx]*2047+2048) & 0xfff;
+      comm::print_header();
+      Serial.print(idx+offset);
+      Serial.print("=");
+      Serial.println(inbuf[idx]);
       store_value(expr,buf_idx + idx, value);
   }
 }

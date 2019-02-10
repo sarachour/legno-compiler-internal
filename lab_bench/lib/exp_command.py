@@ -379,12 +379,11 @@ class MicroSetDACValuesCmd(ArduinoCommand):
                         MicroSetDACValuesCmd)
 
 
-    def build_ctype(self):
-        buf,offset = self._args
+    def build_ctype(self,offset=None,n=None):
         return build_exp_ctype({
             'type':enums.ExpCmdType.SET_DAC_VALUES.name,
             'args':{
-                'ints':[self.dac_id,len(buf),offset],
+                'ints':[self.dac_id,n,offset],
             },
             'flag': False
         })
@@ -392,11 +391,6 @@ class MicroSetDACValuesCmd(ArduinoCommand):
     def build_dtype(self,buf):
         return construct.Array(len(buf),
                         construct.Float32l)
-
-    def execute_write_op(self,state,buf,offset):
-        self._args = (buf,offset)
-        resp = ArduinoCommand.execute_command(self,state,raw_data=buf)
-        return resp
 
     def compute_value(self,state,idx):
         delta = state.time_between_samples_s
@@ -411,19 +405,14 @@ class MicroSetDACValuesCmd(ArduinoCommand):
 
         n = state.n_dac_samples
         buf = []
-        chunksize_bytes = 1000;
-        chunksize_floats = chunksize_bytes/4
-        # delta in seconds
-        offset = 0
         for idx in range(0,n):
             _,value = self.compute_value(state,idx)
             buf.append(value)
-            if len(buf) == chunksize_floats:
-                line = self.execute_write_op(state,buf,offset)
-                offset += len(buf)
-                buf = []
 
-        self.execute_write_op(state,buf,offset)
+        ArduinoCommand.execute(self,state,
+                               {'raw_data':buf, \
+                                'n_data_bytes':250,
+                                'elem_size':4})
 
 
     def __repr__(self):

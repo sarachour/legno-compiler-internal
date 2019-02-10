@@ -17,6 +17,7 @@ COMMANDS = [
     UseDACCmd,
     UseADCCmd,
     UseLUTCmd,
+    WriteLUTCmd,
     UseIntegCmd,
     ConfigIntegCmd,
     UseMultCmd,

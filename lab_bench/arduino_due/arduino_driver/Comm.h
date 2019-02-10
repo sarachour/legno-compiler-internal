@@ -15,6 +15,7 @@ void payload();
 void error(const char* msg);
 
 void* get_data_ptr(int offset);
+void print_data(int offset);
 int read_bytes(uint8_t * data, int n);
 int read_floats(float * data, int n);
 uint8_t read_byte();
