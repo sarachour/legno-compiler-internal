@@ -1,3 +1,9 @@
+if __name__ == "__main__":
+  import sys
+  import os
+  sys.path.insert(0,os.path.abspath("../../"))
+
+
 from lang.prog import MathProg
 from ops import op, opparse
 from bmark.bmarks.common import *
@@ -46,3 +52,30 @@ def model2():
     prob.compile()
     menv = menvs.get_math_env('t2ksin2')
     return menv,prob
+
+def model3():
+    prob = MathProg("inout3")
+    spec_fun = op.Func(['V'], op.Mult(op.Sgn(op.Var('V')),\
+                                      op.Sqrt(op.Abs(op.Var('V')))))
+    prob.bind('O', op.Emit(op.Call([op.ExtVar("I")], spec_fun)))
+    prob.set_bandwidth("I",1e4)
+    prob.set_interval("I",-1.0,1.0)
+    prob.compile()
+    menv = menvs.get_math_env('t2ksin0')
+    return menv,prob
+
+
+def execute(menv,prob):
+  T,Y = run_fxn(menv,prob)
+  plot_fxn(menv,prob,T,Y)
+
+
+if __name__ == "__main__":
+  menv,prob = model0()
+  execute(menv,prob)
+  menv,prob = model1()
+  execute(menv,prob)
+  menv,prob = model2()
+  execute(menv,prob)
+  menv,prob = model3()
+  execute(menv,prob)

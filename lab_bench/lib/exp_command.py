@@ -394,10 +394,10 @@ class MicroSetDACValuesCmd(ArduinoCommand):
 
     def compute_value(self,state,idx):
         delta = state.time_between_samples_s
-        args = {'t':idx*delta*self.time_scf,\
-                'i':idx}
+        args = {'t_':idx*delta*self.time_scf,\
+                'i_':idx}
         value = self.scf*util.eval_func(self.expr,args)
-        return args['t'],value
+        return args['t_'],value
 
     def execute(self,state):
         if state.dummy:

@@ -203,8 +203,8 @@ class FrequencyScorecard:
       for (block,loc,port),(ival,_) in failure.items():
         this_ival,_ = self._entry[(block,loc,port)]
         # this interval is above the previous one
-        if this_ival.lower >= ival.lower:
-          one_above = True
+        #if this_ival.lower >= ival.lower:
+        #  one_above = True
 
       if one_above:
         return False

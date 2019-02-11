@@ -16,6 +16,39 @@ def parse_diffeq(expr,ic, handle,params):
     const = params[ic]
     return op.Integ(deriv,op.Const(const),handle=handle)
 
+def run_fxn(menv,prob):
+  time = menv.sim_time
+  n = 100.0*menv.sim_time
+  dt = time/n
+  T = np.linspace(0.0,menv.sim_time,n)
+  Z = []
+  for t in T:
+    z = prob.curr_state(menv,t,[])
+    Z.append(z)
+
+  return T,Z
+
+
+def plot_fxn(menv,prob,T,Z):
+  cwd = os.getcwd()
+  filedir = "%s/BMARK_REF/%s_%s" % (cwd,prob.name,menv.name)
+  if not os.path.exists(filedir):
+    os.makedirs(filedir)
+
+  variables = prob.variable_order
+  W =dict(map(lambda v: (v,[]), variables))
+  for t,z in zip(T,Z):
+    for var,value in zip(variables,z):
+      W[var].append(value)
+
+  for series_name,values in W.items():
+    filepath = "%s/%s.png" % (filedir,series_name);
+    plt.plot(T,values,label=series_name)
+    plt.savefig(filepath)
+    plt.clf()
+
+
+
 def plot_diffeq(menv,prob,T,Y):
   cwd = os.getcwd()
   filedir = "%s/BMARK_REF/%s_%s" % (cwd,prob.name,menv.name)
@@ -23,7 +56,6 @@ def plot_diffeq(menv,prob,T,Y):
     os.makedirs(filedir)
   variables = prob.variable_order
   Z =dict(map(lambda v: (v,[]), variables))
-  print(len(T),len(Y))
   for t,y in zip(T,Y):
     z = prob.curr_state(menv,t,y)
     for var,value in zip(variables,z):

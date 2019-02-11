@@ -1,0 +1,9 @@
+@pragma start integ_mm
+@pragma time 0.01
+@pragma const init_cond -1 1 linear
+@pragma out 0 xform [refsig] refsig*{gain}
+use_integ 0 2 0 2 ic {init_cond} rng m m
+mkconn integ 0 2 0 2 tile_output 0 2 2 3
+mkconn tile_output 0 2 2 3 chip_output 0 3 2
+@pragma end
+

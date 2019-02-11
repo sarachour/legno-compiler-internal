@@ -15,6 +15,7 @@ BMARKS = [
     inout.model0(),
     inout.model1(),
     inout.model2(),
+    inout.model3(),
     simple_osc.model("one",1.0),
     simple_osc.model("quad",4.0),
     simple_osc.model("quarter",0.25),

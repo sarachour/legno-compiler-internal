@@ -334,7 +334,8 @@ def parse(line):
 def get_ext_dacs_in_use(board,conc_circ,menv):
   info = {}
   for loc,config in conc_circ.instances_of_block('ext_chip_in'):
-    waveform,periodic = menv.input(config.label('in'))
+    _,waveform = op.to_python(menv.input(config.label('in')))
+    periodic = menv.is_periodic(config.label('in'))
     handle = board.handle_by_inst('ext_chip_in',loc)
     assert(not handle is None)
     info[handle] = {'label':config.label('in'),

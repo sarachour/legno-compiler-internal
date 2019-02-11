@@ -1,3 +1,9 @@
+if __name__ == "__main__":
+  import sys
+  import os
+  sys.path.insert(0,os.path.abspath("../../"))
+
+
 from lang.prog import MathProg
 from ops import op, opparse
 from bmark.bmarks.common import *
@@ -28,4 +34,14 @@ def model():
   prob.set_interval('angle', -1,1)
   prob.set_interval('angvel',-1,1)
   #prob.compile()
-  return prob
+  menv = menvs.get_math_env('t20')
+  return menv,prob
+
+def execute():
+  menv,prob = model()
+  T,Y = run_diffeq(menv,prob)
+  plot_diffeq(menv,prob,T,Y)
+
+
+if __name__ == "__main__":
+  execute()

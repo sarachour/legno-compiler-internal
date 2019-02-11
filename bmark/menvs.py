@@ -1,4 +1,7 @@
 from lang.prog import MathEnv
+import ops.op as op
+
+
 def short_time():
   exp = MathEnv('t2')
   exp.set_sim_time(2)
@@ -27,28 +30,39 @@ def long_time():
 
 def long_sin0():
   exp = MathEnv('t2ksin0')
+  expr = op.Sin(op.Mult(op.Const(0.01), op.Var('t')))
   exp.set_sim_time(2000)
   exp.set_input_time(2000)
-  exp.set_input('I','1.0*math.sin(0.01*t)')
+  exp.set_input('I',expr)
   return exp
 
 
 
 def long_sin1():
+  expr = op.Mult(op.Const(5.0), \
+                 op.Sin(op.Mult(op.Const(0.01), op.Var('t'))))
   exp = MathEnv('t2ksin1')
   exp.set_sim_time(2000)
   exp.set_input_time(2000)
-  exp.set_input('I','5.0*math.sin(0.01*t)')
+  exp.set_input('I',expr)
   return exp
 
 
 def long_sin2():
+  expr1 = op.Mult(op.Const(5.0), \
+                 op.Sin(op.Mult(op.Const(0.01), op.Var('t'))))
+  expr2 = op.Add(
+    op.Mult(op.Const(2.0), \
+            op.Sin(op.Mult(op.Const(0.037), op.Var('t')))),
+    op.Mult(op.Const(3.0), \
+            op.Sin(op.Mult(op.Const(0.01), op.Var('t'))))
+  )
+
   exp = MathEnv('t2ksin2')
   exp.set_sim_time(2000)
   exp.set_input_time(2000)
-  exp.set_input('I2','5.0*math.sin(0.01*t)')
-  exp.set_input('I1',\
-      '3.0*math.sin(0.01*t)+2.0*math.cos(0.037*t)')
+  exp.set_input('I2',expr1)
+  exp.set_input('I1',expr2)
   return exp
 
 MATH_ENVS = [

@@ -27,7 +27,8 @@ class JauntObjectiveFunction():
 
     @staticmethod
     def physical_methods():
-        return ['lo-noise', 'lo-bias', 'lo-delay']
+        #return ['lo-noise', 'lo-bias', 'lo-delay']
+        return ['lo-noise']
 
     def __init__(self,jenv):
         self.method = 'fast'

@@ -114,7 +114,7 @@ def exec_jaunt(hdacv2_board, args):
           scale_circ.write_circuit(filename)
           filename = path_handler.conc_graph_file(circ_bmark,
                                                   circ_indices,
-                                                  idx,
+                                                  idx2,
                                                   opt)
           scale_circ.write_graph(filename,write_png=True)
           if idx2 >= args.scale_circuits:

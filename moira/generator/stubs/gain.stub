@@ -1,0 +1,32 @@
+@pragma start gain_mm
+@pragma time 0.01
+@pragma in 0 sin ampl -1 1 linear freq 0.0001 1.0 log10
+@pragma const gain -1 1 linear
+@pragma ptr sig ref
+@pragma map sig in 0 ampl 0 ampl
+@pragma map sig in 0 freq 0 freq
+@pragma map sig out 0 0
+@pragma out 0 result
+@pragma ref 0 ptr sig const gain expr sig*{gain}
+use_mult 0 2 0 2 val {gain} rng m m
+mkconn chip_input 0 3 2 tile_input 0 2 0 2
+mkconn tile_input 0 2 0 2 mult 0 2 0 2 in0
+mkconn mult 0 2 0 2 tile_output 0 2 2 3
+mkconn tile_output 0 2 2 3 chip_output 0 3 2
+@pragma end
+
+@pragma start gain_ml
+@pragma time 0.01
+@pragma in 0 sin ampl -1 1 linear freq 0.0001 1.0 log10
+@pragma const gain -1 1 linear
+@pragma ptr sig ref
+@pragma map sig in 0 ampl 0 ampl
+@pragma map sig in 0 freq 0 freq
+@pragma map sig out 0 0
+@pragma out 0 xform [sig1] 0.1*refsig*{gain}
+use_mult 0 2 0 2 val {gain} rng m l
+mkconn chip_input 0 3 2 tile_input 0 2 0 2
+mkconn tile_input 0 2 0 2 mult 0 2 0 2 in0
+mkconn mult 0 2 0 2 tile_output 0 2 2 3
+mkconn tile_output 0 2 2 3 chip_output 0 3 2
+@pragma end

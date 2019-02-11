@@ -1,0 +1,8 @@
+@pragma start ref
+@pragma in 0 sin ampl 0.1 1 linear freq 0.0001 1.0 log10
+@pragma out 0 result
+mkconn tile_output 0 2 2 3 chip_output 0 3 2
+mkconn chip_input 0 3 2 tile_input 0 2 0 2
+mkconn tile_input 0 2 0 2 m
+mkconn tile_input 0 2 0 2 tile_output 0 2 2 3
+@pragma end

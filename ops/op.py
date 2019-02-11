@@ -9,6 +9,9 @@ def to_python(e):
         varname = "%s_" % e.name
         return [varname],varname
 
+    elif e.op == OpType.CONST:
+        return [],"%f" % e.value
+
     elif e.op == OpType.MULT:
         vs1,a1 = to_python(e.arg1)
         vs2,a2 = to_python(e.arg2)
@@ -18,6 +21,16 @@ def to_python(e):
     elif e.op == OpType.SGN:
         v,a = to_python(e.arg(0))
         return v,"math.copysign(1,%s)" % a
+
+    elif e.op == OpType.SIN:
+        v,a = to_python(e.arg(0))
+        return v,"math.sin(%s)" % a
+
+
+    elif e.op == OpType.COS:
+        v,a = to_python(e.arg(0))
+        return v,"math.cos(%s)" % a
+
 
     elif e.op == OpType.SQRT:
         v,a = to_python(e.arg(0))
@@ -858,6 +871,10 @@ class Sin(Op):
         Op.__init__(self,OpType.SIN,[arg1])
         pass
 
+    def compute(self,bindings):
+        return math.sin(self.arg(0).compute(bindings).real)
+
+
     def substitute(self,args):
         return Sin(self.arg(0).substitute(args))
 
@@ -886,6 +903,10 @@ class Cos(Op):
     def __init__(self,arg1):
         Op.__init__(self,OpType.COS,[arg1])
         pass
+
+    def compute(self,bindings):
+        return math.cos(self.arg(0).compute(bindings).real)
+
 
     @staticmethod
     def from_json(obj):

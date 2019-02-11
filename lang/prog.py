@@ -14,9 +14,13 @@ class MathEnv:
         self._inputs = {}
 
     def input(self,name):
-        return self._inputs[name]
+        return self._inputs[name][0]
+
+    def is_periodic(self,name):
+        return self._inputs[name][1]
 
     def set_input(self,name,func,periodic=False):
+        assert(isinstance(func,op.Op))
         self._inputs[name] = (func,periodic)
 
     @property
@@ -120,7 +124,7 @@ class MathProg:
             if typ == MathProg.ExprType.INTEG:
                 ics[var] = self._bindings[var].init_cond.value
             elif typ == MathProg.ExprType.EXTERN:
-                ics[var] = menv.input(var).compute(ics)
+                ics[var] = menv.input(var).compute({'t':0})
             elif typ == MathProg.ExprType.EXTERN:
                 ics[var] = self._binding[var].compute(ics)
 

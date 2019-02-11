@@ -519,8 +519,10 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
           comm::print_header();
           Serial.print(data_idx+wrlutd.offset);
           Serial.print("=");
-          Serial.println(inbuf[data_idx]);
-          lut->setLut(data_idx,byteval);
+          Serial.print(inbuf[data_idx]);
+          Serial.print("; ");
+          Serial.println(byteval);
+          lut->setLut(wrlutd.offset+data_idx,byteval);
         }
         comm::response("write lut",0);
         break;
@@ -539,7 +541,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
 
      case cmd_type_t::DISABLE_LUT:
         lut = get_slice(fab,cmd.data.circ_loc)->lut;
-        lut->setEnable(false);
+        //lut->setEnable(false);
         comm::response("disabled lut",0);
         break;
         
