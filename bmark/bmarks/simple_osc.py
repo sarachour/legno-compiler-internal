@@ -27,3 +27,14 @@ def model(name,omega):
     prob.compile()
     menv = menvs.get_math_env('t20')
     return menv,prob
+
+def execute(name,omega):
+  menv,prob = model(name,omega)
+  T,Y = run_diffeq(menv,prob)
+  plot_diffeq(menv,prob,T,Y)
+
+
+if __name__ == "__main__":
+  execute("one",1.0)
+  execute("half",0.5)
+  execute("double",2.0)
