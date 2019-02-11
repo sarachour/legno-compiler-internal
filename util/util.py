@@ -1,5 +1,11 @@
 import cProfile
 
+def values_in_list(vals,lst):
+  for val in vals:
+    if not val in lst:
+      return False
+  return True
+
 def keys_in_dict(keys,dict_):
   for key in keys:
     if not key in dict_:

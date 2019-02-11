@@ -497,7 +497,7 @@ class Const(Op):
 
     def __init__(self,value,tag=None):
         Op.__init__(self,OpType.CONST,[],tag=tag)
-        self._value = value
+        self._value = float(value)
 
 
     def coefficient(self):
@@ -695,8 +695,17 @@ class Call(Op):
         self._func = expr
         self._params = params
         self._expr = self._func.apply(self._params)
-        Op.__init__(self,OpType.CALL,[self._expr])
+        Op.__init__(self,OpType.CALL,params+[self._expr])
         assert(expr.op == OpType.FUNC)
+
+    def compute(self,bindings):
+        new_bindings = {}
+        for func_arg,var in zip(self._func.func_args,self._params):
+            expr = var.compute(bindings)
+            new_bindings[func_arg] = expr
+
+        value = self._func.compute(new_bindings)
+        return value
 
     @property
     def func(self):
@@ -740,6 +749,16 @@ class Func(Op):
         self._expr = expr
         self._vars = params
 
+    def compute(self,bindings):
+        for v in self._vars:
+            assert(v in bindings)
+
+        return self._expr.compute(bindings)
+
+    @property
+    def func_args(self):
+        return self._vars
+
     def to_json(self):
         obj = Op.to_json(self)
         obj['expr'] = self._expr.to_json()
@@ -771,6 +790,9 @@ class Abs(Op):
     def from_json(obj):
         return Abs(Op.from_json(obj['args'][0]))
 
+    def compute(self,bindings):
+        return abs(self.arg(0).compute(bindings))
+
 
     def substitute(self,args):
         return Abs(self.arg(0).substitute(args))
@@ -801,6 +823,9 @@ class Sgn(Op):
 
     def substitute(self,assigns):
         return Sgn(self.arg(0).substitute(assigns))
+
+    def compute(self,bindings):
+        return math.copysign(1.0,self.arg(0).compute(bindings).real)
 
     def compute_bandwidth(self,bws):
         bwcoll = self.arg(0).compute_bandwidth(bws)
@@ -908,6 +933,9 @@ class Sqrt(Op):
     def from_json(obj):
         return Sqrt(Op.from_json(obj['args'][0]))
 
+
+    def compute(self,bindings):
+        return math.sqrt(self.arg(0).compute(bindings))
 
     # bandwidth is infinite if number is ever negative
     def compute_bandwidth(self,bws):

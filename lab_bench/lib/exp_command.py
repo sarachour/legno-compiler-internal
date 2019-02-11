@@ -534,12 +534,14 @@ class OscGetValuesCmd(Command):
             chan = state.oscilloscope.analog_channel(self._chan_low)
 
 
-            ch1 = state.oscilloscope.full_waveform(chan)
+            #ch1 = state.oscilloscope.full_waveform(chan)
+            ch1 = state.oscilloscope.waveform(chan)
 
             ch2 = None
             if self._differential:
                 chan = state.oscilloscope.analog_channel(self._chan_high)
-                ch2 = state.oscilloscope.full_waveform(chan)
+                #ch2 = state.oscilloscope.full_waveform(chan)
+                ch2 = state.oscilloscope.waveform(chan)
 
             return self.process_data(state,self._filename, \
                                      self._variable,

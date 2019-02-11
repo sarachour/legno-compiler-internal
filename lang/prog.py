@@ -2,6 +2,9 @@ from ops.interval import Interval
 from ops.bandwidth import Bandwidth, BandwidthCollection
 import util.util as util
 import sys
+from enum import Enum
+import ops.op as op
+
 class MathEnv:
 
     def __init__(self,name):
@@ -38,6 +41,10 @@ class MathEnv:
         self._sim_time = t
 
 class MathProg:
+    class ExprType(Enum):
+        INTEG = "integ"
+        EXTERN = "extern"
+        FN = "fn"
 
     def __init__(self,name):
         self._name = name
@@ -45,6 +52,80 @@ class MathProg:
         self._intervals = {}
         self._bandwidths= {}
         self._variables = []
+
+        self.__order = None
+        self.__order_integs = None
+        self.__types = None
+
+    def _compute_order(self):
+        self.__order = []
+        self.__order_integs = []
+        self.__types = {}
+        fns = []
+        for var in self._variables:
+            if var in self._bindings:
+                if self._bindings[var].op == op.OpType.INTEG:
+                    self.__types[var] = MathProg.ExprType.INTEG
+                    self.__order.append(var)
+                    self.__order_integs.append(var)
+                else:
+                    self.__types[var] = MathProg.ExprType.FN
+                    fns.append(var)
+            else:
+                self.__types[var] = MathProg.ExprType.EXTERN
+                self.__order.append(var)
+
+        while not util.values_in_list(fns,self.__order):
+            progress = False
+            for var in fns:
+                variables = self._bindings[var].vars()
+                if util.values_in_list(variables,self.__order):
+                    self.__order.append(var)
+                    progress = True
+            assert(progress)
+
+
+    def _curr_state_map(self,menv,t,stvals):
+        stdict = dict(zip(self.__order_integs,stvals))
+        for var in self.__order:
+            typ = self.__types[var]
+            if typ == MathProg.ExprType.EXTERN:
+                stdict[var] = menv.input(var).compute({'t':t})
+            elif typ == MathProg.ExprType.FN:
+                stdict[var] = self._bindings[var].compute(stdict)
+
+        return stdict
+
+    @property
+    def variable_order(self):
+        return self.__order
+
+    def curr_state(self,menv,t,stvals):
+        m = self._curr_state_map(menv,t,stvals)
+        return list(map(lambda var: m[var], self.__order))
+
+    def next_deriv(self,menv,t,stvals):
+        stdict = self._curr_state_map(menv,t,stvals)
+        derivs = {}
+        for var in self.__order_integs:
+            derivs[var] = self._bindings[var].deriv.compute(stdict)
+
+        deriv_list = list(map(lambda q: derivs[q],self.__order_integs))
+        return deriv_list
+
+    def init_state(self,menv):
+        ics = {}
+        for var in self.__order:
+            typ = self.__types[var]
+            if typ == MathProg.ExprType.INTEG:
+                ics[var] = self._bindings[var].init_cond.value
+            elif typ == MathProg.ExprType.EXTERN:
+                ics[var] = menv.input(var).compute(ics)
+            elif typ == MathProg.ExprType.EXTERN:
+                ics[var] = self._binding[var].compute(ics)
+
+
+        return list(map(lambda q: ics[q],self.__order_integs))
 
     def variables(self):
         return self._variables
@@ -129,6 +210,7 @@ class MathProg:
 
         assert(util.keys_in_dict(self._bindings.keys(), self._bandwidths))
         assert(util.keys_in_dict(self._bindings.keys(), self._intervals))
+        self._compute_order()
 
     @property
     def name(self):
