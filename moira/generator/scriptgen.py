@@ -1,6 +1,7 @@
 from enum import Enum
 import numpy as np
 import itertools
+import generator.scriptdb as scriptdb
 
 class MoiraPragmaType(Enum):
   INPUT = 'in'
@@ -106,8 +107,15 @@ class MoiraDataPointer:
   def __init__(self,name,ptr_name):
     self._output = None
     self._inputs = {}
+    self._consts = {}
     self._name = name
     self._ptr_name = ptr_name
+
+  def add_const(self,inp,param,this_const,this_param):
+    if not inp in self._consts:
+      self._consts[inp] = {}
+    self._consts[inp][param] = (this_const,this_param)
+
 
   def add_input(self,inp,param,this_inp,this_param):
     if not inp in self._inputs:
@@ -117,6 +125,26 @@ class MoiraDataPointer:
   def set_output(self,out,this_out):
     self._output = this_out
 
+  def entry(self,inps,consts):
+    ptr_inputs = {}
+    ptr_consts = {}
+    for idx in self._inputs:
+      ptr_inputs[idx] = {}
+      for par,(this_inp,this_param) \
+          in self._inputs[idx].items():
+        value = inps[this_inp][this_param]
+        ptr_inputs[idx][par] = value
+
+    for idx in self._consts:
+      ptr_inputs[idx] = {}
+      for par,(this_const,this_param) \
+          in self._consts[idx].items():
+        value = inps[this_const][this_param]
+        ptr_consts[idx][par] = value
+
+    entry = scriptdb.MoiraScriptEntry(self._name,ptr_inputs,ptr_consts,self._output)
+    return entry
+
 class MoiraOutput:
 
   class Reference:
@@ -124,10 +152,17 @@ class MoiraOutput:
       PTR = "ptr"
       CONST = "const"
       EXPR = 'expr'
+
     def __init__(self):
       self._consts = []
       self._ptrs = []
       self._expr = None
+
+    def concretize(self,consts):
+      return self._expr.format(**consts)
+
+    def pointers(self):
+      return self._ptrs
 
     def add_pointer(self,var):
       self._ptrs.append(var)
@@ -182,6 +217,7 @@ class MoiraGrendelExperimentGenerator:
     self._consts = {}
     self._ptrs = {}
     self._sim_time = 0
+    self._name = name
 
   def add_pointer(self,varname,experiment_name):
     self._ptrs[varname] = MoiraDataPointer(varname,
@@ -213,12 +249,9 @@ class MoiraGrendelExperimentGenerator:
   def set_sim_time(self,time):
     self._sim_time = time
 
-  def generate_script(self,inps,consts):
-    prog = []
-    for idx,out in self._outputs.items():
-      if not out.reference is None:
-        raise NotImplementedError
 
+  def generate_script(self,path_handler,inps,consts):
+    prog = []
     prog.append('reset')
 
     for idx in self._inputs.keys():
@@ -244,7 +277,7 @@ class MoiraGrendelExperimentGenerator:
       prog.append("set_due_dac_values %d %s" % (idx,expr))
 
     for stmt in self._prog:
-      prog.append(stmt.format(consts))
+      prog.append(stmt.format(**consts))
 
     for stmt in [
         'osc_setup_trigger',
@@ -257,14 +290,24 @@ class MoiraGrendelExperimentGenerator:
     ]:
       prog.append(stmt)
 
-    for idx,out in self._outputs.items():
-      prog.append('get_osc_values differential 0 1 %s %s' % \
-                  (out.name,'out.json'))
+    for out_idx,out in self._outputs.items():
+      this_prog = list(prog)
+      entry = scriptdb.MoiraScriptEntry(self._name,inps,consts,out_idx)
+      filename = path_handler.database_file(entry.identifier())
+      this_prog.append('get_osc_values differential 0 1 %s %s' % \
+                       (out.name,filename))
+
+      if not out.reference is None:
+        ref = out.reference
+        entry.set_reference(ref.concretize(consts))
+        for ptr in out.reference.pointers():
+          ptr_entry = self._ptrs[ptr].entry(inps,consts)
+          entry.add_pointer(ptr,ptr_entry)
+
+      yield entry,this_prog
 
 
-    return inps,consts,prog
-
-  def generate(self,n):
+  def generate(self,path_handler,n):
     def set_value(d,k1,k2,v):
       if not k1 in d:
         d[k1] = {}
@@ -293,10 +336,10 @@ class MoiraGrendelExperimentGenerator:
         if kind == 'in':
           set_value(inps,var,param,value)
         elif kind == 'const':
-          set_value(consts,var,param,value)
+          consts[var] = value
 
-      inps,consts,prog = self.generate_script(inps,consts)
-      yield inps,consts,prog
+      for entry,prog in self.generate_script(path_handler,inps,consts):
+        yield entry,prog
 
 class MoiraGrendelEnv:
 
