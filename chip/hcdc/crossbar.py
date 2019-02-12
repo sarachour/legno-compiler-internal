@@ -67,11 +67,11 @@ chip_out = Block('chip_out',type=BlockType.BUS) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
 .set_props("*","*",["out"], \
-          util.make_ana_props(chipcmd.RangeType.HIGH,\
+          util.make_ana_props(chipcmd.RangeType.MED,\
                          glb.ANALOG_MIN,
                          glb.ANALOG_MAX)) \
 .set_props("*","*",["in"], \
-          util.make_ana_props(chipcmd.RangeType.HIGH,\
+          util.make_ana_props(chipcmd.RangeType.MED,\
                          glb.ANALOG_MIN,
                          glb.ANALOG_MAX)) \
 .set_coeff("*","*","out",1.0) \

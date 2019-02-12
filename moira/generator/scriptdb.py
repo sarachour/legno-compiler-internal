@@ -5,8 +5,8 @@ import json
 
 class MoiraScriptPathHandler:
 
-  def __init__(self,name):
-    self.set_root_dir(name)
+  def __init__(self):
+    self.set_root_dir()
     if not os.path.exists(self.ROOT_DIR):
       os.makedirs(self.ROOT_DIR)
     if not os.path.exists(self.TIME_DIR):
@@ -21,8 +21,8 @@ class MoiraScriptPathHandler:
       os.makedirs(self.MODEL_DIR)
 
 
-  def set_root_dir(self,name):
-    self.ROOT_DIR = "outputs/moira/%s" % name
+  def set_root_dir(self):
+    self.ROOT_DIR = "output/moira"
     self.SCRIPT_DIR = self.ROOT_DIR + "/scripts"
     self.TIME_DIR = self.ROOT_DIR + "/time"
     self.FREQ_DIR = self.ROOT_DIR + "/freq"
@@ -38,6 +38,9 @@ class MoiraScriptPathHandler:
 
   def database_file(self,name):
     return self.ROOT_DIR+"/%s.json" % name
+
+  def has_file(self,filename):
+    return os.path.exists(filename)
 
 class MoiraScriptEntry:
 
@@ -60,6 +63,10 @@ class MoiraScriptEntry:
   def add_pointer(self,varname,ptr_entry):
     assert(isinstance(ptr_entry,MoiraScriptEntry))
     self._pointers[varname] = ptr_entry
+
+  def pointers(self):
+    for varname,ptr in self._pointers.items():
+      yield varname,ptr
 
   def set_reference(self,ref):
     self._reference = ref
@@ -84,10 +91,28 @@ class MoiraScriptEntry:
       ident += "c_%s_%.3e" % (const,\
                                    self._consts[const])
 
-    hashstr = str(hash(ident))
-    if '-' in hashstr:
-      hashstr = hashstr.replace('-','x')
-    return hashstr
+    return ident
+    #hashstr = str(hash(ident))
+    #if '-' in hashstr:
+    #  hashstr = hashstr.replace('-','x')
+    #return hashstr
+
+  @staticmethod
+  def from_json(obj):
+    inputs = {}
+    for idxstr,data in obj['inputs'].items():
+      inputs[int(idxstr)] = data
+
+    entry = MoiraScriptEntry(obj['name'],
+                             inputs,
+                             obj['consts'],
+                             int(obj['output']))
+    entry.set_reference(obj['reference'])
+    for varname,subobj in obj['ptrs'].items():
+      ptr = MoiraScriptEntry.from_json(subobj)
+      entry.add_pointer(varname,ptr)
+
+    return entry
 
   def to_json(self):
     return {
@@ -106,10 +131,9 @@ class MoiraScriptEntry:
 
 class MoiraScriptDB:
 
-  def __init__(self,name):
-    self._name = name
-    self.paths = MoiraScriptPathHandler(name)
-    path = self.paths.database_file(name)
+  def __init__(self,):
+    self.paths = MoiraScriptPathHandler()
+    path = self.paths.database_file('moira')
     self._db = tdb.TinyDB(path)
 
   def insert(self,entry):
@@ -124,3 +148,8 @@ class MoiraScriptDB:
       'timeseries': self.paths.timeseries_file(entry.identifier())
     }
     self._db.insert(datum)
+
+  def all(self):
+      for result in self._db.all():
+          yield result
+

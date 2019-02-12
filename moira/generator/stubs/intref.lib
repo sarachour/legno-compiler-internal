@@ -1,0 +1,19 @@
+@lib start medref_lib
+@lib add @pragma const freq 0.01 1.0 log10
+@lib add @pragma const ampl 0.1 0.5 linear
+@lib add @pragma ptr sig medref
+@lib add @pragma map sig const ampl ampl
+@lib add @pragma map sig const freq freq
+@lib add @pragma map sig out 0 0
+@lib add use_mult 0 0 0 0 val -{freq} rng m l
+@lib add use_integ 0 0 0 sgn + val {ampl} rng m m debug
+@lib add use_integ 0 0 1 sgn + val 0.000000 rng m m debug
+@lib add use_fanout 0 0 0 0 sgn + + + rng m
+@lib add config_mult 0 0 0 0 val -{freq} rng m m
+@lib add config_integ 0 0 0 sgn + val {ampl} rng m m debug
+@lib add config_integ 0 0 1 sgn + val 0.000000 rng m m debug
+@lib add mkconn integ 0 0 0 fanout 0 0 0 0
+@lib add mkconn fanout 0 0 0 0 port 1 mult 0 0 0 0 port 0
+@lib add mkconn mult 0 0 0 0 integ 0 0 1
+@lib add mkconn integ 0 0 1 integ 0 0 0
+@lib end

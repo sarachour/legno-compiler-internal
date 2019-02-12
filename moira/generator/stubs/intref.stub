@@ -1,11 +1,9 @@
-@pragma start gain_mm
-@pragma time 0.001
-@pragma use-lib medref_lib
-@pragma const gain 0.0 0.98 linear
+@pragma start medref
+@pragma time 0.01
+@pragma const freq 0.01 1.0 log10
+@pragma const ampl 0.1 0.5 linear
 @pragma out 0 result
-@pragma ref 0 ptr sig const gain expr sig*{gain}
-# closed loop control system
-use_mult 0 0 0 0 val -{freq} rng m m
+use_mult 0 0 0 0 val -{freq} rng m l
 use_integ 0 0 0 sgn + val {ampl} rng m m debug
 use_integ 0 0 1 sgn + val 0.000000 rng m m debug
 use_fanout 0 0 0 0 sgn + + + rng m
@@ -16,9 +14,6 @@ mkconn integ 0 0 0 fanout 0 0 0 0
 mkconn fanout 0 0 0 0 port 1 mult 0 0 0 0 port 0
 mkconn mult 0 0 0 0 integ 0 0 1
 mkconn integ 0 0 1 integ 0 0 0
-# block test
-use_mult 0 0 1 0 val {gain} rng m m
-mkconn fanout 0 0 0 0 port 0 mult 0 0 1 0 port 0
-mkconn mult 0 0 1 0 tile_output 0 0 2 3
+mkconn fanout 0 0 0 0 port 0 tile_output 0 0 2 3
 mkconn tile_output 0 0 2 3 chip_output 0 3 2
 @pragma end

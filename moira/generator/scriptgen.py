@@ -1,7 +1,9 @@
 from enum import Enum
 import numpy as np
 import itertools
-import generator.scriptdb as scriptdb
+import moira.generator.scriptdb as scriptdb
+import chip.hcdc.globals as glb
+import os
 
 class MoiraPragmaType(Enum):
   INPUT = 'in'
@@ -13,6 +15,7 @@ class MoiraPragmaType(Enum):
   MAP = 'map'
   PTR = 'ptr'
   REF = 'ref'
+  USE_LIB = "use-lib"
 
 class MoiraShapeType(Enum):
   SIN = 'sin'
@@ -25,6 +28,7 @@ class MoiraParametricInput:
   class InterpType(Enum):
     LOG10 = 'log10'
     LINEAR = 'linear'
+    CONST = 'constant'
 
   def __init__(self,name):
     self._type = type
@@ -37,7 +41,10 @@ class MoiraParametricInput:
   def interpolate(self,param,n):
     minval,maxval,scaletype = self._params[param]
     if scaletype == MoiraParametricInput.InterpType.LOG10:
-      return np.logspace(minval,maxval,n,base=10.0)
+      return np.logspace(np.log10(minval),
+                         np.log10(maxval),n,base=10.0)
+    elif scaletype == MoiraParametricInput.InterpType.CONST:
+      return [minval]
     else:
       return np.linspace(minval,maxval,n)
 
@@ -70,7 +77,7 @@ class MoiraSinInput(MoiraParametricInput):
     self.add_param('freq', fmin,fmax, fscale)
 
   def construct(self,pars):
-    return '{ampl}*sin({freq}*t_)'.format(**pars)
+    return '{ampl}*math.sin({freq}*t_)'.format(**pars)
 
   @staticmethod
   def parse(args):
@@ -142,7 +149,7 @@ class MoiraDataPointer:
         value = inps[this_const][this_param]
         ptr_consts[idx][par] = value
 
-    entry = scriptdb.MoiraScriptEntry(self._name,ptr_inputs,ptr_consts,self._output)
+    entry = scriptdb.MoiraScriptEntry(self._ptr_name,ptr_inputs,ptr_consts,self._output)
     return entry
 
 class MoiraOutput:
@@ -216,7 +223,7 @@ class MoiraGrendelExperimentGenerator:
     self._outputs = {}
     self._consts = {}
     self._ptrs = {}
-    self._sim_time = 0
+    self._sim_time = None
     self._name = name
 
   def add_pointer(self,varname,experiment_name):
@@ -247,15 +254,16 @@ class MoiraGrendelExperimentGenerator:
     self._consts[name] = inp
 
   def set_sim_time(self,time):
+    assert(time > 0)
     self._sim_time = time
 
 
   def generate_script(self,path_handler,inps,consts):
     prog = []
-    prog.append('reset')
+    prog.append('micro_reset')
 
     for idx in self._inputs.keys():
-      prog.append('micro_use_due_dac %d' % idx)
+      prog.append('micro_use_ard_dac %d False' % idx)
 
     for stmt in [
         'micro_use_osc',
@@ -274,7 +282,9 @@ class MoiraGrendelExperimentGenerator:
 
     for idx,inp in self._inputs.items():
       expr = inp.construct(inps[idx])
-      prog.append("set_due_dac_values %d %s" % (idx,expr))
+      tc_rt = glb.TIME_FREQUENCY
+      prog.append("micro_set_dac_values %d %s %f %f" % (idx,expr,tc_rt, \
+                                                        1.0))
 
     for stmt in self._prog:
       prog.append(stmt.format(**consts))
@@ -293,8 +303,8 @@ class MoiraGrendelExperimentGenerator:
     for out_idx,out in self._outputs.items():
       this_prog = list(prog)
       entry = scriptdb.MoiraScriptEntry(self._name,inps,consts,out_idx)
-      filename = path_handler.database_file(entry.identifier())
-      this_prog.append('get_osc_values differential 0 1 %s %s' % \
+      filename = path_handler.timeseries_file(entry.identifier())
+      this_prog.append('osc_get_values differential 0 1 %s %s' % \
                        (out.name,filename))
 
       if not out.reference is None:
@@ -345,8 +355,19 @@ class MoiraGrendelEnv:
 
   def __init__(self):
     self._experiments = []
+    self._libraries = {}
 
-  def add(self,e):
+  def add_library(self,name,prog):
+    self._libraries[name] = prog
+
+  def library(self,name):
+    if not name in self._libraries:
+      print("available libraries: %s" \
+            % self._libraries.keys())
+      raise Exception("library not found <%s>" % name)
+    return self._libraries[name]
+
+  def add_experiment(self,e):
     self._experiments.append(e)
 
   def experiments(self):
@@ -366,7 +387,7 @@ def parse_pragma(menv,mexp,_args):
     return mexp
 
   elif cmd == MoiraPragmaType.END:
-    menv.add(mexp)
+    menv.add_experiment(mexp)
     return None
 
   elif cmd == MoiraPragmaType.INPUT:
@@ -397,6 +418,12 @@ def parse_pragma(menv,mexp,_args):
       data_ptr.set_output(this_idx,ptr_idx)
       return mexp
 
+    elif args[1] == 'const':
+      this_param,ptr_param = args[2],args[3]
+      data_ptr.set_output(this_param,ptr_param)
+      return mexp
+
+
     else:
       raise Exception("unknown")
 
@@ -418,22 +445,56 @@ def parse_pragma(menv,mexp,_args):
     mexp.set_const(ident,inp)
     return mexp
 
+  elif cmd == MoiraPragmaType.USE_LIB:
+    libcode = menv.library(args[0])
+    return process_lines(menv,mexp,None,libcode)
   else:
     raise Exception("%s: %s" % (cmd,args))
 
-def read(filename):
-  menv = MoiraGrendelEnv()
+def parse_pragma_lib(env,library,args):
+  cmd = args[0]
+  if cmd == 'start':
+    return args[1],[]
+
+  elif cmd == 'end':
+    libname,libbody = library
+    env.add_library(libname,libbody)
+    return None
+
+  elif cmd == 'add':
+    libname,libbody = library
+    libbody.append(' '.join(args[1:]))
+    return libname,libbody
+  else:
+    raise NotImplementedError
+
+def process_lines(env,experiment,library,lines):
+  for line in lines:
+    args = line.strip().split()
+    print(line.strip())
+    if len(args) == 0:
+      continue
+    if args[0] == '@pragma':
+      experiment = parse_pragma(env,experiment,args[1:])
+    elif args[0] == '@lib':
+      library = parse_pragma_lib(env,library,args[1:])
+    else:
+      experiment.add_stmt(line.strip())
+
+  return experiment
+
+def read(env,filename):
   experiment = None
+  library = None
   with open(filename) as fh:
     stub = []
-    for line in fh:
-      args = line.strip().split()
-      if len(args) == 0:
-        continue
+    process_lines(env,experiment,library,fh)
 
-      if args[0] == '@pragma':
-        experiment = parse_pragma(menv,experiment,args[1:])
-      else:
-        experiment.add_stmt(line.strip())
-
+def load_libs(libdir):
+  menv = MoiraGrendelEnv()
+  for dirname, subdirlist, filelist in os.walk(libdir):
+    for fname in filelist:
+      if fname.endswith('.lib'):
+        filepath = "%s/%s" % (dirname,fname)
+        read(menv,filepath)
   return menv
