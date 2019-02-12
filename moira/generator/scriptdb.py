@@ -100,6 +100,7 @@ class MoiraScriptEntry:
   @staticmethod
   def from_json(obj):
     inputs = {}
+    print(obj)
     for idxstr,data in obj['inputs'].items():
       inputs[int(idxstr)] = data
 

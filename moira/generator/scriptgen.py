@@ -118,10 +118,10 @@ class MoiraDataPointer:
     self._name = name
     self._ptr_name = ptr_name
 
-  def add_const(self,inp,param,this_const,this_param):
+  def add_const(self,inp,this_const):
     if not inp in self._consts:
       self._consts[inp] = {}
-    self._consts[inp][param] = (this_const,this_param)
+    self._consts[inp] = this_const
 
 
   def add_input(self,inp,param,this_inp,this_param):
@@ -142,14 +142,12 @@ class MoiraDataPointer:
         value = inps[this_inp][this_param]
         ptr_inputs[idx][par] = value
 
-    for idx in self._consts:
-      ptr_inputs[idx] = {}
-      for par,(this_const,this_param) \
-          in self._consts[idx].items():
-        value = inps[this_const][this_param]
-        ptr_consts[idx][par] = value
+    for par,this_param in self._consts.items():
+        ptr_consts[par] = consts[this_param]
 
-    entry = scriptdb.MoiraScriptEntry(self._ptr_name,ptr_inputs,ptr_consts,self._output)
+    entry = scriptdb.MoiraScriptEntry(self._ptr_name,\
+                                      ptr_inputs,\
+                                      ptr_consts,self._output)
     return entry
 
 class MoiraOutput:
@@ -420,7 +418,7 @@ def parse_pragma(menv,mexp,_args):
 
     elif args[1] == 'const':
       this_param,ptr_param = args[2],args[3]
-      data_ptr.set_output(this_param,ptr_param)
+      data_ptr.add_const(this_param,ptr_param)
       return mexp
 
 
