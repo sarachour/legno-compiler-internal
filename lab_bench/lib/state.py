@@ -87,19 +87,15 @@ class State:
         if self.dummy:
             return
 
-        try:
-            print("[[ setup oscilloscope ]]")
-            self.oscilloscope.setup()
-        except Exception as e:
-            print("[ERROR] %s" % e)
+        #try:
+        print("[[ setup oscilloscope ]]")
+        self.oscilloscope.setup()
+        if not self.oscilloscope.ready():
             print("[[no oscilloscope]]")
             self.oscilloscope = None
 
-        try:
-            print("[[ setup arduino ]]")
-            self.arduino.open()
-        except Exception as e:
-            print("[ERROR] %s" % e)
+        self.arduino.open()
+        if not self.arduino.ready():
             print("[[no arduino]]")
             self.arduino = None
 

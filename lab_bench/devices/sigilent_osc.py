@@ -277,7 +277,8 @@ class Sigilent1020XEOscilloscope(SICPDevice):
 
     def setup(self):
         SICPDevice.setup(self)
-        self.write("CHDR OFF")
+        if self.ready():
+            self.write("CHDR OFF")
 
 
     def _validate(self,cmd,result):

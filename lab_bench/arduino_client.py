@@ -1,9 +1,12 @@
-from lib.command_handler import main_stdout, main_script
-from lib.base_command import ArduinoCommand
-from lib.state import State
 import argparse
 import sys
-import matplotlib.pyplot as plt
+import os
+sys.path.insert(0,os.path.abspath("."))
+
+from lab_bench.lib.command_handler import main_stdout, main_script
+from lab_bench.lib.base_command import ArduinoCommand
+from lab_bench.lib.state import State
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--native", action='store_true',help="use native mode for arduino DUE.")

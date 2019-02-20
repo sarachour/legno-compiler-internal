@@ -26,8 +26,14 @@ class SICPDevice:
         self._port = port
         self._buf = bytearray([])
 
+    def ready(self):
+        return not self._sock is None
+
     def setup(self):
-        self._sock = SocketConnect(self._ip,self._port)
+        if self._ip is None or self._port is None:
+            self._sock = None
+        else:
+            self._sock = SocketConnect(self._ip,self._port)
 
     def close(self):
         self._sock.close()

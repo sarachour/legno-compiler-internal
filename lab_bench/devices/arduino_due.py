@@ -19,9 +19,17 @@ class ArduinoDue:
         if not self._comm is None:
             self._comm.close()
 
+    def ready(self):
+        return not self._comm is None
+
     def open(self):
         print("%s:%s" % (self._serial_port,self._baud_rate))
-        self._comm= serial.Serial(self._serial_port, self._baud_rate)
+        try:
+            self._comm= serial.Serial(self._serial_port, self._baud_rate)
+        except serial.SerialException as e:
+            print("[ArduinoDue][setup][ERROR] %s" % e)
+            self._comm = None
+            return
 
         startup_time = 2.0
         n_divs = 100
