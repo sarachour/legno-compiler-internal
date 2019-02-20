@@ -2,7 +2,7 @@ from chip.block import Block, BlockType
 from chip.phys import PhysicalModel
 import chip.props as props
 import chip.hcdc.util as util
-import lab_bench.lib.chip_command as chipcmd
+import lab_bench.lib.chipcmd.data as chipcmd
 import chip.hcdc.globals as glb
 import ops.op as ops
 import ops.nop as nops

@@ -1,6 +1,6 @@
 import chip.props as props
 from chip.conc import ConcCirc
-import lab_bench.lib.chip_command as chipcmd
+import lab_bench.lib.chipcmd.data as chipcmd
 from compiler.common import infer
 from chip.config import Labels
 import ops.op as ops

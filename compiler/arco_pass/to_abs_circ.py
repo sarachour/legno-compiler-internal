@@ -1,7 +1,7 @@
 import ops.aop as aop
 import ops.op as op
 import chip.abs as acirc
-import lab_bench.lib.chip_command as chipcmd
+import lab_bench.lib.chipcmd.data as chipcmd
 import itertools
 import compiler.arco_pass.util as arco_util
 import chip.props as prop
