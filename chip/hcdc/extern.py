@@ -9,7 +9,8 @@ import ops.op as ops
 # DUE DAC -> VTOI
 ext_chip_in_props = util.make_dig_props(chipcmd.RangeType.MED,-1.0,1.0,npts=4096)
 # do note there's a weird offset of 0..
-ext_chip_in_coeff = 0.030/0.055*2.0
+#ext_chip_in_coeff = 0.030/0.055*2.0
+ext_chip_in_coeff = 1.0
 block_in = Block('ext_chip_in',type=BlockType.DAC) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.DIGITAL,["in"]) \
@@ -25,7 +26,7 @@ block_in = Block('ext_chip_in',type=BlockType.DAC) \
 
 # DUE ADC -> VTOI
 ext_chip_out_props = util.make_dig_props(chipcmd.RangeType.MED,-1.0,1.0,npts=4096)
-ext_chip_out_coeff = 1.0/2.0
+ext_chip_out_coeff = 1.0
 block_out = Block('ext_chip_out',type=BlockType.ADC) \
 .add_outputs(props.DIGITAL,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \

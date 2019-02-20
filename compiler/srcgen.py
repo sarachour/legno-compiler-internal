@@ -387,7 +387,7 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
   for handle in adcs_in_use.keys():
     out_no = hwenv.adc(handle)
     if not out_no is None:
-      gren.add(parse('micro_use_adc %d' % out_no))
+      gren.add(parse('micro_use_ard_adc %d' % out_no))
 
   for handle,info in dacs_in_use.items():
     in_no = hwenv.dac(handle)

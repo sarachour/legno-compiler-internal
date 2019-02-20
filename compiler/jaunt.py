@@ -306,7 +306,7 @@ def bpgen_scaled_digital_constraint(jenv,scale_expr,math_rng,values,quantize=1):
                                 abs(lb),abs(lb_val))
 
     if not util.equals(ub,0):
-        ub_val = max(ub_vals, key=lambda v: abs(v))
+        ub_val = min(ub_vals, key=lambda v: abs(v))
         bpgen_build_lower_bound(jenv,scale_expr,\
                                 abs(ub),abs(ub_val))
 
@@ -503,12 +503,13 @@ def build_gpkit_problem(circ,jenv,jopt):
         gp_lhs = gpkit_expr(variables,lhs)
         gp_rhs = gpkit_expr(variables,rhs)
         result = gp_lhs == gp_rhs
-        msg="%s == %s" % (lhs,rhs)
+        msg="%s == %s" % (gp_lhs,gp_rhs)
         constraints.append((gp_lhs == gp_rhs,msg))
+
     for lhs,rhs in jenv.ltes():
         gp_lhs = gpkit_expr(variables,lhs)
         gp_rhs = gpkit_expr(variables,rhs)
-        msg="%s <= %s" % (lhs,rhs)
+        msg="%s <= %s" % (gp_lhs,gp_rhs)
         constraints.append((gp_lhs <= gp_rhs,msg))
 
 

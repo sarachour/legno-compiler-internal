@@ -37,11 +37,19 @@ def get_math_env(name):
         if bmark.name == name:
             return menv
 
+    print("=== available benchmarks ===")
+    for _,bmark in BMARKS:
+        print("  %s" % bmark.name)
     raise Exception("unknown benchmark: <%s>" % name)
 
 def get_prog(name):
     for _,bmark in BMARKS:
         if bmark.name == name:
             return bmark
+
+    print("=== available benchmarks ===")
+    for _,bmark in BMARKS:
+        print("  %s" % bmark.name)
+
 
     raise Exception("unknown benchmark: <%s>" % name)

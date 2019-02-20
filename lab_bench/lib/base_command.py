@@ -184,7 +184,6 @@ class DataArduinoResponse(GenericArduinoResponse):
     @staticmethod
     def parse(args):
         typ = args[0]
-        print("data",args)
         if typ == 'i':
             return DataArduinoResponse(int(args[1]))
         elif typ == 'f':
@@ -192,7 +191,7 @@ class DataArduinoResponse(GenericArduinoResponse):
         elif typ == 'F':
             return DataArduinoResponse(None,size=int(args[1]))
         else:
-            raise Exception("unimpl")
+            raise Exception("unimpl: %s" % str(args))
 
 
 
@@ -203,6 +202,13 @@ class PayloadArduinoResponse(GenericArduinoResponse):
         self._array = None
         self._n = n
 
+    @property
+    def array(self):
+        return self._array
+
+    @property
+    def n(self):
+        return self._n
 
     def set_array(self,data):
         assert(len(data) == self._n)
@@ -210,8 +216,13 @@ class PayloadArduinoResponse(GenericArduinoResponse):
 
     @staticmethod
     def parse(args):
-        print(args)
-        raise Exception("unimpl")
+        values = args[0].strip().split()
+        resp = PayloadArduinoResponse(len(values))
+        buf = [0.0]*len(values)
+        for idx,val in enumerate(values):
+            buf[idx] = float(val)
+        resp.set_array(buf)
+        return resp
 
 
 class ArduinoCommand(Command):

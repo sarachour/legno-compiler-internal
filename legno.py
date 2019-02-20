@@ -62,7 +62,7 @@ gren_subp.add_argument('hw_env', type=str, \
                         help='hardware environment')
 
 args = parser.parse_args()
-
+prog = bmark.get_prog(args.benchmark)
 
 from chip.hcdc.hcdcv2_4 import board as hdacv2_board
 
@@ -86,7 +86,6 @@ elif args.subparser_name == "jaunt":
 
 elif args.subparser_name == "execprog":
    path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
-   prog = bmark.get_prog(args.benchmark)
    menv = menvs.get_math_env(args.math_env)
    execprog.execute(path_handler,
                     prog,

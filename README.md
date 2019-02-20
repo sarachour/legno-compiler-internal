@@ -12,14 +12,21 @@ compilation tools for automated analog configuration generation. `legno.py` is t
    
 **srcgen**: generate `grendel` low-level scripts from a concrete chip configuration, given a the name of a math experiment specification (see `bmark/menvs.py`) and a hardware setup specification (`chip/hwenvs.py`). For example, `t20` is a math specification that executes the benchmark for 20 simulation units. If you're not using the Sigilent1020XE oscilloscope, you need to use the `noosc` hardware environment.
 
-   ./run_srcgen.sh <bmark> <math-env>
+   ./run_srcgen.sh <bmark> <hw-env>
    
 **skelter**: given a library of concrete circuits, perform noise analysis on each one and rank them by noise level (`scores.txt` - higher is better). Can optionally generate a random sampling of `grendel` files (`grendel_list.txt`)
 
-The `run.sh` script is a convenience script that runs the subtools in the correct order. To compile the dampened spring benchmark for 20 simulation units, for example, execute:
+The `run_<toolname>.sh` script is a convenience script that runs the subtools with the correct arguments. To compile the dampened spring benchmark, for example, execute:
 
-      run.sh spring t20 default
+      run_arco.sh cosc
+      run_jaunt.sh cosc
+      run_skelter.sh cosc
+      run_srcgen.sh cosc default
+      
+If you are not using the Sigilent Oscilloscope, use the `noosc` hardware environment.
 
+      run_srcgen.sh cosc noosc
+      
 ## Compiling the `.bb` physical models
 
 navigate to `chip/hcdc/data` and execute the following:
@@ -35,6 +42,11 @@ navigate to `util`, rename `config_local.py` to `config.py`. The `config.py` fil
 ## Executing `.grendel` files
 
 Once the grendel files are generated, you can then execute them on the chip using the scripts included in the `lab_bench` directory. Refer to the `README.md` file in `lab_bench` for more information on how to setup the dependences for the interpreter. Once all of that is set up you can run grendel scripts in three ways:
+ 
+This method runs a single grendel script. We recommend starting with this:
+
+    python3 lab_bench/arduino_client.py --script /path/to/file.grendel
+
 
 This method runs all the grendel scripts listed in the file `grendel_list.txt` and plots the results:
 
@@ -43,12 +55,7 @@ This method runs all the grendel scripts listed in the file `grendel_list.txt` a
 This method runs all the grendel scripts associated with a benchmark and plots the results:
 
       python3 chip_run.py spring
-   
-This method runs a single grendel script:
-
-    python3 lab_bench/arduino_client.py --script /path/to/file.grendel
-
-
+  
 #### Notes on executing `grendel` files
 
 - make sure the grendel script has no `osc_*` commands if you're not using the Sigilent1020XE oscilloscope. This can be done by using the `noosc` hardware environment when executing the `srcgen` subtool.

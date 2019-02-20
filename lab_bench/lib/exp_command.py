@@ -262,7 +262,7 @@ class MicroGetADCValuesCmd(ArduinoCommand):
 
     def build_ctype(self):
         n,offset=self._args
-        build_exp_ctype({
+        return build_exp_ctype({
             'type':enums.ExpCmdType.GET_ADC_VALUES.name,
             'args':{
                 'ints':[self._adc_id,n,offset],
@@ -271,7 +271,6 @@ class MicroGetADCValuesCmd(ArduinoCommand):
         })
 
     def execute_read_op(self,state,n,offset):
-        self._args = (n,offset)
         resp = ArduinoCommand.execute(self,state)
         VAL_TO_VOLTS = 3.3
         array = resp.data(0)
@@ -294,10 +293,10 @@ class MicroGetADCValuesCmd(ArduinoCommand):
         time = np.linspace(0,state.time_between_samples_s*n,n)
         values = np.zeros(n)
         for offset in range(0,n,chunksize_shorts):
-            datum = self.execute_read_op(state,
-                                         chunksize_shorts,
-                                         offset)
-            for i,value in enumerate(datum):
+            self._args = (n,offset)
+            resp = ArduinoCommand.execute_command(self, state)
+            payl = resp.data(0)
+            for i,value in enumerate(payl):
                 values[offset+i] = value
 
         obj = {
