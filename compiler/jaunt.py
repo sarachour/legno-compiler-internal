@@ -459,7 +459,7 @@ def gpkit_expr(variables,expr):
         return e1*e2
 
     elif expr.op == jop.JOpType.CONST:
-        return expr.value
+        return float(expr.value)
 
     else:
         raise Exception("unsupported <%s>" % expr)
