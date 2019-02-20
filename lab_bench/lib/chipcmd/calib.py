@@ -1,6 +1,6 @@
-import lib.enums as enums
-from lib.chipcmd.data import AnalogChipCommand, CircLoc
-from lib.chipcmd.common import *
+import lab_bench.lib.enums as enums
+from lab_bench.lib.chipcmd.data import AnalogChipCommand, CircLoc
+from lab_bench.lib.chipcmd.common import *
 
 
 class CalibrateCmd(AnalogChipCommand):

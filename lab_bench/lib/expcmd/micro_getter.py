@@ -1,10 +1,10 @@
-import lib.enums as enums
-from lib.base_command import Command,ArduinoCommand
+import lab_bench.lib.enums as enums
+from lab_bench.lib.base_command import Command,ArduinoCommand
 import math
 import time
 import json
 import numpy as np
-from lib.expcmd.common import *
+from lab_bench.lib.expcmd.common import *
 
 
 class MicroGetStatusCmd(ArduinoCommand):

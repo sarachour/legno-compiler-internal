@@ -1,7 +1,8 @@
 from lab_bench.lib.chipcmd.misc import *
 from lab_bench.lib.chipcmd.use import *
 from lab_bench.lib.chipcmd.conn import *
-import lab_bench.lib.chipcmd.data as chipcmd
+from lab_bench.lib.chipcmd.config import *
+from lab_bench.lib.chipcmd.data import SignType,RangeType, CircPortLoc
 import lab_bench.lib.command as toplevel_cmd
 from lang.hwenv import DiffPinMode
 import ops.op as op
@@ -66,7 +67,7 @@ def gen_use_lut(circ,block,locstr,config,source):
 def gen_use_adc(circ,block,locstr,config):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   rng = cast_enum(config.scale_mode,\
-                  [chipcmd.RangeType])
+                  [RangeType])
 
   yield UseADCCmd(chip,tile,slce,
                            in_range=rng[0])
@@ -74,7 +75,7 @@ def gen_use_adc(circ,block,locstr,config):
 def gen_use_dac(circ,block,locstr,config,source):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   inv,rng = cast_enum(config.scale_mode,\
-                      [chipcmd.SignType,chipcmd.RangeType])
+                      [SignType,RangeType])
 
   scf = config.scf('in') if config.has_scf('in') else 1.0
   if not config.dac('in') is None:
@@ -117,32 +118,32 @@ def gen_get_integrator_status(circ,block,locstr):
 def gen_use_integrator(circ,block,locstr,config,debug=True):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   inv,= cast_enum([config.comp_mode],
-                  [chipcmd.SignType])
+                  [SignType])
 
 
   in_rng,out_rng = cast_enum(config.scale_mode,
-                             [chipcmd.RangeType, \
-                              chipcmd.RangeType])
+                             [RangeType, \
+                              RangeType])
 
   scf = config.scf('ic') if config.has_scf('ic') else 1.0
   init_cond = config.dac('ic')*scf
 
   yield UseIntegCmd(chip,
-                              tile,
-                              slce,
-                              init_cond=init_cond,
-                              inv=inv,
-                              in_range=in_rng,
-                              out_range=out_rng,
-                              debug=debug)
-  yield chipcmd.ConfigIntegCmd(chip,
-                              tile,
-                              slce,
-                              init_cond=init_cond,
-                              inv=inv,
-                              in_range=in_rng,
-                              out_range=out_rng,
-                              debug=debug)
+                    tile,
+                    slce,
+                    init_cond=init_cond,
+                    inv=inv,
+                    in_range=in_rng,
+                    out_range=out_rng,
+                    debug=debug)
+  yield ConfigIntegCmd(chip,
+                       tile,
+                       slce,
+                       init_cond=init_cond,
+                       inv=inv,
+                       in_range=in_rng,
+                       out_range=out_rng,
+                       debug=debug)
 
 
 
@@ -154,7 +155,7 @@ def gen_use_multiplier(circ,block,locstr,config):
   use_coeff = MODE_MAP[config.comp_mode]
   if use_coeff:
     in0_rng,out_rng = cast_enum(config.scale_mode, \
-                                [chipcmd.RangeType,chipcmd.RangeType])
+                                [RangeType,RangeType])
 
     scf = config.scf('coeff') if config.has_scf('coeff') else 1.0
     coeff = config.dac('coeff')*scf
@@ -178,9 +179,9 @@ def gen_use_multiplier(circ,block,locstr,config):
 
   else:
     in0_rng,in1_rng,out_rng = cast_enum(config.scale_mode, \
-                                [chipcmd.RangeType, \
-                                 chipcmd.RangeType, \
-                                 chipcmd.RangeType])
+                                [RangeType, \
+                                 RangeType, \
+                                 RangeType])
 
     yield UseMultCmd(chip,
                                tile,
@@ -193,16 +194,16 @@ def gen_use_multiplier(circ,block,locstr,config):
 def gen_use_fanout(circ,block,locstr,config):
   chip,tile,slce,index =gen_unpack_loc(circ,locstr)
   inv0,inv1,inv2 = cast_enum(config.comp_mode,
-                                    [chip_cmd.SignType,
-                                     chip_cmd.SignType,
-                                     chip_cmd.SignType])
-  in_rng, = cast_enum([config.scale_mode], [chip_cmd.RangeType])
+                                    [SignType,
+                                     SignType,
+                                     SignType])
+  in_rng, = cast_enum([config.scale_mode], [RangeType])
 
-  yield chip_cmd.UseFanoutCmd(chip,tile,slce,index,
-                               in_range=in_rng,
-                               inv0=inv0,
-                               inv1=inv1,
-                               inv2=inv2)
+  yield UseFanoutCmd(chip,tile,slce,index,
+                     in_range=in_rng,
+                     inv0=inv0,
+                     inv1=inv1,
+                     inv2=inv2)
 
 
 def is_same_tile(circ,loc1,loc2):
@@ -311,15 +312,15 @@ def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
 
   chip,tile,slce,index =gen_unpack_loc(circ,slocstr)
   src_port = TO_PORT_ID[sport]
-  src_loc = chip_cmd.CircPortLoc(chip,tile,slce,src_port,index=index)
+  src_loc = CircPortLoc(chip,tile,slce,src_port,index=index)
   src_blk = TO_BLOCK_TYPE[sblk]
 
   chip,tile,slce,index =gen_unpack_loc(circ,dlocstr)
   dest_port = TO_PORT_ID[dport]
-  dest_loc = chip_cmd.CircPortLoc(chip,tile,slce,dest_port,index=index)
+  dest_loc = CircPortLoc(chip,tile,slce,dest_port,index=index)
   dest_blk = TO_BLOCK_TYPE[dblk]
 
-  cmd = chip_cmd.MakeConnCmd(src_blk, \
+  cmd = MakeConnCmd(src_blk, \
                                src_loc, \
                                dest_blk,
                                dest_loc)

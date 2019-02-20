@@ -1,7 +1,7 @@
 from enum import Enum
-from lib.base_command import ArduinoCommand
-import lib.cstructs as cstructs
-import lib.enums as enums
+from lab_bench.lib.base_command import ArduinoCommand
+import lab_bench.lib.cstructs as cstructs
+import lab_bench.lib.enums as enums
 
 class Priority(str,Enum):
     FIRST = "first"
@@ -147,6 +147,14 @@ class RangeType(str,Enum):
         else:
             raise Exception("unknown")
 
+    @staticmethod
+    def has(v):
+      assert(isinstance(v,Enum))
+      for name in RangeType.option_names():
+        if v.name == name:
+          return True
+      return False
+
     def abbrev(self):
         if self == RangeType.MED:
             return "m"
@@ -176,6 +184,15 @@ class SignType(str,Enum):
     def option_names():
         for opt in SignType.options():
             yield opt.name
+
+
+    @staticmethod
+    def has(v):
+      assert(isinstance(v,Enum))
+      for name in SignType.option_names():
+        if v.name == name:
+          return True
+      return False
 
 
     @staticmethod

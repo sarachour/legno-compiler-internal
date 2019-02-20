@@ -1,8 +1,8 @@
-import lib.enums as enums
+import lab_bench.lib.enums as enums
 from enum import Enum
-from lib.chipcmd.use import UseCommand
-from lib.chipcmd.data import *
-from lib.chipcmd.common import *
+from lab_bench.lib.chipcmd.use import UseCommand
+from lab_bench.lib.chipcmd.data import *
+from lab_bench.lib.chipcmd.common import *
 
 
 

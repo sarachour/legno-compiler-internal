@@ -1,6 +1,6 @@
-from lib.chipcmd.use import UseDACCmd, UseIntegCmd,UseMultCmd
-from lib.chipcmd.data import *
-from lib.chipcmd.common import *
+from lab_bench.lib.chipcmd.use import UseDACCmd, UseIntegCmd,UseMultCmd
+from lab_bench.lib.chipcmd.data import *
+from lab_bench.lib.chipcmd.common import *
 
 class ConfigDACCmd(UseDACCmd):
 

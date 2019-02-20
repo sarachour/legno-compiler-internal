@@ -3,9 +3,9 @@ import logging
 import argparse
 import struct
 import datetime
-from devices.sicp_device import SICPDevice
 from enum import Enum
-import lib.util as util
+from lab_bench.devices.sicp_device import SICPDevice
+import lab_bench.lib.util as util
 
 logging.basicConfig()
 

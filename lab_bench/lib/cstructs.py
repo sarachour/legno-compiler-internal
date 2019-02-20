@@ -1,4 +1,4 @@
-from lib.enums import BlockType,ExpCmdType,CircCmdType,CmdType
+from lab_bench.lib.enums import BlockType,ExpCmdType,CircCmdType,CmdType
 import construct as cstruct
 
 def block_type_t():

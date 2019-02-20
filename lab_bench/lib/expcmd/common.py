@@ -1,6 +1,6 @@
 import parse as parselib
-import lib.cstructs as cstructs
-from lib.base_command import OptionalValue
+import lab_bench.lib.cstructs as cstructs
+from lab_bench.lib.base_command import OptionalValue
 
 def build_exp_ctype(exp_data):
     return {

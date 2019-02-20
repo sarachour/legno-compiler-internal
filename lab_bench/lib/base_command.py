@@ -1,7 +1,7 @@
-import lib.cstructs as cstructs
-import lib.util as util
+import lab_bench.lib.cstructs as cstructs
+import lab_bench.lib.util as util
 import time
-import lib.enums as enums
+import lab_bench.lib.enums as enums
 from enum import Enum
 import re
 import math

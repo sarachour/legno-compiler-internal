@@ -1,12 +1,11 @@
-import lib.enums as enums
-import lib.util as util
-from lib.base_command import Command,ArduinoCommand
+import lab_bench.lib.enums as enums
+import lab_bench.lib.util as util
+from lab_bench.lib.base_command import Command,ArduinoCommand
 import math
 import time
 import json
 import numpy as np
-import analysis.waveform as waveform
-from lib.expcmd.common import *
+from lab_bench.lib.expcmd.common import *
 
 class MicroResetCmd(ArduinoCommand):
 

@@ -1,6 +1,6 @@
-from lib.base_command import Command
-import devices.sigilent_osc as osclib
-from lib.expcmd.common import *
+from lab_bench.lib.base_command import Command
+import lab_bench.devices.sigilent_osc as osclib
+from lab_bench.lib.expcmd.common import *
 
 class OscSetVoltageRangeCmd(Command):
 

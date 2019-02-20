@@ -5,7 +5,6 @@ import bmark.diffeqs as bmark
 import bmark.menvs as menvs
 import util.paths as paths
 
-sys.path.insert(0,os.path.abspath("lab_bench"))
 
 from compiler import arco, jaunt, srcgen, execprog, skelter
 from chip.conc import ConcCirc

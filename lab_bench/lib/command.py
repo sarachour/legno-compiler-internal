@@ -1,14 +1,14 @@
 import parse as parselib
-import lib.cstructs as cstructs
-import lib.enums as enums
-from lib.chipcmd.use import *
-from lib.chipcmd.config import *
-from lib.chipcmd.conn import *
-from lib.chipcmd.calib import *
-from lib.chipcmd.misc import *
-from lib.expcmd.micro_action import *
-from lib.expcmd.micro_getter import *
-from lib.expcmd.osc import *
+import lab_bench.lib.cstructs as cstructs
+import lab_bench.lib.enums as enums
+from lab_bench.lib.chipcmd.use import *
+from lab_bench.lib.chipcmd.config import *
+from lab_bench.lib.chipcmd.conn import *
+from lab_bench.lib.chipcmd.calib import *
+from lab_bench.lib.chipcmd.misc import *
+from lab_bench.lib.expcmd.micro_action import *
+from lab_bench.lib.expcmd.micro_getter import *
+from lab_bench.lib.expcmd.osc import *
 '''
 ###################
 CIRCUIT COMMANDS

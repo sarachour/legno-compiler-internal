@@ -1,8 +1,8 @@
 import parse as parselib
-import lib.cstructs as cstructs
 import numpy as np
-from lib.chipcmd.data import *
-from lib.base_command import OptionalValue
+from lab_bench.lib.chipcmd.data import *
+import lab_bench.lib.cstructs as cstructs
+from lab_bench.lib.base_command import OptionalValue
 
 def build_circ_ctype(circ_data):
     return {
