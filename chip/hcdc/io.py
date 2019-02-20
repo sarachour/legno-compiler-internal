@@ -26,6 +26,7 @@ def dac_scale_model(dac):
    dac.set_scale_modes("*",modes)
    for mode in modes:
       sign,rng = mode
+      # ERRATA: dac does scale up.
       coeff = sign.coeff()*rng.coeff()*2.0
       dac.set_coeff("*",mode,'out', coeff)
       dac.set_props("*",mode,["in"], \

@@ -73,7 +73,8 @@ def scale_model(mult):
   mult.set_scale_modes("vga",vga_modes)
   for mode in mul_modes:
       in0rng,in1rng,outrng = mode
-      scf = outrng.coeff()/(in0rng.coeff()*in1rng.coeff())
+      # ERRATA: virtual scale of 0.5
+      scf = 0.5*outrng.coeff()/(in0rng.coeff()*in1rng.coeff())
       mult.set_props("mul",mode,["in0"],
                     util.make_ana_props(in0rng,
                                         glb.ANALOG_MIN,
@@ -94,7 +95,8 @@ def scale_model(mult):
 
   for mode in vga_modes:
       in0rng,outrng = mode
-      scf = outrng.coeff()/in0rng.coeff()
+      # ERRATA: virtual scale of 0.5
+      scf = 0.5*outrng.coeff()/in0rng.coeff()
       mult.set_props("vga",mode,["in0"],
                     util.make_ana_props(in0rng, \
                                         glb.ANALOG_MIN,

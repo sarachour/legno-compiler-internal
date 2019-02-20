@@ -51,10 +51,11 @@ def scale_model(fanout):
     for comp_mode in comp_modes:
         fanout.set_scale_modes(comp_mode,scale_modes)
         for rng in scale_modes:
+            # ERRATA: fanout doesn't scale
             fanout\
-                .set_coeff(comp_mode,rng,"out0",rng.coeff()) \
-                .set_coeff(comp_mode,rng,"out1",rng.coeff()) \
-                .set_coeff(comp_mode,rng,"out2",rng.coeff())
+                .set_coeff(comp_mode,rng,"out0",1.0) \
+                .set_coeff(comp_mode,rng,"out1",1.0) \
+                .set_coeff(comp_mode,rng,"out2",1.0)
             fanout\
                 .set_props(comp_mode,rng,["out0","out1","out2","in"],
                         util.make_ana_props(rng,
