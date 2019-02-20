@@ -1,10 +1,14 @@
 import parse as parselib
 import lib.cstructs as cstructs
 import lib.enums as enums
-from lib.exp_command import *
-from lib.chip_command import *
-from lib.virt_command import *
-
+from lib.chipcmd.use import *
+from lib.chipcmd.config import *
+from lib.chipcmd.conn import *
+from lib.chipcmd.calib import *
+from lib.chipcmd.misc import *
+from lib.expcmd.micro_action import *
+from lib.expcmd.micro_getter import *
+from lib.expcmd.osc import *
 '''
 ###################
 CIRCUIT COMMANDS

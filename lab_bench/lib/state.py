@@ -3,7 +3,7 @@ from devices.sigilent_osc import Sigilent1020XEOscilloscope
 import devices.sigilent_osc as osclib
 
 from lib.base_command import FlushCommand, ArduinoCommand
-from lib.chip_command import AnalogChipCommand, Priority
+from lib.chipcmd.data import AnalogChipCommand, Priority
 import lib.util as util
 import time
 import numpy as np
