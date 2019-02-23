@@ -390,6 +390,12 @@ class MathPropagator(ExpressionPropagator):
                       power=1.0,
                       block=self.block,
                       loc=self.loc)
+    elif expr.op == op.OpType.CONST:
+      return nop.NConstRV(expr.value,0)
+    elif expr.op == op.OpType.MULT:
+      arg1 = self.mksigexpr(expr.arg1)
+      arg2 = self.mksigexpr(expr.arg2)
+      return nop.NMult([arg1,arg2])
     else:
       raise NotImplementedError("mksigexpr: not implemented: %s" % expr)
 
