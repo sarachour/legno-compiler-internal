@@ -73,7 +73,7 @@ def adc_scale_model(adc):
       analog_props = util.make_ana_props(rng,
                                        glb.ANALOG_MIN,
                                        glb.ANALOG_MAX)
-      analog_props.set_bandwidth(0,0.2,units.khz)
+      analog_props.set_bandwidth(0,20,units.khz)
 
       adc.set_props("*",mode,["in"],analog_props)
       adc.set_props("*",mode,["out"], \

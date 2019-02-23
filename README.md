@@ -37,24 +37,21 @@ This command builds bias, noise and delay models for each block from empirical d
 
 ## Setting up the output directory
 
-navigate to `util`, rename `config_local.py` to `config.py`. The `config.py` file has one variable, the output directory legno uses for writing circuits, graphs, datasets and so on. Due to some bugs in `paths.py`, you want to choose an output directory with no paranethesis, spaces or underscores.
+navigate to `util`, rename `config_local.py` to `config.py`. The `config.py` file has the following variables. 
 
+   - `OUTPUT_DIR`: the output directory legno uses for writing circuits, graphs, datasets and so on. Due to some bugs in `paths.py`, you want to choose an output directory with no paranethesis, spaces or underscores.
+
+   - `GPKIT_SOLVER`: the convex optimization solver `gpkit` uses. By default it is set to `mosek_cli`, the command line interface for the Mosek solver. If you don't have (or can't use), you can change the optimizer to `cvxopt`, though be warned it fails on some benchmarks. See the _Setting Up Mosek_ section for more information.
+   
+   
 ## Executing `.grendel` files
 
 Once the grendel files are generated, you can then execute them on the chip using the scripts included in the `lab_bench` directory. Refer to the `README.md` file in `lab_bench` for more information on how to setup the dependences for the interpreter. Once all of that is set up you can run grendel scripts in three ways:
  
 This method runs a single grendel script. We recommend starting with this:
 
-    python3 lab_bench/arduino_client.py --script /path/to/file.grendel
+    python3 grendel.py --script /path/to/file.grendel
 
-
-This method runs all the grendel scripts listed in the file `grendel_list.txt` and plots the results:
-
-      python3 chip_run.py spring --script-list grendel_list.txt
-
-This method runs all the grendel scripts associated with a benchmark and plots the results:
-
-      python3 chip_run.py spring
   
 #### Notes on executing `grendel` files
 
@@ -80,7 +77,12 @@ This method runs all the grendel scripts associated with a benchmark and plots t
    
    
 # Installing Legno Dependences
-Install pip3
+
+Currently, Legno requires `python-3.7.x`. Make sure you are using the correct python version with the following command:
+
+      python3 --version
+      
+Install pip3:
 
       sudo apt-get install python3 python3-pip python3-tk graphviz mailutils
 
@@ -91,10 +93,16 @@ The Legno compiler requires `python3` and `pip3`. Install the dependences with t
 You need the the following `lab-bench` dependencies for the compiler to interface nicely with the lab bench tooling:
 
       pip3 install parse construct sklearn fastdtw tqdm
-     
+    
+### Installing Mosek
+
+_coming soon..._
+
+### Installing GPKIT
+ 
 Install the dependences for GPKit:
 
-      pip3 install pint scipy gpkit
+      pip3 install pint scipy 
 
 Legno also requires a bleeding edge version of `gpkit`. Clone the following repository:
 
@@ -107,6 +115,7 @@ switch to the python3 branch:
 Then navigate to it in the command line, and execute the following command in the root directory. It is very important that you have already installed `cvxopt` with pip before running this command:
 
       pip3 install -e .
+
 
 # Installing the Lab Bench Dependencies
 

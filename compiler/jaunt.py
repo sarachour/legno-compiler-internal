@@ -14,6 +14,7 @@ import random
 import time
 import numpy as np
 import util.util as util
+import util.config as CONFIG
 
 #TODO: what is low range, high range and med range?
 #TODO: setRange: integ.in, integ.out and mult have setRange functions.
@@ -581,7 +582,7 @@ def build_gpkit_problem(circ,jenv,jopt):
 
         gp_lhs = gpkit_expr(variables,lhs)
         gp_rhs = gpkit_expr(variables,rhs)
-        result = gp_lhs == gp_rhs
+        result = (gp_lhs == gp_rhs)
         msg="%s == %s" % (gp_lhs,gp_rhs)
         constraints.append((gp_lhs == gp_rhs,msg))
 
@@ -622,7 +623,7 @@ def solve_gpkit_problem(gpmodel,timeout=10):
     try:
         signal.signal(signal.SIGALRM, handle_timeout)
         signal.alarm(timeout)
-        sln = gpmodel.solve(verbosity=2)
+        sln = gpmodel.solve(solver=CONFIG.GPKIT_SOLVER,verbosity=2)
         signal.alarm(0)
     except RuntimeWarning:
         signal.alarm(0)
