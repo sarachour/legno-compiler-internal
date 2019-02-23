@@ -1,11 +1,13 @@
 import lab_bench.lib.enums as enums
 import lab_bench.lib.util as util
 from lab_bench.lib.base_command import Command,ArduinoCommand
+from lab_bench.lib.expcmd.common import *
+import lab_bench.lib.util as util
 import math
 import time
 import json
 import numpy as np
-from lab_bench.lib.expcmd.common import *
+import construct
 
 class MicroResetCmd(ArduinoCommand):
 

@@ -14,7 +14,7 @@ block.set_scale_modes("*",["*"])
 block.set_props("*","*",["in","out"],  \
                 util.make_dig_props(chipcmd.RangeType.MED,\
                                     glb.DAC_MIN,
-                                    glb.DAC_MAX)) \
+                                    glb.DAC_MAX))
 
 block.set_op("*","out",ops.Func(["in"],None)) \
 .check()

@@ -33,6 +33,12 @@ class AnalogProperties(Properties):
     def __init__(self):
         Properties.__init__(self,Properties.ANALOG)
         self._bounds = (None,None,units.unknown)
+        self._bandwidth = (None,None,units.unknown)
+
+    def set_bandwidth(self,lower,upper,unit):
+        assert(lower is None or upper is None or lower <= upper)
+        self._bandwidth = (lower,upper,unit)
+        return self
 
     def set_interval(self,lower,upper,unit):
         assert(lower is None or upper is None or lower <= upper)
@@ -42,6 +48,13 @@ class AnalogProperties(Properties):
     def interval(self):
         lb,ub,unit = self._bounds
         return IRange(lb,ub)
+
+
+    def bandwidth(self):
+         lb,ub,unit = self._bandwidth
+         lb = lb*unit if not lb is None else None
+         ub = ub*unit if not ub is None else None
+         return Interval.type_infer(lb,ub)
 
 
     def check(self):

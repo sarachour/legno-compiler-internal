@@ -23,7 +23,7 @@ class JauntObjectiveFunction():
     @staticmethod
     def methods():
         #return ['fast','slow','max']
-        return ['fast','slow']
+        return ['fast','slow','maxstab','max']
 
     @staticmethod
     def physical_methods():
@@ -44,6 +44,9 @@ class JauntObjectiveFunction():
             gen = self.slow(varmap)
         elif self.method == 'max':
             gen = self.max_dynamic_range(varmap)
+        elif self.method == 'maxstab':
+            gen = self.max_dynamic_range_and_stability(varmap)
+
         elif self.method == 'lo-noise':
             gen = jaunt_phys_opt.low_noise(circuit,\
                                            self.jenv,varmap)
@@ -63,32 +66,56 @@ class JauntObjectiveFunction():
     def slow(self,varmap):
         objective = varmap[self.jenv.TAU]
         print(objective)
-        yield [],objective
+        if self.jenv.uses_tau():
+            yield [],objective
+        else:
+            yield [],0
 
     def fast(self,varmap):
         objective = 1.0/varmap[self.jenv.TAU]
-        print(objective)
+        if self.jenv.uses_tau():
+            yield [],objective
+        else:
+            yield [],0
+
+    def max_dynamic_range_and_stability(self,varmap):
+        if self.jenv.uses_tau():
+            objective = varmap[self.jenv.TAU]
+        else:
+            objective = 1.0
+        for scvar in self.jenv.scvars():
+            if self.jenv.in_use(scvar):
+                if self.jenv.LUT_SCF_IN in scvar:
+                    objective *= varmap[scvar]
+                else:
+                    objective *= 1.0/varmap[scvar]
         yield [],objective
 
+
     def max_dynamic_range(self,varmap):
-        objective = 1.0/varmap[self.jenv.TAU]
+        objective = 1.0
         for scvar in self.jenv.scvars():
-            objective += 1.0/varmap[scvar]
+            if self.jenv.in_use(scvar):
+                if self.jenv.LUT_SCF_IN in scvar:
+                    objective *= varmap[scvar]
+                else:
+                    objective *= 1.0/varmap[scvar]
         yield [],objective
 
 
 class JauntEnv:
-
+    LUT_SCF_IN = "LUTSCFIN"
+    LUT_SCF_OUT = "LUTSCFOUT"
     TAU = "tau"
 
     def __init__(self):
         # scaling factor name to port
         self._to_scvar = {}
         self._from_scvar ={}
+        self._in_use = {}
 
         self._eqs = []
         self._ltes = []
-
         # metavar
         self._meta = {}
         self._metavar = 0
@@ -113,6 +140,9 @@ class JauntEnv:
 
     def failed(self):
         return self._failed
+
+    def in_use(self,scvar):
+        return (scvar) in self._in_use
 
     def variables(self):
         yield JauntEnv.TAU
@@ -147,7 +177,9 @@ class JauntEnv:
         return self._from_scvar.keys()
 
     def get_scvar(self,block_name,loc,port,handle=None):
-        return self._to_scvar[(block_name,loc,port,handle)]
+        scvar = self._to_scvar[(block_name,loc,port,handle)]
+        self._in_use[scvar] = True
+        return scvar
 
 
     def decl_scvar(self,block_name,loc,port,handle=None):
@@ -186,8 +218,15 @@ def bp_decl_scale_variables(jenv,circ):
             for handle in block.handles(config.comp_mode,output):
                 jenv.decl_scvar(block_name,loc,output,handle=handle)
 
+            if block.name == "lut":
+                jenv.decl_scvar(block_name,loc,output, \
+                                handle=jenv.LUT_SCF_OUT)
+
         for inp in block.inputs:
             jenv.decl_scvar(block_name,loc,inp)
+            if block.name == "lut":
+                jenv.decl_scvar(block_name,loc,inp, \
+                                handle=jenv.LUT_SCF_IN)
 
         for output in block.outputs:
             for orig in block.copies(config.comp_mode,output):
@@ -321,7 +360,16 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
 
     elif expr.op == ops.OpType.VAR:
         scvar = jenv.get_scvar(block.name,loc,expr.name)
-        return jop.JVar(scvar)
+        if block.name == 'lut':
+            slackvar = jenv.get_scvar(block.name,loc,expr.name, \
+                                      handle=jenv.LUT_SCF_IN)
+            #slack = 0.5
+            #jenv.lte(jop.JVar(slackvar),jop.JConst(1.0+slack))
+            #jenv.gte(jop.JVar(slackvar),jop.JConst(1.0-slack))
+            return jop.JMult(jop.JVar(slackvar), jop.JVar(scvar))
+            return jop.JVar(scvar)
+        else:
+            return jop.JVar(scvar)
 
     elif expr.op == ops.OpType.MULT:
         expr1 = bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr.arg1)
@@ -340,6 +388,11 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
         expr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr.arg(0))
         new_expr = jop.expo(expr,0.5)
         return new_expr
+
+    elif expr.op == ops.OpType.SIN:
+        expr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr.arg(0))
+        jenv.eq(expr, jop.JConst(1.0))
+        return jop.JConst(1.0)
 
     elif expr.op == ops.OpType.INTEG:
         # derivative and ic are scaled simialrly
@@ -391,43 +444,69 @@ def bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr):
     config = circ.config(block.name,loc)
     hwrng = config.op_range(out)
     mrng = config.interval(out)
-    jenv.eq(scfvar,scexpr)
+    if block.name == "lut":
+        coeffvar = jop.JVar(jenv.get_scvar(block.name,loc,out, \
+                                           handle=jenv.LUT_SCF_OUT))
+        jenv.eq(scfvar, jop.JMult(coeffvar,scexpr))
+    else:
+        jenv.eq(scfvar,scexpr)
+
     bpgen_scaled_interval_constraint(jenv,scfvar,mrng,hwrng)
+
+def bpgen_scaled_bandwidth_constraint(jenv,circ,mbw,hwbw):
+    tau = jop.JVar(jenv.TAU)
+    if hwbw.unbounded_lower() and hwbw.unbounded_upper():
+        return
+
+    if mbw.is_infinite():
+        return
+
+    jenv.use_tau()
+    mbw_hw = mbw.bandwidth/circ.board.time_constant
+    if hwbw.upper > 0:
+        jenv.lte(jop.JMult(tau,jop.JConst(mbw_hw)),jop.JConst(hwbw.upper))
+    else:
+        jenv.fail()
+
+    if hwbw.lower > 0:
+        jenv.gte(jop.JMult(tau,jop.JConst(mbw_hw)),jop.JConst(hwbw.lower))
 
 def bp_generate_problem(jenv,circ,quantize_signals=5):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for out in block.outputs:
             expr = config.dynamics(block,out)
-            print("%s=%s" % (out,expr))
+            print("[%s] %s=%s" % (block_name,out,expr))
             bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr)
 
         for port in block.outputs + block.inputs:
-            mrng = circ.config(block_name,loc).interval(port)
+            properties = config.props(block,port)
+            mrng = config.interval(port)
+            hwrng = config.op_range(port)
             if mrng is None:
                 print("[skip] not in use <%s[%s].%s>" % \
                       (block_name,loc,port))
                 continue
 
-            hwrng = config.op_range(port)
             scfvar = jop.JVar(jenv.get_scvar(block_name,loc,port))
             bpgen_scaled_interval_constraint(jenv,scfvar,mrng,hwrng)
-
             # make sure digital values are large enough to register.
-            properties = config.props(block,port)
-            if config.has_label(port):
-                typ = config.label_type(port)
-                if typ == Labels.OUTPUT or typ == Labels.DYNAMIC_INPUT:
-                    quantize = quantize_signals
-                else:
-                    quantize = 1
-            else:
-                quantize = 1
-
             if isinstance(properties,props.DigitalProperties):
+                quantize = 1
+                if config.has_label(port):
+                    typ = config.label_type(port)
+                    if typ == Labels.OUTPUT or typ == Labels.DYNAMIC_INPUT:
+                        quantize = quantize_signals
+
                 bpgen_scaled_digital_constraint(jenv,scfvar,mrng,\
                                                 properties.values(),
                                                 quantize=quantize)
+
+            else:
+                mbw = config.bandwidth(port)
+                hwbw = properties.bandwidth()
+                print("%s,%s,%s" % (block_name,loc,port))
+                bpgen_scaled_bandwidth_constraint(jenv,circ,mbw,hwbw)
 
     if not jenv.uses_tau():
         jenv.eq(jop.JVar(jenv.TAU), jop.JConst(1.0))
@@ -451,7 +530,7 @@ def build_jaunt_env(prog,circ):
 
 def gpkit_expr(variables,expr):
     if expr.op == jop.JOpType.VAR:
-        return variables[expr.name]**expr.exponent
+        return variables[expr.name]**float(expr.exponent)
 
     elif expr.op == jop.JOpType.MULT:
         e1 = gpkit_expr(variables,expr.arg(0))
@@ -560,17 +639,40 @@ def solve_gpkit_problem(gpmodel,timeout=10):
 
     return sln
 
+def sp_update_lut_expr(expr,output,scfs):
+    repl = {}
+    for name,scf in scfs.items():
+        repl[name] = op.Mult(op.Const(scf),op.Var(name))
+
+    e1 = expr.substitute(repl)
+    outscf = scfs[output]
+    new_expr = op.Mult(op.Const(outscf), e1)
+    return new_expr
 
 def sp_update_circuit(jenv,prog,circ,assigns):
     bindings = {}
+    lut_updates = {}
     tau = None
     for variable,value in assigns.items():
         if variable.name == jenv.TAU:
+            print("TAU = %s" % (value))
             circ.set_tau(value)
         else:
             print("SCF %s = %s" % (variable,value))
             block_name,loc,port,handle = jenv.get_scvar_info(variable.name)
-            circ.config(block_name,loc).set_scf(port,handle=handle,scf=value)
+            if handle == jenv.LUT_SCF_IN or handle == jenv.LUT_SCF_OUT:
+                if not (block_name,loc) in lut_updates:
+                    lut_updates[(block_name,loc)] = {}
+                lut_updates[(block_name,loc)][port] = value
+            else:
+                circ.config(block_name,loc).set_scf(port,handle=handle, \
+                                                    scf=value)
+
+    for (block_name,loc),scfs in lut_updates.items():
+        cfg = circ.config(block_name,loc)
+        for port,expr in cfg.exprs():
+            new_expr = sp_update_lut_expr(expr,port,scfs)
+            cfg.set_expr(port,new_expr)
 
     return circ
 
@@ -613,7 +715,11 @@ def compute_best_sln(slns):
         idx = np.argmin(map(lambda sln: sln['cost'],slns))
         return slns[idx]
 
-def scale_circuit(prog,circ,methods):
+def debug_gpkit_problem(gpprob):
+    gpprob.debug()
+    input("continue?")
+
+def scale_circuit(prog,circ,methods,debug=True):
     assert(isinstance(circ,ConcCirc))
     jenv = build_jaunt_env(prog,circ)
     jopt = JauntObjectiveFunction(jenv)
@@ -629,6 +735,7 @@ def scale_circuit(prog,circ,methods):
             if sln is None:
                 print("[[FAILURE]]")
                 jenv.set_solved(False)
+                #debug_gpkit_problem(gpprob)
                 continue
 
             elif not 'freevariables' in sln:
@@ -648,7 +755,7 @@ def scale_circuit(prog,circ,methods):
         if best_sln is None:
             return None
 
-        upd_circ = sp_update_circuit(jenv,prog,circ,
+        upd_circ = sp_update_circuit(jenv,prog,circ.copy(),
                                     best_sln['freevariables'])
         yield opt,upd_circ
 

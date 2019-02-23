@@ -14,6 +14,8 @@ class MathEnv:
         self._inputs = {}
 
     def input(self,name):
+        if not name in self._inputs:
+            raise Exception("input not recognized: %s" % name)
         return self._inputs[name][0]
 
     def is_periodic(self,name):
@@ -67,17 +69,20 @@ class MathProg:
         self.__types = {}
         fns = []
         for var in self._variables:
-            if var in self._bindings:
-                if self._bindings[var].op == op.OpType.INTEG:
-                    self.__types[var] = MathProg.ExprType.INTEG
-                    self.__order.append(var)
-                    self.__order_integs.append(var)
-                else:
-                    self.__types[var] = MathProg.ExprType.FN
-                    fns.append(var)
-            else:
+            if not (var in self._bindings):
+                continue
+
+            if self._bindings[var].op == op.OpType.INTEG:
+                self.__types[var] = MathProg.ExprType.INTEG
+                self.__order.append(var)
+                self.__order_integs.append(var)
+            elif self._bindings[var].op == op.OpType.EXTVAR:
                 self.__types[var] = MathProg.ExprType.EXTERN
                 self.__order.append(var)
+
+            else:
+                self.__types[var] = MathProg.ExprType.FN
+                fns.append(var)
 
         while not util.values_in_list(fns,self.__order):
             progress = False
@@ -94,9 +99,14 @@ class MathProg:
         for var in self.__order:
             typ = self.__types[var]
             if typ == MathProg.ExprType.EXTERN:
-                stdict[var] = menv.input(var).compute({'t':t})
+                extvar = self._bindings[var].name
+                stdict[var] = menv.input(extvar).compute({'t':t})
             elif typ == MathProg.ExprType.FN:
                 stdict[var] = self._bindings[var].compute(stdict)
+            elif typ == MathProg.ExprType.INTEG:
+                continue
+            else:
+                raise Exception("unknown: %s" % var)
 
         return stdict
 
@@ -124,7 +134,8 @@ class MathProg:
             if typ == MathProg.ExprType.INTEG:
                 ics[var] = self._bindings[var].init_cond.value
             elif typ == MathProg.ExprType.EXTERN:
-                ics[var] = menv.input(var).compute({'t':0})
+                extvar = self._bindings[var].name
+                ics[var] = menv.input(extvar).compute({'t':0})
             elif typ == MathProg.ExprType.EXTERN:
                 ics[var] = self._binding[var].compute(ics)
 
@@ -133,6 +144,7 @@ class MathProg:
 
     def variables(self):
         return self._variables
+
 
     def bind(self,var,expr):
         assert(not var in self._bindings)
@@ -209,6 +221,7 @@ class MathProg:
 
                         bwcoll = expr.infer_bandwidth(ival_dict, \
                                                       bandwidths=self._bandwidths)
+                        assert(isinstance(bwcoll.bandwidth, Bandwidth))
                         self._bandwidths[variable] = bwcoll.bandwidth
                         progress = True
 
@@ -220,19 +233,8 @@ class MathProg:
     def name(self):
         return self._name
 
-class StochMathProg:
-
-    class Distribution:
-        GAUSSIAN = 0
-
-    class Operator:
-        EQUALS = 0
-        LESS_THAN = 1
-
-    def __init__(self,name):
-        MathProg.__init__(self,name)
-        self._stoch = {}
-
-    def bind_stoch(self,var,variance,dist,op):
-        self._stoch[var] = (variance,dist,op)
-
+    def __repr__(self):
+        s = "prog %s\n" % self._name
+        for v,e in self._bindings.items():
+            s += "  %s=%s\n" % (v,e)
+        return s

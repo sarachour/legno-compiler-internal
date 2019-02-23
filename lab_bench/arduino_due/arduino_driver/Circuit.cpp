@@ -381,14 +381,11 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
       case cmd_type_t::CONFIG_DAC:
         dacd = cmd.data.dac; 
         dac = get_slice(fab,dacd.loc)->dac;
-        load_range(multd.out_range, &lo1, &hi1);
+        load_range(dacd.out_range, &lo1, &hi1);
         if(dacd.source == circ::dac_source::DS_MEM){
           comm::test(dac->setConstantDirect(dacd.value,hi1,true), 
-             "failed to set dac value");
+             "failed to configure dac value");
         }
-        comm::print_header();
-        Serial.print(" coefficient=");
-        Serial.println(dacd.value);
         comm::response("configured dac (direct)",0);
         break;
         
@@ -406,7 +403,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
         dac = get_slice(fab,dacd.loc)->dac;
         dac->setEnable(true);
         dac->out0->setInv(dacd.inv);
-        load_range(multd.out_range, &lo1, &hi1);
+        load_range(dacd.out_range, &lo1, &hi1);
         dac->setHiRange(hi1);
         load_dac_source(dacd.source, &s1, &s2, &s3, &s4);
         dac->setSource(s1,s2,s3,s4);
@@ -675,11 +672,11 @@ void print_command(cmd_t& cmd){
       case cmd_type_t::USE_FANOUT:
         Serial.print("use fanout ");
         print_idx_loc(cmd.data.fanout.loc);
-        Serial.print(" inv[0]=");
+        Serial.print(" inv0=");
         Serial.print(cmd.data.fanout.inv[0] ? "yes" : "no");
-        Serial.print(" inv[1]=");
+        Serial.print(" inv1=");
         Serial.print(cmd.data.fanout.inv[1] ? "yes" : "no");
-        Serial.print(" inv[2]=");
+        Serial.print(" inv2=");
         Serial.print(cmd.data.fanout.inv[2] ? "yes" : "no");
         Serial.print(" rng=");
         Serial.print(range_to_str(cmd.data.fanout.in_range));
@@ -738,6 +735,8 @@ void print_command(cmd_t& cmd){
       case cmd_type_t::USE_DAC:
         Serial.print("use dac ");
         print_loc(cmd.data.dac.loc);
+        Serial.print(" src=");
+        Serial.print(cmd.data.dac.source);
         Serial.print(" inv=");
         Serial.print(cmd.data.dac.inv ? "yes" : "no");
         Serial.print(" rng=");
@@ -782,7 +781,9 @@ void print_command(cmd_t& cmd){
         
       case cmd_type_t::USE_LUT:
         Serial.print("use lut ");
-        print_loc(cmd.data.circ_loc);
+        print_loc(cmd.data.lut.loc);
+        Serial.print(" src=");
+        Serial.print(cmd.data.lut.source);
         break;
       
       case cmd_type_t::WRITE_LUT:

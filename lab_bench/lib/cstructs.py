@@ -100,7 +100,7 @@ def circ_use_dac_t():
         "source" / cstruct.Int8ul,
         "inv" / cstruct.Int8ul,
         "out_range" / cstruct.Int8ul,
-        cstruct.Padding(3),
+        cstruct.Padding(2),
         "value" / cstruct.Float32l
     )
 

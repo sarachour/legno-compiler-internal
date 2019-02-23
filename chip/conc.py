@@ -13,6 +13,17 @@ class ConcCirc:
         #self._intervals = {}
         #self._bandwidths = {}
 
+    def copy(self):
+        circ = ConcCirc(self._board)
+        circ.set_tau(self.tau)
+        for block_name,loc,cfg in self.instances():
+            circ.use(block_name,loc,cfg.copy())
+
+        for sb,sl,sp,db,dl,dp in self.conns():
+            circ.conn(sb,sl,sp,db,dl,dp)
+
+        return circ
+
     def set_tau(self,value):
         self._tau = value
 

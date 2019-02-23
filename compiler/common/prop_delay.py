@@ -24,6 +24,10 @@ class DelayPropagator(ExpressionPropagator):
   def sgn(self,m):
     return m
 
+  def sin(self,m):
+    return m
+
+
   def sqrt(self,m):
     return m
 

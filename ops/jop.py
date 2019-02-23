@@ -57,7 +57,7 @@ class JConst(JOp):
 
     def __init__(self,value):
         JOp.__init__(self,JOpType.CONST,[])
-        self._value = value
+        self._value = float(value)
 
 
     def factor_const(self):
@@ -87,5 +87,9 @@ def expo(jexpr, factor):
         return JConst(jexpr.value**factor)
     elif jexpr.op == JOpType.VAR:
         return JVar(jexpr.name,jexpr.exponent*factor)
+    elif jexpr.op == JOpType.MULT:
+        e1 = expo(jexpr.arg(0),factor)
+        e2 = expo(jexpr.arg(1),factor)
+        return JMult(e1,e2)
     else:
         raise Exception("exponentiate: not-impl %s" % jexpr)

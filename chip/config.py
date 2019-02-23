@@ -37,6 +37,9 @@ class Config:
     def set_expr(self,port,expr):
         self._exprs[port] = expr
 
+    def exprs(self):
+        return self._exprs.items()
+
     def expr(self,port):
         return self._exprs[port]
 

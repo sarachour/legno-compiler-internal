@@ -52,9 +52,9 @@ def long_sin2():
   expr1 = op.Mult(op.Const(5.0), \
                  op.Sin(op.Mult(op.Const(0.01), op.Var('t'))))
   expr2 = op.Add(
-    op.Mult(op.Const(2.0), \
+    op.Mult(op.Const(0.2), \
             op.Sin(op.Mult(op.Const(0.037), op.Var('t')))),
-    op.Mult(op.Const(3.0), \
+    op.Mult(op.Const(0.1), \
             op.Sin(op.Mult(op.Const(0.01), op.Var('t'))))
   )
 

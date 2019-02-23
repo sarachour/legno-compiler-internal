@@ -34,6 +34,8 @@ def _build_expr(expr,terms,ctor):
 def build_expr(exprs,ctor):
   if len(exprs) == 1:
     return exprs[0]
+  elif len(exprs) == 0:
+    return None
   else:
     return _build_expr(exprs[0],exprs[1:],ctor)
 
@@ -41,6 +43,12 @@ def get_terms(ops,terms,sel_op):
   for op,term in zip(ops,terms):
     if op == sel_op:
       yield term
+
+def negate(expr):
+  if expr.op == op.OpType.CONST:
+    return op.Const(expr.value*-1)
+  else:
+    return op.Mult(op.Const(-1), expr)
 
 def from_infix(infix):
   if isinstance(infix,str):
@@ -50,7 +58,7 @@ def from_infix(infix):
   elif len(infix) == 1:
     return from_infix(infix[0])
   elif len(infix) == 2 and infix[0] == '-':
-    return op.Mult(op.Const(-1),from_infix(infix[1]))
+    return negate(from_infix(infix[1]))
 
   assert(len(infix) >= 3)
   terms = list(map(lambda i: from_infix(infix[i]), \
@@ -66,10 +74,10 @@ def from_infix(infix):
     sub_expr = build_expr(sub_terms,op.Add)
 
     if len(sub_terms) > 0 and len(add_terms) > 0:
-      return op.Add(add_expr,op.Mult(op.Const(-1),sub_expr))
+      return op.Add(add_expr,negate(sub_expr))
 
     elif len(sub_terms) > 0 and len(add_terms) == 0:
-      return op.Mult(op.Const(-1),sub_expr)
+      return op.Mult(negate(sub_expr))
 
     elif len(sub_terms) == 0 and len(add_terms) > 0:
       return add_expr

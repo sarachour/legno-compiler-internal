@@ -3,6 +3,8 @@ from enum import Enum
 from lab_bench.lib.chipcmd.use import UseCommand
 from lab_bench.lib.chipcmd.data import *
 from lab_bench.lib.chipcmd.common import *
+import lab_bench.lib.util as util
+import construct
 
 
 

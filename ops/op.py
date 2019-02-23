@@ -26,7 +26,6 @@ def to_python(e):
         v,a = to_python(e.arg(0))
         return v,"math.sin(%s)" % a
 
-
     elif e.op == OpType.COS:
         v,a = to_python(e.arg(0))
         return v,"math.cos(%s)" % a
@@ -159,6 +158,8 @@ class Op:
         op = OpType(obj['op'])
         if op == OpType.VAR:
             return Var.from_json(obj)
+        elif op == OpType.CONST:
+            return Const.from_json(obj)
         elif op == OpType.FUNC:
             return Func.from_json(obj)
         elif op == OpType.MULT:
@@ -169,6 +170,11 @@ class Op:
             return Abs.from_json(obj)
         elif op == OpType.SQRT:
             return Sqrt.from_json(obj)
+        elif op == OpType.SIN:
+            return Sin.from_json(obj)
+        elif op == OpType.COS:
+            return Cos.from_json(obj)
+
         else:
             raise Exception("unimpl: %s" % obj)
 
@@ -195,14 +201,10 @@ class Op:
     def compute_interval(self,intervals):
         raise NotImplementedError("unknown compute-interval <%s>" % (str(self)))
 
-
     # infer bandwidth from interval information
     def infer_bandwidth(self,intervals,bandwidths={}):
         raise NotImplementedError("unknown infer-bandwidth <%s>" % (str(self)))
 
-    # compute bandwidth of straight line expression, given bindings
-    def compute_bandwidth(self,bandwidths):
-        raise NotImplementedError("unknown compute-bandwidth <%s>" % (str(self)))
 
     def match(self,expr):
         def is_consistent(assignments):
@@ -355,21 +357,6 @@ class Integ(Op2):
     def bwvars(self):
         return []
 
-    def compute_bandwidth(self,bandwidths):
-        # each state variable is bandlimited.
-        # Bernstein's inequality, Lapidoth
-        # A Foundation in Digital Communication (page 92).
-        # given |x(t)| <= A
-        # Bernstein's inequality: max(dx/dt) < 2*pi*f_0*A
-        # where X(f) = 0 for all f > f_0
-
-        bw_stvar = bandwidths[self._handle]
-        bw_deriv = self.deriv.compute_bandwidth(bandwidths)
-        bw_init_cond = self.init_cond.compute_bandwidth(bandwidths)
-        bwcoll = bw_deriv.merge(bw_init_cond,bw_stvar)
-        bwcoll.bind(self.deriv_handle, bw_deriv.bandwidth)
-        bwcoll.bind(self.ic_handle, bw_init_cond.bandwidth)
-        return bwcoll
 
     @property
     def deriv(self):
@@ -512,6 +499,18 @@ class Const(Op):
         Op.__init__(self,OpType.CONST,[],tag=tag)
         self._value = float(value)
 
+    def to_json(self):
+        obj = Op.to_json(self)
+        obj['value'] = self._value
+        return obj
+
+    def substitute(self,bindings):
+        return Const(self._value,tag=self._tag)
+
+    @staticmethod
+    def from_json(obj):
+        return Const(obj['value'])
+
 
     def coefficient(self):
         return self.value
@@ -605,8 +604,6 @@ class Mult(Op2):
         return Mult(self.arg1.substitute(assigns),
                     self.arg2.substitute(assigns))
 
-    def infer_bandwidth(self,intervals,bandwidths={}):
-        return self.compute_bandwidth(bandwidths)
 
     def infer_interval(self,this_interval,bound_intervals):
         icoll = self.compute_interval(bound_intervals)
@@ -619,9 +616,9 @@ class Mult(Op2):
         return is1.merge(is2,
                   is1.interval.mult(is2.interval))
 
-    def compute_bandwidth(self,bandwidths):
-        bw1 = self.arg1.compute_bandwidth(bandwidths)
-        bw2 = self.arg2.compute_bandwidth(bandwidths)
+    def infer_bandwidth(self,intervals,bandwidths):
+        bw1 = self.arg1.infer_bandwidth(intervals,bandwidths)
+        bw2 = self.arg2.infer_bandwidth(intervals,bandwidths)
         return bw1.merge(bw2,
                          bw1.bandwidth.mult(bw2.bandwidth))
 
@@ -817,8 +814,8 @@ class Abs(Op):
 
 
     # bandwidth is infinite if number is ever negative
-    def compute_bandwidth(self,bws):
-        bwcoll = self.arg(0).compute_bandwidth(bws)
+    def infer_bandwidth(self,ivals,bws):
+        bwcoll = self.arg(0).infer_bandwidth(ivals,bws)
         # 2*sin(pi*a/2)*gamma(alpha+1)/(2*pi*eta)^{alpha+1}
         bwcoll.update(bandwidth.InfBandwidth())
         return bwcoll
@@ -840,11 +837,12 @@ class Sgn(Op):
     def compute(self,bindings):
         return math.copysign(1.0,self.arg(0).compute(bindings).real)
 
-    def compute_bandwidth(self,bws):
-        bwcoll = self.arg(0).compute_bandwidth(bws)
-        bwcoll.update(bandwidth.Bandwidth(0))
-        return bwcoll
 
+    def infer_bandwidth(self,intervals,bandwidths):
+        bwcoll = self.arg(0).infer_bandwidth(intervals,bandwidths)
+        bwcoll.update(bandwidth.InfBandwidth())
+        return bwcoll
+ 
     def compute_interval(self,ivals):
         ivalcoll = self.arg(0).compute_interval(ivals)
         new_ival = ivalcoll.interval.sgn()
@@ -880,14 +878,7 @@ class Sin(Op):
 
     @staticmethod
     def from_json(obj):
-        return Cos(Op.from_json(obj['args'][0]))
-
-    # bandwidth is infinite if number is ever negative
-    def compute_bandwidth(self,bws):
-        bwcoll = self.arg(0).compute_bandwidth(bws)
-        # 2*sin(pi*a/2)*gamma(alpha+1)/(2*pi*eta)^{alpha+1}
-        bwcoll.update(bandwidth.InfBandwidth())
-        return bwcoll
+        return Sin(Op.from_json(obj['args'][0]))
 
     def compute_interval(self,ivals):
         ivalcoll = self.arg(0).compute_interval(ivals)
@@ -895,8 +886,13 @@ class Sin(Op):
         return ivalcoll
 
     def infer_bandwidth(self,intervals,bandwidths={}):
-        return self.compute_bandwidth(bandwidths).bandwidth
+        argival = self.arg(0).compute_interval(intervals)
+        rad_to_hz = 1.0/(2.0*math.pi)
+        bw = argival.interval.scale(rad_to_hz)
 
+        bwcoll = self.arg(0).compute_bandwidth(bandwidths)
+        bwcoll.update(bandwidth.Bandwidth(bw.bound))
+        return bwcoll
 
 class Cos(Op):
 
@@ -930,7 +926,14 @@ class Cos(Op):
 
 
     def infer_bandwidth(self,intervals,bandwidths={}):
-        return self.compute_bandwidth(bandwidths).bandwidth
+        argival = self.arg(0).compute_interval(intervals)
+        rad_to_hz = 1.0/(2.0*math.pi)
+        bw = argival.interval.scale(rad_to_hz)
+
+        bwcoll = self.arg(0).compute_bandwidth(bandwidths)
+        bwcoll.update(bandwidth.Bandwidth(bw.bound))
+        return bwcoll
+
 
 
 
@@ -959,8 +962,8 @@ class Sqrt(Op):
         return math.sqrt(self.arg(0).compute(bindings))
 
     # bandwidth is infinite if number is ever negative
-    def compute_bandwidth(self,bws):
-        bwcoll = self.arg(0).compute_bandwidth(bws)
+    def infer_bandwidth(self,ivals,bws):
+        bwcoll = self.arg(0).infer_bandwidth(ivals,bws)
         # 2*sin(pi*a/2)*gamma(alpha+1)/(2*pi*eta)^{alpha+1}
         bwcoll.update(bandwidth.InfBandwidth())
         return bwcoll

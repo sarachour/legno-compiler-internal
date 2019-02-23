@@ -1,7 +1,7 @@
 import argparse
 import sys
 import os
-sys.path.insert(0,os.path.abspath("."))
+#sys.path.insert(0,os.path.abspath("."))
 
 from lab_bench.lib.command_handler import main_stdout, main_script
 from lab_bench.lib.base_command import ArduinoCommand

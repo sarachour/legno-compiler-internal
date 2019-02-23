@@ -1,5 +1,6 @@
 from chip.block import Block, BlockType
 import chip.props as props
+import chip.units as units
 import chip.hcdc.util as util
 import lab_bench.lib.chipcmd.data as chipcmd
 import chip.hcdc.globals as glb
@@ -63,21 +64,23 @@ def adc_black_box_model(dac):
    print("[TODO] dac.blackbox")
 
 
-def adc_scale_model(dac):
+def adc_scale_model(adc):
    modes = adc_get_modes()
-   dac.set_scale_modes("*",modes)
+   adc.set_scale_modes("*",modes)
    for mode in modes:
       rng, = mode
       coeff = (1.0/rng.coeff())*0.5
-      dac.set_coeff("*",mode,'out', coeff)
-      dac.set_props("*",mode,["in"],\
-                   util.make_ana_props(rng,
+      analog_props = util.make_ana_props(rng,
                                        glb.ANALOG_MIN,
-                                       glb.ANALOG_MAX))
-      dac.set_props("*",mode,["out"], \
+                                       glb.ANALOG_MAX)
+      analog_props.set_bandwidth(0,0.2,units.khz)
+
+      adc.set_props("*",mode,["in"],analog_props)
+      adc.set_props("*",mode,["out"], \
                    util.make_dig_props(chipcmd.RangeType.MED,
                                   glb.DAC_MIN,
                                   glb.DAC_MAX))
+      adc.set_coeff("*",mode,'out', coeff)
 
 
 
@@ -87,7 +90,7 @@ adc = Block('tile_adc',type=BlockType.ADC) \
 .set_op("*","out",ops.Var("in")) \
 .set_props("*","*",["out"],None) \
 .set_props("*","*",["in"],None) \
-.set_coeff("*","*","out",1.0)
+.set_coeff("*","*","out",0.5)
 adc_scale_model(adc)
 adc_black_box_model(adc)
 adc.check()

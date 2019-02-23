@@ -1,10 +1,10 @@
-from devices.arduino_due import ArduinoDue
-from devices.sigilent_osc import Sigilent1020XEOscilloscope
-import devices.sigilent_osc as osclib
+from lab_bench.devices.arduino_due import ArduinoDue
+from lab_bench.devices.sigilent_osc import Sigilent1020XEOscilloscope
+import lab_bench.devices.sigilent_osc as osclib
 
-from lib.base_command import FlushCommand, ArduinoCommand
-from lib.chipcmd.data import AnalogChipCommand, Priority
-import lib.util as util
+from lab_bench.lib.base_command import FlushCommand, ArduinoCommand
+from lab_bench.lib.chipcmd.data import AnalogChipCommand, Priority
+import lab_bench.lib.util as util
 import time
 import numpy as np
 import math

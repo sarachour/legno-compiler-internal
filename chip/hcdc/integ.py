@@ -1,6 +1,7 @@
 from chip.block import Block
 from chip.phys import PhysicalModel
 import chip.props as props
+import chip.units as units
 import chip.hcdc.util as util
 
 import lab_bench.lib.chipcmd.data as chipcmd
@@ -53,10 +54,11 @@ def scale_model(integ):
     integ.set_scale_modes(comp_mode,scale_modes)
     for scale_mode in scale_modes:
       inrng,outrng = scale_mode
-      scf = outrng.coeff()/inrng.coeff()
-      integ.set_props(comp_mode,scale_mode,['in'],util.make_ana_props(inrng,
-                                                    glb.ANALOG_MIN, \
-                                                    glb.ANALOG_MAX))
+      analog_in = util.make_ana_props(inrng,
+                                      glb.ANALOG_MIN, \
+                                      glb.ANALOG_MAX)
+      analog_in.set_bandwidth(0,200,units.khz)
+      integ.set_props(comp_mode,scale_mode,['in'],analog_in)
       integ.set_props(comp_mode,scale_mode,["ic"],util.make_dig_props(chipcmd.RangeType.MED, \
                                                     glb.DAC_MIN,
                                                     glb.DAC_MAX))
@@ -64,15 +66,17 @@ def scale_model(integ):
                                                     glb.ANALOG_MIN,
                                                     glb.ANALOG_MAX),\
                       handle=":z")
-      integ.set_props(comp_mode,scale_mode,["out"],util.make_ana_props(outrng,
+      integ.set_props(comp_mode,scale_mode,["out"],util.make_ana_props(inrng,
                                                     glb.ANALOG_MIN,
                                                     glb.ANALOG_MAX),\
                       handle=":z'")
       integ.set_props(comp_mode,scale_mode,["out"],util.make_ana_props(outrng,
                                                                        glb.ANALOG_MIN,
       glb.ANALOG_MAX))
-      integ.set_coeff(comp_mode,scale_mode,"out",scf,handle=':z\'')
-      integ.set_coeff(comp_mode,scale_mode,"out",outrng.coeff(),':z[0]')
+      scf_inout = outrng.coeff()/inrng.coeff()
+      scf_ic = outrng.coeff()*2.0
+      integ.set_coeff(comp_mode,scale_mode,"out",scf_inout,handle=':z\'')
+      integ.set_coeff(comp_mode,scale_mode,"out",scf_ic,':z[0]')
       integ.set_coeff(comp_mode,scale_mode,"out",1.0,handle=':z')
       integ.set_coeff(comp_mode,scale_mode,"out",1.0)
 

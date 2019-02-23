@@ -12,8 +12,8 @@ import bmark.menvs as menvs
 def model0():
     prob = MathProg("inout0")
     prob.bind('O', op.Emit(op.ExtVar("I")))
-    prob.set_bandwidth("I",1e4)
-    prob.set_interval("I",-1.0,1.0)
+    prob.set_bandwidth("O",1e4)
+    prob.set_interval("O",-1.0,1.0)
     prob.compile()
     menv = menvs.get_math_env('t2ksin0')
     return menv,prob
@@ -25,8 +25,7 @@ def model1():
         op.Mult(op.ExtVar("I"),
                 op.Const(0.5))
     ))
-    prob.set_bandwidth("I",1e4)
-    prob.set_interval("I",0,5)
+    prob.set_bandwidth("O",1e4)
     prob.set_interval("O",0,5)
     prob.compile()
     menv = menvs.get_math_env('t2ksin1')
@@ -43,10 +42,8 @@ def model2():
         op.Mult(op.ExtVar("I2"),
                 op.Const(0.8))
     ))
-    prob.set_bandwidth("I1",1e4)
-    prob.set_interval("I1",0,5)
-    prob.set_bandwidth("I2",1e4)
-    prob.set_interval("I2",0,5)
+    prob.set_bandwidth("O1",1e4)
+    prob.set_bandwidth("O2",1e4)
     prob.set_interval("O1",0,5)
     prob.set_interval("O2",0,5)
     prob.compile()

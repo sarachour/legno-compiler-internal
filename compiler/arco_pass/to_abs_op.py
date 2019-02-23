@@ -1,4 +1,5 @@
 import ops.aop as aop
+import ops.op as mop
 import itertools
 
 def mab_mult(ast):
@@ -7,13 +8,16 @@ def mab_mult(ast):
 
   constant = ast.coefficient()
   mop_terms = ast.prod_terms()
-  aop_terms = list(map(lambda mop: make_abstract(mop), mop_terms))
-
+  aop_terms = list(map(lambda op: make_abstract(op), mop_terms))
   # unwrap if one term
   if len(aop_terms) == 1:
     aop_expr = aop_terms[0]
   else:
     aop_expr = aop.AProd(aop_terms)
+
+  if constant < 0.0 and aop_expr.op == aop.AOpType.VAR:
+    aop_expr = aop.AVar(aop_expr.name, aop_expr.coefficient*-1)
+    constant = constant*-1
 
   # wrap if constant expression
   if constant == 1.0:
@@ -25,7 +29,7 @@ def mab_mult(ast):
 
 def mab_sum(ast):
   mop_terms = ast.sum_terms()
-  aop_terms = list(map(lambda mop: make_abstract(mop), mop_terms))
+  aop_terms = list(map(lambda op: make_abstract(op), mop_terms))
   return aop.ASum(aop_terms)
 
 def make_abstract(ast):

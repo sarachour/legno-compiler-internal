@@ -1,6 +1,8 @@
 from lab_bench.lib.base_command import Command
 import lab_bench.devices.sigilent_osc as osclib
 from lab_bench.lib.expcmd.common import *
+import numpy as np
+import json
 
 class OscSetVoltageRangeCmd(Command):
 

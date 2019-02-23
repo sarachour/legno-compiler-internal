@@ -1,4 +1,4 @@
-import lib.command as cmd
+import lab_bench.lib.command as cmd
 import sys
 
 def execute(state,line):

@@ -45,6 +45,13 @@ class Interval:
         return Interval.isinf(self.lower) \
             or Interval.isinf(self.upper)
 
+    def unbounded_lower(self):
+        return Interval.isinf(self.lower)
+
+    def unbounded_upper(self):
+        return Interval.isinf(self.upper)
+
+
     @staticmethod
     def isinf(num):
         return num == float('inf') \

@@ -1,6 +1,7 @@
 import parse as parselib
 import lab_bench.lib.cstructs as cstructs
-from lab_bench.lib.base_command import OptionalValue
+import lab_bench.lib.enums as enums
+from lab_bench.lib.base_command import OptionalValue, ArduinoCommand
 
 def build_exp_ctype(exp_data):
     return {

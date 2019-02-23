@@ -14,6 +14,9 @@ class Bandwidth:
   def bandwidth(self):
     return self._bw
 
+  def is_infinite(self):
+    return interval.Interval.isinf(self.fmax)
+
   def add(self,bw2):
     return Bandwidth(max(bw2.bandwidth,self._bw))
 
@@ -62,12 +65,17 @@ class InfBandwidth(Bandwidth):
   def __init__(self):
     Bandwidth.__init__(self,float('inf'))
 
+  def __repr__(self):
+    return "inf-bw"
+
+
 class BandwidthCollection:
 
   def __init__(self,bw):
     if not (isinstance(bw, Bandwidth)):
       raise Exception("not bandwidth: <%s>.T<%s>" % \
                       (bw,bw.__class__.__name__))
+    assert(isinstance(bw, Bandwidth))
     self._bw = bw
     self._bindings = {}
 

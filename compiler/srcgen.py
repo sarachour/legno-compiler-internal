@@ -2,7 +2,8 @@ from lab_bench.lib.chipcmd.misc import *
 from lab_bench.lib.chipcmd.use import *
 from lab_bench.lib.chipcmd.conn import *
 from lab_bench.lib.chipcmd.config import *
-from lab_bench.lib.chipcmd.data import SignType,RangeType, CircPortLoc
+from lab_bench.lib.chipcmd.data import SignType,RangeType, CircPortLoc, \
+  LUTSourceType,DACSourceType
 import lab_bench.lib.command as toplevel_cmd
 from lang.hwenv import DiffPinMode
 import ops.op as op
@@ -81,7 +82,7 @@ def gen_use_dac(circ,block,locstr,config,source):
   if not config.dac('in') is None:
     value = config.dac('in')*scf
   else:
-    assert(not source == chipcmd.DACSourceType.MEM)
+    assert(not source == DACSourceType.MEM)
     value = 0.0
 
   yield UseDACCmd(chip, \
@@ -221,16 +222,16 @@ def gen_block(gprog,circ,block,locstr,config):
   elif block.name == 'tile_dac':
     sources = list(circ.get_conns_by_dest(block.name,locstr,'in'))
     assert(len(sources) <= 1)
-    source = chip_cmd.DACSourceType.MEM
+    source = DACSourceType.MEM
     if len(sources) == 1:
       sblk,sloc,sport = sources[0]
       assert(sblk == 'lut')
       assert(is_same_tile(circ,sloc,locstr))
       sliceno = circ.board.key_to_loc(sloc)[3]
       if sliceno == 0:
-        source = chip_cmd.DACSourceType.LUT0
+        source = DACSourceType.LUT0
       elif sliceno == 2:
-        source = chip_cmd.DACSourceType.LUT1
+        source = DACSourceType.LUT1
       else:
         raise Exception("unfamiliar slice: %s" % sliceno)
 
@@ -250,9 +251,9 @@ def gen_block(gprog,circ,block,locstr,config):
     assert(is_same_tile(circ,sloc,locstr))
     sliceno = circ.board.key_to_loc(sloc)[3]
     if sliceno == 0:
-      source = chip_cmd.LUTSourceType.ADC0
+      source = LUTSourceType.ADC0
     elif sliceno == 2:
-      source = chip_cmd.LUTSourceType.ADC1
+      source = LUTSourceType.ADC1
     else:
       raise Exception("unfamiliar slice: %s" % sliceno)
 
