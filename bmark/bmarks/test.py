@@ -13,8 +13,8 @@ def model_1():
     prob = MathProg("mod1")
     prob.bind('X', op.ExtVar("I"))
     prob.bind('O', op.Emit(op.Var("X")))
-    prob.set_bandwidth("X",1e2)
-    prob.set_interval("X",-1.0,1.0)
+    prob.set_bandwidth("I",1e-2)
+    prob.set_interval("I",-1.0,1.0)
     prob.compile()
     menv = menvs.get_math_env('t2ksin0')
     return menv,prob
@@ -27,8 +27,8 @@ def model_1_scale():
         op.Mult(op.Var("X"),
                 op.Const(0.5))
     ))
-    prob.set_bandwidth("X",1e2)
-    prob.set_interval("X",-5.0,5.0)
+    prob.set_bandwidth("I",1e-2)
+    prob.set_interval("I",-5.0,5.0)
     prob.compile()
     menv = menvs.get_math_env('t2ksin1')
     return menv,prob
@@ -46,10 +46,10 @@ def model_2():
         op.Mult(op.Var("X2"),
                 op.Const(0.8))
     ))
-    prob.set_bandwidth("X1",1e2)
-    prob.set_bandwidth("X2",1e4)
-    prob.set_interval("X1",-5,5)
-    prob.set_interval("X2",-0.3,0.3)
+    prob.set_bandwidth("I1",1e-2)
+    prob.set_bandwidth("I2",1)
+    prob.set_interval("I1",-5,5)
+    prob.set_interval("I2",-0.3,0.3)
     prob.compile()
     menv = menvs.get_math_env('t2ksin2')
     return menv,prob
@@ -60,20 +60,20 @@ def model_1_sqrt():
                                       op.Sqrt(op.Abs(op.Var('V')))))
     prob.bind('X', op.ExtVar("I"))
     prob.bind('O', op.Emit(op.Call([op.Var("X")], spec_fun)))
-    prob.set_bandwidth("X",1e2)
-    prob.set_interval("X",-1.0,1.0)
+    prob.set_bandwidth("I",1e-2)
+    prob.set_interval("I",-1.0,1.0)
     prob.compile()
     menv = menvs.get_math_env('t2ksin0')
     return menv,prob
 
 def model_1_sin():
     prob = MathProg("mod1sin")
-    spec_fun = op.Func(['V'], op.Mult(op.Const(-1),
+    spec_fun = op.Func(['V'], op.Mult(op.Const(-1.0),
                                       op.Sin(op.Var('V'))))
     prob.bind('X', op.ExtVar("I"))
     prob.bind('O', op.Emit(op.Call([op.Var("X")], spec_fun)))
-    prob.set_bandwidth("X",1e2)
-    prob.set_interval("X",-1.0,1.0)
+    prob.set_bandwidth("I",1e-2)
+    prob.set_interval("I",-1.0,1.0)
     prob.compile()
     menv = menvs.get_math_env('t2ksin0')
     return menv,prob

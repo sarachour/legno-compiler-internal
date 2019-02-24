@@ -30,7 +30,7 @@ def long_time():
 
 def long_sin0():
   exp = MathEnv('t2ksin0')
-  expr = op.Sin(op.Mult(op.Const(0.01), op.Var('t')))
+  expr = op.Sin(op.Mult(op.Const(1e-2), op.Var('t')))
   exp.set_sim_time(2000)
   exp.set_input_time(2000)
   exp.set_input('I',expr)

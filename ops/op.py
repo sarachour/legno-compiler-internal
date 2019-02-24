@@ -10,7 +10,7 @@ def to_python(e):
         return [varname],varname
 
     elif e.op == OpType.CONST:
-        return [],"%f" % e.value
+        return [],"%.4e" % e.value
 
     elif e.op == OpType.MULT:
         vs1,a1 = to_python(e.arg1)

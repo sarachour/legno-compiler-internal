@@ -86,21 +86,19 @@ class JauntObjectiveFunction():
             objective = 1.0
         for scvar in self.jenv.scvars():
             if self.jenv.in_use(scvar):
-                if self.jenv.LUT_SCF_IN in scvar:
-                    objective *= varmap[scvar]
-                else:
-                    objective *= 1.0/varmap[scvar]
+                objective *= 1.0/varmap[scvar]
         yield [],objective
 
 
     def max_dynamic_range(self,varmap):
-        objective = 1.0
+        if self.jenv.uses_tau():
+            objective = 1.0/varmap[self.jenv.TAU]
+        else:
+            objective = 1.0
+
         for scvar in self.jenv.scvars():
             if self.jenv.in_use(scvar):
-                if self.jenv.LUT_SCF_IN in scvar:
-                    objective *= varmap[scvar]
-                else:
-                    objective *= 1.0/varmap[scvar]
+                objective *= 1.0/varmap[scvar]
         yield [],objective
 
 
@@ -462,8 +460,8 @@ def bpgen_scaled_bandwidth_constraint(jenv,circ,mbw,hwbw):
     if mbw.is_infinite():
         return
 
-    jenv.use_tau()
     mbw_hw = mbw.bandwidth/circ.board.time_constant
+    jenv.use_tau()
     if hwbw.upper > 0:
         jenv.lte(jop.JMult(tau,jop.JConst(mbw_hw)),jop.JConst(hwbw.upper))
     else:
@@ -612,18 +610,22 @@ def build_gpkit_problem(circ,jenv,jopt):
 
     print("==== Objective Fxn [%s] ====" % jopt.method)
     for objective_cstrs, objective in jopt.objective(circ,variables):
+        for cstr in objective_cstrs:
+            print("cstr: %s" % cstr)
+        print("obj: %s" % objective)
         model = gpkit.Model(objective, \
                             list(gpkit_cstrs) +
                             list(objective_cstrs))
         yield model
+        input()
 
-def solve_gpkit_problem(gpmodel,timeout=10):
+def solve_gpkit_problem_cvxopt(gpmodel,timeout=10):
     def handle_timeout(signum,frame):
         raise TimeoutError("solver timed out")
     try:
         signal.signal(signal.SIGALRM, handle_timeout)
         signal.alarm(timeout)
-        sln = gpmodel.solve(solver=CONFIG.GPKIT_SOLVER,verbosity=2)
+        sln = gpmodel.solve(solver='cvxopt',verbosity=2)
         signal.alarm(0)
     except RuntimeWarning:
         signal.alarm(0)
@@ -639,6 +641,29 @@ def solve_gpkit_problem(gpmodel,timeout=10):
         return None
 
     return sln
+
+def solve_gpkit_problem_mosek(gpmodel,timeout=10):
+    def handle_timeout(signum,frame):
+        raise TimeoutError("solver timed out")
+    try:
+        signal.signal(signal.SIGALRM, handle_timeout)
+        signal.alarm(timeout)
+        sln = gpmodel.solve(solver=CONFIG.GPKIT_SOLVER,verbosity=2)
+        signal.alarm(0)
+    except TimeoutError as te:
+        print("Timeout: mosek timed out or hung")
+        signal.alarm(0)
+        return None
+
+    print(sln)
+    return sln
+
+
+def solve_gpkit_problem(gpmodel,timeout=10):
+    if CONFIG.GPKIT_SOLVER == 'cvxopt':
+        return solve_gpkit_problem_cvxopt(gpmodel,timeout)
+    else:
+        return solve_gpkit_problem_mosek(gpmodel,timeout)
 
 def sp_update_lut_expr(expr,output,scfs):
     repl = {}
@@ -665,6 +690,11 @@ def sp_update_circuit(jenv,prog,circ,assigns):
                 if not (block_name,loc) in lut_updates:
                     lut_updates[(block_name,loc)] = {}
                 lut_updates[(block_name,loc)][port] = value
+                circ.config(block_name,loc).set_scf(port, \
+                                                    handle=handle, \
+                                                    scf=value)
+
+
             else:
                 circ.config(block_name,loc).set_scf(port,handle=handle, \
                                                     scf=value)
@@ -734,13 +764,13 @@ def scale_circuit(prog,circ,methods,debug=True):
 
             sln = solve_gpkit_problem(gpprob)
             if sln is None:
-                print("[[FAILURE]]")
+                print("[[FAILURE - NO SLN]]")
                 jenv.set_solved(False)
                 #debug_gpkit_problem(gpprob)
                 continue
 
             elif not 'freevariables' in sln:
-                print("[[FAILURE]]")
+                print("[[FAILURE - NO FREEVARS]]")
                 succ,result = sln
                 assert(result is None)
                 assert(succ == False)

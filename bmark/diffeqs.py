@@ -6,16 +6,17 @@ import bmark.bmarks.simple_osc as simple_osc
 import bmark.bmarks.repri as repri
 import bmark.bmarks.bmmrxn as bmmrxn
 import bmark.bmarks.bmmrxn as gentoggle
-import bmark.bmarks.inout as inout
+import bmark.bmarks.test as test
 import bmark.bmarks.vanderpol as vanderpol
 import bmark.bmarks.heat as heat
 import bmark.bmarks.pendulum as pendulum
 
 BMARKS = [
-    inout.model0(),
-    inout.model1(),
-    inout.model2(),
-    inout.model3(),
+    test.model_1(),
+    test.model_1_scale(),
+    test.model_2(),
+    test.model_1_sqrt(),
+    test.model_1_sin(),
     simple_osc.model("one",1.0),
     simple_osc.model("quad",4.0),
     simple_osc.model("quarter",0.25),

@@ -1,6 +1,7 @@
 import os
 import colorlover
 import compiler.common.evaluator_symbolic as evalsym
+import ops.op as op
 
 def undef_to_one(v):
   return 1.0 if v is None else v
@@ -364,23 +365,50 @@ def build_label(env,block,loc,cfg,port,math_label,kind):
   <tr><td><font color="#5D6D7E">tau:{tau:.3e}</font></td></tr>
   </table>
   '''
+
   port_handle = env.port_handle(block,loc,port)
   label_handle = "%s_label" % (port_handle)
   kind = kind.value
   scf = undef_to_one(cfg.scf(port))
-  #label = "%s %s*%.3e t:%.3e" % (kind,math_label,scf,self.tau)
   params = {
-      'kind':kind,
-      'label':math_label,
-      'scf':scf,
-      'tau':env.circ.tau
+    'kind':kind,
+    'label':math_label,
+    'scf':scf,
+    'tau':env.circ.tau,
   }
-  label = body.format(**params)
+  if cfg.has_expr(port):
+    label = body.format(**params)
+  else:
+    label = body.format(**params)
+
   env.qn("%s [" % (label_handle))
   env.qn("shape=cds",2)
   env.qn("label=<%s>" % label,2)
   env.qn("]")
   env.qc("%s->%s [penwidth=3.0 color=black]" % (port_handle,label_handle),1)
+
+
+def build_expr(env,block,loc,cfg,port,expr):
+  body = '''
+  <table border="0">
+  <tr><td><font color="#5D6D7E">expr:{expr}</font></td></tr>
+  </table>
+  '''
+  port_handle = env.port_handle(block,loc,port)
+  value_handle = "%s_value" % (port_handle)
+
+  scf = undef_to_one(cfg.scf(port))
+  params = {
+      'expr': op.to_python(expr)
+  }
+  label = body.format(**params)
+  env.qn("%s [" % (value_handle))
+  env.qn("shape=cds",2)
+  env.qn('label=<%s>' % label,2)
+  env.qn("]")
+  env.qc("%s->%s [penwidth=3.0 color=red]" % \
+         (value_handle,port_handle),1)
+
 
 
 def build_value(env,block,loc,cfg,port,value):
@@ -412,6 +440,9 @@ def write_graph(circ,filename,color_method=None,write_png=False):
 
         for port,math_label,kind in cfg.labels():
             build_label(env,block,loc,cfg,port,math_label,kind)
+
+        for port,expr in cfg.exprs():
+            build_expr(env,block,loc,cfg,port,expr)
 
         for port,value in cfg.values():
             build_value(env,block,loc,cfg,port,value)
