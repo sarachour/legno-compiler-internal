@@ -29,11 +29,15 @@ def dac_scale_model(dac):
       sign,rng = mode
       # ERRATA: dac does scale up.
       coeff = sign.coeff()*rng.coeff()*2.0
+      digital_props = util.make_dig_props(chipcmd.RangeType.MED,
+                                          glb.DAC_MIN,
+                                          glb.DAC_MAX,
+                                          npts=256,
+                                          quality=glb.MIN_QUALITY
+      )
+      digital_props.set_continuous(0,20,units.khz)
       dac.set_coeff("*",mode,'out', coeff)
-      dac.set_props("*",mode,["in"], \
-                   util.make_dig_props(chipcmd.RangeType.MED,
-                                  glb.DAC_MIN,
-                                  glb.DAC_MAX))
+      dac.set_props("*",mode,["in"], digital_props)
 
       dac.set_props("*",mode,["out"],\
                    util.make_ana_props(rng,
@@ -73,13 +77,17 @@ def adc_scale_model(adc):
       analog_props = util.make_ana_props(rng,
                                        glb.ANALOG_MIN,
                                        glb.ANALOG_MAX)
-      analog_props.set_bandwidth(0,20,units.khz)
+      #analog_props.set_bandwidth(0,20,units.khz)
+
+      digital_props = util.make_dig_props(chipcmd.RangeType.MED,
+                                          glb.DAC_MIN,
+                                          glb.DAC_MAX,
+                                          npts=256,
+                                          quality=glb.MIN_QUALITY)
+      digital_props.set_continuous(0,20,units.khz)
 
       adc.set_props("*",mode,["in"],analog_props)
-      adc.set_props("*",mode,["out"], \
-                   util.make_dig_props(chipcmd.RangeType.MED,
-                                  glb.DAC_MIN,
-                                  glb.DAC_MAX))
+      adc.set_props("*",mode,["out"], digital_props)
       adc.set_coeff("*",mode,'out', coeff)
 
 

@@ -62,6 +62,7 @@ def model_1_sqrt():
     prob.bind('O', op.Emit(op.Call([op.Var("X")], spec_fun)))
     prob.set_bandwidth("I",1e-2)
     prob.set_interval("I",-1.0,1.0)
+    prob.set_max_sim_time(2000)
     prob.compile()
     menv = menvs.get_math_env('t2ksin0')
     return menv,prob
@@ -74,6 +75,7 @@ def model_1_sin():
     prob.bind('O', op.Emit(op.Call([op.Var("X")], spec_fun)))
     prob.set_bandwidth("I",1e-2)
     prob.set_interval("I",-1.0,1.0)
+    prob.set_max_sim_time(2000)
     prob.compile()
     menv = menvs.get_math_env('t2ksin0')
     return menv,prob

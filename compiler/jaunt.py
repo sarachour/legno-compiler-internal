@@ -325,7 +325,7 @@ def bpgen_build_upper_bound(jenv,expr,math_upper,hw_upper):
         raise Exception("uncovered lb: %s %s" % (math_lower,hw_lower))
 
 
-def bpgen_scaled_interval_constraint(jenv,scale_expr,math_rng,hw_rng):
+def bpgen_scaled_analog_interval_constraint(jenv,scale_expr,math_rng,hw_rng):
     bpgen_build_upper_bound(jenv,scale_expr, \
                             math_rng.upper,hw_rng.upper)
     bpgen_build_lower_bound(jenv,scale_expr, \
@@ -333,21 +333,39 @@ def bpgen_scaled_interval_constraint(jenv,scale_expr,math_rng,hw_rng):
 
 
 
-def bpgen_scaled_digital_constraint(jenv,scale_expr,math_rng,values,quantize=1):
-    lb,ub = math_rng.lower/quantize,math_rng.upper/quantize
-    lb_vals = list(filter(lambda v: same_sign(v,lb), values))
-    ub_vals = list(filter(lambda v: same_sign(v,ub), values))
+def bpgen_scaled_digital_quantize_constraint(jenv,scale_expr,math_rng,props):
+    def compute_bnds(bnd):
+        values = props.values()
+        quality = props.quality
+        vals = list(filter(lambda v: same_sign(v,bnd), values))
+        samples = len(vals)*quality
+        step = np.mean(np.diff(vals))
+        minv = step*samples
+        # leave one step buffer for underflow, overflow
+        maxv = step*(len(vals)-1)
+        return minv,maxv
 
-    if not util.equals(lb,0):
-        lb_val = min(lb_vals, key=lambda v: abs(v))
-        bpgen_build_lower_bound(jenv,scale_expr,\
-                                abs(lb),abs(lb_val))
+    lb,ub = math_rng.lower,math_rng.upper
+    if lb < ub:
+        # restrict the amount of the quantized space used to ensure reasonable
+        # fidelity (quality metric), while leaving a io pair available on either \
+        # end for overflow issues.
+        lb_min,lb_max = compute_bnds(lb)
+        ub_min,ub_max = compute_bds(ub)
+        if not util.equals(lb,0):
+            bpgen_build_lower_bound(jenv,scale_expr,\
+                                    abs(lb),abs(lb_min))
+            bpgen_build_upper_bound(jenv,scale_expr,\
+                                    abs(lb),abs(lb_max))
 
-    if not util.equals(ub,0):
-        ub_val = min(ub_vals, key=lambda v: abs(v))
-        bpgen_build_lower_bound(jenv,scale_expr,\
-                                abs(ub),abs(ub_val))
+        if not util.equals(ub,0):
+            bpgen_build_lower_bound(jenv,scale_expr,\
+                                    abs(ub),abs(ub_min))
+            bpgen_build_upper_bound(jenv,scale_expr,\
+                                    abs(ub),abs(ub_max))
 
+    else:
+        input("TODO: constants have a different optimization function")
 
 def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
     config = circ.config(block.name,loc)
@@ -412,7 +430,7 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
         deriv_mrng = config.interval(port,expr.deriv_handle)
         deriv_hwrng = config.op_range(port,expr.deriv_handle)
 
-        bpgen_scaled_interval_constraint(jenv, \
+        bpgen_scaled_analog_interval_constraint(jenv, \
                                          scvar_deriv,
                                          deriv_mrng,
                                          deriv_hwrng)
@@ -420,13 +438,13 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
         st_mrng = config.interval(port,expr.handle)
         st_hwrng = config.op_range(port,expr.handle)
 
-        bpgen_scaled_interval_constraint(jenv,scvar_state,\
+        bpgen_scaled_analog_interval_constraint(jenv,scvar_state,\
                                          st_mrng,\
                                          st_hwrng)
 
         ic_mrng = config.interval(port,expr.ic_handle)
 
-        bpgen_scaled_interval_constraint(jenv,scvar_state, \
+        bpgen_scaled_analog_interval_constraint(jenv,scvar_state, \
                                          ic_mrng,
                                          st_hwrng)
         # the handles for deriv and stvar are the same
@@ -436,6 +454,9 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
     else:
         raise Exception("unhandled <%s>" % expr)
 
+
+def bputil_to_phys_bandwidth(circ,bw):
+    return bw/circ.board.time_constant
 
 def bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr):
     scexpr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,out,expr)
@@ -450,9 +471,42 @@ def bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr):
     else:
         jenv.eq(scfvar,scexpr)
 
-    bpgen_scaled_interval_constraint(jenv,scfvar,mrng,hwrng)
+    bpgen_scaled_analog_interval_constraint(jenv,scfvar,mrng,hwrng)
 
-def bpgen_scaled_bandwidth_constraint(jenv,circ,mbw,hwbw):
+def bpgen_scaled_digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):
+    tau = jop.JVar(jenv.TAU)
+    tau_inv = jop.JVar(jenv.TAU,exponent=-1.0)
+    if mbw.is_infinite():
+        return
+
+    physbw = bputil_to_phys_bandwidth(circ,mbw.bandwidth)
+    if prop.kind == props.DigitalProperties.Type.CONSTANT:
+        print(mbw)
+        input()
+
+    elif prop.kind == props.DigitalProperties.Type.CLOCKED:
+        hw_sample_rate = prop.sample_rate
+        hw_max_samples = prop.max_samples
+        m_exptime = prob.max_sim_time
+        assert(not m_exptime is None)
+        # sample frequency required
+        sample_freq = 2.0*physbw
+        sample_ival = 1.0/sample_freq
+        jenv.gte(jop.JMult(tau_inv,jop.JConst(sample_ival)), \
+                           jop.JConst(hw_sample_rate))
+
+        if not hw_max_samples is None:
+            jenv.lte(jop.JMult(tau_inv,jop.JConst(m_exptime)),  \
+                     jop.JConst(hw_max_samples))
+
+    elif prop.kind == props.DigitalProperties.Type.CONTINUOUS:
+        hwbw = prop.bandwidth
+        bpgen_scaled_analog_bandwidth_constraint(jenv,circ, \
+                                                 mbw,hwbw)
+    else:
+        raise Exception("unknown not permitted")
+
+def bpgen_scaled_analog_bandwidth_constraint(jenv,circ,mbw,hwbw):
     tau = jop.JVar(jenv.TAU)
     if hwbw.unbounded_lower() and hwbw.unbounded_upper():
         return
@@ -460,17 +514,19 @@ def bpgen_scaled_bandwidth_constraint(jenv,circ,mbw,hwbw):
     if mbw.is_infinite():
         return
 
-    mbw_hw = mbw.bandwidth/circ.board.time_constant
+    physbw = bputil_to_phys_bandwidth(circ,mbw.bandwidth)
     jenv.use_tau()
     if hwbw.upper > 0:
-        jenv.lte(jop.JMult(tau,jop.JConst(mbw_hw)),jop.JConst(hwbw.upper))
+        jenv.lte(jop.JMult(tau,jop.JConst(physbw)), \
+                 jop.JConst(hwbw.upper))
     else:
         jenv.fail()
 
     if hwbw.lower > 0:
-        jenv.gte(jop.JMult(tau,jop.JConst(mbw_hw)),jop.JConst(hwbw.lower))
+        jenv.gte(jop.JMult(tau,jop.JConst(physbw)), \
+                 jop.JConst(hwbw.lower))
 
-def bp_generate_problem(jenv,circ,quantize_signals=5):
+def bp_generate_problem(jenv,prob,circ):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for out in block.outputs:
@@ -488,33 +544,28 @@ def bp_generate_problem(jenv,circ,quantize_signals=5):
                 continue
 
             scfvar = jop.JVar(jenv.get_scvar(block_name,loc,port))
-            bpgen_scaled_interval_constraint(jenv,scfvar,mrng,hwrng)
+            mbw = config.bandwidth(port)
+            bpgen_scaled_analog_interval_constraint(jenv,scfvar, \
+                                                    mrng,hwrng)
             # make sure digital values are large enough to register.
             if isinstance(properties,props.DigitalProperties):
-                quantize = 1
-                if config.has_label(port):
-                    typ = config.label_type(port)
-                    if typ == Labels.OUTPUT or typ == Labels.DYNAMIC_INPUT:
-                        quantize = quantize_signals
-
-                bpgen_scaled_digital_constraint(jenv,scfvar,mrng,\
-                                                properties.values(),
-                                                quantize=quantize)
-
+                bpgen_scaled_digital_quantize_constraint(jenv,scfvar, \
+                                                         mrng,\
+                                                         properties)
+                bpgen_scaled_digital_bandwidth_constraint(jenv,prob,circ, \
+                                                          mbw,
+                                                          properties)
             else:
-                mbw = config.bandwidth(port)
                 hwbw = properties.bandwidth()
                 print("%s,%s,%s" % (block_name,loc,port))
-                bpgen_scaled_bandwidth_constraint(jenv,circ,mbw,hwbw)
+                bpgen_scaled_analog_bandwidth_constraint(jenv,\
+                                                         circ,mbw,hwbw)
 
     if not jenv.uses_tau():
         jenv.eq(jop.JVar(jenv.TAU), jop.JConst(1.0))
-
     else:
-        TAU_MAX = 1e6
-        TAU_MIN = 1e-6
-        jenv.lte(jop.JVar(jenv.TAU),jop.JConst(TAU_MAX))
-        jenv.gte(jop.JVar(jenv.TAU),jop.JConst(TAU_MIN))
+        jenv.lte(jop.JVar(jenv.TAU), jop.JConst(1e10))
+        jenv.gte(jop.JVar(jenv.TAU), jop.JConst(1e-10))
 
 def build_jaunt_env(prog,circ):
     infer.clear(circ)
@@ -523,7 +574,7 @@ def build_jaunt_env(prog,circ):
     jenv = JauntEnv()
     # declare scaling factors
     bp_decl_scale_variables(jenv,circ)
-    bp_generate_problem(jenv,circ)
+    bp_generate_problem(jenv,prog,circ)
 
     return jenv
 
@@ -588,6 +639,7 @@ def build_gpkit_problem(circ,jenv,jopt):
         gp_lhs = gpkit_expr(variables,lhs)
         gp_rhs = gpkit_expr(variables,rhs)
         msg="%s <= %s" % (gp_lhs,gp_rhs)
+        print(msg)
         constraints.append((gp_lhs <= gp_rhs,msg))
 
 
@@ -617,7 +669,6 @@ def build_gpkit_problem(circ,jenv,jopt):
                             list(gpkit_cstrs) +
                             list(objective_cstrs))
         yield model
-        input()
 
 def solve_gpkit_problem_cvxopt(gpmodel,timeout=10):
     def handle_timeout(signum,frame):
@@ -654,8 +705,10 @@ def solve_gpkit_problem_mosek(gpmodel,timeout=10):
         print("Timeout: mosek timed out or hung")
         signal.alarm(0)
         return None
+    except RuntimeWarning as re:
+        print("[gpkit][ERROR] %s" % re)
+        return None
 
-    print(sln)
     return sln
 
 

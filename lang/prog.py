@@ -58,6 +58,7 @@ class MathProg:
         self._intervals = {}
         self._bandwidths= {}
         self._variables = []
+        self._max_sim_time = 1.0
 
         self.__order = None
         self.__order_integs = None
@@ -167,6 +168,9 @@ class MathProg:
         bw = self._bandwidths[v]
         assert(isinstance(bw,Bandwidth))
         return bw
+
+    def set_max_sim_time(self,t):
+        self.max_sim_time = t
 
     def set_bandwidth(self,v,b):
         if not v in self._variables:

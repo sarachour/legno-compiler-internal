@@ -56,8 +56,25 @@ class Bandwidth:
   def from_json(obj):
     return Bandwidth(obj['bandwidth'])
 
+  @staticmethod
+  def type_infer(bw):
+    if bw == float('inf'):
+      return InfBandwidth()
+    elif bw == None:
+      return UnknownBandwidth()
+    else:
+      return Bandwidth(bw)
   def __repr__(self):
     return str(self._bw)
+
+
+class UnknownBandwidth(Bandwidth):
+
+  def __init__(self):
+    Bandwidth.__init__(self,None)
+
+  def __repr__(self):
+    return "unknown-bw"
 
 
 class InfBandwidth(Bandwidth):

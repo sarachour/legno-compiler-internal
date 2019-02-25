@@ -18,14 +18,13 @@ def make_ana_props(rng,lb,ub):
                               ub*rng.coeff(),
                               unit=units.uA)
 
-def make_dig_props(rng,lb,ub,npts=256):
+def make_dig_props(rng,lb,ub,npts=256,quality=0.0):
     start = lb*rng.coeff()
     end = ub*rng.coeff()
     hcdcv2_values = np.linspace(start,end,npts)
     info = props.DigitalProperties() \
-                .set_values(hcdcv2_values) \
-                .set_constant() \
-                .check()
+                .set_values(hcdcv2_values)
+    info.set_quality(quality)
     return info
 
 def apply_blacklist(options,blacklist):
