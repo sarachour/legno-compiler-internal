@@ -15,6 +15,7 @@ import time
 import numpy as np
 import util.util as util
 import util.config as CONFIG
+import tqdm
 
 #TODO: what is low range, high range and med range?
 #TODO: setRange: integ.in, integ.out and mult have setRange functions.
@@ -66,7 +67,7 @@ class JauntObjectiveFunction():
 
     def slow(self,varmap):
         objective = varmap[self.jenv.TAU]
-        print(objective)
+        #print(objective)
         if self.jenv.uses_tau():
             yield [],objective
         else:
@@ -198,7 +199,6 @@ class JauntEnv:
 
     def lte(self,v1,v2):
         # TODO: equality
-        print("%s <= %s" % (v1,v2))
         self._ltes.append((v1,v2))
 
 
@@ -221,12 +221,14 @@ def bp_decl_scale_variables(jenv,circ):
             if block.name == "lut":
                 jenv.decl_scvar(block_name,loc,output, \
                                 handle=jenv.LUT_SCF_OUT)
+                pass
 
         for inp in block.inputs:
             jenv.decl_scvar(block_name,loc,inp)
             if block.name == "lut":
                 jenv.decl_scvar(block_name,loc,inp, \
                                 handle=jenv.LUT_SCF_IN)
+                pass
 
         for output in block.outputs:
             for orig in block.copies(config.comp_mode,output):
@@ -359,12 +361,6 @@ def bpgen_scaled_digital_quantize_constraint(jenv,scale_expr,math_rng,props):
 
         ratio = hw_val / math_val
         delta_m_nom= ratio*delta_h
-        print("math_val: %s" % math_val)
-        print("hw_val: %s" % hw_val)
-        print("ratio: %s" % ratio)
-        print("delta_m (nominal): %s" % delta_m_nom)
-        print("max_delta: %s" % max_step)
-        print("min_delta: %s" % min_step)
         return min_step,max_step,delta_m_nom
 
     lb,ub = math_rng.lower,math_rng.upper
@@ -409,13 +405,12 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
     elif expr.op == ops.OpType.VAR:
         scvar = jenv.get_scvar(block.name,loc,expr.name)
         if block.name == 'lut':
-            slackvar = jenv.get_scvar(block.name,loc,expr.name, \
+            compvar = jenv.get_scvar(block.name,loc,expr.name, \
                                       handle=jenv.LUT_SCF_IN)
-            #slack = 0.5
-            #jenv.lte(jop.JVar(slackvar),jop.JConst(1.0+slack))
-            #jenv.gte(jop.JVar(slackvar),jop.JConst(1.0-slack))
-            return jop.JMult(jop.JVar(slackvar), jop.JVar(scvar))
-            return jop.JVar(scvar)
+            prod = jop.JMult(jop.JVar(scvar),jop.JVar(compvar))
+            jenv.lte(jop.JConst(0.99), prod)
+            jenv.gte(jop.JConst(1.01), prod)
+            return jop.JConst(1.0)
         else:
             return jop.JVar(scvar)
 
@@ -492,17 +487,22 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
 def bputil_to_phys_bandwidth(circ,bw):
     return bw*circ.board.time_constant
 
-def bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr):
-    scexpr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,out,expr)
+def bpgen_traverse_dynamics(jenv,circ,block,loc,out):
     scfvar = jop.JVar(jenv.get_scvar(block.name,loc,out))
     config = circ.config(block.name,loc)
     hwrng = config.op_range(out)
     mrng = config.interval(out)
     if block.name == "lut":
-        coeffvar = jop.JVar(jenv.get_scvar(block.name,loc,out, \
+        expr = config.expr(out)
+        scexpr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,out,expr)
+        compvar = jop.JVar(jenv.get_scvar(block.name,loc,out, \
                                            handle=jenv.LUT_SCF_OUT))
-        jenv.eq(scfvar, jop.JMult(coeffvar,scexpr))
+
+        jenv.eq(scfvar, jop.JMult(compvar,scexpr))
+        #jenv.eq(scfvar,scexpr)
     else:
+        expr = config.dynamics(block,out)
+        scexpr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,out,expr)
         jenv.eq(scfvar,scexpr)
 
 
@@ -562,17 +562,15 @@ def bp_generate_problem(jenv,prob,circ):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for out in block.outputs:
-            expr = config.dynamics(block,out)
-            print("[%s] %s=%s" % (block_name,out,expr))
-            bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr)
+            bpgen_traverse_dynamics(jenv,circ,block,loc,out)
 
         for port in block.outputs + block.inputs:
             properties = config.props(block,port)
             mrng = config.interval(port)
             hwrng = config.op_range(port)
             if mrng is None:
-                print("[skip] not in use <%s[%s].%s>" % \
-                      (block_name,loc,port))
+                #print("[skip] not in use <%s[%s].%s>" % \
+                #      (block_name,loc,port))
                 continue
 
             scfvar = jop.JVar(jenv.get_scvar(block_name,loc,port))
@@ -590,7 +588,6 @@ def bp_generate_problem(jenv,prob,circ):
                                                           properties)
             else:
                 hwbw = properties.bandwidth()
-                print("%s,%s,%s" % (block_name,loc,port))
                 bpgen_scaled_analog_bandwidth_constraint(jenv,\
                                                          circ, \
                                                          mbw,hwbw)
@@ -653,7 +650,6 @@ def build_gpkit_problem(circ,jenv,jopt):
 
     variables = {}
     for scf in jenv.variables():
-        print(scf)
         variables[scf] = gpkit.Variable(scf)
 
     constraints = []
@@ -673,7 +669,6 @@ def build_gpkit_problem(circ,jenv,jopt):
         gp_lhs = gpkit_expr(variables,lhs)
         gp_rhs = gpkit_expr(variables,rhs)
         msg="%s <= %s" % (gp_lhs,gp_rhs)
-        print(msg)
         constraints.append((gp_lhs <= gp_rhs,msg))
 
 
@@ -681,24 +676,24 @@ def build_gpkit_problem(circ,jenv,jopt):
     for cstr,msg in constraints:
         if isinstance(cstr,bool) or isinstance(cstr,np.bool_):
             if not cstr:
-                print("[[false]]: %s" % (msg))
+                #print("[[false]]: %s" % (msg))
                 failed = True
-            else:
-                print("[[true]]: %s" % (msg))
+            #else:
+            #    print("[[true]]: %s" % (msg))
         else:
             gpkit_cstrs.append(cstr)
-            print("[q] %s" % msg)
+            #print("[q] %s" % msg)
 
     if failed:
         print("<< failed >>")
         time.sleep(0.2)
         return None
 
-    print("==== Objective Fxn [%s] ====" % jopt.method)
+    #print("==== Objective Fxn [%s] ====" % jopt.method)
     for objective_cstrs, objective in jopt.objective(circ,variables):
-        for cstr in objective_cstrs:
-            print("cstr: %s" % cstr)
-        print("obj: %s" % objective)
+        #for cstr in objective_cstrs:
+        #    print("cstr: %s" % cstr)
+        #print("obj: %s" % objective)
         model = gpkit.Model(objective, \
                             list(gpkit_cstrs) +
                             list(objective_cstrs))
@@ -733,14 +728,14 @@ def solve_gpkit_problem_mosek(gpmodel,timeout=10):
     try:
         signal.signal(signal.SIGALRM, handle_timeout)
         signal.alarm(timeout)
-        sln = gpmodel.solve(solver=CONFIG.GPKIT_SOLVER,verbosity=2)
+        sln = gpmodel.solve(solver=CONFIG.GPKIT_SOLVER,verbosity=0)
         signal.alarm(0)
     except TimeoutError as te:
-        print("Timeout: mosek timed out or hung")
+        #print("Timeout: mosek timed out or hung")
         signal.alarm(0)
         return None
     except RuntimeWarning as re:
-        print("[gpkit][ERROR] %s" % re)
+        #print("[gpkit][ERROR] %s" % re)
         return None
 
     return sln
@@ -752,15 +747,16 @@ def solve_gpkit_problem(gpmodel,timeout=10):
     else:
         return solve_gpkit_problem_mosek(gpmodel,timeout)
 
-def sp_update_lut_expr(expr,output,scfs):
+def sp_update_lut_expr(expr,output,lutvars):
     repl = {}
-    for name,scf in scfs.items():
-        repl[name] = op.Mult(op.Const(scf),op.Var(name))
+    for name,lutvar in lutvars.items():
+        repl[name] = op.Mult(op.Const(lutvar), \
+                             op.Var(name))
 
-    e1 = expr.substitute(repl)
-    outscf = scfs[output]
-    new_expr = op.Mult(op.Const(outscf), e1)
-    return new_expr
+    return op.Mult(
+        expr.substitute(repl),
+        op.Const(lutvars[output])
+    )
 
 def sp_update_circuit(jenv,prog,circ,assigns):
     bindings = {}
@@ -807,14 +803,20 @@ def iter_scaled_circuits(circ):
         choices.append(modes)
 
 
-    for choice in itertools.product(*choices):
-        circ = ConcCirc.from_json(circ.board,circ_json)
-        for (block_name,loc),scale_mode in zip(labels,choice):
-            print("%s.%s = %s" % (block_name,loc,scale_mode))
-            circ.config(block_name,loc) \
-                .set_scale_mode(scale_mode)
+    n_choices = 1
+    for ch in choices:
+        n_choices *= len(ch)
+    with tqdm.tqdm(total=n_choices) as pbar:
+        for choice in itertools.product(*choices):
+            circ = ConcCirc.from_json(circ.board,circ_json)
+            for (block_name,loc),scale_mode in zip(labels,choice):
+                #print("%s.%s = %s" % (block_name,loc,scale_mode))
+                circ.config(block_name,loc) \
+                    .set_scale_mode(scale_mode)
 
-        yield circ
+            yield circ
+            pbar.update(1)
+
 
 def files(scale_inds):
     for idx in scale_inds:
@@ -851,13 +853,12 @@ def scale_circuit(prog,circ,methods,debug=True):
 
             sln = solve_gpkit_problem(gpprob)
             if sln is None:
-                print("[[FAILURE - NO SLN]]")
+                #print("[[FAILURE - NO SLN]]")
                 jenv.set_solved(False)
-                #debug_gpkit_problem(gpprob)
                 continue
 
             elif not 'freevariables' in sln:
-                print("[[FAILURE - NO FREEVARS]]")
+                #print("[[FAILURE - NO FREEVARS]]")
                 succ,result = sln
                 assert(result is None)
                 assert(succ == False)

@@ -17,9 +17,9 @@ def model():
         'S0' : 0.64,
         'ES0' : 0.0,
         'P0' : 0.0,
-        'kf' : 0.01,
-        'kr' : 1.24,
-        'kd': 1e-3
+        'kf' : 0.1,
+        'kr' : 0.124,
+        'kd': 1e-2
     }
     params['krkd'] = params['kr'] + params['kd']
     E = parse_fn('{E0}+(-ES)+(-P)',params)

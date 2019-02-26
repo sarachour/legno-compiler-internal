@@ -61,6 +61,8 @@ def gen_unpack_loc(circ,locstr):
 
 def gen_use_lut(circ,block,locstr,config,source):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
+  in_scf,in_ival = config.scf('in'),config.interval('in')
+  out_scf,out_ival = config.scf('out'),config.interval('out')
   variables,expr = op.to_python(config.expr('out'))
   yield UseLUTCmd(chip,tile,slce,source=source)
   yield WriteLUTCmd(chip,tile,slce,variables,expr)
@@ -93,13 +95,13 @@ def gen_use_dac(circ,block,locstr,config,source):
                            out_range=rng,
                            source=source)
 
-  yield ConfigDACCmd(chip, \
-                              tile, \
-                              slce, \
-                              value=value, \
-                              inv=inv, \
-                              out_range=rng,
-                              source=source)
+  #yield ConfigDACCmd(chip, \
+  #                            tile, \
+  #                            slce, \
+  #                            value=value, \
+  #                            inv=inv, \
+  #                            out_range=rng,
+  #                            source=source)
 
 
 def gen_get_adc_status(circ,block,locstr):
@@ -137,14 +139,14 @@ def gen_use_integrator(circ,block,locstr,config,debug=True):
                     in_range=in_rng,
                     out_range=out_rng,
                     debug=debug)
-  yield ConfigIntegCmd(chip,
-                       tile,
-                       slce,
-                       init_cond=init_cond,
-                       inv=inv,
-                       in_range=in_rng,
-                       out_range=out_rng,
-                       debug=debug)
+  #yield ConfigIntegCmd(chip,
+  #                     tile,
+  #                     slce,
+  #                     init_cond=init_cond,
+  #                     inv=inv,
+  #                     in_range=in_rng,
+  #                     out_range=out_rng,
+  #                     debug=debug)
 
 
 
@@ -168,14 +170,14 @@ def gen_use_multiplier(circ,block,locstr,config):
                                out_range=out_rng,
                                coeff=coeff,
                                use_coeff=True)
-    yield ConfigMultCmd(chip,
-                               tile,
-                               slce,
-                               index,
-                               in0_range=in0_rng,
-                               out_range=out_rng,
-                               coeff=coeff,
-                               use_coeff=True)
+    #yield ConfigMultCmd(chip,
+    #                           tile,
+    #                           slce,
+    #                           index,
+    #                           in0_range=in0_rng,
+    #                           out_range=out_rng,
+    #                           coeff=coeff,
+    #                           use_coeff=True)
 
 
   else:

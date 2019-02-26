@@ -16,7 +16,7 @@ def model_dimer_lut():
   # k*2*M^2
   params = {
     'k': 0.01,
-    'D0': 0.1,
+    'D0': 0.0,
     'M0': 1.0
   }
   square_fun = op.Func(['V'], op.Mult(op.Var('V'),op.Var('V')))
@@ -25,9 +25,9 @@ def model_dimer_lut():
   params['2k'] = params['k']*2.0
   D = parse_diffeq("{k}*MSQ",'D0',':x',params)
   M = parse_diffeq("-{2k}*MSQ",'M0',':y',params)
+  prob.bind("MSQ",op.Call([op.Var('M')], square_fun))
   prob.bind("DIMER", op.Emit(op.Var("D")))
   prob.bind("D",D)
-  prob.bind("MSQ",op.Call([op.Var('M')], square_fun))
   prob.bind("M",M)
   prob.set_interval("M",0.0,params['M0'])
   prob.set_interval("D",0.0,params["M0"]*0.5+params["D0"])
@@ -82,6 +82,32 @@ def model_dissoc():
   return menv,prob
 
 
+def model_bidir():
+  params = {
+    'kf': 0.3,
+    'kr': 0.15,
+    'X0': 0.3,
+    'Y0': 0.5,
+    'Z0': 0.0
+  }
+  prob = MathProg("rxn-bidir")
+  X = parse_diffeq("{kf}*(-X)*Y+{kr}*Z",'X0',':x',params)
+  Y = parse_diffeq("{kf}*(-X)*Y+{kr}*Z",'Y0',':y',params)
+  Z = parse_diffeq("{kf}*X*Y+{kr}*(-Z)",'Z0',':z',params)
+  prob.bind("COMP", op.Emit(op.Var("Z")))
+  prob.bind("X",X)
+  prob.bind("Y",Y)
+  prob.bind("Z",Z)
+  prob.set_interval("X",0.0,params['X0'])
+  prob.set_interval("Y",0.0,params['Y0'])
+  ZMAX = min(params['Y0'],params['X0'])+params['Z0']
+  prob.set_interval("Z",0.0,ZMAX)
+  prob.set_max_sim_time(20)
+  prob.compile()
+  menv = menvs.get_math_env('t20')
+  return menv,prob
+
+
 def model_bimolec():
   params = {
     'k': 0.1,
@@ -115,6 +141,7 @@ def execute(model_fun):
 
 if __name__ == "__main__":
   execute(model_bimolec)
+  execute(model_bidir)
   execute(model_dissoc)
   execute(model_dimer_mult)
   execute(model_dimer_lut)

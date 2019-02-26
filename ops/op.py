@@ -335,8 +335,9 @@ class Integ(Op2):
         ideriv = self.deriv.compute_interval(intervals)
         icond = self.init_cond.compute_interval(intervals)
         if not (istvar.contains(icond.interval)):
-            print("[WARN] stvar does not contain ic: stvar=%s, ic=%s, expr=%s" % \
-                            (istvar,icond,self))
+            #print("[WARN] stvar does not contain ic: stvar=%s, ic=%s, expr=%s" % \
+            #                (istvar,icond,self))
+            pass
 
         icomb = icond.merge(ideriv, istvar)
         icomb.bind(self.deriv_handle, ideriv.interval)

@@ -22,7 +22,7 @@ class UseCommand(AnalogChipCommand):
         return self._loc
 
     def priority(self):
-        return Priority.FIRST
+        return Priority.EARLY
 
     def configure(self):
         return self

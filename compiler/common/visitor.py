@@ -9,7 +9,7 @@ class Visitor:
     self._visited = {}
 
   def visit(self,blkname,loc,port):
-    print("visit %s[%s].%s" % (blkname,loc,port))
+    #print("visit %s[%s].%s" % (blkname,loc,port))
     self._visited[(blkname,loc,port)] = True
 
   def visited(self,blkname,loc,port):

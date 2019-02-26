@@ -24,6 +24,11 @@ class WriteLUTCmd(UseCommand):
         if not (len(self._variables) == 1):
             raise Exception('unexpected number of variables: %s' % variables)
 
+
+    def priority(self):
+        return Priority.FIRST
+
+
     @property
     def expr(self):
         return self._expr
@@ -97,7 +102,8 @@ class WriteLUTCmd(UseCommand):
         for idx,v in enumerate(np.linspace(-1.0,1.0,256)):
             assigns = dict(zip(self._variables,[v]))
             value = util.eval_func(self.expr,assigns)
-            values[idx] = float(value)
+            clamp_value = min(max(value,-1.0),0.99)
+            values[idx] = float(clamp_value)
 
 
         resp = ArduinoCommand.execute(self,state,

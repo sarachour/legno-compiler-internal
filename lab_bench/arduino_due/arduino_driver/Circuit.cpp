@@ -504,6 +504,9 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
           Serial.print(inbuf[data_idx]);
           Serial.print("; ");
           Serial.println(byteval);
+          if(inbuf[data_idx] < -1.0 || inbuf[data_idx] > 1.0){
+            comm::error("lut value not in <-1,1>");
+          }
           lut->setLut(wrlutd.offset+data_idx,byteval);
         }
         comm::response("write lut",0);

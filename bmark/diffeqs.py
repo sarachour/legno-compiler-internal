@@ -22,6 +22,7 @@ BMARKS = [
     rxn.model_dissoc(),
     rxn.model_dimer_mult(),
     rxn.model_dimer_lut(),
+    rxn.model_bidir(),
     simple_osc.model("one",1.0),
     simple_osc.model("quad",4.0),
     simple_osc.model("quarter",0.25),

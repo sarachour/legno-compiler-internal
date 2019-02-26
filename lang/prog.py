@@ -241,4 +241,12 @@ class MathProg:
         s = "prog %s\n" % self._name
         for v,e in self._bindings.items():
             s += "  %s=%s\n" % (v,e)
+        s += "\n"
+        for v,b in self._bandwidths.items():
+            s += "  bw %s=%s\n" % (v,b)
+        s += "\n"
+        for v,i in self._intervals.items():
+            s += "  iv %s=%s\n" % (v,i)
+
+
         return s

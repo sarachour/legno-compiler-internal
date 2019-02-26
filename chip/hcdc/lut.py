@@ -16,7 +16,7 @@ digital_props = util.make_dig_props(chipcmd.RangeType.MED,\
                                     glb.MAX_DAC_ERROR_DYNAMIC,
                                     glb.ANALOG_DAC_SAMPLES)
 
-digital_props.set_continuous(0,10.0,units.khz)
+digital_props.set_continuous(0,glb.MAX_FREQ_LUT,units.khz)
 block.set_scale_modes("*",["*"])
 block.set_props("*","*",["in","out"],  digital_props)
 

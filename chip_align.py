@@ -43,7 +43,7 @@ def compute_meas(conc_circ,varname,tmax,filename):
   print("tau=%s" % conc_circ.tau)
   print("tc=%s" % tau)
   #scf,tau = 1.0,1.0
-  #scf = 1.0
+  scf = 1.0
   #tau = 1.0
   with open(filename,'r') as fh:
     obj = json.loads(fh.read())

@@ -54,8 +54,8 @@ class PropIntervalVisitor(Visitor):
 
                 mrng = prog.interval(label)
                 mbw = prog.bandwidth(label)
-                print("lbl: %s[%s].%s := %s" % \
-                      (block_name,loc,port,mrng))
+                #print("lbl: %s[%s].%s := %s" % \
+                #      (block_name,loc,port,mrng))
                 config.set_interval(port,mrng,\
                                     handle=handle)
                 config.set_bandwidth(port,mbw,\
@@ -90,7 +90,7 @@ class PropIntervalVisitor(Visitor):
       dest_ival = dest_ival.add(src_ival)
 
     config.set_interval(port,dest_ival)
-    print("ival in %s[%s].%s => %s" % (block_name,loc,port,dest_ival))
+    #print("ival in %s[%s].%s => %s" % (block_name,loc,port,dest_ival))
 
   def _update_intervals(self,block_name,loc,port):
     circ = self._circ
@@ -105,7 +105,7 @@ class PropIntervalVisitor(Visitor):
 
     intervals = expr.compute_interval(config.intervals())
     config.set_interval(port,intervals.interval)
-    print("ival out %s[%s].%s => %s" % (block_name,loc,port,intervals.interval))
+    #print("ival out %s[%s].%s => %s" % (block_name,loc,port,intervals.interval))
 
     for handle,interval in intervals.bindings():
       config.set_interval(port, \
@@ -131,6 +131,5 @@ def compute(prog,circ):
   visitor = PropIntervalVisitor(prog,circ)
   visitor.all()
   while(not visitor.is_valid()):
-      print("-> recomputing intervals");
       visitor.clear()
       visitor.all()

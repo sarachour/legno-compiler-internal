@@ -63,7 +63,7 @@ class PropBandwidthVisitor(Visitor):
 
     config = circ.config(block.name,loc)
     config.set_bandwidth(port,dest_bw)
-    print("bw in %s[%s].%s => %s" % (block.name,loc,port,dest_bw))
+    #print("bw in %s[%s].%s => %s" % (block.name,loc,port,dest_bw))
 
 
   def output_port(self,block_name,loc,port):
@@ -78,7 +78,7 @@ class PropBandwidthVisitor(Visitor):
     bandwidths = expr.infer_bandwidth(ival_map,bw_map)
 
     if config.bandwidth(port) is None:
-      print("bw %s[%s].%s = %s" % (block.name,loc,port,bandwidths.bandwidth))
+      #print("bw %s[%s].%s = %s" % (block.name,loc,port,bandwidths.bandwidth))
       config.set_bandwidth(port,bandwidths.bandwidth)
 
     for handle,bandwidth in bandwidths.bindings():

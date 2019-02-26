@@ -78,7 +78,7 @@ def adc_scale_model(adc):
       analog_props = util.make_ana_props(rng,
                                          glb.ANALOG_MIN,
                                          glb.ANALOG_MAX,
-                                         glb.ANALOG_MINSIG)
+                                         glb.ANALOG_MINSIG_ADC)
       #analog_props.set_bandwidth(0,20,units.khz)
 
       digital_props = util.make_dig_props(chipcmd.RangeType.MED,
