@@ -18,9 +18,9 @@ def model():
     'k1':0.18,
     'k2':0.8
   }
-  sin_fun = op.Func(['T'], op.Mult(op.Const(-1),op.Sin(op.Var('T'))))
+  sin_fun = op.Func(['T'], op.Mult(op.Const(-1.0),op.Sin(op.Var('T'))))
 
-  eqn = parse_diffeq('{k1}*(-angvel) + ({k2}*(sinAngle))',  \
+  eqn = parse_diffeq('{k1}*(-angvel) + {k2}*sinAngle',  \
                'angvel0', ':a', params)
   prob.bind('angvel',eqn)
 
@@ -34,6 +34,7 @@ def model():
 
   prob.set_interval('angle', -1.8,1.8)
   prob.set_interval('angvel',-1.8,1.8)
+  prob.set_max_sim_time(20)
   prob.compile()
   menv = menvs.get_math_env('t20')
   return menv,prob

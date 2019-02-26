@@ -48,7 +48,7 @@ def model():
   prob.set_interval("PB",-1.5,1.5)
   prob.set_interval("VA",-2,2)
   prob.set_interval("VB",-2,2)
-
+  prob.set_max_sim_time(20)
   prob.bind('PosA', op.Emit(op.Var('PA')))
   prob.compile()
 

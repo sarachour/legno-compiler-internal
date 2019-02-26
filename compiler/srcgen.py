@@ -365,12 +365,9 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
   dacs_in_use = get_ext_dacs_in_use(board,conc_circ,mathenv)
   adcs_in_use = get_ext_adcs_in_use(board,conc_circ,mathenv)
   # compute times
-  tau = conc_circ.tau
-  tc = board.time_constant
-  scaled_tc_s = tc/tau
-  scaled_tc_us = tc/tau*1e6
-  scaled_sim_time = mathenv.sim_time*scaled_tc_s
-  scaled_input_time = mathenv.input_time*scaled_tc_s
+  scaled_tc_hz = board.time_constant*conc_circ.tau
+  scaled_sim_time = mathenv.sim_time/scaled_tc_hz
+  scaled_input_time = mathenv.input_time/scaled_tc_hz
   gren.add(parse('micro_reset'))
   # initialize oscilloscope
   if hwenv.use_oscilloscope:

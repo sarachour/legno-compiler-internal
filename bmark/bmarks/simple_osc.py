@@ -30,6 +30,7 @@ def model(name,omega):
     base_bnd = 0.12
     prob.set_interval("P",-base_bnd,base_bnd)
     prob.set_interval("V",-base_bnd*scf,base_bnd*scf)
+    prob.set_max_sim_time(20)
     prob.compile()
     menv = menvs.get_math_env('t20')
     return menv,prob

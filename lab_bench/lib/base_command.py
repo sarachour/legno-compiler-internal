@@ -124,6 +124,8 @@ class MessageArduinoResponse(GenericArduinoResponse):
 
     @staticmethod
     def parse(args):
+        if len(args) == 0:
+            raise Exception("can't parse: returned <%s>" % args)
         msg = args[0]
         return MessageArduinoResponse(msg)
 

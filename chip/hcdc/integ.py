@@ -57,11 +57,16 @@ def scale_model(integ):
       analog_in = util.make_ana_props(inrng,
                                       glb.ANALOG_MIN, \
                                       glb.ANALOG_MAX)
-      analog_in.set_bandwidth(0,200,units.khz)
+      analog_in.set_bandwidth(0,20,units.khz)
+      dig_props = util.make_dig_props(chipcmd.RangeType.MED, \
+                                          glb.DAC_MIN, \
+                                          glb.DAC_MAX, \
+                                          glb.MAX_DAC_ERROR_CONST,
+                                          glb.ANALOG_DAC_SAMPLES)
+      dig_props.set_constant()
       integ.set_props(comp_mode,scale_mode,['in'],analog_in)
-      integ.set_props(comp_mode,scale_mode,["ic"],util.make_dig_props(chipcmd.RangeType.MED, \
-                                                    glb.DAC_MIN,
-                                                    glb.DAC_MAX))
+      integ.set_props(comp_mode,scale_mode,["ic"], dig_props)
+
       integ.set_props(comp_mode,scale_mode,["out"],util.make_ana_props(outrng,
                                                     glb.ANALOG_MIN,
                                                     glb.ANALOG_MAX),\

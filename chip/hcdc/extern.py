@@ -8,7 +8,9 @@ import chip.units as units
 
 # DUE DAC -> VTOI
 ext_chip_in_props = util.make_dig_props(chipcmd.RangeType.MED, \
-                                        -1.0,1.0,npts=4096)
+                                        -1.0,1.0,
+                                        glb.MAX_DAC_ERROR_EXTIN, \
+                                        glb.EXT_DAC_SAMPLES)
 ext_chip_in_props.set_clocked(10,500,units.us)
 # do note there's a weird offset of 0..
 #ext_chip_in_coeff = 0.030/0.055*2.0
@@ -29,7 +31,8 @@ block_in = Block('ext_chip_in',type=BlockType.DAC) \
 # DUE ADC -> VTOI
 ext_chip_out_props = util.make_dig_props(chipcmd.RangeType.MED, \
                                          -2.0,2.0, \
-                                         npts=4096)
+                                         glb.MAX_DAC_ERROR_EXTIN, \
+                                         glb.EXT_DAC_SAMPLES)
 #sample rate
 ext_chip_out_props.set_clocked(1,None,units.ns)
 # for adc

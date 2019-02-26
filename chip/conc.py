@@ -178,6 +178,11 @@ class ConcCirc:
 
         return circ
 
+    @staticmethod
+    def read(board,filename):
+        with open(filename,'r') as fh:
+            obj = json.loads(fh.read())
+            return ConcCirc.from_json(board,obj)
 
     def to_json(self):
         data_struct = {

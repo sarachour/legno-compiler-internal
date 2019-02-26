@@ -3,6 +3,8 @@ import math
 class Interval:
 
     def __init__(self,lb,ub):
+        assert(not Interval.isnan(lb))
+        assert(not Interval.isnan(ub))
         self._lower = lb
         self._upper = ub
 
@@ -50,6 +52,11 @@ class Interval:
 
     def unbounded_upper(self):
         return Interval.isinf(self.upper)
+
+
+    @staticmethod
+    def isnan(num):
+        return math.isnan(num)
 
 
     @staticmethod

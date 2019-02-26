@@ -198,12 +198,13 @@ class JauntEnv:
 
     def lte(self,v1,v2):
         # TODO: equality
+        print("%s <= %s" % (v1,v2))
         self._ltes.append((v1,v2))
 
 
     def gte(self,v1,v2):
         # TODO: equality
-        self._ltes.append((v2,v1))
+        self.lte(v2,v1)
 
 
 
@@ -322,7 +323,7 @@ def bpgen_build_upper_bound(jenv,expr,math_upper,hw_upper):
         print("[[fail]] dne A st: %s > A*%s" % (hw_upper,math_upper))
         jenv.fail()
     else:
-        raise Exception("uncovered lb: %s %s" % (math_lower,hw_lower))
+        raise Exception("uncovered ub: %s %s" % (math_upper,hw_upper))
 
 
 def bpgen_scaled_analog_interval_constraint(jenv,scale_expr,math_rng,hw_rng):
@@ -334,38 +335,56 @@ def bpgen_scaled_analog_interval_constraint(jenv,scale_expr,math_rng,hw_rng):
 
 
 def bpgen_scaled_digital_quantize_constraint(jenv,scale_expr,math_rng,props):
-    def compute_bnds(bnd):
-        values = props.values()
-        quality = props.quality
-        vals = list(filter(lambda v: same_sign(v,bnd), values))
-        samples = len(vals)*quality
-        step = np.mean(np.diff(vals))
-        minv = step*samples
-        # leave one step buffer for underflow, overflow
-        maxv = step*(len(vals)-1)
-        return minv,maxv
+    def compute_bnds(math_val):
+        all_values = props.values()
+        max_error = props.max_error
+        values = list(filter(lambda v: same_sign(v,math_val), all_values))
+        hw_val = max(values,key=lambda v: abs(v))
+        #hardware delta
+        delta_h = np.mean(np.diff(values))
+        min_ratio = hw_val/(hw_val*(len(values)-1)/len(values))
+        min_step =delta_h*min_ratio
+        max_step = props.max_error
+
+        ratio = hw_val / math_val
+        delta_m_nom= ratio*delta_h
+        print("math_val: %s" % math_val)
+        print("hw_val: %s" % hw_val)
+        print("ratio: %s" % ratio)
+        print("delta_m (nominal): %s" % delta_m_nom)
+        print("max_delta: %s" % max_step)
+        print("min_delta: %s" % min_step)
+        return min_step,max_step,delta_m_nom
 
     lb,ub = math_rng.lower,math_rng.upper
+    scale_expr_inv = jop.expo(scale_expr,-1.0)
     if lb < ub:
         # restrict the amount of the quantized space used to ensure reasonable
         # fidelity (quality metric), while leaving a io pair available on either \
         # end for overflow issues.
-        lb_min,lb_max = compute_bnds(lb)
-        ub_min,ub_max = compute_bds(ub)
         if not util.equals(lb,0):
-            bpgen_build_lower_bound(jenv,scale_expr,\
-                                    abs(lb),abs(lb_min))
-            bpgen_build_upper_bound(jenv,scale_expr,\
-                                    abs(lb),abs(lb_max))
+            lb_min,lb_max,lb_nom = compute_bnds(lb)
+            bpgen_build_lower_bound(jenv,scale_expr_inv,\
+                                    abs(lb_nom),abs(lb_min))
+            bpgen_build_upper_bound(jenv,scale_expr_inv,\
+                                    abs(lb_nom),abs(lb_max))
 
         if not util.equals(ub,0):
-            bpgen_build_lower_bound(jenv,scale_expr,\
-                                    abs(ub),abs(ub_min))
-            bpgen_build_upper_bound(jenv,scale_expr,\
-                                    abs(ub),abs(ub_max))
+            ub_min,ub_max,ub_nom = compute_bnds(ub)
+            bpgen_build_lower_bound(jenv,scale_expr_inv,\
+                                    abs(ub_nom),abs(ub_min))
+            bpgen_build_upper_bound(jenv,scale_expr_inv,\
+                                    abs(ub_nom),abs(ub_max))
 
     else:
-        input("TODO: constants have a different optimization function")
+        if not util.equals(lb,0):
+            val_min,val_max,val_nom = compute_bnds(lb)
+            bpgen_build_lower_bound(jenv,scale_expr_inv,\
+                                    abs(val_nom),abs(val_min))
+            bpgen_build_upper_bound(jenv,scale_expr_inv,\
+                                    abs(val_nom),abs(val_max))
+
+
 
 def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
     config = circ.config(block.name,loc)
@@ -429,7 +448,6 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
         # ranges are contained
         deriv_mrng = config.interval(port,expr.deriv_handle)
         deriv_hwrng = config.op_range(port,expr.deriv_handle)
-
         bpgen_scaled_analog_interval_constraint(jenv, \
                                          scvar_deriv,
                                          deriv_mrng,
@@ -456,7 +474,7 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
 
 
 def bputil_to_phys_bandwidth(circ,bw):
-    return bw/circ.board.time_constant
+    return bw*circ.board.time_constant
 
 def bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr):
     scexpr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,out,expr)
@@ -481,8 +499,7 @@ def bpgen_scaled_digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):
 
     physbw = bputil_to_phys_bandwidth(circ,mbw.bandwidth)
     if prop.kind == props.DigitalProperties.Type.CONSTANT:
-        print(mbw)
-        input()
+        assert(mbw.bandwidth == 0)
 
     elif prop.kind == props.DigitalProperties.Type.CLOCKED:
         hw_sample_rate = prop.sample_rate

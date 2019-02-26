@@ -54,6 +54,8 @@ void Fabric::stateMachine () const {
 
 /*Set timeout value*/
 void Fabric::setTimeout (unsigned int timeout) const {
+  // this determines how long to hold the initial conditions
+  // it needs to be surrounded with a cfg start and config-stop
 	Serial.print("timeout: ");
 	Serial.println(timeout);
 	if (timeout<0||4294967295<timeout) error ("timeout out of bounds");

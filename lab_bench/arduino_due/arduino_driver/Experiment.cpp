@@ -189,6 +189,7 @@ void reset_experiment(experiment_t * expr){
   expr->dac_samples = 0;
   expr->adc_samples = 0;
   expr->total_samples = 0;
+  expr->sim_time_sec = 0.0;
   expr->time_between_samps_us = DELAY_TIME_US;;
   for(int idx = 0; idx < MAX_DACS; idx+=1 ){
     expr->use_dac[idx] = false;
@@ -207,6 +208,7 @@ void run_experiment(experiment_t * expr, Fabric * fab){
       comm::error("must compute offsets beforehand");
       return;
   }
+  // update all the globals for the external input supplication
   IDX = 0;
   N = expr->total_samples;
   N_DAC = expr->dac_samples;
@@ -214,49 +216,62 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   N_OSC = expr->osc_samples;
   FABRIC = fab;
   EXPERIMENT = expr;
-  comm::print_header();
-  Serial.print(N_OSC);
-  Serial.print("/");
-  Serial.println(N);
   // clear dacs
   analogWrite(DAC0, 0); 
   analogWrite(DAC1, 0); 
+  // wait a bit for the dac values to take
   delay(10);
-  
-  Timer3.attachInterrupt(_update_wave);
-  // trigger the start of the experiment
+  // commit the configuration.
   if(expr->use_analog_chip){
-    circ::commit_config(fab);
-    circ::finalize_config(fab);
-    comm::print_header();
-    Serial.println("wrote config");
-    comm::print_header();
-    Serial.println("toggle sda");
-    circ::execute(fab);
-    _toggle_SDA();
+    fab->cfgCommit();
+    fab->cfgStop();
+  }
+  //attach the interrupt for the wave
+  Timer3.attachInterrupt(_update_wave);
+  // compute the sim time used for the delay
+  float sim_time_sec = expr->sim_time_sec*1.0;
+  // compute the timeout to set of the analog timer
+  // if we're conducting a short simulation ,use delayus
+  if(expr->sim_time_sec < 0.1 && expr->use_analog_chip){
+    unsigned int sleep_time_us = (unsigned int) (sim_time_sec*1e6);
+    //set a timeout within the chip
     Timer3.start(expr->time_between_samps_us);
+    _toggle_SDA();
+    fab->execStart();
+    delayMicroseconds(sleep_time_us);
+    fab->execStop();
+    Timer3.stop();
+  }
+  // if we're conducting a longer simulation
+  else if(expr->sim_time_sec >= 0.1 && expr->use_analog_chip){
+    unsigned long sleep_time_ms = (unsigned long) (sim_time_sec*1e3);
+    //set a timeout within the chip, if the timeout fits in uint max
+    Timer3.start(expr->time_between_samps_us);
+    _toggle_SDA();
+    fab->execStart();
+    delay(sleep_time_ms);
+    fab->execStop();
+    Timer3.stop();
+  }
+  else if(expr->sim_time_sec < 0.1 && not expr->use_analog_chip){
+    unsigned int sleep_time_us = (unsigned int) (sim_time_sec*1e6);
+    Timer3.start(expr->time_between_samps_us);
+    _toggle_SDA();
+    delayMicroseconds(sleep_time_us);
+    Timer3.stop();
+  }
+  else if(expr->sim_time_sec >= 0.1 && not expr->use_analog_chip){
+    unsigned long sleep_time_ms = (unsigned long) (sim_time_sec*1e3);
+    Timer3.start(expr->time_between_samps_us);
+    _toggle_SDA();
+    delay(sleep_time_ms);
+    Timer3.stop();
   }
   else{
-    comm::print_header();
-    Serial.println("toggle sda");
-    _toggle_SDA();
-    Timer3.start(expr->time_between_samps_us);
-  }
-  while(IDX < N){
-    comm::print_header();
-    Serial.print("waiting idx=");
-    Serial.print(IDX);
-    Serial.print("/");
-    Serial.println(N);
-    delay(500);
-  }
-  Timer3.stop();
-  if(EXPERIMENT->use_analog_chip){
-        circ::finish(fab);
+    comm::error("unrecognized case");
   }
   analogWrite(DAC0, 0); 
-  analogWrite(DAC1, 0); 
-  comm::done_command();
+  analogWrite(DAC1, 0);
 }
 
 void set_sim_time(experiment_t * expr, float sim_time, float period_time, float frame_time){
@@ -266,6 +281,7 @@ void set_sim_time(experiment_t * expr, float sim_time, float period_time, float 
   int sim_samples = sim_time/time_between_samples;
   int dac_samples = period_time/time_between_samples;
   expr->time_between_samps_us = DELAY_TIME_US;
+  expr->sim_time_sec = sim_time;
   expr->dac_samples = dac_samples;
   expr->adc_samples = sim_samples;
   expr->total_samples = sim_samples;

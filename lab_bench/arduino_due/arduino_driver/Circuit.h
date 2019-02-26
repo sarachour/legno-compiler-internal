@@ -152,12 +152,8 @@ typedef struct cmd {
   cmd_data_t data;
 } cmd_t;
 
-void commit_config(Fabric * fab);
 Fabric* setup_board();
-void finalize_config(Fabric * fab);
-void execute(Fabric * fab);
-void finish(Fabric * fab);
-
+void timeout(Fabric * fab, unsigned int timeout);
 void print_command(cmd_t& cmd);
 void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf);
 void debug_command(Fabric * fab, cmd_t& cmd, float* inbuf);

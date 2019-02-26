@@ -73,7 +73,7 @@ class DigitalProperties(Properties):
     def __init__(self):
         Properties.__init__(self,Properties.DIGITAL)
         self._values = None
-        self._quality = 0
+        self._max_error = None
         self._kind = DigitalProperties.Type.UNKNOWN
         # for clocked
         self._sample_rate = (None,units.unknown)
@@ -92,13 +92,13 @@ class DigitalProperties(Properties):
         self._max_samples = max_samples
         return self
 
-    def set_quality(self,v):
+    def set_max_error(self,v):
         assert(v >= 0.0 and v < 1.0)
-        self._quality = v
+        self._max_error = v
 
     @property
-    def quality(self):
-        return self._quality
+    def max_error(self):
+        return self._max_error
 
     def interval(self):
         lb = min(self.values())
@@ -154,5 +154,6 @@ class DigitalProperties(Properties):
 
     def check(self):
         assert(not self._values is None)
+        assert(not self._max_error is None)
         assert(self._kind != DigitalProperties.Type.UNKNOWN)
         return self

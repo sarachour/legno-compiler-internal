@@ -225,21 +225,6 @@ void load_lut_source(uint8_t source, bool * ext, bool * adc0, bool * adc1){
   
 }
 
-void commit_config(Fabric * fab){
-   fab->cfgCommit();
-}
-
-void finalize_config(Fabric * fab){
-  fab->cfgStop();
-}
-
-void execute(Fabric * fab){
-  fab->execStart();
-}
-
-void finish(Fabric * fab){
-  fab->execStop();
-}
 
 Fabric* setup_board(){
   Fabric* fabric = new Fabric();

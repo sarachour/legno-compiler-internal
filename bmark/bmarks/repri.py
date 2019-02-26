@@ -79,6 +79,7 @@ def model():
     prob.set_interval("ALacLp",0,act_bnd)
     prob.set_interval("Aclp",0,act_bnd)
     prob.set_interval("ATetRp",0,act_bnd)
+    prob.set_max_sim_time(2000)
     prob.compile()
     menv = menvs.get_math_env('t2k')
     return menv,prob

@@ -167,8 +167,10 @@ class OscSetSimTimeCmd(Command):
                                OscSetSimTimeCmd)
 
 
-    def configure_oscilloscope(self,state,time_sec):
-        frame_sec = time_sec
+    def configure_oscilloscope(self,state,_time_sec,slack=0.05,extend=0.0):
+        slack_sec = _time_sec*slack+extend
+        frame_sec = _time_sec+slack_sec
+        time_sec = _time_sec+slack_sec
         # TODO: multiple segments of high sample rate.
         theo_time_per_div = float(time_sec) / state.oscilloscope.TIME_DIVISIONS
         act_time_per_div = state.oscilloscope \
@@ -219,9 +221,10 @@ class OscSetupTrigger(Command):
 
     def exec_setup_osc(self,state):
         if state.use_osc and not state.dummy:
+            # osclib.HRTime(80e-7)
             edge_trigger = osclib.Trigger(osclib.TriggerType.EDGE,
                                 state.oscilloscope.ext_channel(),
-                                osclib.HRTime(80e-7),
+                                osclib.HROff(),
                                 min_voltage=0.080,
                                 which_edge=osclib
                                           .TriggerSlopeType

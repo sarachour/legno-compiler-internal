@@ -8,10 +8,10 @@ import matplotlib.pyplot as plt
 import itertools
 import math
 from scipy.ndimage.filters import gaussian_filter
-import analysis.freq as fq
 import fastdtw
 from scipy.spatial.distance import euclidean
-import analysis.det_xform as dx
+import lab_bench.analysis.freq as fq
+import lab_bench.analysis.det_xform as dx
 
 
 class TimeSeries:
@@ -252,7 +252,6 @@ class TimeSeries:
             #self.values = self.values[:index+1]
 
         def trim(self,min_time,max_time):
-            assert(len(self.values) == len(self.times))
             if min_time >= max_time:
                 return
 
@@ -553,21 +552,32 @@ class TimeSeriesSet:
         return TimeSeriesSet.from_json(data)
 
 
-    def align(self,window=None,correlation_rank=1,index_rank=100,index_rank_method='negative'):
+
+    def trim(self,lo,hi):
+        self.output.trim(lo,hi)
+        self.reference.trim(lo,hi)
+        for sig in self.inputs.values():
+            sig.trim(lo,hi)
+
+        return self
+
+
+def align(reference,output,window=None,correlation_rank=1, \
+          index_rank=100,index_rank_method='negative'):
         def compute_weight(phase_dist,npts,dt,index):
-            shift = dt*(index-npts) + self.phase_delay
-            prob = min(1.0,phase_dist.pdf(-shift))
-            return prob
+                shift = dt*(index-npts)
+                prob = min(1.0,phase_dist.pdf(-shift))
+                return prob
 
         def build_correlation_map(correlations):
-            corrmap = {}
-            for i,corr in enumerate(correlations):
-                if not corr in corrmap:
-                    corrmap[corr] = []
+                corrmap = {}
+                for i,corr in enumerate(correlations):
+                        if not corr in corrmap:
+                                corrmap[corr] = []
 
                 corrmap[corr].append(i)
+                return list(corrmap.keys()), corrmap
 
-            return list(corrmap.keys()), corrmap
         def score_shift(shift):
                 if index_rank_method == 'negative':
                         return 1.0 if shift > 0 else -shift
@@ -577,15 +587,15 @@ class TimeSeriesSet:
                         return shift**2
 
         def compute_timeseries_error(shift):
-                out = self.output.copy()
-                max_time = self._reference.max_time()
+                out = output.copy()
+                max_time = reference.max_time()
                 out.time_shift(shift)
                 out.truncate_before(0.0)
-                out.truncate_after_samples(self.reference.n())
-                noise = out.difference(self.reference)
+                out.truncate_after_samples(reference.n())
+                noise = out.difference(reference)
                 out.plot_series('out')
                 noise.plot_series('noise')
-                self._reference.plot_series('ref')
+                reference.plot_series('ref')
                 plt.legend()
                 plt.savefig('frame.png')
                 plt.clf()
@@ -593,8 +603,8 @@ class TimeSeriesSet:
                 return noise_power
 
 
-        correlations,offsets = TimeSeries.correlate(self._reference,\
-                                                    self._output, \
+        correlations,offsets = TimeSeries.correlate(reference,\
+                                                    output, \
                                                     window)
         # top items
         if correlation_rank == 0:
@@ -613,6 +623,7 @@ class TimeSeriesSet:
                 for i,corr in enumerate(best_corrs):
                         corr_indices = sorted(corrs_to_inds[corr], \
                                          key=lambda j: score_shift(offsets[j]))
+                        print("[%d] len=%d" % (i,len(corr_indices)))
                         for j,index in enumerate(corr_indices):
                             if j >= index_rank:
                                 break
@@ -634,19 +645,11 @@ class TimeSeriesSet:
         shift = offsets[index]
         print("\n[[best shift: %s]]\n" % shift)
         compute_timeseries_error(shift)
-        self.phase_delay += shift
+        phase_delay = shift
         for sig in [self.output]:
             sig.time_shift(shift)
             sig.truncate_before(0.0)
             sig.truncate_after_samples(self.reference.n())
 
 
-        return dx.DetTimeXform(self.phase_delay)
-
-    def trim(self,lo,hi):
-        self.output.trim(lo,hi)
-        self.reference.trim(lo,hi)
-        for sig in self.inputs.values():
-            sig.trim(lo,hi)
-
-        return self
+        return dx.DetTimeXform(phase_delay)

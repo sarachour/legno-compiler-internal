@@ -87,7 +87,7 @@ def make_board():
            [tile_in,tile_out,chip_in,chip_out,inv_conn] + \
            [ext_chip_in,ext_chip_out])
 
-    hw.set_time_constant(1.0/glb.TIME_FREQUENCY)
+    hw.set_time_constant(glb.TIME_FREQUENCY)
 
     chips = map(lambda i : hw.layer(i),range(0,n_chips))
     for chip_idx,chip in enumerate(chips):

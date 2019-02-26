@@ -32,8 +32,8 @@ def dac_scale_model(dac):
       digital_props = util.make_dig_props(chipcmd.RangeType.MED,
                                           glb.DAC_MIN,
                                           glb.DAC_MAX,
-                                          npts=256,
-                                          quality=glb.MIN_QUALITY
+                                          glb.MAX_DAC_ERROR_DYNAMIC,
+                                          glb.ANALOG_DAC_SAMPLES
       )
       digital_props.set_continuous(0,20,units.khz)
       dac.set_coeff("*",mode,'out', coeff)
@@ -82,8 +82,9 @@ def adc_scale_model(adc):
       digital_props = util.make_dig_props(chipcmd.RangeType.MED,
                                           glb.DAC_MIN,
                                           glb.DAC_MAX,
-                                          npts=256,
-                                          quality=glb.MIN_QUALITY)
+                                          glb.MAX_DAC_ERROR_DYNAMIC,
+                                          glb.ANALOG_DAC_SAMPLES
+      )
       digital_props.set_continuous(0,20,units.khz)
 
       adc.set_props("*",mode,["in"],analog_props)

@@ -48,7 +48,7 @@ class HoldRule:
             self._hold_type = hold_type
             self._value1 = value1
             self._value2 = value2
-    
+
     def to_cmd(self):
         cmd = "HT,%s,HV,%sS" % (self._hold_type.value,self._value1)
         if not self._value2 is None:
@@ -77,7 +77,7 @@ class HRTime(HoldRule):
 class HROff(HoldRule):
 
     def __init__(self):
-        HoldRule__init__(self,HoldType.OFF,0.0,None)
+        HoldRule.__init__(self,HoldType.OFF,0.0,None)
         pass
 
     def __repr__(self):
@@ -126,8 +126,12 @@ class Trigger:
         # SR:source
         chan = Sigilent1020XEOscilloscope.Channels(props['SR'])
         ht = HoldType(props['HT'])
-        hv,unit = extract_number_and_unit(props['HV'])
-        value = float(hv)*1e-3*scaling[unit]
+        if 'HV' in props:
+            hv,unit = extract_number_and_unit(props['HV'])
+            value = float(hv)*1e-3*scaling[unit]
+        else:
+            value = None
+
         if 'HV2' in props:
             hv2,unit2 = extract_number_and_unit(props['HV2'])
             value2 = float(hv2)*1e-3*scaling[unit2]

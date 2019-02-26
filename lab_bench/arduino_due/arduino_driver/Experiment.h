@@ -26,6 +26,7 @@ typedef struct experiment_data {
   bool periodic_dac[MAX_DACS];
   bool use_analog_chip;
   float time_between_samps_us;
+  float sim_time_sec;
   // input data
   int16_t * databuf;
 
