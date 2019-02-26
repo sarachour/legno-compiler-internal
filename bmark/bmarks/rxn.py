@@ -11,11 +11,52 @@ import bmark.menvs as menvs
 
 
 #
-def model_dimer_mult():
-  raise NotImplementedError
-
 def model_dimer_lut():
-  raise NotImplementedError
+  # M+M -> D
+  # k*2*M^2
+  params = {
+    'k': 0.01,
+    'D0': 0.1,
+    'M0': 1.0
+  }
+  square_fun = op.Func(['V'], op.Mult(op.Var('V'),op.Var('V')))
+
+  prob = MathProg("rxn-dimer-lut")
+  params['2k'] = params['k']*2.0
+  D = parse_diffeq("{k}*MSQ",'D0',':x',params)
+  M = parse_diffeq("-{2k}*MSQ",'M0',':y',params)
+  prob.bind("DIMER", op.Emit(op.Var("D")))
+  prob.bind("D",D)
+  prob.bind("MSQ",op.Call([op.Var('M')], square_fun))
+  prob.bind("M",M)
+  prob.set_interval("M",0.0,params['M0'])
+  prob.set_interval("D",0.0,params["M0"]*0.5+params["D0"])
+  prob.compile()
+  prob.set_max_sim_time(200)
+  menv = menvs.get_math_env('t200')
+  return menv,prob
+
+def model_dimer_mult():
+  # M+M -> D
+  # k*2*M^2
+  params = {
+    'k': 0.01,
+    'D0': 0.1,
+    'M0': 1.0
+  }
+  prob = MathProg("rxn-dimer-mult")
+  params['2k'] = params['k']*2.0
+  D = parse_diffeq("{k}*M*M",'D0',':x',params)
+  M = parse_diffeq("-{2k}*M*M",'M0',':y',params)
+  prob.bind("DIMER", op.Emit(op.Var("D")))
+  prob.bind("D",D)
+  prob.bind("M",M)
+  prob.set_interval("M",0.0,params['M0'])
+  prob.set_interval("D",0.0,params["M0"]*0.5+params["D0"])
+  prob.compile()
+  prob.set_max_sim_time(200)
+  menv = menvs.get_math_env('t200')
+  return menv,prob
 
 def model_dissoc():
   params = {
@@ -75,4 +116,6 @@ def execute(model_fun):
 if __name__ == "__main__":
   execute(model_bimolec)
   execute(model_dissoc)
+  execute(model_dimer_mult)
+  execute(model_dimer_lut)
 1

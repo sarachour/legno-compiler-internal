@@ -64,7 +64,6 @@ def plot_diffeq(menv,prob,T,Y):
 
   for series_name,values in Z.items():
     filepath = "%s/%s.png" % (filedir,series_name);
-    print(series_name,len(T),len(values))
     plt.plot(T,values,label=series_name)
     plt.savefig(filepath)
     plt.clf()
