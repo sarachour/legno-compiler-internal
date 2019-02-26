@@ -84,16 +84,19 @@ def scale_model(mult):
       mult.set_props("mul",mode,["in0"],
                     util.make_ana_props(in0rng,
                                         glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX))
+                                        glb.ANALOG_MAX,
+                                        glb.ANALOG_MINSIG))
       mult.set_props("mul",mode,["in1"],
                     util.make_ana_props(in1rng,
                                         glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX))
+                                        glb.ANALOG_MAX,
+                                        glb.ANALOG_MINSIG))
       mult.set_props("mul",mode,["coeff"], dig_props)
       mult.set_props("mul",mode,["out"],
                     util.make_ana_props(outrng,
                                         glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX))
+                                        glb.ANALOG_MAX,
+                                        glb.ANALOG_MINSIG))
       mult.set_coeff("mul",mode,'out', scf)
 
   for mode in vga_modes:
@@ -109,16 +112,19 @@ def scale_model(mult):
       mult.set_props("vga",mode,["in0"],
                     util.make_ana_props(in0rng, \
                                         glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX))
+                                        glb.ANALOG_MAX,
+                                        glb.ANALOG_MINSIG))
       mult.set_props("vga",mode,["in1"],
                     util.make_ana_props(chipcmd.RangeType.MED, \
                                         glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX))
+                                        glb.ANALOG_MAX,
+                                        glb.ANALOG_MINSIG))
       mult.set_props("vga",mode,["coeff"], dig_props)
       mult.set_props("vga",mode,["out"],
                     util.make_ana_props(outrng, \
                                         glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX))
+                                        glb.ANALOG_MAX,
+                                        glb.ANALOG_MINSIG))
       mult.set_coeff("vga",mode,'out', scf)
 
 

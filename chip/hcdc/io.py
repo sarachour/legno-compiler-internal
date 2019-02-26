@@ -42,7 +42,8 @@ def dac_scale_model(dac):
       dac.set_props("*",mode,["out"],\
                    util.make_ana_props(rng,
                                        glb.ANALOG_MIN,
-                                       glb.ANALOG_MAX))
+                                       glb.ANALOG_MAX,
+                                       glb.ANALOG_MINSIG))
 
 
 dac = Block('tile_dac',type=BlockType.DAC) \
@@ -75,8 +76,9 @@ def adc_scale_model(adc):
       rng, = mode
       coeff = (1.0/rng.coeff())*0.5
       analog_props = util.make_ana_props(rng,
-                                       glb.ANALOG_MIN,
-                                       glb.ANALOG_MAX)
+                                         glb.ANALOG_MIN,
+                                         glb.ANALOG_MAX,
+                                         glb.ANALOG_MINSIG)
       #analog_props.set_bandwidth(0,20,units.khz)
 
       digital_props = util.make_dig_props(chipcmd.RangeType.MED,

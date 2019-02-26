@@ -326,11 +326,22 @@ def bpgen_build_upper_bound(jenv,expr,math_upper,hw_upper):
         raise Exception("uncovered ub: %s %s" % (math_upper,hw_upper))
 
 
-def bpgen_scaled_analog_interval_constraint(jenv,scale_expr,math_rng,hw_rng):
+def bpgen_scaled_analog_interval_constraint(jenv,scale_expr,math_rng,hw_rng,prop):
     bpgen_build_upper_bound(jenv,scale_expr, \
                             math_rng.upper,hw_rng.upper)
     bpgen_build_lower_bound(jenv,scale_expr, \
                             math_rng.lower,hw_rng.lower)
+
+    if math_rng.spread == 0.0:
+        return
+    if isinstance(prop, props.AnalogProperties):
+        MIN_CURRENT = prop.min_signal()
+        if abs(math_rng.lower) > 0:
+            bpgen_build_lower_bound(jenv,scale_expr,abs(math_rng.lower), \
+                                    MIN_CURRENT)
+        if abs(math_rng.upper) > 0:
+            bpgen_build_lower_bound(jenv,scale_expr,abs(math_rng.upper), \
+                                    MIN_CURRENT)
 
 
 
@@ -388,6 +399,7 @@ def bpgen_scaled_digital_quantize_constraint(jenv,scale_expr,math_rng,props):
 
 def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
     config = circ.config(block.name,loc)
+
     if expr.op == ops.OpType.CONST:
         if expr.tag == 'scf':
             return jop.JConst(expr.value)
@@ -448,23 +460,27 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
         # ranges are contained
         deriv_mrng = config.interval(port,expr.deriv_handle)
         deriv_hwrng = config.op_range(port,expr.deriv_handle)
+        prop = config.props(block,port,handle=expr.deriv_handle)
         bpgen_scaled_analog_interval_constraint(jenv, \
-                                         scvar_deriv,
-                                         deriv_mrng,
-                                         deriv_hwrng)
+                                                scvar_deriv,
+                                                deriv_mrng,
+                                                deriv_hwrng,
+                                                prop)
 
         st_mrng = config.interval(port,expr.handle)
         st_hwrng = config.op_range(port,expr.handle)
-
+        prop = config.props(block,port,handle=expr.handle)
         bpgen_scaled_analog_interval_constraint(jenv,scvar_state,\
-                                         st_mrng,\
-                                         st_hwrng)
+                                                st_mrng,\
+                                                st_hwrng,
+                                                prop)
 
         ic_mrng = config.interval(port,expr.ic_handle)
-
+        prop = config.props(block,port,handle=expr.ic_handle)
         bpgen_scaled_analog_interval_constraint(jenv,scvar_state, \
-                                         ic_mrng,
-                                         st_hwrng)
+                                                ic_mrng,
+                                                st_hwrng,
+                                                prop)
         # the handles for deriv and stvar are the same
         jenv.use_tau()
         return scvar_state
@@ -489,7 +505,6 @@ def bpgen_traverse_dynamics(jenv,circ,block,loc,out,expr):
     else:
         jenv.eq(scfvar,scexpr)
 
-    bpgen_scaled_analog_interval_constraint(jenv,scfvar,mrng,hwrng)
 
 def bpgen_scaled_digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):
     tau = jop.JVar(jenv.TAU)
@@ -563,7 +578,8 @@ def bp_generate_problem(jenv,prob,circ):
             scfvar = jop.JVar(jenv.get_scvar(block_name,loc,port))
             mbw = config.bandwidth(port)
             bpgen_scaled_analog_interval_constraint(jenv,scfvar, \
-                                                    mrng,hwrng)
+                                                    mrng,hwrng,
+                                                    properties)
             # make sure digital values are large enough to register.
             if isinstance(properties,props.DigitalProperties):
                 bpgen_scaled_digital_quantize_constraint(jenv,scfvar, \
@@ -576,7 +592,8 @@ def bp_generate_problem(jenv,prob,circ):
                 hwbw = properties.bandwidth()
                 print("%s,%s,%s" % (block_name,loc,port))
                 bpgen_scaled_analog_bandwidth_constraint(jenv,\
-                                                         circ,mbw,hwbw)
+                                                         circ, \
+                                                         mbw,hwbw)
 
     if not jenv.uses_tau():
         jenv.eq(jop.JVar(jenv.TAU), jop.JConst(1.0))

@@ -30,8 +30,9 @@ tile_out = Block('tile_out',type=BlockType.BUS) \
 .set_op("*","out",ops.Var("in")) \
 .set_props("*","*",["out","in"], \
           util.make_ana_props(chipcmd.RangeType.HIGH,\
-                         glb.ANALOG_MIN,
-                         glb.ANALOG_MAX)) \
+                              glb.ANALOG_MIN,
+                              glb.ANALOG_MAX,
+                              glb.ANALOG_MINSIG)) \
 .set_coeff("*","*","out",1.0) \
 .check()
 black_box_model_tile(tile_out)
@@ -42,8 +43,9 @@ tile_in = Block('tile_in',type=BlockType.BUS) \
 .set_op("*","out",ops.Var("in")) \
 .set_props("*","*",["out","in"], \
           util.make_ana_props(chipcmd.RangeType.HIGH,\
-                         glb.ANALOG_MIN,
-                         glb.ANALOG_MAX)) \
+                              glb.ANALOG_MIN,
+                              glb.ANALOG_MAX,
+                              glb.ANALOG_MINSIG)) \
 .set_coeff("*","*","out",1.0) \
 .check()
 black_box_model_tile(tile_in)
@@ -55,8 +57,9 @@ inv_conn = Block('conn_inv',type=BlockType.BUS) \
 .set_op("*","out",ops.Var("in")) \
 .set_props("*","*",["out","in"], \
           util.make_ana_props(chipcmd.RangeType.HIGH,\
-                         glb.ANALOG_MIN,
-                         glb.ANALOG_MAX)) \
+                              glb.ANALOG_MIN,
+                              glb.ANALOG_MAX,
+                              glb.ANALOG_MINSIG)) \
 .set_coeff("*","*","out",-1.0) \
 .check()
 black_box_model_cc(inv_conn)
@@ -68,12 +71,14 @@ chip_out = Block('chip_out',type=BlockType.BUS) \
 .set_op("*","out",ops.Var("in")) \
 .set_props("*","*",["out"], \
           util.make_ana_props(chipcmd.RangeType.MED,\
-                         glb.ANALOG_MIN,
-                         glb.ANALOG_MAX)) \
+                              glb.ANALOG_MIN,
+                              glb.ANALOG_MAX,
+                              glb.ANALOG_MINSIG)) \
 .set_props("*","*",["in"], \
           util.make_ana_props(chipcmd.RangeType.MED,\
-                         glb.ANALOG_MIN,
-                         glb.ANALOG_MAX)) \
+                              glb.ANALOG_MIN,
+                              glb.ANALOG_MAX,
+                              glb.ANALOG_MINSIG)) \
 .set_coeff("*","*","out",1.0) \
 .check()
 black_box_model_chip(chip_out)
@@ -84,12 +89,14 @@ chip_in = Block('chip_in',type=BlockType.BUS) \
 .set_op("*","out",ops.Var("in")) \
 .set_props("*","*",["in"], \
           util.make_ana_props(chipcmd.RangeType.MED,\
-                         glb.ANALOG_MIN,
-                         glb.ANALOG_MAX)) \
+                              glb.ANALOG_MIN,
+                              glb.ANALOG_MAX,
+                              glb.ANALOG_MINSIG)) \
 .set_props("*","*",["out"], \
           util.make_ana_props(chipcmd.RangeType.MED,\
-                         glb.ANALOG_MIN,
-                         glb.ANALOG_MAX)) \
+                              glb.ANALOG_MIN,
+                              glb.ANALOG_MAX,
+                              glb.ANALOG_MINSIG)) \
 .set_coeff("*","*","out",1.0) \
 .check()
 black_box_model_chip(chip_in)

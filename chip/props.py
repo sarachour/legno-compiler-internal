@@ -35,6 +35,7 @@ class AnalogProperties(Properties):
         Properties.__init__(self,Properties.ANALOG)
         self._bounds = (None,None,units.unknown)
         self._bandwidth = (None,None,units.unknown)
+        self._min = (None,units.unknown)
 
     def set_bandwidth(self,lower,upper,unit):
         assert(lower is None or upper is None or lower <= upper)
@@ -46,10 +47,16 @@ class AnalogProperties(Properties):
         self._bounds = (lower,upper,unit)
         return self
 
+    def set_min_signal(self,min_sig,units):
+        self._min = (min_sig,units)
+
+    def min_signal(self):
+        sig,unit = self._min
+        return sig
+
     def interval(self):
         lb,ub,unit = self._bounds
         return IRange(lb,ub)
-
 
     def bandwidth(self):
          lb,ub,unit = self._bandwidth
@@ -62,6 +69,8 @@ class AnalogProperties(Properties):
         assert(not self._bounds[0] is None)
         assert(not self._bounds[1] is None)
         assert(not self._bounds[1] is units.unknown)
+        assert(not self._min[0] is None)
+        assert(not self._min[1] is units.unknown)
 
 class DigitalProperties(Properties):
     class Type(Enum):

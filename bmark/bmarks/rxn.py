@@ -10,6 +10,12 @@ from bmark.bmarks.common import *
 import bmark.menvs as menvs
 
 
+#
+def model_dimer_mult():
+  raise NotImplementedError
+
+def model_dimer_lut():
+  raise NotImplementedError
 
 def model_dissoc():
   params = {

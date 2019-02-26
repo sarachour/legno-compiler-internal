@@ -11,12 +11,14 @@ def datapath(filename):
     return "chip/hcdc/data/%s" % filename
 
 
-def make_ana_props(rng,lb,ub):
+def make_ana_props(rng,lb,ub,min_sig):
     assert(lb < ub)
-    return props.AnalogProperties() \
+    prop = props.AnalogProperties() \
                 .set_interval(lb*rng.coeff(),
                               ub*rng.coeff(),
                               unit=units.uA)
+    prop.set_min_signal(min_sig,units.uA)
+    return prop
 
 def make_dig_props(rng,lb,ub,max_error,npts):
     start = lb*rng.coeff()
