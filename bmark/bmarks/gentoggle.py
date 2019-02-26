@@ -61,5 +61,22 @@ def V mag = [0,13.32] unit
 %def ddt V speed 1000 ms 
 '''
 
-def model(self):
+def model():
+  params = {
+    'a2': 15.6,
+    'a1': 156.25,
+    'K' : 0.000029618,
+    'nu': 2.0015,
+    'beta': 2.5,
+    'gamma': 1.0,
+    'U0': 0.0,
+    'V0': 0.0
+  }
+  def binding(rep_conc)
+  V = parse_diffeq("VTF+{kdeg}*(-V)","U0",":u", params)
+  prob.bind("V",V)
+  prob.set_interval("V",0,13.32)
+  U = parse_diffeq("UTF+{kdeg}*(-U)",'V0',":v", params)
+  prob.bind("U",U)
+  prob.set_interval("V",0,15.6)
   raise NotImplementedError

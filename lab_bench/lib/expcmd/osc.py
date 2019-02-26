@@ -167,7 +167,8 @@ class OscSetSimTimeCmd(Command):
                                OscSetSimTimeCmd)
 
 
-    def configure_oscilloscope(self,state,_time_sec,slack=0.05,extend=0.0):
+    def configure_oscilloscope(self,state,_time_sec,slack=0.00, \
+                               extend=1.0e-4):
         slack_sec = _time_sec*slack+extend
         frame_sec = _time_sec+slack_sec
         time_sec = _time_sec+slack_sec

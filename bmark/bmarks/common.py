@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 import os
+import tqdm
 
 def parse_fn(expr,params):
     expr_conc = expr.format(**params)
@@ -63,6 +64,7 @@ def plot_diffeq(menv,prob,T,Y):
 
   for series_name,values in Z.items():
     filepath = "%s/%s.png" % (filedir,series_name);
+    print(series_name,len(T),len(values))
     plt.plot(T,values,label=series_name)
     plt.savefig(filepath)
     plt.clf()
@@ -71,6 +73,7 @@ def run_diffeq(menv,prob):
   def dt_func(t,vs):
     return prob.next_deriv(menv,t,vs)
 
+  print("[run_diffeq] initializing")
   init_cond = prob.init_state(menv)
   time = menv.sim_time
   n = 1000.0*menv.sim_time
@@ -79,10 +82,13 @@ def run_diffeq(menv,prob):
   r.set_initial_value(init_cond,t=0.0)
   T = []
   Y = []
+  print("[run_diffeq] running")
+  with tqdm.tqdm(total=n) as prog:
+    while r.successful() and r.t < time:
+        T.append(r.t)
+        Y.append(r.y)
+        r.integrate(r.t + dt)
+        prog.update(int(r.t*1000))
 
-  while r.successful() and r.t < time:
-    T.append(r.t)
-    Y.append(r.y)
-    r.integrate(r.t + dt)
   return T,Y
 

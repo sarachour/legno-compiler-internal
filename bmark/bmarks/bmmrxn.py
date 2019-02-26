@@ -1,21 +1,31 @@
+if __name__ == "__main__":
+  import sys
+  import os
+  sys.path.insert(0,os.path.abspath("../../"))
 
-def benchmark_bmmrxn():
+from lang.prog import MathProg
+from ops import op, opparse
+from bmark.bmarks.common import *
+import math
+import bmark.menvs as menvs
+
+
+def model():
     prob = MathProg("bmmrxn")
     params = {
-        'E0' : 4.4,
-        'S0' : 6.4,
+        'E0' : 0.44,
+        'S0' : 0.64,
         'ES0' : 0.0,
         'P0' : 0.0,
         'kf' : 0.01,
         'kr' : 1.24,
-        'kd': 1e-3,
-        'krkd' : 1.24+1e-3
+        'kd': 1e-3
     }
-
-    E = parse_fn('{E0}-ES-P',params)
-    S = parse_fn('{S0}-ES-P',params)
-    ES = parse("{kf}*E*S - {krkd}*ES", "ES0", ":z", params)
-    P = parse("{kd}*ES","P0",":w", params)
+    params['krkd'] = params['kr'] + params['kd']
+    E = parse_fn('{E0}+(-ES)+(-P)',params)
+    S = parse_fn('{S0}+(-ES)+(-P)',params)
+    ES = parse_diffeq("{kf}*E*S + {krkd}*(-ES)", "ES0", ":z", params)
+    P = parse_diffeq("{kd}*ES","P0",":w", params)
     prob.bind("E",E)
     prob.bind("S",S)
     prob.bind("ES",ES)
@@ -25,7 +35,17 @@ def benchmark_bmmrxn():
     max_ES = min(params['E0'],params['S0'])
     prob.set_interval("ES",0,max_ES)
     prob.set_interval("P",0,max_ES)
-    prob.set_interval("enz-sub",0,max_ES)
-    prob.bind("enz-sub", op.Emit(op.Var("ES")))
+    prob.bind("COMPLEX", op.Emit(op.Var("ES")))
+    prob.set_max_sim_time(20)
     prob.compile()
-    return prob
+    menv = menvs.get_math_env('t20')
+    return menv,prob
+
+def execute():
+  menv,prob = model()
+  T,Y = run_diffeq(menv,prob)
+  plot_diffeq(menv,prob,T,Y)
+
+
+if __name__ == "__main__":
+  execute()
