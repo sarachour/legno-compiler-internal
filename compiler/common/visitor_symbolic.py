@@ -202,6 +202,10 @@ class ExpressionPropagator:
   def abs(self,m):
     raise NotImplementedError
 
+  def cos(self,m):
+    raise NotImplementedError
+
+
   def sin(self,m):
     raise NotImplementedError
 
@@ -252,6 +256,12 @@ class ExpressionPropagator:
       m1 = recurse(expr.arg(0))
       self.expr = expr
       return self.abs(m1)
+
+
+    elif expr.op == op.OpType.COS:
+      m1 = recurse(expr.arg(0))
+      self.expr = expr
+      return self.cos(m1)
 
 
     elif expr.op == op.OpType.SIN:
@@ -398,6 +408,19 @@ class MathPropagator(ExpressionPropagator):
       return nop.NMult([arg1,arg2])
     else:
       raise NotImplementedError("mksigexpr: not implemented: %s" % expr)
+
+  def cos(self,m):
+    # the smaller the magnitude of the signal
+    # the higher the chance of a flip is.
+    model = PiecewiseSymbolicModel()
+    for cstrs,u1,v1 in m.models():
+      u = u1
+      v = v1
+      idx = model.add_dist(u,v)
+      model.cstrs.add_all(idx,cstrs)
+
+    return model
+
 
   def sin(self,m):
     # the smaller the magnitude of the signal

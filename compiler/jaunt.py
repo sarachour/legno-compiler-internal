@@ -432,6 +432,12 @@ def bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr):
         new_expr = jop.expo(expr,0.5)
         return new_expr
 
+    elif expr.op == ops.OpType.COS:
+        expr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr.arg(0))
+        jenv.eq(expr, jop.JConst(1.0))
+        return jop.JConst(1.0)
+
+
     elif expr.op == ops.OpType.SIN:
         expr = bpgen_scvar_traverse_expr(jenv,circ,block,loc,port,expr.arg(0))
         jenv.eq(expr, jop.JConst(1.0))
@@ -656,6 +662,9 @@ def build_gpkit_problem(circ,jenv,jopt):
     for orig_lhs,orig_rhs in jenv.eqs():
         succ,lhs,rhs = cancel_signs(orig_lhs,orig_rhs)
         if not succ:
+            print("failed to cancel signs: %s,%s" \
+                  % (orig_lhs,orig_rhs))
+            input()
             failed = True
             continue
 
@@ -676,7 +685,8 @@ def build_gpkit_problem(circ,jenv,jopt):
     for cstr,msg in constraints:
         if isinstance(cstr,bool) or isinstance(cstr,np.bool_):
             if not cstr:
-                #print("[[false]]: %s" % (msg))
+                print("[[false]]: %s" % (msg))
+                input()
                 failed = True
             #else:
             #    print("[[true]]: %s" % (msg))
@@ -705,7 +715,7 @@ def solve_gpkit_problem_cvxopt(gpmodel,timeout=10):
     try:
         signal.signal(signal.SIGALRM, handle_timeout)
         signal.alarm(timeout)
-        sln = gpmodel.solve(solver='cvxopt',verbosity=2)
+        sln = gpmodel.solve(solver='cvxopt',verbosity=0)
         signal.alarm(0)
     except RuntimeWarning:
         signal.alarm(0)
@@ -728,7 +738,7 @@ def solve_gpkit_problem_mosek(gpmodel,timeout=10):
     try:
         signal.signal(signal.SIGALRM, handle_timeout)
         signal.alarm(timeout)
-        sln = gpmodel.solve(solver=CONFIG.GPKIT_SOLVER,verbosity=0)
+        sln = gpmodel.solve(solver=CONFIG.GPKIT_SOLVER,verbosity=2)
         signal.alarm(0)
     except TimeoutError as te:
         #print("Timeout: mosek timed out or hung")
@@ -836,7 +846,7 @@ def compute_best_sln(slns):
         return slns[idx]
 
 def debug_gpkit_problem(gpprob):
-    gpprob.debug()
+    gpprob.debug(solver='mosek_cli')
     input("continue?")
 
 def scale_circuit(prog,circ,methods,debug=True):
@@ -855,6 +865,7 @@ def scale_circuit(prog,circ,methods,debug=True):
             if sln is None:
                 #print("[[FAILURE - NO SLN]]")
                 jenv.set_solved(False)
+                #debug_gpkit_problem(gpprob)
                 continue
 
             elif not 'freevariables' in sln:

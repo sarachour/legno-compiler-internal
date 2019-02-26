@@ -410,7 +410,7 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
     in_no = hwenv.dac(handle)
     gren.add(parse('micro_set_dac_values %d %s %f %f' % \
                    (in_no,info['waveform'],\
-                    1.0/scaled_tc_s,
+                    scaled_tc_hz,
                     info['scf']
                    )
     ))

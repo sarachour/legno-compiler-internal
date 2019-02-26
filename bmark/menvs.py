@@ -48,6 +48,26 @@ def long_sin1():
   return exp
 
 
+def robot_env():
+  expr1 = op.Add(
+    op.Mult(op.Const(0.08), \
+            op.Sin(op.Mult(op.Const(0.1),op.Var('t')))),
+    op.UniformNoise(0.02)
+  )
+  expr2 = op.Add(
+    op.Mult(op.Const(0.06), \
+            op.Sin(op.Mult(op.Const(0.1),op.Var('t')))),
+    op.UniformNoise(0.04)
+  )
+
+  exp = MathEnv('robotenv')
+  exp.set_sim_time(200)
+  exp.set_input_time(200)
+  exp.set_input('I1',expr1)
+  exp.set_input('I2',expr2)
+  return exp
+
+
 def long_sin2():
   expr1 = op.Mult(op.Const(5.0), \
                  op.Sin(op.Mult(op.Const(0.01), op.Var('t'))))
@@ -72,7 +92,8 @@ MATH_ENVS = [
   medlong_time(),
   long_sin0(),
   long_sin1(),
-  long_sin2()
+  long_sin2(),
+  robot_env()
 ]
 
 def get_math_env(name):

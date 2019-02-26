@@ -43,5 +43,6 @@ def execute(name,omega):
 
 if __name__ == "__main__":
   execute("one",1.0)
-  execute("half",0.5)
-  execute("double",2.0)
+  execute("quarter",0.25)
+  execute("quad",4.0)
+1

@@ -20,7 +20,7 @@ def model():
     'X0': 0,
     'Y0': 0
   }
-  DEG = parse_diffeq('W', 'DEG0', ':t', params)
+  DEG = parse_diffeq('0.999999*W', 'DEG0', ':t', params)
   X = parse_diffeq('V*COS', 'X0',':u', params)
   Y = parse_diffeq('V*SIN', 'Y0',':v', params)
   prob.bind('DEG',DEG)
@@ -31,16 +31,23 @@ def model():
   prob.bind('SIN', op.Call([op.Var('DEG')], sin_fun))
   prob.bind('COS', op.Call([op.Var('DEG')], cos_fun))
   prob.bind('Rot', op.Emit(op.Var('Y')))
-  prob.set_interval("DEG",-2*math.pi,2*math.pi)
-  pos = 100
-  prob.set_interval("W",-0.1,0.1)
-  prob.set_interval("V",-1,1)
-  prob.set_bandwidth("V",10)
-  prob.set_bandwidth("W",10)
-  prob.set_interval("X",-pos,pos)
-  prob.set_interval("Y",-pos,pos)
+  pos = 1.0
+  xrng = 0.25
+  yrng = 0.25
+  degrng = 0.25
+  prob.set_interval("X",-xrng,xrng)
+  prob.set_interval("Y",-yrng,yrng)
+  prob.set_interval("DEG",-degrng,degrng)
+  # W
+  wrng = 0.1
+  vrng = 0.1
+  prob.set_interval("I1",-wrng,wrng)
+  prob.set_interval("I2",-vrng,vrng)
+  prob.set_bandwidth("I1",0.1)
+  prob.set_bandwidth("I2",0.1)
+  prob.set_max_sim_time(200)
   prob.compile()
-  menv = menvs.get_math_env('t2ksin2')
+  menv = menvs.get_math_env('robotenv')
   return menv,prob
 
 def execute():

@@ -3,6 +3,7 @@ import math
 import ops.interval as interval
 import ops.bandwidth as bandwidth
 from enum import Enum
+import numpy as np
 
 def to_python(e):
     if e.op == OpType.VAR:
@@ -11,6 +12,13 @@ def to_python(e):
 
     elif e.op == OpType.CONST:
         return [],"%.4e" % e.value
+
+    elif e.op == OpType.ADD:
+        vs1,a1 = to_python(e.arg1)
+        vs2,a2 = to_python(e.arg2)
+        v = list(set(vs1+vs2))
+        return v,"(%s)+(%s)" % (a1,a2)
+
 
     elif e.op == OpType.MULT:
         vs1,a1 = to_python(e.arg1)
@@ -21,6 +29,12 @@ def to_python(e):
     elif e.op == OpType.SGN:
         v,a = to_python(e.arg(0))
         return v,"math.copysign(1,%s)" % a
+
+    elif e.op == OpType.UNIFNOISE:
+        nmax = e.bound
+        nmin = -nmax
+        return [],"np.random.uniform(-%f,%f)" % (nmin,nmax)
+
 
     elif e.op == OpType.SIN:
         v,a = to_python(e.arg(0))
@@ -63,6 +77,7 @@ class OpType(Enum):
     LN= "ln"
     EXP= "exp"
     SQUARE= "pow2"
+    UNIFNOISE = "uniformnz"
 
 class Op:
 
@@ -940,11 +955,37 @@ class Cos(Op):
 
 
 
+class UniformNoise(Op):
+
+    def __init__(self,bound):
+        Op.__init__(self,OpType.UNIFNOISE,[])
+        self._bound = bound
+        pass
+
+    @property
+    def bound(self):
+        return self._bound
+
+    def compute(self,bindings):
+        # note: the closer to random noise it is, the harder
+        # it is to use a solver
+        np.random.seed(int(1*bindings['t']))
+        value = np.random.uniform(-self._bound,self._bound)
+        return value
+
+
+
+
 class Pow(Op):
 
     def __init__(self,arg1,arg2):
         Op.__init__(self,OpType.POW,[arg1,arg2])
         pass
+
+
+    def compute(self,bindings):
+        return math.sqrt(self.arg(0).compute(bindings))
+
 
 
 class Sqrt(Op):

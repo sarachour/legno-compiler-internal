@@ -183,6 +183,9 @@ class Interval:
             i2.lower*self.upper,
             i2.upper*self.upper
         ]
+        if i2.unbounded() or self.unbounded():
+            return IUnknown()
+
         lb = min(vals)
         ub = max(vals)
         return Interval.type_infer(lb,ub)

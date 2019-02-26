@@ -45,5 +45,6 @@ def uniform(master,index):
 
 def eval_func(fn,args):
     args['math'] = math
+    args['np'] = np
     args['random_uniform'] = uniform
     return eval(fn,args)
