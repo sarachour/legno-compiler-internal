@@ -5,7 +5,7 @@ from enum import Enum
 import util.config as config
 
 class PathHandler:
-    def __init__(self,name,bmark):
+    def __init__(self,name,bmark,make_dirs=True):
         self.set_root_dir(name,bmark)
         for path in [
             self.ROOT_DIR,
@@ -21,7 +21,7 @@ class PathHandler:
             self.GRENDEL_FILE_DIR,
             self.PLOT_DIR
         ]:
-          if not os.path.exists(path):
+          if make_dirs and not os.path.exists(path):
             os.makedirs(path)
 
         self._name = name
@@ -29,9 +29,7 @@ class PathHandler:
 
     def set_root_dir(self,name,bmark):
         self.ROOT_DIR = "%s/legno/%s" % (config.OUTPUT_PATH,name)
-        print("ROOT_DIR: %s" % self.ROOT_DIR)
         self.BMARK_DIR = self.ROOT_DIR + ("/%s" % bmark)
-        print("BMARK_DIR: %s" % self.BMARK_DIR)
         self.ABS_CIRC_DIR = self.BMARK_DIR + "/abs-circ"
         self.ABS_GRAPH_DIR = self.BMARK_DIR + "/abs-graph"
         self.CONC_CIRC_DIR = self.BMARK_DIR + "/conc-circ"

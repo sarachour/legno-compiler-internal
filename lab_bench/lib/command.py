@@ -62,6 +62,9 @@ COMMANDS = [
 
 
 def parse(line):
+    if line.startswith("#"):
+        return None
+
     args = line.strip().split()
     if len(args) == 0:
         return None

@@ -40,6 +40,9 @@ BMARKS = [
 ]
 
 # energy model: page 26 of thesis, chapter 2
+def get_names():
+    for _,bmark in BMARKS:
+        yield bmark.name
 
 def get_math_env(name):
     for menv,bmark in BMARKS:
