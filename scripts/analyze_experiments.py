@@ -94,10 +94,10 @@ def compute_params(conc_circ,varname):
 
 def mean_std_plot(entry,path_h,tag,t,mean,std):
 
-  UPPER = list(map(lambda a: a[0]+3.0*a[1],zip(mean,std)))
-  LOWER = list(map(lambda a: a[0]-3.0*a[1],zip(mean,std)))
-  plt.plot(t,UPPER,label='+std*3',color='red')
-  plt.plot(t,LOWER,label='-std*3',color='red')
+  UPPER = list(map(lambda a: a[0]+a[1],zip(mean,std)))
+  LOWER = list(map(lambda a: a[0]-a[1],zip(mean,std)))
+  plt.plot(t,UPPER,label='+std',color='red')
+  plt.plot(t,LOWER,label='-std',color='red')
   plt.plot(t,mean,label='mean',color='black')
   plt.legend()
   filename = path_h.plot(entry.bmark,
