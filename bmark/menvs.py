@@ -50,14 +50,14 @@ def long_sin1():
 
 def robot_env():
   expr1 = op.Add(
-    op.Mult(op.Const(0.08), \
+    op.Mult(op.Const(0.01), \
             op.Sin(op.Mult(op.Const(0.1),op.Var('t')))),
-    op.UniformNoise(0.02)
+    op.UniformNoise(0.09,period=200,seed=15)
   )
   expr2 = op.Add(
-    op.Mult(op.Const(0.06), \
+    op.Mult(op.Const(0.02), \
             op.Sin(op.Mult(op.Const(0.1),op.Var('t')))),
-    op.UniformNoise(0.04)
+    op.UniformNoise(0.08,period=200,seed=35)
   )
 
   exp = MathEnv('robotenv')

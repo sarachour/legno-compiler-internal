@@ -957,9 +957,18 @@ class Cos(Op):
 
 class UniformNoise(Op):
 
-    def __init__(self,bound):
+    def __init__(self,bound,frequency=0.01,period=1.0,seed=5):
         Op.__init__(self,OpType.UNIFNOISE,[])
         self._bound = bound
+        self._frequency = frequency
+        self._period = period
+        self._n = int(self._period/self._frequency)
+        np.random.seed(seed)
+        self._buf = list(map(lambda i: \
+                             np.random.uniform(-self._bound,
+                                               self._bound), \
+                             range(0,self._n)))
+
         pass
 
     @property
@@ -969,8 +978,9 @@ class UniformNoise(Op):
     def compute(self,bindings):
         # note: the closer to random noise it is, the harder
         # it is to use a solver
-        np.random.seed(int(1*bindings['t']))
-        value = np.random.uniform(-self._bound,self._bound)
+        t = bindings['t']
+        i = int((float(t)/self._frequency)) % self._n
+        value = self._buf[i]
         return value
 
 
