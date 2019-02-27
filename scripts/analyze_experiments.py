@@ -4,6 +4,7 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 import tqdm
+import math
 
 from scripts.db import ExperimentDB, ExperimentStatus, OutputStatus
 import lab_bench.lib.command as cmd
@@ -18,7 +19,7 @@ from bmark.bmarks.common import run_diffeq
 import util.paths as paths
 
 # FMAX: the maximum frequency in the transformed simulation
-def compute_running_snr(T,Y,FMAX,vscale=1.0,tscale=1.0):
+def compute_running_snr(T,Y,FMAX,vscale=1.0,tscale=1.0,nmax=100000):
   time_between_pts = np.mean(np.diff(T))
   HWFREQ = 1.0/time_between_pts
   SAMPFREQ = FMAX*tscale*2.0
@@ -27,7 +28,8 @@ def compute_running_snr(T,Y,FMAX,vscale=1.0,tscale=1.0):
   win_low = 0
   win_hi = win_size
   n = len(Y)
-  for i in tqdm.tqdm(range(0,n)):
+  step = int(round(n/nmax)) if nmax < n else 1
+  for i in tqdm.tqdm(range(0,n,step)):
     if win_hi - win_low + 1 < win_size:
       continue
     u = np.array(Y[win_low:win_hi+1])/vscale

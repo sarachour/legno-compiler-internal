@@ -28,7 +28,7 @@ if args.subparser_name == "scan":
   db = ExperimentDB()
   db.scan()
 
-elif args.subparse_name == 'run':
+elif args.subparser_name == 'run':
   runchip.execute()
 
 elif args.subparser_name == 'analyze':
