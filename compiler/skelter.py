@@ -22,6 +22,10 @@ def compute_snr(nz_eval,circ,block_name,loc,port):
   print("snr: %s" % snr)
   return snr
 
+def snr(circ,block_name,loc,port):
+  nz_eval = evaluator.propagated_noise_evaluator(circ)
+  return compute_snr(nz_eval,circ,block_name,loc,port)
+
 def rank(circ):
   score = 0
   nz_eval = evaluator.propagated_noise_evaluator(circ)

@@ -58,6 +58,10 @@ class OscGetValuesCmd(Command):
         self._chan_high = chan_high
         self._variable = variable
 
+    @property
+    def filename(self):
+        return self._filename
+
     @staticmethod
     def name():
         return 'osc_get_values'

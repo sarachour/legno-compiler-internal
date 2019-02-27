@@ -1,48 +1,35 @@
-from scripts.db import ExperimentDB, ExperimentStatus, OutputStatus
-import lab_bench.lib.command as cmd
-import lab_bench.lib.expcmd.micro_getter as microget
-import lab_bench.lib.expcmd.osc as osc
-import os
-import time
+import argparse
+import scripts.run_experiments as runchip
+import scripts.analyze_experiments as analyze
+from scripts.db import ExperimentDB
 
-def ping_user(email,benchmark,script_list):
-    msg = "benchmark=%s"
-    cmd = "mail -s \"job finished\" %s  <<< \"%s\"" % (email, msg)
-    os.system(cmd)
+parser = argparse.ArgumentParser(description='toplevel chip runner.')
 
-def execute_script(ip,script_file,native=False):
-    print(script_file)
-    if not ip is None:
-        exec_cmd = "python3 grendel.py --ip %s --script %s" % (ip,script_file)
-        exec_cmd += " --native" if native else ""
-    else:
-        exec_cmd = "python3 grendel.py --script %s" % (script_file)
-        exec_cmd += " --native" if native else ""
-
-    print(exec_cmd)
-    os.system(exec_cmd)
-    time.sleep(1)
-
-def detect_executed(entry):
-  for output in entry.outputs():
-    if os.path.isfile(output.out_file)  \
-       and output.status == OutputStatus.PENDING:
-      output.set_status(OutputStatus.RAN)
+subparsers = parser.add_subparsers(dest='subparser_name',
+                                   help='compilers/compilation passes.')
 
 
-  not_done = any(map(lambda out: out.status == OutputStatus.PENDING, \
-                     entry.outputs()))
-  if not not_done:
-    entry.set_status(ExperimentStatus.RAN)
-  return not not_done
+scan_subp = subparsers.add_parser('scan', help='scan for new grendel scripts')
 
-db = ExperimentDB()
-db.scan()
-ip = "128.30.70.218"
-native = False
-for entry in db.get_by_status(ExperimentStatus.PENDING):
-  print(entry)
-  if not detect_executed(entry):
-    execute_script(ip,entry.grendel_file,native=native)
+run_subp = subparsers.add_parser('run', help='run any pending grendel scripts')
+run_subp.add_argument('--ip', type=str,
+                       help='oscilloscope ip.')
+run_subp.add_argument('--email', type=str,
+                       help='email address.')
+run_subp.add_argument('--native', action='store_true',
+                       help='use ttyACM0.')
 
-  detect_executed(entry)
+analyze_subp = subparsers.add_parser('analyze', help='run any pending grendel scripts')
+
+args = parser.parse_args()
+
+
+if args.subparser_name == "scan":
+  db = ExperimentDB()
+  db.scan()
+
+elif args.subparse_name == 'run':
+  runchip.execute()
+
+elif args.subparser_name == 'analyze':
+  analyze.execute()

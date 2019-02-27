@@ -61,6 +61,45 @@ class OutputEntry:
     self._modif = None
 
   @property
+  def rank(self):
+    return self._rank
+
+
+  @property
+  def quality(self):
+    return self._quality
+
+
+  @property
+  def bmark(self):
+    return self._bmark
+
+  @property
+  def objective_fun(self):
+    return self._bmark
+
+  @property
+  def arco_indices(self):
+    return self._arco_indices
+
+  @property
+  def jaunt_index(self):
+    return self._jaunt_index
+
+  @property
+  def hw_env(self):
+    return self._hw_env
+
+  @property
+  def math_env(self):
+    return self._math_env
+
+
+  @property
+  def varname(self):
+    return self._varname
+
+  @property
   def status(self):
     return self._status
 
@@ -82,8 +121,9 @@ class OutputEntry:
       varname=args['varname']
     )
 
-    entry._out_file,=args['out_file'],
-    entry._quality=args['quality'],
+    entry._out_file=args['out_file']
+    entry._quality=args['quality']
+    entry._rank=args['rank']
     entry._status=OutputStatus(args['status'])
     entry._modif=args['modif']
     return entry
@@ -105,12 +145,23 @@ class OutputEntry:
     self._status = new_status
 
 
+  def set_rank(self,new_rank):
+    self.update_db({'rank':new_rank})
+    self._rank = new_rank
+
+  def set_quality(self,new_quality):
+    print(new_quality)
+    self.update_db({'quality':new_quality})
+    self._quality = new_quality
+
+
 
   def __repr__(self):
     s = "{\n"
-    s += "ident=%s(%s,%s,%s,%s).%s\n" % (self._bmark,
+    s += "ident=%s(%s,%s,%s,%s,%s).%s\n" % (self._bmark,
                                          self._arco_indices,
                                          self._jaunt_index,
+                                         self._objective_fun,
                                          self._math_env,
                                          self._hw_env,
                                          self._varname)
@@ -134,7 +185,8 @@ class ExperimentEntry:
     self._math_env = math_env
     self._hw_env = hw_env
     self._grendel_file = None
-    self._conc_circ_file = None
+    self._jaunt_circ_file = None
+    self._skelt_circ_file = None
     self._rank= None
     self._energy= None
     self._runtime= None
@@ -142,8 +194,43 @@ class ExperimentEntry:
     self._db = db
 
   @property
-  def conc_circ_file(self):
+  def rank(self):
+    return self._rank
+
+
+  @property
+  def runtime(self):
+    return self._runtime
+
+
+  @property
+  def quality(self):
+    return self._quality
+
+  @property
+  def bmark(self):
+    return self._bmark
+
+
+  @property
+  def math_env(self):
+    return self._math_env
+
+
+  @property
+  def skelt_circ_file(self):
     return self._conc_circ_file
+
+
+
+  @property
+  def skelt_circ_file(self):
+    return self._skelt_circ_file
+
+
+  @property
+  def jaunt_circ_file(self):
+    return self._jaunt_circ_file
 
   @property
   def grendel_file(self):
@@ -172,6 +259,19 @@ class ExperimentEntry:
     self.update_db({'status':new_status.value})
     self._status = new_status
 
+  def set_rank(self,new_rank):
+    self.update_db({'rank':new_rank})
+    self._rank = new_rank
+
+  def set_quality(self,new_quality):
+    print(new_quality)
+    self.update_db({'quality':new_quality})
+    self._quality = new_quality
+
+  def set_runtime(self,new_runtime):
+    self.update_db({'runtime':new_runtime})
+    self._runtime = new_runtime
+
   def get_outputs(self):
     self._db.get_outputs(self._bmark, \
                          self._arco_indices,
@@ -194,10 +294,11 @@ class ExperimentEntry:
     )
 
     entry._grendel_file,=args['grendel_file'],
-    entry._conc_circ_file,=args['conc_circ_file'],
-    entry._rank=args['rank'],
-    entry._quality=args['quality'],
-    entry._energy=args['energy'],
+    entry._jaunt_circ_file,=args['jaunt_circ_file'],
+    entry._skelt_circ_file,=args['skelt_circ_file'],
+    entry._rank=args['rank']
+    entry._quality=args['quality']
+    entry._energy=args['energy']
     entry._runtime=args['runtime']
     entry._status=ExperimentStatus(args['status'])
     entry._modif = args['modif']
@@ -205,14 +306,16 @@ class ExperimentEntry:
 
   def __repr__(self):
     s = "{\n"
-    s += "ident=%s(%s,%s,%s,%s)\n" % (self._bmark,
+    s += "ident=%s(%s,%s,%s,%s,%s)\n" % (self._bmark,
                                       self._arco_indices,
                                       self._jaunt_index,
+                                      self._objective_fun,
                                       self._math_env,
                                       self._hw_env)
     s += "status=%s\n" % (self._status.value)
     s += "grendel_file=%s\n" % (self._grendel_file)
-    s += "conc_circ=%s\n" % (self._conc_circ_file)
+    s += "skelt_circ=%s\n" % (self._skelt_circ_file)
+    s += "jaunt_circ=%s\n" % (self._jaunt_circ_file)
     s += "rank=%s\n" % (self._rank)
     s += "energy=%s\n" % (self._energy)
     s += "runtime=%s\n" % (self._runtime)
@@ -241,7 +344,8 @@ class ExperimentDB:
               menv text NOT NULL,
               hwenv text NOT NULL,
               grendel_file text,
-              conc_circ_file text,
+              jaunt_circ_file text,
+              skelt_circ_file text,
               rank real,
               quality real,
               energy real,
@@ -255,7 +359,8 @@ class ExperimentDB:
                               'arco1','arco2', \
                               'arco3','jaunt','opt','menv','hwenv',
                               'grendel_file', \
-                              'conc_circ_file','rank','quality', \
+                              'jaunt_circ_file',
+                              'skelt_circ_file','rank','quality', \
                               'energy','runtime']
 
     self._experiment_modifiable =  \
@@ -275,6 +380,7 @@ class ExperimentDB:
     hwenv text NOT NULL,
     varname text NOT NULL,
     out_file text,
+    rank real,
     quality real,
     modif timestamp,
     PRIMARY KEY (bmark,arco0,arco1,arco2,arco3,jaunt,
@@ -288,9 +394,9 @@ class ExperimentDB:
                           'arco1','arco2', \
                           'arco3','jaunt','opt','menv','hwenv',
                           'varname','out_file', \
-                          'quality','modif']
+                          'rank','quality','modif']
 
-    self._output_modifiable = ['quality','modif','status']
+    self._output_modifiable = ['quality','modif','status','rank']
     self._curs.execute(cmd)
     self._conn.commit()
 
@@ -298,10 +404,7 @@ class ExperimentDB:
   def _get_output_rows(self,where_clause):
     cmd = '''SELECT * FROM outputs {where_clause}'''
     conc_cmd = cmd.format(where_clause=where_clause)
-    print(conc_cmd)
     for values in list(self._curs.execute(conc_cmd)):
-      print(values)
-      print(self._output_order)
       assert(len(values) == len(self._output_order))
       args = dict(zip(self._output_order,values))
       yield OutputEntry.from_db_row(self,args)
@@ -464,12 +567,14 @@ class ExperimentDB:
       cmd = '''
       INSERT INTO experiments (
          bmark,arco0,arco1,arco2,arco3,jaunt,
-         opt,menv,hwenv,conc_circ_file,grendel_file,status,modif
+         opt,menv,hwenv,jaunt_circ_file,skelt_circ_file,
+         grendel_file,status,modif
       ) VALUES
       (
          "{bmark}",{arco0},{arco1},{arco2},{arco3},{jaunt},
          "{opt}","{menv}","{hwenv}",
          "{conc_circ}",
+         "{skelt_circ}",
          "{grendel_file}",
          "{status}",
          "{modif}"
@@ -486,6 +591,10 @@ class ExperimentDB:
       args['conc_circ'] = path_handler.conc_circ_file(bmark,arco_inds, \
                                                     jaunt_inds,
                                                     opt)
+      args['skelt_circ'] = path_handler.skelt_circ_file(bmark,arco_inds, \
+                                                    jaunt_inds,
+                                                    opt)
+
 
       conc_cmd = cmd.format(**args)
       self._curs.execute(conc_cmd)
