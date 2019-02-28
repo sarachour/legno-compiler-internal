@@ -89,13 +89,12 @@ basename = filename.split(".")[0]
 
 raw_data = common.load_raw_data(filename)
 data = common.process_raw_data(raw_data)
-max_n = 1
 print("=== Fit Data ===")
 X = raw_data['freqs']
 
 method = 'posy'
 if method == 'posy':
-    model = common.compute_posy(basename,X,data,n=max_n)
+    model = common.compute_posy_nobreaks(basename,X,data)
 else:
     raise Exception("unimpl")
 

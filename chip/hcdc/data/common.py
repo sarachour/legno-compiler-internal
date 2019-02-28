@@ -40,6 +40,29 @@ def load_raw_data(filename):
 
   return raw_data
 
+def max_data(data,key):
+  newdata = [0]*len(data[key])
+  for i in range(0,len(data[key])):
+    newdata[i] = max(data[key][0:i+1])
+
+  data[key] = newdata
+
+
+def average_data(data,key):
+  newdata = [0]*len(data[key])
+  for i in range(0,len(data[key])):
+    newdata[i] = sum(data[key][0:i+1])/(i+1)
+
+  data[key] = newdata
+
+
+def integrate_data(data,key):
+  newdata = [0]*len(data[key])
+  for i in range(0,len(data[key])):
+    newdata[i] = sum(data[key][0:i+1])
+
+  data[key] = newdata
+
 def process_raw_data(raw_data):
   data = {
     'ampl_bias_indep': [],
@@ -75,6 +98,12 @@ def process_raw_data(raw_data):
     data['delay_mean'].append(delay_mu)
     data['delay_std'].append(delay_std)
 
+  integrate_data(data,'ampl_noise_indep')
+  integrate_data(data,'ampl_noise_dep')
+  average_data(data,'ampl_bias_indep')
+  average_data(data,'ampl_bias_dep')
+  max_data(data,'delay_mean')
+  max_data(data,'delay_std')
   return data
 
 
@@ -90,6 +119,17 @@ def plot_pwl(name,X,Y,model):
 def breaks_posy(fmax,f,n):
   divs = np.linspace(0,fmax,n+1)[:-1]
   return divs
+
+def predict_posy(pdict,f):
+  get = lambda name : pdict[name]
+  x,y = get('x'),get('y')
+  u,v = get('u'),get('v')
+  w = get('w')
+
+  value = x*(f**u) + y*(f**(-1*v)) + w
+  return value
+
+
 
 def predict_pw_posy(pdict,maxf,f,n):
   divs = breaks_posy(maxf,n)
@@ -125,19 +165,27 @@ def predict_pw_posy(pdict,maxf,f,n):
   y += compute_last(f,n-1)
   return y
 
-def plot_posy(name,X,Y,model,n):
-  YH = list(map(lambda x: predict_posy(model,max(X),x,n), X))
+def plot_posy(name,X,Y,model):
+  YH = list(map(lambda x: predict_posy(model,x), X))
   plt.scatter(X,Y,label='data')
   plt.plot(X,YH,label='fit')
   plt.savefig(name)
   plt.clf()
 
-def compute_posy_noseg(prefix,X,data):
+
+def plot_pw_posy(name,X,Y,model,n):
+  YH = list(map(lambda x: predict_pw_posy(model,max(X),x,n), X))
+  plt.scatter(X,Y,label='data')
+  plt.plot(X,YH,label='fit')
+  plt.savefig(name)
+  plt.clf()
+
+def compute_posy_nobreaks(prefix,X,data):
   init_conds = []
   params = []
   lb,ub= [],[]
   unk = (-np.inf,np.inf)
-  params = ['x,y,v,u,w']
+  params = ['x','y','v','u','w']
   vmin = 1e-6
   vmax = 2
   cmax = 100.0
@@ -156,7 +204,7 @@ def compute_posy_noseg(prefix,X,data):
 
   def posy_fit(f,*pvals):
     pdict = dict(zip(params,pvals))
-    return predict_posy(pdict,max(f),f,n)
+    return predict_posy(pdict,f)
 
 
   pwls = {}
@@ -169,19 +217,17 @@ def compute_posy_noseg(prefix,X,data):
                                               bounds=(lb,ub))
 
      model = dict(zip(params,popt_pw))
-     plot_posy('%s_%s.png' % (prefix,field), X, Y, model, n)
+     plot_posy('%s_%s.png' % (prefix,field), X, Y, model)
 
      pwls[field] = {
-       'x': list(map(lambda i: model['x[%d]'%i],range(0,n))),
-       'y': list(map(lambda i: model['y[%d]'%i],range(0,n))),
-       'u': list(map(lambda i: model['u[%d]'%i],range(0,n))),
-       'v': list(map(lambda i: model['v[%d]'%i],range(0,n))),
-       'w': list(map(lambda i: model['w[%d]'%i],range(0,n)))
+       'x': [model['x']],
+       'y': [model['y']],
+       'u': [model['u']],
+       'v': [model['v']],
+       'w': [model['w']]
      }
 
-  breaks = list(breaks_posy(max(X),n)[1:]*model['bsc'])
-  breaks.append(max(breaks)*2)
-  pwls['breaks'] = breaks
+  pwls['breaks'] = []
   return pwls
 
 def compute_posy(prefix,X,data,n=5,extern_breaks=None):
@@ -229,7 +275,7 @@ def compute_posy(prefix,X,data,n=5,extern_breaks=None):
                                               bounds=(lb,ub))
 
      model = dict(zip(params,popt_pw))
-     plot_posy('%s_%s.png' % (prefix,field), X, Y, model, n)
+     plot_pw_posy('%s_%s.png' % (prefix,field), X, Y, model, n)
 
      pwls[field] = {
        'x': list(map(lambda i: model['x[%d]'%i],range(0,n))),
