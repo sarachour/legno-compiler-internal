@@ -24,6 +24,10 @@ class NOp:
     def mult_hash(self):
       raise Exception("no mult_hash: %s" % self)
 
+    def _test_constant(self,v):
+      if v.unbounded():
+        raise Exception("infinite: %s" % self)
+
     def is_zero(self):
       return False
 
@@ -88,7 +92,7 @@ class NOp:
       else:
         raise Exception("unknown: %s" % obj)
 
-    def compute(self,freqs,intervals,integral=False):
+    def compute(self,freqs,intervals):
       raise Exception("not-implemented [compute]: %s" % self)
 
 
@@ -214,12 +218,14 @@ class NRef(NVar):
     self._value = ref_dict[key]
     assert(isinstance(self._value, NOp))
 
-  def compute(self,freqs,intervals,integral=False):
+  def compute(self,freqs,intervals):
     if self._value is None:
       raise Exception("[error] cannot directly compute ref.")
     else:
       assert(self.power == 1.0)
-      return self._value.compute(freqs,intervals,integral)
+      result = self._value.compute(freqs,intervals)
+      self._test_constant(result)
+      return result
 
   def copy(self):
     return NVar.copy(self,NRef(self._port))
@@ -238,11 +244,12 @@ class NRef(NVar):
 
 
 class NFreq(NVar):
+  FMAX = 1e8
 
   def __init__(self,port,power=1.0,block=None,loc=None):
     NVar.__init__(self,NOpType.FREQ,port,power,block,loc)
 
-  def compute(self,freqs,intervals,integral=False):
+  def compute(self,freqs,intervals):
     block,loc = self.instance
     if block is None or loc is None:
       label = self._port
@@ -252,17 +259,13 @@ class NFreq(NVar):
     if not label in freqs:
       raise Exception("not bound: %s, %s" % (label,freqs.keys()))
 
-    if not integral:
-      value = freqs[label].bandwidth**self.power
-      return interval.Interval.type_infer(0.0, \
+    value = freqs[label].bandwidth**self.power
+    if value == float('inf'):
+      value = NFreq.FMAX
+    result = interval.Interval.type_infer(value, \
                                           value)
-    else:
-      diff = freqs[label].upper-freqs[label].lower
-      if diff == 0.0:
-        return interval.Interval.type_infer(0.0,0.0)
-      else:
-        value = diff**(self.power+1.0)*1/(self.power+1.0)
-        return interval.Interval.type_infer(0.0,value)
+    self._test_constant(result)
+    return result
 
   def copy(self):
     return NVar.copy(self,NFreq(self._port))
@@ -293,7 +296,7 @@ class NSig(NVar):
   def __init__(self,port,power=1.0,block=None,loc=None):
     NVar.__init__(self,NOpType.SIG,port,power,block,loc)
 
-  def compute(self,freqs,intervals,integral=False):
+  def compute(self,freqs,intervals):
     block,loc = self.instance
     if block is None or loc is None:
       label = self._port
@@ -304,7 +307,9 @@ class NSig(NVar):
       raise Exception("unbound interval: %s" % label)
 
     ival = intervals[label]
-    return ival.power(self.power)
+    result = ival.power(self.power)
+    self._test_constant(result)
+    return result
 
   @staticmethod
   def from_json(obj):
@@ -402,9 +407,11 @@ class NConstRV(NOp):
     var += cov
     return NConstRV(mu,math.sqrt(var))
 
-  def compute(self,freqs,intervals,integral=False):
-    return interval.Interval.type_infer(self.mu-self.sigma*3,\
+  def compute(self,freqs,intervals):
+    result = interval.Interval.type_infer(self.mu-self.sigma*3,\
                                         self.mu+self.sigma*3)
+    self._test_constant(result)
+    return result
 
 
   def __repr__(self):
@@ -468,10 +475,12 @@ class NMult(NOp):
 
     return NMult(new_terms)
 
-  def compute(self,freqs,intervals,integral=False):
+  def compute(self,freqs,intervals):
     result = interval.Interval.type_infer(1.0,1.0)
     for arg in self.args():
-      result = result.mult(arg.compute(freqs,intervals,integral))
+      result = result.mult(arg.compute(freqs,intervals))
+
+    self._test_constant(result)
     return result
 
 
@@ -561,6 +570,7 @@ class NSelect(NOp):
            value.lower > result.lower:
         result = value
 
+    self._test_constant(result)
     return result
 
 
@@ -584,11 +594,12 @@ class NSelect(NOp):
            value.lower > result.lower:
         result = value
 
+    self._test_constant(result)
     return result
 
-  def compute(self,freqs,intervals,integral=False):
+  def compute(self,freqs,intervals):
     values = list(map(lambda arg: \
-                      arg.compute(freqs,intervals,integral),
+                      arg.compute(freqs,intervals),
                       self.args()))
     if self._mode == NSelect.Mode.MAX:
       return self.compute_max(values)
@@ -625,11 +636,12 @@ class NAdd(NOp):
 
     NOp.__init__(self,NOpType.ADD,args)
 
-  def compute(self,freqs,intervals,integral=False):
+  def compute(self,freqs,intervals):
     result = interval.Interval.type_infer(0,0)
     for arg in self.args():
-      result = result.add(arg.compute(freqs,intervals,integral=integral))
+      result = result.add(arg.compute(freqs,intervals))
 
+    self._test_constant(result)
     return result
 
   def exponent(self,p):

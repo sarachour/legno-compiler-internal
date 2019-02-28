@@ -49,7 +49,7 @@ class Evaluator:
       port = var.port
       if var.op == nop.NOpType.FREQ:
         bw = self.freq(block,inst,port)
-        freq_dict[(block,inst,port)] = interval.Interval.type_infer(bw.fmax,bw.fmax)
+        freq_dict[(block,inst,port)] = bw
 
       elif var.op == nop.NOpType.SIG:
         interval_dict[(block,inst,port)] = self.interval(block,inst,port)
@@ -68,7 +68,9 @@ class Evaluator:
     expr.concretize(ref_dict)
     # test to see if this is in range.
     result = expr.compute(freq_dict, \
-                          interval_dict,integral=True)
+                          interval_dict)
+    if result.unbounded():
+      raise Exception("unbounded: %s" % result)
     assert(not result is None)
     return result
 
@@ -83,22 +85,15 @@ class Evaluator:
       self._config_func(model)
 
     freq = self.freq(block_name,loc,port).fmax
-    res_variance,res_mean = None,None
     mean,variance = model.mean,model.variance
     this_mean = self.evaluate_expr(block_name,loc,port, \
                                    mean,'mean')
     this_variance = self.evaluate_expr(block_name,loc,port, \
                                        variance,'variance')
 
-    assert(res_mean is None)
-    assert(res_variance is None)
     res_mean = this_mean
     res_variance = this_variance
 
-    if res_mean is None or res_variance is None:
-      print("FREQ: %s" % freq)
-
-      raise Exception("could not find segment")
     fmax = self.freq(block_name,loc,port).bandwidth
     fmax = 1.0 if fmax == 0.0 else fmax
     self.set_reference(block_name,loc,port,'mean',

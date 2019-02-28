@@ -29,7 +29,6 @@ for entry in db.get_all():
     ranks[ser].append(entry.rank)
     qualities[ser].append(entry.quality)
     times[ser].append(math.log(entry.runtime))
-    print("%s.%s=%s emp=%s" % (bmark,opt,entry.rank,entry.quality))
     best_quality[bmark][opt] = entry.quality
 
 for bmark in bmarks:
@@ -37,15 +36,10 @@ for bmark in bmarks:
     continue
 
   res = max(list(best_quality[bmark].items()),key=lambda a: a[1])
-  print("%s: %s" % (bmark,str(res)))
-  print("  %s" % str(best_quality[bmark]))
 
 for ser in series:
   coeff = np.corrcoef(ranks[ser],qualities[ser])
-  print("ranks:\n%s" % ranks[ser])
-  print("qualities:\n%s" % qualities[ser])
-  print("[%s] correlation:\n%s" % (ser,coeff))
-  input()
+  print("[%s] correlation:\n%s\n" % (ser,coeff))
   plt.scatter(ranks[ser],qualities[ser],label=ser)
 
 plt.legend()
