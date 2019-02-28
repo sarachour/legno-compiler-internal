@@ -213,6 +213,11 @@ class ExperimentEntry:
 
 
   @property
+  def objective_fun(self):
+    return self._objective_fun
+
+
+  @property
   def math_env(self):
     return self._math_env
 
