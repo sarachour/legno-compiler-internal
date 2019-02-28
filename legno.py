@@ -43,7 +43,10 @@ jaunt_subp.add_argument('--scale-circuits', type=int,default=15,
 
 
 skelt_subp = subparsers.add_parser('skelter', help='perform noise analysis')
-skelt_subp = subparsers.add_parser('graph', help='perform noise analysis')
+skelt_subp.add_argument('--recompute', action='store_true',
+                       help='recompute skelter.')
+
+graph_subp = subparsers.add_parser('graph', help='generate graphs for noise analysis')
 
 
 scriptgen_subp = subparsers.add_parser('scriptgen', help='generate grendel scripts')

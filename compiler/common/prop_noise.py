@@ -16,7 +16,8 @@ class PropNoiseVisitor(SymbolicInferenceVisitor):
                                       MathPropagator)
 
   def get_generate_expr(self,stump):
-    return stump.noise
+    #return stump.noise
+    return nop.NConstRV(0.0,0.01)
 
   def get_propagate_model(self,block_name,loc,port):
     config = self._circ.config(block_name,loc)
@@ -25,7 +26,9 @@ class PropNoiseVisitor(SymbolicInferenceVisitor):
 
   def get_generate_model(self,block_name,loc,port):
     config = self._circ.config(block_name,loc)
-    return config.generated_noise(port)
+    gen_nz = config.generated_noise(port)
+    return gen_nz
+
 
   def set_propagate_model(self,block_name,loc,port,gen_model):
     config = self._circ.config(block_name,loc)
@@ -33,6 +36,8 @@ class PropNoiseVisitor(SymbolicInferenceVisitor):
 
 
   def set_generate_model(self,block_name,loc,port,gen_model):
+    #print("%s[%s].%s = %s" % (block_name,loc,port,gen_model))
+    #input()
     config = self._circ.config(block_name,loc)
     config.set_generated_noise(port,gen_model)
 

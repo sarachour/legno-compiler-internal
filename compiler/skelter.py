@@ -39,6 +39,10 @@ def rank(circ):
 
   return score
 
+def clear(circ):
+  for _,_,config in circ.instances():
+    config.clear_physical_model()
+
 def execute(circ):
   print("<< compute noise >>")
   prop_noise.compute(circ)

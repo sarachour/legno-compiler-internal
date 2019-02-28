@@ -7,7 +7,7 @@ db = ExperimentDB()
 bmarks = ['micro-osc-quarter','micro-osc-quad','micro-osc-one', \
           'spring','vanderpol','pend','cosc']
 opts = ['fast','slow','max','maxstab']
-series = opts
+series = bmarks
 qualities = dict(map(lambda opt: (opt,[]), series))
 ranks = dict(map(lambda opt: (opt,[]), series))
 times = dict(map(lambda opt: (opt,[]), series))
@@ -23,13 +23,13 @@ for entry in db.get_all():
   if not entry.quality is None and \
      not entry.runtime is None and \
      not entry.rank is None:
-    print(str(entry).split('\n')[1])
     bmark = entry.bmark
     opt = entry.objective_fun
-    ser = opt
+    ser = bmark
     ranks[ser].append(entry.rank)
     qualities[ser].append(entry.quality)
     times[ser].append(math.log(entry.runtime))
+    print("%s.%s=%s emp=%s" % (bmark,opt,entry.rank,entry.quality))
     best_quality[bmark][opt] = entry.quality
 
 for bmark in bmarks:

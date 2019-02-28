@@ -1,3 +1,3 @@
 
 BMARK=$1
-python3 legno.py $BMARK skelter
+python3 legno.py $BMARK skelter --recompute

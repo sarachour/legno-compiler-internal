@@ -289,10 +289,6 @@ class SymbolicInferenceVisitor(Visitor):
 
   def get_generate_model(self,block_name,loc,port):
     raise NotImplementedError
-    config = self.circ.config(block_name,loc,port)
-    gen = config.generated_noise(block_name,loc,port)
-    prop = config.propagated_noise(block_name,loc,port)
-    return gen,prop
 
   def set_generate_model(self,block_name,loc,port,model):
     raise NotImplementedError

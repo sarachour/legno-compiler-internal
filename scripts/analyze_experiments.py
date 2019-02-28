@@ -13,6 +13,8 @@ import lab_bench.lib.expcmd.osc as osc
 from chip.conc import ConcCirc
 from chip.hcdc.hcdcv2_4 import board as hdacv2_board
 import compiler.skelter as skelter
+import compiler.common.gen_phys as gnlib
+import compiler.common.prop_noise as pnlib
 import bmark.diffeqs as diffeqs
 import bmark.menvs as menvs
 from bmark.bmarks.common import run_diffeq
@@ -88,6 +90,7 @@ def compute_params(conc_circ,varname):
   scf = cfg.scf(port)
   bw = cfg.bandwidth(port)
   tc = (conc_circ.board.time_constant)*(conc_circ.tau)
+  pnlib.compute(conc_circ)
   snr = skelter.snr(conc_circ,block_name,loc,port)
   return snr,bw.bandwidth,tc,scf
 
@@ -160,13 +163,15 @@ def analyze_quality(entry,conc_circ):
 def execute():
   db = ExperimentDB()
   for entry in db.get_by_status(ExperimentStatus.RAN):
+    conc_circ = ConcCirc.read(hdacv2_board,entry.skelt_circ_file)
+    analyze_rank(entry,conc_circ)
     if not entry.runtime is None \
       and not entry.quality is None \
       and not entry.rank is None:
       continue
 
-    print(entry)
     conc_circ = ConcCirc.read(hdacv2_board,entry.skelt_circ_file)
+    print(entry)
 
     if entry.runtime is None:
       runtime = compute_runtime(conc_circ,entry.math_env)

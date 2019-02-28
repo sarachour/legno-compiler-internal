@@ -154,60 +154,6 @@ def exec_srcgen(hdacv2_board,args):
                                       filename=filename)
           gren_file.write(filename)
 
-def exec_scriptgen(hdacv2_board,args):
-  path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
-  menv = bmark.get_math_env(args.benchmark)
-  hwenv = args.hw_env
-  scores = []
-  filenames = []
-  circ_dir = path_handler.skelt_circ_dir()
-  for dirname, subdirlist, filelist in os.walk(circ_dir):
-      for fname in filelist:
-          if fname.endswith('.circ'):
-              print('<<<< %s >>>>' % fname)
-              with open("%s/%s" % (dirname,fname),'r') as fh:
-                  obj = json.loads(fh.read())
-                  conc_circ = ConcCirc.from_json(hdacv2_board, \
-                                                obj)
-                  score = skelter.rank(conc_circ)
-                  scores.append(score)
-                  filenames.append(fname)
-
-  sorted_indices = np.argsort(scores)
-  script_file = "rank_%s.txt" % args.benchmark
-  with open(script_file,'w') as fh:
-      for ind in sorted_indices:
-          line = "%s,%s\n" % (scores[ind], filenames[ind])
-          fh.write("%s\n" % line)
-
-  subinds = np.random.choice(sorted_indices,15)
-  subscores = list(map(lambda i: scores[i], subinds))
-  sorted_subinds = map(lambda i: subinds[i], np.argsort(subscores)[::-1])
-  sorted_indices = np.argsort(scores)
-
-  files = []
-  for ind in sorted_subinds:
-      score = scores[ind]
-      conc_filename = filenames[ind]
-      circ_bmark,circ_indices,circ_scale_index,opt = \
-              path_handler.conc_circ_to_args(conc_filename)
-      gren_filename = path_handler.grendel_file(circ_bmark, \
-                                                  circ_indices, \
-                                                  circ_scale_index, \
-                                                  opt, \
-                                                  menv.name,
-                                                  hwenv)
-      if not (path_handler.has_file(gren_filename)):
-          raise Exception("no file: %s" % gren_filename)
-
-      files.append((gren_filename,score))
-
-  script_file = "batch_%s.grendel-list" % args.benchmark
-  with open(script_file,'w') as fh:
-      for filename,score in files:
-          fh.write("# %f\n" % score)
-          fh.write("%s\n" % filename)
-
 
 def exec_graph(hdacv2_board, args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
@@ -245,40 +191,46 @@ def exec_graph(hdacv2_board, args):
                                   write_png=True,\
                                   color_method=method)
 
+def exec_skelter_existing(hdacv2_board,args):
+    path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
+    circ_dir = path_handler.conc_circ_dir()
+    recompute = args.recompute
+    if recompute:
+        return
+
+    for dirname, subdirlist, filelist in os.walk(circ_dir):
+        for fname in filelist:
+            if fname.endswith('.circ'):
+                circ_bmark,circ_indices,circ_scale_index,opt = \
+                                    path_handler.conc_circ_to_args(fname)
+
+                skelt_circ = path_handler.skelt_circ_file(circ_bmark,
+                                                        circ_indices,
+                                                        circ_scale_index,
+                                                        opt)
+                if path_handler.has_file(skelt_circ):
+                    continue
+
+                with open("%s/%s" % (dirname,fname),'r') as fh:
+                    obj = json.loads(fh.read())
+                    conc_circ = ConcCirc.from_json(hdacv2_board, \
+                                                            obj)
+                    if conc_circ.has_physical_model():
+                        print('<<<< %s >>>>' % fname)
+
+                        filename = path_handler.skelt_circ_file(circ_bmark,
+                                                            circ_indices,
+                                                            circ_scale_index,
+                                                            opt)
+                        src = "%s/%s" % (dirname,fname)
+                        dest = filename
+                        shutil.copyfile(src,dest)
+
 def exec_skelter(hdacv2_board, args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
   circ_dir = path_handler.conc_circ_dir()
-  scores = []
-  filenames = []
-  for dirname, subdirlist, filelist in os.walk(circ_dir):
-    for fname in filelist:
-      if fname.endswith('.circ'):
-        circ_bmark,circ_indices,circ_scale_index,opt = \
-                                                       path_handler.conc_circ_to_args(fname)
-
-        skelt_circ = path_handler.skelt_circ_file(circ_bmark,
-                                                  circ_indices,
-                                                  circ_scale_index,
-                                                  opt)
-        if path_handler.has_file(skelt_circ):
-          continue
-
-        with open("%s/%s" % (dirname,fname),'r') as fh:
-          obj = json.loads(fh.read())
-          conc_circ = ConcCirc.from_json(hdacv2_board, \
-                                                  obj)
-          if conc_circ.has_physical_model():
-            print('<<<< %s >>>>' % fname)
-            filename = path_handler.skelt_circ_file(circ_bmark,
-                                                  circ_indices,
-                                                  circ_scale_index,
-                                                  opt)
-            src = "%s/%s" % (dirname,fname)
-            dest = filename
-            shutil.copyfile(src,dest)
-
-
-
+  recompute = args.recompute
+  exec_skelter_existing(hdacv2_board,args)
   for dirname, subdirlist, filelist in os.walk(circ_dir):
     for fname in filelist:
       if fname.endswith('.circ'):
@@ -289,7 +241,8 @@ def exec_skelter(hdacv2_board, args):
                                                   circ_indices,
                                                   circ_scale_index,
                                                   opt)
-        if path_handler.has_file(skelt_circ):
+        if path_handler.has_file(skelt_circ)  \
+           and not recompute:
           continue
 
         print('<<<< %s >>>>' % fname)
@@ -297,6 +250,8 @@ def exec_skelter(hdacv2_board, args):
           obj = json.loads(fh.read())
           conc_circ = ConcCirc.from_json(hdacv2_board, \
                                                   obj)
+          if recompute:
+              skelter.clear(conc_circ)
           skelter.execute(conc_circ)
           filename = path_handler.skelt_circ_file(circ_bmark,
                                                   circ_indices,
