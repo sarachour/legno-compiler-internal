@@ -146,14 +146,14 @@ bool Fabric::Chip::Tile::Slice::FunctionUnit::Interface::binarySearchAvg (
 }
 
 float Fabric::Chip::Tile::Slice::FunctionUnit::binarySearchMeas () const {
-	float voltageDiff = parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->analogAvg(CAL_REPS);
+	float voltageDiff = parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->analogAvg(CAL_REPS,1.0);
 //        SerialUSB.print(" voltageDiff ");
 //        SerialUSB.println(voltageDiff, 6);
 	return voltageDiff;
 }
 
 float Fabric::Chip::Tile::Slice::FunctionUnit::Interface::binarySearchMeas () const {
-	float voltageDiff = parentFu->parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->analogAvg(CAL_REPS);
+	float voltageDiff = parentFu->parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->analogAvg(CAL_REPS,1.0);
 //        SerialUSB.print(" voltageDiff ");
 //        SerialUSB.println(voltageDiff, 6);
 	return voltageDiff;
