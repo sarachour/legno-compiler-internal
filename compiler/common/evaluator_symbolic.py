@@ -37,7 +37,7 @@ class Evaluator:
   def set_reference(self,block_name,loc,port,tag,expr):
     self._refs[(block_name,loc,port,tag)] = expr
 
-  def compute_bindings(self,expr):
+  def compute_bindings(self,expr,tag):
     variables = expr.vars()
     interval_dict = {}
     ref_dict = {}
@@ -63,34 +63,14 @@ class Evaluator:
 
     return ref_dict,interval_dict,freq_dict
 
-  def obeys_constraints(self,cstrs):
-    for (block,inst,port),cstr in cstrs.items():
-      bw = self.freq(block,inst,port)
-      if bw.is_infinite() and cstr.unbounded_upper():
-        continue
-      elif not bw.is_infinite() and cstr.contains_value(bw.fmax):
-        continue
-      else:
-        print("%s[%s].%s: %s not in %s" % (block,inst,port,bw.fmax,cstr))
-        return False
-
-    return True
-
-
-  def evaluate_expr(self,block_name,loc,port,cstrs,expr,tag):
-    ref_dict,interval_dict,freq_dict = self.compute_bindings(expr)
+  def evaluate_expr(self,block_name,loc,port,expr,tag):
+    ref_dict,interval_dict,freq_dict = self.compute_bindings(expr,tag)
     expr.concretize(ref_dict)
     # test to see if this is in range.
-    if not self.obeys_constraints(cstrs):
-      return None
-
     result = expr.compute(freq_dict, \
                           interval_dict,integral=True)
     assert(not result is None)
-    if result.spread == 0:
-      return result
-    else:
-      return result
+    return result
 
   def _evaluate_port(self,block_name,loc,port):
     config = self.circ.config(block_name,loc)
@@ -104,23 +84,16 @@ class Evaluator:
 
     freq = self.freq(block_name,loc,port).fmax
     res_variance,res_mean = None,None
-    print("==== %s[%s].%s ====" % (block_name,loc,port))
-    for constraints,mean,variance in model.models():
-      this_mean = self.evaluate_expr(block_name,loc,port, \
-                                     constraints, \
-                                     mean,'mean')
-      this_variance = self.evaluate_expr(block_name,loc,port, \
-                                         constraints, \
-                                         variance,'variance')
+    mean,variance = model.mean,model.variance
+    this_mean = self.evaluate_expr(block_name,loc,port, \
+                                   mean,'mean')
+    this_variance = self.evaluate_expr(block_name,loc,port, \
+                                       variance,'variance')
 
-      if this_mean is None  \
-         or this_variance is None:
-        continue
-
-      assert(res_mean is None)
-      assert(res_variance is None)
-      res_mean = this_mean
-      res_variance = this_variance
+    assert(res_mean is None)
+    assert(res_variance is None)
+    res_mean = this_mean
+    res_variance = this_variance
 
     if res_mean is None or res_variance is None:
       print("FREQ: %s" % freq)

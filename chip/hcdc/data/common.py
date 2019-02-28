@@ -227,7 +227,7 @@ def compute_posy_nobreaks(prefix,X,data):
        'w': [model['w']]
      }
 
-  pwls['breaks'] = []
+  pwls['breaks'] = [0]
   return pwls
 
 def compute_posy(prefix,X,data,n=5,extern_breaks=None):

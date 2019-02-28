@@ -4,7 +4,7 @@ import numpy as np
 import ops.interval as interval
 from compiler.common.visitor_symbolic  \
   import ExpressionPropagator, \
-  PiecewiseSymbolicModel, \
+  SymbolicModel, \
   SymbolicInferenceVisitor, \
   MathPropagator
 import util.util as util
@@ -16,8 +16,7 @@ class PropNoiseVisitor(SymbolicInferenceVisitor):
                                       MathPropagator)
 
   def get_generate_expr(self,stump):
-    #return stump.noise
-    return nop.NConstRV(0.0,0.01)
+    return stump.noise
 
   def get_propagate_model(self,block_name,loc,port):
     config = self._circ.config(block_name,loc)
@@ -30,9 +29,9 @@ class PropNoiseVisitor(SymbolicInferenceVisitor):
     return gen_nz
 
 
-  def set_propagate_model(self,block_name,loc,port,gen_model):
+  def set_propagate_model(self,block_name,loc,port,prop_model):
     config = self._circ.config(block_name,loc)
-    config.set_propagated_noise(port,gen_model)
+    config.set_propagated_noise(port,prop_model)
 
 
   def set_generate_model(self,block_name,loc,port,gen_model):

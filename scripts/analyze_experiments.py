@@ -13,7 +13,6 @@ import lab_bench.lib.expcmd.osc as osc
 from chip.conc import ConcCirc
 from chip.hcdc.hcdcv2_4 import board as hdacv2_board
 import compiler.skelter as skelter
-import compiler.common.gen_phys as gnlib
 import compiler.common.prop_noise as pnlib
 import bmark.diffeqs as diffeqs
 import bmark.menvs as menvs
@@ -164,7 +163,10 @@ def execute(args):
   recompute_rank = args.recompute_rank
   recompute_quality = args.recompute_runtime
   recompute_runtime = args.recompute_quality
-  recompute_any = recompute_rank or recompute_quality or recompute_runtime
+  recompute_any = recompute_rank or  \
+                  recompute_quality or \
+                  recompute_runtime
+
   db = ExperimentDB()
   for entry in db.get_by_status(ExperimentStatus.RAN):
     if not entry.runtime is None \
@@ -173,8 +175,8 @@ def execute(args):
       and not recompute_any:
       continue
 
-    conc_circ = ConcCirc.read(hdacv2_board,entry.skelt_circ_file)
     print(entry)
+    conc_circ = ConcCirc.read(hdacv2_board,entry.skelt_circ_file)
 
     if entry.runtime is None or recompute_runtime:
       runtime = compute_runtime(conc_circ,entry.math_env)

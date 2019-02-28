@@ -99,44 +99,37 @@ else:
     raise Exception("unimpl")
 
 ph = phys.PhysicalModel(port)
-for brk in model['breaks']:
-    ph.add_break(brk)
+bias_expr = to_nop_expr(model['ampl_bias_indep'],
+                        model['ampl_bias_dep'],
+                        0,
+                        port=port,
+                        method=method,
+                        deterministic=True)
 
-ph.freeze()
-for idx,this_break in enumerate(model['breaks']):
-  print("break %f / idx %d"  % (this_break,idx))
-  bias_expr = to_nop_expr(model['ampl_bias_indep'],
-                          model['ampl_bias_dep'],
-                          idx,
-                          port=port,
-                          method=method,
-                          deterministic=True)
+noise_expr = to_nop_expr(model['ampl_noise_indep'],
+                        model['ampl_noise_dep'],
+                        0,
+                        port=port,
+                        method=method,
+                        deterministic=False)
 
-  noise_expr = to_nop_expr(model['ampl_noise_indep'],
-                           model['ampl_noise_dep'],
-                           idx,
-                           port=port,
-                           method=method,
-                           deterministic=False)
+delay_mean = to_nop_expr(model['delay_mean'],
+                        None,0,
+                        port=port,
+                        method=method,
+                        deterministic=True)
 
-  delay_mean = to_nop_expr(model['delay_mean'],
-                           None,idx,
-                           port=port,
-                           method=method,
-                           deterministic=True)
+delay_std = to_nop_expr(model['delay_std'],
+                        None,0,
+                        port=port,
+                        method=method,
+                        deterministic=False)
 
-  delay_std = to_nop_expr(model['delay_std'],
-                          None,idx,
-                          port=port,
-                          method=method,
-                          deterministic=False)
+delay_expr = nops.mkadd([delay_mean,delay_std])
 
-  delay_expr = nops.mkadd([delay_mean,delay_std])
-
-  subm = ph.stump(this_break)
-  subm.delay = delay_expr
-  subm.noise = noise_expr
-  subm.bias = bias_expr
+ph.delay = delay_expr
+ph.noise = noise_expr
+ph.bias = bias_expr
 
 
 with open(outfile,'w') as fh:

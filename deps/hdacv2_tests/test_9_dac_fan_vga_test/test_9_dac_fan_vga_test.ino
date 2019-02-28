@@ -8,14 +8,15 @@ Fabric * fabric;
 void setup() {
 
   fabric = new Fabric();
-  fabric->calibrate();
+  //fabric->calibrate();
+  fabric->chips[0].tiles[0].slices[0].calibrate();
 
   Serial.println("calibration done");
 
   for (unsigned char rep = 0; rep < 128; rep++) {
-    for (unsigned char chipIndx = 0; chipIndx < 2; chipIndx++) {
-      for (unsigned char tileIndx = 0; tileIndx < 4; tileIndx++) {
-        for (unsigned char sliceIndx = 0; sliceIndx < 4; sliceIndx++) {
+    for (unsigned char chipIndx = 0; chipIndx < 1; chipIndx++) {
+      for (unsigned char tileIndx = 0; tileIndx < 1; tileIndx++) {
+        for (unsigned char sliceIndx = 0; sliceIndx < 1; sliceIndx++) {
 
           Serial.print("chipIndx ");
           Serial.print(chipIndx);
@@ -75,9 +76,9 @@ void setup() {
           conn6.setConn();
           fabric->cfgCommit();
 
-          Serial.print  (fabric->chips[chipIndx].tiles[3].slices[2].chipOutput->analogAvg(CAL_REPS) / FULL_SCALE, 6);
+          Serial.print  (fabric->chips[chipIndx].tiles[3].slices[2].chipOutput->analogAvg(CAL_REPS,FULL_SCALE), 6);
           Serial.print('\t');
-          Serial.println(fabric->chips[chipIndx].tiles[3].slices[3].chipOutput->analogAvg(CAL_REPS) / FULL_SCALE, 6);
+          Serial.println(fabric->chips[chipIndx].tiles[3].slices[3].chipOutput->analogAvg(CAL_REPS,FULL_SCALE), 6);
 
           conn0.brkConn();
           conn1.brkConn();

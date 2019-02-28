@@ -42,7 +42,10 @@ for bmark in bmarks:
 
 for ser in series:
   coeff = np.corrcoef(ranks[ser],qualities[ser])
+  print("ranks:\n%s" % ranks[ser])
+  print("qualities:\n%s" % qualities[ser])
   print("[%s] correlation:\n%s" % (ser,coeff))
+  input()
   plt.scatter(ranks[ser],qualities[ser],label=ser)
 
 plt.legend()

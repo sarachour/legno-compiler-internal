@@ -146,6 +146,11 @@ class OutputEntry:
 
 
   def set_rank(self,new_rank):
+    if new_rank == float('inf'):
+      new_rank = 1e9
+    if new_rank == float('-inf'):
+      new_rank = -1e9
+
     self.update_db({'rank':new_rank})
     self._rank = new_rank
 
@@ -265,6 +270,11 @@ class ExperimentEntry:
     self._status = new_status
 
   def set_rank(self,new_rank):
+    if new_rank == float('inf'):
+      new_rank = 1e9
+    if new_rank == float('-inf'):
+      new_rank = -1e9
+
     self.update_db({'rank':new_rank})
     self._rank = new_rank
 

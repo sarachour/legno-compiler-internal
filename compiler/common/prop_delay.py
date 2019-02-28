@@ -3,7 +3,7 @@ import ops.nop as nop
 import numpy as np
 import ops.interval as interval
 from compiler.common.visitor_symbolic import SymbolicInferenceVisitor, \
-  ExpressionPropagator, PiecewiseSymbolicModel
+  ExpressionPropagator, SymbolicModel
 
 
 class DelayPropagator(ExpressionPropagator):
@@ -12,14 +12,11 @@ class DelayPropagator(ExpressionPropagator):
     ExpressionPropagator.__init__(self,env)
 
   def sel(self,m1,m2):
-    model = PiecewiseSymbolicModel()
-    for cstrs,(u1,v1),(u2,v2) in m1.join(m2):
-      u = nop.mksel([u1,u2])
-      v = nop.mksel([v1,v2])
-      idx = model.add_dist(u,v)
-      model.cstrs.add_all(idx,cstrs)
-
-    return model
+    u1,v1 = m1.mean,m1.variance
+    u2,v2 = m2.mean,m2.variance
+    u = nop.mksel([u1,u2])
+    v = nop.mksel([v1,v2])
+    return SymbolicModel(u,v)
 
   def sgn(self,m):
     return m
@@ -46,9 +43,7 @@ class DelayPropagator(ExpressionPropagator):
     return self.sel(deriv,ic)
 
   def const(self,v):
-    model = PiecewiseSymbolicModel()
-    model.add_expr(nop.mkzero())
-    return model
+    return SymbolicModel.from_expr(nop.mkzero())
 
 class PropDelayVisitor(SymbolicInferenceVisitor):
 
