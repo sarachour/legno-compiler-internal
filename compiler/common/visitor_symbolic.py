@@ -153,6 +153,10 @@ class PiecewiseSymbolicModel:
     return True
 
   def models(self):
+    for idx in range(0,len(self._model.items())):
+      cstrs = self.cstrs.constraints(idx)
+      print(cstrs)
+
     for idx,(mean,variance) in self._model.items():
       cstrs = self.cstrs.constraints(idx)
       yield cstrs,mean,variance

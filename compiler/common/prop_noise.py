@@ -36,8 +36,6 @@ class PropNoiseVisitor(SymbolicInferenceVisitor):
 
 
   def set_generate_model(self,block_name,loc,port,gen_model):
-    #print("%s[%s].%s = %s" % (block_name,loc,port,gen_model))
-    #input()
     config = self._circ.config(block_name,loc)
     config.set_generated_noise(port,gen_model)
 

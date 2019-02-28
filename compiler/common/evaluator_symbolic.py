@@ -37,19 +37,19 @@ class Evaluator:
   def set_reference(self,block_name,loc,port,tag,expr):
     self._refs[(block_name,loc,port,tag)] = expr
 
-  def evaluate_expr(self,block_name,loc,port,cstrs,expr,tag):
+  def compute_bindings(self,expr):
     variables = expr.vars()
     interval_dict = {}
-    bandwidth_dict = {}
-    freq_dict = {}
     ref_dict = {}
+    freq_dict = {}
     for var in variables:
       block,inst = var.instance
       assert(not block is None)
       assert(not inst is None)
       port = var.port
       if var.op == nop.NOpType.FREQ:
-        bandwidth_dict[(block,inst,port)] = self.freq(block,inst,port)
+        bw = self.freq(block,inst,port)
+        freq_dict[(block,inst,port)] = interval.Interval.type_infer(bw.fmax,bw.fmax)
 
       elif var.op == nop.NOpType.SIG:
         interval_dict[(block,inst,port)] = self.interval(block,inst,port)
@@ -61,20 +61,28 @@ class Evaluator:
       else:
         raise Exception("unknown")
 
-    expr.concretize(ref_dict)
+    return ref_dict,interval_dict,freq_dict
 
-    for (block,inst,port),bw in bandwidth_dict.items():
-      assert((block,inst,port) in cstrs)
-      fmax = bw.bandwidth
-      frng = cstrs[(block,inst,port)]
-      if frng.contains_value(fmax):
-        freq_dict[(block,inst,port)] = interval.Interval \
-                                               .type_infer(frng.lower,fmax)
-      elif fmax > frng.upper:
-        freq_dict[(block,inst,port)] = frng
-
+  def obeys_constraints(self,cstrs):
+    for (block,inst,port),cstr in cstrs.items():
+      bw = self.freq(block,inst,port)
+      if bw.is_infinite() and cstr.unbounded_upper():
+        continue
+      elif not bw.is_infinite() and cstr.contains_value(bw.fmax):
+        continue
       else:
-        return None
+        print("%s[%s].%s: %s not in %s" % (block,inst,port,bw.fmax,cstr))
+        return False
+
+    return True
+
+
+  def evaluate_expr(self,block_name,loc,port,cstrs,expr,tag):
+    ref_dict,interval_dict,freq_dict = self.compute_bindings(expr)
+    expr.concretize(ref_dict)
+    # test to see if this is in range.
+    if not self.obeys_constraints(cstrs):
+      return None
 
     result = expr.compute(freq_dict, \
                           interval_dict,integral=True)
@@ -95,26 +103,35 @@ class Evaluator:
       self._config_func(model)
 
     freq = self.freq(block_name,loc,port).fmax
-    res_mean = interval.Interval.zero()
-    res_variance = interval.Interval.zero()
+    res_variance,res_mean = None,None
+    print("==== %s[%s].%s ====" % (block_name,loc,port))
     for constraints,mean,variance in model.models():
-      this_mean = self.evaluate_expr(block_name,loc,port,constraints, \
+      this_mean = self.evaluate_expr(block_name,loc,port, \
+                                     constraints, \
                                      mean,'mean')
-      this_variance = self.evaluate_expr(block_name,loc,port,constraints, \
+      this_variance = self.evaluate_expr(block_name,loc,port, \
+                                         constraints, \
                                          variance,'variance')
 
-      if this_mean is None or this_variance is None:
+      if this_mean is None  \
+         or this_variance is None:
         continue
 
-      res_mean = res_mean.add(this_mean)
-      res_variance = res_variance.add(this_variance)
+      assert(res_mean is None)
+      assert(res_variance is None)
+      res_mean = this_mean
+      res_variance = this_variance
 
+    if res_mean is None or res_variance is None:
+      print("FREQ: %s" % freq)
+
+      raise Exception("could not find segment")
     fmax = self.freq(block_name,loc,port).bandwidth
     fmax = 1.0 if fmax == 0.0 else fmax
     self.set_reference(block_name,loc,port,'mean',
-                       res_mean.bound/fmax)
+                       res_mean.bound)
     self.set_reference(block_name,loc,port,'variance',\
-                       res_variance.bound/fmax)
+                       res_variance.bound)
 
 
   def _evaluate(self):

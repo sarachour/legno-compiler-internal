@@ -89,7 +89,7 @@ basename = filename.split(".")[0]
 
 raw_data = common.load_raw_data(filename)
 data = common.process_raw_data(raw_data)
-max_n = 5
+max_n = 1
 print("=== Fit Data ===")
 X = raw_data['freqs']
 

@@ -20,6 +20,12 @@ run_subp.add_argument('--native', action='store_true',
                        help='use ttyACM0.')
 
 analyze_subp = subparsers.add_parser('analyze', help='run any pending grendel scripts')
+analyze_subp.add_argument('--recompute-rank', action='store_true',
+                       help='.')
+analyze_subp.add_argument('--recompute-runtime', action='store_true',
+                       help='.')
+analyze_subp.add_argument('--recompute-quality', action='store_true',
+                       help='.')
 
 args = parser.parse_args()
 
@@ -29,7 +35,7 @@ if args.subparser_name == "scan":
   db.scan()
 
 elif args.subparser_name == 'run':
-  runchip.execute()
+  runchip.execute(args)
 
 elif args.subparser_name == 'analyze':
-  analyze.execute()
+  analyze.execute(args)

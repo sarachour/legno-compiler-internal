@@ -160,27 +160,28 @@ def analyze_quality(entry,conc_circ):
   AGG_QUALITY = np.mean(QUALITIES)
   entry.set_quality(AGG_QUALITY)
 
-def execute():
+def execute(args):
+  recompute_rank = args.recompute_rank
+  recompute_quality = args.recompute_runtime
+  recompute_runtime = args.recompute_quality
+  recompute_any = recompute_rank or recompute_quality or recompute_runtime
   db = ExperimentDB()
   for entry in db.get_by_status(ExperimentStatus.RAN):
-    conc_circ = ConcCirc.read(hdacv2_board,entry.skelt_circ_file)
-    analyze_rank(entry,conc_circ)
     if not entry.runtime is None \
       and not entry.quality is None \
-      and not entry.rank is None:
+      and not entry.rank is None \
+      and not recompute_any:
       continue
 
     conc_circ = ConcCirc.read(hdacv2_board,entry.skelt_circ_file)
     print(entry)
 
-    if entry.runtime is None:
+    if entry.runtime is None or recompute_runtime:
       runtime = compute_runtime(conc_circ,entry.math_env)
       entry.set_runtime(runtime)
 
-    if entry.rank is None:
+    if entry.rank is None or recompute_rank:
       analyze_rank(entry,conc_circ)
 
-    if entry.quality is None \
-      or entry.runtime is None \
-      or entry.rank is None:
+    if entry.quality is None or recompute_quality:
       analyze_quality(entry,conc_circ)

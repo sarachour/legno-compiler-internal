@@ -87,11 +87,11 @@ def plot_pwl(name,X,Y,model):
   plt.savefig(name)
   plt.clf()
 
-def breaks_posy(fmax,n):
+def breaks_posy(fmax,f,n):
   divs = np.linspace(0,fmax,n+1)[:-1]
   return divs
 
-def predict_posy(pdict,maxf,f,n):
+def predict_pw_posy(pdict,maxf,f,n):
   divs = breaks_posy(maxf,n)
   def compute_value(f,i):
     get = lambda name : pdict['%s[%d]' % (name,i)]
@@ -132,6 +132,58 @@ def plot_posy(name,X,Y,model,n):
   plt.savefig(name)
   plt.clf()
 
+def compute_posy_noseg(prefix,X,data):
+  init_conds = []
+  params = []
+  lb,ub= [],[]
+  unk = (-np.inf,np.inf)
+  params = ['x,y,v,u,w']
+  vmin = 1e-6
+  vmax = 2
+  cmax = 100.0
+  # x, y and z
+  lb += [vmin,vmin]
+  ub += [cmax,cmax]
+  # u, v and q
+  lb += [vmin,vmin]
+  ub += [vmax,vmax]
+  # w
+  lb += [0]
+  ub += [np.inf]
+  init_conds = [1.0,1.0]
+  init_conds += [1.0,1.0]
+  init_conds += [0.0]
+
+  def posy_fit(f,*pvals):
+    pdict = dict(zip(params,pvals))
+    return predict_posy(pdict,max(f),f,n)
+
+
+  pwls = {}
+  for field in data.keys():
+     print("==== %s ====" % field)
+     Y = abs(np.array(data[field]))
+     popt_pw, pcov = scipy.optimize.curve_fit(posy_fit,\
+                                              X, Y,
+                                              p0=init_conds,
+                                              bounds=(lb,ub))
+
+     model = dict(zip(params,popt_pw))
+     plot_posy('%s_%s.png' % (prefix,field), X, Y, model, n)
+
+     pwls[field] = {
+       'x': list(map(lambda i: model['x[%d]'%i],range(0,n))),
+       'y': list(map(lambda i: model['y[%d]'%i],range(0,n))),
+       'u': list(map(lambda i: model['u[%d]'%i],range(0,n))),
+       'v': list(map(lambda i: model['v[%d]'%i],range(0,n))),
+       'w': list(map(lambda i: model['w[%d]'%i],range(0,n)))
+     }
+
+  breaks = list(breaks_posy(max(X),n)[1:]*model['bsc'])
+  breaks.append(max(breaks)*2)
+  pwls['breaks'] = breaks
+  return pwls
+
 def compute_posy(prefix,X,data,n=5,extern_breaks=None):
   init_conds = []
   params = []
@@ -164,7 +216,7 @@ def compute_posy(prefix,X,data,n=5,extern_breaks=None):
 
   def posy_fit(f,*pvals):
     pdict = dict(zip(params,pvals))
-    return predict_posy(pdict,max(f),f,n)
+    return predict_pw_posy(pdict,max(f),f,n)
 
 
   pwls = {}
@@ -191,31 +243,3 @@ def compute_posy(prefix,X,data,n=5,extern_breaks=None):
   breaks.append(max(breaks)*2)
   pwls['breaks'] = breaks
   return pwls
-'''
-def compute_pwls(basename,X,data,n=3,extern_breaks=None):
-
-  all_breaks = []
-  pwls = {}
-  for field in data.keys():
-    print("==== %s ====" % field)
-    Y = data[field]
-    do_fit = pwlf.PiecewiseLinFit(X,Y,sorted_data=True)
-    if extern_breaks is None:
-      breaks = do_fit.fit(n)
-    else:
-      do_fit.fit_with_breaks(extern_breaks)
-      breaks = extern_breaks
-
-    print(breaks)
-    pwls[field] = {
-      'slopes': do_fit.calc_slopes(),
-      'offsets': do_fit.predict(breaks[:-1]),
-      'breaks': breaks,
-      'model':do_fit
-    }
-    plot_pwl('%s_%s.png' % (basename,field), X, Y, do_fit)
-
-  
-  return pwls
-
-'''
