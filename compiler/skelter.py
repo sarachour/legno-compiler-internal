@@ -18,7 +18,7 @@ def compute_snr(nz_eval,circ,block_name,loc,port):
   if noise_var == 0:
     return 100
 
-  snr = np.log10(signal.bound/noise_var)
+  snr = signal.bound/noise_var
   print("snr: %s" % snr)
   return snr
 
@@ -27,7 +27,7 @@ def snr(circ,block_name,loc,port):
   return compute_snr(nz_eval,circ,block_name,loc,port)
 
 def rank(circ):
-  score = 0
+  scores = []
   nz_eval = evaluator.propagated_noise_evaluator(circ)
 
   # mismatch in seconds
@@ -35,9 +35,9 @@ def rank(circ):
       if circ.in_use(block_name,loc):
         config = circ.config(block_name,loc)
         for port,label,kind in config.labels():
-          score += compute_snr(nz_eval,circ,block_name,loc,port)
+          scores.append(compute_snr(nz_eval,circ,block_name,loc,port))
 
-  return score
+  return min(scores)
 
 def clear(circ):
   for _,_,config in circ.instances():

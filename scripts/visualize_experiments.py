@@ -5,58 +5,64 @@ import math
 
 def get_data(series_type='bmarks',executed_only=True):
   db = ExperimentDB()
-  bmarks = ['micro-osc-quarter','micro-osc-quad','micro-osc-one', \
-            'spring','vanderpol','pend','cosc']
-  opts = ['fast','slow','max','maxstab']
-  if series_type == 'bmarks':
-    series = bmarks
-  elif series_type == 'opts':
-    series = opts
-  else:
-    raise Exception("unknown")
+  qualities = {}
+  ranks = {}
+  times = {}
+  bmarks = {}
+  opts = {}
 
-  qualities = dict(map(lambda opt: (opt,[]), series))
-  ranks = dict(map(lambda opt: (opt,[]), series))
-  times = dict(map(lambda opt: (opt,[]), series))
-  bmark_fields = dict(map(lambda opt: (opt,[]), series))
-  opt_fields = dict(map(lambda opt: (opt,[]), series))
+  def get(dict_,entry):
+    if series_type == 'bmarks':
+      ser = entry.bmark
+    elif series_type == 'opts':
+      ser = entry.objective_fun
+    else:
+      raise Exception("unknown <%s>" % series_type)
+
+    if not ser in dict_:
+      dict_[ser] = []
+    return dict_[ser]
 
   for entry in db.get_all():
-    if not entry.bmark in bmarks:
-      continue
-
     if executed_only and \
        (entry.quality is None or entry.runtime is None):
       continue
 
-    if not entry.rank is None:
-      if series_type == 'bmarks':
-        ser = entry.bmark
-      elif series_type == 'opts':
-        ser=  entry.objective_fun
+    get(bmarks,entry).append(entry.bmark)
+    get(opts,entry).append(entry.objective_fun)
+    get(ranks,entry).append(entry.rank)
+    get(qualities,entry).append(entry.quality)
+    get(times,entry).append(entry.runtime)
 
-      bmark_fields[ser].append(entry.bmark)
-      opt_fields[ser].append(entry.objective_fun)
-      ranks[ser].append(entry.rank)
-      qualities[ser].append(entry.quality)
-      times[ser].append(entry.runtime)
-
-  return series,bmark_fields,opt_fields,ranks,qualities,times
+  return list(bmarks.keys()),bmarks,opts,ranks,qualities,times
 
 
 def correlation():
-  series,_,_,ranks,qualities,_ = get_data()
+  series,_,opts,ranks,qualities,_ = get_data()
   for ser in series:
     if len(ranks[ser]) == 0:
       continue
 
+    for r,q,o in zip(ranks[ser],qualities[ser],opts[ser]):
+      print("[%s] %s\t\trank=%s\t\t%s" % (ser,o,r,q))
     coeff = np.corrcoef(ranks[ser],qualities[ser])
-    print("[%s] correlation:\n%s\n" % (ser,coeff))
+    print("[%s] correlation: %s\n" % (ser,coeff[1][0]))
     plt.scatter(ranks[ser],qualities[ser],label=ser)
 
   plt.legend()
   plt.savefig("rank.png")
   plt.clf()
+
+def best_quality():
+  series,_,opts,_,qualities,_ = get_data()
+  for bmark,qualvals in qualities.items():
+    if len(qualvals) == 0:
+      continue
+    idx = np.argmax(qualvals)
+    best_opt = opts[bmark][idx]
+    print("[%s] %s / %s" % (bmark,best_opt,qualvals[idx]))
+    for o,v in zip(opts[bmark],qualvals):
+      print("   %s: %s" % (o,v))
 
 def best_ranked():
   series,_,opts,ranks,_,_ = get_data(executed_only=False)
@@ -85,5 +91,7 @@ def execute(args):
     correlation()
   elif name == 'best-ranked':
     best_ranked()
+  elif name == 'best-quality':
+    best_quality()
   else:
     raise Exception("unknown")

@@ -6,5 +6,5 @@ then
 	HWENV="default"
 fi
 
-python3 legno.py $BMARK srcgen $HWENV
+python3 legno.py $BMARK srcgen $HWENV "${@:3}"
 

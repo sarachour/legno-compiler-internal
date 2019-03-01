@@ -12,6 +12,16 @@ def get_iface_ports(circuit):
         ports.append((block_name,loc,out))
   return
 
+def get_all_ports(circuit):
+  ports = []
+  for block_name,loc,config in circuit.instances():
+      block = circuit.board.block(block_name)
+      for out in block.outputs:
+        ports.append((block_name,loc,out))
+
+  return ports
+
+
 def get_integrator_ports(circuit):
   ports = []
   for block_name,loc,config in circuit.instances():
@@ -65,9 +75,9 @@ def gpkit_ref_expr(jenv,varmap,circ,expr,last_index=False):
   return result
 
 
-def gpkit_expr(jenv,varmap,circ,expr,refs,nstdevs=3):
+def gpkit_expr(jenv,varmap,circ,expr,refs):
   def recurse(e):
-    return gpkit_expr(jenv,varmap,circ,e,refs,nstdevs)
+    return gpkit_expr(jenv,varmap,circ,e,refs)
 
   if isinstance(expr,nop.NVar):
     # variables
@@ -84,8 +94,8 @@ def gpkit_expr(jenv,varmap,circ,expr,refs,nstdevs=3):
     elif expr.op == nop.NOpType.FREQ:
       # compute integral
       fmax = circ.config(block,loc).bandwidth(port).bandwidth
-      #value = fmax*varmap['tau']**expo
-      value = 1.0
+      tc = circ.board.time_constant
+      value = (tc*fmax*varmap['tau'])**expo
       return value
 
     elif expr.op == nop.NOpType.REF:
@@ -95,7 +105,7 @@ def gpkit_expr(jenv,varmap,circ,expr,refs,nstdevs=3):
 
   # values
   elif expr.op == nop.NOpType.CONST_RV:
-    return gpkit_value(expr.sigma*nstdevs+expr.mu)
+    return gpkit_value(expr.sigma+expr.mu)
 
   # expressions
   elif expr.op == nop.NOpType.MULT:
@@ -137,7 +147,7 @@ def compute_reference(varmap,jenv,circ, \
 
 
 def compute_objective(varmap,jenv,circ, \
-                      block_name,loc,port,model,refs,method):
+                      block_name,loc,port,model,refs,method,variance=True):
   gpkit_mean = gpkit_expr(jenv,varmap,circ,model.mean,
                           refs)
   gpkit_variance = gpkit_expr(jenv,varmap,circ,model.variance,
@@ -148,8 +158,8 @@ def compute_objective(varmap,jenv,circ, \
   signal = varmap[scvarname]*scival.bound
 
   if method == 'low_snr':
-    return gpkit_mean*signal**(-1) + \
-      gpkit_variance*signal**(-1)
+    assert(variance==True)
+    return gpkit_variance*signal**(-1)
 
   elif method == 'low':
     return gpkit_mean + gpkit_variance
@@ -167,8 +177,10 @@ def compute(varmap,jenv,circ,models,ports,method='low-snr'):
                             block_name,loc,port,model,refs,method)
     refs[(block_name,loc,port)] = ref
 
+  gpkit_obj = 1.0
   for model,(block_name,loc,port) in zip(models,ports):
-    gpkit_obj = compute_objective(varmap,jenv,circ, \
+    print('compute: %s[%s].%s' % (block_name,loc,port))
+    gpkit_obj += compute_objective(varmap,jenv,circ, \
                             block_name,loc,port,model,refs,method)
 
 

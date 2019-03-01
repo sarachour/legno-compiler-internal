@@ -125,6 +125,7 @@ def exec_srcgen(hdacv2_board,args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
   menv = bmark.get_math_env(args.benchmark)
   hwenv = hwenvs.get_hw_env(args.hw_env)
+  recompute = args.recompute
   circ_dir = path_handler.skelt_circ_dir()
   for dirname, subdirlist, filelist in os.walk(circ_dir):
     for fname in filelist:
@@ -140,7 +141,7 @@ def exec_srcgen(hdacv2_board,args):
                                                menv.name,
                                                hwenv.name)
 
-          if path_handler.has_file(filename):
+          if path_handler.has_file(filename) and not recompute:
             continue
 
           obj = json.loads(fh.read())

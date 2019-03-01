@@ -11,6 +11,13 @@ subparsers = parser.add_subparsers(dest='subparser_name',
 
 
 scan_subp = subparsers.add_parser('scan', help='scan for new grendel scripts')
+list_subp = subparsers.add_parser('list', help='list database entries')
+
+del_subp = subparsers.add_parser('clear', help='delete a benchmark/opt-run')
+del_subp.add_argument('--bmark', type=str,
+                       help='benchmark to delete.')
+del_subp.add_argument('--obj', type=str,
+                       help='optimization objective function to delete.')
 
 run_subp = subparsers.add_parser('run', help='run any pending grendel scripts')
 run_subp.add_argument('--ip', type=str,
@@ -33,10 +40,21 @@ visualize_subp.add_argument('type', help='visualization type [rank-vs-quality,co
 
 args = parser.parse_args()
 
-
 if args.subparser_name == "scan":
   db = ExperimentDB()
   db.scan()
+
+elif args.subparser_name == "list":
+  db = ExperimentDB()
+  print("=== all entries ===")
+  for entry in db.get_all():
+    print(entry)
+
+elif args.subparser_name == "clear":
+  db = ExperimentDB()
+  print("==== deleted ====")
+  for entry in db.delete(args.bmark,args.obj):
+    print(entry)
 
 elif args.subparser_name == 'run':
   runchip.execute(args)

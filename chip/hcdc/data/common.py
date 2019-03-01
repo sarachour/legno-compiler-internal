@@ -75,7 +75,7 @@ def process_raw_data(raw_data):
   mv_to_ua = lambda mv: mv/1500*2.0
   max_ampl = max(raw_data['ampl_mu'])
   bias_corr_split = 0.01
-  noise_corr_split = 0.3
+  noise_corr_split = 0.1
   print("=== Inferring Data to Fit ===")
   for idx in range(len(raw_data['freqs'])):
     freq = raw_data['freqs'][idx]
@@ -98,8 +98,8 @@ def process_raw_data(raw_data):
     data['delay_mean'].append(delay_mu)
     data['delay_std'].append(delay_std)
 
-  integrate_data(data,'ampl_noise_indep')
-  integrate_data(data,'ampl_noise_dep')
+  max_data(data,'ampl_noise_indep')
+  max_data(data,'ampl_noise_dep')
   average_data(data,'ampl_bias_indep')
   average_data(data,'ampl_bias_dep')
   max_data(data,'delay_mean')
@@ -126,7 +126,8 @@ def predict_posy(pdict,f):
   u,v = get('u'),get('v')
   w = get('w')
 
-  value = x*(f**u) + y*(f**(-1*v)) + w
+  value = x*(f**u) + y*(f**(v)) + w
+  value = x*(f**u) + y*(f**(v)) + w
   return value
 
 

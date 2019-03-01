@@ -21,7 +21,7 @@ class Evaluator:
   def freq(self,block_name,loc,port):
     bw = self.circ.config(block_name,loc).bandwidth(port)
     return bw.timescale(self.circ.tau) \
-             .timescale(1.0/self.circ.board.time_constant)
+             .timescale(self.circ.board.time_constant)
 
   def interval(self,block_name,loc,port):
     interval = self.circ.config(block_name,loc).interval(port)
@@ -50,7 +50,7 @@ class Evaluator:
       port = var.port
       if var.op == nop.NOpType.FREQ:
         bw = self.freq(block,inst,port)
-        freq_dict[(block,inst,port)] = bandwidth.Bandwidth(1.0)
+        freq_dict[(block,inst,port)] = bw
 
       elif var.op == nop.NOpType.SIG:
         interval_dict[(block,inst,port)] = self.interval(block,inst,port)
@@ -174,9 +174,9 @@ def configure_propagated_delay(model):
     for arg in e.args():
       configure(arg)
 
-  for _,m,v in model.models():
-    configure(m)
-    configure(v)
+  m,v = model.mean,model.variance
+  configure(m)
+  configure(v)
 
 
 
@@ -193,7 +193,9 @@ def configure_mismatch(model):
     for arg in e.args():
       configure(arg,mismatch=new_mismatch)
 
-  for _,m,v in model.models():
-    configure(m)
-    configure(v)
+  m,v = model.mean,model.variance
+  configure(m)
+  configure(v)
+
+
 

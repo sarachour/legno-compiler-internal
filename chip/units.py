@@ -7,3 +7,6 @@ mhz = 10e6
 ghz = 10e9
 hz = 1.0
 unknown = None
+
+uW = 1e-6
+uJ = 1e-6

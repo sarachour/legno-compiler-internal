@@ -43,7 +43,7 @@ def make_posy(model,port,idx,deterministic,dependent=False):
         ]),
         nops.mkmult([
             make_const(y,deterministic),
-            make_freq(port,-v)
+            make_freq(port,v)
         ]),
         make_const(w,deterministic)
     ])

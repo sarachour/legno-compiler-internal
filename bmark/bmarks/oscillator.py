@@ -32,6 +32,7 @@ def model():
     prob.set_interval("V",-10,10)
     prob.set_interval("P",-10,15)
     prob.set_interval("Loc",-10,15)
+    prob.set_max_sim_time(20)
     prob.compile()
     menv = menvs.get_math_env('t20')
     return menv,prob

@@ -128,6 +128,15 @@ class OutputEntry:
     entry._modif=args['modif']
     return entry
 
+  def delete(self):
+     self._db.delete_output(self._bmark,
+                           self._arco_indices,
+                           self._jaunt_index,
+                           self._objective_fun,
+                           self._math_env,
+                           self._hw_env,
+                           self._varname)
+
   def update_db(self,args):
     self._db.update_output(self._bmark,
                            self._arco_indices,
@@ -287,13 +296,23 @@ class ExperimentEntry:
     self.update_db({'runtime':new_runtime})
     self._runtime = new_runtime
 
+  def delete(self):
+    for outp in self.get_outputs():
+      outp.delete()
+
+    self._db.delete_experiment(self._bmark,
+                               self._arco_indices,
+                               self._jaunt_index,
+                               self._objective_fun,
+                               self._math_env,
+                               self._hw_env)
+
   def get_outputs(self):
-    self._db.get_outputs(self._bmark, \
-                         self._arco_indices,
-                         self._jaunt_index,
-                         self._objective_fun,
-                         self._math_env,
-                         self._hw_env)
+    return self._db.get_outputs(self._bmark, \
+                                self._arco_indices,
+                                self._jaunt_index,
+                                self._objective_fun,
+                                self._math_env, self._hw_env)
 
   @staticmethod
   def from_db_row(db,args):
@@ -528,6 +547,18 @@ class ExperimentDB:
     for entry in self._get_output_rows(where_clause):
       yield entry
 
+  def delete(self,bmark=None,objfun=None):
+    assert(not bmark is None or not objfun is None)
+    for entry in self.get_all():
+      do_del = True
+      if not bmark is None and entry.bmark != bmark:
+        do_del = False
+      if not objfun is None and entry.objective_fun != objfun:
+        do_del = False
+
+      if do_del:
+        entry.delete()
+
   def get_experiment(self,bmark,arco_inds,jaunt_inds,opt,menv_name,hwenv_name):
     where_clause = self.to_where_clause(bmark,\
                                         arco_inds,jaunt_inds,opt, \
@@ -539,6 +570,35 @@ class ExperimentDB:
       return result[0]
     else:
       raise Exception("nonunique experiment")
+
+  def delete_output(self,bmark,arco_inds,jaunt_inds, \
+                    opt,menv_name,hwenv_name,output):
+    cmd = '''
+    DELETE FROM outputs {where_clause};
+    '''
+    where_clause = self.to_where_clause(bmark,\
+                                        arco_inds,jaunt_inds,opt, \
+                                        menv_name,hwenv_name,
+                                        varname=output)
+    conc_cmd = cmd.format(where_clause=where_clause)
+    self._curs.execute(conc_cmd)
+    self._conn.commit()
+
+
+  def delete_experiment(self,bmark,arco_inds,jaunt_inds, \
+                    opt,menv_name,hwenv_name):
+    cmd = '''
+    DELETE FROM experiments {where_clause};
+    '''
+    where_clause = self.to_where_clause(bmark,\
+                                        arco_inds,jaunt_inds,opt, \
+                                        menv_name,hwenv_name)
+    conc_cmd = cmd.format(where_clause=where_clause)
+    self._curs.execute(conc_cmd)
+    self._conn.commit()
+
+
+
 
   def add_output(self,path_handler,bmark,arco_inds, \
                  jaunt_inds, \

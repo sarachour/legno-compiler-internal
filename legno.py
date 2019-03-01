@@ -51,6 +51,9 @@ graph_subp = subparsers.add_parser('graph', help='generate graphs for noise anal
 gren_subp = subparsers.add_parser('srcgen', help='generate grendel.')
 gren_subp.add_argument('hw_env', type=str, \
                         help='hardware environment')
+gren_subp.add_argument('--recompute', action='store_true',
+                       help='recompute.')
+
 
 args = parser.parse_args()
 prog = bmark.get_prog(args.benchmark)
