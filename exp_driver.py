@@ -1,6 +1,7 @@
 import argparse
 import scripts.run_experiments as runchip
 import scripts.analyze_experiments as analyze
+import scripts.visualize_experiments as visualize
 from scripts.db import ExperimentDB
 
 parser = argparse.ArgumentParser(description='toplevel chip runner.')
@@ -27,6 +28,9 @@ analyze_subp.add_argument('--recompute-runtime', action='store_true',
 analyze_subp.add_argument('--recompute-quality', action='store_true',
                        help='.')
 
+visualize_subp = subparsers.add_parser('visualize', help='produce graphs.')
+visualize_subp.add_argument('type', help='visualization type [rank-vs-quality,correlation,etc]')
+
 args = parser.parse_args()
 
 
@@ -39,3 +43,6 @@ elif args.subparser_name == 'run':
 
 elif args.subparser_name == 'analyze':
   analyze.execute(args)
+
+elif args.subparser_name == 'visualize':
+  visualize.execute(args)

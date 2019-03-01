@@ -1,5 +1,6 @@
 import ops.nop as nop
 import ops.interval as interval
+import ops.bandwidth as bandwidth
 
 class Evaluator:
   def __init__(self,circ,func,config_func=None):
@@ -49,7 +50,7 @@ class Evaluator:
       port = var.port
       if var.op == nop.NOpType.FREQ:
         bw = self.freq(block,inst,port)
-        freq_dict[(block,inst,port)] = bw
+        freq_dict[(block,inst,port)] = bandwidth.Bandwidth(1.0)
 
       elif var.op == nop.NOpType.SIG:
         interval_dict[(block,inst,port)] = self.interval(block,inst,port)
