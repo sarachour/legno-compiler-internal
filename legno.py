@@ -48,17 +48,6 @@ skelt_subp.add_argument('--recompute', action='store_true',
 
 graph_subp = subparsers.add_parser('graph', help='generate graphs for noise analysis')
 
-
-scriptgen_subp = subparsers.add_parser('scriptgen', help='generate grendel scripts')
-scriptgen_subp.add_argument('--math-env', type=str,default='t20',
-                       help='math environment.')
-scriptgen_subp.add_argument('--hw-env', type=str,default='default', \
-                        help='hardware environment')
-
-
-
-ref_subp = subparsers.add_parser('execprog', help='compute reference signal')
-
 gren_subp = subparsers.add_parser('srcgen', help='generate grendel.')
 gren_subp.add_argument('hw_env', type=str, \
                         help='hardware environment')
@@ -77,21 +66,12 @@ elif args.subparser_name == "graph":
 elif args.subparser_name == "skelter":
     legno_util.exec_skelter(hdacv2_board,args)
 
-elif args.subparser_name == 'scriptgen':
-    legno_util.exec_scriptgen(hdacv2_board,args)
 
 elif args.subparser_name == "jaunt":
     if args.physical:
         legno_util.exec_jaunt_phys(hdacv2_board,args)
     else:
         legno_util.exec_jaunt(hdacv2_board,args)
-
-elif args.subparser_name == "execprog":
-   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
-   menv = menvs.get_math_env(args.math_env)
-   execprog.execute(path_handler,
-                    prog,
-                    menv)
 
 elif args.subparser_name == "srcgen":
    legno_util.exec_srcgen(hdacv2_board,args)

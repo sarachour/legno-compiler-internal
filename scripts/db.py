@@ -614,6 +614,9 @@ class ExperimentDB:
       conc_cmd = cmd.format(**args)
       self._curs.execute(conc_cmd)
       self._conn.commit()
+      entry = self.get_experiment(bmark,arco_inds,jaunt_inds, \
+                                  opt,menv_name,hwenv_name)
+      print(entry)
       for out_file in get_output_files(args['grendel_file']):
         _,_,_,_,_,_,var_name = path_handler \
                                .measured_waveform_file_to_args(out_file)

@@ -168,6 +168,14 @@ def execute(args):
                   recompute_runtime
 
   db = ExperimentDB()
+  for entry in db.get_by_status(ExperimentStatus.PENDING):
+    if not entry.rank is None and not recompute_rank:
+      continue
+
+    print(entry)
+    conc_circ = ConcCirc.read(hdacv2_board,entry.skelt_circ_file)
+    analyze_rank(entry,conc_circ)
+
   for entry in db.get_by_status(ExperimentStatus.RAN):
     if not entry.runtime is None \
       and not entry.quality is None \
