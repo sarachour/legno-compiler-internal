@@ -549,6 +549,7 @@ class ExperimentDB:
 
   def delete(self,bmark=None,objfun=None):
     assert(not bmark is None or not objfun is None)
+    deleted = []
     for entry in self.get_all():
       do_del = True
       if not bmark is None and entry.bmark != bmark:
@@ -558,6 +559,9 @@ class ExperimentDB:
 
       if do_del:
         entry.delete()
+        deleted.append(entry)
+
+      return deleted
 
   def get_experiment(self,bmark,arco_inds,jaunt_inds,opt,menv_name,hwenv_name):
     where_clause = self.to_where_clause(bmark,\
