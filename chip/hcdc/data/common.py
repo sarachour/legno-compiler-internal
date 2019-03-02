@@ -48,6 +48,18 @@ def max_data(data,key):
   data[key] = newdata
 
 
+def interpolate(freqs,data,key):
+  lo = min(data[key])
+  hi = max(data[key])
+  m = (hi-lo)/(max(freqs)-min(freqs))
+  b = lo
+  n = len(data[key])
+  new_data = [0.0]*n
+  for idx in range(n):
+    new_data[idx] = m*freqs[idx]+b
+
+  data[key] = new_data
+
 def average_data(data,key):
   newdata = [0]*len(data[key])
   for i in range(0,len(data[key])):
@@ -77,7 +89,8 @@ def process_raw_data(raw_data):
   bias_corr_split = 0.01
   noise_corr_split = 0.1
   print("=== Inferring Data to Fit ===")
-  for idx in range(len(raw_data['freqs'])):
+  n = len(raw_data['freqs'])
+  for idx in range(n):
     freq = raw_data['freqs'][idx]
     bias = raw_data['ampl_mu'][idx] - max_ampl
     bias_uncorr = bias_corr_split*bias
@@ -98,8 +111,8 @@ def process_raw_data(raw_data):
     data['delay_mean'].append(delay_mu)
     data['delay_std'].append(delay_std)
 
-  max_data(data,'ampl_noise_indep')
-  max_data(data,'ampl_noise_dep')
+  interpolate(raw_data['freqs'],data,'ampl_noise_indep')
+  interpolate(raw_data['freqs'],data,'ampl_noise_dep')
   average_data(data,'ampl_bias_indep')
   average_data(data,'ampl_bias_dep')
   max_data(data,'delay_mean')

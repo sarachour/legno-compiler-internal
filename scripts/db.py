@@ -59,6 +59,7 @@ class OutputEntry:
     self._quality = None
     self._rank = None
     self._modif = None
+    self._columns = None
 
   @property
   def rank(self):
@@ -76,7 +77,7 @@ class OutputEntry:
 
   @property
   def objective_fun(self):
-    return self._bmark
+    return self._objective_fun
 
   @property
   def arco_indices(self):
@@ -94,6 +95,9 @@ class OutputEntry:
   def math_env(self):
     return self._math_env
 
+  @property
+  def columns(self):
+    return self._columns
 
   @property
   def varname(self):
@@ -120,12 +124,13 @@ class OutputEntry:
       hw_env=args['hwenv'],
       varname=args['varname']
     )
-
+    entry._columns = args
     entry._out_file=args['out_file']
     entry._quality=args['quality']
     entry._rank=args['rank']
     entry._status=OutputStatus(args['status'])
     entry._modif=args['modif']
+    entry._columns = args
     return entry
 
   def delete(self):
@@ -164,21 +169,23 @@ class OutputEntry:
     self._rank = new_rank
 
   def set_quality(self,new_quality):
-    print(new_quality)
     self.update_db({'quality':new_quality})
     self._quality = new_quality
 
 
 
-  def __repr__(self):
-    s = "{\n"
-    s += "ident=%s(%s,%s,%s,%s,%s).%s\n" % (self._bmark,
+  @property
+  def ident(self):
+    return "%s(%s,%s,%s,%s,%s).%s" % (self._bmark,
                                          self._arco_indices,
                                          self._jaunt_index,
                                          self._objective_fun,
                                          self._math_env,
                                          self._hw_env,
                                          self._varname)
+  def __repr__(self):
+    s = "{\n"
+    s += "ident=%s\n" % self.ident
     s += "status=%s\n" % (self._status.value)
     s += "out_file=%s\n" % (self._out_file)
     s += "rank=%s\n" % (self._rank)
@@ -205,7 +212,9 @@ class ExperimentEntry:
     self._energy= None
     self._runtime= None
     self._quality= None
+    self._mismatch = None
     self._db = db
+    self._columns = None
 
   @property
   def rank(self):
@@ -220,6 +229,11 @@ class ExperimentEntry:
   @property
   def quality(self):
     return self._quality
+
+  @property
+  def columns(self):
+    return self._columns
+
 
   @property
   def bmark(self):
@@ -252,6 +266,11 @@ class ExperimentEntry:
     return self._jaunt_circ_file
 
   @property
+  def mismatch(self):
+    return self._mismatch
+
+
+  @property
   def grendel_file(self):
     return self._grendel_file
 
@@ -263,6 +282,28 @@ class ExperimentEntry:
                          self._math_env,
                          self._hw_env):
       yield outp
+
+  def synchronize(self):
+    # delete if we're missing relevent files
+    if not os.path.isfile(self.grendel_file) or \
+       not os.path.isfile(self.skelt_circ_file) or \
+       not os.path.isfile(self.jaunt_circ_file):
+      self.delete()
+      return
+
+    clear_computed = False
+    for output in self.outputs():
+      if os.path.isfile(output.out_file):
+        if output.status == OutputStatus.PENDING:
+          output.set_status(OutputStatus.RAN)
+
+
+    not_done = any(map(lambda out: out.status == OutputStatus.PENDING, \
+                      self.outputs()))
+    if not not_done:
+      self.set_status(ExperimentStatus.RAN)
+    else:
+      self.set_status(ExperimentStatus.PENDING)
 
   def update_db(self,args):
     self._db.update_experiment(self._bmark,
@@ -278,6 +319,15 @@ class ExperimentEntry:
     self.update_db({'status':new_status.value})
     self._status = new_status
 
+  def set_mismatch(self,new_mismatch):
+    assert(isinstance(new_mismatch,bool))
+    if new_mismatch:
+      self.update_db({'mismatch':1})
+    else:
+      self.update_db({'mismatch':0})
+    self._mismatch = new_mismatch
+
+
   def set_rank(self,new_rank):
     if new_rank == float('inf'):
       new_rank = 1e9
@@ -288,7 +338,6 @@ class ExperimentEntry:
     self._rank = new_rank
 
   def set_quality(self,new_quality):
-    print(new_quality)
     self.update_db({'quality':new_quality})
     self._quality = new_quality
 
@@ -336,16 +385,22 @@ class ExperimentEntry:
     entry._runtime=args['runtime']
     entry._status=ExperimentStatus(args['status'])
     entry._modif = args['modif']
+    entry._mismatch = True if args['mismatch'] == 1 else False
+    entry._columns = args
     return entry
 
+  @property
+  def ident(self):
+    return "%s(%s,%s,%s,%s,%s)" % (self._bmark,
+                                         self._arco_indices,
+                                         self._jaunt_index,
+                                         self._objective_fun,
+                                         self._math_env,
+                                         self._hw_env)
+ 
   def __repr__(self):
     s = "{\n"
-    s += "ident=%s(%s,%s,%s,%s,%s)\n" % (self._bmark,
-                                      self._arco_indices,
-                                      self._jaunt_index,
-                                      self._objective_fun,
-                                      self._math_env,
-                                      self._hw_env)
+    s += "ident=%s\n" % (self.ident)
     s += "status=%s\n" % (self._status.value)
     s += "grendel_file=%s\n" % (self._grendel_file)
     s += "skelt_circ=%s\n" % (self._skelt_circ_file)
@@ -381,6 +436,7 @@ class ExperimentDB:
               jaunt_circ_file text,
               skelt_circ_file text,
               rank real,
+              mismatch int,
               quality real,
               energy real,
               runtime real,
@@ -394,12 +450,13 @@ class ExperimentDB:
                               'arco3','jaunt','opt','menv','hwenv',
                               'grendel_file', \
                               'jaunt_circ_file',
-                              'skelt_circ_file','rank','quality', \
+                              'skelt_circ_file','rank','mismatch',
+                              'quality', \
                               'energy','runtime']
 
     self._experiment_modifiable =  \
                                    ['rank','status','modif','quality', \
-                                    'energy','runtime']
+                                    'energy','runtime','mismatch']
     self._curs.execute(cmd)
 
     cmd = '''CREATE TABLE IF NOT EXISTS outputs( bmark text NULL,
@@ -484,7 +541,8 @@ class ExperimentDB:
     conc_cmd = cmd.format(**args)
     return conc_cmd
 
-  def update_output(self,bmark,arco_inds,jaunt_inds,opt,menv_name,hwenv_name,varname,new_fields):
+  def update_output(self,bmark,arco_inds,jaunt_inds,opt, \
+                    menv_name,hwenv_name,varname,new_fields):
     cmd = '''
     UPDATE outputs
     SET {assign_clause} {where_clause};
@@ -547,17 +605,32 @@ class ExperimentDB:
     for entry in self._get_output_rows(where_clause):
       yield entry
 
+  def filter_experiments(self,filt):
+    for entry in self.get_all():
+      args = entry.columns
+      skip = False
+      for k,v in args.items():
+        if k in filt and v != filt[k]:
+          skip = True
+      if skip:
+        continue
+      yield entry
+
+
+
   def delete(self,bmark=None,objfun=None):
     assert(not bmark is None or not objfun is None)
-    for entry in self.get_all():
-      do_del = True
-      if not bmark is None and entry.bmark != bmark:
-        do_del = False
-      if not objfun is None and entry.objective_fun != objfun:
-        do_del = False
+    if not bmark is None and not objfun is None:
+      itertr= self.filter_experiments({'bmark':bmark,'opt':objfun})
+    elif not objfun is None:
+      itertr= self.filter_experiments({'opt':objfun})
+    elif not bmark is None:
+      itertr= self.filter_experiments({'bmark':bmark})
+    else:
+      raise Exception("???")
 
-      if do_del:
-        entry.delete()
+    for entry in itertr:
+      entry.delete()
 
   def get_experiment(self,bmark,arco_inds,jaunt_inds,opt,menv_name,hwenv_name):
     where_clause = self.to_where_clause(bmark,\
@@ -643,7 +716,7 @@ class ExperimentDB:
       INSERT INTO experiments (
          bmark,arco0,arco1,arco2,arco3,jaunt,
          opt,menv,hwenv,jaunt_circ_file,skelt_circ_file,
-         grendel_file,status,modif
+         grendel_file,status,modif,mismatch
       ) VALUES
       (
          "{bmark}",{arco0},{arco1},{arco2},{arco3},{jaunt},
@@ -652,7 +725,7 @@ class ExperimentDB:
          "{skelt_circ}",
          "{grendel_file}",
          "{status}",
-         "{modif}"
+         "{modif}",{mismatch}
       )
       '''
       args = make_args(bmark,arco_inds,jaunt_inds,opt, \
@@ -670,18 +743,21 @@ class ExperimentDB:
                                                     jaunt_inds,
                                                     opt)
 
-
+      # not mismatched
+      args['mismatch'] = 0
       conc_cmd = cmd.format(**args)
       self._curs.execute(conc_cmd)
       self._conn.commit()
       entry = self.get_experiment(bmark,arco_inds,jaunt_inds, \
                                   opt,menv_name,hwenv_name)
-      print(entry)
       for out_file in get_output_files(args['grendel_file']):
         _,_,_,_,_,_,var_name = path_handler \
                                .measured_waveform_file_to_args(out_file)
         self.add_output(path_handler,bmark,arco_inds,jaunt_inds,opt, \
                         menv_name,hwenv_name,var_name)
+
+      entry.synchronize()
+      return entry
 
   def scan(self):
     for name in diffeqs.get_names():
@@ -692,5 +768,5 @@ class ExperimentDB:
           if fname.endswith('.grendel'):
             bmark,arco_inds,jaunt_inds,opt,menv_name,hwenv_name = \
                                     ph.grendel_file_to_args(fname)
-            self.add_experiment(ph,bmark,arco_inds,jaunt_inds, \
-                                opt,menv_name,hwenv_name)
+            yield self.add_experiment(ph,bmark,arco_inds,jaunt_inds, \
+                                      opt,menv_name,hwenv_name)

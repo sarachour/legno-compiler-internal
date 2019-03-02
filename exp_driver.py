@@ -2,6 +2,7 @@ import argparse
 import scripts.run_experiments as runchip
 import scripts.analyze_experiments as analyze
 import scripts.visualize_experiments as visualize
+import scripts.annotate_experiments as annotate
 from scripts.db import ExperimentDB
 
 parser = argparse.ArgumentParser(description='toplevel chip runner.')
@@ -38,11 +39,19 @@ analyze_subp.add_argument('--recompute-quality', action='store_true',
 visualize_subp = subparsers.add_parser('visualize', help='produce graphs.')
 visualize_subp.add_argument('type', help='visualization type [rank-vs-quality,correlation,etc]')
 
+annotate_subp = subparsers.add_parser('annotate', help='annotate mismatched graphs.')
+annotate_subp.add_argument('bmark', type=str,help='benchmark to annotate.')
+
 args = parser.parse_args()
 
 if args.subparser_name == "scan":
   db = ExperimentDB()
-  db.scan()
+  print("=== added ===")
+  for exp in db.scan():
+    print(exp)
+
+elif args.subparser_name == "annotate":
+  annotate.execute(args)
 
 elif args.subparser_name == "list":
   db = ExperimentDB()

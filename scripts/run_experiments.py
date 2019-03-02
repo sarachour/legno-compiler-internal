@@ -23,19 +23,6 @@ def execute_script(ip,script_file,native=False):
     os.system(exec_cmd)
     time.sleep(1)
 
-def detect_executed(entry):
-  for output in entry.outputs():
-    if os.path.isfile(output.out_file)  \
-       and output.status == OutputStatus.PENDING:
-      output.set_status(OutputStatus.RAN)
-
-
-  not_done = any(map(lambda out: out.status == OutputStatus.PENDING, \
-                     entry.outputs()))
-  if not not_done:
-    entry.set_status(ExperimentStatus.RAN)
-  return not not_done
-
 def execute(args):
   db = ExperimentDB()
   ip = args.ip
@@ -45,4 +32,4 @@ def execute(args):
     if not detect_executed(entry):
       execute_script(ip,entry.grendel_file,native=native)
 
-    detect_executed(entry)
+    entry.synchronize()

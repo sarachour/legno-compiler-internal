@@ -8,8 +8,10 @@ def get_data(series_type='bmarks',executed_only=True):
   qualities = {}
   ranks = {}
   times = {}
+  mismatches = {}
   bmarks = {}
   opts = {}
+  idents = {}
 
   def get(dict_,entry):
     if series_type == 'bmarks':
@@ -28,40 +30,67 @@ def get_data(series_type='bmarks',executed_only=True):
        (entry.quality is None or entry.runtime is None):
       continue
 
+    get(idents,entry).append(entry.ident)
     get(bmarks,entry).append(entry.bmark)
     get(opts,entry).append(entry.objective_fun)
     get(ranks,entry).append(entry.rank)
+    get(mismatches,entry).append(entry.mismatch)
     get(qualities,entry).append(entry.quality)
     get(times,entry).append(entry.runtime)
 
-  return list(bmarks.keys()),bmarks,opts,ranks,qualities,times
+  return {
+    'series':bmarks.keys(),
+    'idents':idents,
+    'bmarks':bmarks,
+    'opts':opts,
+    'ranks':ranks,
+    'qualities':qualities,
+    'mismatches':mismatches,
+    'times':times
+  }
 
 
 def correlation():
-  series,_,opts,ranks,qualities,_ = get_data()
-  for ser in series:
+  data = get_data()
+  ranks = data['ranks']
+  qualities= data['qualities']
+  idents = data['idents']
+  mismatches = data['mismatches']
+
+  for ser in data['series']:
     if len(ranks[ser]) == 0:
       continue
 
-    for r,q,o in zip(ranks[ser],qualities[ser],opts[ser]):
-      print("[%s] %s\t\trank=%s\t\t%s" % (ser,o,r,q))
-    coeff = np.corrcoef(ranks[ser],qualities[ser])
-    print("[%s] correlation: %s\n" % (ser,coeff[1][0]))
-    plt.scatter(ranks[ser],qualities[ser],label=ser)
+    n = len(ranks[ser])
+    inds = list(filter(lambda i: not mismatches[ser][i],range(0,n)))
+    good_ranks = list(map(lambda i: ranks[ser][i], inds))
+    good_qualities = list(map(lambda i: qualities[ser][i], inds))
+    good_idents = list(map(lambda i: idents[ser][i],inds))
+
+
+    for r,q,o in zip(good_ranks,good_qualities,good_idents):
+      print("[%s]rank=%s, quality=%s" % (o,r,q))
+    coeff = np.corrcoef(good_ranks,good_qualities)
+    print("[%s] rank-corr : %s" % (ser,coeff[1][0]))
+    if n > len(inds):
+      coeff = np.corrcoef(ranks[ser],mismatches[ser])
+      print("[%s] mismatch-corr : %s" % (ser,coeff[1][0]))
+
+    plt.scatter(good_ranks,good_qualities,label=ser)
 
   plt.legend()
   plt.savefig("rank.png")
   plt.clf()
 
 def best_quality():
-  series,_,opts,_,qualities,_ = get_data()
+  series,idents,_,opts,_,qualities,_ = get_data()
   for bmark,qualvals in qualities.items():
     if len(qualvals) == 0:
       continue
     idx = np.argmax(qualvals)
     best_opt = opts[bmark][idx]
     print("[%s] %s / %s" % (bmark,best_opt,qualvals[idx]))
-    for o,v in zip(opts[bmark],qualvals):
+    for o,v in zip(idents[bmark],qualvals):
       print("   %s: %s" % (o,v))
 
 def best_ranked():
@@ -74,6 +103,7 @@ def best_ranked():
     print("[%s] %s / %s" % (bmark,best_opt,rankvals[idx]))
     for o,v in zip(opts[bmark],rankvals):
       print("   %s: %s" % (o,v))
+
 def rank_vs_quality():
   series,_,_,_,qualities,times = get_data()
   for ser in series:
