@@ -10,7 +10,7 @@ from bmark.bmarks.common import *
 import bmark.menvs as menvs
 
 # from wikipedia
-def model(name,omega):
+def model(name,omega,menv_name='t20'):
     params = {
         'P0': 0.1,
         'V0' :0.0,
@@ -32,17 +32,18 @@ def model(name,omega):
     prob.set_interval("V",-base_bnd*scf,base_bnd*scf)
     prob.set_max_sim_time(20)
     prob.compile()
-    menv = menvs.get_math_env('t20')
+    menv = menvs.get_math_env(menv_name)
     return menv,prob
 
-def execute(name,omega):
-  menv,prob = model(name,omega)
+def execute(name,omega,menv_name='t20'):
+  menv,prob = model(name,omega, \
+                    menv_name=menv_name)
   T,Y = run_diffeq(menv,prob)
   plot_diffeq(menv,prob,T,Y)
 
 
 if __name__ == "__main__":
   execute("one",1.0)
-  execute("quarter",0.25)
+  execute("quarter",0.25,menv_name='t200')
   execute("quad",4.0)
 1

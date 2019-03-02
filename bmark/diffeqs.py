@@ -25,7 +25,8 @@ BMARKS = [
     rxn.model_bidir(),
     simple_osc.model("one",1.0),
     simple_osc.model("quad",4.0),
-    simple_osc.model("quarter",0.25),
+    simple_osc.model("quarter",0.25, \
+                     menv_name='t200'),
     spring.model(),
     oscillator.model(),
     pendulum.model(),
