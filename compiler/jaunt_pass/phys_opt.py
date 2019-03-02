@@ -1,37 +1,8 @@
 import itertools
 import ops.nop as nop
 import util.util as util
+import compiler.common.evaluator_heuristic as evalheur
 import math
-
-def get_iface_ports(circuit):
-  for block_name,loc,config in circuit.instances():
-    if not circuit.board.handle_by_inst(block_name,loc) \
-       is None:
-      block = circuit.board.block(block_name)
-      for out in block.outputs:
-        ports.append((block_name,loc,out))
-  return
-
-def get_all_ports(circuit):
-  ports = []
-  for block_name,loc,config in circuit.instances():
-      block = circuit.board.block(block_name)
-      for out in block.outputs:
-        ports.append((block_name,loc,out))
-
-  return ports
-
-
-def get_integrator_ports(circuit):
-  ports = []
-  for block_name,loc,config in circuit.instances():
-    block = circuit.board.block(block_name)
-    if block_name != "integrator":
-      continue
-    for out in block.outputs:
-      ports.append((block_name,loc,out))
-
-  return ports
 
 def gpkit_mult(expr):
   freqs = list(filter(lambda arg: arg.op == nop.NOpType.FREQ, \
@@ -50,34 +21,9 @@ def gpkit_value(val):
   else:
     return -val
 
-def gpkit_ref_expr(jenv,varmap,circ,expr,last_index=False):
-  variables = expr.vars()
-  result = 1.0
-  for var in variables:
-    # values
-    if expr.op == nop.NOpType.SIG:
-      (block,loc),port = expr.instance,expr.port
-      scival = circ.config(block,loc).interval(port)
-      scvarname = jenv.get_scvar(block,loc,port)
-      expo = expr.power
-      print(rng,varmap[scvarname]*scival.bound)
-      input()
-      result *= (rng*varmap[scvarname])**expo
-
-    elif expr.op == nop.NOpType.FREQ:
-      expo = expr.power
-      if last_index:
-        result *= varmap['tau']**expo
-
-      elif expr.op == nop.NOpType.REF:
-        continue
-
-  return result
-
-
 def gpkit_expr(jenv,varmap,circ,expr,refs):
   def recurse(e):
-    return gpkit_expr(jenv,varmap,circ,e,refs)
+    return gpkit_expr(jenv,varmap,circ,e,refs=refs)
 
   if isinstance(expr,nop.NVar):
     # variables
@@ -101,11 +47,15 @@ def gpkit_expr(jenv,varmap,circ,expr,refs):
     elif expr.op == nop.NOpType.REF:
       block,loc = expr.instance
       port = expr.port
+      if refs is None:
+        raise Exception("cannot have reference in reference.")
       return refs[(block,loc,port)]
 
   # values
   elif expr.op == nop.NOpType.CONST_RV:
-    return gpkit_value(expr.sigma+expr.mu)
+    # the mean and variance have been made deterministic/separated
+    assert(expr.sigma == 0.0)
+    return gpkit_value(abs(expr.mu))
 
   # expressions
   elif expr.op == nop.NOpType.MULT:
@@ -125,69 +75,60 @@ def gpkit_expr(jenv,varmap,circ,expr,refs):
   else:
     raise Exception(expr)
 
-def compute_reference(varmap,jenv,circ, \
-                      block_name,loc,port,model,refs,method):
-  gpkit_mean = gpkit_ref_expr(jenv,varmap,circ,model.mean)
-  gpkit_variance = gpkit_ref_expr(jenv,varmap,circ,model.variance)
+def compute_expression(varmap,jenv,circ, \
+                       block_name,loc,port,model,refs):
+  gpkit_mean = gpkit_expr(jenv,varmap,circ, \
+                          model.mean,refs)
+  gpkit_variance = gpkit_expr(jenv,varmap,circ, \
+                              model.variance,refs)
+
+
   # compute signal
   scvarname = jenv.get_scvar(block_name,loc,port)
   scival = circ.config(block_name,loc).interval(port)
   signal = varmap[scvarname]*scival.bound
 
-  if method == 'low_snr':
-    return gpkit_mean*signal**(-1) + \
-      gpkit_variance*signal**(-1)
-
-  elif method == 'low':
-    return gpkit_mean + gpkit_variance
-
-  else:
-    raise Exception(method)
+  return gpkit_mean,gpkit_variance,signal
 
 
 
-def compute_objective(varmap,jenv,circ, \
-                      block_name,loc,port,model,refs,method,variance=True):
-  gpkit_mean = gpkit_expr(jenv,varmap,circ,model.mean,
-                          refs)
-  gpkit_variance = gpkit_expr(jenv,varmap,circ,model.variance,
-                              refs)
-  # compute signal
-  scvarname = jenv.get_scvar(block_name,loc,port)
-  scival = circ.config(block_name,loc).interval(port)
-  signal = varmap[scvarname]*scival.bound
-
-  if method == 'low_snr':
-    assert(variance==True)
-    return gpkit_variance*signal**(-1)
-
-  elif method == 'low':
-    return gpkit_mean + gpkit_variance
-
-  else:
-    raise Exception(method)
 
 def compute(varmap,jenv,circ,models,ports,method='low-snr'):
   time_constant = 1.0/circ.board.time_constant
   Jtau = varmap['tau']
-  refs = {}
+  means = {}
+  variances = {}
+  signals = {}
   for model,(block_name,loc,port) \
       in zip(models,ports):
-    ref = compute_reference(varmap,jenv,circ, \
-                            block_name,loc,port,model,refs,method)
-    refs[(block_name,loc,port)] = ref
+    mean,variance,sig = compute_expression(varmap,jenv,circ, \
+                                  block_name,loc,port,model,
+                                  refs=None)
+    signals[(block_name,loc,port)] = sig
+    means[(block_name,loc,port)] =mean
+    variances[(block_name,loc,port)] =variance
 
-  gpkit_obj = 1.0
-  for model,(block_name,loc,port) in zip(models,ports):
-    print('compute: %s[%s].%s' % (block_name,loc,port))
-    gpkit_obj += compute_objective(varmap,jenv,circ, \
-                            block_name,loc,port,model,refs,method)
+  if method == 'low_snr':
+    signal = 1.0
+    noise = 1.0
+    snr = 1.0
+    for block_name,loc,port in ports:
+      sig = signals[(block_name,loc,port)]
+      nz = variances[(block_name,loc,port)]
+      print(block_name,loc,port)
+      signal *= (sig**-1)
+      noise *= nz
+      snr += (sig**-1)*nz
 
+    opt = signal*noise
+    return [],opt
 
-  return [],gpkit_obj
+  else:
+    raise Exception("unknown method <%s>" % method)
+
 
 def low_noise(circuit,jenv,varmap):
-  ports = get_integrator_ports(circuit)
+  ports = evalheur.get_ports(circuit)
   models = []
   for block_name,loc,out in ports:
     model = circuit.config(block_name,loc) \

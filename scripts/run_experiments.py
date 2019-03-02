@@ -28,8 +28,8 @@ def execute(args):
   ip = args.ip
   native = args.native
   for entry in db.get_by_status(ExperimentStatus.PENDING):
-    print(entry)
-    if not detect_executed(entry):
+    entry.synchronize()
+    if entry.status == ExperimentStatus.PENDING:
       execute_script(ip,entry.grendel_file,native=native)
 
     entry.synchronize()

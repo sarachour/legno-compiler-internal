@@ -236,6 +236,11 @@ class ExperimentEntry:
 
 
   @property
+  def status(self):
+    return self._status
+
+
+  @property
   def bmark(self):
     return self._bmark
 
@@ -631,6 +636,7 @@ class ExperimentDB:
 
     for entry in itertr:
       entry.delete()
+      yield entry
 
   def get_experiment(self,bmark,arco_inds,jaunt_inds,opt,menv_name,hwenv_name):
     where_clause = self.to_where_clause(bmark,\
@@ -768,5 +774,7 @@ class ExperimentDB:
           if fname.endswith('.grendel'):
             bmark,arco_inds,jaunt_inds,opt,menv_name,hwenv_name = \
                                     ph.grendel_file_to_args(fname)
-            yield self.add_experiment(ph,bmark,arco_inds,jaunt_inds, \
+            exp = self.add_experiment(ph,bmark,arco_inds,jaunt_inds, \
                                       opt,menv_name,hwenv_name)
+            if not exp is None:
+              yield exp

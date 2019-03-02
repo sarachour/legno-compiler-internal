@@ -83,18 +83,37 @@ def correlation():
   plt.clf()
 
 def best_quality():
-  series,idents,_,opts,_,qualities,_ = get_data()
-  for bmark,qualvals in qualities.items():
-    if len(qualvals) == 0:
+  data = get_data()
+  qualities= data['qualities']
+  opts = data['opts']
+  series= data['series']
+  mismatches = data['mismatches']
+  idents = data['idents']
+
+  for ser in series:
+    n = len(qualities[ser])
+    inds = list(filter(lambda i: not mismatches[ser][i], \
+                       range(0,n)))
+    good_qualities = list(map(lambda i: qualities[ser][i], inds))
+    good_opts = list(map(lambda i: opts[ser][i], inds))
+    good_idents = list(map(lambda i: idents[ser][i], inds))
+    if len(good_qualities) == 0:
       continue
-    idx = np.argmax(qualvals)
-    best_opt = opts[bmark][idx]
-    print("[%s] %s / %s" % (bmark,best_opt,qualvals[idx]))
-    for o,v in zip(idents[bmark],qualvals):
+
+    idx = np.argmax(good_qualities)
+    best_opt = good_opts[idx]
+    best_quality = good_qualities[idx]
+    print("[%s] %s / %s" % (ser,best_opt,best_quality))
+    for o,v in zip(good_idents,good_qualities):
       print("   %s: %s" % (o,v))
 
 def best_ranked():
-  series,_,opts,ranks,_,_ = get_data(executed_only=False)
+  data = get_data(executed_only=False)
+  ranks = data['ranks']
+  opts = data['opts']
+  qualities= data['qualities']
+  idents = data['idents']
+
   for bmark,rankvals in ranks.items():
     if len(rankvals) == 0:
       continue
@@ -104,10 +123,13 @@ def best_ranked():
     for o,v in zip(opts[bmark],rankvals):
       print("   %s: %s" % (o,v))
 
-def rank_vs_quality():
-  series,_,_,_,qualities,times = get_data()
+def quality_vs_time():
+  data = get_data()
+  qualities = data['qualities']
+  times = data['times']
+  series = data['series']
   for ser in series:
-    plt.scatter(times[ser], qualities[ser],label=ser,s=1.0)
+    plt.scatter(np.log10(np.array(times[ser])), qualities[ser],label=ser,s=1.0)
 
   plt.legend()
   plt.savefig("runt.png")
@@ -115,13 +137,15 @@ def rank_vs_quality():
 
 def execute(args):
   name = args.type
-  if name == 'rank-vs-quality':
-    rank_vs_quality()
-  elif name == 'correlation':
-    correlation()
-  elif name == 'best-ranked':
-    best_ranked()
-  elif name == 'best-quality':
-    best_quality()
+  opts = {
+    'quality-vs-runtime':quality_vs_time,
+    'correlation': correlation,
+    'best-ranked': best_ranked,
+    'best_quality': best_quality
+  }
+  if name in opts:
+    opts[name]()
   else:
-    raise Exception("unknown")
+    for opt in opts.keys():
+      print(": %s" % opt)
+    raise Exception("unknown routine <%s>" % name)

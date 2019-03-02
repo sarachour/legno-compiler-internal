@@ -20,11 +20,9 @@ from bmark.bmarks.common import run_diffeq
 import util.paths as paths
 
 # FMAX: the maximum frequency in the transformed simulation
-def compute_running_snr(T,Y,FMAX,vscale=1.0,tscale=1.0,nmax=100000):
-  time_between_pts = np.mean(np.diff(T))
-  HWFREQ = 1.0/time_between_pts
-  SAMPFREQ = FMAX*tscale*2.0
-  win_size = int(HWFREQ/SAMPFREQ)
+def compute_running_snr(T,Y,nmax=100000):
+  n_segs = 100
+  win_size = int(len(T)/float(n_segs))
   MEAN,STDEV,SNR,TIME = [],[],[],[]
   win_low = 0
   win_hi = win_size
@@ -33,8 +31,8 @@ def compute_running_snr(T,Y,FMAX,vscale=1.0,tscale=1.0,nmax=100000):
   for i in tqdm.tqdm(range(0,n,step)):
     if win_hi - win_low + 1 < win_size:
       continue
-    u = np.array(Y[win_low:win_hi+1])/vscale
-    t = np.array(T[win_low:win_hi+1])*tscale
+    u = np.array(Y[win_low:win_hi+1])
+    t = np.array(T[win_low:win_hi+1])
     mean = np.mean(u)
     stdev = np.std(u)
     MEAN.append(mean)
@@ -135,6 +133,46 @@ def analyze_rank(entry,conc_circ):
   RANK = skelter.rank(conc_circ)
   entry.set_rank(RANK)
 
+def truncate_signal(t,y):
+  nsegs = 40
+  pts = np.linspace(min(t),max(t),nsegs)
+  bounds = []
+  means = []
+  stds = []
+  for i in range(1,nsegs):
+    lb,ub = pts[i-1],pts[i]
+    inds = list(filter(lambda i: t[i]<=ub and t[i]>=lb, \
+                       range(0,len(t))))
+    mean = np.mean(list(map(lambda i: y[i], inds)))
+    std = np.std(list(map(lambda i: y[i], inds)))
+    means.append(mean)
+    stds.append(std)
+    bounds.append((lb,ub))
+
+  trim_front = 0
+  stop = False
+  for i in range(0,nsegs-1):
+    if stds[i] < 0.025 and not stop:
+      trim_front = i
+    else:
+      stop=True
+
+  trim_back= 0
+  stop = False
+  for i in range(nsegs-2,0,-1):
+    if stds[i] < 0.025 and not stop:
+      trim_back = i
+    else:
+      stop=True
+
+  time_low,_ = bounds[trim_front]
+  _,time_hi = bounds[trim_back]
+  inds = list(filter(lambda i: t[i]<=time_hi and t[i]>=time_low, \
+                       range(0,len(t))))
+  t_cut = list(map(lambda i: t[i], inds))
+  y_cut = list(map(lambda i: y[i], inds))
+  return t_cut,y_cut
+
 def analyze_quality(entry,conc_circ):
   path_h = paths.PathHandler('default',entry.bmark)
   QUALITIES = []
@@ -146,8 +184,10 @@ def analyze_quality(entry,conc_circ):
     simple_plot(output,path_h,'meas',TMEAS,YMEAS)
 
     _,FMAX,TC,SCF = compute_params(conc_circ,varname)
+    TMEAS_CUT, YMEAS_CUT = truncate_signal(TMEAS,YMEAS)
+    simple_plot(output,path_h,'cut',TMEAS_CUT,YMEAS_CUT)
     TIME,MEAN,STDEV,SNR = \
-          compute_running_snr(TMEAS,YMEAS,FMAX,tscale=TC, vscale=SCF)
+          compute_running_snr(TMEAS_CUT,YMEAS_CUT)
 
     simple_plot(output,path_h,'snr',TIME,SNR)
     mean_std_plot(output,path_h,'dist',TIME,MEAN,STDEV)
@@ -161,8 +201,8 @@ def analyze_quality(entry,conc_circ):
 
 def execute(args):
   recompute_rank = args.recompute_rank
-  recompute_quality = args.recompute_runtime
-  recompute_runtime = args.recompute_quality
+  recompute_runtime = args.recompute_runtime
+  recompute_quality = args.recompute_quality
   recompute_any = recompute_rank or  \
                   recompute_quality or \
                   recompute_runtime
