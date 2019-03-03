@@ -36,7 +36,9 @@ def rank(circ):
     signals.append(signal)
     noises.append(noise)
 
-  snr = signals+signals/noises
+  snr = np.prod(noises)/np.prod(signals)
+  sig = np.prod(list(map(lambda s: 1.0/s, signals)))
+  return sum(snrs)
   #return np.min(snrs)*1.0/circ.tau
 
 def clear(circ):

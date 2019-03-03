@@ -335,9 +335,9 @@ class ExperimentEntry:
   def set_mismatch(self,new_mismatch):
     assert(isinstance(new_mismatch,bool))
     if new_mismatch:
-      self.update_db({'mismatch':1})
+      self.update_db({'mismatch':2})
     else:
-      self.update_db({'mismatch':0})
+      self.update_db({'mismatch':1})
     self._mismatch = new_mismatch
 
 
@@ -398,7 +398,12 @@ class ExperimentEntry:
     entry._runtime=args['runtime']
     entry._status=ExperimentStatus(args['status'])
     entry._modif = args['modif']
-    entry._mismatch = True if args['mismatch'] == 1 else False
+    if args['mismatch'] == 2:
+      entry._mismatch = True
+    elif args['mismatch'] == 1:
+      entry._mismatch = False
+    else:
+      entry._mismatch = None
     entry._columns = args
     return entry
 

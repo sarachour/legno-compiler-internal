@@ -42,7 +42,10 @@ def get_data(series_type='bmarks',executed_only=True):
     get(mismatches,entry).append(entry.mismatch)
     get(qualities,entry).append(entry.quality)
     get(times,entry).append(entry.runtime)
-    get(quality_to_time,entry).append(entry.quality/entry.runtime)
+    if not entry.quality is None:
+      get(quality_to_time,entry).append(entry.quality/entry.runtime)
+    else:
+      get(quality_to_time,entry).append(None)
 
   return {
     'series':bmarks.keys(),
@@ -115,10 +118,10 @@ def summarize_best(key,executed_only=True,penalize_mismatch=True):
     for ident in by_ident:
       print("%s" % ident)
       labels = list(by_ident[ident].keys())
-      values = list(map(lambda k: by_ident[ident][k],labels))
-      indices = np.argsort(values)
+      vals = list(map(lambda k: by_ident[ident][k],labels))
+      indices = np.argsort(vals)
       for i in indices:
-        print("   %s: %s" % (labels[i],values[i]))
+        print("   %s: %s" % (labels[i],vals[i]))
 
 def best_quality_to_speed():
   summarize_best('qualities_to_times')
