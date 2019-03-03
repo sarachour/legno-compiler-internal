@@ -27,17 +27,17 @@ def rank(circ):
   locs = []
   nz_eval = evaluator.propagated_noise_evaluator(circ)
   # mismatch in seconds
-  signals = 1.0
-  noises = 1.0
+  signals = []
+  noises =[]
   for block_name,loc,port in evalheur.get_ports(circ,evaluate=True):
     config = circ.config(block_name,loc)
     signal,noise,snr = compute_snr(nz_eval,circ,block_name,loc,port)
     snrs.append(snr)
-    signals += signal
-    noises += noise
+    signals.append(signal)
+    noises.append(noise)
 
   snr = signals+signals/noises
-  return snr
+  #return np.min(snrs)*1.0/circ.tau
 
 def clear(circ):
   for _,_,config in circ.instances():

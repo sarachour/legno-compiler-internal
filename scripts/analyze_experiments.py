@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tqdm
 import math
+import time
 
 from scripts.db import ExperimentDB, ExperimentStatus, OutputStatus
 import lab_bench.lib.command as cmd
@@ -221,7 +222,7 @@ def analyze_quality(entry,conc_circ):
   print("[[ Agg-Quality: %s ]]" % AGG_QUALITY)
   entry.set_quality(AGG_QUALITY)
 
-def execute(args):
+def execute_once(args):
   recompute_rank = args.recompute_rank
   recompute_runtime = args.recompute_runtime
   recompute_quality = args.recompute_quality
@@ -257,3 +258,13 @@ def execute(args):
 
     if entry.quality is None or recompute_quality:
       analyze_quality(entry,conc_circ)
+
+def execute(args):
+  daemon = args.monitor
+  if not daemon:
+    execute_once(args)
+  else:
+    while True:
+      execute_once(args)
+      print("hibernating...")
+      time.sleep(10)

@@ -25,6 +25,7 @@ def execute(args):
         continue
 
       imgterm.render(plotname,cols,8)
+      print("<mismatched=%s>" % entry.mismatch)
       result = input("mismatch (y/n):")
       if "y" in result:
         mismatched = True
@@ -32,4 +33,4 @@ def execute(args):
         mismatched = False
 
     if not mismatched is None:
-      entry.set_mismatch(True)
+      entry.set_mismatch(mismatched)

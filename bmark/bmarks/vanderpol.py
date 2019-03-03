@@ -20,13 +20,14 @@ def model():
     # [-2,2]
 
     params = {
-        'mu': 0.2,
-        'Y0': 0.0,
-        'X0': -0.5,
-        'time': 1000
+      'mu': 0.2,
+      'Y0': 0.0,
+      'X0': -0.5,
+      'time': 1000,
+      'onehack':0.9999
     }
-    Y = parse_diffeq('(Y*{mu}*(1.0-X*X) - X)','Y0',':v',params)
-    X = parse_diffeq('1.0*Y','X0',':u',params)
+    Y = parse_diffeq('(Y*{mu}*(1.0-{onehack}*X*X) - {onehack}*X)','Y0',':v',params)
+    X = parse_diffeq('{onehack}*Y','X0',':u',params)
 
     prob.bind("X",X)
     prob.bind("Y",Y)

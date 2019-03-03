@@ -40,6 +40,8 @@ analyze_subp.add_argument('--recompute-runtime', action='store_true',
                        help='.')
 analyze_subp.add_argument('--recompute-quality', action='store_true',
                        help='.')
+analyze_subp.add_argument('--monitor', action='store_true',
+                       help='.')
 
 visualize_subp = subparsers.add_parser('visualize', help='produce graphs.')
 visualize_subp.add_argument('type', help='visualization type [rank-vs-quality,correlation,etc]')

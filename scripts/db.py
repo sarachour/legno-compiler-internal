@@ -173,16 +173,24 @@ class OutputEntry:
     self._quality = new_quality
 
 
+  @property
+  def circ_ident(self):
+    return "%s(%s,%s)" % (self._bmark,
+                                         self._arco_indices,
+                                         self._jaunt_index)
+  @property
+  def port_ident(self):
+    return "%s.%s" % (self.circ_ident,self._varname)
+
+
 
   @property
   def ident(self):
-    return "%s(%s,%s,%s,%s,%s).%s" % (self._bmark,
-                                         self._arco_indices,
-                                         self._jaunt_index,
-                                         self._objective_fun,
-                                         self._math_env,
-                                         self._hw_env,
-                                         self._varname)
+    return "%s[%s](%s,%s)" % (self.port_ident,
+                              self._objective_fun,
+                              self._math_env,
+                              self._hw_env)
+
   def __repr__(self):
     s = "{\n"
     s += "ident=%s\n" % self.ident
@@ -395,13 +403,17 @@ class ExperimentEntry:
     return entry
 
   @property
+  def circ_ident(self):
+    return "%s(%s,%s)" % (self._bmark,
+                          self._arco_indices,
+                          self._jaunt_index)
+
+  @property
   def ident(self):
-    return "%s(%s,%s,%s,%s,%s)" % (self._bmark,
-                                         self._arco_indices,
-                                         self._jaunt_index,
-                                         self._objective_fun,
-                                         self._math_env,
-                                         self._hw_env)
+    return "%s[%s](%s,%s)" % (self.circ_ident,
+                              self._objective_fun,
+                              self._math_env,
+                              self._hw_env)
  
   def __repr__(self):
     s = "{\n"
