@@ -54,31 +54,34 @@ def exec_jaunt_phys(hdacv2_board,args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
   prog = bmark.get_prog(args.benchmark)
   circ_dir = path_handler.skelt_circ_dir()
+  generated = {}
   for dirname, subdirlist, filelist in os.walk(circ_dir):
     for fname in filelist:
       if fname.endswith('.circ'):
         circ_bmark,circ_indices,circ_scale_index,circ_opt = \
            path_handler.conc_circ_to_args(fname)
 
-        if circ_opt in jaunt.JauntObjectiveFunction.physical_methods():
+        gen_key = (circ_bmark,str(circ_indices),circ_scale_index)
+        if circ_opt in jaunt.JauntObjectiveFunctionManager.physical_methods():
           continue
 
-        with open("%s/%s" % (dirname,fname),'r') as fh:
-          obj = json.loads(fh.read())
-          conc_circ = ConcCirc.from_json(hdacv2_board, \
-                                         obj)
-          for opt,scaled_circ in jaunt.physical_scale(prog,conc_circ):
+        if gen_key in generated:
+            continue
+
+        filename = "%s/%s" % (dirname,fname)
+        conc_circ = ConcCirc.read(hdacv2_board, filename)
+        for opt,scaled_circ in jaunt.physical_scale(prog,conc_circ):
             filename = path_handler.conc_circ_file(circ_bmark,
-                                                   circ_indices,
-                                                   circ_scale_index,
-                                                   opt)
+                                                    circ_indices,
+                                                    circ_scale_index,
+                                                    opt)
             scaled_circ.write_circuit(filename)
             filename = path_handler.conc_graph_file(circ_bmark,
                                                     circ_indices,
                                                     circ_scale_index,
                                                     opt)
             scaled_circ.write_graph(filename,write_png=True)
-
+            generated[gen_key] = True
 
 
 def exec_jaunt(hdacv2_board, args):
@@ -91,34 +94,22 @@ def exec_jaunt(hdacv2_board, args):
         circ_bmark,circ_indices = path_handler \
                                   .abs_circ_to_args(fname)
         print('<<<< %s >>>>' % fname)
-        with open("%s/%s" % (dirname,fname),'r') as fh:
-          obj = json.loads(fh.read())
-          conc_circ = ConcCirc.from_json(hdacv2_board, \
-                                         obj)
-          already_written = True
-          for idx,opt in jaunt.files(range(0,args.scale_circuits)):
-            filename = path_handler.conc_circ_file(circ_bmark,
-                                                   circ_indices,
-                                                   idx,
-                                                   opt)
-            if not path_handler.has_file(filename):
-              already_written = False
+        filename = "%s/%s" % (dirname,fname)
+        conc_circ = ConcCirc.read(hdacv2_board, filename)
 
-      if not already_written:
-        for idx2,(opt,scale_circ) in enumerate(jaunt.scale(prog,
-                                                          conc_circ)):
-          filename = path_handler.conc_circ_file(circ_bmark,
-                                                 circ_indices,
-                                                 idx2,
-                                                 opt)
-          scale_circ.write_circuit(filename)
-          filename = path_handler.conc_graph_file(circ_bmark,
-                                                  circ_indices,
-                                                  idx2,
-                                                  opt)
-          scale_circ.write_graph(filename,write_png=True)
-          if idx2 >= args.scale_circuits:
-            break
+        for idx,opt,scale_circ in jaunt.scale(prog,conc_circ):
+            filename = path_handler.conc_circ_file(circ_bmark,
+                                                    circ_indices,
+                                                    idx,
+                                                    opt)
+            scale_circ.write_circuit(filename)
+            filename = path_handler.conc_graph_file(circ_bmark,
+                                                    circ_indices,
+                                                    idx,
+                                                    opt)
+            scale_circ.write_graph(filename,write_png=True)
+            if idx >= args.scale_circuits:
+                break
 
 
 def exec_srcgen(hdacv2_board,args):
@@ -131,29 +122,26 @@ def exec_srcgen(hdacv2_board,args):
     for fname in filelist:
       if fname.endswith('.circ'):
         print('<<<< %s >>>>' % fname)
-        with open("%s/%s" % (dirname,fname),'r') as fh:
-          circ_bmark,circ_indices,circ_scale_index,circ_opt = \
-             path_handler.conc_circ_to_args(fname)
-          filename = path_handler.grendel_file(circ_bmark, \
-                                               circ_indices, \
-                                               circ_scale_index, \
-                                               circ_opt,
-                                               menv.name,
-                                               hwenv.name)
+        circ_bmark,circ_indices,circ_scale_index,circ_opt = \
+            path_handler.conc_circ_to_args(fname)
+        filename = path_handler.grendel_file(circ_bmark, \
+                                            circ_indices, \
+                                            circ_scale_index, \
+                                            circ_opt,
+                                            menv.name,
+                                            hwenv.name)
 
-          if path_handler.has_file(filename) and not recompute:
+        if path_handler.has_file(filename) and not recompute:
             continue
 
-          obj = json.loads(fh.read())
-          conc_circ = ConcCirc.from_json(hdacv2_board, \
-                                                  obj)
-          gren_file = srcgen.generate(path_handler,
-                                      hdacv2_board,\
-                                      conc_circ,\
-                                      menv,
-                                      hwenv,
-                                      filename=filename)
-          gren_file.write(filename)
+        conc_circ = ConcCirc.read(hdacv2_board,"%s/%s" % (dirname,fname))
+        gren_file = srcgen.generate(path_handler,
+                                    hdacv2_board,\
+                                    conc_circ,\
+                                    menv,
+                                    hwenv,
+                                    filename=filename)
+        gren_file.write(filename)
 
 
 def exec_graph(hdacv2_board, args):

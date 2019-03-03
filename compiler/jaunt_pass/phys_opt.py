@@ -2,6 +2,7 @@ import itertools
 import ops.nop as nop
 import util.util as util
 import compiler.common.evaluator_heuristic as evalheur
+import compiler.jaunt_pass.opt as optlib
 import math
 
 def gpkit_mult(expr):
@@ -87,7 +88,6 @@ def compute_expression(varmap,jenv,circ, \
   scvarname = jenv.get_scvar(block_name,loc,port)
   scival = circ.config(block_name,loc).interval(port)
   signal = varmap[scvarname]*scival.bound
-
   return gpkit_mean,gpkit_variance,signal
 
 
@@ -111,30 +111,40 @@ def compute(varmap,jenv,circ,models,ports,method='low-snr'):
   if method == 'low_snr':
     signal = 1.0
     noise = 1.0
-    snr = 1.0
+    snr = 0.0
     for block_name,loc,port in ports:
       sig = signals[(block_name,loc,port)]
       nz = variances[(block_name,loc,port)]
       print(block_name,loc,port)
+      print(sig)
       signal *= (sig**-1)
       noise *= nz
-      snr += (sig**-1)*nz
+      snr += (sig**-1)*(nz)
 
-    opt = signal*noise
-    return [],opt
-
+    opt = signal+signal*noise
+    return opt
   else:
     raise Exception("unknown method <%s>" % method)
 
+class LowNoiseObjFunc(optlib.JauntObjectiveFunction):
 
-def low_noise(circuit,jenv,varmap):
-  ports = evalheur.get_ports(circuit)
-  models = []
-  for block_name,loc,out in ports:
-    model = circuit.config(block_name,loc) \
-           .propagated_noise(out)
-    models.append(model)
+  def __init__(self,obj):
+    optlib.JauntObjectiveFunction.__init__(self,obj)
 
-  cstr,obj = compute(varmap,jenv,circuit,models,ports, \
-                          method='low_snr')
-  yield cstr,obj
+  @staticmethod
+  def name():
+    return 'lo-noise'
+
+  @staticmethod
+  def make(circuit,jobj,varmap):
+    jenv = jobj.jenv
+    ports = evalheur.get_ports(circuit)
+    models = []
+    for block_name,loc,out in ports:
+      model = circuit.config(block_name,loc) \
+                     .propagated_noise(out)
+      models.append(model)
+
+    opt = compute(varmap,jenv,circuit,models,ports, \
+                  method='low_snr')
+    yield LowNoiseObjFunc(opt)

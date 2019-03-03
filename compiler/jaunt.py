@@ -6,7 +6,8 @@ from chip.config import Labels
 import ops.op as ops
 import gpkit
 import itertools
-import compiler.jaunt_pass.phys_opt as jaunt_phys_opt
+import compiler.jaunt_pass.phys_opt as physoptlib
+import compiler.jaunt_pass.basic_opt as boptlib
 import ops.jop as jop
 import ops.op as op
 import signal
@@ -20,87 +21,49 @@ import tqdm
 #TODO: what is low range, high range and med range?
 #TODO: setRange: integ.in, integ.out and mult have setRange functions.
 #TODO: how do you set wc in the integrator? Is it through the setRange function?
-class JauntObjectiveFunction():
+class JauntObjectiveFunctionManager():
 
     @staticmethod
-    def methods():
+    def basic_methods():
         #return ['fast','slow','max']
-        return ['fast','slow','maxstab','max']
+        return [
+            boptlib.SlowObjFunc,
+            boptlib.FastObjFunc,
+            boptlib.MaxSignalObjFunc,
+            boptlib.MaxSignalAndSpeedObjFunc,
+            boptlib.MaxSignalAndStabilityObjFunc,
+
+        ]
 
     @staticmethod
     def physical_methods():
         #return ['lo-noise', 'lo-bias', 'lo-delay']
-        return ['lo-noise']
+        return [boptlib.MaxSignalAtSpeedObjFunc, \
+                physoptlib.LowNoiseObjFunc]
 
     def __init__(self,jenv):
-        self.method = 'fast'
+        self.method = None
         self.jenv = jenv
+        self._results = {}
 
-    def set_objective(self,name):
-        self.method = name
+    def result(self,objective):
+        return self._results[objective]
+
+    def add_result(self,objective,sln):
+        assert(not objective in self._results)
+        self._results[objective] = sln
+
 
     def objective(self,circuit,varmap):
-        if self.method == 'fast':
-            gen = self.fast(varmap)
-        elif self.method == 'slow':
-            gen = self.slow(varmap)
-        elif self.method == 'max':
-            gen = self.max_dynamic_range(varmap)
-        elif self.method == 'maxstab':
-            gen = self.max_dynamic_range_and_stability(varmap)
+        assert(not self.method is None)
+        gen = None
+        for obj in self.basic_methods() + self.physical_methods():
+            if obj.name() == self.method:
+                gen = obj.make(circuit,self,varmap)
 
-        elif self.method == 'lo-noise':
-            gen = jaunt_phys_opt.low_noise(circuit,\
-                                           self.jenv,varmap)
-        elif self.method == 'lo-delay':
-            gen = jaunt_phys_opt.low_delay(circuit,\
-                                           self.jenv,varmap)
-        elif self.method == 'lo-bias':
-            gen = jaunt_phys_opt.low_bias(circuit,\
-                                          self.jenv,varmap)
-
-        else:
-            raise NotImplementedError
-
-        for cstrs,obj in gen:
-            yield cstrs,obj
-
-    def slow(self,varmap):
-        objective = varmap[self.jenv.TAU]
-        #print(objective)
-        if self.jenv.uses_tau():
-            yield [],objective
-        else:
-            yield [],0
-
-    def fast(self,varmap):
-        objective = 1.0/varmap[self.jenv.TAU]
-        if self.jenv.uses_tau():
-            yield [],objective
-        else:
-            yield [],0
-
-    def max_dynamic_range_and_stability(self,varmap):
-        if self.jenv.uses_tau():
-            objective = varmap[self.jenv.TAU]
-        else:
-            objective = 1.0
-        for scvar in self.jenv.scvars():
-            if self.jenv.in_use(scvar):
-                objective *= 1.0/varmap[scvar]
-        yield [],objective
-
-
-    def max_dynamic_range(self,varmap):
-        if self.jenv.uses_tau():
-            objective = 1.0/varmap[self.jenv.TAU]
-        else:
-            objective = 1.0
-
-        for scvar in self.jenv.scvars():
-            if self.jenv.in_use(scvar):
-                objective *= 1.0/varmap[scvar]
-        yield [],objective
+        
+        for obj in gen:
+            yield obj
 
 
 class JauntEnv:
@@ -699,15 +662,11 @@ def build_gpkit_problem(circ,jenv,jopt):
         time.sleep(0.2)
         return None
 
-    #print("==== Objective Fxn [%s] ====" % jopt.method)
-    for objective_cstrs, objective in jopt.objective(circ,variables):
-        #for cstr in objective_cstrs:
-        #    print("cstr: %s" % cstr)
-        #print("obj: %s" % objective)
-        model = gpkit.Model(objective, \
+    for obj in jopt.objective(circ,variables):
+        model = gpkit.Model(obj.objective(), \
                             list(gpkit_cstrs) +
-                            list(objective_cstrs))
-        yield model
+                            list(obj.constraints()))
+        yield model,obj
 
 def solve_gpkit_problem_cvxopt(gpmodel,timeout=10):
     def handle_timeout(signum,frame):
@@ -738,7 +697,7 @@ def solve_gpkit_problem_mosek(gpmodel,timeout=10):
     try:
         signal.signal(signal.SIGALRM, handle_timeout)
         signal.alarm(timeout)
-        sln = gpmodel.solve(solver=CONFIG.GPKIT_SOLVER,verbosity=2)
+        sln = gpmodel.solve(solver=CONFIG.GPKIT_SOLVER,verbosity=0)
         signal.alarm(0)
     except TimeoutError as te:
         #print("Timeout: mosek timed out or hung")
@@ -834,17 +793,6 @@ def files(scale_inds):
             yield idx,opt
 
 
-def compute_best_sln(slns):
-    if len(slns) == 0:
-        return None
-
-    elif len(slns) == 1:
-        return slns[0]
-
-    else:
-        idx = np.argmin(map(lambda sln: sln['cost'],slns))
-        return slns[idx]
-
 def debug_gpkit_problem(gpprob):
     gpprob.debug(solver='mosek_cli')
     input("continue?")
@@ -852,50 +800,48 @@ def debug_gpkit_problem(gpprob):
 def scale_circuit(prog,circ,methods,debug=True):
     assert(isinstance(circ,ConcCirc))
     jenv = build_jaunt_env(prog,circ)
-    jopt = JauntObjectiveFunction(jenv)
-    skip_opts = False
-    for opt in methods:
-        jopt.method = opt
+    jopt = JauntObjectiveFunctionManager(jenv)
+    for optcls in methods:
+        jopt.method = optcls.name()
         slns = []
-        for idx,gpprob in enumerate(build_gpkit_problem(circ,jenv,jopt)):
+        print("===== %s =====" % optcls.name())
+        for idx,(gpprob,obj) in \
+            enumerate(build_gpkit_problem(circ,jenv,jopt)):
+            print("-> %s" % optcls.name())
             if gpprob is None:
                 continue
 
             sln = solve_gpkit_problem(gpprob)
             if sln is None:
-                #print("[[FAILURE - NO SLN]]")
+                print("[[FAILURE - NO SLN]]")
                 jenv.set_solved(False)
                 #debug_gpkit_problem(gpprob)
-                continue
+                return
 
             elif not 'freevariables' in sln:
-                #print("[[FAILURE - NO FREEVARS]]")
+                print("[[FAILURE - NO FREEVARS]]")
                 succ,result = sln
                 assert(result is None)
                 assert(succ == False)
                 jenv.set_solved(False)
-                continue
+                return
 
             else:
                 jenv.set_solved(True)
                 slns.append(sln)
 
-
-        best_sln = compute_best_sln(slns)
-        if best_sln is None:
-            return None
-
-        upd_circ = sp_update_circuit(jenv,prog,circ.copy(),
-                                    best_sln['freevariables'])
-        yield opt,upd_circ
+            jopt.add_result(obj.tag(),sln)
+            upd_circ = sp_update_circuit(jenv,prog,circ.copy(),
+                                        sln['freevariables'])
+            yield obj.tag(),upd_circ
 
 def physical_scale(prog,circ):
     for opt,circ in scale_circuit(prog,circ,\
-                                  JauntObjectiveFunction.physical_methods()):
+                                  JauntObjectiveFunctionManager.physical_methods()):
         yield opt,circ
 
 def scale(prog,circ):
-    for orig_circ in iter_scaled_circuits(circ):
+    for idx,orig_circ in enumerate(iter_scaled_circuits(circ)):
         for opt,scaled_circ in scale_circuit(prog,orig_circ,\
-                                      JauntObjectiveFunction.methods()):
-            yield opt,scaled_circ
+                                      JauntObjectiveFunctionManager.basic_methods()):
+            yield idx,opt,scaled_circ

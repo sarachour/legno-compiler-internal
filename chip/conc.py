@@ -5,11 +5,12 @@ import chip.conc_graphlib as graphlib
 
 class ConcCirc:
 
-    def __init__(self,board):
+    def __init__(self,board,filename=None):
         self._board = board
         self._tau = 1.0
         self._configs= {}
         self._conns = {}
+        self._filename = filename
         #self._intervals = {}
         #self._bandwidths = {}
 
@@ -26,6 +27,11 @@ class ConcCirc:
 
     def set_tau(self,value):
         self._tau = value
+
+    @property
+    def filename(self):
+        return self._filename
+
 
     @property
     def tau(self):
@@ -182,7 +188,9 @@ class ConcCirc:
     def read(board,filename):
         with open(filename,'r') as fh:
             obj = json.loads(fh.read())
-            return ConcCirc.from_json(board,obj)
+            conc_circ = ConcCirc.from_json(board,obj)
+            conc_circ._filename = filename
+            return conc_circ
 
     def to_json(self):
         data_struct = {

@@ -20,28 +20,35 @@ from bmark.bmarks.common import run_diffeq
 import util.paths as paths
 
 # FMAX: the maximum frequency in the transformed simulation
-def compute_running_snr(T,Y,nmax=100000):
-  n_segs = 100
-  win_size = int(len(T)/float(n_segs))
+def compute_running_snr(T,Y,nmax=10000):
+  time_between_pts = np.mean(np.diff(T))
+  HWFREQ = 1.0/time_between_pts
+  # maximum frequency of chip
+  SAMPFREQ = 400000*2.0
+  win_size = int(HWFREQ/SAMPFREQ)
   MEAN,STDEV,SNR,TIME = [],[],[],[]
-  win_low = 0
-  win_hi = win_size
   n = len(Y)
   step = int(round(n/nmax)) if nmax < n else 1
+
+  print(" n: %s" % n)
+  print(" hw_freq: %s" % HWFREQ)
+  print(" mt_freq: %s" % SAMPFREQ)
+  print(" step: %s" % step)
+  print(" win: %s" % win_size)
   for i in tqdm.tqdm(range(0,n,step)):
-    if win_hi - win_low + 1 < win_size:
+    win_hi = min(round(i+win_size/2.0),n-1)
+    win_lo = max(round(i-win_size/2.0),0)
+    if win_hi - win_lo < win_size/6.0:
       continue
-    u = np.array(Y[win_low:win_hi+1])
-    t = np.array(T[win_low:win_hi+1])
+
+    u = np.array(Y[win_lo:win_hi+1])
+    t = np.array(T[win_lo:win_hi+1])
     mean = np.mean(u)
     stdev = np.std(u)
     MEAN.append(mean)
     STDEV.append(stdev)
     SNR.append(abs(mean)/stdev)
     TIME.append(np.mean(t))
-    win_low += 1
-    if win_hi < n-1:
-      win_hi += 1
 
   return TIME,MEAN,STDEV,SNR
 
@@ -85,11 +92,10 @@ def compute_params(conc_circ,varname):
   block_name,loc,port = LOC
   cfg = conc_circ.config(block_name,loc)
   scf = cfg.scf(port)
-  bw = cfg.bandwidth(port)
-  tc = (conc_circ.board.time_constant)*(conc_circ.tau)
+  tau = (conc_circ.tau)
   pnlib.compute(conc_circ)
   snr = skelter.snr(conc_circ,block_name,loc,port)
-  return snr,bw.bandwidth,tc,scf
+  return snr,tau,scf
 
 
 def mean_std_plot(entry,path_h,tag,t,mean,std):
@@ -127,11 +133,15 @@ def simple_plot(entry,path_h,tag,t,x):
 def analyze_rank(entry,conc_circ):
   for output in entry.outputs():
     varname = output.varname
-    RANK,FMAX,TC,SCF = compute_params(conc_circ,varname)
+    RANK,_,_= compute_params(conc_circ,varname)
     output.set_rank(RANK)
 
   RANK = skelter.rank(conc_circ)
   entry.set_rank(RANK)
+
+def demean_signal(y):
+  bias = np.mean(y)
+  return list(map(lambda yi: yi-bias,y))
 
 def truncate_signal(t,y):
   nsegs = 40
@@ -149,22 +159,33 @@ def truncate_signal(t,y):
     stds.append(std)
     bounds.append((lb,ub))
 
+  n = len(bounds)
+  THRESHOLD = 0.05
+  TRIM_FRONT_LIMIT = 2
   trim_front = 0
   stop = False
-  for i in range(0,nsegs-1):
-    if stds[i] < 0.025 and not stop:
+  for i in range(0,n):
+    if stds[i] < THRESHOLD and not stop:
       trim_front = i
+      if trim_front > TRIM_FRONT_LIMIT:
+        stop = True
+
     else:
       stop=True
 
-  trim_back= 0
+  TRIM_BACK_LIMIT = 10
+  trim_back= n-1
   stop = False
-  for i in range(nsegs-2,0,-1):
-    if stds[i] < 0.025 and not stop:
+  for i in range(n-1,0,-1):
+    if stds[i] < THRESHOLD and not stop:
       trim_back = i
+      if trim_back < TRIM_BACK_LIMIT:
+        stop = True
     else:
       stop=True
 
+
+  print("trim: %d,%d" % (trim_front,trim_back))
   time_low,_ = bounds[trim_front]
   _,time_hi = bounds[trim_back]
   inds = list(filter(lambda i: t[i]<=time_hi and t[i]>=time_low, \
@@ -183,20 +204,21 @@ def analyze_quality(entry,conc_circ):
     simple_plot(output,path_h,'ref',TREF,YREF)
     simple_plot(output,path_h,'meas',TMEAS,YMEAS)
 
-    _,FMAX,TC,SCF = compute_params(conc_circ,varname)
     TMEAS_CUT, YMEAS_CUT = truncate_signal(TMEAS,YMEAS)
-    simple_plot(output,path_h,'cut',TMEAS_CUT,YMEAS_CUT)
+    YMEAS_ZERO = demean_signal(YMEAS_CUT)
+    simple_plot(output,path_h,'cut',TMEAS_CUT,YMEAS_ZERO)
     TIME,MEAN,STDEV,SNR = \
           compute_running_snr(TMEAS_CUT,YMEAS_CUT)
 
     simple_plot(output,path_h,'snr',TIME,SNR)
     mean_std_plot(output,path_h,'dist',TIME,MEAN,STDEV)
-    QUALITY= np.mean(SNR)
+    QUALITY= np.median(SNR)
+    print("[[ Quality: %s ]]" % QUALITY)
     output.set_quality(QUALITY)
-
     QUALITIES += SNR
 
   AGG_QUALITY = np.mean(QUALITIES)
+  print("[[ Agg-Quality: %s ]]" % AGG_QUALITY)
   entry.set_quality(AGG_QUALITY)
 
 def execute(args):

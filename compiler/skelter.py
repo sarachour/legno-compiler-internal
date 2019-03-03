@@ -7,37 +7,37 @@ from compiler.common import prop_noise, prop_bias, prop_delay
 
 def compute_snr(nz_eval,circ,block_name,loc,port):
   config = circ.config(block_name,loc)
-
-  config = circ.config(block_name,loc)
   scf = config.scf(port)
   signal = config.interval(port).scale(scf)
   noise_mean,noise_var = nz_eval.get(block_name,loc,port)
 
-  if noise_var == 0:
-    return 100
+  if noise_var == 0.0:
+    raise Exception("no noise at all?")
 
   snr = signal.bound/noise_var
-  return snr
+  return signal.bound,noise_var,snr
 
 def snr(circ,block_name,loc,port):
   nz_eval = evaluator.propagated_noise_evaluator(circ)
-  return compute_snr(nz_eval,circ,block_name,loc,port)
+  _,_,snr = compute_snr(nz_eval,circ,block_name,loc,port)
+  return snr
 
 def rank(circ):
-  scores = []
+  snrs = []
   locs = []
   nz_eval = evaluator.propagated_noise_evaluator(circ)
-
   # mismatch in seconds
-  for block_name,loc,port in evalheur.get_ports(circ):
+  signals = 1.0
+  noises = 1.0
+  for block_name,loc,port in evalheur.get_ports(circ,evaluate=True):
     config = circ.config(block_name,loc)
-    scores.append(compute_snr(nz_eval,circ,block_name,loc,port))
-    locs.append((block_name,loc,port))
+    signal,noise,snr = compute_snr(nz_eval,circ,block_name,loc,port)
+    snrs.append(snr)
+    signals += signal
+    noises += noise
 
-  idx = np.argmin(scores)
-  print("lowest-score: %s" % scores[idx])
-  print("lowest-loc: %s" % str(locs[idx]))
-  return scores[idx]
+  snr = signals+signals/noises
+  return snr
 
 def clear(circ):
   for _,_,config in circ.instances():

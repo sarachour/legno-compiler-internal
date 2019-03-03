@@ -27,6 +27,11 @@ run_subp.add_argument('--email', type=str,
                        help='email address.')
 run_subp.add_argument('--native', action='store_true',
                        help='use ttyACM0.')
+run_subp.add_argument('--bmark', type=str,
+                       help='bmark to run.')
+run_subp.add_argument('--obj', type=str,
+                       help='objective function to run.')
+
 
 analyze_subp = subparsers.add_parser('analyze', help='run any pending grendel scripts')
 analyze_subp.add_argument('--recompute-rank', action='store_true',

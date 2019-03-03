@@ -122,7 +122,8 @@ class PathHandler:
       return bmark,indices,scale_index,opt,menv_name,hwenv_name,var_name
 
 
-    def grendel_file_to_args(self,name):
+    @staticmethod
+    def grendel_file_to_args(name):
       basename = name.split(".grendel")[0]
       args = basename.split("_")
       bmark = args[0]
@@ -134,7 +135,8 @@ class PathHandler:
       return bmark,indices,scale_index,opt,menv_name,hwenv_name
 
 
-    def conc_circ_to_args(self,name):
+    @staticmethod
+    def conc_circ_to_args(name):
       basename = name.split(".circ")[0]
       args = basename.split("_")
       bmark = args[0]
@@ -144,7 +146,8 @@ class PathHandler:
       return bmark,indices,scale_index,opt
 
 
-    def abs_circ_to_args(self,name):
+    @staticmethod
+    def abs_circ_to_args(name):
       basename = name.split(".circ")[0]
       args = basename.split("_")
       bmark = args[0]

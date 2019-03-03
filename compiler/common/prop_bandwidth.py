@@ -26,10 +26,7 @@ class PropBandwidthVisitor(Visitor):
                     handle = None
 
                 mbw = prog.bandwidth(label)
-                scf = config.scf(port) if config.has_scf(port) else 1.0
-                tau = circ.tau if not circ.tau is None else 1.0
-                config.set_bandwidth(port,mbw.timescale(tau),\
-                                    handle=handle)
+                config.set_bandwidth(port,mbw,handle=handle)
 
 
 

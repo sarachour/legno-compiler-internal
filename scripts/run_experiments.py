@@ -29,6 +29,12 @@ def execute(args):
   native = args.native
   for entry in db.get_by_status(ExperimentStatus.PENDING):
     entry.synchronize()
+    if not args.bmark is None and entry.bmark != args.bmark:
+      continue
+
+    if not args.obj is None and entry.objective_fun != args.obj:
+      continue
+
     if entry.status == ExperimentStatus.PENDING:
       execute_script(ip,entry.grendel_file,native=native)
 

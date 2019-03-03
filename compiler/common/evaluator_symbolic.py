@@ -19,9 +19,10 @@ class Evaluator:
 
 
   def freq(self,block_name,loc,port):
-    bw = self.circ.config(block_name,loc).bandwidth(port)
-    return bw.timescale(self.circ.tau) \
+    bw = self.circ.config(block_name,loc).bandwidth(port) \
              .timescale(self.circ.board.time_constant)
+    scbw = bw.timescale(self.circ.tau)
+    return scbw
 
   def interval(self,block_name,loc,port):
     interval = self.circ.config(block_name,loc).interval(port)
@@ -56,9 +57,7 @@ class Evaluator:
         interval_dict[(block,inst,port)] = self.interval(block,inst,port)
 
       elif var.op == nop.NOpType.REF:
-        value = self.reference(block,inst,port,tag)
-        value = 0 if value is None else value
-        ref_dict[(block,inst,port)] = nop.mkconst(value)
+        raise Exception("unimpl")
       else:
         raise Exception("unknown")
 
@@ -96,7 +95,6 @@ class Evaluator:
     res_variance = this_variance
 
     fmax = self.freq(block_name,loc,port).bandwidth
-    fmax = 1.0 if fmax == 0.0 else fmax
     self.set_reference(block_name,loc,port,'mean',
                        res_mean.bound)
     self.set_reference(block_name,loc,port,'variance',\

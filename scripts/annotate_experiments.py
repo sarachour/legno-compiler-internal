@@ -14,7 +14,7 @@ def execute(args):
   cols = int(siz.columns*0.8)
   rows = int(siz.lines*0.8)
   for entry in db.filter_experiments({'bmark':bmark}):
-    mismatched = False
+    mismatched = None
     for outp in entry.get_outputs():
       plotname = ph.plot(outp.bmark,outp.arco_indices,outp.jaunt_index, \
                          outp.objective_fun, \
@@ -28,6 +28,8 @@ def execute(args):
       result = input("mismatch (y/n):")
       if "y" in result:
         mismatched = True
+      elif "n" in result:
+        mismatched = False
 
-    if mismatched:
+    if not mismatched is None:
       entry.set_mismatch(True)
