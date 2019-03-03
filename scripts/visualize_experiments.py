@@ -90,19 +90,27 @@ def correlation():
   plt.savefig("rank.png")
   plt.clf()
 
-def summarize_best(key,executed_only=True):
+def summarize_best(key,executed_only=True,penalize_mismatch=True):
   data = get_data(executed_only=executed_only)
   values = data[key]
   opts = data['opts']
   circ_idents = data['circ_idents']
   series= data['series']
+  mismatches = data['mismatches']
 
   for ser in series:
     by_ident = {}
-    for ident,opt,value in zip(circ_idents[ser],opts[ser],values[ser]):
+    for ident,opt,value,mismatch in zip(circ_idents[ser], \
+                               opts[ser], \
+                               values[ser], \
+                               mismatches[ser]):
       if not ident in by_ident:
         by_ident[ident] = {}
-      by_ident[ident][opt] = value
+
+      if penalize_mismatch and mismatch:
+        by_ident[ident][opt] = -value
+      else:
+        by_ident[ident][opt] = value
 
     for ident in by_ident:
       print("%s" % ident)
@@ -112,7 +120,7 @@ def summarize_best(key,executed_only=True):
       for i in indices:
         print("   %s: %s" % (labels[i],values[i]))
 
-def best_quality_to_runtime():
+def best_quality_to_speed():
   summarize_best('qualities_to_times')
 
 
@@ -125,29 +133,56 @@ def best_speed():
 def best_ranked():
   summarize_best('ranks',executed_only=False)
 
-def quality_vs_time():
+def quality_vs_speed():
   data = get_data(series_type='circ_idents')
   qualities = data['qualities']
   times = data['times']
   series= data['series']
+  mismatches= data['mismatches']
+  opts = data['opts']
+  allowed = ['lo-noise','slow','fast']
+  data_time = []
+  data_quality = []
+  nz_time = []
+  nz_quality = []
   for ser in series:
-    min_time = min(times[ser])
-    min_qual = min(qualities[ser])
-    norm_time = list(map(lambda t: t/min_time, times[ser]))
-    norm_quality = list(map(lambda q: q/min_qual, qualities[ser]))
-    plt.scatter(norm_time,norm_quality)
+    n = len(times[ser])
+    time,quality,mismatch,opt = times[ser],qualities[ser], \
+                                mismatches[ser],opts[ser]
 
+    inds = list(range(0,n))
+    norm_time = list(map(lambda i: time[i]/max(time), inds))
+    max_quality = max(map(lambda i: quality[i], \
+                          filter(lambda i: not mismatch[i],inds)))
+    norm_quality = list(map(lambda i: quality[i]/max_quality if not mismatch[i]  \
+                            else 0.0, inds))
+
+    # noise values
+    data_time += norm_time
+    data_quality += norm_quality
+
+    nz_inds = list(filter(lambda i : opts[ser][i] == 'lo-noise', inds))
+    norm_nz_time = list(map(lambda i: norm_time[i], nz_inds))
+    norm_nz_quality = list(map(lambda i: norm_quality[i], nz_inds))
+
+    nz_time += norm_nz_time
+    nz_quality += norm_nz_quality
+
+    #plt.legend()
+  plt.scatter(data_time,data_quality,color='black',label='data')
+  plt.scatter(nz_time,nz_quality,color='red',marker='x',label='low-noise')
+  plt.legend()
   plt.savefig("runt.png")
   plt.clf()
 
 def execute(args):
   name = args.type
   opts = {
-    'quality-vs-runtime':quality_vs_time,
+    'quality-vs-speed':quality_vs_speed,
     'correlation': correlation,
     'best-rank': best_ranked,
     'best-quality': best_quality,
-    'best-quality-to-runtime': best_quality_to_runtime,
+    'best-quality-to-speed': best_quality_to_speed,
     'best-speed': best_speed
   }
   if name in opts:
