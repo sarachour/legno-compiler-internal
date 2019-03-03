@@ -266,5 +266,5 @@ def execute(args):
   else:
     while True:
       execute_once(args)
-      print("hibernating...")
+      print("...")
       time.sleep(10)

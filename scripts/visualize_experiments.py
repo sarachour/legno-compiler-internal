@@ -1,4 +1,4 @@
-from scripts.db import ExperimentDB, ExperimentStatus, OutputStatus
+from scripts.db import ExperimentDB, ExperimentStatus, OutputStatus, MismatchStatus
 import matplotlib.pyplot as plt
 import numpy as np
 import math
@@ -93,13 +93,20 @@ def correlation():
   plt.savefig("rank.png")
   plt.clf()
 
-def summarize_best(key,executed_only=True,penalize_mismatch=True):
+def summarize_best(key,executed_only=True,mismatch_threshold=MismatchStatus.NONIDEAL):
   data = get_data(executed_only=executed_only)
   values = data[key]
   opts = data['opts']
   circ_idents = data['circ_idents']
   series= data['series']
   mismatches = data['mismatches']
+  if mismatch_threshold == MismatchStatus.IDEAL:
+    mismatch_whitelist = [MismatchStatus.IDEAL]
+  elif mismatch_threshold == MismatchStatus.NONIDEAL:
+    mismatch_whitelist = [MismatchStatus.NONIDEAL,MismatchStatus.IDEAL]
+  else:
+    mismatch_whitelist = [MismatchStatus.NONIDEAL,MismatchStatus.IDEAL,\
+                          MismatchStatus.BAD]
 
   for ser in series:
     by_ident = {}
@@ -110,10 +117,10 @@ def summarize_best(key,executed_only=True,penalize_mismatch=True):
       if not ident in by_ident:
         by_ident[ident] = {}
 
-      if penalize_mismatch and mismatch:
-        by_ident[ident][opt] = -value
-      else:
+      if mismatch in mismatch_whitelist:
         by_ident[ident][opt] = value
+      elif mismatch != MismatchStatus.UNKNOWN:
+        by_ident[ident][opt] = -mismatch.to_code()
 
     for ident in by_ident:
       print("%s" % ident)

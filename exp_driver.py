@@ -13,6 +13,11 @@ subparsers = parser.add_subparsers(dest='subparser_name',
 
 scan_subp = subparsers.add_parser('scan', help='scan for new grendel scripts')
 list_subp = subparsers.add_parser('list', help='list database entries')
+list_subp.add_argument('--bmark', type=str,
+                       help='bmark to run.')
+list_subp.add_argument('--obj', type=str,
+                       help='objective function to run.')
+
 
 del_subp = subparsers.add_parser('clear', help='delete a benchmark/opt-run')
 del_subp.add_argument('--bmark', type=str,
@@ -64,6 +69,11 @@ elif args.subparser_name == "list":
   db = ExperimentDB()
   print("=== all entries ===")
   for entry in db.get_all():
+    if entry.bmark != args.bmark and not args.bmark is None:
+      continue
+    if entry.objective_fun != args.obj and not args.obj is None:
+      continue
+
     print(entry)
 
 elif args.subparser_name == "clear":

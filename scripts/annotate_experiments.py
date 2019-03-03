@@ -1,4 +1,4 @@
-from scripts.db import ExperimentDB, ExperimentStatus, OutputStatus
+from scripts.db import ExperimentDB, ExperimentStatus, OutputStatus, MismatchStatus
 from util.paths import PathHandler
 import scripts.img_term as imgterm
 import os
@@ -14,8 +14,8 @@ def execute(args):
   cols = int(siz.columns*0.8)
   rows = int(siz.lines*0.8)
   for entry in db.filter_experiments({'bmark':bmark}):
-    mismatched = None
-    if not entry.mismatch == None:
+    mismatch = None
+    if not entry.mismatch == MismatchStatus.UNKNOWN:
       continue
     for outp in entry.get_outputs():
       plotname = ph.plot(outp.bmark,outp.arco_indices,outp.jaunt_index, \
@@ -27,12 +27,14 @@ def execute(args):
         continue
 
       imgterm.render(plotname,cols,8)
-      print("<mismatched=%s>" % entry.mismatch)
-      result = input("mismatch (y/n):")
-      if "y" in result:
-        mismatched = True
-      elif "n" in result:
-        mismatched = False
+      print("<status=%s>" % entry.mismatch)
+      opts = ",".join(MismatchStatus.abbrevs())
+      statusline = "status (%s):" % opts
+      result = input(statusline)
+      if result == "":
+        continue
+      mismatch= MismatchStatus.from_abbrev(result)
+      print(mismatch)
 
-    if not mismatched is None:
-      entry.set_mismatch(mismatched)
+    if not mismatch is None:
+      entry.set_mismatch(mismatch)

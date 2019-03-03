@@ -36,6 +36,69 @@ class OutputStatus(Enum):
   RAN = "ran"
   ANALYZED = "analyzed"
 
+class MismatchStatus(Enum):
+  UNKNOWN = "unknown"
+  BAD = "bad"
+  NONIDEAL = "nonideal"
+  IDEAL = "ideal"
+
+  def to_code(self):
+    if self == MismatchStatus.UNKNOWN:
+      return 0
+    elif self == MismatchStatus.BAD:
+      return 1
+    elif self == MismatchStatus.NONIDEAL:
+      return 2
+    elif self == MismatchStatus.IDEAL:
+      return 3
+
+  @staticmethod
+  def from_code(i):
+    if i == 0:
+      return MismatchStatus.UNKNOWN
+    elif i == 1:
+      return MismatchStatus.BAD
+    elif i == 2:
+      return MismatchStatus.NONIDEAL
+    elif i == 3:
+      return MismatchStatus.IDEAL
+    else:
+      raise Exception("unknown <%s>" % x)
+
+  @staticmethod
+  def options():
+    yield MismatchStatus.UNKNOWN
+    yield MismatchStatus.BAD
+    yield MismatchStatus.NONIDEAL
+    yield MismatchStatus.IDEAL
+
+  @staticmethod
+  def abbrevs():
+    return list(map(lambda o: o.to_abbrev(), \
+                    MismatchStatus.options()))
+
+  def to_abbrev(self):
+    if self == MismatchStatus.BAD:
+      return "b"
+    elif self == MismatchStatus.UNKNOWN:
+      return "?"
+    elif self == MismatchStatus.IDEAL:
+      return "g"
+    elif self == MismatchStatus.NONIDEAL:
+      return "m"
+
+  @staticmethod
+  def from_abbrev(x):
+    if x == 'b':
+      return MismatchStatus.BAD
+    elif x == '?':
+      return MismatchStatus.UNKNOWN
+    elif x == 'g':
+      return MismatchStatus.IDEAL
+    elif x == 'm':
+      return MismatchStatus.NONIDEAL
+    else:
+      raise Exception("unknown <%s>" % x)
 
 class ExperimentStatus(Enum):
   PENDING = "pending"
@@ -333,11 +396,11 @@ class ExperimentEntry:
     self._status = new_status
 
   def set_mismatch(self,new_mismatch):
-    assert(isinstance(new_mismatch,bool))
+    assert(isinstance(new_mismatch,MismatchStatus))
     if new_mismatch:
-      self.update_db({'mismatch':2})
+      self.update_db({'mismatch':new_mismatch.to_code()})
     else:
-      self.update_db({'mismatch':1})
+      self.update_db({'mismatch':new_mismatch.to_code()})
     self._mismatch = new_mismatch
 
 
@@ -398,12 +461,7 @@ class ExperimentEntry:
     entry._runtime=args['runtime']
     entry._status=ExperimentStatus(args['status'])
     entry._modif = args['modif']
-    if args['mismatch'] == 2:
-      entry._mismatch = True
-    elif args['mismatch'] == 1:
-      entry._mismatch = False
-    else:
-      entry._mismatch = None
+    entry._mismatch = MismatchStatus.from_code(args['mismatch'])
     entry._columns = args
     return entry
 
