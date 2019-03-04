@@ -2,6 +2,7 @@ import os
 import colorlover
 import compiler.common.evaluator_symbolic as evalsym
 import ops.op as op
+import math
 
 def undef_to_one(v):
   return 1.0 if v is None else v
@@ -19,6 +20,8 @@ class Shader:
 
   @staticmethod
   def get_shader(circ,method):
+    if method == 'snr':
+      return SNRShader(circ)
     if method == 'interval':
       return IntervalShader(circ)
     elif method == 'scaled-interval':
@@ -198,6 +201,29 @@ class ScaleFactorShader(CircShader):
       return Shader.ERROR,"skip"
     else:
       return scf,"%s" % scf
+
+
+class SNRShader(CircShader):
+
+  def __init__(self,circ):
+    self.noise_eval = evalsym \
+        .propagated_noise_evaluator(circ)
+    CircShader.__init__(self,circ,None)
+
+  def get_port_value(self,name,loc,port):
+    cfg = self.circ.config(name,loc)
+    ival = cfg.interval(port)
+    scf = cfg.scf(port)
+    if ival is None or scf is None:
+      return Shader.ERROR,"skip"
+    else:
+      signal = ival.scale(scf)
+      _,noise = self.noise_eval.get(name,loc,port)
+      if noise == 0.0:
+        return Shader.IGNORE,"inf"
+
+      snr = math.log10(signal.bound/noise)
+      return snr,"sig=%s nz=%.3e snr=%.3e" % (signal,noise,snr)
 
 
 class ScaledIntervalShader(CircShader):

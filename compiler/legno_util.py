@@ -172,7 +172,7 @@ def exec_graph(hdacv2_board, args):
                          'gen-bias','prop-bias']
           '''
 
-          methods = ['gen-noise', 'prop-noise', 'scaled-interval']
+          methods = ['gen-noise', 'prop-noise', 'scaled-interval','snr']
           for method in methods:
 
             filename = path_handler.skelt_graph_file(circ_bmark,

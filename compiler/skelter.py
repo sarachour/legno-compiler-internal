@@ -7,12 +7,15 @@ from compiler.common import prop_noise, prop_bias, prop_delay
 
 def compute_snr(nz_eval,circ,block_name,loc,port):
   config = circ.config(block_name,loc)
+  if config.interval(port) is None:
+    return None,None,None
+
   scf = config.scf(port)
   signal = config.interval(port).scale(scf)
   noise_mean,noise_var = nz_eval.get(block_name,loc,port)
 
   if noise_var == 0.0:
-    raise Exception("no noise at all?")
+    return signal.bound,noise_var,None
 
   snr = signal.bound/noise_var
   return signal.bound,noise_var,snr
@@ -32,13 +35,16 @@ def rank(circ):
   for block_name,loc,port in evalheur.get_ports(circ,evaluate=True):
     config = circ.config(block_name,loc)
     signal,noise,snr = compute_snr(nz_eval,circ,block_name,loc,port)
-    snrs.append(snr)
-    signals.append(signal)
-    noises.append(noise)
+    if not snr is None:
+      snrs.append(snr)
 
-  snr = np.prod(noises)/np.prod(signals)
-  sig = np.prod(list(map(lambda s: 1.0/s, signals)))
-  return sum(snrs)
+    if not signal is None:
+      signals.append(signal)
+
+    if not noise is None:
+      noises.append(noise)
+
+  return np.mean(snrs)
   #return np.min(snrs)*1.0/circ.tau
 
 def clear(circ):

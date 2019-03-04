@@ -28,9 +28,9 @@ def get_scale_modes():
 def blackbox_model(fanout):
     def config_phys_model(phys,rng):
         if rng == chipcmd.RangeType.MED:
-            new_phys =  PhysicalModel.read(util.datapath('fanout1x.bb'))
+            new_phys =  PhysicalModel.read(util.datapath('fanout-m.bb'))
         elif rng == chipcmd.RangeType.HIGH:
-            new_phys = PhysicalModel.read(util.datapath('fanout10x.bb'))
+            new_phys = PhysicalModel.read(util.datapath('fanout-h.bb'))
         else:
             raise Exception("unknown physical model: %s" % rng)
 

@@ -62,7 +62,7 @@ def get_data(series_type='bmarks',executed_only=True):
 
 
 def correlation():
-  data = get_data()
+  data = get_data(series_type='circ_idents')
   ranks = data['ranks']
   qualities= data['qualities']
   idents = data['idents']
@@ -80,8 +80,8 @@ def correlation():
     good_idents = list(map(lambda i: idents[ser][i],inds))
     mismatch = list(map(lambda mm : mm.to_score(), mismatches[ser]))
 
-    #for r,q,o in zip(good_ranks,good_qualities,good_idents):
-    #  print("[%s]rank=%s, quality=%s" % (o,r,q))
+    for r,q,o in zip(good_ranks,good_qualities,good_idents):
+      print("[%s]rank=%s, quality=%s" % (o,r,q))
     coeff = np.corrcoef(good_ranks,good_qualities)
     print("[%s] rank-corr : %s" % (ser,coeff[1][0]))
     if n > len(inds):
@@ -89,6 +89,7 @@ def correlation():
       print("[%s] mismatch-corr : %s" % (ser,coeff[1][0]))
 
     plt.scatter(good_ranks,good_qualities,label=ser)
+    print("\n")
 
   plt.legend()
   plt.savefig("rank.png")

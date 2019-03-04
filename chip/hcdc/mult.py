@@ -39,13 +39,22 @@ def get_modes():
   return vga_modes,mul_modes
 
 def black_box_model(mult):
-  def config_phys(phys,scf):
+  def config_phys(phys,rng,scf,vga=False):
+    base = "mult" if not vga else "vga"
+    if rng == chipcmd.RangeType.MED:
+      base += "-m"
+    elif rng == chipcmd.RangeType.LOW:
+      base += "-l"
+    elif rng == chipcmd.RangeType.HIGH:
+      base += "-h"
+
+    print(rng,scf)
     if util.equals(scf, 1.0):
-      new_phys = PhysicalModel.read(util.datapath('mult1x.bb'))
+      new_phys = PhysicalModel.read(util.datapath('%s1x.bb' % base))
     elif util.equals(scf, 10.0) or util.equals(scf, 100.0):
-      new_phys = PhysicalModel.read(util.datapath('mult10x.bb'))
+      new_phys = PhysicalModel.read(util.datapath('%s10x.bb' % base))
     elif util.equals(scf, 0.1) or util.equals(scf, 0.01):
-      new_phys = PhysicalModel.read(util.datapath('mult1x.bb'))
+      new_phys = PhysicalModel.read(util.datapath('%s01x.bb' % base))
     else:
       raise Exception("unknown scf: %s" % scf)
 
@@ -56,13 +65,14 @@ def black_box_model(mult):
     in0rng,outrng = mode
     scf = outrng.coeff()/in0rng.coeff()
     phys = mult.physical('vga',mode,'out')
-    config_phys(phys,scf)
+    config_phys(phys,outrng,scf,vga=True)
 
   for mode in mul_modes:
     in0rng,in1rng,outrng = mode
+    print("in0=%s in1=%s out=%s" % (in0rng,in1rng,outrng))
     scf = outrng.coeff()/(in0rng.coeff()*in1rng.coeff())
     phys = mult.physical('mul',mode,'out')
-    config_phys(phys,scf)
+    config_phys(phys,outrng,scf)
 
 
   print("[TODO] mult.blackbox")

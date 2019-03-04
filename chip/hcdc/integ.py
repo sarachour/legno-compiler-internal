@@ -26,13 +26,21 @@ def get_scale_modes():
   return modes
 
 def black_box_model(blk):
-  def cfg_phys_model(phys,scf):
+  def cfg_phys_model(phys,rng,scf):
+    base = "integ"
+    if rng == chipcmd.RangeType.MED:
+      base += "-m"
+    elif rng == chipcmd.RangeType.LOW:
+      base += "-l"
+    elif rng == chipcmd.RangeType.HIGH:
+      base += "-h"
+
     if util.equals(scf, 1.0):
-      new_phys = PhysicalModel.read(util.datapath('integ1x.bb'))
+      new_phys = PhysicalModel.read(util.datapath('%s1x.bb' % base))
     elif util.equals(scf, 10.0):
-      new_phys = PhysicalModel.read(util.datapath('integ1x.bb'))
+      new_phys = PhysicalModel.read(util.datapath('%s10x.bb' % base))
     elif util.equals(scf, 0.1):
-      new_phys = PhysicalModel.read(util.datapath('integ1x.bb'))
+      new_phys = PhysicalModel.read(util.datapath('%s01x.bb' % base))
     else:
       raise Exception("unknown model: %s" % scf)
     phys.set_to(new_phys)
@@ -43,7 +51,8 @@ def black_box_model(blk):
     for scale_mode in scale_modes:
       inrng,outrng = scale_mode
       scf = outrng.coeff()/inrng.coeff()
-      cfg_phys_model(blk.physical(comp_mode,scale_mode,"out"),scf)
+      ph = blk.physical(comp_mode,scale_mode,"out")
+      cfg_phys_model(ph,outrng,scf)
 
   print("[TODO] integ.blackbox")
 
