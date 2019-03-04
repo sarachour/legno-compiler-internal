@@ -67,24 +67,25 @@ def correlation():
   qualities= data['qualities']
   idents = data['idents']
   mismatches = data['mismatches']
+  mismatch_threshold=MismatchStatus.NONIDEAL
 
   for ser in data['series']:
     if len(ranks[ser]) == 0:
       continue
 
     n = len(ranks[ser])
-    inds = list(filter(lambda i: not mismatches[ser][i],range(0,n)))
+    inds = list(filter(lambda i: mismatches[ser][i].to_score() > 0.0,range(0,n)))
     good_ranks = list(map(lambda i: ranks[ser][i], inds))
     good_qualities = list(map(lambda i: qualities[ser][i], inds))
     good_idents = list(map(lambda i: idents[ser][i],inds))
+    mismatch = list(map(lambda mm : mm.to_score(), mismatches[ser]))
 
-
-    for r,q,o in zip(good_ranks,good_qualities,good_idents):
-      print("[%s]rank=%s, quality=%s" % (o,r,q))
+    #for r,q,o in zip(good_ranks,good_qualities,good_idents):
+    #  print("[%s]rank=%s, quality=%s" % (o,r,q))
     coeff = np.corrcoef(good_ranks,good_qualities)
     print("[%s] rank-corr : %s" % (ser,coeff[1][0]))
     if n > len(inds):
-      coeff = np.corrcoef(ranks[ser],mismatches[ser])
+      coeff = np.corrcoef(ranks[ser],mismatch)
       print("[%s] mismatch-corr : %s" % (ser,coeff[1][0]))
 
     plt.scatter(good_ranks,good_qualities,label=ser)

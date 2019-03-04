@@ -52,6 +52,16 @@ class MismatchStatus(Enum):
     elif self == MismatchStatus.IDEAL:
       return 3
 
+  def to_score(self):
+    if self == MismatchStatus.IDEAL:
+      return 1.0
+    elif self == MismatchStatus.NONIDEAL:
+      return 0.5
+    elif self == MismatchStatus.BAD:
+      return 0.0
+    elif self == MismatchStatus.UNKNOWN:
+      return None
+
   @staticmethod
   def from_code(i):
     if i == 0:
