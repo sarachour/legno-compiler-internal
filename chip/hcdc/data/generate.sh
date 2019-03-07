@@ -1,5 +1,8 @@
 #!/bin/bash
 #rm breaks.txt
+python3 genbb_art.py
+exit 0
+
 GLOBAL_SCALE=0.01
 DEP_FRAC=0.00
 python3 genbb.py integ1x.csv in integ-m1x.bb  2.0 ${DEP_FRAC} ${GLOBAL_SCALE}
