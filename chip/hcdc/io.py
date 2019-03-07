@@ -3,6 +3,7 @@ import chip.props as props
 from chip.phys import PhysicalModel
 import chip.units as units
 import chip.hcdc.util as util
+from chip.cont import *
 import lab_bench.lib.chipcmd.data as chipcmd
 import chip.hcdc.globals as glb
 import ops.op as ops
@@ -22,6 +23,20 @@ def dac_get_modes():
 
 def dac_black_box_model(dac):
    print("[TODO] dac.blackbox")
+
+def dac_continuous_scale_model(dac):
+  csm = ContinuousScaleModel()
+  csm.set_baseline((chipcmd.RangeType.MED))
+  out = csm.decl_var(CSMOpVar("out"))
+  inp = csm.decl_var(CSMOpVar("in"))
+  coeff = csm.decl_var(CSMCoeffVar("out"))
+  csm.eq(ops.Mult(ops.Var(inp.varname),
+                  ops.Var(coeff.varname)), \
+         ops.Var(out.varname))
+  inp.set_interval(1.0,1.0)
+  coeff.set_interval(1.0,10.0)
+  out.set_interval(1.0,10.0)
+  dac.set_scale_model("*", csm)
 
 def dac_scale_model(dac):
    modes = dac_get_modes()
@@ -52,6 +67,7 @@ dac = Block('tile_dac',type=BlockType.DAC) \
 .add_inputs(props.DIGITAL,["in"]) \
 .set_op("*","out",ops.Var("in"))
 dac_scale_model(dac)
+dac_continuous_scale_model(dac)
 dac_black_box_model(dac)
 dac.check()
 
@@ -82,6 +98,20 @@ def adc_black_box_model(dac):
       _,rng = sc
       config_phys_model(dac.physical('*',sc,"out"),rng)
 
+
+def adc_continuous_scale_model(adc):
+  csm = ContinuousScaleModel()
+  csm.set_baseline((chipcmd.RangeType.MED))
+  out = csm.decl_var(CSMOpVar("out"))
+  inp = csm.decl_var(CSMOpVar("in"))
+  coeff = csm.decl_var(CSMCoeffVar("out"))
+  csm.eq(ops.Mult(ops.Var(inp.varname),
+                  ops.Var(coeff.varname)), \
+         ops.Var(out.varname))
+  inp.set_interval(1.0,10.0)
+  coeff.set_interval(1.0,0.1)
+  out.set_interval(1.0,1.0)
+  adc.set_scale_model("*", csm)
 
 def adc_scale_model(adc):
    modes = adc_get_modes()
@@ -117,5 +147,6 @@ adc = Block('tile_adc',type=BlockType.ADC) \
 .set_props("*","*",["in"],None) \
 .set_coeff("*","*","out",0.5)
 adc_scale_model(adc)
+adc_continuous_scale_model(adc)
 adc_black_box_model(adc)
 adc.check()

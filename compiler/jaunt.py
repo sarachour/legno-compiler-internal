@@ -21,18 +21,6 @@ import util.config as CONFIG
 import tqdm
 
 
-def is_zero(v):
-    return abs(v) < 1e-14
-
-
-def same_sign(v1,v2):
-    if v1 < 0 and v2 < 0:
-        return True
-    elif v1 > 0 and v2 > 0:
-        return True
-    else:
-        return False
-
 def bpgen_scaled_analog_interval_constraint(jenv,scale_expr,math_rng,hw_rng,prop):
     bpgen_build_upper_bound(jenv,scale_expr, \
                             math_rng.upper,hw_rng.upper)

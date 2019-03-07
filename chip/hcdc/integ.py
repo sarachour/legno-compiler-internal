@@ -3,6 +3,7 @@ from chip.phys import PhysicalModel
 import chip.props as props
 import chip.units as units
 import chip.hcdc.util as util
+from chip.cont import *
 
 import lab_bench.lib.chipcmd.data as chipcmd
 import chip.hcdc.globals as glb
@@ -57,7 +58,7 @@ def black_box_model(blk):
 
   print("[TODO] integ.blackbox")
 
-def continuous_scale_model(mult):
+def continuous_scale_model(integ):
   m = chipcmd.RangeType.MED
   comp_modes = get_comp_modes()
   for comp_mode in comp_modes:
@@ -78,7 +79,7 @@ def continuous_scale_model(mult):
     for csmvar in [deriv,out,ic_int,deriv_int,out_int,coeff]:
       csmvar.set_interval(0.1,10.0)
 
-    mult.set_scale_model(comp_mode,csm)
+    integ.set_scale_model(comp_mode,csm)
 
 def scale_model(integ):
   comp_modes = get_comp_modes()
@@ -146,6 +147,7 @@ block = Block('integrator') \
         handle=':z')
 )
 scale_model(block)
+continuous_scale_model(block)
 black_box_model(block)
 block.check()
 

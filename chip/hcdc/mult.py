@@ -96,7 +96,9 @@ def continuous_scale_model(mult):
   coeff = csm.decl_var(CSMCoeffVar("out"))
   csm.eq(ops.Mult(ops.Mult(ops.Var(in0.varname),
                            ops.Var(in1.varname)),
-                  ops.Var(coeff.varname)), ops.Var(out))
+                  ops.Var(coeff.varname)), \
+         ops.Var(out.varname))
+
   for csmvar in [in0,in1,out,coeff]:
     csmvar.set_interval(0.1,10.0)
 
@@ -111,7 +113,8 @@ def continuous_scale_model(mult):
     csmvar.set_interval(0.1,10.0)
 
   csm.eq(ops.Mult(ops.Var(in0.varname),
-                  ops.Var(coeff.varname)), ops.Var(out))
+                  ops.Var(coeff.varname)),
+         ops.Var(out.varname))
   mult.set_scale_model('vga',csm)
 
 

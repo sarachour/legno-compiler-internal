@@ -46,7 +46,7 @@ def blackbox_model(fanout):
             config_phys_model(fanout.physical(c_mode,rng,"out1"),rng)
             config_phys_model(fanout.physical(c_mode,rng,"out2"),rng)
 
-def continuous_scale_model(mult):
+def continuous_scale_model(fanout):
     comp_modes = get_comp_modes()
     for comp_mode in comp_modes:
         csm = ContinuousScaleModel()
@@ -56,9 +56,11 @@ def continuous_scale_model(mult):
         for i in range(0,3):
             out = csm.decl_var(CSMOpVar("out%d" % i))
             coeff = csm.decl_var(CSMCoeffVar("out%d" % i))
+            out.set_interval(1.0,10.0)
+            coeff.set_interval(1.0,1.0)
             csm.eq(ops.Var(out.varname), ops.Var(inp.varname))
-            csm.eq(ops.Var(coeff.varname), ops.Const(1.0))
-            input("TODO: bind this")
+
+        fanout.set_scale_model(comp_mode,csm)
 
 def scale_model(fanout):
     comp_modes = get_comp_modes()

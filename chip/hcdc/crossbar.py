@@ -4,6 +4,7 @@ import chip.props as props
 import chip.hcdc.util as util
 import lab_bench.lib.chipcmd.data as chipcmd
 import chip.hcdc.globals as glb
+from chip.cont import *
 import ops.op as ops
 import ops.nop as nops
 import chip.units as units
@@ -23,6 +24,20 @@ def black_box_model_cc(blk):
   black_box_model_tile(blk)
 
 
+def xbar_continuous_model(xbar):
+  csm = ContinuousScaleModel()
+  csm.set_baseline("*")
+  out = csm.decl_var(CSMOpVar("out"))
+  inp = csm.decl_var(CSMOpVar("in"))
+  coeff = csm.decl_var(CSMCoeffVar("out"))
+  csm.eq(ops.Mult(ops.Var(inp.varname),
+                  ops.Var(coeff.varname)), \
+         ops.Var(out.varname))
+  inp.set_interval(1.0,1.0)
+  coeff.set_interval(1.0,1.0)
+  out.set_interval(1.0,1.0)
+  xbar.set_scale_model("*", csm)
+
 
 tile_out = Block('tile_out',type=BlockType.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
@@ -36,6 +51,7 @@ tile_out = Block('tile_out',type=BlockType.BUS) \
 .set_coeff("*","*","out",1.0) \
 .check()
 black_box_model_tile(tile_out)
+xbar_continuous_model(tile_out)
 
 tile_in = Block('tile_in',type=BlockType.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
@@ -49,6 +65,7 @@ tile_in = Block('tile_in',type=BlockType.BUS) \
 .set_coeff("*","*","out",1.0) \
 .check()
 black_box_model_tile(tile_in)
+xbar_continuous_model(tile_in)
 
 
 inv_conn = Block('conn_inv',type=BlockType.BUS) \
@@ -63,6 +80,7 @@ inv_conn = Block('conn_inv',type=BlockType.BUS) \
 .set_coeff("*","*","out",-1.0) \
 .check()
 black_box_model_cc(inv_conn)
+xbar_continuous_model(inv_conn)
 
 
 chip_out = Block('chip_out',type=BlockType.BUS) \
@@ -82,6 +100,7 @@ chip_out = Block('chip_out',type=BlockType.BUS) \
 .set_coeff("*","*","out",1.0) \
 .check()
 black_box_model_chip(chip_out)
+xbar_continuous_model(chip_out)
 
 chip_in = Block('chip_in',type=BlockType.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
@@ -100,3 +119,4 @@ chip_in = Block('chip_in',type=BlockType.BUS) \
 .set_coeff("*","*","out",1.0) \
 .check()
 black_box_model_chip(chip_in)
+xbar_continuous_model(chip_in)
