@@ -3,6 +3,7 @@ from chip.phys import PhysicalModel
 import chip.props as props
 import chip.hcdc.util as util
 import lab_bench.lib.chipcmd.data as chipcmd
+from chip.cont import *
 import chip.hcdc.globals as glb
 import ops.op as ops
 import ops.nop as nops
@@ -45,6 +46,20 @@ def blackbox_model(fanout):
             config_phys_model(fanout.physical(c_mode,rng,"out1"),rng)
             config_phys_model(fanout.physical(c_mode,rng,"out2"),rng)
 
+def continuous_scale_model(mult):
+    comp_modes = get_comp_modes()
+    for comp_mode in comp_modes:
+        csm = ContinuousScaleModel()
+        csm.set_baseline((chipcmd.RangeType.MED))
+        inp = csm.decl_var(CSMOpVar("in"))
+        inp.set_interval(1.0,10.0)
+        for i in range(0,3):
+            out = csm.decl_var(CSMOpVar("out%d" % i))
+            coeff = csm.decl_var(CSMCoeffVar("out%d" % i))
+            csm.eq(ops.Var(out.varname), ops.Var(inp.varname))
+            csm.eq(ops.Var(coeff.varname), ops.Const(1.0))
+            input("TODO: bind this")
+
 def scale_model(fanout):
     comp_modes = get_comp_modes()
     scale_modes = get_scale_modes()
@@ -83,3 +98,4 @@ for mode in get_comp_modes():
 
 blackbox_model(block)
 scale_model(block)
+continuous_scale_model(block)

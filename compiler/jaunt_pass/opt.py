@@ -22,4 +22,3 @@ class JauntObjectiveFunction():
   def objective(self):
     return self._obj
 
-

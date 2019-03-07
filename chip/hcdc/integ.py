@@ -7,6 +7,7 @@ import chip.hcdc.util as util
 import lab_bench.lib.chipcmd.data as chipcmd
 import chip.hcdc.globals as glb
 import ops.op as ops
+import chip.cont as contlib
 import itertools
 
 def get_comp_modes():
@@ -55,6 +56,29 @@ def black_box_model(blk):
       cfg_phys_model(ph,outrng,scf)
 
   print("[TODO] integ.blackbox")
+
+def continuous_scale_model(mult):
+  m = chipcmd.RangeType.MED
+  comp_modes = get_comp_modes()
+  for comp_mode in comp_modes:
+    csm = ContinuousScaleModel()
+    csm.set_baseline((m,m))
+    deriv = csm.decl_var(CSMOpVar("in"))
+    out = csm.decl_var(CSMOpVar("out"))
+    coeff = csm.decl_var(CSMCoeffVar("out"))
+    ic_int = csm.decl_var(CSMOpVar("out",handle=':z[0]'))
+    deriv_int = csm.decl_var(CSMOpVar("out",handle=':z\''))
+    out_int = csm.decl_var(CSMOpVar("out",handle=':z'))
+    csm.eq(ops.Mult(ops.Var(coeff.varname),
+                    ops.Var(deriv.varname)), ops.Var(out.varname))
+    csm.eq(ops.Var(ic_int.varname), ops.Var(out.varname))
+    csm.eq(ops.Var(out_int.varname), ops.Var(out.varname))
+    csm.eq(ops.Var(deriv_int.varname), ops.Var(deriv.varname))
+
+    for csmvar in [deriv,out,ic_int,deriv_int,out_int,coeff]:
+      csmvar.set_interval(0.1,10.0)
+
+    mult.set_scale_model(comp_mode,csm)
 
 def scale_model(integ):
   comp_modes = get_comp_modes()

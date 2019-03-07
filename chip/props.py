@@ -72,6 +72,10 @@ class AnalogProperties(Properties):
         assert(not self._min[0] is None)
         assert(not self._min[1] is units.unknown)
 
+    def __repr__(self):
+        return "Analog(bounds=%s, bw=%s, min=%s)" \
+            % (self._bounds,self._bandwidth,self._min)
+
 class DigitalProperties(Properties):
     class Type(Enum):
         CLOCKED = "clocked"
@@ -89,6 +93,12 @@ class DigitalProperties(Properties):
         self._max_samples = None
         # for continuous
         self._bandwidth = (None,units.unknown)
+
+    def __repr__(self):
+        clk = "Synch(kind=%s, rate=%s, samps=%s, bw=%s)" % \
+              (self._kind,self._sample_rate, self._max_samples,self._bandwidth)
+        dig = "Digital(min=%s, max=%s)" % (min(self._values), max(self._values))
+        return dig + " " + clk
 
     def set_continuous(self,lb,ub,unit):
         self._kind = DigitalProperties.Type.CONTINUOUS

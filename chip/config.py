@@ -48,9 +48,8 @@ class Config:
 
     def dynamics(self,block,port):
       assert(not self._comp_mode is None)
-      assert(not self._scale_mode is None)
       if not self.has_expr(port):
-        return block.get_dynamics(self._comp_mode,port, \
+          return block.get_dynamics(self._comp_mode,port, \
                                     scale_mode=self._scale_mode)
       else:
         expr = self.expr(port)

@@ -3,11 +3,19 @@ from chip.phys import PhysicalModel
 import chip.props as props
 import chip.hcdc.util as util
 import chip.units as units
+from chip.cont import *
 import lab_bench.lib.chipcmd.data as chipcmd
 import chip.hcdc.globals as glb
 import ops.op as ops
 import ops.nop as nops
 import itertools
+
+# 10.0 >= coeff >= 0.1
+# 10.0 >= in0 >= 0.1
+# 10.0 >= in1 >= 0.1
+# 10.0 >= out >= 0.1
+# out = in0*in1*coeff
+# 
 
 def get_modes():
   opts_def = [
@@ -76,6 +84,36 @@ def black_box_model(mult):
 
 
   print("[TODO] mult.blackbox")
+
+def continuous_scale_model(mult):
+  vga_modes,mul_modes = get_modes()
+  m = chipcmd.RangeType.MED
+  csm = ContinuousScaleModel()
+  csm.set_baseline((m,m,m))
+  in0 = csm.decl_var(CSMOpVar("in0"))
+  in1 = csm.decl_var(CSMOpVar("in1"))
+  out = csm.decl_var(CSMOpVar("out"))
+  coeff = csm.decl_var(CSMCoeffVar("out"))
+  csm.eq(ops.Mult(ops.Mult(ops.Var(in0.varname),
+                           ops.Var(in1.varname)),
+                  ops.Var(coeff.varname)), ops.Var(out))
+  for csmvar in [in0,in1,out,coeff]:
+    csmvar.set_interval(0.1,10.0)
+
+  mult.set_scale_model('mul',csm)
+
+  csm = ContinuousScaleModel()
+  csm.set_baseline((m,m))
+  in1 = csm.decl_var(CSMOpVar("in0"))
+  out = csm.decl_var(CSMOpVar("out"))
+  coeff = csm.decl_var(CSMCoeffVar("out"))
+  for csmvar in [in0,out,coeff]:
+    csmvar.set_interval(0.1,10.0)
+
+  csm.eq(ops.Mult(ops.Var(in0.varname),
+                  ops.Var(coeff.varname)), ops.Var(out))
+  mult.set_scale_model('vga',csm)
+
 
 def scale_model(mult):
   vga_modes,mul_modes = get_modes()
@@ -147,6 +185,7 @@ block = Block('multiplier') \
 .set_op("vga","out",ops.Mult(ops.Var("coeff"),ops.Var("in0")))
 
 scale_model(block)
+continuous_scale_model(block)
 black_box_model(block)
 
 block.check()

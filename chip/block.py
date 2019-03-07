@@ -28,6 +28,7 @@ class Block:
         self._physical = {} # physical characteristics
 
         # scale factors
+        self._scale_models = {}
         self._scale_modes = {}
         self.set_comp_modes(['*'])
         self.set_scale_modes("*",['*'])
@@ -257,6 +258,12 @@ class Block:
         data = self._make_comp_dict(comp_mode,self._ops)
         data[out] = expr
         return self
+
+    def scale_model(self,comp_mode):
+        return self._scale_models[comp_mode]
+
+    def set_scale_model(self,comp_mode,model):
+        self._scale_models[comp_mode] = model
 
     def set_props(self,comp_mode,scale_mode,ports,properties,handle=None):
         data = self._make_scale_dict(comp_mode,scale_mode,self._props)

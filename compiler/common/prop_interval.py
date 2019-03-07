@@ -3,13 +3,13 @@ import chip.props as props
 import ops.op as ops
 from ops.interval import Interval, IRange, IValue
 
-class PropIntervalVisitor(Visitor):
+class PropOpRangeVisitor(Visitor):
 
   def __init__(self,prog,circ):
     Visitor.__init__(self,circ)
     self._prog = prog
     self.hardware_op_ranges()
-    self.math_label_ranges()
+
 
   def hardware_op_ranges(self):
     def ival_port_to_range(block,config,port,handle=None):
@@ -19,7 +19,6 @@ class PropIntervalVisitor(Visitor):
                          config.scale_mode,\
                          port,\
                          handle=handle).interval()
-
     '''main body '''
     circ = self.circ
     for block_name,loc,config in circ.instances():
@@ -33,6 +32,14 @@ class PropIntervalVisitor(Visitor):
                                            handle=handle)
                 config.set_op_range(port,hwrng,\
                                     handle=handle)
+
+
+class PropIntervalVisitor(Visitor):
+
+  def __init__(self,prog,circ):
+    Visitor.__init__(self,circ)
+    self._prog = prog
+    self.math_label_ranges()
 
 
   def math_label_ranges(self):
@@ -127,8 +134,15 @@ class PropIntervalVisitor(Visitor):
            valid = False
     return valid
 
-def compute(prog,circ):
+def compute_intervals(prog,circ):
   visitor = PropIntervalVisitor(prog,circ)
+  visitor.all()
+  while(not visitor.is_valid()):
+      visitor.clear()
+      visitor.all()
+
+def compute_op_ranges(prog,circ):
+  visitor = PropOpRangeVisitor(prog,circ)
   visitor.all()
   while(not visitor.is_valid()):
       visitor.clear()
