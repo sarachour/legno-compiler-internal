@@ -106,8 +106,8 @@ class CircShader(Shader):
   def normal_label(self,mean,variance):
     html = '''
     <table border="0">
-    <tr><td>mu:{mean}</td></tr>
-    <tr><td>std:{variance}</td></tr>
+    <tr><td>mu:{mean:.3e}</td></tr>
+    <tr><td>std:{variance:.3e}</td></tr>
     </table>
     '''
     params = {'mean':mean,'variance':variance}

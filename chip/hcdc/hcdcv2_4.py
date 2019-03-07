@@ -189,7 +189,6 @@ def make_board():
             if chip1 == chip2:
                 continue
 
-
             for block1 in [chip_out]:
                 for block2 in [chip_in]:
                     connect_adj_list(hw,block1,block2,chip1_chip0 + chip0_chip1)

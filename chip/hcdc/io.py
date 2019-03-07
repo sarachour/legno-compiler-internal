@@ -1,5 +1,6 @@
 from chip.block import Block, BlockType
 import chip.props as props
+from chip.phys import PhysicalModel
 import chip.units as units
 import chip.hcdc.util as util
 import lab_bench.lib.chipcmd.data as chipcmd
@@ -35,7 +36,7 @@ def dac_scale_model(dac):
                                           glb.MAX_DAC_ERROR_DYNAMIC,
                                           glb.ANALOG_DAC_SAMPLES
       )
-      digital_props.set_continuous(0,20,units.khz)
+      digital_props.set_continuous(0,glb.MAX_FREQ_DAC,units.khz)
       dac.set_coeff("*",mode,'out', coeff)
       dac.set_props("*",mode,["in"], digital_props)
 
@@ -66,7 +67,20 @@ def adc_get_modes():
    return modes
 
 def adc_black_box_model(dac):
-   print("[TODO] dac.blackbox")
+   def config_phys_model(phys,rng):
+        if rng == chipcmd.RangeType.MED:
+            new_phys =  PhysicalModel.read(util.datapath('dac-m.bb'))
+        elif rng == chipcmd.RangeType.HIGH:
+            new_phys = PhysicalModel.read(util.datapath('dac-h.bb'))
+        else:
+            raise Exception("unknown physical model: %s" % str(rng))
+
+        phys.set_to(new_phys)
+
+   scale_modes = dac_get_modes()
+   for sc in scale_modes:
+      _,rng = sc
+      config_phys_model(dac.physical('*',sc,"out"),rng)
 
 
 def adc_scale_model(adc):
@@ -87,7 +101,7 @@ def adc_scale_model(adc):
                                           glb.MAX_DAC_ERROR_DYNAMIC,
                                           glb.ANALOG_DAC_SAMPLES
       )
-      digital_props.set_continuous(0,20,units.khz)
+      digital_props.set_continuous(0,glb.MAX_FREQ_ADC,units.khz)
 
       adc.set_props("*",mode,["in"],analog_props)
       adc.set_props("*",mode,["out"], digital_props)

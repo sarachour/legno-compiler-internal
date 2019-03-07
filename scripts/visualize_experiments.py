@@ -62,7 +62,7 @@ def get_data(series_type='bmarks',executed_only=True):
 
 
 def correlation():
-  data = get_data(series_type='circ_idents')
+  data = get_data(series_type='bmarks')
   ranks = data['ranks']
   qualities= data['qualities']
   idents = data['idents']

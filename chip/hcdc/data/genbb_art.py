@@ -6,11 +6,28 @@ import ops.nop as nops
 import json
 
 
+def get_param_rng_weight(scf):
+  if 'l':
+    return 0.1
+  elif 'm':
+    return 0.0
+  elif 'h':
+    return -0.1
+
+
+def get_param_scf_weight(scf):
+  if '10x':
+    return -0.1
+  elif '1x':
+    return 0.0
+  elif '01x':
+    return 0.1
+
 def get_param_blk_weight(blk):
   if 'integ':
     return 1.0
   elif 'mult':
-    return 1.0
+    return 1.5
   elif 'vga':
     return 1.0
 
@@ -32,12 +49,17 @@ def get_param_port(blk):
 
 def mk_noise_model(blk,scf,rng):
   pblk = get_param_blk_weight(blk)
+  pscf = get_param_scf_weight(scf)
+  prng = get_param_rng_weight(rng)
+
+  wt = pblk + pscf + prng
   psig = get_param_sig_weight(blk)
   pfreq = get_param_freq_weight(blk)
   port = get_param_port(blk)
-  nz_freq = pfreq*pblk
-  nz_sig = psig*pblk
-  nz = pblk
+
+  nz_freq = pfreq*wt
+  nz_sig = psig*wt
+  nz = wt
 
   return nops.mkadd([
     nops.mkmult([
@@ -70,6 +92,19 @@ def make_physical_models():
       ph = mkphys(blk)
       ph.noise = mk_noise_model(blk,'1x',rng)
       yield filename,ph
+
+  for blk in ['dac','adc']:
+    for rng in ['m','h']:
+      filename = "%s-%s.bb" % (blk,rng)
+      ph = mkphys(blk)
+      if rng == 'm':
+        ph.noise = mk_noise_model(blk,'1x',rng)
+      else:
+        scf = "01x" if 'adc' == blk else '10x'
+        ph.noise = mk_noise_model(blk,scf,rng)
+
+      yield filename,ph
+
 
   for blk in ['integ','mult','vga']:
     for scf in ['1x','10x','01x']:
