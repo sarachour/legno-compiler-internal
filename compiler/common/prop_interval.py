@@ -105,8 +105,7 @@ class PropIntervalVisitor(Visitor):
     config = circ.config(block_name,loc)
     # don't apply any coefficients
     if not config.has_expr(port):
-      expr = block.get_dynamics(config.comp_mode,port, \
-                                scale_mode=None)
+      expr = block.get_dynamics(config.comp_mode,port)
     else:
       expr = config.expr(port)
 

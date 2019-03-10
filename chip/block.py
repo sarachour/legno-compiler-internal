@@ -99,6 +99,7 @@ class Block:
         else:
             return ops.Mult(ops.Const(coeff,tag='scf'),expr)
 
+    '''
     def _perform_scale(self,comp_mode,scale_mode,output,expr):
         def recurse(e):
             return self._perform_scale(comp_mode,scale_mode,output,e)
@@ -141,6 +142,15 @@ class Block:
         expr = op_data[output]
         return self.scaled_dynamics(comp_mode,scale_mode,output,expr)
 
+    '''
+    def get_dynamics(self,comp_mode,output):
+        copy_data = self._get_comp_dict(comp_mode,self._copies)
+        op_data = self._get_comp_dict(comp_mode,self._ops)
+        if output in copy_data:
+            output = copy_data[output]
+
+        expr = op_data[output]
+        return expr
 
     def physical(self,comp_mode,scale_mode,output):
         assert(output in self._outputs)

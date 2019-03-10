@@ -58,6 +58,10 @@ class ContinuousScaleModel:
   def set_baseline(self,bl):
     self._baseline = bl
 
+  @property
+  def baseline(self):
+    return self._baseline
+
   def variables(self):
     return self._vars.values()
 

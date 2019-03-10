@@ -12,7 +12,7 @@ from compiler.common import infer
 import compiler.jaunt_pass.phys_opt as physoptlib
 import compiler.jaunt_pass.basic_opt as boptlib
 import compiler.jaunt_pass.scalecfg_opt as scalelib
-from compiler.jaunt_pass.common import JauntEnv, JauntObjectiveFunctionManager
+from compiler.jaunt_pass.common import JauntEnv, JauntObjectiveFunctionManager, ExprVisitor, SCFPropExprVisitor, SCFLUTPropExprVisitor
 import compiler.jaunt_pass.common as jcomlib
 
 import ops.jop as jop
@@ -36,7 +36,6 @@ class JauntScaleModelEnv(JauntEnv):
         return self.decl_jaunt_var(block_name,loc,port,handle,
                                    tag=jcomlib.JauntVarType.OP_RANGE_VAR.name)
 
-
     def decl_coeff_var(self,block_name,loc,port,handle=None):
         return self.decl_jaunt_var(block_name,loc,port,handle,
                                    tag=jcomlib.JauntVarType.COEFF_VAR.name)
@@ -58,23 +57,43 @@ def sc_get_scm_var(jenv,block_name,loc,v):
         raise Exception("unknown var type")
     return jvar
 
-def sc_traverse_scm_expr(jenv,circ,block,loc,expr):
-    config = circ.config(block.name,loc)
-    scale_model = block.scale_model(config.comp_mode)
-    if expr.op == ops.OpType.VAR:
+class ScaleModelExprVisitor(ExprVisitor):
+
+    def __init__(self,jenv,circ,block,loc):
+        ExprVisitor.__init__(self,jenv,circ,block,loc,None)
+
+    def visit_var(self,expr):
+        block,loc = self.block,self.loc
+        config = self.circ.config(block.name,loc)
+        scale_model = block.scale_model(config.comp_mode)
         var= scale_model.var(expr.name)
-        jaunt_var = sc_get_scm_var(jenv,block.name,loc,var)
+        jaunt_var = sc_get_scm_var(self.jenv,block.name,loc,var)
         return jop.JVar(jaunt_var)
-    elif expr.op == ops.OpType.CONST:
+
+    def visit_const(self,expr):
         return jop.JConst(expr.value)
 
-    elif expr.op == ops.OpType.MULT:
-        expr1 = sc_traverse_scm_expr(jenv,circ,block,loc,expr.arg1)
-        expr2 = sc_traverse_scm_expr(jenv,circ,block,loc,expr.arg2)
+    def visit_mult(self,expr):
+        expr1 = self.visit_expr(expr.arg1)
+        expr2 = self.visit_expr(expr.arg2)
         return jop.JMult(expr1,expr2)
 
-    else:
-        raise Exception("unimpl: %s" % expr)
+class SCFInferExprVisitor(SCFPropExprVisitor):
+
+    def __init__(self,jenv,circ,block,loc,port):
+        SCFPropExprVisitor.__init__(self,jenv,circ,block,loc,port)
+
+    def coeff(self,handle):
+      block,loc = self.block,self.loc
+      config = self.circ.config(block.name,loc)
+      model = block.scale_model(config.comp_mode)
+      scale_mode = model.baseline
+      coeff_const = block.coeff(config.comp_mode,scale_mode,self.port)
+      coeff_var = self.jenv.get_coeff_var(self.block.name,self.loc, \
+                                          self.port,handle=handle)
+      return jop.JMult(jop.JConst(coeff_const), \
+                       jop.JVar(coeff_var))
+
 
 def sc_decl_scale_model_variables(jenv,circ):
     for block_name,loc,config in circ.instances():
@@ -100,9 +119,10 @@ def sc_generate_scale_model_constraints(jenv,circ):
                                         interval.Interval.type_infer(1.0,1.0),
                                         ival)
 
+        visitor = ScaleModelExprVisitor(jenv,circ,block,loc)
         for lhs,rhs in scale_model.eqs():
-            j_lhs = sc_traverse_scm_expr(jenv,circ,block,loc,lhs)
-            j_rhs = sc_traverse_scm_expr(jenv,circ,block,loc,rhs)
+            j_lhs = visitor.visit_expr(lhs)
+            j_rhs = visitor.visit_expr(rhs)
             jenv.eq(j_lhs,j_rhs)
 
 def sc_build_jaunt_env(prog,circ):
@@ -121,37 +141,25 @@ def sc_build_jaunt_env(prog,circ):
 
 # traverse dynamics, also including coefficient variable
 def sc_traverse_dynamics(jenv,circ,block,loc,out):
-    scfvar = jop.JVar(jenv.get_scvar(block.name,loc,out))
-    coeffvar = jop.JVar(jenv.get_coeff_var(block.name,loc,out))
-    config = circ.config(block.name,loc)
-    if block.name == "lut":
-        expr = config.expr(out)
-        scexpr = jcomlib.cstr_traverse_expr(jenv,circ,block,loc,out,expr)
-        compvar = jop.JVar(jenv.get_scvar(block.name,loc,out, \
-                                           handle=jenv.LUT_SCF_OUT))
-
-        # also include coefficient variables
-        jenv.eq(scfvar, jop.JMult(jop.JMult(compvar,scexpr),coeffvar))
+    if block.name == 'lut':
+        raise Exception("need to override lut")
     else:
-        expr = config.dynamics(block,out)
-        scexpr = jcomlib.cstr_traverse_expr(jenv,circ,block,loc,out,expr)
-        # also include coefficient variables
-        jenv.eq(scfvar,jop.JMult(scexpr,coeffvar))
-
-
+        visitor = SCFInferExprVisitor(jenv,circ,block,loc,out)
+        visitor.visit()
 
 def sc_generate_problem(jenv,prob,circ):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for out in block.outputs:
+            # ensure we can propagate the dynamics
             sc_traverse_dynamics(jenv,circ,block,loc,out)
 
         for port in block.outputs + block.inputs:
-            print(port)
             for handle in block.handles(config.comp_mode,port):
                 print(port,handle)
                 input("TODO: add constraints previously added in traverse")
 
+        print(port)
         input("TODO: add operating range constraints")
 
     if not jenv.uses_tau():

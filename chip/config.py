@@ -46,18 +46,6 @@ class Config:
     def has_expr(self,port):
         return port in self._exprs
 
-    def dynamics(self,block,port):
-      assert(not self._comp_mode is None)
-      if not self.has_expr(port):
-          return block.get_dynamics(self._comp_mode,port, \
-                                    scale_mode=self._scale_mode)
-      else:
-        expr = self.expr(port)
-        comp_mode = self._comp_mode
-        scale_mode = self._scale_mode
-        coeff = block.coeff(comp_mode,scale_mode,port)
-        return block.scaled_dynamics(comp_mode,scale_mode,port,expr)
-
     def physical(self,block,port,handle=None):
       assert(not self._comp_mode is None)
       assert(not self._scale_mode is None)
