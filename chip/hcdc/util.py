@@ -3,6 +3,8 @@ import chip.units as units
 import numpy as np
 import os
 import util.util as glbl_util
+import lab_bench.lib.chipcmd.data as chipcmd
+import ops.interval as interval
 
 truncate = glbl_util.truncate
 equals = glbl_util.equals
@@ -10,6 +12,18 @@ equals = glbl_util.equals
 def datapath(filename):
     return "chip/hcdc/data/%s" % filename
 
+def build_scale_model_cstr(cstrlst):
+    contcstrlst = []
+    for var,rng in cstrlst:
+        if rng == chipcmd.RangeType.MED:
+            cstr = interval.Interval.type_infer(0.1,1.0)
+        elif rng == chipcmd.RangeType.LOW:
+            cstr = interval.Interval.type_infer(0.0,0.1)
+        elif rng == chipcmd.RangeType.HIGH:
+            cstr = interval.Interval.type_infer(1.0,10.0)
+
+        contcstrlst.append((var,cstr))
+    return contcstrlst
 
 def make_ana_props(rng,lb,ub,min_sig):
     assert(lb < ub)

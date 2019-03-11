@@ -61,27 +61,38 @@ def black_box_model(blk):
 def continuous_scale_model(integ):
   m = chipcmd.RangeType.MED
   comp_modes = get_comp_modes()
+  scale_modes = get_scale_modes()
   for comp_mode in comp_modes:
     csm = ContinuousScaleModel()
     csm.set_baseline((m,m))
     deriv = csm.decl_var(CSMOpVar("in"))
     out = csm.decl_var(CSMOpVar("out"))
 
+    # coefficients
     coeff = csm.decl_var(CSMCoeffVar("out"))
     coeff_deriv = csm.decl_var(CSMCoeffVar("out",handle=':z\''))
     coeff_deriv = csm.decl_var(CSMCoeffVar("out",handle=':z'))
     coeff_ic = csm.decl_var(CSMCoeffVar("out",handle=':z[0]'))
 
+    # operating range scaling factors
     ic_int = csm.decl_var(CSMOpVar("out",handle=':z[0]'))
     deriv_int = csm.decl_var(CSMOpVar("out",handle=':z\''))
     out_int = csm.decl_var(CSMOpVar("out",handle=':z'))
     csm.eq(ops.Mult(ops.Var(coeff.varname),
                     ops.Var(deriv.varname)), ops.Var(out.varname))
+
     print("[TODO]: integrator constraints")
     csm.eq(ops.Var(coeff_ic.varname), ops.Var(coeff.varname))
     csm.eq(ops.Var(ic_int.varname), ops.Var(out.varname))
     csm.eq(ops.Var(out_int.varname), ops.Var(out.varname))
     csm.eq(ops.Var(deriv_int.varname), ops.Var(deriv.varname))
+
+    for scm in scale_modes:
+      scm_i, scm_o = scm
+      cstrs = util.build_scale_model_cstr([(ic_int,scm_o), \
+                                           (deriv_int,scm_i), \
+                                           (out_int,scm_o)])
+      csm.add_scale_mode(scm,cstrs)
 
     for csmvar in [deriv,out,ic_int,deriv_int,out_int,coeff]:
       csmvar.set_interval(0.1,10.0)

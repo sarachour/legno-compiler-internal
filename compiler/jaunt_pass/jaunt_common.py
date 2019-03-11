@@ -39,6 +39,8 @@ def decl_scale_variables(jenv,circ):
         d_scf = jenv.get_scvar(dblk,dloc,dport)
         jenv.eq(jop.JVar(s_scf),jop.JVar(d_scf))
 
+def _to_phys_bandwidth(circ,bw):
+    return bw*circ.board.time_constant
 
 def analog_bandwidth_constraint(jenv,circ,mbw,hwbw):
     tau = jop.JVar(jenv.TAU)
@@ -48,7 +50,7 @@ def analog_bandwidth_constraint(jenv,circ,mbw,hwbw):
     if mbw.is_infinite():
         return
 
-    physbw = bputil_to_phys_bandwidth(circ,mbw.bandwidth)
+    physbw = _to_phys_bandwidth(circ,mbw.bandwidth)
     jenv.use_tau()
     if hwbw.upper > 0:
         jenv.lte(jop.JMult(tau,jop.JConst(physbw)), \
@@ -129,7 +131,7 @@ def digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):
     if mbw.is_infinite():
         return
 
-    physbw = bputil_to_phys_bandwidth(circ,mbw.bandwidth)
+    physbw = _to_phys_bandwidth(circ,mbw.bandwidth)
     if prop.kind == props.DigitalProperties.Type.CONSTANT:
         assert(mbw.bandwidth == 0)
 
@@ -150,7 +152,7 @@ def digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):
 
     elif prop.kind == props.DigitalProperties.Type.CONTINUOUS:
         hwbw = prop.bandwidth
-        bpgen_scaled_analog_bandwidth_constraint(jenv,circ, \
-                                                 mbw,hwbw)
+        analog_bandwidth_constraint(jenv,circ, \
+                                    mbw,hwbw)
     else:
         raise Exception("unknown not permitted")

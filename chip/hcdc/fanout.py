@@ -48,6 +48,7 @@ def blackbox_model(fanout):
 
 def continuous_scale_model(fanout):
     comp_modes = get_comp_modes()
+    scale_modes = get_scale_modes()
     for comp_mode in comp_modes:
         csm = ContinuousScaleModel()
         csm.set_baseline((chipcmd.RangeType.MED))
@@ -60,7 +61,11 @@ def continuous_scale_model(fanout):
             coeff.set_interval(1.0,1.0)
             csm.eq(ops.Var(out.varname), ops.Var(inp.varname))
 
-        fanout.set_scale_model(comp_mode,csm)
+            for scm in scale_modes:
+                cstrs = util.build_scale_model_cstr([(out,scm)])
+                csm.add_scale_mode(scm,cstrs)
+
+            fanout.set_scale_model(comp_mode,csm)
 
 def scale_model(fanout):
     comp_modes = get_comp_modes()

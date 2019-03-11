@@ -36,6 +36,16 @@ class CSMVar:
   def varname(self):
     return "%s_%s_%s" % (self._type.value,self._port,self._handle)
 
+  def __repr__(self):
+    return "[%s]%s:%s" % (self._type,self._port,self._handle)
+
+  def __eq__(self,o):
+    return str(o) == str(self) and \
+      o.__class__.__name__ == self.__class__.__name__
+
+  def __hash__(self):
+    return hash(str(self))
+
 class CSMOpVar(CSMVar):
 
   def __init__(self,port,handle=None):
@@ -47,12 +57,35 @@ class CSMCoeffVar(CSMVar):
     CSMVar.__init__(self,CSMVar.Type.COEFFVAR,port,handle=handle)
 
 
+class ContinuousScaleContext:
+
+  def __init__(self,model):
+    self._assigns = {}
+    self._model = model
+
+  @property
+  def model(self):
+    return self._model
+
+  def value(self,var):
+    return self._assigns[var]
+
+  def assign(self,var,value):
+    self._assigns[var] = value
+
+  def __repr__(self):
+    s = ""
+    for v,val in self._assigns.items():
+      s += "%s=%f\n" % (v,val)
+    return s
+
+
 class ContinuousScaleModel:
 
   def __init__(self):
     self._vars = {}
     self._eq = []
-    self._to_scm = {}
+    self._scale_modes = {}
     self._baseline = None
 
   def set_baseline(self,bl):
@@ -72,9 +105,30 @@ class ContinuousScaleModel:
   def eq(self,expr1,expr2):
     self._eq.append((expr1,expr2))
 
-
   def eqs(self):
     return self._eq
 
   def var(self,name):
     return self._vars[name]
+
+  def add_scale_mode(self,scale_mode,cstrs):
+    self._scale_modes[scale_mode] = cstrs
+
+  def scale_mode(self,ctx):
+    scm = None
+    for this_scm,cstrs in self._scale_modes.items():
+      is_match = True
+      for var,rng in cstrs:
+        value = ctx.value(var)
+        if not rng.contains_value(value):
+          is_match = False
+
+
+      if is_match:
+        assert(scm is None)
+        scm = this_scm
+
+    print(scm)
+    input()
+    assert(not scm is None)
+    return scm

@@ -28,6 +28,14 @@ import util.util as util
 import util.config as CONFIG
 import tqdm
 
+def sc_get_cont_var(jtype,block_name,loc,port,handle):
+    if jtype == jenvlib.JauntVarType.OP_RANGE_VAR:
+        return cont.CSMOpVar(port,handle)
+    elif jtype == jenvlib.JauntVarType.COEFF_VAR:
+        return cont.CSMCoeffVar(port,handle)
+    else:
+        return None
+
 def sc_get_scm_var(jenv,block_name,loc,v):
     if v.type == cont.CSMVar.Type.OPVAR:
         jvar = jenv.get_op_range_var(block_name,loc,v.port,v.handle)
@@ -176,29 +184,51 @@ def sc_generate_problem(jenv,prob,circ):
         jenv.gte(jop.JVar(jenv.TAU), jop.JConst(1e-10))
 
 
+def parse_result(jenv,circ,sln):
+    ctxs = {}
+    for variable,value in sln['freevariables'].items():
+        if variable.name == jenv.TAU:
+            continue
+        else:
+            block_name,loc,port,handle,tag = jenv.get_jaunt_var_info(variable.name)
+            if not (block_name,loc) in ctxs:
+                config = circ.config(block_name,loc)
+                model = circ.board.block(block_name).scale_model(config.comp_mode)
+                ctxs[(block_name,loc)] = cont.ContinuousScaleContext(model)
+
+
+            contvar = sc_get_cont_var(tag,block_name,loc,port,handle)
+            if not contvar is None:
+                ctxs[(block_name,loc)].assign(contvar,value)
+
+    for (block_name,loc),ctx in ctxs.items():
+        print("=== %s[%s] ===" % (block_name,loc))
+        print(ctx)
+        ctx.model.scale_mode(ctx)
+
 def infer_scale_config(prog,circ):
-  assert(isinstance(circ,ConcCirc))
-  jenv = sc_build_jaunt_env(prog,circ)
-  jopt = JauntObjectiveFunctionManager(jenv)
-  for optcls in JauntObjectiveFunctionManager.basic_methods():
-      jopt.method = optcls.name()
-      print("===== %s =====" % optcls.name())
-      for idx,(gpprob,obj) in \
-          enumerate(jenvlib.build_gpkit_problem(circ,jenv,jopt)):
+    assert(isinstance(circ,ConcCirc))
+    jenv = sc_build_jaunt_env(prog,circ)
+    jopt = JauntObjectiveFunctionManager(jenv)
+    for optcls in JauntObjectiveFunctionManager.basic_methods():
+        jopt.method = optcls.name()
+        print("===== %s =====" % optcls.name())
+        for idx,(gpprob,obj) in \
+            enumerate(jenvlib.build_gpkit_problem(circ,jenv,jopt)):
+            if gpprob is None:
+                continue
 
-          if gpprob is None:
-              continue
+            print("-> %s" % optcls.name())
+            sln = jenvlib.solve_gpkit_problem(gpprob)
+            if sln is None:
+                print("[[FAILURE - NO SLN]]")
+                jenv.set_solved(False)
+                jenvlib.debug_gpkit_problem(gpprob)
+                return
+            else:
+                jenv.set_solved(True)
 
-          print("-> %s" % optcls.name())
-          sln = jenvlib.solve_gpkit_problem(gpprob)
-          if sln is None:
-              print("[[FAILURE - NO SLN]]")
-              jenv.set_solved(False)
-              jenvlib.debug_gpkit_problem(gpprob)
-              return
-          else:
-              jenv.set_solved(True)
-
-          print(sln)
-          jopt.add_result(obj.tag(),sln)
-          yield obj,sln
+            parse_result(jenv,circ,sln)
+            print(sln)
+            jopt.add_result(obj.tag(),sln)
+            yield obj,sln
