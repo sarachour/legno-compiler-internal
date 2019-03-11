@@ -179,6 +179,15 @@ class Block:
     def props(self,comp_mode,scale_mode,port,handle=None):
         data = self._get_scale_dict(comp_mode,scale_mode, \
                                     self._props)
+        if data is None:
+            raise Exception("mode <%s,%s> not in prop-dict" % \
+                            (comp_mode,scale_mode))
+        if not port in data:
+            raise Exception("port not in prop-dict <%s>" % port)
+
+        if not handle in data[port]:
+            raise Exception("handle not in prop-dict <%s>" % handle)
+
         return data[port][handle]
 
     def handles(self,comp_mode,port):

@@ -6,10 +6,6 @@ from chip.config import Labels
 import ops.op as ops
 import gpkit
 import itertools
-import compiler.jaunt_pass.phys_opt as physoptlib
-import compiler.jaunt_pass.basic_opt as boptlib
-import compiler.jaunt_pass.scalecfg_opt as scalelib
-from compiler.jaunt_pass.common import JauntObjectiveFunctionManager, JauntEnv
 import ops.jop as jop
 import ops.op as op
 import signal
@@ -19,6 +15,8 @@ import numpy as np
 import util.util as util
 import util.config as CONFIG
 import tqdm
+
+import compiler.jaunt_pass.jaunt_infer as jaunt_infer
 
 
 def bpgen_scaled_analog_interval_constraint(jenv,scale_expr,math_rng,hw_rng,prop):
@@ -584,6 +582,5 @@ def physical_scale(prog,circ):
         yield opt,circ
 
 def scale(prog,circ):
-    for opt,scale_cfgs in scalelib.infer_scale_config(prog,circ,\
-                                                     JauntObjectiveFunctionManager.basic_methods()):
+    for opt,scale_cfgs in jaunt_infer.infer_scale_config(prog,circ):
         yield idx,opt,scaled_circ

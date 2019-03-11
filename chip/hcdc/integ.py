@@ -66,12 +66,19 @@ def continuous_scale_model(integ):
     csm.set_baseline((m,m))
     deriv = csm.decl_var(CSMOpVar("in"))
     out = csm.decl_var(CSMOpVar("out"))
+
     coeff = csm.decl_var(CSMCoeffVar("out"))
+    coeff_deriv = csm.decl_var(CSMCoeffVar("out",handle=':z\''))
+    coeff_deriv = csm.decl_var(CSMCoeffVar("out",handle=':z'))
+    coeff_ic = csm.decl_var(CSMCoeffVar("out",handle=':z[0]'))
+
     ic_int = csm.decl_var(CSMOpVar("out",handle=':z[0]'))
     deriv_int = csm.decl_var(CSMOpVar("out",handle=':z\''))
     out_int = csm.decl_var(CSMOpVar("out",handle=':z'))
     csm.eq(ops.Mult(ops.Var(coeff.varname),
                     ops.Var(deriv.varname)), ops.Var(out.varname))
+    print("[TODO]: integrator constraints")
+    csm.eq(ops.Var(coeff_ic.varname), ops.Var(coeff.varname))
     csm.eq(ops.Var(ic_int.varname), ops.Var(out.varname))
     csm.eq(ops.Var(out_int.varname), ops.Var(out.varname))
     csm.eq(ops.Var(deriv_int.varname), ops.Var(deriv.varname))

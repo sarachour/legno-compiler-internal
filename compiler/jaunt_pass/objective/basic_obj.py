@@ -1,6 +1,6 @@
 from util.paths import PathHandler
 import numpy as np
-import compiler.jaunt_pass.opt as optlib
+import compiler.jaunt_pass.objective.obj as optlib
 
 class SlowObjFunc(optlib.JauntObjectiveFunction):
 

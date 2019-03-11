@@ -26,7 +26,7 @@ def dac_black_box_model(dac):
 
 def dac_continuous_scale_model(dac):
   csm = ContinuousScaleModel()
-  csm.set_baseline((chipcmd.RangeType.MED))
+  csm.set_baseline((chipcmd.SignType.POS, chipcmd.RangeType.MED))
   out = csm.decl_var(CSMOpVar("out"))
   inp = csm.decl_var(CSMOpVar("in"))
   coeff = csm.decl_var(CSMCoeffVar("out"))

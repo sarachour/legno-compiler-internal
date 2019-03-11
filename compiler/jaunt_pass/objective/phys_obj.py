@@ -2,7 +2,7 @@ import itertools
 import ops.nop as nop
 import util.util as util
 import compiler.common.evaluator_heuristic as evalheur
-import compiler.jaunt_pass.opt as optlib
+import compiler.jaunt_pass.objective.obj as optlib
 import math
 
 def gpkit_mult(expr):
