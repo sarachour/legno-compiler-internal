@@ -5,12 +5,11 @@ import lab_bench.lib.chipcmd.data as chipcmd
 
 from chip.config import Labels
 import chip.cont as cont
-import chip.props as props
 from chip.conc import ConcCirc
 
 from compiler.common import infer
-from compiler.jaunt_pass.jenv import JauntInferEnv, JauntVarType
-from compiler.jaunt_pass.expr_visitor import ExprVisitor, SCFPropExprVisitor
+import compiler.jaunt_pass.jenv as jenvlib
+import compiler.jaunt_pass.expr_visitor as exprvisitor
 from compiler.jaunt_pass.objective.obj_mgr import JauntObjectiveFunctionManager
 
 import compiler.jaunt_pass.jaunt_util as jaunt_util
@@ -18,6 +17,7 @@ import compiler.jaunt_pass.jaunt_common as jaunt_common
 
 import ops.jop as jop
 import ops.op as ops
+import chip.props as props
 import ops.interval as interval
 
 import signal
@@ -38,10 +38,10 @@ def sc_get_scm_var(jenv,block_name,loc,v):
     return jvar
 
 
-class ScaleModelExprVisitor(ExprVisitor):
+class ScaleModelExprVisitor(exprvisitor.ExprVisitor):
 
     def __init__(self,jenv,circ,block,loc):
-        ExprVisitor.__init__(self,jenv,circ,block,loc,None)
+        exprvisitor.ExprVisitor.__init__(self,jenv,circ,block,loc,None)
 
     def visit_var(self,expr):
         block,loc = self.block,self.loc
@@ -59,10 +59,10 @@ class ScaleModelExprVisitor(ExprVisitor):
         expr2 = self.visit_expr(expr.arg2)
         return jop.JMult(expr1,expr2)
 
-class SCFInferExprVisitor(SCFPropExprVisitor):
+class SCFInferExprVisitor(exprvisitor.SCFPropExprVisitor):
 
     def __init__(self,jenv,circ,block,loc,port):
-        SCFPropExprVisitor.__init__(self,jenv,circ,block,loc,port)
+        exprvisitor.SCFPropExprVisitor.__init__(self,jenv,circ,block,loc,port)
 
     def coeff(self,handle):
       block,loc = self.block,self.loc
@@ -96,7 +96,7 @@ def sc_generate_scale_model_constraints(jenv,circ):
             jvar = sc_get_scm_var(jenv,block_name,loc,v)
             ival = v.interval
             if not ival is None:
-                jaunt_util.cstr_in_interval(jenv,jop.JVar(jvar),
+                jaunt_util.in_interval_constraint(jenv,jop.JVar(jvar),
                                         interval.Interval.type_infer(1.0,1.0),
                                         ival)
 
@@ -107,7 +107,7 @@ def sc_generate_scale_model_constraints(jenv,circ):
             jenv.eq(j_lhs,j_rhs)
 
 def sc_build_jaunt_env(prog,circ):
-    jenv = JauntInferEnv()
+    jenv = jenvlib.JauntInferEnv()
     # declare scaling factors
     infer.clear(circ)
     infer.infer_intervals(prog,circ)
@@ -128,42 +128,8 @@ def sc_traverse_dynamics(jenv,circ,block,loc,out):
         visitor = SCFInferExprVisitor(jenv,circ,block,loc,out)
         visitor.visit()
 
-def sc_alog_bandwidth_constraint(jenv,circ,mbw,hwbw):
-    tau = jop.JVar(jenv.TAU)
-    if hwbw.unbounded_lower() and hwbw.unbounded_upper():
-        return
 
-    if mbw.is_infinite():
-        return
-
-    physbw = bputil_to_phys_bandwidth(circ,mbw.bandwidth)
-    jenv.use_tau()
-    if hwbw.upper > 0:
-        jenv.lte(jop.JMult(tau,jop.JConst(physbw)), \
-                 jop.JConst(hwbw.upper))
-    else:
-        jenv.fail()
-
-    if hwbw.lower > 0:
-        jenv.gte(jop.JMult(tau,jop.JConst(physbw)), \
-                 jop.JConst(hwbw.lower))
-
-def sc_alog_oprange_constraint(jenv,prop,scale_expr,mrng,hwrng):
-    jaunt_util.cstr_upper_bound(jenv, scale_expr, mrng.upper, hwrng.upper)
-    jaunt_util.cstr_lower_bound(jenv, scale_expr, mrng.lower, hwrng.lower)
-    if mrng.spread == 0.0:
-        return
-
-    if isinstance(prop, props.AnalogProperties):
-        if abs(mrng.lower) > 0:
-            jaunt_util.cstr_lower_bound(jenv,scale_expr,abs(mrng.lower), \
-                                    prop.min_signal())
-        if abs(mrng.upper) > 0:
-            jaunt_util.cstr_lower_bound(jenv,scale_expr,abs(mrng.upper), \
-                                           prop.min_signal())
-
-
-def sc_interval_constraint(jenv,circ,block,loc,port,handle=None):
+def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
     config = circ.config(block.name,loc)
     mrng = config.interval(port)
     mbw = config.bandwidth(port)
@@ -175,21 +141,18 @@ def sc_interval_constraint(jenv,circ,block,loc,port,handle=None):
 
     scale_model = block.scale_model(config.comp_mode)
     baseline = scale_model.baseline
-    print(block.name)
     prop = block.props(config.comp_mode,baseline,port,handle=handle)
     hwrng,hwbw = prop.interval(), prop.bandwidth()
     if isinstance(prop, props.AnalogProperties):
-        sc_alog_oprange_constraint(jenv,prop,scale_expr,mrng,hwrng)
-        sc_alog_bandwidth_constraint(jenv,circ,mbw,hwbw)
+        jaunt_common.analog_op_range_constraint(jenv,prop,scale_expr,mrng,hwrng)
+        jaunt_common.analog_bandwidth_constraint(jenv,circ,mbw,hwbw)
 
     elif isinstance(prop, props.DigitalProperties):
-        sc_alog_oprange_constraint(jenv,prop,scale_expr,mrng,hwrng)
-        sc_dig_quantize_constraint(jenv,scfvar, \
-                                   mrng,\
-                                   prop)
-        sc_dig_bandwidth_constraint(jenv,prob,circ, \
-                                    mbw,
-                                    prop)
+        jaunt_common.analog_op_range_constraint(jenv,prop,scale_expr,mrng,hwrng)
+        jaunt_common.digital_quantize_constraint(jenv,scfvar, \
+                                   mrng, prop)
+        jaunt_common.digital_bandwidth_constraint(jenv,prob,circ, \
+                                                  mbw, prop)
     else:
         raise Exception("unknown")
 
@@ -202,9 +165,9 @@ def sc_generate_problem(jenv,prob,circ):
 
         for port in block.outputs + block.inputs:
             for handle in block.handles(config.comp_mode,port):
-                sc_interval_constraint(jenv,circ,block,loc,out,handle=handle)
+                sc_interval_constraint(jenv,circ,prob,block,loc,out,handle=handle)
 
-            sc_interval_constraint(jenv,circ,block,loc,out)
+            sc_interval_constraint(jenv,circ,prob,block,loc,out)
 
     if not jenv.uses_tau():
         jenv.eq(jop.JVar(jenv.TAU), jop.JConst(1.0))
@@ -218,11 +181,24 @@ def infer_scale_config(prog,circ):
   jenv = sc_build_jaunt_env(prog,circ)
   jopt = JauntObjectiveFunctionManager(jenv)
   for optcls in JauntObjectiveFunctionManager.basic_methods():
-    jopt.method = optcls.name()
-    print("===== %s =====" % optcls.name())
-    for idx,(gpprob,obj) in \
-        enumerate(build_gpkit_problem(circ,jenv,jopt)):
-      print("-> %s" % optcls.name())
-      if gpprob is None:
-        continue
+      jopt.method = optcls.name()
+      print("===== %s =====" % optcls.name())
+      for idx,(gpprob,obj) in \
+          enumerate(jenvlib.build_gpkit_problem(circ,jenv,jopt)):
 
+          if gpprob is None:
+              continue
+
+          print("-> %s" % optcls.name())
+          sln = jenvlib.solve_gpkit_problem(gpprob)
+          if sln is None:
+              print("[[FAILURE - NO SLN]]")
+              jenv.set_solved(False)
+              jenvlib.debug_gpkit_problem(gpprob)
+              return
+          else:
+              jenv.set_solved(True)
+
+          print(sln)
+          jopt.add_result(obj.tag(),sln)
+          yield obj,sln

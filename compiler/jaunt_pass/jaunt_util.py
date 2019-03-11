@@ -2,6 +2,22 @@ import ops.jop as jop
 import ops.op as ops
 import ops.interval as interval
 
+def cancel_signs(orig_lhs,orig_rhs):
+    const1,expr1 = orig_lhs.factor_const()
+    const2,expr2 = orig_rhs.factor_const()
+    if const1 >= 0 and const2 >= 0:
+        pass
+    elif const1 <= 0 and const1 <= 0:
+        const1 *= -1
+        const2 *= -1
+    else:
+        print("[sign mismatch] %s OP %s" % (orig_lhs,orig_rhs))
+        return False,orig_lhs,orig_rhs
+
+    new_expr1 = jop.JMult(jop.JConst(const1),expr1)
+    new_expr2 = jop.JMult(jop.JConst(const2),expr2)
+    return True,new_expr1,new_expr2
+
 
 def is_zero(v):
     return abs(v) < 1e-14
@@ -15,7 +31,7 @@ def same_sign(v1,v2):
     else:
         return False
 
-def cstr_lower_bound(jenv,expr,math_lower,hw_lower):
+def lower_bound_constraint(jenv,expr,math_lower,hw_lower):
     if is_zero(math_lower) and hw_lower <= 0:
         return
     elif is_zero(math_lower) and hw_lower > 0:
@@ -50,7 +66,7 @@ def cstr_lower_bound(jenv,expr,math_lower,hw_lower):
         raise Exception("uncovered lb: %s %s" % (math_lower,hw_lower))
 
 
-def cstr_upper_bound(jenv,expr,math_upper,hw_upper):
+def upper_bound_constraint(jenv,expr,math_upper,hw_upper):
     if is_zero(math_upper) and hw_upper >= 0:
         return
 
@@ -88,9 +104,9 @@ def cstr_upper_bound(jenv,expr,math_upper,hw_upper):
         raise Exception("uncovered ub: %s %s" % (math_upper,hw_upper))
 
 
-def cstr_in_interval(jenv,scale_expr,math_rng,hw_rng):
-    cstr_upper_bound(jenv,scale_expr, \
+def in_interval_constraint(jenv,scale_expr,math_rng,hw_rng):
+    upper_bound_constraint(jenv,scale_expr, \
                             math_rng.upper,hw_rng.upper)
-    cstr_lower_bound(jenv,scale_expr, \
+    lower_bound_constraint(jenv,scale_expr, \
                             math_rng.lower,hw_rng.lower)
 

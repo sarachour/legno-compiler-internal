@@ -92,7 +92,7 @@ class DigitalProperties(Properties):
         self._sample_rate = (None,units.unknown)
         self._max_samples = None
         # for continuous
-        self._bandwidth = (None,units.unknown)
+        self._bandwidth = (None,None,units.unknown)
 
     def __repr__(self):
         clk = "Synch(kind=%s, rate=%s, samps=%s, bw=%s)" % \
@@ -145,12 +145,11 @@ class DigitalProperties(Properties):
     def max_samples(self):
         return self._max_samples
 
-    @property
     def bandwidth(self):
-        lb,ub,unit = self._bandwidth
-        lb = lb*unit if not lb is None else None
-        ub = ub*unit if not ub is None else None
-        return Interval.type_infer(lb,ub)
+         lb,ub,unit = self._bandwidth
+         lb = lb*unit if not lb is None else None
+         ub = ub*unit if not ub is None else None
+         return Interval.type_infer(lb,ub)
 
 
     def set_values(self,values):

@@ -162,10 +162,9 @@ class Block:
         return ddict[output]
 
 
-    def dynamics(self,comp_mode,scale_mode=None):
+    def dynamics(self,comp_mode):
         for output in self._outputs:
-            expr = self.get_dynamics(comp_mode,output, \
-                                     scale_mode=scale_mode)
+            expr = self.get_dynamics(comp_mode,output)
             yield output,expr
 
     def all_dynamics(self):
@@ -279,6 +278,9 @@ class Block:
         return self
 
     def scale_model(self,comp_mode):
+        if not comp_mode in self._scale_models:
+            raise Exception("block <%s> does not contain scale model for <%s>" % \
+                            (self.name,comp_mode))
         return self._scale_models[comp_mode]
 
     def set_scale_model(self,comp_mode,model):

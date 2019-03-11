@@ -5,6 +5,23 @@ import lab_bench.lib.chipcmd.data as chipcmd
 import chip.hcdc.globals as glb
 import ops.op as ops
 import chip.units as units
+from chip.cont import *
+
+
+def extern_continuous_model(xbar):
+  csm = ContinuousScaleModel()
+  csm.set_baseline("*")
+  out = csm.decl_var(CSMOpVar("out"))
+  inp = csm.decl_var(CSMOpVar("in"))
+  coeff = csm.decl_var(CSMCoeffVar("out"))
+  csm.eq(ops.Mult(ops.Var(inp.varname),
+                  ops.Var(coeff.varname)), \
+         ops.Var(out.varname))
+  inp.set_interval(1.0,1.0)
+  coeff.set_interval(1.0,1.0)
+  out.set_interval(1.0,1.0)
+  xbar.set_scale_model("*", csm)
+
 
 # DUE DAC -> VTOI
 ext_chip_in_props = util.make_dig_props(chipcmd.RangeType.MED, \
@@ -27,6 +44,7 @@ block_in = Block('ext_chip_in',type=BlockType.DAC) \
                               glb.ANALOG_MINSIG)) \
 .set_coeff("*","*","out",ext_chip_in_coeff) \
 .check()
+extern_continuous_model(block_in)
 
 
 # DUE ADC -> VTOI
@@ -51,3 +69,4 @@ block_out = Block('ext_chip_out',type=BlockType.ADC) \
                               glb.ANALOG_MINSIG)) \
 .set_coeff("*","*","out",ext_chip_out_coeff) \
 .check()
+extern_continuous_model(block_out)
