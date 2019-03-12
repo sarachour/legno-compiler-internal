@@ -184,7 +184,7 @@ def sc_generate_problem(jenv,prob,circ):
         jenv.gte(jop.JVar(jenv.TAU), jop.JConst(1e-10))
 
 
-def parse_result(jenv,circ,sln):
+def apply_result(jenv,circ,sln):
     ctxs = {}
     for variable,value in sln['freevariables'].items():
         if variable.name == jenv.TAU:
@@ -203,8 +203,10 @@ def parse_result(jenv,circ,sln):
 
     for (block_name,loc),ctx in ctxs.items():
         print("=== %s[%s] ===" % (block_name,loc))
-        print(ctx)
-        ctx.model.scale_mode(ctx)
+        scale_mode = ctx.model.scale_mode(ctx)
+        circ.config(block_name,loc).set_scale_mode(scale_mode)
+
+    return circ
 
 def infer_scale_config(prog,circ):
     assert(isinstance(circ,ConcCirc))
@@ -228,7 +230,7 @@ def infer_scale_config(prog,circ):
             else:
                 jenv.set_solved(True)
 
-            parse_result(jenv,circ,sln)
-            print(sln)
+            apply_result(jenv,circ,sln)
+            yield circ
             jopt.add_result(obj.tag(),sln)
             yield obj,sln

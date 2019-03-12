@@ -85,9 +85,34 @@ def black_box_model(mult):
 
   print("[TODO] mult.blackbox")
 
-def continuous_scale_model(mult):
-  vga_modes,mul_modes = get_modes()
+def continuous_scale_model_vga(mult):
+  vga_modes,_= get_modes()
   m = chipcmd.RangeType.MED
+
+  csm = ContinuousScaleModel()
+  csm.set_baseline((m,m))
+  in0 = csm.decl_var(CSMOpVar("in0"))
+  out = csm.decl_var(CSMOpVar("out"))
+  coeff = csm.decl_var(CSMCoeffVar("out"))
+  for csmvar in [in0,out,coeff]:
+    csmvar.set_interval(0.1,10.0)
+
+  csm.eq(ops.Mult(ops.Var(in0.varname),
+                  ops.Var(coeff.varname)),
+         ops.Var(out.varname))
+
+  for scm in vga_modes:
+    scm_i, scm_o = scm
+    cstrs = util.build_scale_model_cstr([(in0,scm_i), \
+                                         (out,scm_o)])
+    csm.add_scale_mode(scm,cstrs)
+
+  mult.set_scale_model('vga',csm)
+
+def continuous_scale_model_mult(mult):
+  _,mul_modes = get_modes()
+  m = chipcmd.RangeType.MED
+
   csm = ContinuousScaleModel()
   csm.set_baseline((m,m,m))
   in0 = csm.decl_var(CSMOpVar("in0"))
@@ -102,20 +127,18 @@ def continuous_scale_model(mult):
   for csmvar in [in0,in1,out,coeff]:
     csmvar.set_interval(0.1,10.0)
 
+  for scm in mul_modes:
+    scm_i0,scm_i1,scm_o = scm
+    cstrs = util.build_scale_model_cstr([(in0,scm_i0), \
+                                         (in1,scm_i1), \
+                                         (out,scm_o)])
+    csm.add_scale_mode(scm,cstrs)
+
   mult.set_scale_model('mul',csm)
 
-  csm = ContinuousScaleModel()
-  csm.set_baseline((m,m))
-  in1 = csm.decl_var(CSMOpVar("in0"))
-  out = csm.decl_var(CSMOpVar("out"))
-  coeff = csm.decl_var(CSMCoeffVar("out"))
-  for csmvar in [in0,out,coeff]:
-    csmvar.set_interval(0.1,10.0)
-
-  csm.eq(ops.Mult(ops.Var(in0.varname),
-                  ops.Var(coeff.varname)),
-         ops.Var(out.varname))
-  mult.set_scale_model('vga',csm)
+def continuous_scale_model(mult):
+  continuous_scale_model_vga(mult)
+  continuous_scale_model_mult(mult)
 
 
 def scale_model(mult):

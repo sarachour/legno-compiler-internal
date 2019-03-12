@@ -25,6 +25,7 @@ def dac_black_box_model(dac):
    print("[TODO] dac.blackbox")
 
 def dac_continuous_scale_model(dac):
+  modes = dac_get_modes()
   csm = ContinuousScaleModel()
   csm.set_baseline((chipcmd.SignType.POS, chipcmd.RangeType.MED))
   out = csm.decl_var(CSMOpVar("out"))
@@ -36,6 +37,11 @@ def dac_continuous_scale_model(dac):
   inp.set_interval(1.0,1.0)
   coeff.set_interval(1.0,10.0)
   out.set_interval(1.0,10.0)
+  for scm in modes:
+     _,scm_o = scm
+     cstrs = util.build_scale_model_cstr([(out,scm_o)])
+     csm.add_scale_mode(scm, cstrs)
+
   dac.set_scale_model("*", csm)
 
 def dac_scale_model(dac):

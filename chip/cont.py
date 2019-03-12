@@ -117,10 +117,15 @@ class ContinuousScaleModel:
   def scale_mode(self,ctx):
     scm = None
     for this_scm,cstrs in self._scale_modes.items():
+      if not scm is None:
+        continue
+
       is_match = True
+      print(this_scm,cstrs)
       for var,rng in cstrs:
         value = ctx.value(var)
         if not rng.contains_value(value):
+          print("  %s not in %s" % (value,rng))
           is_match = False
 
 
@@ -128,7 +133,5 @@ class ContinuousScaleModel:
         assert(scm is None)
         scm = this_scm
 
-    print(scm)
-    input()
     assert(not scm is None)
     return scm
