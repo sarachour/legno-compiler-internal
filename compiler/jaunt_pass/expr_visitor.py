@@ -69,8 +69,9 @@ class SCFPropExprVisitor(ExprVisitor):
 
   def coeff(self,handle):
       block,loc = self.block,self.loc
-      config = circ.config(block.name,loc)
-      coeff = block.coeff(config.comp_mode,config.scale_mode)
+      config = self.circ.config(block.name,loc)
+      coeff = block.coeff(config.comp_mode,config.scale_mode, \
+                          self.port,handle)
       return jop.JConst(coeff)
 
   def visit_const(self,expr):

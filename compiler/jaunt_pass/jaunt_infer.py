@@ -157,10 +157,8 @@ def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
 
     elif isinstance(prop, props.DigitalProperties):
         jaunt_common.analog_op_range_constraint(jenv,prop,scale_expr,mrng,hwrng)
-        jaunt_common.digital_quantize_constraint(jenv,scfvar, \
-                                   mrng, prop)
-        jaunt_common.digital_bandwidth_constraint(jenv,prob,circ, \
-                                                  mbw, prop)
+        jaunt_common.digital_quantize_constraint(jenv,scale_expr, mrng, prop)
+        jaunt_common.digital_bandwidth_constraint(jenv,prob,circ, mbw, prop)
     else:
         raise Exception("unknown")
 
@@ -231,6 +229,5 @@ def infer_scale_config(prog,circ):
                 jenv.set_solved(True)
 
             apply_result(jenv,circ,sln)
-            yield circ
+            yield obj,circ
             jopt.add_result(obj.tag(),sln)
-            yield obj,sln
