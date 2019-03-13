@@ -51,8 +51,10 @@ class JauntEnv:
   def failed(self):
       return self._failed
 
-  def in_use(self,scvar):
-      return (scvar) in self._in_use
+  def in_use(self,block_name,loc,port,handle=None, \
+             tag=JauntVarType.VAR):
+      var_name = "%s_%s_%s_%s_%s" % (tag.value,block_name,loc,port,handle)
+      return (var_name) in self._in_use
 
   def variables(self):
       yield JauntEnv.TAU
@@ -103,7 +105,7 @@ class JauntEnv:
   def decl_jaunt_var(self,block_name,loc,port,handle=None, \
                      tag=JauntVarType.VAR):
       # create a scaling factor from the variable name
-      var_name = "%s_%s_%s_%s_%s" % (tag.name,block_name,loc,port,handle)
+      var_name = "%s_%s_%s_%s_%s" % (tag.value,block_name,loc,port,handle)
       if var_name in self._from_jaunt_var:
           return var_name
 

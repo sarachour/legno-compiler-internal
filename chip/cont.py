@@ -1,6 +1,26 @@
 import ops.interval as interval
-import ops.op as op
+import ops.op as ops
 from enum import Enum
+
+def equals(csm,variables):
+  for idx in range(len(variables)-1):
+    last_var = variables[idx-1]
+    this_var = variables[idx]
+    csm.eq(ops.Var(last_var.varname), ops.Var(this_var.varname))
+
+def set_interval(variables,lo,hi):
+  for v in variables:
+    v.set_interval(lo,hi)
+
+def decl_out(csm,port,handle=None):
+  op = csm.decl_var(CSMOpVar(port,handle=handle))
+  coeff = csm.decl_var(CSMCoeffVar(port,handle=handle))
+  return op,coeff
+
+
+def decl_in(csm,port,handle=None):
+  op = csm.decl_var(CSMOpVar(port,handle=handle))
+  return op
 
 class CSMVar:
   class Type(Enum):

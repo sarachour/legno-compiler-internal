@@ -91,20 +91,24 @@ def continuous_scale_model_vga(mult):
 
   csm = ContinuousScaleModel()
   csm.set_baseline((m,m))
-  in0 = csm.decl_var(CSMOpVar("in0"))
-  out = csm.decl_var(CSMOpVar("out"))
-  coeff = csm.decl_var(CSMCoeffVar("out"))
-  for csmvar in [in0,out,coeff]:
+  op_in0 = csm.decl_var(CSMOpVar("in0"))
+  op_coeff = csm.decl_var(CSMOpVar("coeff"))
+  op_out = csm.decl_var(CSMOpVar("out"))
+  scf_tf = csm.decl_var(CSMCoeffVar("out"))
+  for csmvar in [op_in0,op_out,scf_tf]:
     csmvar.set_interval(0.1,10.0)
 
-  csm.eq(ops.Mult(ops.Var(in0.varname),
-                  ops.Var(coeff.varname)),
-         ops.Var(out.varname))
+  for csmvar in [op_coeff]:
+    csmvar.set_interval(1.0,1.0)
+
+  csm.eq(ops.Mult(ops.Var(op_in0.varname),
+                  ops.Var(scf_tf.varname)),
+         ops.Var(op_out.varname))
 
   for scm in vga_modes:
     scm_i, scm_o = scm
-    cstrs = util.build_scale_model_cstr([(in0,scm_i), \
-                                         (out,scm_o)])
+    cstrs = util.build_scale_model_cstr([(op_in0,scm_i), \
+                                         (op_out,scm_o)])
     csm.add_scale_mode(scm,cstrs)
 
   mult.set_scale_model('vga',csm)

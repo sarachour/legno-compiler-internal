@@ -81,13 +81,20 @@ def run_diffeq(menv,prob):
   r.set_initial_value(init_cond,t=0.0)
   T = []
   Y = []
+  tqdm_segs = 500
+  last_seg = 0
   print("[run_diffeq] running")
-  with tqdm.tqdm(total=n) as prog:
+  with tqdm.tqdm(total=tqdm_segs) as prog:
     while r.successful() and r.t < time:
         T.append(r.t)
         Y.append(r.y)
         r.integrate(r.t + dt)
-        prog.update(int(r.t*1000))
+        prog.set_description("max=%f | t=%f" % (time,r.t))
+        seg = int(tqdm_segs*float(r.t)/float(time))
+        if seg != last_seg:
+            prog.n = seg
+            prog.refresh()
+            last_seg = seg
 
   return T,Y
 

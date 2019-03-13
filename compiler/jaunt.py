@@ -67,6 +67,10 @@ def sc_traverse_dynamics(jenv,circ,block,loc,out):
         visitor.visit()
 
 
+def sc_port_used(jenv,block_name,loc,port,handle=None):
+    return jenv.in_use(block_name,loc,port, handle=handle, \
+                       tag=jenvlib.JauntVarType.SCALE_VAR)
+
 def sc_generate_problem(jenv,prob,circ):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
@@ -75,10 +79,14 @@ def sc_generate_problem(jenv,prob,circ):
             sc_traverse_dynamics(jenv,circ,block,loc,out)
 
         for port in block.outputs + block.inputs:
-            for handle in block.handles(config.comp_mode,port):
-                sc_interval_constraint(jenv,circ,prob,block,loc,out,handle=handle)
+            if sc_port_used(jenv,block_name,loc,port):
+                sc_interval_constraint(jenv,circ,prob,block,loc,port)
 
-            sc_interval_constraint(jenv,circ,prob,block,loc,out)
+            for handle in block.handles(config.comp_mode,port):
+                if sc_port_used(jenv,block_name,loc,port,handle=handle):
+                    sc_interval_constraint(jenv,circ,prob,block, \
+                                           loc,port,handle=handle)
+
 
     if not jenv.uses_tau():
         jenv.eq(jop.JVar(jenv.TAU), jop.JConst(1.0))
@@ -138,5 +146,6 @@ def physical_scale(prog,circ):
 def scale(prog,circ):
     for infer_obj,infer_circ in jaunt_infer.infer_scale_config(prog,circ):
         for final_obj,final_circ in compute_scale(prog,infer_circ,infer_obj):
+            input()
             yield final_obj.name(), final_circ
 

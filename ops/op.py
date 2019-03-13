@@ -676,6 +676,14 @@ class Add(Op2):
     def sum_terms(self):
         return self.arg1.sum_terms() + self.arg2.sum_terms()
 
+
+    def substitute(self,args):
+        return Add(
+            self.arg(0).substitute(args),
+            self.arg(1).substitute(args)
+        )
+
+
     def compute_interval(self,bindings):
         is1 = self.arg1.compute_interval(bindings)
         is2 = self.arg2.compute_interval(bindings)
@@ -993,8 +1001,23 @@ class Pow(Op):
         pass
 
 
+    # bandwidth is infinite if number is ever negative
+    def infer_bandwidth(self,ivals,bws):
+        bwcoll = self.arg(0).infer_bandwidth(ivals,bws)
+        # 2*sin(pi*a/2)*gamma(alpha+1)/(2*pi*eta)^{alpha+1}
+        bwcoll.update(bandwidth.InfBandwidth())
+        return bwcoll
+
+
+    def substitute(self,args):
+        return Pow(
+            self.arg(0).substitute(args),
+            self.arg(1).substitute(args)
+        )
+
+
     def compute(self,bindings):
-        return math.sqrt(self.arg(0).compute(bindings))
+        return self.arg(0).compute(bindings)**self.arg(1).compute(bindings)
 
 
 

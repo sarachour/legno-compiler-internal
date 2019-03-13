@@ -3,7 +3,7 @@ from chip.phys import PhysicalModel
 import chip.props as props
 import chip.units as units
 import chip.hcdc.util as util
-from chip.cont import *
+import chip.cont as cont
 
 import lab_bench.lib.chipcmd.data as chipcmd
 import chip.hcdc.globals as glb
@@ -63,38 +63,47 @@ def continuous_scale_model(integ):
   comp_modes = get_comp_modes()
   scale_modes = get_scale_modes()
   for comp_mode in comp_modes:
-    csm = ContinuousScaleModel()
+    csm = cont.ContinuousScaleModel()
     csm.set_baseline((m,m))
-    deriv = csm.decl_var(CSMOpVar("in"))
-    out = csm.decl_var(CSMOpVar("out"))
+    op_in = cont.decl_in(csm,'in')
+    op_ic = cont.decl_in(csm,'ic')
+    op_out, c_out = cont.decl_out(csm,'out')
+    op_ic.set_interval(1.0,1.0)
 
-    # coefficients
-    coeff = csm.decl_var(CSMCoeffVar("out"))
-    coeff_deriv = csm.decl_var(CSMCoeffVar("out",handle=':z\''))
-    coeff_deriv = csm.decl_var(CSMCoeffVar("out",handle=':z'))
-    coeff_ic = csm.decl_var(CSMCoeffVar("out",handle=':z[0]'))
+    op_inI,c_inI = cont.decl_out(csm,'out',':z\'')
+    op_icI,c_icI = cont.decl_out(csm,'out',':z[0]')
+    op_outI,c_outI = cont.decl_out(csm,'out',':z')
+    cont.equals(csm, [op_inI, op_in])
+    cont.equals(csm, [op_icI, op_outI, op_out])
+    cont.equals(csm, [c_icI, c_outI])
+    csm.eq(
+      ops.Mult(
+        ops.Var(op_inI.varname),
+        ops.Mult(
+          ops.Var(c_outI.varname),
+          ops.Var(c_inI.varname)
+        )
+      ),
+      ops.Var(op_outI.varname)
+    )
+    csm.eq(
+      ops.Mult(
+        ops.Var(op_ic.varname),
+        ops.Var(c_icI.varname)
+      ),
+      ops.Var(op_icI.varname)
+    )
 
-    # operating range scaling factors
-    ic_int = csm.decl_var(CSMOpVar("out",handle=':z[0]'))
-    deriv_int = csm.decl_var(CSMOpVar("out",handle=':z\''))
-    out_int = csm.decl_var(CSMOpVar("out",handle=':z'))
-    csm.eq(ops.Mult(ops.Var(coeff.varname),
-                    ops.Var(deriv.varname)), ops.Var(out.varname))
-
-    print("[TODO]: integrator constraints")
-    csm.eq(ops.Var(coeff_ic.varname), ops.Var(coeff.varname))
-    csm.eq(ops.Var(ic_int.varname), ops.Var(out.varname))
-    csm.eq(ops.Var(out_int.varname), ops.Var(out.varname))
-    csm.eq(ops.Var(deriv_int.varname), ops.Var(deriv.varname))
 
     for scm in scale_modes:
       scm_i, scm_o = scm
-      cstrs = util.build_scale_model_cstr([(ic_int,scm_o), \
-                                           (deriv_int,scm_i), \
-                                           (out_int,scm_o)])
+      cstrs = util.build_scale_model_cstr([(op_ic,scm_o), \
+                                           (op_in,scm_i), \
+                                           (op_out,scm_o)])
       csm.add_scale_mode(scm,cstrs)
 
-    for csmvar in [deriv,out,ic_int,deriv_int,out_int,coeff]:
+    for csmvar in [op_in, op_out, c_out, op_inI, c_inI, op_icI, c_icI,
+                   op_outI, c_outI]:
       csmvar.set_interval(0.1,10.0)
 
     integ.set_scale_model(comp_mode,csm)

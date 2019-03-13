@@ -151,7 +151,7 @@ def digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):
                      jop.JConst(hw_max_samples))
 
     elif prop.kind == props.DigitalProperties.Type.CONTINUOUS:
-        hwbw = prop.bandwidth
+        hwbw = prop.bandwidth()
         analog_bandwidth_constraint(jenv,circ, \
                                     mbw,hwbw)
     else:
