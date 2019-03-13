@@ -77,7 +77,7 @@ def model():
             op.Const(-1)
         )
     ))
-    closed_form = True
+    closed_form = False
     if closed_form:
         ALacL = op.Call(
             [op.Var('clp')],
@@ -92,13 +92,14 @@ def model():
             bind_fxn
         )
     else:
-        ALacL = parse_diffeq('{kf_bind}*({a_tr}+(-ALacL)) + {kd_bind}*(-ALacL)*clp*clp',
+        params['a_tr_kf_bind'] = params['a_tr']*params['kf_bind']
+        ALacL = parse_diffeq('{a_tr_kf_bind}+{kf_bind}*(-ALacL) + {kd_bind}*(-ALacL)*clp*clp',
                     'a_tr',':g',params)
 
-        ATetR = parse_diffeq('{kf_bind}*({a_tr}+(-ATetR)) + {kd_bind}*(-ATetR)*LacLp*LacLp',
+        ATetR = parse_diffeq('{a_tr_kf_bind}+{kf_bind}*(-ATetR) + {kd_bind}*(-ATetR)*LacLp*LacLp',
                     'a_tr',':h',params)
 
-        Aclp = parse_diffeq('{kf_bind}*({a_tr}+(-Aclp)) + {kd_bind}*(-Aclp)*TetRp*TetRp',
+        Aclp = parse_diffeq('{a_tr_kf_bind}+{kf_bind}*(-Aclp) + {kd_bind}*(-Aclp)*TetRp*TetRp',
                     'a_tr',':i',params)
     prob.bind("ALacL",ALacL)
     prob.bind("Aclp",Aclp)
