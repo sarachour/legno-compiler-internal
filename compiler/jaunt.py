@@ -45,13 +45,12 @@ def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
     prop = block.props(config.comp_mode,config.scale_mode,port,handle=handle)
     hwrng,hwbw = prop.interval(), prop.bandwidth()
     if isinstance(prop, props.AnalogProperties):
-        jaunt_common.analog_op_range_constraint(jenv,prop,scfvar,mrng,hwrng)
+        jaunt_common.analog_op_range_constraint(jenv,prop,scfvar,jop.JConst(1.0),mrng,hwrng)
         jaunt_common.analog_bandwidth_constraint(jenv,circ,mbw,hwbw)
 
     elif isinstance(prop, props.DigitalProperties):
-        jaunt_common.analog_op_range_constraint(jenv,prop,scfvar,mrng,hwrng)
-        jaunt_common.digital_quantize_constraint(jenv,scfvar, \
-                                   mrng, prop)
+        jaunt_common.analog_op_range_constraint(jenv,prop,scfvar,jop.JConst(1.0),mrng,hwrng)
+        jaunt_common.digital_quantize_constraint(jenv,scfvar,mrng, prop)
         jaunt_common.digital_bandwidth_constraint(jenv,prob,circ, \
                                                   mbw, prop)
     else:
@@ -135,6 +134,10 @@ def compute_scale(prog,circ,objfun):
             continue
 
         sln = jenvlib.solve_gpkit_problem(gpprob)
+        if sln == None:
+            jenvlib.debug_gpkit_problem(gpprob)
+            raise Exception("[strict-mode] cannot find concrete sln")
+
         new_circ = apply_result(jenv,circ,sln)
         yield thisobj,new_circ
 

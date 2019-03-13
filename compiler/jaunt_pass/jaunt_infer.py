@@ -28,6 +28,7 @@ import util.util as util
 import util.config as CONFIG
 import tqdm
 
+
 def sc_get_cont_var(jtype,block_name,loc,port,handle):
     if jtype == jenvlib.JauntVarType.OP_RANGE_VAR:
         return cont.CSMOpVar(port,handle)
@@ -112,7 +113,8 @@ def sc_generate_scale_model_constraints(jenv,circ):
         for lhs,rhs in scale_model.eqs():
             j_lhs = visitor.visit_expr(lhs)
             j_rhs = visitor.visit_expr(rhs)
-            #jenv.eq(j_lhs,j_rhs)
+            jenv.eq(j_lhs,j_rhs)
+
 
 def sc_build_jaunt_env(prog,circ):
     jenv = jenvlib.JauntInferEnv()
@@ -139,22 +141,20 @@ def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
     mrng = config.interval(port)
     mbw = config.bandwidth(port)
     # expression for scaling math range
-    scfvar = jop.JVar(jenv.get_scvar(block.name,loc,port,handle))
-    oprngvar = jop.JVar(jenv.get_op_range_var(block.name,loc,port,handle), \
-                        exponent=-1.0)
-    scale_expr = jop.JMult(scfvar,oprngvar)
+    mathscvar = jop.JVar(jenv.get_scvar(block.name,loc,port,handle))
+    hwscvar = jop.JVar(jenv.get_op_range_var(block.name,loc,port,handle))
 
     scale_model = block.scale_model(config.comp_mode)
     baseline = scale_model.baseline
     prop = block.props(config.comp_mode,baseline,port,handle=handle)
     hwrng,hwbw = prop.interval(), prop.bandwidth()
     if isinstance(prop, props.AnalogProperties):
-        jaunt_common.analog_op_range_constraint(jenv,prop,scale_expr,mrng,hwrng)
+        jaunt_common.analog_op_range_constraint(jenv,prop,mathscvar,hwscvar,mrng,hwrng)
         jaunt_common.analog_bandwidth_constraint(jenv,circ,mbw,hwbw)
 
     elif isinstance(prop, props.DigitalProperties):
-        jaunt_common.analog_op_range_constraint(jenv,prop,scale_expr,mrng,hwrng)
-        jaunt_common.digital_quantize_constraint(jenv,scale_expr, mrng, prop)
+        jaunt_common.analog_op_range_constraint(jenv,prop,mathscvar,hwscvar,mrng,hwrng)
+        jaunt_common.digital_quantize_constraint(jenv,mathscvar, mrng, prop)
         jaunt_common.digital_bandwidth_constraint(jenv,prob,circ, mbw, prop)
     else:
         raise Exception("unknown")
@@ -168,6 +168,9 @@ def sc_generate_problem(jenv,prob,circ):
         block = circ.board.block(block_name)
         for out in block.outputs:
             # ensure we can propagate the dynamics
+            #if block.name == 'integrator':
+                #jenv.interactive()
+
             sc_traverse_dynamics(jenv,circ,block,loc,out)
 
         for port in block.outputs + block.inputs:
@@ -190,6 +193,7 @@ def sc_generate_problem(jenv,prob,circ):
 
 def apply_result(jenv,circ,sln):
     ctxs = {}
+    print('-----------')
     for variable,value in sln['freevariables'].items():
         if variable.name == jenv.TAU:
             continue
@@ -203,17 +207,22 @@ def apply_result(jenv,circ,sln):
 
             contvar = sc_get_cont_var(tag,block_name,loc,port,handle)
             if not contvar is None:
+                print("var[%s,%s]:%s = %s" % (block_name,loc,contvar,value))
                 ctxs[(block_name,loc)].assign(contvar,value)
 
+    print('-----------')
     for (block_name,loc),ctx in ctxs.items():
-        print("=== %s[%s] ===" % (block_name,loc))
         scale_mode = ctx.model.scale_mode(ctx)
+        print("[%s,%s] -> %s" % (block_name,loc,scale_mode))
         circ.config(block_name,loc).set_scale_mode(scale_mode)
 
+    input()
     return circ
 
 def infer_scale_config(prog,circ):
     assert(isinstance(circ,ConcCirc))
+    input("TODO: soften inference to sets of possible scale modes. then take product")
+    input("TODO: fix issue with adc and inference. [cosc, quad work, spring, repri does not]")
     jenv = sc_build_jaunt_env(prog,circ)
     jopt = JauntObjectiveFunctionManager(jenv)
     for optcls in JauntObjectiveFunctionManager.basic_methods():

@@ -141,11 +141,9 @@ class ContinuousScaleModel:
         continue
 
       is_match = True
-      print(this_scm,cstrs)
       for var,rng in cstrs:
         value = ctx.value(var)
         if not rng.contains_value(value):
-          print("  %s not in %s" % (value,rng))
           is_match = False
 
 

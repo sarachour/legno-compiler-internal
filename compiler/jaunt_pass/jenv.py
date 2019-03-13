@@ -32,6 +32,10 @@ class JauntEnv:
     self._failed = False
     self._use_tau = False
     self._solved = False
+    self._interactive = False
+
+  def interactive(self):
+    self._interactive = True
 
   def set_solved(self,solved_problem):
       self._solved = solved_problem
@@ -141,12 +145,16 @@ class JauntEnv:
   def eq(self,v1,v2):
       print("%s == %s" % (v1,v2))
       # TODO: equality
+      if self._interactive:
+        input()
       self._eqs.append((v1,v2))
 
 
   def lte(self,v1,v2):
       print("%s <= %s" % (v1,v2))
       # TODO: equality
+      if self._interactive:
+        input()
       self._ltes.append((v1,v2))
 
 

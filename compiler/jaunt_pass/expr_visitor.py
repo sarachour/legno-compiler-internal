@@ -140,7 +140,7 @@ class SCFPropExprVisitor(ExprVisitor):
 
   def visit_cos(self,expr):
     expr = self.visit_expr(expr.arg(0))
-    jenv.eq(expr, jop.JConst(1.0))
+    self.jenv.eq(expr, jop.JConst(1.0))
     return jop.JConst(1.0)
 
   def visit_sin(self,expr):
@@ -170,7 +170,7 @@ class SCFPropExprVisitor(ExprVisitor):
     scexpr_state = jop.JMult(jop.JVar(jenv.TAU, \
                                       exponent=-1), scvar_deriv)
 
-    jenv.eq(jop.JMult(scexpr_state, coeff_state), scvar_state)
+    jenv.eq(jop.JMult(scexpr_state, jop.JMult(coeff_state,coeff_deriv)), scvar_state)
 
     jenv.use_tau()
     return scvar_state
@@ -183,6 +183,7 @@ class SCFPropExprVisitor(ExprVisitor):
       else:
         expr = config.expr(self.port)
 
+      print(expr)
       lhsexpr = jop.JVar(self.jenv.get_scvar(block.name,loc,self.port))
       rhsexpr = self.visit_expr(expr)
       if self.jenv.has_inject_var(block.name,loc,self.port):

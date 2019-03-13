@@ -58,25 +58,31 @@ def analog_bandwidth_constraint(jenv,circ,mbw,hwbw):
         jenv.gte(jop.JMult(tau,jop.JConst(physbw)), \
                  jop.JConst(hwbw.lower))
 
-def analog_op_range_constraint(jenv,prop,scale_expr,mrng,hwrng):
-    jaunt_util.upper_bound_constraint(jenv, scale_expr, mrng.upper, hwrng.upper)
-    jaunt_util.lower_bound_constraint(jenv, scale_expr, mrng.lower, hwrng.lower)
+def analog_op_range_constraint(jenv,prop,mscale,hscale,mrng,hwrng):
+    jaunt_util.upper_bound_constraint(jenv,
+                                      jop.JMult(mscale,
+                                                jop.expo(hscale,-1.0)),
+                                      mrng.upper, hwrng.upper)
+    jaunt_util.lower_bound_constraint(jenv,
+                                      jop.JMult(mscale,
+                                                jop.expo(hscale,-1.0)),
+                                      mrng.lower, hwrng.lower)
     if mrng.spread == 0.0:
         return
 
     if isinstance(prop, props.AnalogProperties):
         if abs(mrng.lower) > 0:
-            jaunt_util.lower_bound_constraint(jenv,scale_expr,abs(mrng.lower), \
+            jaunt_util.lower_bound_constraint(jenv,mscale,abs(mrng.lower), \
                                     prop.min_signal())
         if abs(mrng.upper) > 0:
-            jaunt_util.lower_bound_constraint(jenv,scale_expr,abs(mrng.upper), \
+            jaunt_util.lower_bound_constraint(jenv,mscale,abs(mrng.upper), \
                                            prop.min_signal())
 
 
 
 
 
-def digital_quantize_constraint(jenv,scale_expr,math_rng,props):
+def digital_quantize_constraint(jenv,mscale,math_rng,props):
     def compute_bnds(math_val):
         all_values = props.values()
         max_error = props.max_error
@@ -94,31 +100,31 @@ def digital_quantize_constraint(jenv,scale_expr,math_rng,props):
         return min_step,max_step,delta_m_nom
 
     lb,ub = math_rng.lower,math_rng.upper
-    scale_expr_inv = jop.expo(scale_expr,-1.0)
+    mscale_inv = jop.expo(mscale,-1.0)
     if lb < ub:
         # restrict the amount of the quantized space used to ensure reasonable
         # fidelity (quality metric), while leaving a io pair available on either \
         # end for overflow issues.
         if not util.equals(lb,0):
             lb_min,lb_max,lb_nom = compute_bnds(lb)
-            jaunt_util.lower_bound_constraint(jenv,scale_expr_inv,\
+            jaunt_util.lower_bound_constraint(jenv,mscale_inv,\
                                     abs(lb_nom),abs(lb_min))
-            jaunt_util.upper_bound_constraint(jenv,scale_expr_inv,\
+            jaunt_util.upper_bound_constraint(jenv,mscale_inv,\
                                     abs(lb_nom),abs(lb_max))
 
         if not util.equals(ub,0):
             ub_min,ub_max,ub_nom = compute_bnds(ub)
-            jaunt_util.lower_bound_constraint(jenv,scale_expr_inv,\
+            jaunt_util.lower_bound_constraint(jenv,mscale_inv,\
                                     abs(ub_nom),abs(ub_min))
-            jaunt_util.upper_bound_constraint(jenv,scale_expr_inv,\
+            jaunt_util.upper_bound_constraint(jenv,mscale_inv,\
                                     abs(ub_nom),abs(ub_max))
 
     else:
         if not util.equals(lb,0):
             val_min,val_max,val_nom = compute_bnds(lb)
-            jaunt_util.lower_bound_constraint(jenv,scale_expr_inv,\
+            jaunt_util.lower_bound_constraint(jenv,mscale_inv,\
                                     abs(val_nom),abs(val_min))
-            jaunt_util.upper_bound_constraint(jenv,scale_expr_inv,\
+            jaunt_util.upper_bound_constraint(jenv,mscale_inv,\
                                     abs(val_nom),abs(val_max))
 
 def digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):
