@@ -78,15 +78,7 @@ dac_black_box_model(dac)
 dac.check()
 
 def adc_get_modes():
-   opts = [
-      chipcmd.RangeType.options()
-   ]
-   blacklist = [
-      (chipcmd.RangeType.LOW,)
-   ]
-   modes = list(util.apply_blacklist(itertools.product(*opts),
-                                     blacklist))
-   return modes
+   return [chipcmd.RangeType.HIGH, chipcmd.RangeType.MED]
 
 def adc_black_box_model(dac):
    def config_phys_model(phys,rng):
@@ -107,7 +99,7 @@ def adc_black_box_model(dac):
 
 def adc_continuous_scale_model(adc):
   csm = ContinuousScaleModel()
-  csm.set_baseline((chipcmd.RangeType.MED))
+  csm.set_baseline(chipcmd.RangeType.MED)
   out = csm.decl_var(CSMOpVar("out"))
   inp = csm.decl_var(CSMOpVar("in"))
   coeff = csm.decl_var(CSMCoeffVar("out"))
@@ -123,9 +115,8 @@ def adc_scale_model(adc):
    modes = adc_get_modes()
    adc.set_scale_modes("*",modes)
    for mode in modes:
-      rng, = mode
-      coeff = (1.0/rng.coeff())*0.5
-      analog_props = util.make_ana_props(rng,
+      coeff = (1.0/mode.coeff())*0.5
+      analog_props = util.make_ana_props(mode,
                                          glb.ANALOG_MIN,
                                          glb.ANALOG_MAX,
                                          glb.ANALOG_MINSIG_ADC)

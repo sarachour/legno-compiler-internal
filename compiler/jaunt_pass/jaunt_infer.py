@@ -112,7 +112,7 @@ def sc_generate_scale_model_constraints(jenv,circ):
         for lhs,rhs in scale_model.eqs():
             j_lhs = visitor.visit_expr(lhs)
             j_rhs = visitor.visit_expr(rhs)
-            jenv.eq(j_lhs,j_rhs)
+            #jenv.eq(j_lhs,j_rhs)
 
 def sc_build_jaunt_env(prog,circ):
     jenv = jenvlib.JauntInferEnv()
@@ -130,11 +130,8 @@ def sc_build_jaunt_env(prog,circ):
 
 # traverse dynamics, also including coefficient variable
 def sc_traverse_dynamics(jenv,circ,block,loc,out):
-    if block.name == 'lut':
-        raise Exception("need to override lut")
-    else:
-        visitor = SCFInferExprVisitor(jenv,circ,block,loc,out)
-        visitor.visit()
+    visitor = SCFInferExprVisitor(jenv,circ,block,loc,out)
+    visitor.visit()
 
 
 def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
@@ -235,6 +232,7 @@ def infer_scale_config(prog,circ):
                 jenvlib.debug_gpkit_problem(gpprob)
                 return
             else:
+                print("[[SUCCESS - FOUND SLN]]")
                 jenv.set_solved(True)
 
             apply_result(jenv,circ,sln)

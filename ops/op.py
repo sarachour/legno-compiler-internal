@@ -20,6 +20,12 @@ def to_python(e):
         return v,"(%s)+(%s)" % (a1,a2)
 
 
+    elif e.op == OpType.POW:
+        vs1,a1 = to_python(e.arg(0))
+        vs2,a2 = to_python(e.arg(1))
+        v = list(set(vs1+vs2))
+        return v,"(%s)**(%s)" % (a1,a2)
+
     elif e.op == OpType.MULT:
         vs1,a1 = to_python(e.arg1)
         vs2,a2 = to_python(e.arg2)
@@ -179,6 +185,8 @@ class Op:
             return Func.from_json(obj)
         elif op == OpType.MULT:
             return Mult.from_json(obj)
+        elif op == OpType.POW:
+            return Pow.from_json(obj)
         elif op == OpType.SGN:
             return Sgn.from_json(obj)
         elif op == OpType.ABS:
@@ -189,6 +197,8 @@ class Op:
             return Sin.from_json(obj)
         elif op == OpType.COS:
             return Cos.from_json(obj)
+        elif op == OpType.ADD:
+            return Add.from_json(obj)
 
         else:
             raise Exception("unimpl: %s" % obj)
@@ -667,6 +677,12 @@ class Add(Op2):
         Op.__init__(self,OpType.ADD,[arg1,arg2])
         pass
 
+    @staticmethod
+    def from_json(obj):
+        return Add(Op.from_json(obj['args'][0]), \
+                   Op.from_json(obj['args'][1]))
+
+
     def coefficient(self):
         return 1.0
 
@@ -1000,6 +1016,11 @@ class Pow(Op):
         Op.__init__(self,OpType.POW,[arg1,arg2])
         pass
 
+    @staticmethod
+    def from_json(obj):
+        return Pow(Op.from_json(obj['args'][0]), \
+                   Op.from_json(obj['args'][1]))
+
 
     # bandwidth is infinite if number is ever negative
     def infer_bandwidth(self,ivals,bws):
@@ -1008,6 +1029,13 @@ class Pow(Op):
         bwcoll.update(bandwidth.InfBandwidth())
         return bwcoll
 
+    def compute_interval(self,ivals):
+        print(self)
+        bcoll = self.arg(0).compute_interval(ivals)
+        ecoll = self.arg(1).compute_interval(ivals)
+        new_ival = bcoll.interval.exponent(ecoll.interval)
+        rcoll = bcoll.merge(ecoll, new_ival)
+        return rcoll
 
     def substitute(self,args):
         return Pow(

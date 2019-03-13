@@ -68,7 +68,11 @@ class PropBandwidthVisitor(Visitor):
     circ = self.circ
     block = circ.board.block(block_name)
     config = circ.config(block_name,loc)
-    expr = block.get_dynamics(config.comp_mode,port)
+    if not config.has_expr(port):
+      expr = block.get_dynamics(config.comp_mode,port)
+    else:
+      expr = config.expr(port)
+
     # compute intervals
     ival_map = config.intervals()
     bw_map = config.bandwidths()

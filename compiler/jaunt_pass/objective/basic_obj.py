@@ -54,7 +54,7 @@ class MaxSignalObjFunc(optlib.JauntObjectiveFunction):
     rngobj = 1.0
     jenv = jobj.jenv
     for scvar in jenv.jaunt_vars():
-      if jenv.in_use(scvar) \
+      if jenv.jaunt_var_in_use(scvar) \
          and jenv.get_tag(scvar) == jenvlib.JauntVarType.SCALE_VAR:
         rngobj *= 1.0/varmap[scvar]
     yield MaxSignalObjFunc(rngobj)

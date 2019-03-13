@@ -116,7 +116,7 @@ class Interval:
 
 
     def contains_zero(self):
-        return self.lower <= 0 or self.upper >= 0
+        return self.lower <= 0 and self.upper >= 0
 
 
     def crosses_zero(self):
@@ -153,12 +153,44 @@ class Interval:
         return Interval.type_infer(lower,upper)
 
 
+    def reciprocal(self):
+        if self.unbounded():
+            return self
+        if self.contains_zero():
+            corners = [1.0/self.lower, 1.0/self.upper]
+            return Interval.type_infer(min(corners), float('inf'))
+        else:
+            corners = [1.0/self.lower, 1.0/self.upper]
+            return Interval.type_infer(min(corners),max(corners))
+
     def power(self,v):
         if v == 1.0:
             return self
         else:
             print(v)
             raise Exception("?")
+
+    def exponent_value(self,value):
+        if value > 0:
+            print("%s^%s" % (self,value))
+            return Interval.type_infer(
+                self.lower**value,
+                self.upper**value
+            )
+
+        elif value < 0:
+            ival = self.exponent_value(-value)
+            return ival.reciprocal()
+
+        else:
+            return Interval.type_infer(1.0,1.0)
+
+    def exponent(self,ival):
+        if ival.spread == 0:
+            return self.exponent_value(ival.value)
+        else:
+            raise Exception("unimpl: %s^%s" % (self,ival))
+
 
     def add(self,i2):
          vals = [

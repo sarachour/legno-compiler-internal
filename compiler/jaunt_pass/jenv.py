@@ -5,16 +5,16 @@ import ops.jop as jop
 import numpy as np
 import util.config as CONFIG
 import signal
+import sys
 
 class JauntVarType(Enum):
   SCALE_VAR= "SCV"
   COEFF_VAR = "COV"
   OP_RANGE_VAR = "OPV"
+  INJECT_VAR = "IJV"
   VAR = "VAR"
 
 class JauntEnv:
-  LUT_SCF_IN = "LUTSCFIN"
-  LUT_SCF_OUT = "LUTSCFOUT"
   TAU = "tau"
 
   def __init__(self):
@@ -54,6 +54,9 @@ class JauntEnv:
   def in_use(self,block_name,loc,port,handle=None, \
              tag=JauntVarType.VAR):
       var_name = "%s_%s_%s_%s_%s" % (tag.value,block_name,loc,port,handle)
+      return (var_name) in self._in_use
+
+  def jaunt_var_in_use(self,var_name):
       return (var_name) in self._in_use
 
   def variables(self):
@@ -113,6 +116,19 @@ class JauntEnv:
       self._to_jaunt_var[(block_name,loc,port,handle,tag)] = var_name
       return var_name
 
+  def get_inject_var(self,block_name,loc,port,handle=None):
+    return self.get_jaunt_var(block_name,loc,port,handle, \
+                               tag=JauntVarType.INJECT_VAR)
+
+  def decl_inject_var(self,block_name,loc,port,handle=None):
+    return self.decl_jaunt_var(block_name,loc,port,handle, \
+                               tag=JauntVarType.INJECT_VAR)
+
+  def has_inject_var(self,block_name,loc,port,handle=None):
+    var_name = "%s_%s_%s_%s_%s" % (JauntVarType.INJECT_VAR.value, \
+                                   block_name,loc,port,handle)
+    return var_name in self._from_jaunt_var
+
   def get_scvar(self,block_name,loc,port,handle=None):
     return self.get_jaunt_var(block_name,loc,port,handle, \
                                tag=JauntVarType.SCALE_VAR)
@@ -120,6 +136,8 @@ class JauntEnv:
   def decl_scvar(self,block_name,loc,port,handle=None):
     return self.decl_jaunt_var(block_name,loc,port,handle, \
                                tag=JauntVarType.SCALE_VAR)
+
+
   def eq(self,v1,v2):
       print("%s == %s" % (v1,v2))
       # TODO: equality
@@ -291,3 +309,4 @@ def debug_gpkit_problem(gpprob):
   print(">>> DEBUG <<<")
   gpprob.debug(solver='mosek_cli')
   print(">>>=======<<<")
+  sys.exit(1)

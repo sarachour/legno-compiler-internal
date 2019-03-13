@@ -61,8 +61,8 @@ class PropIntervalVisitor(Visitor):
 
                 mrng = prog.interval(label)
                 mbw = prog.bandwidth(label)
-                #print("lbl: %s[%s].%s := %s" % \
-                #      (block_name,loc,port,mrng))
+                print("lbl: %s[%s].%s := %s" % \
+                      (block_name,loc,port,mrng))
                 config.set_interval(port,mrng,\
                                     handle=handle)
                 config.set_bandwidth(port,mbw,\
@@ -131,6 +131,7 @@ class PropIntervalVisitor(Visitor):
       for ival in config.intervals().values():
         if ival.unbounded():
            valid = False
+
     return valid
 
 def compute_intervals(prog,circ):

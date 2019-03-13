@@ -16,16 +16,12 @@ def decl_scale_variables(jenv,circ):
                 jenv.decl_scvar(block_name,loc,output,handle=handle)
 
             if block.name == "lut":
-                jenv.decl_scvar(block_name,loc,output, \
-                                handle=jenv.LUT_SCF_OUT)
-                pass
+                jenv.decl_inject_var(block_name,loc,output)
 
         for inp in block.inputs:
             jenv.decl_scvar(block_name,loc,inp)
             if block.name == "lut":
-                jenv.decl_scvar(block_name,loc,inp, \
-                                handle=jenv.LUT_SCF_IN)
-                pass
+                jenv.decl_inject_var(block_name,loc,inp)
 
         for output in block.outputs:
             for orig in block.copies(config.comp_mode,output):
@@ -136,6 +132,7 @@ def digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):
         assert(mbw.bandwidth == 0)
 
     elif prop.kind == props.DigitalProperties.Type.CLOCKED:
+        jenv.use_tau()
         hw_sample_rate = prop.sample_rate
         hw_max_samples = prop.max_samples
         m_exptime = prob.max_sim_time

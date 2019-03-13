@@ -15,6 +15,7 @@ def model_1():
     prob.bind('O', op.Emit(op.Var("X")))
     prob.set_bandwidth("I",1e-2)
     prob.set_interval("I",-1.0,1.0)
+    prob.set_max_sim_time(2000)
     prob.compile()
     menv = menvs.get_math_env('t2ksin0')
     return menv,prob
@@ -29,6 +30,7 @@ def model_1_scale():
     ))
     prob.set_bandwidth("I",1e-2)
     prob.set_interval("I",-5.0,5.0)
+    prob.set_max_sim_time(2000)
     prob.compile()
     menv = menvs.get_math_env('t2ksin1')
     return menv,prob
@@ -50,6 +52,7 @@ def model_2():
     prob.set_bandwidth("I2",1)
     prob.set_interval("I1",-5,5)
     prob.set_interval("I2",-0.3,0.3)
+    prob.set_max_sim_time(2000)
     prob.compile()
     menv = menvs.get_math_env('t2ksin2')
     return menv,prob

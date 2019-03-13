@@ -36,7 +36,11 @@ class Visitor:
     circ = self._circ
     block = circ.board.block(block_name)
     config = circ.config(block_name,loc)
-    expr = block.get_dynamics(config.comp_mode,port)
+    if not config.has_expr(port):
+      expr = block.get_dynamics(config.comp_mode,port)
+    else:
+      expr = config.expr(port)
+
     free,bound = self.classify(block_name,loc,expr.vars())
     if self.visited(block.name,loc,port):
       return

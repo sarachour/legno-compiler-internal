@@ -179,6 +179,9 @@ class Block:
         data = self._get_scale_dict(comp_mode,scale_mode, \
                                     self._props)
         if data is None:
+            for k1,v1 in self._props.items():
+                for k2,v2 in v1.items():
+                    print(k1,k2)
             raise Exception("mode <%s,%s> not in prop-dict" % \
                             (comp_mode,scale_mode))
         if not port in data:

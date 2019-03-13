@@ -48,6 +48,18 @@ def long_sin1():
   return exp
 
 
+def gentoggle_env():
+  expr1 = op.Add(
+    op.Mult(op.Const(0.50), \
+            op.Sin(op.Mult(op.Const(0.1),op.Var('t')))),
+    op.UniformNoise(0.001,period=200,seed=15)
+  )
+  exp = MathEnv('gentoggle')
+  exp.set_sim_time(20)
+  exp.set_input_time(20)
+  exp.set_input('PROT',expr1)
+  return exp
+
 def robot_env():
   expr1 = op.Add(
     op.Mult(op.Const(0.01), \
@@ -93,7 +105,8 @@ MATH_ENVS = [
   long_sin0(),
   long_sin1(),
   long_sin2(),
-  robot_env()
+  robot_env(),
+  gentoggle_env()
 ]
 
 def get_math_env(name):

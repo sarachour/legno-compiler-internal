@@ -14,26 +14,26 @@ def model():
         'LacLm0':0.5,
         'clm0':0.25,
         'TetRm0':0.12,
-        'LacLp0':60.0,
-        'clp0':20.0,
-        'TetRp0':40.0,
+        #'LacLp0':60.0,
+        #'clp0':20.0,
+        #'TetRp0':40.0,
+        'LacLp0':60.0*0.1,
+        'clp0':20.0*0.1,
+        'TetRp0':40.0*0.1,
         'K':K,
         'n':2.0,
         'a_tr':0.4995,
-        'a0_tr':0.0005,
-        'k_tl': 3.01029995664,
-        'kd_prot': 0.03010299956,
         'kd_mrna' : 0.15051499783,
+        #'a0_tr':0.0005,
+        'a0_tr':0.0,
+        #'k_tl': 3.01029995664,
+        'k_tl': 3.01029995664*0.05,
+        'kd_prot': 0.03010299956*0.5,
         'kf_bind':1.0,
         'kd_bind':1.0/K
 
     }
-    LacLm_ic = 0.5
-    clm_ic = 0.25
-    TetRm_ic = 0.12
 
-    kd_mrna = 0.15051499783
-    a0_tr = 0.0005
     prob = MathProg("repri")
 
     LacLm  = parse_diffeq('{a0_tr}+ALacL+{kd_mrna}*(-LacLm)', \
@@ -60,7 +60,7 @@ def model():
     TetRp = parse_diffeq('{k_tl}*TetRm + {kd_prot}*(-TetRp)', \
                   'TetRp0',':f',params)
 
-    prot_bnd = 150
+    prot_bnd = 13.0
     prob.bind("LacLp",LacLp)
     prob.bind("clp",clp)
     prob.bind("TetRp",TetRp)
@@ -74,10 +74,10 @@ def model():
         op.Const((K**n)*params['a_tr']),
         op.Pow(
             op.Add(op.Const(K**n), op.Pow(op.Var('P'), op.Const(n))),
-            op.Const(-1)
+            op.Const(-1.0)
         )
     ))
-    closed_form = False
+    closed_form = True
     if closed_form:
         ALacL = op.Call(
             [op.Var('clp')],
