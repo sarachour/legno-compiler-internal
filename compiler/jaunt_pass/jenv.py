@@ -80,6 +80,9 @@ class JauntEnv:
       block_name,loc,port,handle,tag = self._from_jaunt_var[scvar_var]
       return block_name,loc,port,handle,tag
 
+  def get_tag(self,var):
+    _,_,_,_,tag = self.get_jaunt_var_info(var)
+    return tag
 
   def jaunt_vars(self):
       return self._from_jaunt_var.keys()
@@ -109,7 +112,7 @@ class JauntEnv:
       return var_name
 
   def get_scvar(self,block_name,loc,port,handle=None):
-    return self.decl_jaunt_var(block_name,loc,port,handle, \
+    return self.get_jaunt_var(block_name,loc,port,handle, \
                                tag=JauntVarType.SCALE_VAR)
 
   def decl_scvar(self,block_name,loc,port,handle=None):
@@ -221,10 +224,11 @@ def build_gpkit_problem(circ,jenv,jopt):
         return None
 
     for obj in jopt.objective(circ,variables):
-        model = gpkit.Model(obj.objective(), \
-                            list(gpkit_cstrs) +
-                            list(obj.constraints()))
-        yield model,obj
+      cstrs = list(gpkit_cstrs) + list(obj.constraints())
+      ofun = obj.objective()
+      print(ofun)
+      model = gpkit.Model(ofun, cstrs)
+      yield model,obj
 
 def solve_gpkit_problem_cvxopt(gpmodel,timeout=10):
     def handle_timeout(signum,frame):

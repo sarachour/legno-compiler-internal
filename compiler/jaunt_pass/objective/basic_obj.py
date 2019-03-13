@@ -1,6 +1,7 @@
 from util.paths import PathHandler
 import numpy as np
 import compiler.jaunt_pass.objective.obj as optlib
+import compiler.jaunt_pass.jenv as jenvlib
 
 class SlowObjFunc(optlib.JauntObjectiveFunction):
 
@@ -52,8 +53,9 @@ class MaxSignalObjFunc(optlib.JauntObjectiveFunction):
   def make(circ,jobj,varmap):
     rngobj = 1.0
     jenv = jobj.jenv
-    for scvar in jenv.scvars():
-      if jenv.in_use(scvar):
+    for scvar in jenv.jaunt_vars():
+      if jenv.in_use(scvar) \
+         and jenv.get_tag(scvar) == jenvlib.JauntVarType.SCALE_VAR:
         rngobj *= 1.0/varmap[scvar]
     yield MaxSignalObjFunc(rngobj)
 

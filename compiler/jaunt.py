@@ -100,19 +100,35 @@ def sc_build_jaunt_env(prog,circ,infer=False):
     sc_generate_problem(jenv,prog,circ)
     return jenv
 
+def apply_result(jenv,circ,sln):
+    new_circ = circ.copy()
+    for variable,value in sln['freevariables'].items():
+        print("%s = %s" % (variable,value))
+        if variable.name == jenv.TAU:
+            new_circ.set_tau(value)
+        else:
+            block_name,loc,port,handle,tag = jenv.get_jaunt_var_info(variable.name)
+            if(tag == jenvlib.JauntVarType.SCALE_VAR):
+                new_circ.config(block_name,loc) \
+                        .set_scf(port,value,handle=handle)
+            else:
+                raise Exception("unhandled: lut")
+
+    return new_circ
+
 def compute_scale(prog,circ,objfun):
     assert(isinstance(circ,ConcCirc))
     jenv = sc_build_jaunt_env(prog,circ)
     jopt = JauntObjectiveFunctionManager(jenv)
     jopt.method = objfun.name()
-    for idx,(gpprob,thisobj) in \
-        enumerate(jenvlib.build_gpkit_problem(circ,jenv,jopt)):
+    for gpprob,thisobj in \
+        jenvlib.build_gpkit_problem(circ,jenv,jopt):
         if gpprob is None:
             continue
 
         sln = jenvlib.solve_gpkit_problem(gpprob)
-        print(sln)
-        input("TODO: apply this to circuit.")
+        new_circ = apply_result(jenv,circ,sln)
+        yield thisobj,new_circ
 
 def physical_scale(prog,circ):
     for opt,circ in scale_circuit(prog,circ,\
@@ -120,9 +136,7 @@ def physical_scale(prog,circ):
         yield opt,circ
 
 def scale(prog,circ):
-    for obj,sc_circ in jaunt_infer.infer_scale_config(prog,circ):
-        compute_scale(prog,sc_circ,obj)
-        input("TODO: run with scale variables")
-        yield None,None,None
+    for infer_obj,infer_circ in jaunt_infer.infer_scale_config(prog,circ):
+        for final_obj,final_circ in compute_scale(prog,infer_circ,infer_obj):
+            yield final_obj.name(), final_circ
 
-    return

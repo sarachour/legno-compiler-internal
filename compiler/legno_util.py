@@ -97,19 +97,20 @@ def exec_jaunt(hdacv2_board, args):
         filename = "%s/%s" % (dirname,fname)
         conc_circ = ConcCirc.read(hdacv2_board, filename)
 
-        for idx,opt,scale_circ in jaunt.scale(prog,conc_circ):
+        has_opt = {}
+        for opt,scale_circ in jaunt.scale(prog,conc_circ):
+            assert(not opt in has_opt)
+            has_opt[opt] = True
             filename = path_handler.conc_circ_file(circ_bmark,
                                                     circ_indices,
-                                                    idx,
+                                                    0,
                                                     opt)
             scale_circ.write_circuit(filename)
             filename = path_handler.conc_graph_file(circ_bmark,
                                                     circ_indices,
-                                                    idx,
+                                                    0,
                                                     opt)
             scale_circ.write_graph(filename,write_png=True)
-            if idx >= args.scale_circuits:
-                break
 
 
 def exec_srcgen(hdacv2_board,args):
