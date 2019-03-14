@@ -95,8 +95,13 @@ def continuous_scale_model_vga(mult):
   op_coeff = csm.decl_var(CSMOpVar("coeff"))
   op_out = csm.decl_var(CSMOpVar("out"))
   scf_tf = csm.decl_var(CSMCoeffVar("out"))
-  for csmvar in [op_in0,op_out,scf_tf]:
+  #csm.lte(scf_tf, ops.Const(10.0))
+  #csm.lte(ops.Const(0.1), scf_tf)
+
+  for csmvar in [op_in0,op_out]:
     csmvar.set_interval(0.1,10.0)
+
+  scf_tf.set_interval(0.01,100.0)
 
   for csmvar in [op_coeff]:
     csmvar.set_interval(1.0,1.0)
@@ -107,8 +112,10 @@ def continuous_scale_model_vga(mult):
 
   for scm in vga_modes:
     scm_i, scm_o = scm
+    coeff = scm_o.coeff()/scm_i.coeff()
     cstrs = util.build_scale_model_cstr([(op_in0,scm_i), \
-                                         (op_out,scm_o)])
+                                         (op_out,scm_o)],2.0)
+    cstrs += util.build_scale_model_coeff_cstr([(scf_tf,coeff)])
     csm.add_scale_mode(scm,cstrs)
 
   mult.set_scale_model('vga',csm)
@@ -122,20 +129,27 @@ def continuous_scale_model_mult(mult):
   in0 = csm.decl_var(CSMOpVar("in0"))
   in1 = csm.decl_var(CSMOpVar("in1"))
   out = csm.decl_var(CSMOpVar("out"))
-  coeff = csm.decl_var(CSMCoeffVar("out"))
+  scf_tf = csm.decl_var(CSMCoeffVar("out"))
+  #csm.lte(scf_tf, ops.Const(10.0))
+  #csm.lte(ops.Const(0.1), scf_tf)
+
   csm.eq(ops.Mult(ops.Mult(ops.Var(in0.varname),
                            ops.Var(in1.varname)),
-                  ops.Var(coeff.varname)), \
+                  ops.Var(scf_tf.varname)), \
          ops.Var(out.varname))
 
-  for csmvar in [in0,in1,out,coeff]:
+  scf_tf.set_interval(0.01,100.0)
+
+  for csmvar in [in0,in1,out]:
     csmvar.set_interval(0.1,10.0)
 
   for scm in mul_modes:
     scm_i0,scm_i1,scm_o = scm
+    coeff =scm_o.coeff()/(scm_i0.coeff()*scm_i1.coeff())
     cstrs = util.build_scale_model_cstr([(in0,scm_i0), \
                                          (in1,scm_i1), \
-                                         (out,scm_o)])
+                                         (out,scm_o)],2.0)
+    cstrs += util.build_scale_model_coeff_cstr([(scf_tf,coeff)])
     csm.add_scale_mode(scm,cstrs)
 
   mult.set_scale_model('mul',csm)

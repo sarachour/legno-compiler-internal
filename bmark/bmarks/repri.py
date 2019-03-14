@@ -77,7 +77,7 @@ def model():
             op.Const(-1.0)
         )
     ))
-    closed_form = True
+    closed_form = False
     if closed_form:
         ALacL = op.Call(
             [op.Var('clp')],

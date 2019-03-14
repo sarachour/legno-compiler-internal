@@ -1030,7 +1030,6 @@ class Pow(Op):
         return bwcoll
 
     def compute_interval(self,ivals):
-        print(self)
         bcoll = self.arg(0).compute_interval(ivals)
         ecoll = self.arg(1).compute_interval(ivals)
         new_ival = bcoll.interval.exponent(ecoll.interval)

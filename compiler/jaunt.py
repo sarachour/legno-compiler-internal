@@ -30,6 +30,7 @@ import compiler.jaunt_pass.jaunt_infer as jaunt_infer
 
 
 import ops.jop as jop
+import ops.op as ops
 import chip.props as props
 import ops.interval as interval
 
@@ -104,10 +105,23 @@ def sc_build_jaunt_env(prog,circ,infer=False):
     sc_generate_problem(jenv,prog,circ)
     return jenv
 
+
+def apply_result_lut_expr(expr,output,lutvars):
+    repl = {}
+    for name,lutvar in lutvars.items():
+        repl[name] = ops.Mult(ops.Const(lutvar), \
+                             ops.Var(name))
+
+    return ops.Mult(
+        expr.substitute(repl),
+        ops.Const(lutvars[output])
+    )
+
 def apply_result(jenv,circ,sln):
     new_circ = circ.copy()
+    lut_updates = {}
     for variable,value in sln['freevariables'].items():
-        print("%s = %s" % (variable,value))
+        jaunt_util.log_debug("%s = %s" % (variable,value))
         if variable.name == jenv.TAU:
             new_circ.set_tau(value)
         else:
@@ -117,12 +131,20 @@ def apply_result(jenv,circ,sln):
                         .set_scf(port,value,handle=handle)
             elif(tag == jenvlib.JauntVarType.INJECT_VAR):
                 assert(block_name == 'lut')
-                if port == 'in':
-                    raise Exception("injected input")
+                if port == 'in' or port == 'out':
+                    if not (block_name,loc) in lut_updates:
+                        lut_updates[(block_name,loc)] = {}
+                    lut_updates[(block_name,loc)][port] = value
                 else:
-                    raise Exception("injected output")
+                    raise Exception("unknown port for injection variable <%s>" % port)
             else:
                 raise Exception("unhandled: <%s>" % tag)
+
+    for (block_name,loc),scfs in lut_updates.items():
+        cfg = new_circ.config(block_name,loc)
+        for port,expr in cfg.exprs():
+            new_expr = apply_result_lut_expr(expr,port,scfs)
+            cfg.set_expr(port,new_expr)
 
     return new_circ
 
@@ -141,16 +163,24 @@ def compute_scale(prog,circ,objfun):
             #jenvlib.debug_gpkit_problem(gpprob)
             return
 
+        jopt.add_result(thisobj.tag(),sln)
         new_circ = apply_result(jenv,circ,sln)
         yield thisobj,new_circ
 
 def physical_scale(prog,circ):
-    for opt,circ in scale_circuit(prog,circ,\
-                                  JauntObjectiveFunctionManager.physical_methods()):
-        yield opt,circ
+    objs = JauntObjectiveFunctionManager.physical_methods()
+    for obj in objs:
+        for objf,new_circ in compute_scale(prog,circ,obj):
+            yield objf.name(),new_circ
 
 def scale(prog,circ):
-    for infer_obj,infer_circ in jaunt_infer.infer_scale_config(prog,circ):
-        for final_obj,final_circ in compute_scale(prog,infer_circ,infer_obj):
-            yield final_obj.name(), final_circ
+    def _infer(infer_obj):
+        for _,infer_circ in jaunt_infer.infer_scale_config(prog,circ,infer_obj):
+            for final_obj,final_circ in compute_scale(prog,infer_circ,infer_obj):
+                yield final_obj.name(), final_circ
+                return
 
+    objs = JauntObjectiveFunctionManager.basic_methods()
+    for obj in objs:
+        for name,circ in _infer(obj):
+            yield name,circ

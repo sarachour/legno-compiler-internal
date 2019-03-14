@@ -172,7 +172,6 @@ class Interval:
 
     def exponent_value(self,value):
         if value > 0:
-            print("%s^%s" % (self,value))
             return Interval.type_infer(
                 self.lower**value,
                 self.upper**value

@@ -1,6 +1,32 @@
 import ops.jop as jop
 import ops.op as ops
 import ops.interval as interval
+import logging
+
+logger = logging.getLogger('jaunt')
+logger.setLevel(logging.ERROR)
+# create file handler which logs even debug messages
+fh = logging.FileHandler('jaunt.log')
+fh.setLevel(logging.DEBUG)
+# create console handler with a higher log level
+ch = logging.StreamHandler()
+ch.setLevel(logging.ERROR)
+# create formatter and add it to the handlers
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+fh.setFormatter(formatter)
+ch.setFormatter(formatter)
+# add the handlers to the logger
+logger.addHandler(fh)
+logger.addHandler(ch)
+
+def log_info(msg):
+    logger.info(msg)
+
+def log_warn(msg):
+    logger.warn(msg)
+
+def log_debug(msg):
+    logger.debug(msg)
 
 def cancel_signs(orig_lhs,orig_rhs):
     const1,expr1 = orig_lhs.factor_const()
@@ -11,7 +37,7 @@ def cancel_signs(orig_lhs,orig_rhs):
         const1 *= -1
         const2 *= -1
     else:
-        print("[sign mismatch] %s OP %s" % (orig_lhs,orig_rhs))
+        log_info("[sign mismatch] %s OP %s" % (orig_lhs,orig_rhs))
         return False,orig_lhs,orig_rhs
 
     new_expr1 = jop.JMult(jop.JConst(const1),expr1)
@@ -60,7 +86,7 @@ def lower_bound_constraint(jenv,expr,math_lower,hw_lower):
 
     elif not same_sign(math_lower,hw_lower) and \
          hw_lower > 0 and math_lower < 0:
-        print("[[fail]] dne A st: %s < A*%s" % (hw_lower,math_lower))
+        log_info("[[fail]] dne A st: %s < A*%s" % (hw_lower,math_lower))
         jenv.fail()
     else:
         raise Exception("uncovered lb: %s %s" % (math_lower,hw_lower))

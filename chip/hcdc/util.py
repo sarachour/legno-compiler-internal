@@ -12,15 +12,24 @@ equals = glbl_util.equals
 def datapath(filename):
     return "chip/hcdc/data/%s" % filename
 
-def build_scale_model_cstr(cstrlst):
+def build_scale_model_coeff_cstr(cstrlst):
+    contcstrlst = []
+    for var,coeff in cstrlst:
+        cstr = interval.Interval.type_infer(0.0,100.0)
+        contcstrlst.append((var,cstr))
+
+    return contcstrlst
+
+
+def build_scale_model_cstr(cstrlst,scale):
     contcstrlst = []
     for var,rng in cstrlst:
         if rng == chipcmd.RangeType.MED:
-            cstr = interval.Interval.type_infer(0.8,8.0)
+            cstr = interval.Interval.type_infer(0,scale)
         elif rng == chipcmd.RangeType.LOW:
-            cstr = interval.Interval.type_infer(0.0,0.8)
+            cstr = interval.Interval.type_infer(0,scale*0.1)
         elif rng == chipcmd.RangeType.HIGH:
-            cstr = interval.Interval.type_infer(2.0,10.0)
+            cstr = interval.Interval.type_infer(scale,scale*10.1)
 
         contcstrlst.append((var,cstr))
     return contcstrlst

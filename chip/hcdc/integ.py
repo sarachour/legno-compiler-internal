@@ -100,8 +100,12 @@ def continuous_scale_model(integ):
 
     for scm in scale_modes:
       scm_i, scm_o = scm
+      coeff = scm_o.coeff()/scm_i.coeff()
       cstrs = util.build_scale_model_cstr([(op_in,scm_i), \
-                                           (op_out,scm_o)])
+                                           (op_out,scm_o)], 2.0)
+      cstrs += util.build_scale_model_coeff_cstr([(c_out,coeff),
+                                                  (c_outI,scm_o.coeff())
+      ])
       csm.add_scale_mode(scm,cstrs)
 
     for csmvar in [op_in, op_out,  op_inI, op_icI, op_outI]:

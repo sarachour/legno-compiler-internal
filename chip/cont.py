@@ -83,21 +83,33 @@ class ContinuousScaleContext:
   def __init__(self,model):
     self._assigns = {}
     self._model = model
+    self._ivals = {}
 
   @property
   def model(self):
     return self._model
 
+  def interval(self,var):
+    return self._ivals[var]
+
   def value(self,var):
     return self._assigns[var]
 
-  def assign(self,var,value):
+  def assign_interval(self,var,ival):
+    self._ivals[var] = ival
+
+  def assign_var(self,var,value):
     self._assigns[var] = value
 
   def __repr__(self):
     s = ""
     for v,val in self._assigns.items():
-      s += "%s=%f\n" % (v,val)
+      s += "%s=%f {%s}\n" % (v,val,v.interval)
+
+    s += "\n"
+    for v,val in self._ivals.items():
+      s += "%s=%s\n" % (v,val)
+
     return s
 
 
@@ -147,8 +159,10 @@ class ContinuousScaleModel:
 
   def validate_scale_mode(self,ctx,cstrs):
     for var,rng in cstrs:
-      value = ctx.value(var)
-      if not rng.contains_value(value):
+      # determine final
+      ival = ctx.interval(var)
+      if not rng.contains(ival)  \
+         and not ival.bound == 0.0:
         return False
 
     return True

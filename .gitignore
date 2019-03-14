@@ -3,6 +3,7 @@ calibrate
 transform
 outputs
 *.grendel-list
+*.log
 rank_*.txt
 *.json
 *.png

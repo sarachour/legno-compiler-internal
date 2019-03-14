@@ -19,6 +19,12 @@ class JauntObjectiveFunctionManager():
         ]
 
     @staticmethod
+    def inference_methods():
+        return [
+            boptlib.NoScaleFunc,
+        ]
+
+    @staticmethod
     def physical_methods():
         #return ['lo-noise', 'lo-bias', 'lo-delay']
         return [boptlib.MaxSignalAtSpeedObjFunc, \
@@ -40,7 +46,7 @@ class JauntObjectiveFunctionManager():
     def objective(self,circuit,varmap):
         assert(not self.method is None)
         gen = None
-        for obj in self.basic_methods() + self.physical_methods():
+        for obj in self.basic_methods() + self.physical_methods() + self.inference_methods():
             if obj.name() == self.method:
                 gen = obj.make(circuit,self,varmap)
 

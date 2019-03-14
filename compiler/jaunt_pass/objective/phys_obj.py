@@ -87,9 +87,12 @@ def compute_expression(varmap,jenv,circ, \
   # compute signal
   scvarname = jenv.get_scvar(block_name,loc,port)
   scival = circ.config(block_name,loc).interval(port)
-  signal = varmap[scvarname]*scival.bound
-  return gpkit_mean,gpkit_variance,signal
+  if scival.bound > 0:
+    signal = varmap[scvarname]*scival.bound
+  else:
+    signal = None
 
+  return gpkit_mean,gpkit_variance,signal
 
 
 
@@ -101,6 +104,8 @@ def compute(varmap,jenv,circ,models,ports,method='low-snr'):
   signals = {}
   for model,(block_name,loc,port) \
       in zip(models,ports):
+    if model == None:
+      continue
     mean,variance,sig = compute_expression(varmap,jenv,circ, \
                                   block_name,loc,port,model,
                                   refs=None)
@@ -113,13 +118,16 @@ def compute(varmap,jenv,circ,models,ports,method='low-snr'):
     noise = 1.0
     snr = 0.0
     for block_name,loc,port in ports:
+      if not (block_name,loc,port) in signals:
+        continue
+
       sig = signals[(block_name,loc,port)]
       nz = variances[(block_name,loc,port)]
-      print(block_name,loc,port)
-      print(sig)
-      signal *= (sig**-1)
+      if not sig is None:
+        signal *= (sig**-1)
+        snr += (sig**-1)*(nz)
+
       noise *= nz
-      snr += (sig**-1)*(nz)
 
     opt = signal+signal*noise
     return opt

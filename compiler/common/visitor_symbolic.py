@@ -1,11 +1,49 @@
 import ops.op as op
 import ops.nop as nop
+import ops.op as ops
 import numpy as np
 import ops.interval as interval
 from compiler.common.visitor import Visitor
 import zlib
 import json
 import binascii
+
+def wrap_coeff(coeff,expr):
+  if coeff == 1.0:
+    return expr
+  else:
+    return ops.Mult(ops.Const(coeff),expr)
+
+
+def scaled_expr(block,config,output,expr):
+  def recurse(e):
+      return scaled_expr(block,config,output,e)
+
+  comp_mode,scale_mode = config.comp_mode,config.scale_mode
+  if expr.op == ops.OpType.INTEG:
+      ic_coeff = block.coeff(comp_mode,scale_mode,output,expr.ic_handle)
+      deriv_coeff = block.coeff(comp_mode,scale_mode,output,expr.deriv_handle)
+      stvar_coeff = block.coeff(comp_mode,scale_mode,output,expr.handle)
+      return wrap_coeff(stvar_coeff,
+                        ops.Integ(\
+                                  wrap_coeff(deriv_coeff,\
+                                            recurse(expr.deriv)),
+                                  wrap_coeff(ic_coeff,\
+                                             recurse(expr.init_cond)),
+                                  expr.handle
+                        ))
+
+  elif expr.op == ops.OpType.MULT:
+      return ops.Mult(
+          recurse(expr.arg1), recurse(expr.arg2)
+      )
+  else:
+      return expr
+
+def scaled_dynamics(block,config,output):
+   comp_mode,scale_mode = config.comp_mode,config.scale_mode
+   scexpr = scaled_expr(block,config,output,block.get_dynamics(comp_mode,output))
+   return wrap_coeff(block.coeff(comp_mode,scale_mode,output), scexpr)
 
 class SymbolicModel:
 
@@ -218,7 +256,7 @@ class SymbolicInferenceVisitor(Visitor):
     Visitor.output_port(self,block_name,loc,port)
 
     # compute propagated noise
-    expr = config.dynamics(block,port)
+    expr = scaled_dynamics(block,config,port)
     prop_model = self._prop \
           .propagate(block_name,loc,port,expr)
     combo_model = self._prop.plus(prop_model,gen_model)

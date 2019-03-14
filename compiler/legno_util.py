@@ -196,6 +196,7 @@ def exec_skelter_existing(hdacv2_board,args):
     for dirname, subdirlist, filelist in os.walk(circ_dir):
         for fname in filelist:
             if fname.endswith('.circ'):
+                print(fname)
                 circ_bmark,circ_indices,circ_scale_index,opt = \
                                     path_handler.conc_circ_to_args(fname)
 

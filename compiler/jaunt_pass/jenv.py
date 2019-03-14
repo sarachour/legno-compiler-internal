@@ -143,7 +143,7 @@ class JauntEnv:
 
 
   def eq(self,v1,v2):
-      print("%s == %s" % (v1,v2))
+      jaunt_util.log_debug("%s == %s" % (v1,v2))
       # TODO: equality
       if self._interactive:
         input()
@@ -151,7 +151,7 @@ class JauntEnv:
 
 
   def lte(self,v1,v2):
-      print("%s <= %s" % (v1,v2))
+      jaunt_util.log_debug("%s <= %s" % (v1,v2))
       # TODO: equality
       if self._interactive:
         input()
@@ -254,7 +254,7 @@ def build_gpkit_problem(circ,jenv,jopt):
     for obj in jopt.objective(circ,variables):
       cstrs = list(gpkit_cstrs) + list(obj.constraints())
       ofun = obj.objective()
-      print(ofun)
+      jaunt_util.log_info(ofun)
       model = gpkit.Model(ofun, cstrs)
       yield model,obj
 
@@ -291,11 +291,11 @@ def solve_gpkit_problem_mosek(gpmodel,timeout=10):
         sln = gpmodel.solve(solver=CONFIG.GPKIT_SOLVER,verbosity=0)
         signal.alarm(0)
     except TimeoutError as te:
-        #print("Timeout: mosek timed out or hung")
+        jaunt_util.log_warn("Timeout: mosek timed out or hung")
         signal.alarm(0)
         return None
     except RuntimeWarning as re:
-        #print("[gpkit][ERROR] %s" % re)
+        jaunt_util.log_warn("[gpkit][ERROR] %s" % re)
         return None
 
     if not 'freevariables' in sln:
@@ -314,7 +314,6 @@ def solve_gpkit_problem(gpmodel,timeout=10):
     return solve_gpkit_problem_mosek(gpmodel,timeout)
 
 def debug_gpkit_problem(gpprob):
-  print(">>> DEBUG <<<")
+  jaunt_util.log_warn(">>> DEBUG <<<")
   gpprob.debug(solver='mosek_cli')
-  print(">>>=======<<<")
   sys.exit(1)

@@ -9,6 +9,7 @@ from chip.conc import ConcCirc
 
 from compiler.common import infer
 import compiler.jaunt_pass.jenv as jenvlib
+import compiler.jaunt_pass.objective.basic_obj as basicobj
 import compiler.jaunt_pass.expr_visitor as exprvisitor
 from compiler.jaunt_pass.objective.obj_mgr import JauntObjectiveFunctionManager
 
@@ -198,30 +199,49 @@ def sc_generate_problem(jenv,prob,circ):
 
 def apply_result(jenv,circ,sln):
     ctxs = {}
-    print('-----------')
+    jaunt_util.log_debug('---- SLN ----')
     for variable,value in sln['freevariables'].items():
         if variable.name == jenv.TAU:
             continue
-        else:
-            block_name,loc,port,handle,tag = jenv.get_jaunt_var_info(variable.name)
+
+        block_name,loc,port,handle,tag = jenv.get_jaunt_var_info(variable.name)
+        config = circ.config(block_name,loc)
+        if tag == jenvlib.JauntVarType.COEFF_VAR \
+             or tag == jenvlib.JauntVarType.OP_RANGE_VAR:
             if not (block_name,loc) in ctxs:
-                config = circ.config(block_name,loc)
                 model = circ.board.block(block_name).scale_model(config.comp_mode)
                 ctxs[(block_name,loc)] = cont.ContinuousScaleContext(model)
 
-
             contvar = sc_get_cont_var(tag,block_name,loc,port,handle)
-            if not contvar is None:
-                print("var[%s,%s]:%s = %s" % (block_name,loc,contvar,value))
-                ctxs[(block_name,loc)].assign(contvar,value)
+            jaunt_util.log_debug("var[%s,%s]:%s = %s" % (block_name,loc,contvar,value))
+            ctxs[(block_name,loc)].assign_var(contvar,value)
 
-    print('-----------')
+
+    for variable,value in sln['freevariables'].items():
+        if variable.name == jenv.TAU:
+            continue
+
+        block_name,loc,port,handle,tag = jenv.get_jaunt_var_info(variable.name)
+        config = circ.config(block_name,loc)
+        if tag == jenvlib.JauntVarType.SCALE_VAR:
+            scm = ctxs[(block_name,loc)]
+            coeffvar = sc_get_cont_var(jenvlib.JauntVarType.COEFF_VAR, \
+                                      block_name,loc,port,handle)
+            scm.assign_interval(coeffvar,interval.Interval.type_infer(1.0,1.0))
+            ival = config.interval(port,handle).scale(value)
+            opvar = sc_get_cont_var(jenvlib.JauntVarType.OP_RANGE_VAR, \
+                                      block_name,loc,port,handle)
+            scm.assign_interval(opvar,interval.Interval \
+                                                   .type_infer(ival.bound,ival.bound))
+
+    jaunt_util.log_debug('-----------')
     scale_modes = {}
     n_combos = 1
     new_circ = circ.copy()
     for (block_name,loc),ctx in ctxs.items():
         scale_modes[(block_name,loc)] = list(ctx.model.scale_mode(ctx))
         if len(scale_modes[(block_name,loc)]) == 0:
+            print(ctx)
             raise Exception("no modes for %s[%s]" % (block_name,loc))
 
         n_combos *= len(scale_modes[(block_name,loc)])
@@ -230,35 +250,32 @@ def apply_result(jenv,circ,sln):
     scms = list(scale_modes.values())
     for scm_combo in tqdm(itertools.product(*scms), total=n_combos):
         for (block_name,loc),scale_mode in zip(locs,scm_combo):
-            print("[%s,%s] -> %s" % (block_name,loc,scale_mode))
+            jaunt_util.log_warn("[%s,%s] -> %s" % (block_name,loc,scale_mode))
             new_circ.config(block_name,loc).set_scale_mode(scale_mode)
         yield new_circ
 
-def infer_scale_config(prog,circ):
+def infer_scale_config(prog,circ,obj):
     assert(isinstance(circ,ConcCirc))
-    input("TODO: soften inference to sets of possible scale modes. then take product")
-    input("TODO: fix issue with adc and inference. [cosc, quad work, spring, repri does not]")
     jenv = sc_build_jaunt_env(prog,circ)
     jopt = JauntObjectiveFunctionManager(jenv)
-    for optcls in JauntObjectiveFunctionManager.basic_methods():
-        jopt.method = optcls.name()
-        print("===== %s =====" % optcls.name())
-        for idx,(gpprob,obj) in \
-            enumerate(jenvlib.build_gpkit_problem(circ,jenv,jopt)):
-            if gpprob is None:
-                continue
+    jopt.method = obj.name()
+    jaunt_util.log_debug("===== %s =====" % jopt.method)
+    for idx,(gpprob,obj) in \
+        enumerate(jenvlib.build_gpkit_problem(circ,jenv,jopt)):
+        if gpprob is None:
+            continue
 
-            print("-> %s" % optcls.name())
-            sln = jenvlib.solve_gpkit_problem(gpprob)
-            if sln is None:
-                print("[[FAILURE - NO SLN]]")
-                jenv.set_solved(False)
-                jenvlib.debug_gpkit_problem(gpprob)
-                return
-            else:
-                print("[[SUCCESS - FOUND SLN]]")
-                jenv.set_solved(True)
+        jaunt_util.log_debug("-> %s" % jopt.method)
+        sln = jenvlib.solve_gpkit_problem(gpprob)
+        if sln is None:
+            jaunt_util.log_info("[[FAILURE - NO SLN]]")
+            jenv.set_solved(False)
+            jenvlib.debug_gpkit_problem(gpprob)
+            return
+        else:
+            jaunt_util.log_info("[[SUCCESS - FOUND SLN]]")
+            jenv.set_solved(True)
 
-            jopt.add_result(obj.tag(),sln)
-            for new_circ in apply_result(jenv,circ,sln):
+        jopt.add_result(obj.tag(),sln)
+        for new_circ in apply_result(jenv,circ,sln):
                 yield obj,new_circ

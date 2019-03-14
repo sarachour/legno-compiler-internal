@@ -183,7 +183,6 @@ class SCFPropExprVisitor(ExprVisitor):
       else:
         expr = config.expr(self.port)
 
-      print(expr)
       lhsexpr = jop.JVar(self.jenv.get_scvar(block.name,loc,self.port))
       rhsexpr = self.visit_expr(expr)
       if self.jenv.has_inject_var(block.name,loc,self.port):

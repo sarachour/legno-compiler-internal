@@ -40,6 +40,31 @@ class FastObjFunc(optlib.JauntObjectiveFunction):
     else:
         yield FastObjFunc(0)
 
+class NoScaleFunc(optlib.JauntObjectiveFunction):
+
+  def __init__(self,obj):
+    optlib.JauntObjectiveFunction.__init__(self,obj)
+
+  @staticmethod
+  def name():
+    return "noscale"
+
+  @staticmethod
+  def make(circ,jobj,varmap):
+    rngobj = 0.0
+    jenv = jobj.jenv
+    for scvar in jenv.jaunt_vars():
+      if jenv.jaunt_var_in_use(scvar):
+         if jenv.get_tag(scvar) == jenvlib.JauntVarType.OP_RANGE_VAR:
+           rngobj += varmap[scvar]
+         elif jenv.get_tag(scvar) == jenvlib.JauntVarType.SCALE_VAR:
+           rngobj += varmap[scvar] + varmap[scvar]**(-1.0)
+         elif jenv.get_tag(scvar) == jenvlib.JauntVarType.COEFF_VAR:
+           rngobj += varmap[scvar] + varmap[scvar]**(-1.0)
+
+    yield NoScaleFunc(rngobj)
+
+
 class MaxSignalObjFunc(optlib.JauntObjectiveFunction):
 
   def __init__(self,obj):
