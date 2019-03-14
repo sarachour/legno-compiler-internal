@@ -99,7 +99,9 @@ def exec_jaunt(hdacv2_board, args):
 
         has_opt = {}
         for opt,scale_circ in jaunt.scale(prog,conc_circ):
-            assert(not opt in has_opt)
+            if(opt in has_opt):
+                continue
+
             has_opt[opt] = True
             filename = path_handler.conc_circ_file(circ_bmark,
                                                     circ_indices,

@@ -16,11 +16,11 @@ def build_scale_model_cstr(cstrlst):
     contcstrlst = []
     for var,rng in cstrlst:
         if rng == chipcmd.RangeType.MED:
-            cstr = interval.Interval.type_infer(0.1,1.0)
+            cstr = interval.Interval.type_infer(0.8,8.0)
         elif rng == chipcmd.RangeType.LOW:
-            cstr = interval.Interval.type_infer(0.0,0.1)
+            cstr = interval.Interval.type_infer(0.0,0.8)
         elif rng == chipcmd.RangeType.HIGH:
-            cstr = interval.Interval.type_infer(1.0,10.0)
+            cstr = interval.Interval.type_infer(2.0,10.0)
 
         contcstrlst.append((var,cstr))
     return contcstrlst

@@ -76,13 +76,16 @@ def continuous_scale_model(integ):
     cont.equals(csm, [op_inI, op_in])
     cont.equals(csm, [op_icI, op_outI, op_out])
     cont.equals(csm, [c_icI, c_outI])
+    c_in2out = ops.Mult(
+      ops.Var(c_outI.varname),
+      ops.Var(c_inI.varname)
+    )
+    csm.lte(c_in2out, ops.Const(10.0))
+    csm.lte(ops.Const(0.1), c_in2out)
     csm.eq(
       ops.Mult(
         ops.Var(op_inI.varname),
-        ops.Mult(
-          ops.Var(c_outI.varname),
-          ops.Var(c_inI.varname)
-        )
+        c_in2out
       ),
       ops.Var(op_outI.varname)
     )
@@ -97,13 +100,11 @@ def continuous_scale_model(integ):
 
     for scm in scale_modes:
       scm_i, scm_o = scm
-      cstrs = util.build_scale_model_cstr([(op_ic,scm_o), \
-                                           (op_in,scm_i), \
+      cstrs = util.build_scale_model_cstr([(op_in,scm_i), \
                                            (op_out,scm_o)])
       csm.add_scale_mode(scm,cstrs)
 
-    for csmvar in [op_in, op_out, c_out, op_inI, c_inI, op_icI, c_icI,
-                   op_outI, c_outI]:
+    for csmvar in [op_in, op_out,  op_inI, op_icI, op_outI]:
       csmvar.set_interval(0.1,10.0)
 
     integ.set_scale_model(comp_mode,csm)

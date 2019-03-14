@@ -26,7 +26,7 @@ import time
 import numpy as np
 import util.util as util
 import util.config as CONFIG
-import tqdm
+from tqdm import tqdm
 
 
 def sc_get_cont_var(jtype,block_name,loc,port,handle):
@@ -114,6 +114,11 @@ def sc_generate_scale_model_constraints(jenv,circ):
             j_lhs = visitor.visit_expr(lhs)
             j_rhs = visitor.visit_expr(rhs)
             jenv.eq(j_lhs,j_rhs)
+
+        for lhs,rhs in scale_model.ltes():
+            j_lhs = visitor.visit_expr(lhs)
+            j_rhs = visitor.visit_expr(rhs)
+            jenv.lte(j_lhs,j_rhs)
 
 
 def sc_build_jaunt_env(prog,circ):
@@ -211,13 +216,23 @@ def apply_result(jenv,circ,sln):
                 ctxs[(block_name,loc)].assign(contvar,value)
 
     print('-----------')
+    scale_modes = {}
+    n_combos = 1
+    new_circ = circ.copy()
     for (block_name,loc),ctx in ctxs.items():
-        scale_mode = ctx.model.scale_mode(ctx)
-        print("[%s,%s] -> %s" % (block_name,loc,scale_mode))
-        circ.config(block_name,loc).set_scale_mode(scale_mode)
+        scale_modes[(block_name,loc)] = list(ctx.model.scale_mode(ctx))
+        if len(scale_modes[(block_name,loc)]) == 0:
+            raise Exception("no modes for %s[%s]" % (block_name,loc))
 
-    input()
-    return circ
+        n_combos *= len(scale_modes[(block_name,loc)])
+
+    locs = list(scale_modes.keys())
+    scms = list(scale_modes.values())
+    for scm_combo in tqdm(itertools.product(*scms), total=n_combos):
+        for (block_name,loc),scale_mode in zip(locs,scm_combo):
+            print("[%s,%s] -> %s" % (block_name,loc,scale_mode))
+            new_circ.config(block_name,loc).set_scale_mode(scale_mode)
+        yield new_circ
 
 def infer_scale_config(prog,circ):
     assert(isinstance(circ,ConcCirc))
@@ -244,6 +259,6 @@ def infer_scale_config(prog,circ):
                 print("[[SUCCESS - FOUND SLN]]")
                 jenv.set_solved(True)
 
-            apply_result(jenv,circ,sln)
-            yield obj,circ
             jopt.add_result(obj.tag(),sln)
+            for new_circ in apply_result(jenv,circ,sln):
+                yield obj,new_circ

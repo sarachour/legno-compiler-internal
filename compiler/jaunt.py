@@ -59,11 +59,8 @@ def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
 
 # traverse dynamics, also including coefficient variable
 def sc_traverse_dynamics(jenv,circ,block,loc,out):
-    if block.name == 'lut':
-        raise Exception("need to override lut")
-    else:
-        visitor = exprvisitor.SCFPropExprVisitor(jenv,circ,block,loc,out)
-        visitor.visit()
+    visitor = exprvisitor.SCFPropExprVisitor(jenv,circ,block,loc,out)
+    visitor.visit()
 
 
 def sc_port_used(jenv,block_name,loc,port,handle=None):
@@ -118,8 +115,14 @@ def apply_result(jenv,circ,sln):
             if(tag == jenvlib.JauntVarType.SCALE_VAR):
                 new_circ.config(block_name,loc) \
                         .set_scf(port,value,handle=handle)
+            elif(tag == jenvlib.JauntVarType.INJECT_VAR):
+                assert(block_name == 'lut')
+                if port == 'in':
+                    raise Exception("injected input")
+                else:
+                    raise Exception("injected output")
             else:
-                raise Exception("unhandled: lut")
+                raise Exception("unhandled: <%s>" % tag)
 
     return new_circ
 
@@ -135,8 +138,8 @@ def compute_scale(prog,circ,objfun):
 
         sln = jenvlib.solve_gpkit_problem(gpprob)
         if sln == None:
-            jenvlib.debug_gpkit_problem(gpprob)
-            raise Exception("[strict-mode] cannot find concrete sln")
+            #jenvlib.debug_gpkit_problem(gpprob)
+            return
 
         new_circ = apply_result(jenv,circ,sln)
         yield thisobj,new_circ
@@ -149,6 +152,5 @@ def physical_scale(prog,circ):
 def scale(prog,circ):
     for infer_obj,infer_circ in jaunt_infer.infer_scale_config(prog,circ):
         for final_obj,final_circ in compute_scale(prog,infer_circ,infer_obj):
-            input()
             yield final_obj.name(), final_circ
 

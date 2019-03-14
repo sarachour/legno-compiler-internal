@@ -50,6 +50,7 @@ class CSMVar:
     return self._ival
 
   def set_interval(self,low,high):
+    assert(low <= high)
     self._ival = interval.Interval.type_infer(low,high)
 
   @property
@@ -104,6 +105,7 @@ class ContinuousScaleModel:
 
   def __init__(self):
     self._vars = {}
+    self._lte = []
     self._eq = []
     self._scale_modes = {}
     self._baseline = None
@@ -122,6 +124,13 @@ class ContinuousScaleModel:
     self._vars[var.varname] = var
     return var
 
+  def lte(self,expr1,expr2):
+    self._lte.append((expr1,expr2))
+
+  def ltes(self):
+    return self._lte
+
+
   def eq(self,expr1,expr2):
     self._eq.append((expr1,expr2))
 
@@ -132,24 +141,20 @@ class ContinuousScaleModel:
     return self._vars[name]
 
   def add_scale_mode(self,scale_mode,cstrs):
+    if (scale_mode in self._scale_modes):
+      raise Exception("already in modes: <%s>" % str(scale_mode))
     self._scale_modes[scale_mode] = cstrs
 
+  def validate_scale_mode(self,ctx,cstrs):
+    for var,rng in cstrs:
+      value = ctx.value(var)
+      if not rng.contains_value(value):
+        return False
+
+    return True
+
   def scale_mode(self,ctx):
-    scm = None
-    for this_scm,cstrs in self._scale_modes.items():
-      if not scm is None:
-        continue
+    for scale_mode,cstrs in self._scale_modes.items():
+      if self.validate_scale_mode(ctx,cstrs):
+          yield scale_mode
 
-      is_match = True
-      for var,rng in cstrs:
-        value = ctx.value(var)
-        if not rng.contains_value(value):
-          is_match = False
-
-
-      if is_match:
-        assert(scm is None)
-        scm = this_scm
-
-    assert(not scm is None)
-    return scm

@@ -36,7 +36,6 @@ def dac_continuous_scale_model(dac):
          ops.Var(out.varname))
   inp.set_interval(1.0,1.0)
   coeff.set_interval(1.0,10.0)
-  out.set_interval(1.0,10.0)
   for scm in modes:
      _,scm_o = scm
      cstrs = util.build_scale_model_cstr([(out,scm_o)])
@@ -98,18 +97,23 @@ def adc_black_box_model(dac):
 
 
 def adc_continuous_scale_model(adc):
-  csm = ContinuousScaleModel()
-  csm.set_baseline(chipcmd.RangeType.MED)
-  out = csm.decl_var(CSMOpVar("out"))
-  inp = csm.decl_var(CSMOpVar("in"))
-  coeff = csm.decl_var(CSMCoeffVar("out"))
-  csm.eq(ops.Mult(ops.Var(inp.varname),
-                  ops.Var(coeff.varname)), \
-         ops.Var(out.varname))
-  inp.set_interval(1.0,10.0)
-  coeff.set_interval(1.0,0.1)
-  out.set_interval(1.0,1.0)
-  adc.set_scale_model("*", csm)
+   modes = adc_get_modes()
+   csm = ContinuousScaleModel()
+   csm.set_baseline(chipcmd.RangeType.MED)
+   out = csm.decl_var(CSMOpVar("out"))
+   inp = csm.decl_var(CSMOpVar("in"))
+   coeff = csm.decl_var(CSMCoeffVar("out"))
+   csm.eq(ops.Mult(ops.Var(inp.varname),
+                   ops.Var(coeff.varname)), \
+          ops.Var(out.varname))
+   inp.set_interval(1.0,10.0)
+   coeff.set_interval(0.1,1.0)
+   out.set_interval(1.0,1.0)
+   for scm_i in modes:
+      cstrs = util.build_scale_model_cstr([(inp,scm_i)])
+      csm.add_scale_mode(scm_i, cstrs)
+
+   adc.set_scale_model("*", csm)
 
 def adc_scale_model(adc):
    modes = adc_get_modes()
