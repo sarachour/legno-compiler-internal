@@ -87,19 +87,15 @@ class OpType(Enum):
 
 class Op:
 
-    def __init__(self,op,args,tag=None):
+    def __init__(self,op,args):
         for arg in args:
             assert(isinstance(arg,Op))
         self._args = args
         self._op = op
-        self._tag = tag
         self._is_associative = True \
                                if op in [OpType.MULT, OpType.ADD] \
                                   else False
 
-    @property
-    def tag(self):
-        return self._tag
 
     @property
     def op(self):
@@ -522,7 +518,7 @@ class Var(Op):
 class Const(Op):
 
     def __init__(self,value,tag=None):
-        Op.__init__(self,OpType.CONST,[],tag=tag)
+        Op.__init__(self,OpType.CONST,[])
         self._value = float(value)
 
     def to_json(self):
@@ -531,7 +527,7 @@ class Const(Op):
         return obj
 
     def substitute(self,bindings):
-        return Const(self._value,tag=self._tag)
+        return Const(self._value)
 
     @staticmethod
     def from_json(obj):

@@ -71,7 +71,7 @@ class PropBandwidthVisitor(Visitor):
     if not config.has_expr(port):
       expr = block.get_dynamics(config.comp_mode,port)
     else:
-      expr = config.expr(port)
+      expr = config.expr(port,inject=False)
 
     # compute intervals
     ival_map = config.intervals()

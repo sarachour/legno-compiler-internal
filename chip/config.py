@@ -2,7 +2,7 @@ from enum import Enum
 from ops.interval import Interval
 from ops.bandwidth import Bandwidth
 from compiler.common.visitor_symbolic import SymbolicModel
-from ops.op import Op
+import ops.op as ops
 
 class Labels(Enum):
     CONST_INPUT = 'const-inp';
@@ -25,6 +25,7 @@ class Config:
         # (scaled) bandwidth
         self._bandwidths = {}
 
+        # physical model data
         self._gen_delays = {}
         self._prop_delays = {}
         self._mismatch_delays = {}
@@ -32,16 +33,44 @@ class Config:
         self._prop_noise = {}
         self._gen_biases = {}
         self._prop_biases = {}
+
+        # lut models
+        self._injs = {}
         self._exprs = {}
+
+    def set_inj(self,port,value):
+        self._injs[port] = value
+
+    def inject_var(self,port):
+        if not port in self._injs:
+            return 1.0
+        else:
+            return self._injs[port]
 
     def set_expr(self,port,expr):
         self._exprs[port] = expr
 
-    def exprs(self):
-        return self._exprs.items()
+    def exprs(self,inject=True):
+        for port in self._exprs.keys():
+            expr = self.expr(port,inject=inject)
+            yield port,expr
 
-    def expr(self,port):
-        return self._exprs[port]
+    def expr(self,port,inject=True):
+        naked_expr = self._exprs[port]
+        if not inject:
+            return naked_expr
+
+        repl = {}
+        print(self._injs)
+        for inj_port,value in self._injs.items():
+            repl[inj_port] = ops.Mult(ops.Const(value), \
+                                  ops.Var(inj_port))
+
+        inj_out = self._injs[port]
+        return ops.Mult(
+            ops.Const(inj_out),
+            naked_expr.substitute(repl)
+        )
 
     def has_expr(self,port):
         return port in self._exprs
@@ -93,6 +122,7 @@ class Config:
                     handle = None if handle == 'null' else handle
                     data[port][handle] = fn(value)
 
+        get_port_dict(cfg._injs, obj,'injvars')
         get_port_dict(cfg._dacs, obj,'dacs')
         get_port_dict(cfg._labels, obj,'labels', \
                       lambda v: [v[0],Labels(v[1])])
@@ -104,7 +134,7 @@ class Config:
         get_port_handle_dict(cfg._bandwidths, obj, 'bandwidths', \
                              lambda v: Bandwidth.from_json(v))
         get_port_dict(cfg._exprs, obj, 'exprs', \
-                      lambda v: Op.from_json(v))
+                      lambda v: ops.Op.from_json(v))
         get_port_dict(cfg._gen_noise, obj, 'gen-noise', \
                       lambda v: SymbolicModel.from_json(v))
         get_port_dict(cfg._prop_noise, obj, 'prop-noise', \
@@ -137,6 +167,7 @@ class Config:
                 for handle,value in datum.items():
                     cfg[key][port][handle] = fn(value)
 
+        set_port_dict('injvars',self._injs)
         set_port_dict('dacs',self._dacs)
         set_port_dict('labels', self._labels,
                       lambda args: [args[0],args[1].value])

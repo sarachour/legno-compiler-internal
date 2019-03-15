@@ -418,6 +418,8 @@ def build_expr(env,block,loc,cfg,port,expr):
   body = '''
   <table border="0">
   <tr><td><font color="#5D6D7E">expr:{expr}</font></td></tr>
+  <tr><td><font color="#5D6D7E">in:{in}</font></td></tr>
+  <tr><td><font color="#5D6D7E">out:{out}</font></td></tr>
   </table>
   '''
   port_handle = env.port_handle(block,loc,port)
@@ -425,7 +427,9 @@ def build_expr(env,block,loc,cfg,port,expr):
 
   scf = undef_to_one(cfg.scf(port))
   params = {
-      'expr': op.to_python(expr)
+    'expr': op.to_python(expr),
+    'in':cfg.inject_var('in'),
+    'out':cfg.inject_var('out'),
   }
   label = body.format(**params)
   env.qn("%s [" % (value_handle))
@@ -467,7 +471,7 @@ def write_graph(circ,filename,color_method=None,write_png=False):
         for port,math_label,kind in cfg.labels():
             build_label(env,block,loc,cfg,port,math_label,kind)
 
-        for port,expr in cfg.exprs():
+        for port,expr in cfg.exprs(inject=False):
             build_expr(env,block,loc,cfg,port,expr)
 
         for port,value in cfg.values():

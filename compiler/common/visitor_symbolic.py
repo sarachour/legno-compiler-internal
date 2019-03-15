@@ -43,9 +43,10 @@ def scaled_expr(block,config,output,expr):
 def scaled_dynamics(block,config,output):
    comp_mode,scale_mode = config.comp_mode,config.scale_mode
    if config.has_expr(output):
-     expr = config.expr(output)
+     expr = config.expr(output,inject=False)
    else:
      expr = block.get_dynamics(comp_mode,output)
+
    scexpr = scaled_expr(block,config,output,expr)
    return wrap_coeff(block.coeff(comp_mode,scale_mode,output), scexpr)
 

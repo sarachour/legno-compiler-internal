@@ -181,7 +181,7 @@ class SCFPropExprVisitor(ExprVisitor):
       if not config.has_expr(self.port):
         expr = block.get_dynamics(config.comp_mode,self.port)
       else:
-        expr = config.expr(self.port)
+        expr = config.expr(self.port,inject=False)
 
       lhsexpr = jop.JVar(self.jenv.get_scvar(block.name,loc,self.port))
       rhsexpr = self.visit_expr(expr)

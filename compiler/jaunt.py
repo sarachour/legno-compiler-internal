@@ -106,17 +106,6 @@ def sc_build_jaunt_env(prog,circ,infer=False):
     return jenv
 
 
-def apply_result_lut_expr(expr,output,lutvars):
-    repl = {}
-    for name,lutvar in lutvars.items():
-        repl[name] = ops.Mult(ops.Const(lutvar), \
-                             ops.Var(name))
-
-    return ops.Mult(
-        ops.Const(lutvars[output]),
-        expr.substitute(repl)
-    )
-
 def apply_result(jenv,circ,sln):
     new_circ = circ.copy()
     lut_updates = {}
@@ -130,21 +119,10 @@ def apply_result(jenv,circ,sln):
                 new_circ.config(block_name,loc) \
                         .set_scf(port,value,handle=handle)
             elif(tag == jenvlib.JauntVarType.INJECT_VAR):
-                assert(block_name == 'lut')
-                if port == 'in' or port == 'out':
-                    if not (block_name,loc) in lut_updates:
-                        lut_updates[(block_name,loc)] = {}
-                    lut_updates[(block_name,loc)][port] = value
-                else:
-                    raise Exception("unknown port for injection variable <%s>" % port)
+                new_circ.config(block_name,loc) \
+                    .set_inj(port,value)
             else:
                 raise Exception("unhandled: <%s>" % tag)
-
-    for (block_name,loc),scfs in lut_updates.items():
-        cfg = new_circ.config(block_name,loc)
-        for port,expr in cfg.exprs():
-            new_expr = apply_result_lut_expr(expr,port,scfs)
-            cfg.set_expr(port,new_expr)
 
     return new_circ
 

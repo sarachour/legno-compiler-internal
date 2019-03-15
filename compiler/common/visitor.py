@@ -39,7 +39,7 @@ class Visitor:
     if not config.has_expr(port):
       expr = block.get_dynamics(config.comp_mode,port)
     else:
-      expr = config.expr(port)
+      expr = config.expr(port,inject=False)
 
     free,bound = self.classify(block_name,loc,expr.vars())
     if self.visited(block.name,loc,port):
