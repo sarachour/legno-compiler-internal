@@ -75,13 +75,17 @@ def continuous_scale_model(integ):
     op_outI,c_outI = cont.decl_out(csm,'out',':z')
     cont.equals(csm, [op_inI, op_in])
     cont.equals(csm, [op_icI, op_outI, op_out])
-    cont.equals(csm, [c_icI, c_outI])
+    cont.equals(csm, [c_icI, c_outI, c_out])
     c_in2out = ops.Mult(
       ops.Var(c_outI.varname),
       ops.Var(c_inI.varname)
     )
     csm.lte(c_in2out, ops.Const(10.0))
     csm.lte(ops.Const(0.1), c_in2out)
+    csm.eq(c_in2out, ops.Const(1.0))
+    csm.eq(ops.Var(c_icI.varname), ops.Const(1.0))
+    csm.eq(ops.Var(c_outI.varname), ops.Const(1.0))
+
     csm.eq(
       ops.Mult(
         ops.Var(op_inI.varname),
@@ -101,11 +105,10 @@ def continuous_scale_model(integ):
     for scm in scale_modes:
       scm_i, scm_o = scm
       coeff = scm_o.coeff()/scm_i.coeff()
+      if coeff != 1.0:
+        continue
       cstrs = util.build_scale_model_cstr([(op_in,scm_i), \
                                            (op_out,scm_o)], 2.0)
-      cstrs += util.build_scale_model_coeff_cstr([(c_out,coeff),
-                                                  (c_outI,scm_o.coeff())
-      ])
       csm.add_scale_mode(scm,cstrs)
 
     for csmvar in [op_in, op_out,  op_inI, op_icI, op_outI]:

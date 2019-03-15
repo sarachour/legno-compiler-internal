@@ -59,8 +59,8 @@ class NoScaleFunc(optlib.JauntObjectiveFunction):
            rngobj += varmap[scvar]
          elif jenv.get_tag(scvar) == jenvlib.JauntVarType.SCALE_VAR:
            rngobj += varmap[scvar] + varmap[scvar]**(-1.0)
-         elif jenv.get_tag(scvar) == jenvlib.JauntVarType.COEFF_VAR:
-           rngobj += varmap[scvar] + varmap[scvar]**(-1.0)
+         #elif jenv.get_tag(scvar) == jenvlib.JauntVarType.COEFF_VAR:
+         #  rngobj += varmap[scvar] + varmap[scvar]**(-1.0)
 
     yield NoScaleFunc(rngobj)
 

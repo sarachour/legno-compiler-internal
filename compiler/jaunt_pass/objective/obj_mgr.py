@@ -21,7 +21,7 @@ class JauntObjectiveFunctionManager():
     @staticmethod
     def inference_methods():
         return [
-            boptlib.NoScaleFunc,
+            boptlib.NoScaleFunc
         ]
 
     @staticmethod

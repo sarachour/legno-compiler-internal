@@ -98,7 +98,7 @@ def exec_jaunt(hdacv2_board, args):
         conc_circ = ConcCirc.read(hdacv2_board, filename)
 
         has_opt = {}
-        for idx,opt,scale_circ in jaunt.scale(prog,conc_circ):
+        for idx,opt,scale_circ in jaunt.scale(prog,conc_circ,args.scale_circuits):
             if(opt in has_opt):
                 continue
 

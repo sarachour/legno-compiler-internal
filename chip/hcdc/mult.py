@@ -101,7 +101,8 @@ def continuous_scale_model_vga(mult):
   for csmvar in [op_in0,op_out]:
     csmvar.set_interval(0.1,10.0)
 
-  scf_tf.set_interval(0.01,100.0)
+  #scf_tf.set_interval(0.01,100.0)
+  scf_tf.set_interval(1.0,1.0)
 
   for csmvar in [op_coeff]:
     csmvar.set_interval(1.0,1.0)
@@ -113,6 +114,8 @@ def continuous_scale_model_vga(mult):
   for scm in vga_modes:
     scm_i, scm_o = scm
     coeff = scm_o.coeff()/scm_i.coeff()
+    if coeff != 1.0:
+      continue
     cstrs = util.build_scale_model_cstr([(op_in0,scm_i), \
                                          (op_out,scm_o)],2.0)
     cstrs += util.build_scale_model_coeff_cstr([(scf_tf,coeff)])
@@ -138,7 +141,8 @@ def continuous_scale_model_mult(mult):
                   ops.Var(scf_tf.varname)), \
          ops.Var(out.varname))
 
-  scf_tf.set_interval(0.01,100.0)
+  #scf_tf.set_interval(0.01,100.0)
+  scf_tf.set_interval(1.0,1.0)
 
   for csmvar in [in0,in1,out]:
     csmvar.set_interval(0.1,10.0)
@@ -146,6 +150,8 @@ def continuous_scale_model_mult(mult):
   for scm in mul_modes:
     scm_i0,scm_i1,scm_o = scm
     coeff =scm_o.coeff()/(scm_i0.coeff()*scm_i1.coeff())
+    if coeff != 1.0:
+      continue
     cstrs = util.build_scale_model_cstr([(in0,scm_i0), \
                                          (in1,scm_i1), \
                                          (out,scm_o)],2.0)

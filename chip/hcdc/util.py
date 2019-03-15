@@ -12,11 +12,16 @@ equals = glbl_util.equals
 def datapath(filename):
     return "chip/hcdc/data/%s" % filename
 
-def build_scale_model_coeff_cstr(cstrlst):
+def build_scale_model_coeff_cstr(cstrlst,allow_scale=False):
     contcstrlst = []
     for var,coeff in cstrlst:
-        cstr = interval.Interval.type_infer(0.0,100.0)
-        contcstrlst.append((var,cstr))
+        # do not allow scaling down, because it apparently behaves poorly.
+        if coeff == 1.0:
+            cstr = interval.Interval.type_infer(0.0,100.0)
+            contcstrlst.append((var,cstr))
+        elif allow_scale:
+            cstr = interval.Interval.type_infer(0,0)
+            contcstrlst.append((var,cstr))
 
     return contcstrlst
 
@@ -25,11 +30,11 @@ def build_scale_model_cstr(cstrlst,scale):
     contcstrlst = []
     for var,rng in cstrlst:
         if rng == chipcmd.RangeType.MED:
-            cstr = interval.Interval.type_infer(0,scale)
+            cstr = interval.Interval.type_infer(0,scale*1.1)
         elif rng == chipcmd.RangeType.LOW:
-            cstr = interval.Interval.type_infer(0,scale*0.1)
+            cstr = interval.Interval.type_infer(0,scale*0.11)
         elif rng == chipcmd.RangeType.HIGH:
-            cstr = interval.Interval.type_infer(scale,scale*10.1)
+            cstr = interval.Interval.type_infer(0,scale*10.1)
 
         contcstrlst.append((var,cstr))
     return contcstrlst

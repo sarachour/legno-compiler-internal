@@ -297,7 +297,9 @@ def solve_gpkit_problem_mosek(gpmodel,timeout=10):
     try:
         signal.signal(signal.SIGALRM, handle_timeout)
         signal.alarm(timeout)
-        sln = gpmodel.solve(solver=CONFIG.GPKIT_SOLVER,verbosity=0)
+        sln = gpmodel.solve(solver=CONFIG.GPKIT_SOLVER,
+                            warn_on_check=True,
+                            verbosity=0)
         signal.alarm(0)
     except TimeoutError as te:
         jaunt_util.log_warn("Timeout: mosek timed out or hung")
@@ -305,6 +307,7 @@ def solve_gpkit_problem_mosek(gpmodel,timeout=10):
         return None
     except RuntimeWarning as re:
         jaunt_util.log_warn("[gpkit][ERROR] %s" % re)
+        signal.alarm(0)
         return None
 
     if not 'freevariables' in sln:

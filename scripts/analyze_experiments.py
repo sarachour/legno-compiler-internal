@@ -153,11 +153,14 @@ def truncate_signal(t,y,runtime):
 def analyze_quality(entry,conc_circ):
   path_h = paths.PathHandler('default',entry.bmark)
   QUALITIES = []
+  VARS = set(map(lambda o: o.varname, entry.outputs()))
+  for var in VARS:
+    TREF,YREF = compute_ref(entry.math_env,var,entry.bmark)
+
   for output in entry.outputs():
     varname = output.varname
-    #TREF,YREF = compute_ref(entry.math_env,varname,entry.bmark)
     TMEAS,YMEAS = compute_meas(output.out_file)
-    #simple_plot(output,path_h,'ref',TREF,YREF)
+    simple_plot(output,path_h,'ref',TREF,YREF)
     simple_plot(output,path_h,'meas',TMEAS,YMEAS)
 
     RUNTIME = compute_runtime(conc_circ,entry.math_env)

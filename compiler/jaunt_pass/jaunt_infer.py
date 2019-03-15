@@ -29,7 +29,6 @@ import util.util as util
 import util.config as CONFIG
 from tqdm import tqdm
 
-
 def sc_get_cont_var(jtype,block_name,loc,port,handle):
     if jtype == jenvlib.JauntVarType.OP_RANGE_VAR:
         return cont.CSMOpVar(port,handle)
@@ -240,6 +239,7 @@ def apply_result(jenv,circ,sln):
     new_circ = circ.copy()
     for (block_name,loc),ctx in ctxs.items():
         scale_modes[(block_name,loc)] = list(ctx.model.scale_mode(ctx))
+        random.shuffle(scale_modes[(block_name,loc)])
         if len(scale_modes[(block_name,loc)]) == 0:
             raise Exception("no modes for %s[%s]" % (block_name,loc))
 
@@ -247,18 +247,20 @@ def apply_result(jenv,circ,sln):
 
     locs = list(scale_modes.keys())
     scms = list(scale_modes.values())
-    for scm_combo in tqdm(itertools.product(*scms), total=n_combos):
+    options = list(itertools.product(*scms))
+    random.shuffle(options)
+    for scm_combo in tqdm(options, total=n_combos):
         for (block_name,loc),scale_mode in zip(locs,scm_combo):
             jaunt_util.log_warn("[%s,%s] -> %s" % (block_name,loc,scale_mode))
             print("[%s,%s] -> %s" % (block_name,loc,scale_mode))
             new_circ.config(block_name,loc).set_scale_mode(scale_mode)
         yield new_circ
 
-def infer_scale_config(prog,circ,obj):
+def infer_scale_config(prog,circ,infer_opt):
     assert(isinstance(circ,ConcCirc))
     jenv = sc_build_jaunt_env(prog,circ)
     jopt = JauntObjectiveFunctionManager(jenv)
-    jopt.method = obj.name()
+    jopt.method = infer_opt.name()
     jaunt_util.log_debug("===== %s =====" % jopt.method)
     for idx,(gpprob,obj) in \
         enumerate(jenvlib.build_gpkit_problem(circ,jenv,jopt)):
@@ -278,4 +280,4 @@ def infer_scale_config(prog,circ,obj):
 
         jopt.add_result(obj.tag(),sln)
         for new_circ in apply_result(jenv,circ,sln):
-                yield obj,new_circ
+                yield new_circ

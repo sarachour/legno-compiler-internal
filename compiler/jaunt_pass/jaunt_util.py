@@ -4,7 +4,7 @@ import ops.interval as interval
 import logging
 
 logger = logging.getLogger('jaunt')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.ERROR)
 # create file handler which logs even debug messages
 fh = logging.FileHandler('jaunt.log')
 fh.setLevel(logging.DEBUG)

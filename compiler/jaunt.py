@@ -143,7 +143,6 @@ def apply_result(jenv,circ,sln):
     for (block_name,loc),scfs in lut_updates.items():
         cfg = new_circ.config(block_name,loc)
         for port,expr in cfg.exprs():
-            print(scfs)
             new_expr = apply_result_lut_expr(expr,port,scfs)
             cfg.set_expr(port,new_expr)
 
@@ -161,7 +160,6 @@ def compute_scale(prog,circ,objfun):
 
         sln = jenvlib.solve_gpkit_problem(gpprob)
         if sln == None:
-            #jenvlib.debug_gpkit_problem(gpprob)
             return
 
         jopt.add_result(thisobj.tag(),sln)
@@ -174,20 +172,19 @@ def physical_scale(prog,circ):
         for objf,new_circ in compute_scale(prog,circ,obj):
             yield objf.name(),new_circ
 
-def scale(prog,circ):
-    def _infer(infer_obj):
-        for _,infer_circ in jaunt_infer.infer_scale_config(prog,circ,infer_obj):
-            for final_obj,final_circ in compute_scale(prog,infer_circ,infer_obj):
-                return final_obj.name(), final_circ
-
-        return None
-
+def scale(prog,circ,nslns):
     objs = JauntObjectiveFunctionManager.basic_methods()
-    for idx,obj in enumerate(objs):
-        result = _infer(obj)
-        if result is None:
-            continue
+    infer_objs = JauntObjectiveFunctionManager.inference_methods()
+    idx = 0
+    for infer_obj in infer_objs:
+        for infer_circ in jaunt_infer.infer_scale_config(prog,circ,infer_obj):
+            succ = False
+            for obj in objs:
+                for final_obj,final_circ in compute_scale(prog,infer_circ,obj):
+                    if not succ:
+                        idx += 1
+                        succ = True
+                        if idx > nslns:
+                            return
 
-        final_obj,final_circ = _infer(obj)
-        yield idx,final_obj,final_circ
-        idx += 1
+                    yield idx,final_obj.name(), final_circ

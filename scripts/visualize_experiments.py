@@ -166,8 +166,9 @@ def quality_vs_speed():
     inds = list(range(0,n))
     norm_time = list(map(lambda i: time[i]/max(time), inds))
     max_quality = max(map(lambda i: quality[i], \
-                          filter(lambda i: not mismatch[i],inds)))
-    norm_quality = list(map(lambda i: quality[i]/max_quality if not mismatch[i]  \
+                          filter(lambda i: mismatch[i].to_score() > 0.0,inds)))
+    norm_quality = list(map(lambda i: quality[i]/max_quality \
+                            if mismatch[i].to_score() > 0.0\
                             else 0.0, inds))
 
     # noise values
