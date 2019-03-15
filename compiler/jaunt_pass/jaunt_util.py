@@ -4,7 +4,7 @@ import ops.interval as interval
 import logging
 
 logger = logging.getLogger('jaunt')
-logger.setLevel(logging.ERROR)
+logger.setLevel(logging.DEBUG)
 # create file handler which logs even debug messages
 fh = logging.FileHandler('jaunt.log')
 fh.setLevel(logging.DEBUG)
@@ -61,11 +61,11 @@ def lower_bound_constraint(jenv,expr,math_lower,hw_lower):
     if is_zero(math_lower) and hw_lower <= 0:
         return
     elif is_zero(math_lower) and hw_lower > 0:
-        return jenv.fail()
+        return jenv.fail("(1) %s <= %s*%s impossible" % (hw_lower,math_lower,expr))
     elif is_zero(hw_lower) and math_lower >= 0:
         return
     elif is_zero(hw_lower) and math_lower < 0:
-        return jenv.fail()
+        return jenv.fail("(2) %s <= %s*%s impossible" % (hw_lower,math_lower,expr))
 
     assert(not is_zero(math_lower))
     assert(not is_zero(hw_lower))
@@ -87,7 +87,7 @@ def lower_bound_constraint(jenv,expr,math_lower,hw_lower):
     elif not same_sign(math_lower,hw_lower) and \
          hw_lower > 0 and math_lower < 0:
         log_info("[[fail]] dne A st: %s < A*%s" % (hw_lower,math_lower))
-        jenv.fail()
+        jenv.fail("(3) %s <= %s*%s impossible" % (hw_lower,math_lower,expr))
     else:
         raise Exception("uncovered lb: %s %s" % (math_lower,hw_lower))
 
@@ -103,7 +103,7 @@ def upper_bound_constraint(jenv,expr,math_upper,hw_upper):
         return
 
     elif is_zero(hw_upper) and math_upper > 0:
-        return jenv.fail()
+        return jenv.fail("(1) %s*%s <= %s impossible" (math_upper,expr,hw_upper))
 
     assert(not is_zero(math_upper))
     assert(not is_zero(hw_upper))
@@ -125,7 +125,7 @@ def upper_bound_constraint(jenv,expr,math_upper,hw_upper):
     elif not same_sign(math_upper,hw_upper) and \
          hw_upper < 0 and math_upper > 0:
         print("[[fail]] dne A st: %s > A*%s" % (hw_upper,math_upper))
-        jenv.fail()
+        return jenv.fail("(2) %s*%s <= %s impossible" (math_upper,expr,hw_upper))
     else:
         raise Exception("uncovered ub: %s %s" % (math_upper,hw_upper))
 

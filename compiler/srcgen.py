@@ -69,13 +69,13 @@ def gen_use_lut(circ,block,locstr,config,source):
 
 def gen_use_adc(circ,block,locstr,config):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
-  rng = cast_enum(config.scale_mode,\
+  rng = cast_enum([config.scale_mode],\
                   [RangeType])
 
   yield UseADCCmd(chip,tile,slce,
                            in_range=rng[0])
 
-def gen_use_dac(circ,block,locstr,config,source):
+def gen_use_dac(circ,block,locstr,config,source,no_calib=False):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   inv,rng = cast_enum(config.scale_mode,\
                       [SignType,RangeType])
@@ -95,13 +95,14 @@ def gen_use_dac(circ,block,locstr,config,source):
                            out_range=rng,
                            source=source)
 
-  #yield ConfigDACCmd(chip, \
-  #                            tile, \
-  #                            slce, \
-  #                            value=value, \
-  #                            inv=inv, \
-  #                            out_range=rng,
-  #                            source=source)
+  if not no_calib:
+    yield ConfigDACCmd(chip, \
+                       tile, \
+                       slce, \
+                       value=value, \
+                       inv=inv, \
+                       out_range=rng,
+                       source=source)
 
 
 def gen_get_adc_status(circ,block,locstr):
@@ -118,7 +119,7 @@ def gen_get_integrator_status(circ,block,locstr):
                                  slce)
 
 
-def gen_use_integrator(circ,block,locstr,config,debug=True):
+def gen_use_integrator(circ,block,locstr,config,debug=True,no_calib=False):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   inv,= cast_enum([config.comp_mode],
                   [SignType])
@@ -139,19 +140,18 @@ def gen_use_integrator(circ,block,locstr,config,debug=True):
                     in_range=in_rng,
                     out_range=out_rng,
                     debug=debug)
-  #yield ConfigIntegCmd(chip,
-  #                     tile,
-  #                     slce,
-  #                     init_cond=init_cond,
-  #                     inv=inv,
-  #                     in_range=in_rng,
-  #                     out_range=out_rng,
-  #                     debug=debug)
+  if not no_calib:
+    yield ConfigIntegCmd(chip,
+                         tile,
+                         slce,
+                         init_cond=init_cond,
+                         inv=inv,
+                         in_range=in_rng,
+                         out_range=out_rng,
+                         debug=debug)
 
 
-
-
-def gen_use_multiplier(circ,block,locstr,config):
+def gen_use_multiplier(circ,block,locstr,config,no_calib=False):
   MODE_MAP = {"mul":False,'vga':True}
 
   chip,tile,slce,index =gen_unpack_loc(circ,locstr)
@@ -170,14 +170,16 @@ def gen_use_multiplier(circ,block,locstr,config):
                                out_range=out_rng,
                                coeff=coeff,
                                use_coeff=True)
-    #yield ConfigMultCmd(chip,
-    #                           tile,
-    #                           slce,
-    #                           index,
-    #                           in0_range=in0_rng,
-    #                           out_range=out_rng,
-    #                           coeff=coeff,
-    #                           use_coeff=True)
+
+    if not no_calib:
+      yield ConfigMultCmd(chip,
+                          tile,
+                          slce,
+                          index,
+                          in0_range=in0_rng,
+                          out_range=out_rng,
+                          coeff=coeff,
+                          use_coeff=True)
 
 
   else:
@@ -217,9 +219,9 @@ def is_same_tile(circ,loc1,loc2):
       return False
   return True
 
-def gen_block(gprog,circ,block,locstr,config):
+def gen_block(gprog,circ,block,locstr,config,no_calib=False):
   if block.name == 'multiplier':
-    generator = gen_use_multiplier(circ,block,locstr,config)
+    generator = gen_use_multiplier(circ,block,locstr,config,no_calib=no_calib)
 
   elif block.name == 'tile_dac':
     sources = list(circ.get_conns_by_dest(block.name,locstr,'in'))
@@ -237,7 +239,7 @@ def gen_block(gprog,circ,block,locstr,config):
       else:
         raise Exception("unfamiliar slice: %s" % sliceno)
 
-    generator = gen_use_dac(circ,block,locstr,config,source)
+    generator = gen_use_dac(circ,block,locstr,config,source,no_calib=no_calib)
 
   elif block.name == 'tile_adc':
     sources = list(circ.get_conns_by_dest(block.name,locstr,'in'))
@@ -263,7 +265,7 @@ def gen_block(gprog,circ,block,locstr,config):
 
   elif block.name == 'integrator':
     generator = gen_use_integrator(circ,block,locstr,config, \
-                                   debug=True)
+                                   debug=True,no_calib=no_calib)
     cmd = gen_get_integrator_status(circ,block,locstr)
     gprog.add(cmd)
 
@@ -324,9 +326,9 @@ def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
   dest_blk = TO_BLOCK_TYPE[dblk]
 
   cmd = MakeConnCmd(src_blk, \
-                               src_loc, \
-                               dest_blk,
-                               dest_loc)
+                    src_loc, \
+                    dest_blk,
+                    dest_loc)
   gprog.add(cmd)
 
 
@@ -464,9 +466,14 @@ def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename):
 def generate(paths,board,conc_circ,menv,hwenv,filename):
   gren = GrendelProg()
   preamble(gren,board,conc_circ,menv,hwenv)
+  no_calib = True
+  #for block_name,loc,config in conc_circ.instances():
+  #  if block_name == 'lut' or block_name == 'tile_adc':
+  #    no_calib = True
+
   for block_name,loc,config in conc_circ.instances():
     block = conc_circ.board.block(block_name)
-    gen_block(gren,conc_circ,block,loc,config)
+    gen_block(gren,conc_circ,block,loc,config,no_calib=no_calib)
 
   for sblk,sloc,sport, \
       dblk,dloc,dport in conc_circ.conns():

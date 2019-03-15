@@ -80,8 +80,9 @@ def correlation():
     good_idents = list(map(lambda i: idents[ser][i],inds))
     mismatch = list(map(lambda mm : mm.to_score(), mismatches[ser]))
 
-    for r,q,o in zip(good_ranks,good_qualities,good_idents):
-      print("[%s]rank=%s, quality=%s" % (o,r,q))
+    for r,q,o,m in zip(ranks[ser],qualities[ser],idents[ser],mismatches[ser]):
+      mtag = "G" if m.to_score() > 0.0 else "B"
+      print("%s [%s]rank=%s, quality=%s" % (mtag, o,r,q))
     coeff = np.corrcoef(good_ranks,good_qualities)
     print("[%s] rank-corr : %s" % (ser,coeff[1][0]))
     if n > len(inds):

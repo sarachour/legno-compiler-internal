@@ -241,7 +241,6 @@ def apply_result(jenv,circ,sln):
     for (block_name,loc),ctx in ctxs.items():
         scale_modes[(block_name,loc)] = list(ctx.model.scale_mode(ctx))
         if len(scale_modes[(block_name,loc)]) == 0:
-            print(ctx)
             raise Exception("no modes for %s[%s]" % (block_name,loc))
 
         n_combos *= len(scale_modes[(block_name,loc)])
@@ -251,6 +250,7 @@ def apply_result(jenv,circ,sln):
     for scm_combo in tqdm(itertools.product(*scms), total=n_combos):
         for (block_name,loc),scale_mode in zip(locs,scm_combo):
             jaunt_util.log_warn("[%s,%s] -> %s" % (block_name,loc,scale_mode))
+            print("[%s,%s] -> %s" % (block_name,loc,scale_mode))
             new_circ.config(block_name,loc).set_scale_mode(scale_mode)
         yield new_circ
 

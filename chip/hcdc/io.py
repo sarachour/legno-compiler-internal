@@ -53,9 +53,13 @@ def dac_scale_model(dac):
       digital_props = util.make_dig_props(chipcmd.RangeType.MED,
                                           glb.DAC_MIN,
                                           glb.DAC_MAX,
-                                          glb.MAX_DAC_ERROR_DYNAMIC,
                                           glb.ANALOG_DAC_SAMPLES
       )
+      digital_props.set_min_quantize(digital_props.SignalType.CONSTANT, \
+                                     glb.MIN_QUANT_CONST)
+      digital_props.set_min_quantize(digital_props.SignalType.DYNAMIC, \
+                                     glb.MIN_QUANT_DYNAMIC)
+
       digital_props.set_continuous(0,glb.MAX_FREQ_DAC,units.khz)
       dac.set_coeff("*",mode,'out', coeff)
       dac.set_props("*",mode,["in"], digital_props)
@@ -129,11 +133,13 @@ def adc_scale_model(adc):
       digital_props = util.make_dig_props(chipcmd.RangeType.MED,
                                           glb.DAC_MIN,
                                           glb.DAC_MAX,
-                                          glb.MAX_DAC_ERROR_DYNAMIC,
                                           glb.ANALOG_DAC_SAMPLES
       )
       digital_props.set_continuous(0,glb.MAX_FREQ_ADC,units.khz)
-
+      digital_props.set_min_quantize(digital_props.SignalType.CONSTANT, \
+                                     glb.MIN_QUANT_CONST)
+      digital_props.set_min_quantize(digital_props.SignalType.DYNAMIC, \
+                                     glb.MIN_QUANT_DYNAMIC)
       adc.set_props("*",mode,["in"],analog_props)
       adc.set_props("*",mode,["out"], digital_props)
       adc.set_coeff("*",mode,'out', coeff)

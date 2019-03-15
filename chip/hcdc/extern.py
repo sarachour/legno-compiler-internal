@@ -27,8 +27,9 @@ def extern_continuous_model(xbar):
 # DUE DAC -> VTOI
 ext_chip_in_props = util.make_dig_props(chipcmd.RangeType.MED, \
                                         -1.0,1.0,
-                                        glb.MAX_DAC_ERROR_EXTIN, \
                                         glb.EXT_DAC_SAMPLES)
+ext_chip_in_props.set_min_quantize(ext_chip_in_props.SignalType.CONSTANT, \
+                                   glb.MIN_QUANT_EXTIN_DYNAMIC)
 ext_chip_in_props.set_clocked(10,500,units.us)
 # do note there's a weird offset of 0..
 #ext_chip_in_coeff = 0.030/0.055*2.0
@@ -51,8 +52,10 @@ extern_continuous_model(block_in)
 # DUE ADC -> VTOI
 ext_chip_out_props = util.make_dig_props(chipcmd.RangeType.MED, \
                                          -2.0,2.0, \
-                                         glb.MAX_DAC_ERROR_EXTIN, \
                                          glb.EXT_DAC_SAMPLES)
+ext_chip_out_props.set_min_quantize(ext_chip_in_props.SignalType.DYNAMIC, \
+                                   glb.MIN_QUANT_EXTOUT_DYNAMIC)
+
 #sample rate
 ext_chip_out_props.set_clocked(1,None,units.ns)
 # for adc

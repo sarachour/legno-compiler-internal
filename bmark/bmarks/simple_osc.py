@@ -21,7 +21,7 @@ def model(name,omega,menv_name='t20'):
     P = parse_diffeq("V", "P0", ":a", params)
     V = parse_diffeq("{omega}*P", "V0", ":b", params)
 
-    scf = omega if omega >= 1.0 else 1.0
+    scf = omega
     prob.bind("P", P)
     prob.bind("V", V)
     prob.bind("Loc", op.Emit(op.Var("P")))

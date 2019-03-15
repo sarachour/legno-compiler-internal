@@ -113,8 +113,8 @@ def apply_result_lut_expr(expr,output,lutvars):
                              ops.Var(name))
 
     return ops.Mult(
-        expr.substitute(repl),
-        ops.Const(lutvars[output])
+        ops.Const(lutvars[output]),
+        expr.substitute(repl)
     )
 
 def apply_result(jenv,circ,sln):
@@ -143,6 +143,7 @@ def apply_result(jenv,circ,sln):
     for (block_name,loc),scfs in lut_updates.items():
         cfg = new_circ.config(block_name,loc)
         for port,expr in cfg.exprs():
+            print(scfs)
             new_expr = apply_result_lut_expr(expr,port,scfs)
             cfg.set_expr(port,new_expr)
 
@@ -177,10 +178,16 @@ def scale(prog,circ):
     def _infer(infer_obj):
         for _,infer_circ in jaunt_infer.infer_scale_config(prog,circ,infer_obj):
             for final_obj,final_circ in compute_scale(prog,infer_circ,infer_obj):
-                yield final_obj.name(), final_circ
-                return
+                return final_obj.name(), final_circ
+
+        return None
 
     objs = JauntObjectiveFunctionManager.basic_methods()
-    for obj in objs:
-        for name,circ in _infer(obj):
-            yield name,circ
+    for idx,obj in enumerate(objs):
+        result = _infer(obj)
+        if result is None:
+            continue
+
+        final_obj,final_circ = _infer(obj)
+        yield idx,final_obj,final_circ
+        idx += 1

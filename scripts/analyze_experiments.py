@@ -144,68 +144,24 @@ def demean_signal(y):
   bias = np.mean(y)
   return list(map(lambda yi: yi-bias,y))
 
-def truncate_signal(t,y):
-  nsegs = 40
-  pts = np.linspace(min(t),max(t),nsegs)
-  bounds = []
-  means = []
-  stds = []
-  for i in range(1,nsegs):
-    lb,ub = pts[i-1],pts[i]
-    inds = list(filter(lambda i: t[i]<=ub and t[i]>=lb, \
-                       range(0,len(t))))
-    mean = np.mean(list(map(lambda i: y[i], inds)))
-    std = np.std(list(map(lambda i: y[i], inds)))
-    means.append(mean)
-    stds.append(std)
-    bounds.append((lb,ub))
-
-  n = len(bounds)
-  THRESHOLD = 0.05
-  TRIM_FRONT_LIMIT = 2
-  trim_front = 0
-  stop = False
-  for i in range(0,n):
-    if stds[i] < THRESHOLD and not stop:
-      trim_front = i
-      if trim_front > TRIM_FRONT_LIMIT:
-        stop = True
-
-    else:
-      stop=True
-
-  TRIM_BACK_LIMIT = 10
-  trim_back= n-1
-  stop = False
-  for i in range(n-1,0,-1):
-    if stds[i] < THRESHOLD and not stop:
-      trim_back = i
-      if trim_back < TRIM_BACK_LIMIT:
-        stop = True
-    else:
-      stop=True
-
-
-  print("trim: %d,%d" % (trim_front,trim_back))
-  time_low,_ = bounds[trim_front]
-  _,time_hi = bounds[trim_back]
-  inds = list(filter(lambda i: t[i]<=time_hi and t[i]>=time_low, \
-                       range(0,len(t))))
-  t_cut = list(map(lambda i: t[i], inds))
-  y_cut = list(map(lambda i: y[i], inds))
-  return t_cut,y_cut
+def truncate_signal(t,y,runtime):
+  print(max(t),min(t),runtime)
+  ttrunc = min(t)+runtime
+  idx = (np.abs(np.array(t)- ttrunc)).argmin()
+  return t[0:idx],y[0:idx]
 
 def analyze_quality(entry,conc_circ):
   path_h = paths.PathHandler('default',entry.bmark)
   QUALITIES = []
   for output in entry.outputs():
     varname = output.varname
-    TREF,YREF = compute_ref(entry.math_env,varname,entry.bmark)
+    #TREF,YREF = compute_ref(entry.math_env,varname,entry.bmark)
     TMEAS,YMEAS = compute_meas(output.out_file)
-    simple_plot(output,path_h,'ref',TREF,YREF)
+    #simple_plot(output,path_h,'ref',TREF,YREF)
     simple_plot(output,path_h,'meas',TMEAS,YMEAS)
 
-    TMEAS_CUT, YMEAS_CUT = truncate_signal(TMEAS,YMEAS)
+    RUNTIME = compute_runtime(conc_circ,entry.math_env)
+    TMEAS_CUT, YMEAS_CUT = truncate_signal(TMEAS,YMEAS,RUNTIME)
     YMEAS_ZERO = demean_signal(YMEAS_CUT)
     simple_plot(output,path_h,'cut',TMEAS_CUT,YMEAS_ZERO)
     TIME,MEAN,STDEV,SNR = \

@@ -170,8 +170,8 @@ def scale_model(mult):
       dig_props = util.make_dig_props(chipcmd.RangeType.MED, \
                                         glb.DAC_MIN,
                                         glb.DAC_MAX,
-                                        glb.MAX_DAC_ERROR_CONST,
                                         glb.ANALOG_DAC_SAMPLES)
+      dig_props.set_min_quantize(dig_props.SignalType.CONSTANT, glb.MIN_QUANT_CONST)
       dig_props.set_constant()
       mult.set_props("mul",mode,["in0"],
                     util.make_ana_props(in0rng,
@@ -198,8 +198,8 @@ def scale_model(mult):
       dig_props = util.make_dig_props(chipcmd.RangeType.MED,\
                                       glb.DAC_MIN,
                                       glb.DAC_MAX, \
-                                      glb.MAX_DAC_ERROR_CONST, \
                                       glb.ANALOG_DAC_SAMPLES)
+      dig_props.set_min_quantize(dig_props.SignalType.CONSTANT, glb.MIN_QUANT_CONST)
       dig_props.set_constant()
       mult.set_props("vga",mode,["in0"],
                     util.make_ana_props(in0rng, \

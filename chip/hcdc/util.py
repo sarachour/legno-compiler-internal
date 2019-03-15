@@ -43,14 +43,13 @@ def make_ana_props(rng,lb,ub,min_sig):
     prop.set_min_signal(min_sig,units.uA)
     return prop
 
-def make_dig_props(rng,lb,ub,max_error,npts):
+def make_dig_props(rng,lb,ub,npts):
     start = lb*rng.coeff()
     end = ub*rng.coeff()
     hcdcv2_values = np.linspace(start,end,npts)
     info = props.DigitalProperties() \
                 .set_values(hcdcv2_values)
     error = np.mean(np.diff(hcdcv2_values))
-    info.set_max_error(max_error)
     return info
 
 def apply_blacklist(options,blacklist):

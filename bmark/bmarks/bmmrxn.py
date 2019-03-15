@@ -16,27 +16,21 @@ def model():
         'E0' : 0.44,
         'S0' : 0.64,
         'ES0' : 0.0,
-        'P0' : 0.0,
         'kf' : 0.1,
         'kr' : 0.2,
-        'kd': 0.2
     }
-    params['krkd'] = params['kr'] + params['kd']
-    E = parse_fn('{E0}+(-ES)+(-P)',params)
-    S = parse_fn('{S0}+(-ES)+(-P)',params)
-    ES = parse_diffeq("{kf}*E*S + {krkd}*(-ES)", "ES0", ":z", params)
-    P = parse_diffeq("{kd}*ES","P0",":w", params)
+    E = parse_fn('{E0}+0.99999*(-ES)',params)
+    S = parse_fn('{S0}+0.99999*(-ES)',params)
+    ES = parse_diffeq("{kf}*E*S + {kr}*(-ES)", "ES0", ":z", params)
     prob.bind("E",E)
     prob.bind("S",S)
     prob.bind("ES",ES)
-    prob.bind("P",P)
     prob.set_interval("E",0,params['E0'])
     prob.set_interval("S",0,params['S0'])
     max_ES = min(params['E0'],params['S0'])
     prob.set_interval("ES",0,max_ES)
-    prob.set_interval("P",0,max_ES)
     prob.bind("COMPLEX", op.Emit(op.Var("ES")))
-    prob.set_max_sim_time(20)
+    prob.set_max_sim_time(0)
     prob.compile()
     menv = menvs.get_math_env('t20')
     return menv,prob

@@ -77,22 +77,27 @@ class AnalogProperties(Properties):
             % (self._bounds,self._bandwidth,self._min)
 
 class DigitalProperties(Properties):
-    class Type(Enum):
+    class ClockType(Enum):
         CLOCKED = "clocked"
         CONTINUOUS = "continuous"
         CONSTANT = "constant"
         UNKNOWN = "unknown"
 
+    class SignalType(Enum):
+        CONSTANT = "constant"
+        DYNAMIC = "dynamic"
+
     def __init__(self):
         Properties.__init__(self,Properties.DIGITAL)
         self._values = None
         self._max_error = None
-        self._kind = DigitalProperties.Type.UNKNOWN
+        self._kind = DigitalProperties.ClockType.UNKNOWN
         # for clocked
         self._sample_rate = (None,units.unknown)
-        self._max_samples = None
         # for continuous
         self._bandwidth = (None,None,units.unknown)
+        # quantization
+        self._min_quantize = {}
 
     def __repr__(self):
         clk = "Synch(kind=%s, rate=%s, samps=%s, bw=%s)" % \
@@ -101,23 +106,22 @@ class DigitalProperties(Properties):
         return dig + " " + clk
 
     def set_continuous(self,lb,ub,unit):
-        self._kind = DigitalProperties.Type.CONTINUOUS
+        self._kind = DigitalProperties.ClockType.CONTINUOUS
         self._bandwidth = (lb,ub,unit)
         return self
 
     def set_clocked(self,sample_rate,max_samples,unit):
-        self._kind = DigitalProperties.Type.CLOCKED
+        self._kind = DigitalProperties.ClockType.CLOCKED
         self._sample_rate = (sample_rate,unit)
         self._max_samples = max_samples
         return self
 
-    def set_max_error(self,v):
-        assert(v >= 0.0 and v < 1.0)
-        self._max_error = v
+    def set_min_quantize(self,typ,v):
+        assert(not typ in self._min_quantize)
+        self._min_quantize[typ] = v
 
-    @property
-    def max_error(self):
-        return self._max_error
+    def min_quantize(self,typ):
+        return self._min_quantize[typ]
 
     def interval(self):
         lb = min(self.values())
@@ -163,7 +167,7 @@ class DigitalProperties(Properties):
         return self._values
 
     def set_constant(self):
-        self._kind = DigitalProperties.Type.CONSTANT
+        self._kind = DigitalProperties.ClockType.CONSTANT
         return self
 
     @property
@@ -173,5 +177,5 @@ class DigitalProperties(Properties):
     def check(self):
         assert(not self._values is None)
         assert(not self._max_error is None)
-        assert(self._kind != DigitalProperties.Type.UNKNOWN)
+        assert(self._kind != DigitalProperties.ClockType.UNKNOWN)
         return self

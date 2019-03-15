@@ -30,6 +30,8 @@ class JauntEnv:
     self._meta = {}
     self._metavar = 0
     self._failed = False
+    self._failures = []
+
     self._use_tau = False
     self._solved = False
     self._interactive = False
@@ -49,8 +51,12 @@ class JauntEnv:
   def uses_tau(self):
       return self._use_tau
 
-  def fail(self):
+  def fail(self,msg):
       self._failed = True
+      self._failures.append(msg)
+
+  def failures(self):
+    return self._failures
 
   def failed(self):
       return self._failed
@@ -203,7 +209,10 @@ def gpkit_expr(variables,expr):
 def build_gpkit_problem(circ,jenv,jopt):
     failed = jenv.failed()
     if failed:
-        return None
+      jaunt_util.log_warn("==== FAIL ====")
+      for fail in jenv.failures():
+        jaunt_util.log_warn(fail)
+      return
 
 
     variables = {}
@@ -249,7 +258,7 @@ def build_gpkit_problem(circ,jenv,jopt):
     if failed:
         print("<< failed >>")
         time.sleep(0.2)
-        return None
+        return
 
     for obj in jopt.objective(circ,variables):
       cstrs = list(gpkit_cstrs) + list(obj.constraints())

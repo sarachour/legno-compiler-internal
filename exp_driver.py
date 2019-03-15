@@ -53,6 +53,8 @@ visualize_subp.add_argument('type', help='visualization type [rank-vs-quality,co
 
 annotate_subp = subparsers.add_parser('annotate', help='annotate mismatched graphs.')
 annotate_subp.add_argument('bmark', type=str,help='benchmark to annotate.')
+annotate_subp.add_argument('--recompute', action='store_true',
+                       help='.')
 
 args = parser.parse_args()
 
