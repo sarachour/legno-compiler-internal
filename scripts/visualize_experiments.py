@@ -78,6 +78,8 @@ def correlation():
     good_ranks = list(map(lambda i: ranks[ser][i], inds))
     good_qualities = list(map(lambda i: qualities[ser][i], inds))
     good_idents = list(map(lambda i: idents[ser][i],inds))
+    max_rank = max(good_ranks)
+    max_quality= max(good_qualities)
     mismatch = list(map(lambda mm : mm.to_score(), mismatches[ser]))
 
     for r,q,o,m in zip(ranks[ser],qualities[ser],idents[ser],mismatches[ser]):
@@ -89,7 +91,9 @@ def correlation():
       coeff = np.corrcoef(ranks[ser],mismatch)
       print("[%s] mismatch-corr : %s" % (ser,coeff[1][0]))
 
-    plt.scatter(good_ranks,good_qualities,label=ser)
+    plot_ranks = list(map(lambda rank: rank/max_rank, good_ranks))
+    plot_qualities = list(map(lambda qual: qual/max_quality, good_qualities))
+    plt.scatter(plot_ranks,plot_qualities,label=ser)
     print("\n")
 
   plt.legend()
@@ -154,10 +158,6 @@ def quality_vs_speed():
   mismatches= data['mismatches']
   opts = data['opts']
   allowed = ['lo-noise','slow','fast']
-  data_time = []
-  data_quality = []
-  nz_time = []
-  nz_quality = []
   for ser in series:
     n = len(times[ser])
     time,quality,mismatch,opt = times[ser],qualities[ser], \
@@ -172,22 +172,16 @@ def quality_vs_speed():
                             else 0.0, inds))
 
     # noise values
-    data_time += norm_time
-    data_quality += norm_quality
+    optset = set(map(lambda i: opts[ser][i],inds))
+    for opt in optset:
+      opt_inds = list(filter(lambda i : opt == opts[ser][i], inds))
+      norm_opt_time = list(map(lambda i: norm_time[i], opt_inds))
+      norm_opt_quality = list(map(lambda i: norm_quality[i], opt_inds))
+      plt.scatter(norm_opt_time,norm_opt_quality,marker='x',label=opt)
 
-    nz_inds = list(filter(lambda i : opts[ser][i] == 'lo-noise', inds))
-    norm_nz_time = list(map(lambda i: norm_time[i], nz_inds))
-    norm_nz_quality = list(map(lambda i: norm_quality[i], nz_inds))
-
-    nz_time += norm_nz_time
-    nz_quality += norm_nz_quality
-
-    #plt.legend()
-  plt.scatter(data_time,data_quality,color='black',label='data')
-  plt.scatter(nz_time,nz_quality,color='red',marker='x',label='low-noise')
-  plt.legend()
-  plt.savefig("runt.png")
-  plt.clf()
+    plt.legend()
+    plt.savefig("runt_%s.png" % ser)
+    plt.clf()
 
 def execute(args):
   name = args.type

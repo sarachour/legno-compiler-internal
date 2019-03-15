@@ -28,7 +28,11 @@ class JauntObjectiveFunctionManager():
     def physical_methods():
         #return ['lo-noise', 'lo-bias', 'lo-delay']
         # boptlib.MaxSignalAtSpeedObjFunc
-        return [physoptlib.LowNoiseObjFunc]
+        return [
+            physoptlib.LowNoiseObjFunc,
+            physoptlib.FastLowNoiseObjFunc
+
+        ]
 
     def __init__(self,jenv):
         self.method = None

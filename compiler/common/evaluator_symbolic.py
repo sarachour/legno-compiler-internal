@@ -54,7 +54,8 @@ class Evaluator:
         freq_dict[(block,inst,port)] = bw
 
       elif var.op == nop.NOpType.SIG:
-        interval_dict[(block,inst,port)] = self.interval(block,inst,port)
+        ival = self.interval(block,inst,port)
+        interval_dict[(block,inst,port)] = ival
 
       elif var.op == nop.NOpType.REF:
         raise Exception("unimpl")

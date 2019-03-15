@@ -62,6 +62,7 @@ def exec_jaunt_phys(hdacv2_board,args):
            path_handler.conc_circ_to_args(fname)
 
         gen_key = (circ_bmark,str(circ_indices),circ_scale_index)
+
         if circ_opt in jaunt.JauntObjectiveFunctionManager.physical_methods():
           continue
 
@@ -76,6 +77,7 @@ def exec_jaunt_phys(hdacv2_board,args):
                                                     circ_scale_index,
                                                     opt)
             scaled_circ.write_circuit(filename)
+            print("-> %s" % filename)
             filename = path_handler.conc_graph_file(circ_bmark,
                                                     circ_indices,
                                                     circ_scale_index,

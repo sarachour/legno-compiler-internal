@@ -146,7 +146,7 @@ def demean_signal(y):
 
 def truncate_signal(t,y,runtime):
   print(max(t),min(t),runtime)
-  ttrunc = min(t)+runtime
+  ttrunc = min(t)+runtime*0.8
   idx = (np.abs(np.array(t)- ttrunc)).argmin()
   return t[0:idx],y[0:idx]
 

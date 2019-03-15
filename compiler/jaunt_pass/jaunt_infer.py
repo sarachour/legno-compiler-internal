@@ -272,7 +272,7 @@ def infer_scale_config(prog,circ,infer_opt):
         if sln is None:
             jaunt_util.log_info("[[FAILURE - NO SLN]]")
             jenv.set_solved(False)
-            jenvlib.debug_gpkit_problem(gpprob)
+            #jenvlib.debug_gpkit_problem(gpprob)
             return
         else:
             jaunt_util.log_info("[[SUCCESS - FOUND SLN]]")

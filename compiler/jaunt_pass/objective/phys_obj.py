@@ -34,8 +34,14 @@ def gpkit_expr(jenv,varmap,circ,expr,refs):
     config = circ.config(block,loc)
     if expr.op == nop.NOpType.SIG:
       scvarname = jenv.get_scvar(block,loc,port)
+      if jenv.has_inject_var(block,loc,port):
+        injvarname = jenv.get_inject_var(block,loc,port)
+        scexpr = varmap[scvarname]*varmap[injvarname]
+      else:
+        scexpr = varmap[scvarname]
+
       scival = config.interval(port)
-      result = (varmap[scvarname]*scival.bound)**expo
+      result = (scexpr*scival.bound)**expo
       return result
 
     elif expr.op == nop.NOpType.FREQ:
@@ -85,20 +91,22 @@ def compute_expression(varmap,jenv,circ, \
 
 
   # compute signal
-  scvarname = jenv.get_scvar(block_name,loc,port)
   scival = circ.config(block_name,loc).interval(port)
+  scvarname = jenv.get_scvar(block_name,loc,port)
+  if jenv.has_inject_var(block_name,loc,port):
+    injvarname = jenv.get_inject_var(block,loc,port)
+    scexpr = varmap[scvarname]*varmap[injvarname]
+  else:
+    scexpr = varmap[scvarname]
+
   if scival.bound > 0:
-    signal = varmap[scvarname]*scival.bound
+    signal = scexpr*scival.bound
   else:
     signal = None
 
   return gpkit_mean,gpkit_variance,signal
 
-
-
-def compute(varmap,jenv,circ,models,ports,method='low-snr'):
-  time_constant = 1.0/circ.board.time_constant
-  Jtau = varmap['tau']
+def compute_distributions(varmap,jenv,circ,models,ports):
   means = {}
   variances = {}
   signals = {}
@@ -112,27 +120,63 @@ def compute(varmap,jenv,circ,models,ports,method='low-snr'):
     signals[(block_name,loc,port)] = sig
     means[(block_name,loc,port)] =mean
     variances[(block_name,loc,port)] =variance
+  return signals,means,variances
 
-  if method == 'low_snr':
-    signal = 1.0
-    noise = 1.0
-    snr = 0.0
-    for block_name,loc,port in ports:
-      if not (block_name,loc,port) in signals:
-        continue
+def compute_snr_info(ports,signals,means,variances):
+  signal = 1.0
+  noise = 1.0
+  snr = 0.0
+  for block_name,loc,port in ports:
+    if not (block_name,loc,port) in signals:
+      continue
 
-      sig = signals[(block_name,loc,port)]
-      nz = variances[(block_name,loc,port)]
-      if not sig is None:
-        signal *= (sig**-1)
-        snr += (sig**-1)*(nz)
-
+    sig = signals[(block_name,loc,port)]
+    nz = variances[(block_name,loc,port)]
+    if not sig is None:
+      signal *= (sig**-1)
       noise *= nz
+      snr += (sig**-1)*(nz)
 
-    opt = signal+signal*noise
-    return opt
+  return signal,noise,snr
+
+def compute(varmap,jenv,circ,models,ports,method='low-snr'):
+  time_constant = 1.0/circ.board.time_constant
+  Jtau = varmap['tau']
+  signals,means,variances = compute_distributions(varmap,jenv,circ,models,ports)
+  if method == 'low_snr':
+    sig,nz,snr = compute_snr_info(ports,signals,means,variances)
+    #return nz*(sig**-1)
+    return snr
+
+  elif method == 'snr_to_tau':
+    sig,nz,snr = compute_snr_info(ports,signals,means,variances)
+    return snr*(Jtau**(-1))
+
   else:
     raise Exception("unknown method <%s>" % method)
+
+class FastLowNoiseObjFunc(optlib.JauntObjectiveFunction):
+
+  def __init__(self,obj):
+    optlib.JauntObjectiveFunction.__init__(self,obj)
+
+  @staticmethod
+  def name():
+    return 'lo-noise-fast'
+
+  @staticmethod
+  def make(circuit,jobj,varmap):
+    jenv = jobj.jenv
+    ports = evalheur.get_ports(circuit)
+    models = []
+    for block_name,loc,out in ports:
+      model = circuit.config(block_name,loc) \
+                     .propagated_noise(out)
+      models.append(model)
+
+    opt = compute(varmap,jenv,circuit,models,ports, \
+                  method='snr_to_tau')
+    yield FastLowNoiseObjFunc(opt)
 
 class LowNoiseObjFunc(optlib.JauntObjectiveFunction):
 
