@@ -117,21 +117,26 @@ class MaxSignalAndStabilityObjFunc(optlib.JauntObjectiveFunction):
     yield MaxSignalAndStabilityObjFunc(ot.objective()+oi.objective())
 
 
-class MaxSignalAtSpeedObjFunc(optlib.JauntObjectiveFunction):
+class MultSpeedObjFunc(optlib.JauntObjectiveFunction):
 
   def __init__(self,obj,idx,tau,cstrs):
     self._tau = tau
     self._idx = idx
     optlib.JauntObjectiveFunction.__init__(self,obj,
-                                  tag="tau%d" % idx,
+                                           tag=self.mktag(idx), \
                                            cstrs=cstrs)
+
+  def mktag(self,idx):
+    raise NotImplementedError
+
+
 
   @staticmethod
   def name():
     return "multspeed"
 
   @staticmethod
-  def make(circ,jobj,varmap,n=5):
+  def make(cls,circ,jobj,varmap,n=7):
     if not jobj.jenv.uses_tau():
       return
 
@@ -145,12 +150,33 @@ class MaxSignalAtSpeedObjFunc(optlib.JauntObjectiveFunction):
     jenv = jobj.jenv
     min_t=jobj.result('slow')['freevariables'][jenv.TAU]
     max_t=jobj.result('fast')['freevariables'][jenv.TAU]
-    taus = np.linspace(min_t,max_t,n)
-    for idx in range(1,n-1):
+    taus = np.logspace(np.log10(min_t),np.log10(max_t),n)
+    for idx in range(0,n):
       tau = taus[idx]
       cstrs = [varmap[jenv.TAU] == tau]
-      obj = list(MaxSignalObjFunc.make(circ,jobj,varmap))[0].objective()
-      yield MaxSignalAtSpeedObjFunc(obj,
-                                    idx=idx,
-                                    tau=tau,
-                                    cstrs=cstrs)
+      yield cls.mkobj(circ,jobj,varmap,idx,tau,cstrs)
+
+class MaxSignalAtSpeedObjFunc(MultSpeedObjFunc):
+
+  def __init__(self,obj,idx,tau,cstrs):
+    MultSpeedObjFunc.__init__(self,obj,idx,tau,cstrs)
+
+  def mktag(self,idx):
+    return "sig-tau%d" % idx
+
+  @staticmethod
+  def name():
+    return "sig-sweep-tau"
+
+  @staticmethod
+  def mkobj(circ,jobj,varmap,idx,tau,cstrs):
+    obj = list(MaxSignalObjFunc.make(circ,jobj,varmap))[0].objective()
+    return MaxSignalAtSpeedObjFunc(obj,
+                                   idx=idx,
+                                   tau=tau,
+                                   cstrs=cstrs)
+
+  @staticmethod
+  def make(circ,jobj,varmap,n=7):
+    return MultSpeedObjFunc.make(MaxSignalAtSpeedObjFunc,circ, \
+                                 jobj,varmap,n=n)

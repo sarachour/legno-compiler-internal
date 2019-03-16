@@ -50,12 +50,8 @@ inline void write_dac1_value(experiment_t * expr, int idx){
   int i = idx < N_DAC or expr->periodic_dac[1] ? (idx % N_DAC) : N_DAC-1;
   analogWrite(DAC1, get_value(expr,expr->dac_offsets[1] + i )); 
 }
-void _toggle_SDA(){
-  SDA_VAL = SDA_VAL == HIGH ? LOW : HIGH;
+inline void set_SDA(int SDA_VAL){
   digitalWrite(SDA,SDA_VAL);
-  while(digitalRead(SDA) != SDA_VAL){
-     digitalWrite(SDA,SDA_VAL);
-  }
 }
 
 void _update_wave(){
@@ -221,7 +217,7 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   analogWrite(DAC1, 0); 
   // wait a bit for the dac values to take
   delay(10);
-  // commit the configuration.
+  // commit the configuration once.
   if(expr->use_analog_chip){
     fab->cfgCommit();
     fab->cfgStop();
@@ -232,40 +228,45 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   float sim_time_sec = expr->sim_time_sec*1.0;
   // compute the timeout to set of the analog timer
   // if we're conducting a short simulation ,use delayus
+  set_SDA(LOW);
   if(expr->sim_time_sec < 0.1 && expr->use_analog_chip){
     unsigned int sleep_time_us = (unsigned int) (sim_time_sec*1e6);
     //set a timeout within the chip
     Timer3.start(expr->time_between_samps_us);
-    _toggle_SDA();
+    set_SDA(HIGH);
     fab->execStart();
     delayMicroseconds(sleep_time_us);
     fab->execStop();
     Timer3.stop();
+    set_SDA(LOW);
   }
   // if we're conducting a longer simulation
   else if(expr->sim_time_sec >= 0.1 && expr->use_analog_chip){
     unsigned long sleep_time_ms = (unsigned long) (sim_time_sec*1e3);
     //set a timeout within the chip, if the timeout fits in uint max
     Timer3.start(expr->time_between_samps_us);
-    _toggle_SDA();
+    set_SDA(HIGH);
     fab->execStart();
     delay(sleep_time_ms);
     fab->execStop();
     Timer3.stop();
+    set_SDA(LOW);
   }
   else if(expr->sim_time_sec < 0.1 && not expr->use_analog_chip){
     unsigned int sleep_time_us = (unsigned int) (sim_time_sec*1e6);
     Timer3.start(expr->time_between_samps_us);
-    _toggle_SDA();
+    set_SDA(HIGH);
     delayMicroseconds(sleep_time_us);
     Timer3.stop();
+    set_SDA(LOW);
   }
   else if(expr->sim_time_sec >= 0.1 && not expr->use_analog_chip){
     unsigned long sleep_time_ms = (unsigned long) (sim_time_sec*1e3);
     Timer3.start(expr->time_between_samps_us);
-    _toggle_SDA();
+    set_SDA(HIGH);
     delay(sleep_time_ms);
     Timer3.stop();
+    set_SDA(LOW);
   }
   else{
     comm::error("unrecognized case");

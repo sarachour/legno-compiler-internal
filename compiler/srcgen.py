@@ -417,24 +417,16 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
                    )
     ))
 
-def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename):
+def execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trialno):
   if hwenv.use_oscilloscope and len(hwenv.oscilloscope.outputs()) > 0:
     gren.add(parse('osc_setup_trigger'))
-
-  gren.add(parse('micro_setup_chip'))
-  gren.add(parse('micro_get_status'))
   gren.add(parse('micro_run'))
-  gren.add(parse('micro_get_status'))
-  gren.add(parse('micro_teardown_chip'))
-
-
   circ_bmark,circ_indices,circ_scale_index,circ_opt,_,_ = \
                     path_handler.grendel_file_to_args(filename)
 
 
 
   adcs_in_use = get_ext_adcs_in_use(board,conc_circ,menv)
-
   for handle, info in adcs_in_use.items():
     out_no = hwenv.adc(handle)
     filename = path_handler.measured_waveform_file(circ_bmark, \
@@ -443,7 +435,8 @@ def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename):
                                                    circ_opt,
                                                    menv.name, \
                                                    hwenv.name, \
-                                                   info['label'])
+                                                   info['label'],
+                                                   trialno)
     if not out_no is None:
       gren.add(parse('micro_get_adc_values %d %s %s' % (out_no, \
                                                         info['label'], \
@@ -461,9 +454,17 @@ def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename):
       raise Exception("cannot read value")
 
 
+def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,ntrials):
+  gren.add(parse('micro_setup_chip'))
+  gren.add(parse('micro_get_status'))
+  for trial in range(0,ntrials):
+    execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trial)
+
+  gren.add(parse('micro_get_status'))
+  gren.add(parse('micro_teardown_chip'))
   return gren
 
-def generate(paths,board,conc_circ,menv,hwenv,filename):
+def generate(paths,board,conc_circ,menv,hwenv,filename,ntrials):
   gren = GrendelProg()
   preamble(gren,board,conc_circ,menv,hwenv)
   no_calib = True
@@ -480,5 +481,5 @@ def generate(paths,board,conc_circ,menv,hwenv,filename):
     gen_conn(gren,conc_circ,sblk,sloc,sport, \
              dblk,dloc,dport)
 
-  postconfig(paths,gren,board,conc_circ,menv,hwenv,filename)
+  postconfig(paths,gren,board,conc_circ,menv,hwenv,filename,ntrials)
   return gren

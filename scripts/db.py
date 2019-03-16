@@ -60,7 +60,7 @@ class MismatchStatus(Enum):
     elif self == MismatchStatus.BAD:
       return 0.0
     elif self == MismatchStatus.UNKNOWN:
-      return None
+      return 1.0
 
   @staticmethod
   def from_code(i):
@@ -118,7 +118,7 @@ class ExperimentStatus(Enum):
 class OutputEntry:
 
   def __init__(self,db,bmark,arco_indices,jaunt_index,
-               objective_fun,math_env,hw_env,varname):
+               objective_fun,math_env,hw_env,varname,trial):
     self._db = db
     self._bmark = bmark
     self._arco_indices = arco_indices
@@ -127,12 +127,33 @@ class OutputEntry:
     self._math_env = math_env
     self._hw_env = hw_env
     self._varname = varname
-    self._out_file = None
+    self._trial = trial
     self._status = None
+    self._out_file = None
     self._quality = None
     self._rank = None
     self._modif = None
     self._columns = None
+
+  @property
+  def trial(self):
+    return self._trial
+
+
+  @property
+  def tau(self):
+    return self._tau
+
+
+  @property
+  def fmax(self):
+    return self._fmax
+
+  @property
+  def scf(self):
+    return self._scf
+
+
 
   @property
   def rank(self):
@@ -195,12 +216,16 @@ class OutputEntry:
       jaunt_index=args['jaunt'],
       math_env=args['menv'],
       hw_env=args['hwenv'],
-      varname=args['varname']
+      varname=args['varname'],
+      trial=args['trial']
     )
     entry._columns = args
     entry._out_file=args['out_file']
+    entry._trial=args['trial']
     entry._quality=args['quality']
     entry._rank=args['rank']
+    entry._fmax=args['fmax']
+    entry._scf=args['scf']
     entry._status=OutputStatus(args['status'])
     entry._modif=args['modif']
     entry._columns = args
@@ -560,12 +585,16 @@ class ExperimentDB:
     menv text NOT NULL,
     hwenv text NOT NULL,
     varname text NOT NULL,
+    trial int NOT NULL,
     out_file text,
     rank real,
     quality real,
+    fmax real,
+    tau real,
+    scf real,
     modif timestamp,
     PRIMARY KEY (bmark,arco0,arco1,arco2,arco3,jaunt,
-                 opt,menv,hwenv,varname)
+                 opt,menv,hwenv,varname,trial)
     FOREIGN KEY (bmark,arco0,arco1,arco2,arco3,jaunt,opt,menv,hwenv)
     REFERENCES experiments(bmark,arco0,arco1,arco2,arco3,jaunt,
                            opt,menv,hwenv)
@@ -574,8 +603,8 @@ class ExperimentDB:
     self._output_order = ['bmark','status','arco0', \
                           'arco1','arco2', \
                           'arco3','jaunt','opt','menv','hwenv',
-                          'varname','out_file', \
-                          'rank','quality','modif']
+                          'varname','trial','out_file', \
+                          'rank','quality','fmax','tau','scf','modif']
 
     self._output_modifiable = ['quality','modif','status','rank']
     self._curs.execute(cmd)
@@ -611,7 +640,7 @@ class ExperimentDB:
       yield entry
 
   def to_where_clause(self,bmark,arco_inds,jaunt_inds,opt, \
-                      menv_name,hwenv_name,varname=None):
+                      menv_name,hwenv_name,varname=None,trial=None):
     cmd = '''WHERE bmark = "{bmark}"
     AND arco0 = {arco0}
     AND arco1 = {arco1}
@@ -627,6 +656,10 @@ class ExperimentDB:
     if not varname is None:
       cmd += "AND varname = \"{varname}\""
       args['varname'] = varname
+    if not trial is None:
+      cmd += "AND trial = \"{varname}\""
+      args['trial'] = varname
+
 
     conc_cmd = cmd.format(**args)
     return conc_cmd
@@ -736,14 +769,15 @@ class ExperimentDB:
       raise Exception("nonunique experiment")
 
   def delete_output(self,bmark,arco_inds,jaunt_inds, \
-                    opt,menv_name,hwenv_name,output):
+                    opt,menv_name,hwenv_name,output,trial):
     cmd = '''
     DELETE FROM outputs {where_clause};
     '''
     where_clause = self.to_where_clause(bmark,\
                                         arco_inds,jaunt_inds,opt, \
                                         menv_name,hwenv_name,
-                                        varname=output)
+                                        varname=output,
+                                        trial=trial)
     conc_cmd = cmd.format(where_clause=where_clause)
     self._curs.execute(conc_cmd)
     self._conn.commit()
@@ -765,13 +799,12 @@ class ExperimentDB:
 
 
   def add_output(self,path_handler,bmark,arco_inds, \
-                 jaunt_inds, \
-                 opt, \
-                 menv_name,hwenv_name,output):
+                 jaunt_inds, opt,\
+                 menv_name,hwenv_name,output,trial):
     cmd = '''
       INSERT INTO outputs (
          bmark,arco0,arco1,arco2,arco3,jaunt,
-         opt,menv,hwenv,out_file,status,modif,varname
+         opt,menv,hwenv,out_file,status,modif,varname,trial
       ) VALUES
       (
          "{bmark}",{arco0},{arco1},{arco2},{arco3},{jaunt},
@@ -779,7 +812,8 @@ class ExperimentDB:
          "{out_file}",
          "{status}",
          "{modif}",
-         "{varname}"
+         "{varname}",
+         {trial}
       )
       '''
     args = make_args(bmark,arco_inds,jaunt_inds,opt, \
@@ -787,11 +821,13 @@ class ExperimentDB:
     args['modif'] = datetime.datetime.now()
     args['status'] = OutputStatus.PENDING.value
     args['varname'] = output
+    args['trial'] = trial
     args['out_file'] = path_handler.measured_waveform_file(bmark,arco_inds, \
                                                            jaunt_inds, \
                                                            opt,menv_name, \
                                                            hwenv_name, \
-                                                           output)
+                                                           output, \
+                                                           trial)
     conc_cmd = cmd.format(**args)
     self._curs.execute(conc_cmd)
     self._conn.commit()
@@ -842,10 +878,10 @@ class ExperimentDB:
       entry = self.get_experiment(bmark,arco_inds,jaunt_inds, \
                                   opt,menv_name,hwenv_name)
       for out_file in get_output_files(args['grendel_file']):
-        _,_,_,_,_,_,var_name = path_handler \
+        _,_,_,_,_,_,var_name,trial = path_handler \
                                .measured_waveform_file_to_args(out_file)
         self.add_output(path_handler,bmark,arco_inds,jaunt_inds,opt, \
-                        menv_name,hwenv_name,var_name)
+                        menv_name,hwenv_name,var_name,trial)
 
       entry.synchronize()
       return entry

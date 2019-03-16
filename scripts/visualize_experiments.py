@@ -150,6 +150,9 @@ def best_speed():
 def best_ranked():
   summarize_best('ranks',executed_only=False)
 
+def strip_tau(opt):
+  return opt.split('-tau')[0]
+
 def quality_vs_speed():
   data = get_data(series_type='circ_idents')
   qualities = data['qualities']
@@ -163,21 +166,21 @@ def quality_vs_speed():
     time,quality,mismatch,opt = times[ser],qualities[ser], \
                                 mismatches[ser],opts[ser]
 
-    inds = list(range(0,n))
-    norm_time = list(map(lambda i: time[i]/max(time), inds))
-    max_quality = max(map(lambda i: quality[i], \
-                          filter(lambda i: mismatch[i].to_score() > 0.0,inds)))
-    norm_quality = list(map(lambda i: quality[i]/max_quality \
-                            if mismatch[i].to_score() > 0.0\
-                            else 0.0, inds))
+    inds = list(filter(lambda i : mismatch[i].to_score() > 0.0, list(range(0,n))))
+    max_quality = max(map(lambda i: quality[i], inds))
+    max_time = max(time)
 
     # noise values
-    optset = set(map(lambda i: opts[ser][i],inds))
+    optset = set(map(lambda i: strip_tau(opts[ser][i]),inds))
     for opt in optset:
-      opt_inds = list(filter(lambda i : opt == opts[ser][i], inds))
-      norm_opt_time = list(map(lambda i: norm_time[i], opt_inds))
-      norm_opt_quality = list(map(lambda i: norm_quality[i], opt_inds))
-      plt.scatter(norm_opt_time,norm_opt_quality,marker='x',label=opt)
+      if opt == 'slow' or opt == 'fast' or opt == 'maxsig' or \
+         opt == 'maxsigfast' or opt == 'maxsigslow' or 'tau' in opt:
+        continue
+
+      opt_inds = list(filter(lambda i : opt in opts[ser][i], inds))
+      norm_opt_time = list(map(lambda i: time[i]/max_time, opt_inds))
+      norm_opt_quality = list(map(lambda i: quality[i]/max_quality, opt_inds))
+      plt.scatter(norm_opt_time,norm_opt_quality,label=opt)
 
     plt.legend()
     plt.savefig("runt_%s.png" % ser)

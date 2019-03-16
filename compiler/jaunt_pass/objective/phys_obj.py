@@ -3,6 +3,7 @@ import ops.nop as nop
 import util.util as util
 import compiler.common.evaluator_heuristic as evalheur
 import compiler.jaunt_pass.objective.obj as optlib
+import compiler.jaunt_pass.objective.basic_obj as boptlib
 import math
 
 def gpkit_mult(expr):
@@ -200,3 +201,32 @@ class LowNoiseObjFunc(optlib.JauntObjectiveFunction):
     opt = compute(varmap,jenv,circuit,models,ports, \
                   method='low_snr')
     yield LowNoiseObjFunc(opt)
+
+
+
+class MaxSNRAtSpeedObjFunc(boptlib.MultSpeedObjFunc):
+
+  def __init__(self,obj,idx,tau,cstrs):
+    boptlib.MultSpeedObjFunc.__init__(self,obj,idx,tau,cstrs)
+
+  def mktag(self,idx):
+    return "lnz-tau%d" % idx
+
+
+  @staticmethod
+  def name():
+    return "nz-sweep-tau"
+
+
+  @staticmethod
+  def mkobj(circ,jobj,varmap,idx,tau,cstrs):
+    obj = list(LowNoiseObjFunc.make(circ,jobj,varmap))[0].objective()
+    return MaxSNRAtSpeedObjFunc(obj,
+                                idx=idx,
+                                tau=tau,
+                                cstrs=cstrs)
+
+  @staticmethod
+  def make(circ,jobj,varmap,n=7):
+    return boptlib.MultSpeedObjFunc.make(MaxSNRAtSpeedObjFunc,circ, \
+                                 jobj,varmap,n=n)

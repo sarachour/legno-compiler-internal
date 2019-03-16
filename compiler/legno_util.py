@@ -71,7 +71,9 @@ def exec_jaunt_phys(hdacv2_board,args):
 
         filename = "%s/%s" % (dirname,fname)
         conc_circ = ConcCirc.read(hdacv2_board, filename)
-        for opt,scaled_circ in jaunt.physical_scale(prog,conc_circ):
+        for opt,scaled_circ in jaunt.scale_again(prog,conc_circ, \
+                                                    args.physical,
+                                                    args.sweep):
             filename = path_handler.conc_circ_file(circ_bmark,
                                                     circ_indices,
                                                     circ_scale_index,
@@ -145,7 +147,8 @@ def exec_srcgen(hdacv2_board,args):
                                     conc_circ,\
                                     menv,
                                     hwenv,
-                                    filename=filename)
+                                    filename=filename,
+                                    ntrials=args.trials)
         gren_file.write(filename)
 
 

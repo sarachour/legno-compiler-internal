@@ -144,11 +144,16 @@ def compute_scale(prog,circ,objfun):
         new_circ = apply_result(jenv,circ,sln)
         yield thisobj,new_circ
 
-def physical_scale(prog,circ):
-    objs = JauntObjectiveFunctionManager.physical_methods()
+def scale_again(prog,circ,do_physical, do_sweep):
+    objs = []
+    if do_physical:
+        objs += JauntObjectiveFunctionManager.physical_methods()
+    if do_sweep:
+        objs += JauntObjectiveFunctionManager.sweep_methods()
+
     for obj in objs:
         for objf,new_circ in compute_scale(prog,circ,obj):
-            yield objf.name(),new_circ
+            yield objf.tag(),new_circ
 
 def scale(prog,circ,nslns):
     objs = JauntObjectiveFunctionManager.basic_methods()
@@ -165,4 +170,4 @@ def scale(prog,circ,nslns):
                         if idx > nslns:
                             return
 
-                    yield idx,final_obj.name(), final_circ
+                    yield idx,final_obj.tag(), final_circ

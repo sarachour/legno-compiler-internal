@@ -38,6 +38,7 @@ arco_subp.add_argument('--conc-circuits', type=int,default=3,
 
 jaunt_subp = subparsers.add_parser('jaunt', help='scale circuit parameters.')
 jaunt_subp.add_argument('--physical', action='store_true',help='perform noise analysis.')
+jaunt_subp.add_argument('--sweep', action='store_true',help='do performance sweep.')
 jaunt_subp.add_argument('--scale-circuits', type=int,default=15,
                        help='number of scaled circuits to generate.')
 
@@ -53,6 +54,9 @@ gren_subp.add_argument('hw_env', type=str, \
                         help='hardware environment')
 gren_subp.add_argument('--recompute', action='store_true',
                        help='recompute.')
+gren_subp.add_argument('--trials', type=int, default=5,
+                       help='compute trials.')
+
 
 
 args = parser.parse_args()
@@ -71,9 +75,10 @@ elif args.subparser_name == "skelter":
 
 
 elif args.subparser_name == "jaunt":
-    if args.physical:
+    if args.physical or args.sweep:
         legno_util.exec_jaunt_phys(hdacv2_board,args)
-    else:
+
+    if not args.physical and not args.sweep:
         legno_util.exec_jaunt(hdacv2_board,args)
 
 elif args.subparser_name == "srcgen":

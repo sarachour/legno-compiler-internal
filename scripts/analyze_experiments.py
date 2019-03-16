@@ -3,6 +3,7 @@ import time
 import json
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import stats
 import tqdm
 import math
 import time
@@ -65,6 +66,11 @@ def compute_ref(menvname,varname,bmark):
 
   return TREF,YREF
 
+def scale_ref(conc_circ,varname,tref,yref):
+  _,tau,scf = compute_params(conc_circ,varname)
+  thw = list(map(lambda t: t/tau, tref))
+  yhw = list(map(lambda x: x*scf*0.5, yref))
+  return thw, yhw
 
 def compute_runtime(conc_circ,menv):
   menv = menvs.get_math_env(menv)
@@ -99,7 +105,7 @@ def compute_params(conc_circ,varname):
   return snr,tau,scf
 
 
-def mean_std_plot(entry,path_h,tag,t,mean,std):
+def mean_std_plot(entry,path_h,trial,tag,t,mean,std):
 
   UPPER = list(map(lambda a: a[0]+a[1],zip(mean,std)))
   LOWER = list(map(lambda a: a[0]-a[1],zip(mean,std)))
@@ -113,12 +119,12 @@ def mean_std_plot(entry,path_h,tag,t,mean,std):
                          entry.objective_fun,
                          entry.math_env,
                          entry.hw_env,
-                         '%s-%s' % (entry.varname,tag))
+                         '%s-%d-%s' % (entry.varname,trial,tag))
   plt.savefig(filename)
   plt.clf()
 
 
-def simple_plot(entry,path_h,tag,t,x):
+def simple_plot(entry,path_h,trial,tag,t,x):
   plt.plot(t,x,label=tag)
   plt.legend()
   filename = path_h.plot(entry.bmark,
@@ -127,7 +133,7 @@ def simple_plot(entry,path_h,tag,t,x):
                          entry.objective_fun,
                          entry.math_env,
                          entry.hw_env,
-                         '%s-%s' % (entry.varname,tag))
+                         '%s-%d-%s' % (entry.varname,trial,tag))
   plt.savefig(filename)
   plt.clf()
 
@@ -146,36 +152,53 @@ def demean_signal(y):
 
 def truncate_signal(t,y,runtime):
   print(max(t),min(t),runtime)
-  ttrunc = min(t)+runtime*0.8
+  ttrunc = min(t)+runtime
   idx = (np.abs(np.array(t)- ttrunc)).argmin()
   return t[0:idx],y[0:idx]
+
+def infer_noise(mean,stdev,yref):
+  slope,intercept,_,_,stderr = stats.linregress(mean,stdev)
+  print("err: %s" % stderr)
+  print("model: %s*v+%s" % (slope,intercept))
+  nzref = list(map(lambda y: (y*slope + intercept).real, yref))
+  snrref = list(map(lambda args: abs(args[0])/args[1], zip(yref,nzref)))
+  return nzref,snrref
 
 def analyze_quality(entry,conc_circ):
   path_h = paths.PathHandler('default',entry.bmark)
   QUALITIES = []
   VARS = set(map(lambda o: o.varname, entry.outputs()))
+  REFS = {}
+  HWS = {}
   for var in VARS:
     TREF,YREF = compute_ref(entry.math_env,var,entry.bmark)
+    THW,YHW = scale_ref(conc_circ,var,TREF,YREF)
+    REFS[var] = (TREF, YREF)
+    HWS[var] = (THW,YHW)
 
   for output in entry.outputs():
     varname = output.varname
+    trial = output.trial
     TMEAS,YMEAS = compute_meas(output.out_file)
-    simple_plot(output,path_h,'ref',TREF,YREF)
-    simple_plot(output,path_h,'meas',TMEAS,YMEAS)
+    TREF,YREF = REFS[output.varname]
+    THW,YHW = HWS[output.varname]
+    simple_plot(output,path_h,output.trial,'ref',TREF,YREF)
+    simple_plot(output,path_h,output.trial,'meas',TMEAS,YMEAS)
 
     RUNTIME = compute_runtime(conc_circ,entry.math_env)
     TMEAS_CUT, YMEAS_CUT = truncate_signal(TMEAS,YMEAS,RUNTIME)
     YMEAS_ZERO = demean_signal(YMEAS_CUT)
-    simple_plot(output,path_h,'cut',TMEAS_CUT,YMEAS_ZERO)
-    TIME,MEAN,STDEV,SNR = \
+    simple_plot(output,path_h,output.trial,'cut',TMEAS_CUT,YMEAS_ZERO)
+    TIME,MEAN,STDEV,_ = \
           compute_running_snr(TMEAS_CUT,YMEAS_CUT)
 
-    simple_plot(output,path_h,'snr',TIME,SNR)
-    mean_std_plot(output,path_h,'dist',TIME,MEAN,STDEV)
-    QUALITY= np.median(SNR)
+    NZHW, SNRHW = infer_noise(MEAN,STDEV,YHW)
+    QUALITY= np.median(NZHW)
+    mean_std_plot(output,path_h,output.trial,'dist',TREF,YHW,NZHW)
+    simple_plot(output,path_h,output.trial,'snr',THW,SNRHW)
     print("[[ Quality: %s ]]" % QUALITY)
     output.set_quality(QUALITY)
-    QUALITIES += SNR
+    QUALITIES += NZHW
 
   AGG_QUALITY = np.mean(QUALITIES)
   print("[[ Agg-Quality: %s ]]" % AGG_QUALITY)

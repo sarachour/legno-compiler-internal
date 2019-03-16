@@ -89,10 +89,10 @@ class PathHandler:
 
 
     def measured_waveform_file(self,bmark,indices,scale_index,opt,\
-                               menv_name,hwenv_name,variable):
+                               menv_name,hwenv_name,variable,trial):
       index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.MEAS_WAVEFORM_FILE_DIR+ "/%s_%s_s%s_%s_%s_%s_%s.json" % \
-        (self._bmark,index_str,scale_index,opt,menv_name,hwenv_name,variable)
+      return self.MEAS_WAVEFORM_FILE_DIR+ "/%s_%s_s%s_%s_%s_%s_%s_%d.json" % \
+        (self._bmark,index_str,scale_index,opt,menv_name,hwenv_name,variable,trial)
 
 
     def measured_waveform_files(self,bmark,indices,scale_index,\
@@ -112,14 +112,15 @@ class PathHandler:
       basename = name.split(".json")[0]
       args = basename.split("_")
       bmark = args[0]
-      indices = list(map(lambda token: int(token), args[1:-5]))
-      scale_index = int(args[-5].split('s')[1])
-      opt = args[-4]
-      menv_name = args[-3]
-      hwenv_name = args[-2]
-      var_name = args[-1]
+      indices = list(map(lambda token: int(token), args[1:-6]))
+      scale_index = int(args[-6].split('s')[1])
+      opt = args[-5]
+      menv_name = args[-4]
+      hwenv_name = args[-3]
+      var_name = args[-2]
+      trial = int(args[-1])
 
-      return bmark,indices,scale_index,opt,menv_name,hwenv_name,var_name
+      return bmark,indices,scale_index,opt,menv_name,hwenv_name,var_name,trial
 
 
     @staticmethod

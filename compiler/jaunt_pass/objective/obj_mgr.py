@@ -9,6 +9,7 @@ class JauntObjectiveFunctionManager():
     @staticmethod
     def basic_methods():
         #return ['fast','slow','max']
+        '''
         return [
             boptlib.SlowObjFunc,
             boptlib.FastObjFunc,
@@ -17,6 +18,18 @@ class JauntObjectiveFunctionManager():
             boptlib.MaxSignalAndStabilityObjFunc,
 
         ]
+        '''
+        return [
+            boptlib.MaxSignalObjFunc,
+        ]
+
+    @staticmethod
+    def sweep_methods():
+        return [
+            physoptlib.MaxSNRAtSpeedObjFunc,
+            boptlib.MaxSignalAtSpeedObjFunc
+        ]
+
 
     @staticmethod
     def inference_methods():
@@ -50,7 +63,8 @@ class JauntObjectiveFunctionManager():
     def objective(self,circuit,varmap):
         assert(not self.method is None)
         gen = None
-        for obj in self.basic_methods() + self.physical_methods() + self.inference_methods():
+        for obj in self.basic_methods() + self.physical_methods() +  \
+            self.inference_methods() + self.sweep_methods():
             if obj.name() == self.method:
                 gen = obj.make(circuit,self,varmap)
 
