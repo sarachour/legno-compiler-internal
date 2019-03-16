@@ -96,6 +96,9 @@ def correlation():
     plt.scatter(plot_ranks,plot_qualities,label=ser)
     print("\n")
 
+  plt.xlabel('rank')
+  plt.ylabel('quality')
+  plt.title('rank vs quality')
   plt.legend()
   plt.savefig("rank.png")
   plt.clf()
@@ -181,6 +184,10 @@ def quality_vs_speed():
       norm_opt_time = list(map(lambda i: time[i]/max_time, opt_inds))
       norm_opt_quality = list(map(lambda i: quality[i]/max_quality, opt_inds))
       plt.scatter(norm_opt_time,norm_opt_quality,label=opt)
+
+      plt.xlabel('runtime (norm)')
+      plt.ylabel('quality (norm)')
+      plt.title('speed vs quality')
 
     plt.legend()
     plt.savefig("runt_%s.png" % ser)

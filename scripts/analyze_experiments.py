@@ -198,7 +198,7 @@ def analyze_quality(entry,conc_circ):
     simple_plot(output,path_h,output.trial,'snr',THW,SNRHW)
     print("[[ SNR Quality: %s ]]" % QUALITY)
     output.set_quality(QUALITY)
-    QUALITIES += SNRHW
+    QUALITIES.append(QUALITY)
 
   AGG_QUALITY = np.median(QUALITIES)
   print("[[ Agg SNR Quality: %s ]]" % AGG_QUALITY)
