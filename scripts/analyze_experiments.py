@@ -193,15 +193,15 @@ def analyze_quality(entry,conc_circ):
           compute_running_snr(TMEAS_CUT,YMEAS_CUT)
 
     NZHW, SNRHW = infer_noise(MEAN,STDEV,YHW)
-    QUALITY= np.median(NZHW)
+    QUALITY= np.median(SNRHW)
     mean_std_plot(output,path_h,output.trial,'dist',TREF,YHW,NZHW)
     simple_plot(output,path_h,output.trial,'snr',THW,SNRHW)
-    print("[[ Quality: %s ]]" % QUALITY)
+    print("[[ SNR Quality: %s ]]" % QUALITY)
     output.set_quality(QUALITY)
-    QUALITIES += NZHW
+    QUALITIES += SNRHW
 
-  AGG_QUALITY = np.mean(QUALITIES)
-  print("[[ Agg-Quality: %s ]]" % AGG_QUALITY)
+  AGG_QUALITY = np.median(QUALITIES)
+  print("[[ Agg SNR Quality: %s ]]" % AGG_QUALITY)
   entry.set_quality(AGG_QUALITY)
 
 def execute_once(args):
