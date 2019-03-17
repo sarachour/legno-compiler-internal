@@ -67,6 +67,12 @@ def gen_use_lut(circ,block,locstr,config,source):
   yield UseLUTCmd(chip,tile,slce,source=source)
   yield WriteLUTCmd(chip,tile,slce,variables,expr)
 
+def nearest_value(value):
+  vals = np.linspace(-1,1,256)
+  idx = (np.abs(vals - value)).argmin()
+  print(value,vals[idx])
+  return vals[idx]
+
 def gen_use_adc(circ,block,locstr,config):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   rng = cast_enum([config.scale_mode],\
@@ -87,13 +93,14 @@ def gen_use_dac(circ,block,locstr,config,source,no_calib=False):
     assert(not source == DACSourceType.MEM)
     value = 0.0
 
+  value = nearest_value(value)
   yield UseDACCmd(chip, \
-                           tile, \
-                           slce, \
-                           value=value, \
-                           inv=inv, \
-                           out_range=rng,
-                           source=source)
+                  tile, \
+                  slce, \
+                  value=value, \
+                  inv=inv, \
+                  out_range=rng,
+                  source=source)
 
   if not no_calib:
     yield ConfigDACCmd(chip, \
@@ -131,6 +138,7 @@ def gen_use_integrator(circ,block,locstr,config,debug=True,no_calib=False):
 
   scf = config.scf('ic') if config.has_scf('ic') else 1.0
   init_cond = config.dac('ic')*scf
+  init_cond = nearest_value(init_cond)
 
   yield UseIntegCmd(chip,
                     tile,
@@ -162,14 +170,15 @@ def gen_use_multiplier(circ,block,locstr,config,no_calib=False):
 
     scf = config.scf('coeff') if config.has_scf('coeff') else 1.0
     coeff = config.dac('coeff')*scf
+    coeff = nearest_value(coeff)
     yield UseMultCmd(chip,
-                               tile,
-                               slce,
-                               index,
-                               in0_range=in0_rng,
-                               out_range=out_rng,
-                               coeff=coeff,
-                               use_coeff=True)
+                     tile,
+                     slce,
+                     index,
+                     in0_range=in0_rng,
+                     out_range=out_rng,
+                     coeff=coeff,
+                     use_coeff=True)
 
     if not no_calib:
       yield ConfigMultCmd(chip,
