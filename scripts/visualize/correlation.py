@@ -27,8 +27,13 @@ def visualize():
         randomize_ranks.append(r)
         randomize_qualities.append(qrand)
 
-    coeff = np.corrcoef(randomize_ranks,randomize_qualities)
-    print("[%s] rank-corr : %s" % (ser,coeff[1][0]))
+    if len(rank) < 2:
+      print("[%s] rank-corr: <need more data>" % ser)
+
+    else:
+      coeff = np.corrcoef(randomize_ranks,randomize_qualities)
+      print("[%s] rank-corr : %s" % (ser,coeff[1][0]))
+
     print("\n")
 
     plot_ranks = list(map(lambda r: r/max_rank, randomize_ranks))

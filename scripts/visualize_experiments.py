@@ -18,6 +18,7 @@ def execute(args):
     'best-rank': best_of.rank,
     'best-quality': best_of.quality,
     'best-quality-to-speed': best_of.quality_to_speed,
+    'best-quality-variance': best_of.quality_variance,
     'best-speed': best_of.speed
   }
   if name in opts:

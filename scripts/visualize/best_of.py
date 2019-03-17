@@ -15,6 +15,10 @@ def visualize(series,key,executed_only=True):
 
     print("\n")
 
+def quality_variance():
+  visualize('circ_ident','quality_variance')
+
+
 def quality_to_speed():
   visualize('bmark','quality_time_ratio')
 
