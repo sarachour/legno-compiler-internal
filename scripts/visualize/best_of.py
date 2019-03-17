@@ -31,10 +31,36 @@ def quality_variance():
 
 
 def quality_to_speed():
-  visualize('bmark','quality_time_ratio')
+ series = 'circ_ident'
+ data = common.get_data(series,executed_only=True)
+ for ser in data.series():
+   idents,quality_to_time,qualvar,time= data.get_data(ser,['ident', \
+                                                           'quality_time_ratio', \
+                                                           'quality_variance', \
+                                                           'runtime'],
+                                                      [MismatchStatus.UNKNOWN, \
+                                                       MismatchStatus.IDEAL])
+   indices = np.argsort(quality_to_time)
+   for i in indices:
+     stdev = qualvar[i]/time[i]
+     print("   %s: %s std=%s" % (idents[i],quality_to_time[i],stdev))
+
+   print("\n")
+
 
 def quality():
-  visualize('bmark','quality')
+  series = 'circ_ident'
+  data = common.get_data(series,executed_only=True)
+  for ser in data.series():
+    idents,var,mean = data.get_data(ser,['ident','quality_variance','quality'],
+                           [MismatchStatus.UNKNOWN, MismatchStatus.IDEAL])
+    pcts = list(map(lambda i: var[i]/mean[i], range(0,len(var))))
+    indices = np.argsort(mean)
+    for i in indices:
+      print("   %s: %s std=%s" % (idents[i],mean[i],var[i]))
+
+    print("\n")
+
 
 def speed():
   visualize('circ_ident','runtime')
