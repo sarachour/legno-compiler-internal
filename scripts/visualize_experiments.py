@@ -181,12 +181,13 @@ def key_vs_speed(tag,key,log=False):
       if 'lo-noise' in opt or 'maxsig' == opt:
         marker = '^'
 
-      opt_inds = list(filter(lambda i : opt in opts[ser][i], inds))
+      opt_inds = list(filter(lambda i : opt == strip_tau(opts[ser][i]), inds))
       norm_opt_time = list(map(lambda i: time[i]/max_time, opt_inds))
       if log:
         norm_opt_quality = list(map(lambda i: np.log10(quality[i]), opt_inds))
       else:
         norm_opt_quality = list(map(lambda i: quality[i], opt_inds))
+      print("%s/%s : %d" % (ser,opt,len(norm_opt_quality)))
       plt.scatter(norm_opt_time,norm_opt_quality,marker=marker,label=opt)
 
       plt.xlabel('runtime (norm)')
