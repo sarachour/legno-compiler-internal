@@ -20,7 +20,8 @@ class PropNoiseVisitor(SymbolicInferenceVisitor):
 
   def get_propagate_model(self,block_name,loc,port):
     config = self._circ.config(block_name,loc)
-    return config.propagated_noise(port)
+    model = config.propagated_noise(port)
+    return model
 
 
   def get_generate_model(self,block_name,loc,port):

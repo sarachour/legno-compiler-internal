@@ -56,7 +56,9 @@ def gpkit_expr(jenv,varmap,circ,expr,refs):
       block,loc = expr.instance
       port = expr.port
       if refs is None:
-        raise Exception("cannot have reference in reference.")
+        #raise Exception("cannot have reference in reference.")
+        return 0
+
       return refs[(block,loc,port)]
 
   # values
@@ -111,7 +113,7 @@ def compute_distributions(varmap,jenv,circ,models,ports):
   means = {}
   variances = {}
   signals = {}
-  for model,(block_name,loc,port) \
+  for model,(_,block_name,loc,port) \
       in zip(models,ports):
     if model == None:
       continue
@@ -120,14 +122,14 @@ def compute_distributions(varmap,jenv,circ,models,ports):
                                   refs=None)
     signals[(block_name,loc,port)] = sig
     means[(block_name,loc,port)] =mean
-    variances[(block_name,loc,port)] =variance
+    variances[(block_name,loc,port)] = variance
   return signals,means,variances
 
 def compute_snr_info(ports,signals,means,variances):
   signal = 1.0
   noise = 1.0
   snr = 0.0
-  for block_name,loc,port in ports:
+  for weight,block_name,loc,port in ports:
     if not (block_name,loc,port) in signals:
       continue
 
@@ -136,7 +138,7 @@ def compute_snr_info(ports,signals,means,variances):
     if not sig is None:
       signal *= (sig**-1)
       noise *= nz
-      snr += (sig**-1)*(nz)
+      snr += weight*(sig**-1)*(nz)
 
   return signal,noise,snr
 
@@ -170,7 +172,7 @@ class FastLowNoiseObjFunc(optlib.JauntObjectiveFunction):
     jenv = jobj.jenv
     ports = evalheur.get_ports(circuit)
     models = []
-    for block_name,loc,out in ports:
+    for _,block_name,loc,out in ports:
       model = circuit.config(block_name,loc) \
                      .propagated_noise(out)
       models.append(model)
@@ -193,11 +195,10 @@ class LowNoiseObjFunc(optlib.JauntObjectiveFunction):
     jenv = jobj.jenv
     ports = evalheur.get_ports(circuit)
     models = []
-    for block_name,loc,out in ports:
+    for _,block_name,loc,out in ports:
       model = circuit.config(block_name,loc) \
                      .propagated_noise(out)
       models.append(model)
-
     opt = compute(varmap,jenv,circuit,models,ports, \
                   method='low_snr')
     yield LowNoiseObjFunc(opt)

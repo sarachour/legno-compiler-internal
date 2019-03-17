@@ -233,12 +233,13 @@ class OutputEntry:
 
   def delete(self):
      self._db.delete_output(self._bmark,
-                           self._arco_indices,
-                           self._jaunt_index,
-                           self._objective_fun,
-                           self._math_env,
-                           self._hw_env,
-                           self._varname)
+                            self._arco_indices,
+                            self._jaunt_index,
+                            self._objective_fun,
+                            self._math_env,
+                            self._hw_env,
+                            self._varname,
+                            self._trial)
 
   def update_db(self,args):
     self._db.update_output(self._bmark,
@@ -248,6 +249,7 @@ class OutputEntry:
                            self._math_env,
                            self._hw_env,
                            self._varname,
+                           self._trial,
                            args)
 
 
@@ -657,15 +659,15 @@ class ExperimentDB:
       cmd += "AND varname = \"{varname}\""
       args['varname'] = varname
     if not trial is None:
-      cmd += "AND trial = \"{varname}\""
-      args['trial'] = varname
+      cmd += "AND trial = {trial}"
+      args['trial'] = trial
 
 
     conc_cmd = cmd.format(**args)
     return conc_cmd
 
   def update_output(self,bmark,arco_inds,jaunt_inds,opt, \
-                    menv_name,hwenv_name,varname,new_fields):
+                    menv_name,hwenv_name,varname,trial,new_fields):
     cmd = '''
     UPDATE outputs
     SET {assign_clause} {where_clause};
@@ -673,7 +675,8 @@ class ExperimentDB:
     where_clause = self.to_where_clause(bmark,\
                                         arco_inds,jaunt_inds,opt, \
                                         menv_name,hwenv_name,
-                                        varname=varname)
+                                        varname=varname,
+                                        trial=trial)
     new_fields['modif'] = datetime.datetime.now()
     assign_subclauses = []
     for field,value in new_fields.items():

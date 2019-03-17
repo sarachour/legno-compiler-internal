@@ -32,26 +32,30 @@ def rank(circ):
   # mismatch in seconds
   signals = []
   noises =[]
-  for block_name,loc,port in evalheur.get_ports(circ,evaluate=True):
+  for weight,block_name,loc,port in evalheur.get_ports(circ,evaluate=True):
     config = circ.config(block_name,loc)
     signal,noise,snr = compute_snr(nz_eval,circ,block_name,loc,port)
     if not snr is None:
-      snrs.append(snr)
+      snrs.append(weight*snr)
 
     if not signal is None:
-      signals.append(signal)
+      signals.append(weight*signal)
 
     if not noise is None:
-      noises.append(noise)
+      noises.append(weight*noise)
 
-  return np.mean(snrs)
-  #return np.min(snrs)*1.0/circ.tau
+  norm_sigs = list(map(lambda s: s/max(signals), signals))
+  norm_noises = list(map(lambda s: s/max(noises), signals))
+  n = len(signals)
+  #return (sum(norm_noises)/n*max(noises))**-1+sum(norm_sigs)/n*max(signals)
+  return sum(snrs)
 
 def clear(circ):
   for _,_,config in circ.instances():
     config.clear_physical_model()
 
 def execute(circ):
+  clear(circ)
   print("<< compute noise >>")
   prop_noise.compute(circ)
   print("<< compute bias >>")

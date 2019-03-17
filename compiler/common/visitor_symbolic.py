@@ -51,18 +51,28 @@ def scaled_dynamics(block,config,output):
    return wrap_coeff(block.coeff(comp_mode,scale_mode,output), scexpr)
 
 class SymbolicModel:
+  IGNORE_CHECKS = True
 
-  def __init__(self,mean,variance):
+  def __init__(self,signal,mean,variance):
+    self._signal = signal
     self._mean = mean
     self._variance = variance
 
   @staticmethod
-  def from_expr(expr):
-    return SymbolicModel(expr.mean(),expr.variance())
+  def from_expr(sigexpr,expr):
+    prop = BaseMathPropagator()
+    sigm = prop.propagate_nop(sigexpr)
+    phym = prop.propagate_nop(expr)
+    newm = SymbolicModel(sigm.mean,phym.mean,phym.variance)
+    return newm
 
   @property
   def mean(self):
     return self._mean
+
+  @property
+  def signal(self):
+    return self._signal
 
   @property
   def variance(self):
@@ -73,6 +83,9 @@ class SymbolicModel:
 
 
   def is_posynomial(self):
+    if SymbolicModel.IGNORE_CHECKS:
+      return True
+
     if not self.mean.is_posynomial() and not m.is_zero():
       return False
     if not self.variance.is_posynomial() and not v.is_zero():
@@ -85,13 +98,15 @@ class SymbolicModel:
     byte_obj = binascii.unhexlify(hexstr)
     comp_obj = zlib.decompress(byte_obj)
     obj = json.loads(str(comp_obj,'utf-8'))
+    signal = nop.NOp.from_json(obj['signal'])
     mean = nop.NOp.from_json(obj['mean'])
     variance = nop.NOp.from_json(obj['variance'])
-    model = SymbolicModel(mean,variance)
+    model = SymbolicModel(signal,mean,variance)
     return model
 
   def to_json(self):
     obj= {
+      'signal': self._signal.to_json(),
       'mean': self._mean.to_json(),
       'variance': self._variance.to_json()
     }
@@ -100,16 +115,20 @@ class SymbolicModel:
     return str(binascii.hexlify(comp_obj), 'utf-8')
 
   def __repr__(self):
-    s = "mean: %s\n" % self._mean
+    s = "sig: %s\n" % self._signal
+    s += "mean: %s\n" % self._mean
     s += "vari: %s\n" % self._variance
     return s
 
 class ExpressionPropagator:
 
-  def __init__(self,env):
-    self._env = env
+  def __init__(self):
+    pass
 
   def mult(self,m1,m2):
+    raise NotImplementedError
+
+  def rv(self,c):
     raise NotImplementedError
 
   def const(self,c):
@@ -130,21 +149,53 @@ class ExpressionPropagator:
   def cos(self,m):
     raise NotImplementedError
 
-
   def sin(self,m):
     raise NotImplementedError
-
 
   def sgn(self,m):
     raise NotImplementedError
 
+  def nop_var(self,v):
+    raise NotImplementedError
 
-  def propagate(self,block_name,loc,port,expr):
+
+  def op_var(self,v):
+    raise NotImplementedError
+
+  def propagate_nop(self,expr):
     def recurse(e):
-      return self.propagate(block_name,loc,port,e)
+      return self.propagate_nop(e)
 
-    self.block = block_name
-    self.loc = loc
+    if expr.op == nop.NOpType.SIG:
+      return self.nop_var(expr)
+    elif expr.op == nop.NOpType.FREQ:
+      return self.nop_var(expr)
+    elif expr.op == nop.NOpType.REF:
+      return self.nop_var(expr)
+    elif expr.op == nop.NOpType.CONST_RV:
+      return self.rv(expr)
+    elif expr.op == nop.NOpType.ADD:
+      sum_v= recurse(nop.mkzero())
+      for term in expr.terms():
+        term_v = recurse(term)
+        sum_v = self.plus(sum_v,term_v)
+      return sum_v
+    elif expr.op == nop.NOpType.MULT:
+      sum_v= recurse(nop.mkone())
+      for term in expr.terms():
+        term_v = recurse(term)
+        sum_v = self.mult(sum_v,term_v)
+      return sum_v
+
+
+    else:
+      raise Exception("unimpl: %s" % expr)
+
+  def propagate_op(self,block,loc,port,expr):
+    def recurse(e):
+      return self.propagate_op(block,loc,port,e)
+
+    self.place = (block,loc,port)
     if expr.op == op.OpType.INTEG:
       m1 = recurse(expr.deriv)
       m2 = recurse(expr.init_cond)
@@ -158,10 +209,7 @@ class ExpressionPropagator:
       return self.mult(m1,m2)
 
     elif expr.op == op.OpType.VAR:
-      model = self._env.get_propagate_model(block_name, \
-                                       loc, \
-                                       expr.name)
-      return model
+      return self.op_var(expr.name)
 
     elif expr.op == op.OpType.CONST:
       self.expr = expr
@@ -231,12 +279,19 @@ class SymbolicInferenceVisitor(Visitor):
     if not self.get_propagate_model(block_name,loc,port) is None:
       return
 
-    model = SymbolicModel.from_expr(nop.mkzero())
+    cfg = circ.config(block_name,loc)
+    if cfg.has_dac(port):
+      value = cfg.dac(port)
+      model = SymbolicModel.from_expr(nop.NSig(port,block=block_name,loc=loc),nop.mkzero())
+    else:
+      model = SymbolicModel.from_expr(nop.mkzero(),nop.mkzero())
+
     for sblk,sloc,sport in \
       circ.get_conns_by_dest(block_name,loc,port):
       assert(not self.get_propagate_model(sblk,sloc,sport) is None)
       src_model = self.get_propagate_model(sblk,sloc,sport)
-      model = self._prop.plus(model,src_model)
+      new_model = self._prop.plus(model,src_model)
+      model = new_model
 
     self.set_propagate_model(block_name,loc,port,model)
 
@@ -245,35 +300,42 @@ class SymbolicInferenceVisitor(Visitor):
     config = self._circ.config(block_name,loc)
     phys = config.physical(block,port)
 
+    sig = nop.NSig(port,block=block_name,loc=loc)
     # build a symbolic handle
     handle_model = SymbolicModel.from_expr(
-      nop.NRef(port,block_name,loc)
+      sig, nop.NRef(port,block_name,loc)
     )
     # compute generated noise
     gen_expr = self.get_generate_expr(phys)
     gen_expr.bind_instance(block_name,loc)
-    gen_model = SymbolicModel.from_expr(gen_expr)
-
+    gen_model = SymbolicModel.from_expr(nop.mkzero(),gen_expr)
     # build a symbolic propagated model
     sym_prop_model = self._prop.plus(gen_model,handle_model)
     self.set_generate_model(block_name,loc,port,gen_model)
     self.set_propagate_model(block_name,loc,port,sym_prop_model)
+    # visit
     Visitor.output_port(self,block_name,loc,port)
 
     # compute propagated noise
     expr = scaled_dynamics(block,config,port)
     prop_model = self._prop \
-          .propagate(block_name,loc,port,expr)
+          .propagate_op(block_name,loc,port,expr)
     combo_model = self._prop.plus(prop_model,gen_model)
     self.set_propagate_model(block_name,loc,port,combo_model)
 
-class MathPropagator(ExpressionPropagator):
+class BaseMathPropagator(ExpressionPropagator):
 
-  def __init__(self,env):
-    ExpressionPropagator.__init__(self,env)
+  def __init__(self):
+    ExpressionPropagator.__init__(self)
+
+  def nop_var(self,v):
+    return SymbolicModel(nop.mkzero(),v,nop.mkzero())
+
+  def rv(self,rv):
+    return SymbolicModel(nop.mkzero(),nop.mkconst(rv.mu),nop.mkconst(rv.sigma))
 
   def const(self,value):
-    model = SymbolicModel.from_expr(nop.mkconst(abs(value)))
+    model = SymbolicModel(nop.mkconst(value), nop.mkzero(), nop.mkzero())
     assert(model.is_posynomial() or value == 0.0)
     return model
 
@@ -323,7 +385,7 @@ class MathPropagator(ExpressionPropagator):
     # the smaller the magnitude of the signal
     # the higher the chance of a flip is.
     u,v = m.mean, m.variance
-    return SymbolicModel(u,v)
+    return SymbolicModel(nop.NConstRV(1.0,0.0),u,v)
 
 
   def sgn(self,m):
@@ -336,27 +398,48 @@ class MathPropagator(ExpressionPropagator):
     return SymbolicModel(ur,vr)
 
   def plus(self,m1,m2):
-    u1,v1 = m1.mean,m1.variance
-    u2,v2 = m2.mean,m2.variance
+    s1,u1,v1 = m1.signal,m1.mean,m1.variance
+    s2,u2,v2 = m2.signal,m2.mean,m2.variance
+    s = nop.mkadd([s1,s2])
     u = nop.mkadd([u1,u2])
     # compute variance: cov <= sqrt(var1*var2)
-    cov = nop.mkmult([nop.mkconst(2.0), \
-                      self.covariance(v1,v2)])
+    cov = self.covariance(v1,v2)
     v = nop.mkadd([v1,v2,cov])
-    return SymbolicModel(u,v)
+    return SymbolicModel(s,u,v)
 
   def mult(self,m1,m2):
-    u1,v1 = m1.mean,m1.variance
-    u2,v2 = m2.mean,m2.variance
-    u = nop.mkmult([u1,u2])
+    s1,u1,v1 = m1.signal,m1.mean,m1.variance
+    s2,u2,v2 = m2.signal,m2.mean,m2.variance
+    x1 = nop.mkadd([u1,s1])
+    x2 = nop.mkadd([u2,s2])
+    s = nop.mkmult([s1,s2])
+    u = nop.mkadd([
+      nop.mkmult([u1,s2]),
+      nop.mkmult([s1,u2]),
+      nop.mkmult([u1,u2])
+    ])
     # compute variance
     cov = nop.mkmult([nop.mkconst(2.0), \
                       self.covariance(v1,v2), \
-                      u1,u2])
-    t1 = nop.mkmult([u1,u1,v2])
-    t2 = nop.mkmult([u2,u2,v1])
+                      x1,x2])
+    t1 = nop.mkmult([x1,x1,v2])
+    t2 = nop.mkmult([x2,x2,v1])
     v = nop.mkadd([
       t1,t2,cov
     ])
-    return SymbolicModel(u,v)
+    return SymbolicModel(s,u,v)
 
+
+class MathPropagator(BaseMathPropagator):
+
+  def __init__(self,env):
+    BaseMathPropagator.__init__(self)
+    self._env = env
+
+  def op_var(self,name):
+    block,loc,_ = self.place
+    model = self._env.get_propagate_model(block, \
+                                          loc, \
+                                          name)
+
+    return model

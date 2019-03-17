@@ -1,28 +1,38 @@
 
-def get_iface_ports(circuit):
+def get_iface_ports(circuit,evaluate=False,weight=1.0):
   ports = []
   for block_name,loc,config in circuit.instances():
     if not circuit.board.handle_by_inst(block_name,loc) \
        is None:
       block = circuit.board.block(block_name)
       for out in block.outputs:
-        ports.append((block_name,loc,out))
+        ports.append((weight,block_name,loc,out))
   return ports
 
 
-def get_integrator_ports(circuit,evaluate=False):
+def get_adc_ports(circuit,evaluate=False,weight=1.0):
+  ports = []
+  for block_name,loc,config in circuit.instances():
+    block = circuit.board.block(block_name)
+    if block_name != "adc":
+      continue
+    ports.append((weight,block_name,loc,'in'))
+  return ports
+
+
+def get_integrator_ports(circuit,evaluate=False,weight=1.0):
   ports = []
   for block_name,loc,config in circuit.instances():
     block = circuit.board.block(block_name)
     if block_name != "integrator":
       continue
     if not evaluate:
-      ports.append((block_name,loc,'in'))
+      ports.append((weight,block_name,loc,'in'))
     else:
-      ports.append((block_name,loc,'out'))
+      ports.append((weight,block_name,loc,'out'))
   return ports
 
-def get_computation_ports(circuit,evaluate=False):
+def get_computation_ports(circuit,evaluate=False,weight=1.0):
   ports = []
   comp_ports = ['integrator', 'fanout', 'multiplier', \
                 'adc', 'dac']
@@ -32,7 +42,7 @@ def get_computation_ports(circuit,evaluate=False):
       continue
 
     for port in block.inputs + block.outputs:
-      ports.append((block_name,loc,port))
+      ports.append((weight,weight,block_name,loc,port))
 
   return ports
 
@@ -47,4 +57,6 @@ def get_all_ports(circuit,evaluate=False):
   return ports
 
 def get_ports(circuit,evaluate=False):
-  return get_computation_ports(circuit,evaluate)
+  return get_iface_ports(circuit,evaluate,1.0) + \
+    get_integrator_ports(circuit,evaluate,1.0) + \
+    get_adc_ports(circuit,evaluate,1.0)

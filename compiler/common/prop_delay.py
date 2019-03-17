@@ -9,14 +9,21 @@ from compiler.common.visitor_symbolic import SymbolicInferenceVisitor, \
 class DelayPropagator(ExpressionPropagator):
 
   def __init__(self,env):
-    ExpressionPropagator.__init__(self,env)
+    ExpressionPropagator.__init__(self)
+    self._env = env
+  def op_var(self,name):
+    block,loc,_ = self.place
+    model = self._env.get_propagate_model(block, \
+                                          loc, \
+                                          name)
+    return model
 
   def sel(self,m1,m2):
     u1,v1 = m1.mean,m1.variance
     u2,v2 = m2.mean,m2.variance
     u = nop.mksel([u1,u2])
     v = nop.mksel([v1,v2])
-    return SymbolicModel(u,v)
+    return SymbolicModel(nop.mkzero(),u,v)
 
   def sgn(self,m):
     return m
@@ -43,7 +50,7 @@ class DelayPropagator(ExpressionPropagator):
     return self.sel(deriv,ic)
 
   def const(self,v):
-    return SymbolicModel.from_expr(nop.mkzero())
+    return SymbolicModel(nop.mkzero(),nop.mkzero(),nop.mkzero())
 
 class PropDelayVisitor(SymbolicInferenceVisitor):
 

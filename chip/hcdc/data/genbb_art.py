@@ -7,41 +7,51 @@ import json
 
 
 def get_param_rng_weight(scf):
-  if 'l':
-    return 0.1
-  elif 'm':
+  if scf == 'l':
+    return 0.0
+  elif scf == 'm':
     return 0.0
   elif 'h':
-    return -0.1
+    return 0.0
 
 
 def get_param_scf_weight(scf):
-  if '10x':
+  if scf =='10x':
     return 0.0
-  elif '1x':
+  elif scf == '1x':
     return 0.0
   elif '01x':
     return 0.0
 
 def get_param_blk_weight(blk):
-  if 'integ':
-    return 1.0
-  elif 'mult':
-    return 3.0
-  elif 'vga':
-    return 2.0
+  baseline = 0.1
+  if blk == 'integ':
+    return baseline
+  elif blk == 'mult':
+    return baseline
+  elif blk =='vga':
+    return baseline
+  elif blk == 'dac':
+    return baseline
+  elif blk == 'adc':
+    return baseline
+  elif blk == 'fanout':
+    return baseline
+  else:
+    return 0.0
 
 def get_param_sig_weight(blk):
-  if 'mult':
-    return 0.0
-  if 'vga':
+  if blk == 'mult' or blk == 'vga':
     return 0.0
   else:
     return 0.0
 
 
 def get_param_freq_weight(blk):
-  return 0.2,(40.0)**-1
+  if blk == 'integ':
+    return 5.0,1.0
+  else:
+    return 0.0,1.0
 
 def get_param_port(blk):
   if blk == 'fanout':
@@ -59,22 +69,24 @@ def mk_noise_model(blk,scf,rng):
   pfreq,pfreqexp = get_param_freq_weight(blk)
   port = get_param_port(blk)
 
-  nz_freq = pfreq*wt
-  nz_sig = psig*wt
-  nz = wt
-
-  return nops.mkadd([
-    nops.mkmult([
-      nops.NConstRV(0.0,nz_freq),
+  terms = []
+  if wt > 0:
+    terms.append(nops.NConstRV(0,wt))
+  if pfreq > 0.0:
+    terms.append(nops.mkmult([
+      nops.NConstRV(0.0,pfreq),
       nops.NFreq(port,power=pfreqexp)
-    ]),
-    nops.mkmult([
-      nops.NConstRV(0,nz_sig),
-      nops.NSig(port)
-    ]),
-    nops.NConstRV(0,nz)
-  ])
+    ]))
 
+  if psig > 0.0:
+    terms.append(nops.mkmult([
+      nops.NConstRV(0.0,psig),
+      nops.NSig(port)
+    ]))
+
+  sumexpr = nops.mkadd(terms)
+  print(sumexpr)
+  return sumexpr
 
 def make_physical_models():
   def mkphys(blk):

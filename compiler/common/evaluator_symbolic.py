@@ -19,8 +19,7 @@ class Evaluator:
 
 
   def freq(self,block_name,loc,port):
-    bw = self.circ.config(block_name,loc).bandwidth(port) \
-             .timescale(self.circ.board.time_constant)
+    bw = self.circ.config(block_name,loc).bandwidth(port)
     scbw = bw.timescale(self.circ.tau)
     return scbw
 
@@ -58,7 +57,8 @@ class Evaluator:
         interval_dict[(block,inst,port)] = ival
 
       elif var.op == nop.NOpType.REF:
-        raise Exception("unimpl")
+        ref_dict[(block,inst,port)] = nop.mkzero()
+
       else:
         raise Exception("unknown")
 

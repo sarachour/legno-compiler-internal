@@ -53,7 +53,8 @@ class Shader:
       return "#fffffff"
 
     pct = (value-self._min)/(self._max-self._min)
-    bin_no = min(int(pct*self._n), self._n-1)
+    bin_no = max(min(int(pct*self._n),self._n-1),0)
+
     color = self._scheme[bin_no]
     r,g,b = colorlover.to_numeric(colorlover.to_rgb([color]))[0]
     hexval = "#{0:02x}{1:02x}{2:02x}".format(int(r),int(g),int(b))

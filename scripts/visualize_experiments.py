@@ -110,14 +110,6 @@ def summarize_best(key,executed_only=True,mismatch_threshold=MismatchStatus.NONI
   circ_idents = data['circ_idents']
   series= data['series']
   mismatches = data['mismatches']
-  if mismatch_threshold == MismatchStatus.IDEAL:
-    mismatch_whitelist = [MismatchStatus.IDEAL]
-  elif mismatch_threshold == MismatchStatus.NONIDEAL:
-    mismatch_whitelist = [MismatchStatus.NONIDEAL,MismatchStatus.IDEAL]
-  else:
-    mismatch_whitelist = [MismatchStatus.NONIDEAL,MismatchStatus.IDEAL,\
-                          MismatchStatus.BAD]
-
   for ser in series:
     by_ident = {}
     for ident,opt,value,mismatch in zip(circ_idents[ser], \
@@ -127,10 +119,8 @@ def summarize_best(key,executed_only=True,mismatch_threshold=MismatchStatus.NONI
       if not ident in by_ident:
         by_ident[ident] = {}
 
-      if mismatch in mismatch_whitelist:
+      if mismatch.to_score() > 0.0:
         by_ident[ident][opt] = value
-      elif mismatch != MismatchStatus.UNKNOWN:
-        by_ident[ident][opt] = -mismatch.to_code()
 
     for ident in by_ident:
       print("%s" % ident)
@@ -139,6 +129,13 @@ def summarize_best(key,executed_only=True,mismatch_threshold=MismatchStatus.NONI
       indices = np.argsort(vals)
       for i in indices:
         print("   %s: %s" % (labels[i],vals[i]))
+
+def quality_vs_speed():
+  key_vs_speed('qualvspeed','qualities')
+
+def rank_vs_speed():
+  key_vs_speed('rankvspeed','ranks')
+
 
 def best_quality_to_speed():
   summarize_best('qualities_to_times')
@@ -156,9 +153,9 @@ def best_ranked():
 def strip_tau(opt):
   return opt.split('-tau')[0]
 
-def quality_vs_speed():
+def key_vs_speed(tag,key,log=False):
   data = get_data(series_type='circ_idents')
-  qualities = data['qualities']
+  qualities = data[key]
   times = data['times']
   series= data['series']
   mismatches= data['mismatches']
@@ -176,27 +173,35 @@ def quality_vs_speed():
     # noise values
     optset = set(map(lambda i: strip_tau(opts[ser][i]),inds))
     for opt in optset:
-      if opt == 'slow' or opt == 'fast' or opt == 'maxsig' or \
+      if opt == 'slow' or opt == 'fast' or \
          opt == 'maxsigfast' or opt == 'maxsigslow' or 'tau' in opt:
         continue
 
+      marker = 'x'
+      if 'lo-noise' in opt or 'maxsig' == opt:
+        marker = '^'
+
       opt_inds = list(filter(lambda i : opt in opts[ser][i], inds))
       norm_opt_time = list(map(lambda i: time[i]/max_time, opt_inds))
-      norm_opt_quality = list(map(lambda i: quality[i]/max_quality, opt_inds))
-      plt.scatter(norm_opt_time,norm_opt_quality,label=opt)
+      if log:
+        norm_opt_quality = list(map(lambda i: np.log10(quality[i]), opt_inds))
+      else:
+        norm_opt_quality = list(map(lambda i: quality[i], opt_inds))
+      plt.scatter(norm_opt_time,norm_opt_quality,marker=marker,label=opt)
 
       plt.xlabel('runtime (norm)')
-      plt.ylabel('quality (norm)')
-      plt.title('speed vs quality')
+      plt.ylabel(key)
+      plt.title('speed vs %s' % key)
 
     plt.legend()
-    plt.savefig("runt_%s.png" % ser)
+    plt.savefig("%s_%s.png" % (tag,ser))
     plt.clf()
 
 def execute(args):
   name = args.type
   opts = {
     'quality-vs-speed':quality_vs_speed,
+    'rank-vs-speed':rank_vs_speed,
     'correlation': correlation,
     'best-rank': best_ranked,
     'best-quality': best_quality,
