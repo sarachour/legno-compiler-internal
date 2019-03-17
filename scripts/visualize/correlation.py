@@ -11,9 +11,17 @@ def visualize():
     ident,rank,quality,quality_var = data.get_data(ser, \
                                                    ['ident','rank','quality','quality_variance'], \
                                                    [MismatchStatus.UNKNOWN, MismatchStatus.IDEAL])
+    bad_ident,bad_rank,bad_quality = data.get_data(ser, \
+                                                   ['ident','rank','quality'], \
+                                                   [MismatchStatus.BAD])
+
 
     max_rank = max(rank)
     max_quality= max(quality)
+
+    for r,q,o in zip(bad_rank,bad_quality,bad_ident):
+      print("B [%s]rank=%s, quality=%s" % (o,r,q))
+
 
     for r,q,o in zip(rank,quality,ident):
       print("G [%s]rank=%s, quality=%s" % (o,r,q))
@@ -36,9 +44,11 @@ def visualize():
 
     print("\n")
 
-    plot_ranks = list(map(lambda r: r/max_rank, randomize_ranks))
-    plot_qualities = list(map(lambda q: q, randomize_qualities))
-    plt.scatter(plot_ranks,plot_qualities,label=ser)
+    plot_ranks = list(map(lambda r: r/max_rank, rank))
+    plot_qualities = list(map(lambda q: q, quality))
+    plot_variances = list(map(lambda q: q, quality_var))
+    plt.errorbar(plot_ranks,plot_qualities,plot_variances,fmt='^',
+                 marker='.',label=ser)
 
     plt.xlabel('rank (norm)')
     plt.ylabel('quality (norm)')

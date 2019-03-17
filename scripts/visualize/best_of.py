@@ -16,7 +16,18 @@ def visualize(series,key,executed_only=True):
     print("\n")
 
 def quality_variance():
-  visualize('circ_ident','quality_variance')
+  series = 'circ_ident'
+  data = common.get_data(series,executed_only=True)
+  for ser in data.series():
+    idents,var,mean = data.get_data(ser,['ident','quality_variance','quality'],
+                           [MismatchStatus.UNKNOWN, MismatchStatus.IDEAL])
+    pcts = list(map(lambda i: var[i]/mean[i], range(0,len(var))))
+    indices = np.argsort(pcts)
+    for i in indices:
+      print("   %s: %s +- %s [%s%%]" % (idents[i],mean[i],var[i],pcts[i]*100.0))
+
+    print("\n")
+
 
 
 def quality_to_speed():
