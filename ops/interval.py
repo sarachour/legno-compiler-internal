@@ -166,6 +166,8 @@ class Interval:
     def power(self,v):
         if v == 1.0:
             return self
+        if v == -1.0:
+            return self.reciprocal()
         else:
             print(v)
             raise Exception("?")
