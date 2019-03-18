@@ -30,7 +30,7 @@ def model():
 
   VA = parse_diffeq('{k2}*FPB+(-{k1_k2}*FPA)+(-{cf}*VA)', 'VA0', ':b', params)
 
-  PB = parse_diffeq('1.0*VB', 'PB0', ':c', params)
+  PB = parse_diffeq('0.9999*VB', 'PB0', ':c', params)
 
   VB = parse_diffeq('{k2}*FPA+(-{k2_k3}*FPB)+(-{cf}*VB)', 'VB0', ':d', params)
 

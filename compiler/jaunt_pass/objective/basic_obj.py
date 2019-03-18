@@ -98,7 +98,7 @@ class MaxSignalAndSpeedObjFunc(optlib.JauntObjectiveFunction):
   def make(circ,jobj,varmap):
     ot = list(FastObjFunc.make(circ,jobj,varmap))[0]
     oi = list(MaxSignalObjFunc.make(circ,jobj,varmap))[0]
-    yield MaxSignalAndSpeedObjFunc(ot.objective()+oi.objective())
+    yield MaxSignalAndSpeedObjFunc(ot.objective()*oi.objective())
 
 class MaxSignalAndStabilityObjFunc(optlib.JauntObjectiveFunction):
 
@@ -114,7 +114,7 @@ class MaxSignalAndStabilityObjFunc(optlib.JauntObjectiveFunction):
   def make(circ,jobj,varmap):
     ot = list(SlowObjFunc.make(circ,jobj,varmap))[0]
     oi = list(MaxSignalObjFunc.make(circ,jobj,varmap))[0]
-    yield MaxSignalAndStabilityObjFunc(ot.objective()+oi.objective())
+    yield MaxSignalAndStabilityObjFunc(ot.objective()*oi.objective())
 
 
 class MultSpeedObjFunc(optlib.JauntObjectiveFunction):
@@ -150,6 +150,9 @@ class MultSpeedObjFunc(optlib.JauntObjectiveFunction):
     jenv = jobj.jenv
     min_t=jobj.result('slow')['freevariables'][jenv.TAU]
     max_t=jobj.result('fast')['freevariables'][jenv.TAU]
+    if abs(min_t-max_t) < 1e-4:
+      return
+
     taus = np.logspace(np.log10(min_t),np.log10(max_t),n)
     for idx in range(0,n):
       tau = taus[idx]

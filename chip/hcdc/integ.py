@@ -126,7 +126,8 @@ def scale_model(integ):
       analog_in = util.make_ana_props(inrng,
                                       glb.ANALOG_MIN, \
                                       glb.ANALOG_MAX, \
-                                      glb.ANALOG_MINSIG)
+                                      glb.ANALOG_MINSIG_CONST,
+                                      glb.ANALOG_MINSIG_DYN)
       analog_in.set_bandwidth(0,20,units.khz)
       dig_props = util.make_dig_props(chipcmd.RangeType.MED, \
                                           glb.DAC_MIN, \
@@ -140,25 +141,29 @@ def scale_model(integ):
                       util.make_ana_props(outrng,
                                           glb.ANALOG_MIN,
                                           glb.ANALOG_MAX,
-                                          glb.ANALOG_MINSIG),\
+                                          glb.ANALOG_MINSIG_CONST,
+                                          glb.ANALOG_MINSIG_DYN),\
                       handle=":z[0]")
       integ.set_props(comp_mode,scale_mode,["out"],\
                       util.make_ana_props(outrng,
                                           glb.ANALOG_MIN,
                                           glb.ANALOG_MAX,
-                                          glb.ANALOG_MINSIG),\
+                                          glb.ANALOG_MINSIG_CONST,
+                                          glb.ANALOG_MINSIG_DYN),\
                       handle=":z")
       integ.set_props(comp_mode,scale_mode,["out"],
                       util.make_ana_props(inrng,
                                           glb.ANALOG_MIN,
                                           glb.ANALOG_MAX,
-                                          glb.ANALOG_MINSIG),\
+                                          glb.ANALOG_MINSIG_CONST,
+                                          glb.ANALOG_MINSIG_DYN),
                       handle=":z'")
       integ.set_props(comp_mode,scale_mode,["out"],
                       util.make_ana_props(outrng,
                                           glb.ANALOG_MIN,
                                           glb.ANALOG_MAX,
-                                          glb.ANALOG_MINSIG))
+                                          glb.ANALOG_MINSIG_CONST, 
+                                          glb.ANALOG_MINSIG_DYN))
 
       scf_inout = outrng.coeff()/inrng.coeff()
       scf_ic = outrng.coeff()*2.0

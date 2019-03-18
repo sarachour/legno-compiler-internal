@@ -39,13 +39,19 @@ def build_scale_model_cstr(cstrlst,scale):
         contcstrlst.append((var,cstr))
     return contcstrlst
 
-def make_ana_props(rng,lb,ub,min_sig):
+def make_ana_props(rng,lb,ub,min_const,min_dyn):
     assert(lb < ub)
     prop = props.AnalogProperties() \
                 .set_interval(lb*rng.coeff(),
                               ub*rng.coeff(),
                               unit=units.uA)
-    prop.set_min_signal(min_sig,units.uA)
+    prop.set_min_signal(props.AnalogProperties.SignalType.CONSTANT,
+                        min_const,
+                        units.uA)
+    prop.set_min_signal(props.AnalogProperties.SignalType.DYNAMIC,
+                        min_dyn,
+                        units.uA)
+
     return prop
 
 def make_dig_props(rng,lb,ub,npts):

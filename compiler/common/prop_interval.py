@@ -112,7 +112,6 @@ class PropIntervalVisitor(Visitor):
     intervals = expr.compute_interval(config.intervals())
     config.set_interval(port,intervals.interval)
     #print("ival out %s[%s].%s => %s" % (block_name,loc,port,intervals.interval))
-
     for handle,interval in intervals.bindings():
       config.set_interval(port, \
                           interval,handle=handle)

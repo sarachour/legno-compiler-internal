@@ -154,7 +154,8 @@ def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
     prop = block.props(config.comp_mode,baseline,port,handle=handle)
     hwrng,hwbw = prop.interval(), prop.bandwidth()
     if isinstance(prop, props.AnalogProperties):
-        jaunt_common.analog_op_range_constraint(jenv,prop,mathscvar,hwscvar,mrng,hwrng)
+        jaunt_common.analog_op_range_constraint(jenv,prop,mathscvar,hwscvar, \
+                                                mrng,hwrng)
         jaunt_common.analog_bandwidth_constraint(jenv,circ,mbw,hwbw)
 
     elif isinstance(prop, props.DigitalProperties):
@@ -248,6 +249,7 @@ def apply_result(jenv,circ,sln):
     locs = list(scale_modes.keys())
     scms = list(scale_modes.values())
     options = list(itertools.product(*scms))
+    print("num-options: %d" % len(options))
     random.shuffle(options)
     for scm_combo in tqdm(options, total=n_combos):
         for (block_name,loc),scale_mode in zip(locs,scm_combo):
@@ -265,6 +267,7 @@ def infer_scale_config(prog,circ,infer_opt):
     for idx,(gpprob,obj) in \
         enumerate(jenvlib.build_gpkit_problem(circ,jenv,jopt)):
         if gpprob is None:
+            print("no solution")
             continue
 
         jaunt_util.log_debug("-> %s" % jopt.method)
@@ -272,7 +275,7 @@ def infer_scale_config(prog,circ,infer_opt):
         if sln is None:
             jaunt_util.log_info("[[FAILURE - NO SLN]]")
             jenv.set_solved(False)
-            #jenvlib.debug_gpkit_problem(gpprob)
+            jenvlib.debug_gpkit_problem(gpprob)
             return
         else:
             jaunt_util.log_info("[[SUCCESS - FOUND SLN]]")

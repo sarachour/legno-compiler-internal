@@ -67,18 +67,15 @@ def analog_op_range_constraint(jenv,prop,mscale,hscale,mrng,hwrng):
                                       jop.JMult(mscale,
                                                 jop.expo(hscale,-1.0)),
                                       mrng.lower, hwrng.lower)
-    #if mrng.spread == 0.0:
-    #    return
 
     if isinstance(prop, props.AnalogProperties):
-        if abs(mrng.lower) > 0:
+        if mrng.spread == 0 and abs(mrng.lower) > 0:
             jaunt_util.lower_bound_constraint(jenv,mscale,abs(mrng.lower), \
-                                    prop.min_signal())
-        if abs(mrng.upper) > 0:
-            jaunt_util.lower_bound_constraint(jenv,mscale,abs(mrng.upper), \
-                                           prop.min_signal())
+                                              prop.min_signal(prop.SignalType.CONSTANT))
 
-
+        elif mrng.spread > 0:
+            jaunt_util.lower_bound_constraint(jenv,mscale,mrng.spread, \
+                                    prop.min_signal(prop.SignalType.DYNAMIC))
 
 
 

@@ -69,8 +69,6 @@ def gpkit_expr(jenv,varmap,circ,expr,refs):
 
   # expressions
   elif expr.op == nop.NOpType.MULT:
-    if not (expr.is_posynomial()):
-      raise Exception("not posynomial: %s" % expr)
     result = 1.0
     for arg in expr.args():
       result *= recurse(arg)

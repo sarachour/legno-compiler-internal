@@ -43,7 +43,8 @@ block_in = Block('ext_chip_in',type=BlockType.DAC) \
           util.make_ana_props(chipcmd.RangeType.MED,\
                               glb.ANALOG_MIN,
                               glb.ANALOG_MAX,
-                              glb.ANALOG_MINSIG)) \
+                              glb.ANALOG_MINSIG_CONST,
+                              glb.ANALOG_MINSIG_DYN)) \
 .set_coeff("*","*","out",ext_chip_in_coeff) \
 .check()
 extern_continuous_model(block_in)
@@ -70,7 +71,8 @@ block_out = Block('ext_chip_out',type=BlockType.ADC) \
           util.make_ana_props(chipcmd.RangeType.MED,\
                               glb.ANALOG_MIN,
                               glb.ANALOG_MAX,
-                              glb.ANALOG_MINSIG)) \
+                              glb.ANALOG_MINSIG_CONST,
+                              glb.ANALOG_MINSIG_DYN)) \
 .set_coeff("*","*","out",ext_chip_out_coeff) \
 .check()
 extern_continuous_model(block_out)

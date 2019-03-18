@@ -328,4 +328,4 @@ def solve_gpkit_problem(gpmodel,timeout=10):
 def debug_gpkit_problem(gpprob):
   jaunt_util.log_warn(">>> DEBUG <<<")
   gpprob.debug(solver='mosek_cli')
-  sys.exit(1)
+  input()

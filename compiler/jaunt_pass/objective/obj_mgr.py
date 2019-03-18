@@ -21,6 +21,7 @@ class JauntObjectiveFunctionManager():
         '''
         return [
             boptlib.MaxSignalObjFunc,
+            boptlib.MaxSignalAndStabilityObjFunc
         ]
 
     @staticmethod

@@ -30,12 +30,15 @@ from ops.interval import Interval, IRange, IValue
 
 
 class AnalogProperties(Properties):
+    class SignalType(Enum):
+        CONSTANT = "constant"
+        DYNAMIC = "dynamic"
 
     def __init__(self):
         Properties.__init__(self,Properties.ANALOG)
         self._bounds = (None,None,units.unknown)
         self._bandwidth = (None,None,units.unknown)
-        self._min = (None,units.unknown)
+        self._min_signal = {}
 
     def set_bandwidth(self,lower,upper,unit):
         assert(lower is None or upper is None or lower <= upper)
@@ -47,11 +50,11 @@ class AnalogProperties(Properties):
         self._bounds = (lower,upper,unit)
         return self
 
-    def set_min_signal(self,min_sig,units):
-        self._min = (min_sig,units)
+    def set_min_signal(self,typ,min_sig,units):
+        self._min_signal[typ] = (min_sig,units)
 
-    def min_signal(self):
-        sig,unit = self._min
+    def min_signal(self,typ):
+        sig,unit = self._min_signal[typ]
         return sig
 
     def interval(self):
