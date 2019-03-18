@@ -121,7 +121,9 @@ def adc_continuous_scale_model(adc):
    out.set_interval(1.0,1.0)
    for scm_i in modes:
       cstrs = util.build_oprange_cstr([(inp,scm_i)],2.0)
-      expr = ops.Mult(ops.Const(0.5), ops.Pow(ops.Var('in'),ops.Const(-1)))
+      expr = ops.Mult(
+         ops.Var('out'),
+         ops.Pow(ops.Mult(ops.Const(0.5),ops.Var('in')),ops.Const(-1)))
       cstrs += util.build_coeff_cstr([(coeff,1.0/scm_i.coeff())], \
                                      expr)
       csm.add_scale_mode(scm_i, cstrs)

@@ -115,6 +115,9 @@ def continuous_scale_model_vga(mult):
   for scm in vga_modes:
     scm_i, scm_o = scm
     coeff = scm_o.coeff()/scm_i.coeff()
+    #if coeff != 1.0:
+    #  continue
+
     expr = ops.Mult(ops.Var('out'), ops.Pow(
       ops.Mult(ops.Var('coeff'),ops.Var('in0')), \
       ops.Const(-1)))
@@ -153,8 +156,8 @@ def continuous_scale_model_mult(mult):
   for scm in mul_modes:
     scm_i0,scm_i1,scm_o = scm
     coeff =scm_o.coeff()/(scm_i0.coeff()*scm_i1.coeff())
-    if coeff != 1.0:
-      continue
+    #if coeff != 1.0:
+    #  continue
     expr = ops.Mult(ops.Mult(ops.Const(1/0.5), ops.Var('out')), ops.Pow(
       ops.Mult(ops.Var('in0'),ops.Var('in1')),ops.Const(-1)))
     cstrs = util.build_oprange_cstr([(in0,scm_i0), \

@@ -18,11 +18,11 @@ def build_coeff_cstr(cstrlst,expr):
     slack = 0.0
     for var,coeff in cstrlst:
         if coeff == 1.0:
-            val = interval.Interval.type_infer(1.0-slack,1.0+slack)
+            val = interval.Interval.type_infer(1.0,1.0)
         elif coeff ==10.0:
-            val = interval.Interval.type_infer(1.0+slack,10.0)
+            val = interval.Interval.type_infer(10.0,10.0)
         elif coeff == 0.1:
-            val = interval.Interval.type_infer(0.0,0.1-slack)
+            val = interval.Interval.type_infer(0.1,0.1)
         else:
             val = interval.Interval.type_infer(0.0,0.0)
         contcstrlst.append((var,(expr,val)))

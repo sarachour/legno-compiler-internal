@@ -137,8 +137,6 @@ def compute_scale(prog,circ,objfun):
             continue
 
         sln = jenvlib.solve_gpkit_problem(gpprob)
-        print("solved?")
-        print(not sln is None)
         if sln == None:
             #jenvlib.debug_gpkit_problem(gpprob)
             return

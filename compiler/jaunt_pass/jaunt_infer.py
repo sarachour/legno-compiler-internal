@@ -280,14 +280,17 @@ def apply_result(jopt,jenv,circ,sln):
     scms = list(scale_modes.values())
     options = itertools.product(*scms)
     print("num-options: %d" % n_combos)
+    whitelist_out = ['tile_out','chip_out','tile_in','chip_in']
+    whitelist_in = ['fanout'] + whitelist_out
     for scm_combo in tqdm(options, total=n_combos):
         for (block_name,loc),scale_mode in zip(locs,scm_combo):
-            jaunt_util.log_warn("[%s,%s] -> %s" % (block_name,loc,scale_mode))
-            print("[%s,%s] -> %s" % (block_name,loc,scale_mode))
             new_circ.config(block_name,loc).set_scale_mode(scale_mode)
 
         bad_combo = False
         for sblk,sloc,sport,dblk,dloc,dport in circ.conns():
+            if sblk in whitelist_out or dblk in whitelist_in:
+                continue
+
             scfg = new_circ.config(sblk,sloc)
             dcfg = new_circ.config(dblk,dloc)
             sival = circ.board.block(sblk) \
@@ -299,7 +302,8 @@ def apply_result(jopt,jenv,circ,sln):
                 break
 
         if bad_combo:
-            break
+            continue
+
         yield new_circ
 
 def infer_scale_config(prog,circ):

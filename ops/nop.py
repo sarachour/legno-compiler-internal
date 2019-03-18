@@ -193,8 +193,9 @@ class NVar(NOp):
 
 class NRef(NVar):
 
-  def __init__(self,port,block=None,loc=None):
-    NVar.__init__(self,NOpType.REF,port,1.0,block,loc)
+  def __init__(self,port,power,block=None,loc=None):
+    assert(isinstance(power,float))
+    NVar.__init__(self,NOpType.REF,port,power,block,loc)
     self._value = None
 
   def concretize(self,ref_dict):
@@ -222,10 +223,17 @@ class NRef(NVar):
   def copy(self):
     return NVar.copy(self,NRef(self._port))
 
-  
+  def exponent(self,p):
+    result = NOp.exponent(self,p,toplevel=False)
+    if not result is None:
+      return result
+
+    return NRef(self.port,self.power*p,self.instance[0],self.instance[1])
+
   @staticmethod
   def from_json(obj):
     return NRef(obj['port'],
+                obj['power'],
                  obj['block'],
                  obj['loc'])
 

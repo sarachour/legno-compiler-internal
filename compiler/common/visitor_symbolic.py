@@ -298,7 +298,7 @@ class SymbolicInferenceVisitor(Visitor):
     sig = nop.NSig(port,block=block_name,loc=loc)
     # build a symbolic handle
     handle_model = SymbolicModel.from_expr(
-      sig, nop.NRef(port,block_name,loc)
+      sig, nop.NRef(port,1.0,block_name,loc)
     )
     # compute generated noise
     gen_expr = self.get_generate_expr(phys)
@@ -350,16 +350,18 @@ class BaseMathPropagator(ExpressionPropagator):
 
   def sqrt(self,m):
     u,v = m.mean, m.variance
+    s = m.signal.exponent(0.5)
     ur = u.exponent(0.5)
     vr = v.exponent(0.5)
-    return SymbolicModel(ur,vr)
+    return SymbolicModel(s,ur,vr)
 
   def mksigexpr(self,expr):
+    block,loc,port = self.place
     if expr.op == op.OpType.VAR:
       return nop.NSig(expr.name,
                       power=1.0,
-                      block=self.block,
-                      loc=self.loc)
+                      block=block,
+                      loc=loc)
     elif expr.op == op.OpType.CONST:
       return nop.NConstRV(expr.value,0)
     elif expr.op == op.OpType.MULT:
@@ -373,7 +375,7 @@ class BaseMathPropagator(ExpressionPropagator):
     # the smaller the magnitude of the signal
     # the higher the chance of a flip is.
     u,v = m.mean, m.variance
-    return SymbolicModel(u,v)
+    return SymbolicModel(nop.NConstRV(1.0,0.0),u,v)
 
 
   def sin(self,m):
@@ -390,7 +392,7 @@ class BaseMathPropagator(ExpressionPropagator):
     coeff = self.mksigexpr(self.expr.arg(0)).exponent(-1)
     ur = nop.mkmult([coeff,u])
     vr = nop.mkmult([coeff,v])
-    return SymbolicModel(ur,vr)
+    return SymbolicModel(nop.NConstRV(1.0,0.0),ur,vr)
 
   def plus(self,m1,m2):
     s1,u1,v1 = m1.signal,m1.mean,m1.variance

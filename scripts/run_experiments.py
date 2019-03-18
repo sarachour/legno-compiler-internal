@@ -4,6 +4,7 @@ import lab_bench.lib.expcmd.micro_getter as microget
 import lab_bench.lib.expcmd.osc as osc
 import os
 import time
+import util.config as CONFIG
 
 def ping_user(email,benchmark,script_list):
     msg = "benchmark=%s"
@@ -26,6 +27,8 @@ def execute_script(ip,script_file,native=False):
 def execute(args):
   db = ExperimentDB()
   ip = args.ip
+  if args.ip is None:
+      ip = CONFIG.OSC_IP
   native = args.native
   for entry in db.get_by_status(ExperimentStatus.PENDING):
     entry.synchronize()
