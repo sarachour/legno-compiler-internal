@@ -1,4 +1,8 @@
 import cProfile
+import json
+import zlib
+import binascii
+
 
 def values_in_list(vals,lst):
   for val in vals:
@@ -17,6 +21,18 @@ def pos_inf(f):
 
 def equals(f1,f2):
   return abs(f1-f2) <= 1e-5
+
+def decompress_json(hexstr):
+  byte_obj = binascii.unhexlify(hexstr)
+  comp_obj = zlib.decompress(byte_obj)
+  obj = json.loads(str(comp_obj,'utf-8'))
+  return obj
+
+def compress_json(obj):
+  byte_obj=json.dumps(obj).encode('utf-8')
+  comp_obj = zlib.compress(byte_obj,3)
+  strdata = str(binascii.hexlify(comp_obj), 'utf-8')
+  return strdata
 
 def truncate(f, n):
   '''Truncates/pads a float f to n decimal places without rounding'''

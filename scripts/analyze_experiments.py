@@ -20,6 +20,7 @@ import bmark.diffeqs as diffeqs
 import bmark.menvs as menvs
 from bmark.bmarks.common import run_diffeq
 import util.paths as paths
+import util.util as util
 
 # FMAX: the maximum frequency in the transformed simulation
 def compute_running_snr(T,Y,nmax=10000):
@@ -82,7 +83,7 @@ def compute_runtime(conc_circ,menv):
 
 def compute_meas(filename):
   with open(filename,'r') as fh:
-    obj = json.loads(fh.read())
+    obj = util.decompress_json(fh.read())
     return obj['times'], obj['values']
 
 def compute_params(conc_circ,varname):

@@ -2,7 +2,7 @@ from lab_bench.lib.base_command import Command
 import lab_bench.devices.sigilent_osc as osclib
 from lab_bench.lib.expcmd.common import *
 import numpy as np
-import json
+import util.util as util
 
 class OscSetVoltageRangeCmd(Command):
 
@@ -110,7 +110,8 @@ class OscGetValuesCmd(Command):
             obj = {'times':list(out_t),
                    'values': list(out_v),
                    'variable':variable}
-            strdata = json.dumps(obj,indent=4)
+            print("-> compressing data")
+            strdata = util.compress_json(obj)
             fh.write(strdata)
         print("<wrote file>")
 

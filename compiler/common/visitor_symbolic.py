@@ -4,9 +4,7 @@ import ops.op as ops
 import numpy as np
 import ops.interval as interval
 from compiler.common.visitor import Visitor
-import zlib
-import json
-import binascii
+import util.util as util
 
 def wrap_coeff(coeff,expr):
   if coeff == 1.0:
@@ -95,9 +93,7 @@ class SymbolicModel:
 
   @staticmethod
   def from_json(hexstr):
-    byte_obj = binascii.unhexlify(hexstr)
-    comp_obj = zlib.decompress(byte_obj)
-    obj = json.loads(str(comp_obj,'utf-8'))
+    obj = util.decompress_json(hexstr)
     signal = nop.NOp.from_json(obj['signal'])
     mean = nop.NOp.from_json(obj['mean'])
     variance = nop.NOp.from_json(obj['variance'])
@@ -110,9 +106,8 @@ class SymbolicModel:
       'mean': self._mean.to_json(),
       'variance': self._variance.to_json()
     }
-    byte_obj=json.dumps(obj).encode('utf-8')
-    comp_obj = zlib.compress(byte_obj,3)
-    return str(binascii.hexlify(comp_obj), 'utf-8')
+    hexstr = util.compress_json(obj)
+    return hexstr
 
   def __repr__(self):
     s = "sig: %s\n" % self._signal

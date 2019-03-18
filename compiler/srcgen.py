@@ -68,9 +68,10 @@ def gen_use_lut(circ,block,locstr,config,source):
   yield WriteLUTCmd(chip,tile,slce,variables,expr)
 
 def nearest_value(value):
+  if value == 0.0:
+    return 0.0
   vals = np.linspace(-1,1,256)
   idx = (np.abs(vals - value)).argmin()
-  print(value,vals[idx])
   return vals[idx]
 
 def gen_use_adc(circ,block,locstr,config):

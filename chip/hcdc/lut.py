@@ -31,7 +31,9 @@ block = Block("lut") \
 digital_props = util.make_dig_props(chipcmd.RangeType.MED,\
                                     glb.DAC_MIN, glb.DAC_MAX,
                                     glb.ANALOG_DAC_SAMPLES)
-digital_props.set_min_quantize(digital_props.SignalType.DYNAMIC, glb.MIN_QUANT_DYNAMIC)
+digital_props.set_min_quantize(digital_props.SignalType.DYNAMIC, \
+                               glb.MIN_QUANT_LUT_DYNAMIC)
+
 digital_props.set_continuous(0,glb.MAX_FREQ_LUT,units.khz)
 block.set_scale_modes("*",["*"])
 block.set_props("*","*",["in","out"],  digital_props)

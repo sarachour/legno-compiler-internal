@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 def visualize():
   data = common.get_data(series_type='bmark')
 
+  all_ranks = []
+  all_qualities = []
   for ser in data.series():
 
     ident,rank,quality,quality_var = data.get_data(ser, \
@@ -40,6 +42,8 @@ def visualize():
 
     else:
       coeff = np.corrcoef(randomize_ranks,randomize_qualities)
+      all_ranks += randomize_ranks
+      all_qualities += randomize_qualities
       print("[%s] rank-corr : %s" % (ser,coeff[1][0]))
 
     print("\n")
@@ -50,9 +54,13 @@ def visualize():
     plt.errorbar(plot_ranks,plot_qualities,plot_variances,fmt='^',
                  marker='.',label=ser)
 
+    coeff = np.corrcoef(all_ranks,all_qualities)
     plt.xlabel('rank (norm)')
     plt.ylabel('quality (norm)')
     plt.title('rank vs quality')
     plt.legend()
     plt.savefig("rank_%s.png" % ser)
     plt.clf()
+
+
+  print("[GLOBAL] rank-corr : %s" % (coeff[1][0]))

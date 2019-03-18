@@ -54,7 +54,7 @@ gren_subp.add_argument('hw_env', type=str, \
                         help='hardware environment')
 gren_subp.add_argument('--recompute', action='store_true',
                        help='recompute.')
-gren_subp.add_argument('--trials', type=int, default=5,
+gren_subp.add_argument('--trials', type=int, default=3,
                        help='compute trials.')
 
 
