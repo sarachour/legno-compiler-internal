@@ -38,7 +38,13 @@ def dac_continuous_scale_model(dac):
   coeff.set_interval(1.0,10.0)
   for scm in modes:
      _,scm_o = scm
-     cstrs = util.build_scale_model_cstr([(out,scm_o)],2.0)
+     expr = ops.Mult(ops.Var('out'),
+                     ops.Pow(
+                        ops.Mult(ops.Var('in'),ops.Const(2.0)),
+                        ops.Const(-1)))
+
+     cstrs = util.build_oprange_cstr([(out,scm_o)],2.0)
+     cstrs += util.build_coeff_cstr([(coeff,scm_o.coeff())], expr)
      csm.add_scale_mode(scm, cstrs)
 
   dac.set_scale_model("*", csm)
@@ -63,7 +69,6 @@ def dac_scale_model(dac):
       digital_props.set_continuous(0,glb.MAX_FREQ_DAC,units.khz)
       dac.set_coeff("*",mode,'out', coeff)
       dac.set_props("*",mode,["in"], digital_props)
-
       dac.set_props("*",mode,["out"],\
                    util.make_ana_props(rng,
                                        glb.ANALOG_MIN,
@@ -115,7 +120,10 @@ def adc_continuous_scale_model(adc):
    coeff.set_interval(0.1,1.0)
    out.set_interval(1.0,1.0)
    for scm_i in modes:
-      cstrs = util.build_scale_model_cstr([(inp,scm_i)],2.0)
+      cstrs = util.build_oprange_cstr([(inp,scm_i)],2.0)
+      expr = ops.Mult(ops.Const(0.5), ops.Pow(ops.Var('in'),ops.Const(-1)))
+      cstrs += util.build_coeff_cstr([(coeff,1.0/scm_i.coeff())], \
+                                     expr)
       csm.add_scale_mode(scm_i, cstrs)
 
    adc.set_scale_model("*", csm)

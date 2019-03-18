@@ -40,6 +40,30 @@ class FastObjFunc(optlib.JauntObjectiveFunction):
     else:
         yield FastObjFunc(0)
 
+class FindSCFBoundFunc(optlib.JauntObjectiveFunction):
+
+  def __init__(self,obj):
+    optlib.JauntObjectiveFunction.__init__(self,obj)
+
+  @staticmethod
+  def name():
+    return "_findscfbound"
+
+  @staticmethod
+  def make(circ,jenv,variable,varmap,minimize=True):
+    rngobj = 0.0
+    for scvar in jenv.jaunt_vars():
+      if jenv.jaunt_var_in_use(scvar):
+         if jenv.get_tag(scvar) == jenvlib.JauntVarType.SCALE_VAR and \
+            variable == scvar:
+           if minimize:
+             rngobj += varmap[scvar]
+           else:
+             rngobj += varmap[scvar]**(-1.0)
+
+    yield FindSCFBoundFunc(rngobj)
+
+
 class NoScaleFunc(optlib.JauntObjectiveFunction):
 
   def __init__(self,obj):
@@ -150,7 +174,7 @@ class MultSpeedObjFunc(optlib.JauntObjectiveFunction):
     jenv = jobj.jenv
     min_t=jobj.result('slow')['freevariables'][jenv.TAU]
     max_t=jobj.result('fast')['freevariables'][jenv.TAU]
-    if abs(min_t-max_t) < 1e-4:
+    if abs(min_t-max_t) < 1e-6:
       return
 
     taus = np.logspace(np.log10(min_t),np.log10(max_t),n)

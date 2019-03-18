@@ -75,23 +75,37 @@ def continuous_scale_model(integ):
     op_outI,c_outI = cont.decl_out(csm,'out',':z')
     cont.equals(csm, [op_inI, op_in])
     cont.equals(csm, [op_icI, op_outI, op_out])
-    cont.equals(csm, [c_icI, c_outI, c_out])
-    c_in2out = ops.Mult(
-      ops.Var(c_outI.varname),
-      ops.Var(c_inI.varname)
-    )
-    csm.lte(c_in2out, ops.Const(10.0))
-    csm.lte(ops.Const(0.1), c_in2out)
-    csm.eq(c_in2out, ops.Const(1.0))
-    csm.eq(ops.Var(c_icI.varname), ops.Const(1.0))
-    csm.eq(ops.Var(c_outI.varname), ops.Const(1.0))
+    cont.equals(csm, [c_icI, op_out])
+
+    c_in2out = csm.decl_var(cont.CSMCoeffVar('comp_scale'))
+
+    csm.eq(ops.Var(c_in2out.varname), \
+           ops.Mult(
+             ops.Var(c_outI.varname),
+             ops.Var(c_inI.varname)
+           ))
+    #csm.eq(c_in2out, ops.Const(1.0))
+    #csm.eq(ops.Var(c_icI.varname), ops.Const(1.0))
+    #csm.eq(ops.Var(c_outI.varname), ops.Const(1.0))
+    for csmvar in [c_in2out]:
+      csmvar.set_interval(0.1,10.0)
+
+    for csmvar in [c_icI]:
+      csmvar.set_interval(0.1,10.0)
 
     csm.eq(
       ops.Mult(
         ops.Var(op_inI.varname),
-        c_in2out
+        ops.Var(c_in2out.varname),
       ),
       ops.Var(op_outI.varname)
+    )
+    csm.eq(
+      ops.Mult(
+        ops.Var(op_in.varname),
+        ops.Var(c_inI.varname)
+      ),
+      ops.Var(op_inI.varname)
     )
     csm.eq(
       ops.Mult(
@@ -105,13 +119,13 @@ def continuous_scale_model(integ):
     for scm in scale_modes:
       scm_i, scm_o = scm
       coeff = scm_o.coeff()/scm_i.coeff()
-      if coeff != 1.0:
-        continue
-      cstrs = util.build_scale_model_cstr([(op_in,scm_i), \
+      expr = ops.Mult(ops.Var('out'), ops.Pow(ops.Var('in'),ops.Const(-1)))
+      cstrs = util.build_oprange_cstr([(op_in,scm_i), \
                                            (op_out,scm_o)], 2.0)
+      cstrs += util.build_coeff_cstr([(c_in2out,coeff)], expr)
       csm.add_scale_mode(scm,cstrs)
 
-    for csmvar in [op_in, op_out,  op_inI, op_icI, op_outI]:
+    for csmvar in [op_out,op_in, op_icI, op_out]:
       csmvar.set_interval(0.1,10.0)
 
     integ.set_scale_model(comp_mode,csm)
@@ -133,7 +147,8 @@ def scale_model(integ):
                                           glb.DAC_MIN, \
                                           glb.DAC_MAX, \
                                           glb.ANALOG_DAC_SAMPLES)
-      dig_props.set_min_quantize(dig_props.SignalType.CONSTANT, glb.MIN_QUANT_CONST)
+      dig_props.set_min_quantize(dig_props.SignalType.CONSTANT, \
+                                 glb.MIN_QUANT_CONST_HIGH_FIDELITY)
       dig_props.set_constant()
       integ.set_props(comp_mode,scale_mode,['in'],analog_in)
       integ.set_props(comp_mode,scale_mode,["ic"], dig_props)

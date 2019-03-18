@@ -12,29 +12,34 @@ equals = glbl_util.equals
 def datapath(filename):
     return "chip/hcdc/data/%s" % filename
 
-def build_scale_model_coeff_cstr(cstrlst,allow_scale=False):
+def build_coeff_cstr(cstrlst,expr):
     contcstrlst = []
-    for var,coeff in cstrlst:
-        # do not allow scaling down, because it apparently behaves poorly.
-        if coeff == 1.0:
-            cstr = interval.Interval.type_infer(0.0,100.0)
-            contcstrlst.append((var,cstr))
-        elif allow_scale:
-            cstr = interval.Interval.type_infer(0,0)
-            contcstrlst.append((var,cstr))
 
+    slack = 0.0
+    for var,coeff in cstrlst:
+        if coeff == 1.0:
+            val = interval.Interval.type_infer(1.0-slack,1.0+slack)
+        elif coeff ==10.0:
+            val = interval.Interval.type_infer(1.0+slack,10.0)
+        elif coeff == 0.1:
+            val = interval.Interval.type_infer(0.0,0.1-slack)
+        else:
+            val = interval.Interval.type_infer(0.0,0.0)
+        contcstrlst.append((var,(expr,val)))
     return contcstrlst
 
 
-def build_scale_model_cstr(cstrlst,scale):
+def build_oprange_cstr(cstrlst,scale):
     contcstrlst = []
+    slack = 1.2
+
     for var,rng in cstrlst:
         if rng == chipcmd.RangeType.MED:
-            cstr = interval.Interval.type_infer(0,scale*1.1)
+            cstr = 1.0
         elif rng == chipcmd.RangeType.LOW:
-            cstr = interval.Interval.type_infer(0,scale*0.11)
+            cstr = 0.1
         elif rng == chipcmd.RangeType.HIGH:
-            cstr = interval.Interval.type_infer(0,scale*10.1)
+            cstr = 10.0
 
         contcstrlst.append((var,cstr))
     return contcstrlst
@@ -70,10 +75,8 @@ def apply_blacklist(options,blacklist):
             for ov,ev in zip(opt,entry):
                 if not ev is None and ov != ev:
                     match = False
-
             if match:
                 return True
-
 
         return False
 

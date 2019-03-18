@@ -81,34 +81,74 @@ class CSMCoeffVar(CSMVar):
 class ContinuousScaleContext:
 
   def __init__(self,model):
-    self._assigns = {}
     self._model = model
-    self._ivals = {}
+    self._csmvar = {}
+    self._scf = {}
+    self._scfrng = {}
+    self._mrng = {}
+    self._hrng = {}
 
   @property
   def model(self):
     return self._model
 
-  def interval(self,var):
-    return self._ivals[var]
+  def scf(self,var):
+    return self._scf[var]
 
-  def value(self,var):
-    return self._assigns[var]
+  def hw_range(self,var):
+    return self._hrng[var]
 
-  def assign_interval(self,var,ival):
-    self._ivals[var] = ival
+  def math_range(self,var):
+    return self._mrng[var]
 
-  def assign_var(self,var,value):
-    self._assigns[var] = value
+  def csmvar(self,var):
+    return self._csmvar[var]
+
+  def assign_hw_range(self,var,ival):
+    self._hrng[var] =ival
+
+
+  def assign_math_range(self,var,ival):
+    self._mrng[var] =ival
+
+  def scale_range(self,var):
+    return self._scfrng[var]
+
+  def scale_ranges(self):
+    return self._scfrng
+
+  def assign_scale_range(self,var,scfival):
+    self._scfrng[var] = scfival
+
+
+  def assign_scf(self,var,scf):
+    self._scf[var] = scf
+
+  def assign_csmvar(self,var,value):
+    self._csmvar[var] = value
 
   def __repr__(self):
     s = ""
-    for v,val in self._assigns.items():
-      s += "%s=%f {%s}\n" % (v,val,v.interval)
+    for v,val in self._csmvar.items():
+      s += "csmvar %s=%f {%s}\n" % (v,val,v.interval)
 
     s += "\n"
-    for v,val in self._ivals.items():
-      s += "%s=%s\n" % (v,val)
+    for v,val in self._mrng.items():
+      s += "mrng %s=%s\n" % (v,val)
+    s += "\n"
+
+    for v,val in self._hrng.items():
+      s += "hrng %s=%s\n" % (v,val)
+    s += "\n"
+
+    for v,val in self._scf.items():
+      s += "scf %s=%s\n" % (v,val)
+    s += "\n"
+
+    for v,val in self._scfrng.items():
+      s += "scf-rng %s=%s\n" % (v,val)
+    s += "\n"
+
 
     return s
 
@@ -158,17 +198,55 @@ class ContinuousScaleModel:
     self._scale_modes[scale_mode] = cstrs
 
   def validate_scale_mode(self,ctx,cstrs):
-    for var,rng in cstrs:
-      # determine final
-      ival = ctx.interval(var)
-      if not rng.contains(ival)  \
-         and not ival.bound == 0.0:
-        return False
+    score = 1.0
+    for var,cstrval in cstrs:
+      if var.type == CSMVar.Type.OPVAR:
+        mrng = ctx.math_range(var)
+        hrng = ctx.hw_range(var)
+        assert(var.handle is None)
+        scrng = ctx.scale_range(var.port)
+        hrng_sc = hrng.scale(cstrval).scale(1.01)
+        mrng_cons = scrng.scale(mrng.bound)
+        if not hrng_sc.contains_value(mrng_cons.lower):
+          print("-> NO! %s x %s not in %s" % (mrng,scrng,hrng_sc))
+          return False,score
+        else:
+          score *= mrng_cons.intersection(hrng_sc).spread
 
-    return True
+    for var,cstr in cstrs:
+      if var.type == CSMVar.Type.COEFFVAR:
+        expr,coeff = cstr
+        result = expr.compute_interval(ctx.scale_ranges())
+        if coeff.spread > 0:
+          if not result.interval.intersection(coeff).spread > 0:
+            print("-> NO! %s not in %s [%s] [%s]" % \
+                  (coeff,result.interval,expr,ctx.scale_ranges()))
+
+            return False,score
+          else:
+            score *= result.interval.intersection(coeff).spread
+        else:
+          if not result.interval.contains_value(coeff.upper):
+            print("-> NO! %s not in %s [%s] [%s]" % \
+                  (coeff,result.interval,expr,ctx.scale_ranges()))
+
+            return False,score
+          else:
+            score *= result.interval.add(coeff.negate()).bound
+
+    return True,score
 
   def scale_mode(self,ctx):
+    scores = []
+    modes = []
     for scale_mode,cstrs in self._scale_modes.items():
-      if self.validate_scale_mode(ctx,cstrs):
-          yield scale_mode
+      print(scale_mode)
+      succ,score = self.validate_scale_mode(ctx,cstrs)
+      if succ:
+        modes.append(scale_mode)
+        scores.append(score)
+
+    idxs = sorted(range(0,len(scores)), key=lambda i:-scores[i])
+    for idx in idxs:
+      yield modes[idx]
 

@@ -170,7 +170,8 @@ class SCFPropExprVisitor(ExprVisitor):
     scexpr_state = jop.JMult(jop.JVar(jenv.TAU, \
                                       exponent=-1), scvar_deriv)
 
-    jenv.eq(jop.JMult(scexpr_state, jop.JMult(coeff_state,coeff_deriv)), scvar_state)
+    jenv.eq(jop.JMult(scexpr_state, jop.JMult(coeff_state,coeff_deriv)),  \
+            scvar_state)
 
     jenv.use_tau()
     return scvar_state

@@ -205,67 +205,74 @@ def gpkit_expr(variables,expr):
     else:
         raise Exception("unsupported <%s>" % expr)
 
+def build_gpkit_cstrs(circ,jenv):
+  failed = jenv.failed()
+  if failed:
+    jaunt_util.log_warn("==== FAIL ====")
+    for fail in jenv.failures():
+      jaunt_util.log_warn(fail)
+    return
 
-def build_gpkit_problem(circ,jenv,jopt):
-    failed = jenv.failed()
-    if failed:
-      jaunt_util.log_warn("==== FAIL ====")
-      for fail in jenv.failures():
-        jaunt_util.log_warn(fail)
+
+  variables = {}
+  for scf in jenv.variables():
+      variables[scf] = gpkit.Variable(scf)
+
+  constraints = []
+  for orig_lhs,orig_rhs in jenv.eqs():
+      succ,lhs,rhs = jaunt_util.cancel_signs(orig_lhs,orig_rhs)
+      if not succ:
+          print("failed to cancel signs: %s,%s" \
+                % (orig_lhs,orig_rhs))
+          input()
+          failed = True
+          continue
+
+      gp_lhs = gpkit_expr(variables,lhs)
+      gp_rhs = gpkit_expr(variables,rhs)
+      result = (gp_lhs == gp_rhs)
+      msg="%s == %s" % (gp_lhs,gp_rhs)
+      constraints.append((gp_lhs == gp_rhs,msg))
+
+  for lhs,rhs in jenv.ltes():
+      gp_lhs = gpkit_expr(variables,lhs)
+      gp_rhs = gpkit_expr(variables,rhs)
+      msg="%s <= %s" % (gp_lhs,gp_rhs)
+      constraints.append((gp_lhs <= gp_rhs,msg))
+
+
+  gpkit_cstrs = []
+  for cstr,msg in constraints:
+      if isinstance(cstr,bool) or isinstance(cstr,np.bool_):
+          if not cstr:
+              print("[[false]]: %s" % (msg))
+              input()
+              failed = True
+          #else:
+          #    print("[[true]]: %s" % (msg))
+      else:
+          gpkit_cstrs.append(cstr)
+          #print("[q] %s" % msg)
+
+  if failed:
+      print("<< failed >>")
+      time.sleep(0.2)
       return
 
+  cstrs = list(gpkit_cstrs)
+  return variables,cstrs
 
-    variables = {}
-    for scf in jenv.variables():
-        variables[scf] = gpkit.Variable(scf)
+def build_gpkit_problem(circ,jenv,jopt):
+  variables,gpkit_cstrs = build_gpkit_cstrs(circ,jenv)
+  if gpkit_cstrs is None:
+    return
 
-    constraints = []
-    for orig_lhs,orig_rhs in jenv.eqs():
-        succ,lhs,rhs = jaunt_util.cancel_signs(orig_lhs,orig_rhs)
-        if not succ:
-            print("failed to cancel signs: %s,%s" \
-                  % (orig_lhs,orig_rhs))
-            input()
-            failed = True
-            continue
-
-        gp_lhs = gpkit_expr(variables,lhs)
-        gp_rhs = gpkit_expr(variables,rhs)
-        result = (gp_lhs == gp_rhs)
-        msg="%s == %s" % (gp_lhs,gp_rhs)
-        constraints.append((gp_lhs == gp_rhs,msg))
-
-    for lhs,rhs in jenv.ltes():
-        gp_lhs = gpkit_expr(variables,lhs)
-        gp_rhs = gpkit_expr(variables,rhs)
-        msg="%s <= %s" % (gp_lhs,gp_rhs)
-        constraints.append((gp_lhs <= gp_rhs,msg))
-
-
-    gpkit_cstrs = []
-    for cstr,msg in constraints:
-        if isinstance(cstr,bool) or isinstance(cstr,np.bool_):
-            if not cstr:
-                print("[[false]]: %s" % (msg))
-                input()
-                failed = True
-            #else:
-            #    print("[[true]]: %s" % (msg))
-        else:
-            gpkit_cstrs.append(cstr)
-            #print("[q] %s" % msg)
-
-    if failed:
-        print("<< failed >>")
-        time.sleep(0.2)
-        return
-
-    for obj in jopt.objective(circ,variables):
-      cstrs = list(gpkit_cstrs) + list(obj.constraints())
-      ofun = obj.objective()
-      jaunt_util.log_info(ofun)
-      model = gpkit.Model(ofun, cstrs)
-      yield model,obj
+  for obj in jopt.objective(circ,variables):
+    cstrs = list(gpkit_cstrs) + list(obj.constraints())
+    ofun = obj.objective()
+    jaunt_util.log_info(ofun)
+    model = gpkit.Model(ofun, cstrs)
+    yield model,obj
 
 def solve_gpkit_problem_cvxopt(gpmodel,timeout=10):
     def handle_timeout(signum,frame):
@@ -328,4 +335,3 @@ def solve_gpkit_problem(gpmodel,timeout=10):
 def debug_gpkit_problem(gpprob):
   jaunt_util.log_warn(">>> DEBUG <<<")
   gpprob.debug(solver='mosek_cli')
-  input()

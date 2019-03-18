@@ -137,7 +137,10 @@ def compute_scale(prog,circ,objfun):
             continue
 
         sln = jenvlib.solve_gpkit_problem(gpprob)
+        print("solved?")
+        print(not sln is None)
         if sln == None:
+            #jenvlib.debug_gpkit_problem(gpprob)
             return
 
         jopt.add_result(thisobj.tag(),sln)
@@ -157,17 +160,18 @@ def scale_again(prog,circ,do_physical, do_sweep):
 
 def scale(prog,circ,nslns):
     objs = JauntObjectiveFunctionManager.basic_methods()
-    infer_objs = JauntObjectiveFunctionManager.inference_methods()
     idx = 0
-    for infer_obj in infer_objs:
-        for infer_circ in jaunt_infer.infer_scale_config(prog,circ,infer_obj):
-            succ = False
-            for obj in objs:
-                for final_obj,final_circ in compute_scale(prog,infer_circ,obj):
-                    if not succ:
-                        idx += 1
-                        succ = True
-                        if idx > nslns:
-                            return
+    for infer_circ in jaunt_infer.infer_scale_config(prog,circ):
+        succ = False
+        for obj in objs:
+            for final_obj,final_circ in compute_scale(prog,infer_circ,obj):
+                if not succ:
+                    idx += 1
+                    succ = True
+                    if idx > nslns:
+                        return
 
-                    yield idx,final_obj.tag(), final_circ
+                yield idx,final_obj.tag(), final_circ
+
+            if not succ:
+                break

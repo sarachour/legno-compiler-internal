@@ -122,9 +122,9 @@ class RangeType(str,Enum):
 
     @staticmethod
     def options():
+        yield RangeType.HIGH
         yield RangeType.MED
         yield RangeType.LOW
-        yield RangeType.HIGH
 
     @staticmethod
     def from_abbrev(msg):
