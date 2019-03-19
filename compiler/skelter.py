@@ -15,14 +15,14 @@ def compute_snr(nz_eval,circ,block_name,loc,port):
   noise_mean,noise_var = nz_eval.get(block_name,loc,port)
 
   if noise_var == 0.0:
-    return signal.bound,noise_var,None
+    return signal.bound,noise_var,float('inf')
 
   snr = signal.bound/noise_var
   return signal.bound,noise_var,snr
 
 def snr(circ,block_name,loc,port):
   nz_eval = evaluator.propagated_noise_evaluator(circ)
-  _,_,snr = compute_snr(nz_eval,circ,block_name,loc,port)
+  _,nz,snr = compute_snr(nz_eval,circ,block_name,loc,port)
   return snr
 
 def rank(circ):
@@ -53,6 +53,10 @@ def rank(circ):
 def clear(circ):
   for _,_,config in circ.instances():
     config.clear_physical_model()
+
+def clear_noise_model(circ):
+  for _,_,config in circ.instances():
+    config.clear_noise_model()
 
 def execute(circ):
   clear(circ)

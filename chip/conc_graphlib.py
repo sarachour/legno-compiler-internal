@@ -224,7 +224,7 @@ class SNRShader(CircShader):
         return Shader.IGNORE,"inf"
 
       snr = math.log10(signal.bound/noise)
-      return snr,"sig=%s nz=%.3e snr=%.3e" % (signal,noise,snr)
+      return snr,"sig=%s nz=%.3e snr=%f" % (signal,noise,snr)
 
 
 class ScaledIntervalShader(CircShader):

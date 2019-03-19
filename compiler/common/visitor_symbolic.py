@@ -318,6 +318,30 @@ class SymbolicInferenceVisitor(Visitor):
     combo_model = self._prop.plus(prop_model,gen_model)
     self.set_propagate_model(block_name,loc,port,combo_model)
 
+  def toplevel(self):
+    circ = self._circ
+    for handle,block_name,loc in circ.board.handles():
+      if circ.in_use(block_name,loc):
+        config = circ.config(block_name,loc)
+        for port,label,kind in config.labels():
+          self.port(block_name,loc,port)
+
+
+  def all(self):
+    circ = self._circ
+    for block_name,loc,config in circ.instances():
+      if not block_name == 'integrator':
+        continue
+      self.block(block_name,loc)
+
+    self.toplevel()
+    # for completeness, visitor any ports we missed
+    for block_name,loc,config in circ.instances():
+      block = circ.board.block(block_name)
+      for port in block.outputs:
+        if not self.visited(block_name,loc,port):
+          self.port(block_name,loc,port)
+
 class BaseMathPropagator(ExpressionPropagator):
 
   def __init__(self):
@@ -342,7 +366,6 @@ class BaseMathPropagator(ExpressionPropagator):
       return nop.mkzero()
 
   def integ(self,deriv,ic):
-    assert(deriv.is_posynomial())
     return deriv
 
   def abs(self,m):
@@ -374,15 +397,17 @@ class BaseMathPropagator(ExpressionPropagator):
   def cos(self,m):
     # the smaller the magnitude of the signal
     # the higher the chance of a flip is.
-    u,v = m.mean, m.variance
-    return SymbolicModel(nop.NConstRV(1.0,0.0),u,v)
+    return self.sin(m)
 
 
   def sin(self,m):
     # the smaller the magnitude of the signal
     # the higher the chance of a flip is.
     u,v = m.mean, m.variance
-    return SymbolicModel(nop.NConstRV(1.0,0.0),u,v)
+    # sensitivity analysis
+    newu = nop.mkmult([nop.NConstRV(0.5,0),u])
+    newv = nop.mkmult([nop.NConstRV(0.5,0),v])
+    return SymbolicModel(nop.NConstRV(1.0,0.0),newu,newv)
 
 
   def sgn(self,m):

@@ -18,6 +18,8 @@ def compute_params(conc_circ,entry,varname):
   scf = cfg.scf(port)
   tau = (conc_circ.tau)
   fmax = (conc_circ.tau)*conc_circ.board.time_constant
+
+  skelter.clear_noise_model(conc_circ)
   pnlib.compute(conc_circ)
   snr = skelter.snr(conc_circ,block_name,loc,port)
   menv = menvs.get_math_env(entry.math_env)

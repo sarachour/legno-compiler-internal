@@ -20,11 +20,19 @@ class Evaluator:
 
   def freq(self,block_name,loc,port):
     bw = self.circ.config(block_name,loc).bandwidth(port)
+    if bw is None:
+      raise Exception("unknown bandwidth : <%s[%s].%s>" % (block_name,loc,port))
+      return None
+
     scbw = bw.timescale(self.circ.tau)
     return scbw
 
   def interval(self,block_name,loc,port):
     interval = self.circ.config(block_name,loc).interval(port)
+    if interval is None:
+      raise Exception("unknown interval: <%s[%s].%s>" % (block_name,loc,port))
+      return None
+
     scf = self.circ.config(block_name,loc).scf(port)
     return interval.scale(scf)
 
@@ -85,7 +93,6 @@ class Evaluator:
     if not self._config_func is None:
       self._config_func(model)
 
-    freq = self.freq(block_name,loc,port).fmax
     mean,variance = model.mean,model.variance
     this_mean = self.evaluate_expr(block_name,loc,port, \
                                    mean,'mean')
@@ -95,7 +102,6 @@ class Evaluator:
     res_mean = this_mean
     res_variance = this_variance
 
-    fmax = self.freq(block_name,loc,port).bandwidth
     self.set_reference(block_name,loc,port,'mean',
                        res_mean.bound)
     self.set_reference(block_name,loc,port,'variance',\

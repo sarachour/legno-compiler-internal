@@ -4,15 +4,17 @@ sys.path.insert(0,os.path.abspath("../../../"))
 import chip.phys as phys
 import ops.nop as nops
 import json
+import numpy as np
 
 
 def get_param_rng_weight(scf):
+  slack = 0.0
   if scf == 'l':
-    return 0.0
+    return (1.0-slack)
   elif scf == 'm':
-    return 0.0
+    return 1.0
   elif 'h':
-    return 0.0
+    return (1.0+slack)
 
 
 def get_param_scf_weight(scf):
@@ -24,21 +26,21 @@ def get_param_scf_weight(scf):
     return 0.0
 
 def get_param_blk_weight(blk):
-  baseline = 0.1
-  if blk == 'integ':
-    return baseline
-  elif blk == 'mult':
-    return baseline
-  elif blk =='vga':
-    return baseline
-  elif blk == 'dac':
-    return baseline
-  elif blk == 'adc':
-    return baseline
-  elif blk == 'fanout':
-    return baseline
+  baseline = 2.0
+  coeffs = {
+    'integ':0.005,
+    'mult':1.0,
+    'vga':0.5,
+    'dac':0.01,
+    'adc':0.01,
+    'fanout':0.005
+  }
+  if blk in coeffs:
+    return baseline*coeffs[blk]
+    #return baseline*np.mean(list(coeffs.values()))
   else:
-    return 0.0
+    return 0
+
 
 def get_param_sig_weight(blk):
   if blk == 'mult' or blk == 'vga':
@@ -48,8 +50,12 @@ def get_param_sig_weight(blk):
 
 
 def get_param_freq_weight(blk):
+  scale = 0.3
+  exp = 1.0
   if blk == 'integ':
-    return 5.0,1.0
+    return scale,exp
+  #elif blk == 'mult':
+  #  return scale,exp
   else:
     return 0.0,1.0
 
@@ -61,10 +67,9 @@ def get_param_port(blk):
 
 def mk_noise_model(blk,scf,rng):
   pblk = get_param_blk_weight(blk)
-  pscf = get_param_scf_weight(scf)
   prng = get_param_rng_weight(rng)
 
-  wt = pblk + pscf + prng
+  wt = pblk*prng
   psig = get_param_sig_weight(blk)
   pfreq,pfreqexp = get_param_freq_weight(blk)
   port = get_param_port(blk)

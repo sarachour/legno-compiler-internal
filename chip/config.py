@@ -353,6 +353,13 @@ class Config:
       assert(delay.is_posynomial())
       self._gen_delays[port] = delay
 
+    def clear_noise_model(self):
+        def reset(key):
+            setattr(self,key,{})
+
+        reset('_gen_noise')
+        reset('_prop_noise')
+
     def clear_physical_model(self):
         def reset(key):
             setattr(self,key,{})

@@ -8,6 +8,7 @@ def visualize():
 
   all_ranks = []
   all_qualities = []
+  corrs = {}
   for ser in data.series():
 
     ident,rank,quality,quality_var = data.get_data(ser, \
@@ -32,21 +33,20 @@ def visualize():
 
     randomize_ranks = []
     randomize_qualities = []
-    samples = 10
+    samples = 1
     for r,q,v in zip(rank,quality,quality_var):
-      for _ in range(0,samples):
-        qrand = np.random.normal(q,v)
-        randomize_ranks.append(r)
-        randomize_qualities.append(qrand)
+      randomize_ranks.append(r)
+      randomize_qualities.append(q)
 
     if len(rank) < 2:
       print("[%s] rank-corr: <need more data>" % ser)
-
+      corrs[ser] = None
     else:
       coeff = np.corrcoef(randomize_ranks,randomize_qualities)
       all_ranks += randomize_ranks
       all_qualities += randomize_qualities
       print("[%s] rank-corr : %s" % (ser,coeff[1][0]))
+      corrs[ser] = coeff[1][0]
 
     print("\n")
 
@@ -56,7 +56,6 @@ def visualize():
     plt.errorbar(plot_ranks,plot_qualities,plot_variances,fmt='^',
                  marker='.',label=ser)
 
-    coeff = np.corrcoef(all_ranks,all_qualities)
     plt.xlabel('rank (norm)')
     plt.ylabel('quality (norm)')
     plt.title('rank vs quality')
@@ -65,4 +64,10 @@ def visualize():
     plt.clf()
 
 
+  coeff = np.corrcoef(all_ranks,all_qualities)
+  for ser,corr in corrs.items():
+    print("%s\t%f" % (ser,corr))
+
+  print("global\t%f" % coeff[1][0])
+  print("\n")
   print("[GLOBAL] rank-corr : %s" % (coeff[1][0]))

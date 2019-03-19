@@ -26,10 +26,7 @@ def get_integrator_ports(circuit,evaluate=False,weight=1.0):
     block = circuit.board.block(block_name)
     if block_name != "integrator":
       continue
-    if not evaluate:
-      ports.append((weight,block_name,loc,'in'))
-    else:
-      ports.append((weight,block_name,loc,'out'))
+    ports.append((weight,block_name,loc,'in'))
   return ports
 
 def get_computation_ports(circuit,evaluate=False,weight=1.0):
@@ -57,6 +54,7 @@ def get_all_ports(circuit,evaluate=False):
   return ports
 
 def get_ports(circuit,evaluate=False):
+  n = len(get_integrator_ports(circuit,evaluate,1.0))
+
   return get_iface_ports(circuit,evaluate,1.0) + \
-    get_integrator_ports(circuit,evaluate,1.0) + \
-    get_adc_ports(circuit,evaluate,1.0)
+    get_integrator_ports(circuit,evaluate,1.0/n)
