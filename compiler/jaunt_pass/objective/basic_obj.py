@@ -180,7 +180,10 @@ class MultSpeedObjFunc(optlib.JauntObjectiveFunction):
     taus = np.logspace(np.log10(min_t),np.log10(max_t),n)
     for idx in range(0,n):
       tau = taus[idx]
-      cstrs = [varmap[jenv.TAU] == tau]
+      cstrs = [
+        varmap[jenv.TAU] <= tau*1.1,
+        varmap[jenv.TAU] >= tau*0.9
+      ]
       yield cls.mkobj(circ,jobj,varmap,idx,tau,cstrs)
 
 class MaxSignalAtSpeedObjFunc(MultSpeedObjFunc):

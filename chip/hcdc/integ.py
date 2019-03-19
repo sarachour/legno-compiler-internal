@@ -181,7 +181,8 @@ def scale_model(integ):
                                           glb.ANALOG_MINSIG_DYN))
 
       scf_inout = outrng.coeff()/inrng.coeff()
-      scf_ic = outrng.coeff()*2.0
+      # alteration: initial condition, is not scaled
+      scf_ic = outrng.coeff()
       integ.set_coeff(comp_mode,scale_mode,"out",scf_inout,handle=':z\'')
       integ.set_coeff(comp_mode,scale_mode,"out",scf_ic,':z[0]')
       integ.set_coeff(comp_mode,scale_mode,"out",1.0,handle=':z')

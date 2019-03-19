@@ -101,12 +101,7 @@ def exec_jaunt(hdacv2_board, args):
         filename = "%s/%s" % (dirname,fname)
         conc_circ = ConcCirc.read(hdacv2_board, filename)
 
-        has_opt = {}
         for idx,opt,scale_circ in jaunt.scale(prog,conc_circ,args.scale_circuits):
-            if(opt in has_opt):
-                continue
-
-            has_opt[opt] = True
             filename = path_handler.conc_circ_file(circ_bmark,
                                                     circ_indices,
                                                     idx,

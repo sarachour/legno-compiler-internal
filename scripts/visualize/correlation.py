@@ -4,17 +4,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def visualize():
-  data = common.get_data(series_type='bmark')
+  data = common.get_data(series_type='circ_ident')
 
   all_ranks = []
   all_qualities = []
   for ser in data.series():
 
     ident,rank,quality,quality_var = data.get_data(ser, \
-                                                   ['ident','rank','quality','quality_variance'], \
+                                                   ['ident','rank',\
+                                                    'quality','quality_variance'], \
                                                    [MismatchStatus.UNKNOWN, MismatchStatus.IDEAL])
     bad_ident,bad_rank,bad_quality = data.get_data(ser, \
-                                                   ['ident','rank','quality'], \
+                                                   ['ident','rank', \
+                                                    'quality'], \
                                                    [MismatchStatus.BAD])
 
 
