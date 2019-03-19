@@ -132,6 +132,9 @@ class OutputEntry:
     self._out_file = None
     self._quality = None
     self._rank = None
+    self._tau = None
+    self._scf = None
+    self._runtime = None
     self._modif = None
     self._columns = None
 
@@ -226,6 +229,7 @@ class OutputEntry:
     entry._rank=args['rank']
     entry._fmax=args['fmax']
     entry._scf=args['scf']
+    entry._tau=args['tau']
     entry._status=OutputStatus(args['status'])
     entry._modif=args['modif']
     entry._columns = args
@@ -268,6 +272,19 @@ class OutputEntry:
     self.update_db({'rank':new_rank})
     self._rank = new_rank
 
+
+  def set_scf(self,new_scf):
+    self.update_db({'scf':new_scf})
+    self._scf = new_scf
+
+  def set_tau(self,new_tau):
+    self.update_db({'tau':new_tau})
+    self._tau = new_tau
+
+  def set_fmax(self,new_fmax):
+    self.update_db({'fmax':new_fmax})
+    self._fmax = new_fmax
+
   def set_quality(self,new_quality):
     self.update_db({'quality':new_quality})
     self._quality = new_quality
@@ -297,6 +314,8 @@ class OutputEntry:
     s += "status=%s\n" % (self._status.value)
     s += "out_file=%s\n" % (self._out_file)
     s += "rank=%s\n" % (self._rank)
+    s += "tau=%s\n" % (self._tau)
+    s += "fmax=%s\n" % (self._fmax)
     s += "quality=%s\n" % (self._quality)
     s += "}\n"
     return s
@@ -332,6 +351,10 @@ class ExperimentEntry:
   @property
   def runtime(self):
     return self._runtime
+
+  @property
+  def energy(self):
+    return self._energy
 
 
   @property
@@ -453,6 +476,11 @@ class ExperimentEntry:
   def set_quality(self,new_quality):
     self.update_db({'quality':new_quality})
     self._quality = new_quality
+
+  def set_energy(self,new_energy):
+    self.update_db({'energy':new_energy})
+    self._energy = new_energy
+
 
   def set_runtime(self,new_runtime):
     self.update_db({'runtime':new_runtime})
@@ -608,7 +636,7 @@ class ExperimentDB:
                           'varname','trial','out_file', \
                           'rank','quality','fmax','tau','scf','modif']
 
-    self._output_modifiable = ['quality','modif','status','rank']
+    self._output_modifiable = ['quality','modif','status','rank','tau','scf','fmax']
     self._curs.execute(cmd)
     self._conn.commit()
 

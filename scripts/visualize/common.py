@@ -8,7 +8,7 @@ class Dataset:
     self._data = {}
     self._fields = ['ident','circ_ident','bmark', \
                     'objective_fun', 'rank', 'mismatch',
-                    'quality','runtime']
+                    'quality','runtime','energy']
     self._metafields = ['quality_variance','quality_time_ratio']
 
   def get_data(self,series,fields,statuses):

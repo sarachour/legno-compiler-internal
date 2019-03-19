@@ -39,9 +39,9 @@ run_subp.add_argument('--obj', type=str,
 
 
 analyze_subp = subparsers.add_parser('analyze', help='run any pending grendel scripts')
-analyze_subp.add_argument('--recompute-rank', action='store_true',
+analyze_subp.add_argument('--recompute-energy', action='store_true',
                        help='.')
-analyze_subp.add_argument('--recompute-runtime', action='store_true',
+analyze_subp.add_argument('--recompute-params', action='store_true',
                        help='.')
 analyze_subp.add_argument('--recompute-quality', action='store_true',
                        help='.')

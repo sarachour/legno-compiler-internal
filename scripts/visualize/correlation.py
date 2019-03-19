@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def visualize():
-  data = common.get_data(series_type='circ_ident')
+  data = common.get_data(series_type='bmark')
 
   all_ranks = []
   all_qualities = []

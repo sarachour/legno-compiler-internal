@@ -3,6 +3,7 @@ import scripts.visualize.correlation as correlation
 import scripts.visualize.paper_quality_vs_speed as paper_quality_vs_speed
 import scripts.visualize.paper_energy_vs_speed as paper_energy_vs_speed
 import scripts.visualize.quality_vs_speed as quality_vs_speed
+import scripts.visualize.quality_vs_energy as quality_vs_energy
 import scripts.visualize.rank_vs_speed as rank_vs_speed
 import scripts.visualize.best_of as best_of
 import matplotlib.pyplot as plt
@@ -15,6 +16,7 @@ def execute(args):
   name = args.type
   opts = {
     'quality-vs-speed':quality_vs_speed.visualize,
+    'quality-vs-energy':quality_vs_energy.visualize,
     'rank-vs-speed':rank_vs_speed.visualize,
     'correlation': correlation.visualize,
     'best-rank': best_of.rank,
