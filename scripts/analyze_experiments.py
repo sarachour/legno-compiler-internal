@@ -12,10 +12,6 @@ from chip.hcdc.hcdcv2_4 import board as hdacv2_board
 
 import compiler.skelter as skelter
 
-import bmark.diffeqs as diffeqs
-from bmark.bmarks.common import run_diffeq
-
-import util.util as util
 
 import scripts.analysis.params as params
 import scripts.analysis.quality as quality
@@ -35,7 +31,7 @@ def execute_once(args):
 
   db = ExperimentDB()
   for entry in db.get_by_status(ExperimentStatus.PENDING):
-    if not entry.params is None and not recompute_params:
+    if not missing_params(entry) is None and not recompute_params:
       continue
 
     print(entry)
