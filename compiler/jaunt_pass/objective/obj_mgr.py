@@ -28,8 +28,8 @@ class JauntObjectiveFunctionManager():
     @staticmethod
     def sweep_methods():
         return [
-            physoptlib.MaxSNRAtSpeedObjFunc
-            #boptlib.MaxSignalAtSpeedObjFunc
+            physoptlib.MaxSNRAtSpeedObjFunc,
+            boptlib.MaxSignalAtSpeedObjFunc
         ]
 
 
