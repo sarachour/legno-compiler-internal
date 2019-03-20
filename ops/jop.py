@@ -78,7 +78,15 @@ class JMult(JOp):
     def factor_const(self):
         c1,x1 = self.arg(0).factor_const()
         c2,x2 = self.arg(1).factor_const()
-        return c1*c2,JMult(x1,x2)
+        c = c1*c2
+        if x1.op == JOpType.CONST and x2.op == JOpType.CONST:
+            return c, JConst(1.0)
+        elif x1.op == JOpType.CONST:
+            return c, x2
+        elif x2.op == JOpType.CONST:
+            return c, x1
+        else:
+            return c,JMult(x1,x2)
 
 
 
@@ -93,3 +101,15 @@ def expo(jexpr, factor):
         return JMult(e1,e2)
     else:
         raise Exception("exponentiate: not-impl %s" % jexpr)
+
+def simplify(jexpr):
+    if jexpr.op == JOpType.CONST:
+        return JConst(jexpr.value)
+    elif jexpr.op == JOpType.VAR:
+        return JVar(jexpr.name,jexpr.exponent)
+    elif jexpr.op == JOpType.MULT:
+        c,e = jexpr.factor_const()
+        if c == 1.0:
+            return e
+        else:
+            return JMult(JConst(c),e)

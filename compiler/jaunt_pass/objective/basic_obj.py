@@ -100,7 +100,7 @@ class MaxSignalObjFunc(optlib.JauntObjectiveFunction):
 
   @staticmethod
   def make(circ,jobj,varmap):
-    rngobj = 1.0
+    rngobj = 0.0
     jenv = jobj.jenv
     for scvar in jenv.jaunt_vars():
       if jenv.jaunt_var_in_use(scvar) \
@@ -139,74 +139,3 @@ class MaxSignalAndStabilityObjFunc(optlib.JauntObjectiveFunction):
     ot = list(SlowObjFunc.make(circ,jobj,varmap))[0]
     oi = list(MaxSignalObjFunc.make(circ,jobj,varmap))[0]
     yield MaxSignalAndStabilityObjFunc(ot.objective()*oi.objective())
-
-
-class MultSpeedObjFunc(optlib.JauntObjectiveFunction):
-
-  def __init__(self,obj,idx,tau,cstrs):
-    self._tau = tau
-    self._idx = idx
-    optlib.JauntObjectiveFunction.__init__(self,obj,
-                                           tag=self.mktag(idx), \
-                                           cstrs=cstrs)
-
-  def mktag(self,idx):
-    raise NotImplementedError
-
-
-
-  @staticmethod
-  def name():
-    return "multspeed"
-
-  @staticmethod
-  def make(cls,circ,jobj,varmap,n=7):
-    if not jobj.jenv.uses_tau():
-      return
-
-    trnum = lambda i : "tr%d" % i
-    filename = circ.filename
-    for obj in SlowObjFunc.make(circ,jobj,varmap):
-      yield obj
-    for obj in FastObjFunc.make(circ,jobj,varmap):
-      yield obj
-
-    jenv = jobj.jenv
-    min_t=jobj.result('slow')['freevariables'][jenv.TAU]
-    max_t=jobj.result('fast')['freevariables'][jenv.TAU]
-    if abs(min_t-max_t) < 1e-6:
-      return
-
-    taus = np.logspace(np.log10(min_t),np.log10(max_t),n)
-    for idx in range(0,n):
-      tau = taus[idx]
-      cstrs = [
-        varmap[jenv.TAU] <= tau*1.1,
-        varmap[jenv.TAU] >= tau*0.9
-      ]
-      yield cls.mkobj(circ,jobj,varmap,idx,tau,cstrs)
-
-class MaxSignalAtSpeedObjFunc(MultSpeedObjFunc):
-
-  def __init__(self,obj,idx,tau,cstrs):
-    MultSpeedObjFunc.__init__(self,obj,idx,tau,cstrs)
-
-  def mktag(self,idx):
-    return "sig-tau%d" % idx
-
-  @staticmethod
-  def name():
-    return "sig-sweep-tau"
-
-  @staticmethod
-  def mkobj(circ,jobj,varmap,idx,tau,cstrs):
-    obj = list(MaxSignalObjFunc.make(circ,jobj,varmap))[0].objective()
-    return MaxSignalAtSpeedObjFunc(obj,
-                                   idx=idx,
-                                   tau=tau,
-                                   cstrs=cstrs)
-
-  @staticmethod
-  def make(circ,jobj,varmap,n=7):
-    return MultSpeedObjFunc.make(MaxSignalAtSpeedObjFunc,circ, \
-                                 jobj,varmap,n=n)

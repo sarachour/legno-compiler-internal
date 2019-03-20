@@ -3,7 +3,7 @@ import ops.nop as nop
 import util.util as util
 import compiler.common.evaluator_heuristic as evalheur
 import compiler.jaunt_pass.objective.obj as optlib
-import compiler.jaunt_pass.objective.basic_obj as boptlib
+import compiler.jaunt_pass.objective.sweep_obj as swoptlib
 import math
 
 def gpkit_mult(expr):
@@ -203,7 +203,7 @@ class LowNoiseObjFunc(optlib.JauntObjectiveFunction):
 
 
 
-class MaxSNRAtSpeedObjFunc(boptlib.MultSpeedObjFunc):
+class TauSweepSNRObjFunc(swoptlib.MultSpeedObjFunc):
 
   def __init__(self,obj,idx,tau,cstrs):
     boptlib.MultSpeedObjFunc.__init__(self,obj,idx,tau,cstrs)
@@ -227,5 +227,5 @@ class MaxSNRAtSpeedObjFunc(boptlib.MultSpeedObjFunc):
 
   @staticmethod
   def make(circ,jobj,varmap,n=7):
-    return boptlib.MultSpeedObjFunc.make(MaxSNRAtSpeedObjFunc,circ, \
-                                 jobj,varmap,n=n)
+    return swoptlib.MultSpeedObjFunc.make(
+      MaxSNRAtSpeedObjFunc,circ, jobj,varmap,n=n)

@@ -1,5 +1,6 @@
 import compiler.jaunt_pass.objective.phys_obj as physoptlib
 import compiler.jaunt_pass.objective.basic_obj as boptlib
+import compiler.jaunt_pass.objective.sweep_obj as sweepoptlib
 
 #TODO: what is low range, high range and med range?
 #TODO: setRange: integ.in, integ.out and mult have setRange functions.
@@ -28,8 +29,9 @@ class JauntObjectiveFunctionManager():
     @staticmethod
     def sweep_methods():
         return [
-            physoptlib.MaxSNRAtSpeedObjFunc,
-            boptlib.MaxSignalAtSpeedObjFunc
+            sweepoptlib.MaxRandomSignalObjFunc,
+            #physoptlib.TauSweepSNRObjFunc,
+            #sweepoptlib.TauSweepSigObjFunc
         ]
 
 
@@ -58,7 +60,6 @@ class JauntObjectiveFunctionManager():
         return self._results[objective]
 
     def add_result(self,objective,sln):
-        assert(not objective in self._results)
         self._results[objective] = sln
 
 
