@@ -5,10 +5,11 @@ import chip.phys as phys
 import ops.nop as nops
 import json
 import numpy as np
+import chip.hcdc.data.config as cfg
 
 
 def get_param_rng_weight(scf):
-  slack = 0.0
+  slack = cfg.data['scale-mode']['delta']
   if scf == 'l':
     return (1.0-slack)
   elif scf == 'm':
@@ -18,46 +19,36 @@ def get_param_rng_weight(scf):
 
 
 def get_param_scf_weight(scf):
+  slack = cfg.data['coeff-mode']['delta']
   if scf =='10x':
-    return 0.0
+    return 1.0-slack
   elif scf == '1x':
-    return 0.0
+    return 1.0
   elif '01x':
-    return 0.0
+    return 1.0+slack
 
 def get_param_blk_weight(blk):
-  baseline = 2.0
-  coeffs = {
-    'integ':0.005,
-    'mult':1.0,
-    'vga':0.5,
-    'dac':0.01,
-    'adc':0.01,
-    'fanout':0.005
-  }
-  if blk in coeffs:
-    return baseline*coeffs[blk]
-    #return baseline*np.mean(list(coeffs.values()))
+  baseline = cfg.data['block']['baseline']
+  if blk in cfg.data['block']['coeffs']:
+    return baseline*cfg.data['block']['coeffs'][blk]
   else:
-    return 0
+    return 0.0
 
 
 def get_param_sig_weight(blk):
-  if blk == 'mult' or blk == 'vga':
-    return 0.0
+  if blk in cfg.data['signal']['weights']:
+    return cfg.data['signal']['weights'][blk]
   else:
     return 0.0
 
 
 def get_param_freq_weight(blk):
   scale = 0.3
-  exp = 1.0
-  if blk == 'integ':
-    return scale,exp
-  #elif blk == 'mult':
-  #  return scale,exp
+  exp = cfg.data['freq']['exponent']
+  if blk in cfg.data['freq']['coeffs']:
+    return cfg.data['freq']['coeffs'][blk],exp
   else:
-    return 0.0,1.0
+    return 0.0,exp
 
 def get_param_port(blk):
   if blk == 'fanout':

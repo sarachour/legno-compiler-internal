@@ -4,6 +4,28 @@ import zlib
 import binascii
 
 
+def flatten(dictionary, level = []):
+    tmp_dict = {}
+    for key, val in dictionary.items():
+        if type(val) == dict:
+            tmp_dict.update(flatten(val, level + [key]))
+        else:
+            tmp_dict['.'.join(level + [key])] = val
+    return tmp_dict
+
+def unflatten(dictionary):
+    resultDict = dict()
+    for key, value in dictionary.items():
+        parts = key.split(".")
+        d = resultDict
+        for part in parts[:-1]:
+            if part not in d:
+                d[part] = dict()
+            d = d[part]
+        d[parts[-1]] = value
+    return resultDict
+
+
 def values_in_list(vals,lst):
   for val in vals:
     if not val in lst:
