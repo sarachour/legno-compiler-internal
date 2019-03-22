@@ -8,7 +8,6 @@ import tqdm
 
 def parse_fn(expr,params):
     expr_conc = expr.format(**params)
-    print(expr_conc)
     return opparse.parse(expr_conc)
 
 
@@ -63,7 +62,10 @@ def plot_diffeq(menv,prob,T,Y):
       Z[var].append(value)
 
   for series_name,values in Z.items():
+      print("%s: %d" % (series_name,len(values)))
+  for series_name,values in Z.items():
     filepath = "%s/%s.png" % (filedir,series_name);
+    print('plotting %s' % series_name)
     plt.plot(T,values,label=series_name)
     plt.savefig(filepath)
     plt.clf()

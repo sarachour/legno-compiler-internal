@@ -97,7 +97,6 @@ def digital_quantize_signal(jenv,mscale,math_ival,props):
 
 
 def digital_quantize_constraint(jenv,mscale,math_rng,props):
-
     if math_rng.lower < math_rng.upper:
         digital_quantize_signal(jenv,mscale,math_rng,props)
     else:
@@ -115,8 +114,11 @@ def digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):
 
     elif prop.kind == props.DigitalProperties.ClockType.CLOCKED:
         jenv.use_tau()
+        # time between samples
         hw_sample_rate = prop.sample_rate
+        # maximum number of samples
         hw_max_samples = prop.max_samples
+        # maximum simulation time
         m_exptime = prob.max_sim_time
         assert(not m_exptime is None)
         # sample frequency required
@@ -126,6 +128,8 @@ def digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):
                            jop.JConst(hw_sample_rate))
 
         if not hw_max_samples is None:
+            print(hw_max_samples, m_exptime)
+            input()
             jenv.lte(jop.JMult(tau_inv,jop.JConst(m_exptime)),  \
                      jop.JConst(hw_max_samples))
 

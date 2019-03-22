@@ -8,8 +8,12 @@ import numpy as np
 import chip.hcdc.data.config as cfg
 
 
-def get_param_rng_weight(scf):
+def get_param_rng_weight(bmark,scf):
   slack = cfg.data['scale-mode']['delta']
+  if bmark == 'adc':
+    scfmap = {'l':'h','h':'l','m':'m'}
+    scf = scfmap[scf]
+
   if scf == 'l':
     return (1.0-slack)
   elif scf == 'm':
@@ -19,7 +23,8 @@ def get_param_rng_weight(scf):
 
 
 def get_param_scf_weight(scf):
-  slack = cfg.data['coeff-mode']['delta']
+  #slack = cfg.data['coeff-mode']['delta']
+  slack = 0.0
   if scf =='10x':
     return 1.0-slack
   elif scf == '1x':
@@ -43,8 +48,8 @@ def get_param_sig_weight(blk):
 
 
 def get_param_freq_weight(blk):
-  scale = 0.3
-  exp = cfg.data['freq']['exponent']
+  #exp = cfg.data['freq']['exponent']
+  exp = 1.0
   if blk in cfg.data['freq']['coeffs']:
     return cfg.data['freq']['coeffs'][blk],exp
   else:
@@ -58,7 +63,7 @@ def get_param_port(blk):
 
 def mk_noise_model(blk,scf,rng):
   pblk = get_param_blk_weight(blk)
-  prng = get_param_rng_weight(rng)
+  prng = get_param_rng_weight(blk,rng)
 
   wt = pblk*prng
   psig = get_param_sig_weight(blk)

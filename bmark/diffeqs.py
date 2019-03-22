@@ -11,6 +11,7 @@ import bmark.bmarks.rxn as rxn
 import bmark.bmarks.vanderpol as vanderpol
 import bmark.bmarks.heat as heat
 import bmark.bmarks.pendulum as pendulum
+import bmark.bmarks.sensor as sensor
 
 BMARKS = [
     test.model_1(),
@@ -34,6 +35,7 @@ BMARKS = [
     compinh.model(),
     robot_control.model(),
     repri.model(),
+    sensor.model(),
     vanderpol.model(),
     heat.model(4),
     heat.model(8),

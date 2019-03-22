@@ -640,6 +640,8 @@ class ExperimentDB:
     self._curs.execute(cmd)
     self._conn.commit()
 
+  def close(self):
+    self._conn.close()
 
   def _get_output_rows(self,where_clause):
     cmd = '''SELECT * FROM outputs {where_clause}'''

@@ -2,6 +2,9 @@
 def get_iface_ports(circuit,evaluate=False,weight=1.0):
   ports = []
   for block_name,loc,config in circuit.instances():
+    if block_name == 'ext_chip_in':
+      continue
+
     if not circuit.board.handle_by_inst(block_name,loc) \
        is None:
       block = circuit.board.block(block_name)

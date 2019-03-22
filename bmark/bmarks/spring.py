@@ -18,7 +18,8 @@ def model():
     'PA0': 2,
     'VA0': 0,
     'PB0': -1,
-    'VB0': 0
+    'VB0': 0,
+    'one':0.9999
   }
   params['k1_k2'] = params['k1'] + params['k2']
   params['k2_k3'] = params['k3'] + params['k2']
@@ -26,11 +27,11 @@ def model():
   prob = MathProg("spring")
   spec_fun = op.Func(['V'], op.Mult(op.Sgn(op.Var('V')),\
                                     op.Sqrt(op.Abs(op.Var('V')))))
-  PA = parse_diffeq('1.0*VA', 'PA0', ':a', params)
+  PA = parse_diffeq('{one}*VA', 'PA0', ':a', params)
 
   VA = parse_diffeq('{k2}*FPB+(-{k1_k2}*FPA)+(-{cf}*VA)', 'VA0', ':b', params)
 
-  PB = parse_diffeq('0.9999*VB', 'PB0', ':c', params)
+  PB = parse_diffeq('{one}*VB', 'PB0', ':c', params)
 
   VB = parse_diffeq('{k2}*FPA+(-{k2_k3}*FPB)+(-{cf}*VB)', 'VB0', ':d', params)
 

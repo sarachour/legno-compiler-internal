@@ -28,7 +28,7 @@ def extern_continuous_model(xbar):
 ext_chip_in_props = util.make_dig_props(chipcmd.RangeType.MED, \
                                         -1.0,1.0,
                                         glb.EXT_DAC_SAMPLES)
-ext_chip_in_props.set_min_quantize(ext_chip_in_props.SignalType.CONSTANT, \
+ext_chip_in_props.set_min_quantize(ext_chip_in_props.SignalType.DYNAMIC, \
                                    glb.MIN_QUANT_EXTIN_DYNAMIC)
 ext_chip_in_props.set_clocked(10,500,units.us)
 # do note there's a weird offset of 0..

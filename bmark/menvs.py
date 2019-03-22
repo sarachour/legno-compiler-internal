@@ -49,15 +49,37 @@ def long_sin1():
 
 
 def gentoggle_env():
+  K = 0.000029618
   expr1 = op.Add(
-    op.Mult(op.Const(0.50), \
-            op.Sin(op.Mult(op.Const(0.1),op.Var('t')))),
-    op.UniformNoise(0.001,period=200,seed=15)
+    op.Const(0.0*K),
+    op.Mult(
+      op.Const(0), \
+      op.Sin(op.Mult(
+        op.Const(1.0),op.Var('t')
+      ))
+    )
   )
+
   exp = MathEnv('gentoggle')
   exp.set_sim_time(20)
   exp.set_input_time(20)
   exp.set_input('PROT',expr1)
+  return exp
+
+def sensor_env():
+  exp = MathEnv('sensorenv')
+  sense = op.Mult(op.Const(0.1), \
+            op.Abs(
+              op.Sin(op.Mult(op.Const(0.1),op.Var('t')))
+            )
+    )
+  motor = op.Mult(op.Const(0.5), \
+            op.Sin(op.Mult(op.Const(0.1),op.Var('t'))))
+
+  exp.set_sim_time(2000)
+  exp.set_input_time(2000)
+  exp.set_input('MOTOR',motor)
+  exp.set_input('SENSE',sense)
   return exp
 
 def robot_env():
@@ -106,7 +128,8 @@ MATH_ENVS = [
   long_sin1(),
   long_sin2(),
   robot_env(),
-  gentoggle_env()
+  gentoggle_env(),
+  sensor_env()
 ]
 
 def get_math_env(name):

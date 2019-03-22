@@ -124,6 +124,10 @@ class DigitalProperties(Properties):
         self._min_quantize[typ] = v
 
     def min_quantize(self,typ):
+        if not typ in self._min_quantize:
+            for k,q in self._min_quantize.items():
+                print("%s=%s" % (k,q))
+            raise Exception("not in min-quantize: <%s>" % typ)
         return self._min_quantize[typ]
 
     def interval(self):

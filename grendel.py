@@ -1,6 +1,7 @@
 import argparse
 import sys
 import os
+import util.config as CONFIG
 #sys.path.insert(0,os.path.abspath("."))
 
 from lab_bench.lib.command_handler import main_stdout, main_script
@@ -26,7 +27,10 @@ if args.debug:
 else:
     ArduinoCommand.set_debug(False)
 
-state = State(args.ip,args.port,
+ip = args.ip
+if args.ip is None:
+    ip = CONFIG.OSC_IP
+state = State(ip,args.port,
               ard_native=args.native,
               validate=args.validate)
 

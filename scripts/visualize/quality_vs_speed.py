@@ -5,12 +5,16 @@ import matplotlib.pyplot as plt
 
 
 def strip_tau(opt):
-  return opt.split('-tau')[0]
+  if '-tau' in opt:
+    return opt.split('-tau')[0]
+  elif 'rand' in opt:
+    return 'rand'
 
 def visualize():
   data = common.get_data(series_type='circ_ident')
   fields = ['runtime','quality','objective_fun','quality_variance']
-  whitelist = ['sig','lnz','lo-noise','maxsig','lo-noise-fast','maxsigslow']
+  whitelist = ['sig','lnz','lo-noise','maxsig','rand', \
+               'lo-noise-fast','maxsigslow']
   for ser in data.series():
     runtimes,qualities,opts,variances = data.get_data(ser, fields, \
                                    [MismatchStatus.UNKNOWN, \
@@ -23,7 +27,7 @@ def visualize():
     for opt in set(stripopts):
       if not opt in whitelist:
         continue
-      if opt == 'lnz' or opt == 'sig':
+      if opt == 'lnz' or opt == 'sig' or opt == 'rand':
         marker = 'x'
       else:
         marker = 'o'

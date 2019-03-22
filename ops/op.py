@@ -1118,3 +1118,5 @@ class Square(Op):
     def exponent(self):
         return Const(2)
 
+def Div(a,b):
+    return Mult(a,Pow(b,Const(-1)))

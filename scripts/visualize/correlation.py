@@ -3,8 +3,29 @@ from scripts.db import MismatchStatus
 import numpy as np
 import matplotlib.pyplot as plt
 
+def compute():
+  data = common.get_data(series_type='bmark')
+  fields = ['objective_fun','rank','quality']
+  corrs = {}
+  all_ranks = []
+  all_qualities = []
+  for ser in data.series():
+    opt,rank,quality = \
+                  data.get_data(ser, \
+                                fields, \
+                                [MismatchStatus.UNKNOWN, \
+                                 MismatchStatus.IDEAL])
+    coeff = np.corrcoef(rank,quality)
+    corrs[ser] = coeff[1][0]
+    all_ranks += rank
+    all_qualities += quality
+
+  coeff = np.corrcoef(all_ranks,all_qualities)
+  corrs['global'] = coeff[1][0]
+  return corrs
+
 def visualize():
-  data = common.get_data(series_type='circ_ident')
+  data = common.get_data(series_type='bmark')
 
   all_ranks = []
   all_qualities = []
@@ -40,29 +61,21 @@ def visualize():
     for r,q,v,o in zip(rank,quality,quality_var,ident):
       print("G [%s]rank=%s, quality=%s variance=%s" % (o,r,q,v))
 
-    randomize_ranks = []
-    randomize_qualities = []
-    samples = 1
-    for r,q,v in zip(rank,quality,quality_var):
-      randomize_ranks.append(r)
-      randomize_qualities.append(q)
 
     if len(rank) < 2:
       print("[%s] rank-corr: <need more data>" % ser)
       corrs[ser] = None
     else:
-      coeff = np.corrcoef(randomize_ranks,randomize_qualities)
-      all_ranks += randomize_ranks
-      all_qualities += randomize_qualities
+      coeff = np.corrcoef(rank,quality)
+      all_ranks += rank
+      all_qualities += quality
       print("[%s] rank-corr : %s" % (ser,coeff[1][0]))
       corrs[ser] = coeff[1][0]
 
     print("\n")
 
     plot_ranks = list(map(lambda r: r/max_rank, rank))
-    plot_qualities = list(map(lambda q: q, quality))
-    plot_variances = list(map(lambda q: q, quality_var))
-    plt.errorbar(plot_ranks,plot_qualities,plot_variances,fmt='^',
+    plt.errorbar(plot_ranks,quality,quality_var,fmt='^',
                  marker='.',label=ser)
 
     plt.xlabel('rank (norm)')

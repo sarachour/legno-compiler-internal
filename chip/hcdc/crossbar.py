@@ -10,12 +10,10 @@ import ops.nop as nops
 import chip.units as units
 
 def black_box_model_tile(blk):
-  print("[TODO] crossbar[tile].blackbox")
   phys = blk.physical("*","*","out")
   phys.set_to(PhysicalModel.read(util.datapath('tile_xbar.bb')))
 
 def black_box_model_chip(blk):
-  print("[TODO] crossbar[tile].blackbox")
   phys = blk.physical("*","*","out")
   phys.set_to(PhysicalModel.read(util.datapath('global_xbar.bb')))
 

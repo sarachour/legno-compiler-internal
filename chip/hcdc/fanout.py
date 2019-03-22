@@ -39,7 +39,6 @@ def blackbox_model(fanout):
 
     comp_modes = get_comp_modes()
     scale_modes = get_scale_modes()
-    print("[TODO]: fanout.blackbox")
     for c_mode in comp_modes:
         for rng in scale_modes:
             config_phys_model(fanout.physical(c_mode,rng,"out0"),rng)

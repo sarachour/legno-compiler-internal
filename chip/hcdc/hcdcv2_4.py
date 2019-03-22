@@ -15,16 +15,12 @@ from chip.board import Board
 
 def test_board(board):
     mult = board.block('multiplier')
-    print("inst1 <-> inst0")
     assert(board.route_exists(mult.name,board.position_string([0,0,0,1]),'out',
                             mult.name,board.position_string([0,0,0,0]),'in0'))
-    print("slice1 <-> slice0")
     assert(board.route_exists(mult.name,board.position_string([0,0,1,1]),'out',
                             mult.name,board.position_string([0,0,0,0]),'in0'))
-    print("tile1 <-> tile0")
     assert(board.route_exists(mult.name,board.position_string([0,1,1,1]),'out',
                             mult.name,board.position_string([0,0,0,0]),'in0', cutoff=5))
-    print("chip1 <-> chip0")
     assert(board.route_exists(mult.name,board.position_string([1,1,1,1]),'out',
                             mult.name,board.position_string([1,0,0,0]),'in0',cutoff=7))
 

@@ -47,6 +47,7 @@ def rank(circ):
   norm_sigs = list(map(lambda s: s/max(signals), signals))
   norm_noises = list(map(lambda s: s/max(noises), signals))
   n = len(signals)
+  print(dict(zip(snrs, evalheur.get_ports(circ,evaluate=True))))
   #return (sum(norm_noises)/n*max(noises))**-1+sum(norm_sigs)/n*max(signals)
   return sum(snrs)
 
@@ -66,3 +67,5 @@ def execute(circ):
   prop_bias.compute(circ)
   print("<< compute delay >>")
   prop_delay.compute(circ)
+  score = rank(circ)
+  print("score: %s" % score)

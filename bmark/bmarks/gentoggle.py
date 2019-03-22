@@ -96,7 +96,7 @@ def model():
   prob.set_bandwidth("PROT",10)
 
   umodif_fun = op.Func(['X'],
-                       op.Pow(
+                       op.Div(
                          op.Const(1.0),
                          op.Pow(
                            op.Add(
@@ -106,25 +106,47 @@ def model():
                                op.Var('X')
                              )
                            ),
-                           op.Const(-params['nu']))
+                           op.Const(params['nu'])
+                         )
                        ))
+  UTF_fun = op.Func(['X'],
+                    op.Div(
+                      op.Const(params['a1']),
+                      op.Add(
+                        op.Const(1.0),
+                        op.Pow(op.Var('X'), op.Const(params['beta']))
+                      )
+                    )
+  )
+  VTF_fun = op.Func(['X'],
+                    op.Div(
+                      op.Const(params['a2']),
+                      op.Add(
+                        op.Const(1.0),
+                        op.Pow(op.Var('X'), op.Const(params['gamma']))
+                      )
+                    )
+  )
   prob.bind("umodif",op.Call([op.Var('IPTG')], umodif_fun))
   prob.set_interval("umodif",0.0,1.0)
 
-  to_beta = op.Func(['P'], op.Pow(op.Var('P'),op.Const(params['beta'])))
-  Vbeta = op.Call([op.Var('V')], to_beta)
-  prob.bind("Vbeta",Vbeta)
-  params['utf_tr_kf'] = params['utf_tr']*params['utf_kf']
-  UTF = parse_diffeq('{utf_tr_kf}+{utf_kf}*(-UTF) + {utf_kd}*(-UTF)*Vbeta',
-                     'utf_tr',':utf',params)
-  prob.bind("UTF",UTF)
+  #to_beta = op.Func(['P'], op.Pow(op.Var('P'),op.Const(params['beta'])))
+  #Vbeta = op.Call([op.Var('V')], to_beta)
+  #prob.bind("Vbeta",Vbeta)
+  #params['utf_tr_kf'] = params['utf_tr']*params['utf_kf']
+  #UTF = parse_diffeq('{utf_tr_kf}+{utf_kf}*(-UTF) + {utf_kd}*(-UTF)*Vbeta',
+  #                   'utf_tr',':utf',params)
+  #prob.bind("UTF",UTF)
+  prob.bind("UTF",op.Call([op.Var('V')], UTF_fun))
   prob.set_interval("UTF",0.0,params['utf_tr'])
 
-  params['vtf_tr_kf'] = params['vtf_tr']*params['vtf_kf']
-  VTF = parse_diffeq('{vtf_tr_kf}+{vtf_kf}*(-VTF) + {vtf_kd}*(-VTF)*umodif',
-                       'vtf_tr',':vtf',params)
+  #params['vtf_tr_kf'] = params['vtf_tr']*params['vtf_kf']
+  #VTF = parse_diffeq('{vtf_tr_kf}+{vtf_kf}*(-VTF) + {vtf_kd}*(-VTF)*umodif',
+  #                     'vtf_tr',':vtf',params)
+
+  #prob.bind("VTF",VTF)
+  prob.bind("VTF",op.Call([op.Var('umodif')], VTF_fun))
   prob.set_interval("VTF",0.0,params['vtf_tr'])
-  prob.bind("VTF",VTF)
 
   V = parse_diffeq("VTF+{kdeg}*(-V)","U0",":v", params)
   prob.bind("V",V)
@@ -132,6 +154,7 @@ def model():
   U = parse_diffeq("UTF+{kdeg}*(-U)",'V0',":u", params)
   prob.bind("U",U)
   prob.set_interval("U",0,15.6)
+  prob.bind("U_OUT",op.Emit(op.Var('U')))
   prob.compile()
   menv = menvs.get_math_env('gentoggle')
   return menv,prob

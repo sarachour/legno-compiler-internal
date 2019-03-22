@@ -22,7 +22,20 @@ def dac_get_modes():
    return modes
 
 def dac_black_box_model(dac):
-   print("[TODO] dac.blackbox")
+   def config_phys_model(phys,rng):
+        if rng == chipcmd.RangeType.MED:
+            new_phys =  PhysicalModel.read(util.datapath('dac-m.bb'))
+        elif rng == chipcmd.RangeType.HIGH:
+            new_phys = PhysicalModel.read(util.datapath('dac-h.bb'))
+        else:
+            raise Exception("unknown physical model: %s" % str(rng))
+
+        phys.set_to(new_phys)
+
+   scale_modes = dac_get_modes()
+   for sc in scale_modes:
+      _,rng = sc
+      config_phys_model(dac.physical('*',sc,"out"),rng)
 
 def dac_continuous_scale_model(dac):
   modes = dac_get_modes()
@@ -89,12 +102,12 @@ dac.check()
 def adc_get_modes():
    return [chipcmd.RangeType.HIGH, chipcmd.RangeType.MED]
 
-def adc_black_box_model(dac):
+def adc_black_box_model(adc):
    def config_phys_model(phys,rng):
         if rng == chipcmd.RangeType.MED:
-            new_phys =  PhysicalModel.read(util.datapath('dac-m.bb'))
+            new_phys =  PhysicalModel.read(util.datapath('adc-m.bb'))
         elif rng == chipcmd.RangeType.HIGH:
-            new_phys = PhysicalModel.read(util.datapath('dac-h.bb'))
+            new_phys = PhysicalModel.read(util.datapath('adc-h.bb'))
         else:
             raise Exception("unknown physical model: %s" % str(rng))
 
@@ -103,7 +116,7 @@ def adc_black_box_model(dac):
    scale_modes = dac_get_modes()
    for sc in scale_modes:
       _,rng = sc
-      config_phys_model(dac.physical('*',sc,"out"),rng)
+      config_phys_model(adc.physical('*',sc,"out"),rng)
 
 
 def adc_continuous_scale_model(adc):

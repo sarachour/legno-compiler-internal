@@ -213,7 +213,6 @@ class MathProg:
 
                     deps = expr.bwvars()
                     if util.keys_in_dict(deps,self._bandwidths):
-                        print("--> inferring <%s>" % variable)
                         all_bound = all(map(lambda v: v in self._intervals, \
                                             expr.handles() + expr.vars()))
                         if not all_bound:

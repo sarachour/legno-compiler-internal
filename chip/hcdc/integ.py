@@ -56,7 +56,6 @@ def black_box_model(blk):
       ph = blk.physical(comp_mode,scale_mode,"out")
       cfg_phys_model(ph,outrng,scf)
 
-  print("[TODO] integ.blackbox")
 
 def continuous_scale_model(integ):
   m = chipcmd.RangeType.MED

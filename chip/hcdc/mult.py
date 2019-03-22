@@ -76,13 +76,11 @@ def black_box_model(mult):
 
   for mode in mul_modes:
     in0rng,in1rng,outrng = mode
-    print("in0=%s in1=%s out=%s" % (in0rng,in1rng,outrng))
     scf = outrng.coeff()/(in0rng.coeff()*in1rng.coeff())
     phys = mult.physical('mul',mode,'out')
     config_phys(phys,outrng,scf)
 
 
-  print("[TODO] mult.blackbox")
 
 def continuous_scale_model_vga(mult):
   vga_modes,_= get_modes()
