@@ -1,25 +1,10 @@
-'''
-import chip.props as props
-import lab_bench.lib.chipcmd.data as chipcmd
-from compiler.common import infer
-from chip.config import Labels
-import ops.op as ops
-import gpkit
-import itertools
-import ops.jop as jop
-import ops.op as op
-import random
-import time
-import numpy as np
-import util.util as util
-import tqdm
-'''
 
 from compiler.common import infer
 
 import compiler.jaunt_pass.jaunt_util as jaunt_util
 import compiler.jaunt_pass.jaunt_common as jaunt_common
 import compiler.jaunt_pass.jenv as jenvlib
+import compiler.jaunt_pass.jenv_gpkit as jgpkit
 
 from chip.conc import ConcCirc
 from compiler.jaunt_pass.objective.obj_mgr import JauntObjectiveFunctionManager
@@ -65,7 +50,7 @@ def sc_traverse_dynamics(jenv,circ,block,loc,out):
 
 
 def sc_port_used(jenv,block_name,loc,port,handle=None):
-    return jenv.in_use(block_name,loc,port, handle=handle, \
+    return jenv.in_use((block_name,loc,port,handle), \
                        tag=jenvlib.JauntVarType.SCALE_VAR)
 
 def sc_generate_problem(jenv,prob,circ):
@@ -86,10 +71,10 @@ def sc_generate_problem(jenv,prob,circ):
 
 
     if not jenv.uses_tau():
-        jenv.eq(jop.JVar(jenv.TAU), jop.JConst(1.0))
+        jenv.eq(jop.JVar(jenv.tau()), jop.JConst(1.0))
     else:
-        jenv.lte(jop.JVar(jenv.TAU), jop.JConst(1e10))
-        jenv.gte(jop.JVar(jenv.TAU), jop.JConst(1e-10))
+        jenv.lte(jop.JVar(jenv.tau()), jop.JConst(1e6))
+        jenv.gte(jop.JVar(jenv.tau()), jop.JConst(1e-6))
 
 
 def sc_build_jaunt_env(prog,circ,infer=False):
@@ -111,10 +96,10 @@ def apply_result(jenv,circ,sln):
     lut_updates = {}
     for variable,value in sln['freevariables'].items():
         jaunt_util.log_debug("%s = %s" % (variable,value))
-        if variable.name == jenv.TAU:
+        if variable.name == jenv.tau():
             new_circ.set_tau(value)
         else:
-            block_name,loc,port,handle,tag = jenv.get_jaunt_var_info(variable.name)
+            tag,(block_name,loc,port,handle)= jenv.get_jaunt_var_info(variable.name)
             if(tag == jenvlib.JauntVarType.SCALE_VAR):
                 new_circ.config(block_name,loc) \
                         .set_scf(port,value,handle=handle)
@@ -132,14 +117,15 @@ def compute_scale(prog,circ,objfun):
     jopt = JauntObjectiveFunctionManager(jenv)
     jopt.method = objfun.name()
     for gpprob,thisobj in \
-        jenvlib.build_gpkit_problem(circ,jenv,jopt):
+        jgpkit.build_gpkit_problem(circ,jenv,jopt):
         if gpprob is None:
             continue
 
-        sln = jenvlib.solve_gpkit_problem(gpprob)
+        sln = jgpkit.solve_gpkit_problem(gpprob)
         if sln == None:
-            #jenvlib.debug_gpkit_problem(gpprob)
-            return
+            print("<< solution is none >>")
+            jgpkit.debug_gpkit_problem(gpprob)
+            raise Exception("bug: SMT worked, but CVX didn't")
 
         jopt.add_result(thisobj.tag(),sln)
         new_circ = apply_result(jenv,circ,sln)
@@ -159,7 +145,7 @@ def scale_again(prog,circ,do_physical, do_sweep):
 def scale(prog,circ,nslns):
     objs = JauntObjectiveFunctionManager.basic_methods()
     idx = 0
-    for infer_circ in jaunt_infer.infer_scale_config(prog,circ):
+    for infer_circ in jaunt_infer.infer_scale_config(prog,circ,nslns):
         succ = False
         for obj in objs:
             for final_obj,final_circ in compute_scale(prog,infer_circ,obj):

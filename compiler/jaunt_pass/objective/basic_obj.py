@@ -15,7 +15,7 @@ class SlowObjFunc(optlib.JauntObjectiveFunction):
 
   @staticmethod
   def make(circ,jobj,varmap):
-    objective = varmap[jobj.jenv.TAU]
+    objective = varmap[jobj.jenv.tau()]
     #print(objective)
     if jobj.jenv.uses_tau():
       yield SlowObjFunc(objective)
@@ -34,7 +34,7 @@ class FastObjFunc(optlib.JauntObjectiveFunction):
 
   @staticmethod
   def make(circ,jobj,varmap):
-    objective = 1.0/varmap[jobj.jenv.TAU]
+    objective = 1.0/varmap[jobj.jenv.tau()]
     if jobj.jenv.uses_tau():
         yield FastObjFunc(objective)
     else:
@@ -102,10 +102,10 @@ class MaxSignalObjFunc(optlib.JauntObjectiveFunction):
   def make(circ,jobj,varmap):
     rngobj = 0.0
     jenv = jobj.jenv
-    for scvar in jenv.jaunt_vars():
-      if jenv.jaunt_var_in_use(scvar) \
-         and jenv.get_tag(scvar) == jenvlib.JauntVarType.SCALE_VAR:
-        rngobj += 1.0/varmap[scvar]
+    for scvar in jenv.variables(in_use=True):
+      tag = jenv.get_tag(scvar)
+      if tag == jenvlib.JauntVarType.SCALE_VAR:
+        rngobj += 1/varmap[scvar]
     yield MaxSignalObjFunc(rngobj)
 
 class MaxSignalAndSpeedObjFunc(optlib.JauntObjectiveFunction):

@@ -12,10 +12,10 @@ class JauntVarType(Enum):
   OP_RANGE_VAR = "OPV"
   INJECT_VAR = "IJV"
   VAR = "VAR"
+  MODE_VAR = "MODV"
+  TAU = "TAU"
 
 class JauntEnv:
-  TAU = "tau"
-
   def __init__(self):
     # scaling factor name to port
     self._to_jaunt_var = {}
@@ -25,15 +25,16 @@ class JauntEnv:
 
     self._eqs = []
     self._ltes = []
-    # metavar
-    self._meta = {}
-    self._metavar = 0
     self._failed = False
     self._failures = []
 
     self._use_tau = False
     self._solved = False
     self._interactive = False
+    self.decl_jaunt_var((),JauntVarType.TAU)
+
+  def tau(self):
+    return self.to_jaunt_var(JauntVarType.TAU,())
 
   def interactive(self):
     self._interactive = True
@@ -45,10 +46,10 @@ class JauntEnv:
       return self._solved
 
   def use_tau(self):
-      self._use_tau = True
+      self._in_use[self.tau()] = True
 
   def uses_tau(self):
-      return self._use_tau
+    return self._in_use[self.tau()]
 
   def fail(self,msg):
       self._failed = True
@@ -60,91 +61,90 @@ class JauntEnv:
   def failed(self):
       return self._failed
 
-  def in_use(self,block_name,loc,port,handle=None, \
-             tag=JauntVarType.VAR):
-      var_name = "%s_%s_%s_%s_%s" % (tag.value,block_name,loc,port,handle)
-      return (var_name) in self._in_use
+  def in_use(self,tup,tag=JauntVarType.VAR):
+    var_name = self.to_jaunt_var(tag,tup)
+    return self._in_use[var_name]
+
 
   def jaunt_var_in_use(self,var_name):
-      return (var_name) in self._in_use
+    return self._in_use[var_name]
 
-  def variables(self):
-      yield JauntEnv.TAU
-
-      #for tauvar in self._from_tauvar.keys():
-      #    yield tauvar
-
-      for scvar in self._from_jaunt_var.keys():
-          yield scvar
+  def variables(self,in_use=False):
+    for var in self._from_jaunt_var.keys():
+      if self.jaunt_var_in_use(var) or not in_use:
+        yield var
 
   def eqs(self):
-      for lhs,rhs in self._eqs:
-          yield (lhs,rhs)
+    for lhs,rhs in self._eqs:
+      yield (lhs,rhs)
 
   def ltes(self):
-      for lhs,rhs in self._ltes:
-          yield (lhs,rhs)
+    for lhs,rhs in self._ltes:
+      yield (lhs,rhs)
 
 
   def get_jaunt_var_info(self,scvar_var):
-      if not scvar_var in self._from_jaunt_var:
-          print(self._from_jaunt_var.keys())
-          raise Exception("not scaling factor table in <%s>" % scvar_var)
+    if not scvar_var in self._from_jaunt_var:
+      print(self._from_jaunt_var.keys())
+      raise Exception("not scaling factor table in <%s>" % scvar_var)
 
-      block_name,loc,port,handle,tag = self._from_jaunt_var[scvar_var]
-      return block_name,loc,port,handle,tag
+    result = self._from_jaunt_var[scvar_var]
+    return result
 
   def get_tag(self,var):
-    _,_,_,_,tag = self.get_jaunt_var_info(var)
-    return tag
+    result = self.get_jaunt_var_info(var)
+    return result[0]
 
   def jaunt_vars(self):
-      return self._from_jaunt_var.keys()
+    return self._from_jaunt_var.keys()
 
-  def get_jaunt_var(self,block_name,loc,port,handle=None, \
-                    tag=JauntVarType.VAR):
-      key = (block_name,loc,port,handle,tag)
-      if not key in self._to_jaunt_var:
-          for p in self._to_jaunt_var.keys():
-              print(p)
-          raise Exception("error: cannot find <%s> in var dict" % str(key))
+  def get_jaunt_var(self,tup, tag=JauntVarType.VAR):
+    varname = self.to_jaunt_var(tag,tup)
 
-      scvar = self._to_jaunt_var[key]
-      self._in_use[scvar] = True
-      return scvar
+    if not varname in self._from_jaunt_var:
+      for p in self._from_jaunt_var.keys():
+        print("  var: %s" % p)
+      raise Exception("error: cannot find <%s> in var dict" % str(varname))
 
+    self._in_use[varname] = True
+    return varname
 
-  def decl_jaunt_var(self,block_name,loc,port,handle=None, \
+  def to_jaunt_var(self,tag,tup):
+    args = [tag.value] + list(tup)
+    return "_".join(map(lambda a: str(a), args))
+
+  def decl_jaunt_var(self,tup, \
                      tag=JauntVarType.VAR):
       # create a scaling factor from the variable name
-      var_name = "%s_%s_%s_%s_%s" % (tag.value,block_name,loc,port,handle)
-      if var_name in self._from_jaunt_var:
-          return var_name
-
-      self._from_jaunt_var[var_name] = (block_name,loc,port,handle,tag)
-      self._to_jaunt_var[(block_name,loc,port,handle,tag)] = var_name
+    var_name = self.to_jaunt_var(tag,tup)
+    if var_name in self._from_jaunt_var:
       return var_name
 
+    self._from_jaunt_var[var_name] = (tag,tup)
+    self._to_jaunt_var[(tag,tup)] = var_name
+    self._in_use[var_name] = False
+    return var_name
+
   def get_inject_var(self,block_name,loc,port,handle=None):
-    return self.get_jaunt_var(block_name,loc,port,handle, \
+    return self.get_jaunt_var((block_name,loc,port,handle), \
                                tag=JauntVarType.INJECT_VAR)
 
   def decl_inject_var(self,block_name,loc,port,handle=None):
-    return self.decl_jaunt_var(block_name,loc,port,handle, \
+    return self.decl_jaunt_var((block_name,loc,port,handle), \
                                tag=JauntVarType.INJECT_VAR)
 
   def has_inject_var(self,block_name,loc,port,handle=None):
-    var_name = "%s_%s_%s_%s_%s" % (JauntVarType.INJECT_VAR.value, \
-                                   block_name,loc,port,handle)
+    var_name =self.to_jaunt_var(JauntVarType.INJECT_VAR,
+                                (block_name,loc,port,handle))
     return var_name in self._from_jaunt_var
 
   def get_scvar(self,block_name,loc,port,handle=None):
-    return self.get_jaunt_var(block_name,loc,port,handle, \
-                               tag=JauntVarType.SCALE_VAR)
+    return self.get_jaunt_var((block_name,loc,port,handle), \
+                              tag=JauntVarType.SCALE_VAR)
 
   def decl_scvar(self,block_name,loc,port,handle=None):
-    return self.decl_jaunt_var(block_name,loc,port,handle, \
-                               tag=JauntVarType.SCALE_VAR)
+    return self.decl_jaunt_var((block_name,loc,port,handle), \
+                              tag=JauntVarType.SCALE_VAR)
 
 
   def eq(self,v1,v2):
@@ -180,21 +180,56 @@ class JauntEnv:
 class JauntInferEnv(JauntEnv):
 
     def __init__(self):
-        JauntEnv.__init__(self)
+      JauntEnv.__init__(self)
+      self._exactly_one = []
+      self._implies = {}
 
     def decl_op_range_var(self,block_name,loc,port,handle=None):
-        return self.decl_jaunt_var(block_name,loc,port,handle,
-                                   tag=JauntVarType.OP_RANGE_VAR)
+      return self.decl_jaunt_var((block_name,loc,port,handle),
+                                 tag=JauntVarType.OP_RANGE_VAR)
 
     def decl_coeff_var(self,block_name,loc,port,handle=None):
-        return self.decl_jaunt_var(block_name,loc,port,handle,
-                                   tag=JauntVarType.COEFF_VAR)
+      return self.decl_jaunt_var((block_name,loc,port,handle),
+                                 tag=JauntVarType.COEFF_VAR)
 
     def get_coeff_var(self,block_name,loc,port,handle=None):
-        return self.get_jaunt_var(block_name,loc,port,handle,
-                                  tag=JauntVarType.COEFF_VAR)
+      return self.get_jaunt_var((block_name,loc,port,handle),
+                                tag=JauntVarType.COEFF_VAR)
 
     def get_op_range_var(self,block_name,loc,port,handle=None):
-        return self.get_jaunt_var(block_name,loc,port,handle,
-                                  tag=JauntVarType.OP_RANGE_VAR)
+      return self.get_jaunt_var((block_name,loc,port,handle),
+                                tag=JauntVarType.OP_RANGE_VAR)
 
+
+    def decl_mode_var(self,block_name,loc,mode):
+      return self.decl_jaunt_var((block_name,loc,mode),
+                          tag=JauntVarType.MODE_VAR)
+
+
+    def get_mode_var(self,block_name,loc,mode):
+      return self.get_jaunt_var((block_name,loc,mode),
+                                tag=JauntVarType.MODE_VAR)
+
+
+    def implies(self,condvar,var,value):
+      assert(condvar in self._from_jaunt_var)
+      if not condvar in self._implies:
+        self._implies[condvar] = []
+      self._implies[condvar].append((var,value))
+
+    def exactly_one(self,exclusive):
+      if len(exclusive) == 0:
+        return
+
+      for v in exclusive:
+        assert(v in self._from_jaunt_var)
+      self._exactly_one.append(exclusive)
+
+    def get_implies(self):
+      for condvar in self._implies:
+        for var2,value in self._implies[condvar]:
+          yield condvar,var2,value
+
+    def get_exactly_one(self):
+      for exclusive in self._exactly_one:
+        yield exclusive

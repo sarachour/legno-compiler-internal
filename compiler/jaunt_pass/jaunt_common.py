@@ -8,20 +8,22 @@ import numpy as np
 
 def decl_scale_variables(jenv,circ):
     # define scaling factors
+    MIN_SC = 1e-6
+    MAX_SC = 1e6
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for output in block.outputs:
-            jenv.decl_scvar(block_name,loc,output)
+            v = jenv.decl_scvar(block_name,loc,output)
             for handle in block.handles(config.comp_mode,output):
-                jenv.decl_scvar(block_name,loc,output,handle=handle)
+                v = jenv.decl_scvar(block_name,loc,output,handle=handle)
 
             if block.name == "lut":
-                jenv.decl_inject_var(block_name,loc,output)
+                v=jenv.decl_inject_var(block_name,loc,output)
 
         for inp in block.inputs:
-            jenv.decl_scvar(block_name,loc,inp)
+            v=jenv.decl_scvar(block_name,loc,inp)
             if block.name == "lut":
-                jenv.decl_inject_var(block_name,loc,inp)
+                v=jenv.decl_inject_var(block_name,loc,inp)
 
         for output in block.outputs:
             for orig in block.copies(config.comp_mode,output):
@@ -39,7 +41,7 @@ def _to_phys_bandwidth(circ,bw):
     return bw*circ.board.time_constant
 
 def analog_bandwidth_constraint(jenv,circ,mbw,hwbw):
-    tau = jop.JVar(jenv.TAU)
+    tau = jop.JVar(jenv.tau())
     if hwbw.unbounded_lower() and hwbw.unbounded_upper():
         return
 
@@ -103,8 +105,8 @@ def digital_quantize_constraint(jenv,mscale,math_rng,props):
         digital_quantize_constant(jenv,mscale,math_rng.value,props)
 
 def digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):
-    tau = jop.JVar(jenv.TAU)
-    tau_inv = jop.JVar(jenv.TAU,exponent=-1.0)
+    tau = jop.JVar(jenv.tau())
+    tau_inv = jop.JVar(jenv.tau(),exponent=-1.0)
     if mbw.is_infinite():
         return
 

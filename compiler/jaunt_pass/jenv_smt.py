@@ -1,6 +1,7 @@
 import numpy as np
 import ops.smtop as smtop
 import compiler.jaunt_pass.jaunt_util as jaunt_util
+import compiler.jaunt_pass.jenv as jenvlib
 import ops.jop as jop
 import math
 
@@ -38,8 +39,12 @@ def build_smt_prob(circ,jenv):
 
 
   smtenv = smtop.SMTEnv()
-  for scf in jenv.variables():
-      smtenv.decl(scf,smtop.SMTEnv.Type.REAL)
+  for var in jenv.variables():
+    tag = jenv.get_tag(var)
+    if tag == jenvlib.JauntVarType.MODE_VAR:
+      smtenv.decl(var,smtop.SMTEnv.Type.BOOL)
+    elif jenv.jaunt_var_in_use(var):
+      smtenv.decl(var,smtop.SMTEnv.Type.REAL)
 
   constraints = []
   for lhs,rhs in jenv.eqs():
@@ -52,6 +57,23 @@ def build_smt_prob(circ,jenv):
     smt_rhs = smt_expr(smtenv,rhs)
     smtenv.lte(smt_lhs,smt_rhs)
 
+  for boolvar,var,value in jenv.get_implies():
+    smtboolvar = smtenv.get_smtvar(boolvar)
+    smtvar = smtenv.get_smtvar(var)
+    smtval = math.log10(value)
+    impl = smtop.SMTImplies(
+      smtop.SMTVar(smtboolvar),
+      smtop.SMTEq(
+        smtop.SMTVar(smtvar), \
+        smtop.SMTConst(smtval)
+      )
+    )
+    smtenv.cstr(impl)
+
+  for boolvars in jenv.get_exactly_one():
+    smtvars = list(map(lambda bv: smtenv.get_smtvar(bv), boolvars))
+    kofn = smtop.SMTExactlyN(smtvars,1)
+    smtenv.cstr(kofn)
 
   if failed:
     print("<< failed >>")
@@ -60,8 +82,17 @@ def build_smt_prob(circ,jenv):
 
   return smtenv
 
-def solve_smt_prob(smtenv):
-  prog = smtenv.to_smtlib2()
-  with open('problem.smt2','w') as fh:
-    fh.write(prog)
-  input("emitted")
+def solve_smt_prob(smtenv,nslns=1):
+  z3ctx = smtenv.to_z3()
+  z3ctx.solve()
+  if z3ctx.sat():
+    yield z3ctx.model()
+  else:
+    return
+
+  for _ in range(0,nslns-1):
+    z3ctx.next_solution()
+    if z3ctx.sat():
+      yield z3ctx.model()
+    else:
+      return

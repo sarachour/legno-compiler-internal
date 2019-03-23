@@ -369,7 +369,12 @@ class BaseMathPropagator(ExpressionPropagator):
     return deriv
 
   def abs(self,m):
-    return m
+    u,v = m.mean, m.variance
+    s = m.signal
+    sig = nop.mkmult([s,s]).exponent(0.5)
+    ures = nop.mkmult([u,u]).exponent(0.5)
+    vres = nop.mkmult([v,v]).exponent(0.5)
+    return SymbolicModel(sig,ures,vres)
 
   def sqrt(self,m):
     u,v = m.mean, m.variance
@@ -414,10 +419,9 @@ class BaseMathPropagator(ExpressionPropagator):
     # the smaller the magnitude of the signal
     # the higher the chance of a flip is.
     u,v = m.mean,m.variance
-    coeff = self.mksigexpr(self.expr.arg(0)).exponent(-1)
-    ur = nop.mkmult([coeff,u])
-    vr = nop.mkmult([coeff,v])
-    return SymbolicModel(nop.NConstRV(1.0,0.0),ur,vr)
+    return SymbolicModel(nop.NConstRV(1.0,0.0),
+                         nop.NConstRV(0.0,0.0),
+                         nop.NConstRV(0.0,1.0))
 
   def plus(self,m1,m2):
     s1,u1,v1 = m1.signal,m1.mean,m1.variance

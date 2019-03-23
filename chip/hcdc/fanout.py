@@ -61,8 +61,8 @@ def continuous_scale_model(fanout):
             csm.eq(ops.Var(out.varname), ops.Var(inp.varname))
 
         for scm in scale_modes:
-            cstrs = util.build_oprange_cstr([(inp,scm)],2.0)
-            csm.add_scale_mode(scm,cstrs)
+            csm.discrete.add_mode(scm)
+            csm.discrete.add_cstr(scm,inp,scm.coeff())
 
         fanout.set_scale_model(comp_mode,csm)
 

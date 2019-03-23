@@ -94,7 +94,7 @@ def expo(jexpr, factor):
     if jexpr.op == JOpType.CONST:
         return JConst(jexpr.value**factor)
     elif jexpr.op == JOpType.VAR:
-        return JVar(jexpr.name,jexpr.exponent*factor)
+        return JVar(jexpr.name,exponent=jexpr.exponent*factor)
     elif jexpr.op == JOpType.MULT:
         e1 = expo(jexpr.arg(0),factor)
         e2 = expo(jexpr.arg(1),factor)

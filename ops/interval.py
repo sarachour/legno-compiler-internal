@@ -145,13 +145,15 @@ class Interval:
         else:
             return Interval.type_infer(lower,upper)
 
-    def sqrt(self):
+    def simple_power(self,v):
         assert(not self.crosses_zero())
         assert(not self.negative())
-        lower = math.sqrt(self.lower)
-        upper = math.sqrt(self.upper)
+        lower = self.lower**v
+        upper = self.upper**v
         return Interval.type_infer(lower,upper)
 
+    def sqrt(self):
+        return self.simple_power(0.5)
 
     def reciprocal(self):
         if self.unbounded():
@@ -166,8 +168,10 @@ class Interval:
     def power(self,v):
         if v == 1.0:
             return self
-        if v == -1.0:
+        elif v == -1.0:
             return self.reciprocal()
+        elif v > 0:
+            return self.simple_power(v)
         else:
             print(v)
             raise Exception("?")

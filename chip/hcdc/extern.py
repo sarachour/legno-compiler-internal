@@ -20,7 +20,7 @@ def extern_continuous_model(xbar):
   inp.set_interval(1.0,1.0)
   coeff.set_interval(1.0,1.0)
   out.set_interval(1.0,1.0)
-  csm.add_scale_mode("*",[])
+  csm.discrete.add_mode("*")
   xbar.set_scale_model("*", csm)
 
 

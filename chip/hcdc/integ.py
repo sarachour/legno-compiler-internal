@@ -67,37 +67,43 @@ def continuous_scale_model(integ):
     op_in = cont.decl_in(csm,'in')
     op_ic = cont.decl_in(csm,'ic')
     op_out, c_out = cont.decl_out(csm,'out')
-    op_ic.set_interval(1.0,1.0)
 
     op_inI,c_inI = cont.decl_out(csm,'out',':z\'')
     op_icI,c_icI = cont.decl_out(csm,'out',':z[0]')
     op_outI,c_outI = cont.decl_out(csm,'out',':z')
-    cont.equals(csm, [op_inI, op_in])
-    cont.equals(csm, [op_icI, op_outI, op_out])
-    cont.equals(csm, [c_icI, op_out])
 
     c_in2out = csm.decl_var(cont.CSMCoeffVar('comp_scale'))
 
+    cont.equals(csm, [c_inI, c_in2out])
+    cont.equals(csm, [c_icI, op_out])
     csm.eq(ops.Var(c_in2out.varname), \
-           ops.Mult(
-             ops.Var(c_outI.varname),
-             ops.Var(c_inI.varname)
+           ops.Div(
+             ops.Var(op_in.varname),
+             ops.Var(op_out.varname)
            ))
-    #csm.eq(c_in2out, ops.Const(1.0))
-    #csm.eq(ops.Var(c_icI.varname), ops.Const(1.0))
-    #csm.eq(ops.Var(c_outI.varname), ops.Const(1.0))
+
+    #for csmvar in [c_out]:
+    #  csmvar.set_interval(1.0,1.0)
+
+
     for csmvar in [c_in2out]:
       csmvar.set_interval(0.1,10.0)
+
+    for csmvar in [c_outI, c_out, op_ic]:
+      csmvar.set_interval(1.0,1.0)
 
     for csmvar in [c_icI]:
       csmvar.set_interval(0.1,10.0)
 
+    for csmvar in [op_out,op_in,op_icI,op_out]:
+      csmvar.set_interval(0.1,10.0)
+
     csm.eq(
       ops.Mult(
-        ops.Var(op_inI.varname),
-        ops.Var(c_in2out.varname),
+        ops.Var(op_outI.varname),
+        ops.Var(c_outI.varname)
       ),
-      ops.Var(op_outI.varname)
+      ops.Var(op_out.varname)
     )
     csm.eq(
       ops.Mult(
@@ -118,14 +124,11 @@ def continuous_scale_model(integ):
     for scm in scale_modes:
       scm_i, scm_o = scm
       coeff = scm_o.coeff()/scm_i.coeff()
-      expr = ops.Mult(ops.Var('out'), ops.Pow(ops.Var('in'),ops.Const(-1)))
-      cstrs = util.build_oprange_cstr([(op_in,scm_i), \
-                                           (op_out,scm_o)], 2.0)
-      cstrs += util.build_coeff_cstr([(c_in2out,coeff)], expr)
-      csm.add_scale_mode(scm,cstrs)
-
-    for csmvar in [op_out,op_in, op_icI, op_out]:
-      csmvar.set_interval(0.1,10.0)
+      csm.discrete.add_mode(scm)
+      csm.discrete.add_cstr(scm,op_in,scm_i.coeff())
+      csm.discrete.add_cstr(scm,c_icI,scm_o.coeff())
+      csm.discrete.add_cstr(scm,op_out,scm_o.coeff())
+      csm.discrete.add_cstr(scm,c_in2out,coeff)
 
     integ.set_scale_model(comp_mode,csm)
 

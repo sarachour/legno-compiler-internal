@@ -114,6 +114,12 @@ class SCFPropExprVisitor(ExprVisitor):
     else:
       return jop.JVar(scvar)
 
+  def visit_pow(self,expr):
+    expr1 = self.visit_expr(expr.arg1)
+    expr2 = self.visit_expr(expr.arg2)
+    return jop.expo(expr1,expr2)
+
+
   def visit_mult(self,expr):
     expr1 = self.visit_expr(expr.arg1)
     expr2 = self.visit_expr(expr.arg2)
@@ -157,20 +163,21 @@ class SCFPropExprVisitor(ExprVisitor):
                                           handle=expr.deriv_handle))
     scvar_state = jop.JVar(jenv.get_scvar(block.name,loc,port, \
                                           handle=expr.handle))
-    scvar_ic = scvar_state
+    scvar_ic = jop.JVar(jenv.get_scvar(block.name,loc,port, \
+                                          handle=expr.ic_handle))
     coeff_deriv = self.coeff(expr.deriv_handle)
     coeff_state = self.coeff(expr.handle)
     coeff_ic = self.coeff(expr.ic_handle)
 
-    jenv.eq(jop.JMult(scexpr_ic,coeff_ic), \
-            scvar_ic)
-    jenv.eq(jop.JMult(scexpr_deriv, coeff_deriv), \
-            scvar_deriv)
+    jenv.eq(jop.JMult(scexpr_ic,coeff_ic), scvar_ic)
+    jenv.eq(scvar_ic, scvar_state)
 
-    scexpr_state = jop.JMult(jop.JVar(jenv.TAU, \
+    jenv.eq(jop.JMult(scexpr_deriv, coeff_deriv), scvar_deriv)
+
+    scexpr_state = jop.JMult(jop.JVar(jenv.tau(), \
                                       exponent=-1), scvar_deriv)
 
-    jenv.eq(jop.JMult(scexpr_state, jop.JMult(coeff_state,coeff_deriv)),  \
+    jenv.eq(jop.JMult(scexpr_state, coeff_state),  \
             scvar_state)
 
     jenv.use_tau()
@@ -191,4 +198,5 @@ class SCFPropExprVisitor(ExprVisitor):
         rhsexpr = jop.JMult(rhsexpr,jop.JVar(injvar))
 
       coeffvar = self.coeff(None)
-      self.jenv.eq(lhsexpr,jop.JMult(rhsexpr,coeffvar))
+      total_rhsexpr = jop.JMult(rhsexpr,coeffvar)
+      self.jenv.eq(lhsexpr,total_rhsexpr)

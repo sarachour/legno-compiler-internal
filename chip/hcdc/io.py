@@ -51,14 +51,9 @@ def dac_continuous_scale_model(dac):
   coeff.set_interval(1.0,10.0)
   for scm in modes:
      _,scm_o = scm
-     expr = ops.Mult(ops.Var('out'),
-                     ops.Pow(
-                        ops.Mult(ops.Var('in'),ops.Const(2.0)),
-                        ops.Const(-1)))
-
-     cstrs = util.build_oprange_cstr([(out,scm_o)],2.0)
-     cstrs += util.build_coeff_cstr([(coeff,scm_o.coeff())], expr)
-     csm.add_scale_mode(scm, cstrs)
+     csm.discrete.add_mode(scm)
+     csm.discrete.add_cstr(scm,out,scm_o.coeff())
+     csm.discrete.add_cstr(scm,coeff,scm_o.coeff())
 
   dac.set_scale_model("*", csm)
 
@@ -133,13 +128,9 @@ def adc_continuous_scale_model(adc):
    coeff.set_interval(0.1,1.0)
    out.set_interval(1.0,1.0)
    for scm_i in modes:
-      cstrs = util.build_oprange_cstr([(inp,scm_i)],2.0)
-      expr = ops.Mult(
-         ops.Var('out'),
-         ops.Pow(ops.Mult(ops.Const(0.5),ops.Var('in')),ops.Const(-1)))
-      cstrs += util.build_coeff_cstr([(coeff,1.0/scm_i.coeff())], \
-                                     expr)
-      csm.add_scale_mode(scm_i, cstrs)
+     csm.discrete.add_mode(scm_i)
+     csm.discrete.add_cstr(scm_i,inp,scm_i.coeff())
+     csm.discrete.add_cstr(scm_i,coeff,1.0/scm_i.coeff())
 
    adc.set_scale_model("*", csm)
 

@@ -332,6 +332,7 @@ class Integ(Op2):
         assert(not self.handle in ch and \
                not self.handle is None)
         ch.append(self.handle)
+        ch.append(self.ic_handle)
         ch.append(self.deriv_handle)
         return ch
 
@@ -1011,6 +1012,13 @@ class Pow(Op):
     def __init__(self,arg1,arg2):
         Op.__init__(self,OpType.POW,[arg1,arg2])
         pass
+
+    @property
+    def arg1(self):
+        return self.arg(0)
+    @property
+    def arg2(self):
+        return self.arg(1)
 
     @staticmethod
     def from_json(obj):

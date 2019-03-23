@@ -152,6 +152,30 @@ class ContinuousScaleContext:
 
     return s
 
+class DiscreteScaleModel:
+
+  def __init__(self,cont):
+    self._cont_model = cont
+    # these modes are all exclusive
+    self._modes = []
+    self._cstrs = {}
+
+  def add_mode(self,mode):
+    assert(not mode in self._modes)
+    self._modes.append(mode)
+    self._cstrs[mode] = []
+
+
+  def add_cstr(self,mode,contvar,value):
+    assert(mode in self._modes)
+    self._cstrs[mode].append((contvar,value))
+
+  def modes(self):
+    return self._modes
+
+  def cstrs(self,mode):
+    for cvar, value in self._cstrs[mode]:
+      yield cvar,value
 
 class ContinuousScaleModel:
 
@@ -159,8 +183,8 @@ class ContinuousScaleModel:
     self._vars = {}
     self._lte = []
     self._eq = []
-    self._scale_modes = {}
     self._baseline = None
+    self.discrete = DiscreteScaleModel(self)
 
   def set_baseline(self,bl):
     self._baseline = bl
@@ -182,7 +206,6 @@ class ContinuousScaleModel:
   def ltes(self):
     return self._lte
 
-
   def eq(self,expr1,expr2):
     self._eq.append((expr1,expr2))
 
@@ -191,62 +214,3 @@ class ContinuousScaleModel:
 
   def var(self,name):
     return self._vars[name]
-
-  def add_scale_mode(self,scale_mode,cstrs):
-    if (scale_mode in self._scale_modes):
-      raise Exception("already in modes: <%s>" % str(scale_mode))
-    self._scale_modes[scale_mode] = cstrs
-
-  def validate_scale_mode(self,ctx,cstrs):
-    score = 1.0
-    for var,cstrval in cstrs:
-      if var.type == CSMVar.Type.OPVAR:
-        mrng = ctx.math_range(var)
-        hrng = ctx.hw_range(var)
-        assert(var.handle is None)
-        scrng = ctx.scale_range(var.port)
-        hrng_sc = hrng.scale(cstrval).scale(1.01)
-        mrng_cons = scrng.scale(mrng.bound)
-        if not hrng_sc.contains_value(mrng_cons.lower):
-          print("-> NO! %s x %s not in %s" % (mrng,scrng,hrng_sc))
-          return False,score
-        else:
-          score *= mrng_cons.intersection(hrng_sc).spread
-
-    for var,cstr in cstrs:
-      if var.type == CSMVar.Type.COEFFVAR:
-        expr,coeff = cstr
-        result = expr.compute_interval(ctx.scale_ranges())
-        if coeff.spread > 0:
-          if not result.interval.intersection(coeff).spread > 0:
-            print("-> NO! %s not in %s [%s] [%s]" % \
-                  (coeff,result.interval,expr,ctx.scale_ranges()))
-
-            return False,score
-          else:
-            score *= result.interval.intersection(coeff).spread
-        else:
-          if not result.interval.contains_value(coeff.upper):
-            print("-> NO! %s not in %s [%s] [%s]" % \
-                  (coeff,result.interval,expr,ctx.scale_ranges()))
-
-            return False,score
-          else:
-            score *= result.interval.add(coeff.negate()).bound
-
-    return True,score
-
-  def scale_mode(self,ctx):
-    scores = []
-    modes = []
-    for scale_mode,cstrs in self._scale_modes.items():
-      print(scale_mode)
-      succ,score = self.validate_scale_mode(ctx,cstrs)
-      if succ:
-        modes.append(scale_mode)
-        scores.append(score)
-
-    idxs = sorted(range(0,len(scores)), key=lambda i:-scores[i])
-    for idx in idxs:
-      yield modes[idx]
-

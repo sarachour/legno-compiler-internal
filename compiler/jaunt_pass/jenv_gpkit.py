@@ -1,6 +1,7 @@
 import compiler.jaunt_pass.jenv as jenv
 import ops.jop as jop
 import compiler.jaunt_pass.jaunt_util as jaunt_util
+import compiler.jaunt_pass.jenv as jenvlib
 import numpy as np
 import gpkit
 
@@ -32,10 +33,13 @@ def build_gpkit_cstrs(circ,jenv):
 
 
   variables = {}
-  for scf in jenv.variables():
-      variables[scf] = gpkit.Variable(scf)
-
   constraints = []
+  for var in jenv.variables(in_use=True):
+    gpvar = gpkit.Variable(var)
+    variables[var] = gpvar
+    #constraints.append((gpvar <= VMAX,""))
+    #constraints.append((VMIN <= gpvar,""))
+
   for lhs,rhs in jenv.eqs():
       gp_lhs = gpkit_expr(variables,lhs)
       gp_rhs = gpkit_expr(variables,rhs)
@@ -57,8 +61,8 @@ def build_gpkit_cstrs(circ,jenv):
               print("[[false]]: %s" % (msg))
               input()
               failed = True
-          #else:
-          #    print("[[true]]: %s" % (msg))
+          else:
+              print("[[true]]: %s" % (msg))
       else:
           gpkit_cstrs.append(cstr)
           #print("[q] %s" % msg)
@@ -115,7 +119,7 @@ def solve_gpkit_problem_mosek(gpmodel,timeout=10):
         signal.alarm(timeout)
         sln = gpmodel.solve(solver=CONFIG.GPKIT_SOLVER,
                             warn_on_check=True,
-                            verbosity=0)
+                            verbosity=3)
         signal.alarm(0)
     except TimeoutError as te:
         jaunt_util.log_warn("Timeout: mosek timed out or hung")
@@ -128,6 +132,7 @@ def solve_gpkit_problem_mosek(gpmodel,timeout=10):
 
     if not 'freevariables' in sln:
       succ,result = sln
+      jaunt_util.log_warn("[gpkit][ERROR] no freevariables key in sln")
       assert(result is None)
       assert(succ == False)
       return None
@@ -143,4 +148,5 @@ def solve_gpkit_problem(gpmodel,timeout=10):
 
 def debug_gpkit_problem(gpprob):
   jaunt_util.log_warn(">>> DEBUG <<<")
-  gpprob.debug(solver='mosek_cli')
+  result = gpprob.debug(solver=CONFIG.GPKIT_SOLVER)
+  print(result)

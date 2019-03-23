@@ -215,10 +215,9 @@ class NRef(NVar):
     if self._value is None:
       raise Exception("[error] cannot directly compute ref.")
     else:
-      assert(self.power == 1.0)
       result = self._value.compute(freqs,intervals)
       self._test_constant(result)
-      return result
+      return result.power(self.power)
 
   def copy(self):
     return NVar.copy(self,NRef(self._port))
@@ -295,7 +294,7 @@ class NSig(NVar):
     if not label in intervals:
       raise Exception("unbound interval: %s" % label)
 
-    ival = intervals[label]
+    ival = intervals[label].abs()
     result = ival.power(self.power)
     self._test_constant(result)
     return result
@@ -666,6 +665,9 @@ def _wrap_mult(consts,args,use_mkmult=False):
   if len(args) == 0:
     return rv
 
+  elif not rv.is_one() and len(args) == 1:
+    return NMult([rv]+args)
+
   elif not rv.is_one():
     if use_mkmult:
       return mkmult([rv]+args)
@@ -732,29 +734,23 @@ def expo(arg,exponent):
   if isinstance(exponent,int):
     terms = [arg]*int(exponent)
     return distribute(terms)
-    raise NotImplementedError
 
   if exponent > 1.0:
     # (a+b)^p <= 2^p(a^p+b^p) where 1 < p < infty
-    print(arg)
-    raise NotImplementedError
+    return arg.exponent(exponent)
+
+  else:
+    raise Exception("unimplemented: %s" % exponent)
 
 def mkmult(args):
   sums = []
   terms = []
-  expos = {}
   coeffs = [mkone()]
   def add_term(term):
     if term.op == NOpType.CONST_RV:
       coeffs.append(term)
-
     else:
-      hashv = term.mult_hash()
-      if not hashv in expos:
-        expos[hashv] = 1.0
-        terms.append(term)
-
-      expos[hashv] += term.power
+      terms.append(term)
 
   for arg in args:
     #if not (arg.is_posynomial()) and not arg.is_zero():
@@ -770,6 +766,7 @@ def mkmult(args):
     else:
       add_term(arg)
 
+
   expr = _wrap_mult(coeffs,terms)
   if len(sums) > 0:
     expr_terms= list(expr.terms())
@@ -779,7 +776,6 @@ def mkmult(args):
 
   #assert(result.is_posynomial())
   #print("mkmult OLD:%s\n\nNEW:%s\n\n" % (args,result))
-  #input()
   return result
 
 def mkadd(args):

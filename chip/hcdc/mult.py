@@ -115,15 +115,10 @@ def continuous_scale_model_vga(mult):
     coeff = scm_o.coeff()/scm_i.coeff()
     #if coeff != 1.0:
     #  continue
-
-    expr = ops.Mult(ops.Var('out'), ops.Pow(
-      ops.Mult(ops.Var('coeff'),ops.Var('in0')), \
-      ops.Const(-1)))
-
-    cstrs = util.build_oprange_cstr([(op_in0,scm_i), \
-                                   (op_out,scm_o)],2.0)
-    cstrs += util.build_coeff_cstr([(scf_tf,coeff)],expr)
-    csm.add_scale_mode(scm,cstrs)
+    csm.discrete.add_mode(scm)
+    csm.discrete.add_cstr(scm,op_in0,scm_i.coeff())
+    csm.discrete.add_cstr(scm,op_out,scm_o.coeff())
+    csm.discrete.add_cstr(scm,scf_tf,coeff)
 
   mult.set_scale_model('vga',csm)
 
@@ -154,15 +149,11 @@ def continuous_scale_model_mult(mult):
   for scm in mul_modes:
     scm_i0,scm_i1,scm_o = scm
     coeff =scm_o.coeff()/(scm_i0.coeff()*scm_i1.coeff())
-    #if coeff != 1.0:
-    #  continue
-    expr = ops.Mult(ops.Mult(ops.Const(1/0.5), ops.Var('out')), ops.Pow(
-      ops.Mult(ops.Var('in0'),ops.Var('in1')),ops.Const(-1)))
-    cstrs = util.build_oprange_cstr([(in0,scm_i0), \
-                                         (in1,scm_i1), \
-                                         (out,scm_o)],2.0)
-    cstrs += util.build_coeff_cstr([(scf_tf,coeff)],expr)
-    csm.add_scale_mode(scm,cstrs)
+    csm.discrete.add_mode(scm)
+    csm.discrete.add_cstr(scm,in0,scm_i0.coeff())
+    csm.discrete.add_cstr(scm,in1,scm_i1.coeff())
+    csm.discrete.add_cstr(scm,out,scm_o.coeff())
+    csm.discrete.add_cstr(scm,scf_tf,coeff)
 
   mult.set_scale_model('mul',csm)
 
