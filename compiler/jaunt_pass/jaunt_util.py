@@ -136,3 +136,25 @@ def in_interval_constraint(jenv,scale_expr,math_rng,hw_rng):
     lower_bound_constraint(jenv,scale_expr, \
                             math_rng.lower,hw_rng.lower)
 
+def reduce_vars(jenv):
+    graph = nx.Graph()
+
+    varsets = []
+    for v in jenv.variables():
+        graph.add_node(v)
+
+    for (_lhs,_rhs) in jobj.jenv.eqs():
+        _,lhs = _lhs.factor_const()
+        _,rhs = _rhs.factor_const()
+        if lhs.op == jop.JOpType.VAR and \
+           rhs.op == jop.JOpType.VAR:
+            graph.add_node(lhs.name)
+            graph.add_node(rhs.name)
+            graph.add_edge(lhs.name,rhs.name)
+
+    for subg in nx.connected_components(graph):
+        varsets.append(subg)
+
+
+    return varsets
+

@@ -9,6 +9,8 @@ from chip.conc import ConcCirc
 
 from compiler.common import infer
 import compiler.jaunt_pass.jenv as jenvlib
+import compiler.jaunt_pass.jenv_gpkit as jgpkit
+import compiler.jaunt_pass.jenv_smt as jsmt
 import compiler.jaunt_pass.objective.basic_obj as basicobj
 import compiler.jaunt_pass.expr_visitor as exprvisitor
 from compiler.jaunt_pass.objective.obj_mgr import JauntObjectiveFunctionManager
@@ -202,6 +204,14 @@ def sc_generate_problem(jenv,prob,circ):
         jenv.lte(jop.JVar(jenv.TAU), jop.JConst(1e10))
         jenv.gte(jop.JVar(jenv.TAU), jop.JConst(1e-10))
 
+
+
+def concretize_result(jopt,jenv,circ,sln):
+    smtenv = jsmt.build_smt_prob(circ,jenv)
+    result = jsmt.solve_smt_prob(smtenv)
+    input()
+
+
 def get_coeff(variables,cstrs,jenv,circ,jvar,gpkitvar,minimize):
     ofuncls = list(basicobj.FindSCFBoundFunc.make(circ,jenv,jvar, \
                                                variables,minimize=minimize))[0]
@@ -315,13 +325,13 @@ def infer_scale_config(prog,circ):
         print("===> %s <===" % joptfun.name())
         jopt.method = joptfun.name()
         for idx,(gpprob,obj) in \
-            enumerate(jenvlib.build_gpkit_problem(circ,jenv,jopt)):
+            enumerate(jgpkit.build_gpkit_problem(circ,jenv,jopt)):
             if gpprob is None:
                 print("no solution")
                 continue
 
             jaunt_util.log_debug("-> %s" % jopt.method)
-            sln = jenvlib.solve_gpkit_problem(gpprob)
+            sln = jgpkit.solve_gpkit_problem(gpprob)
             if sln is None:
                 jaunt_util.log_info("[[FAILURE - NO SLN]]")
                 jenv.set_solved(False)
@@ -332,6 +342,9 @@ def infer_scale_config(prog,circ):
                 jenv.set_solved(True)
 
             jopt.add_result(obj.tag(),sln)
+            concretize_result(jopt,jenv,circ,sln)
+
+
             for new_circ in apply_result(jopt,jenv,circ,sln):
                 yield new_circ
 
