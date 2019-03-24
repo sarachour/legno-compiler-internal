@@ -14,11 +14,6 @@ import bmark.bmarks.pendulum as pendulum
 import bmark.bmarks.sensor as sensor
 
 BMARKS = [
-    test.model_1(),
-    test.model_1_scale(),
-    test.model_2(),
-    test.model_1_sqrt(),
-    test.model_1_sin(),
     rxn.model_bimolec(),
     rxn.model_dissoc(),
     rxn.model_dimer_mult(),
@@ -33,13 +28,21 @@ BMARKS = [
     pendulum.model(),
     bmmrxn.model(),
     compinh.model(),
-    robot_control.model(),
     repri.model(),
-    sensor.model(),
     vanderpol.model(),
     heat.model(4),
     heat.model(8),
-    heat.model(16)
+    heat.model(16),
+    # external inputs
+    test.model_1(),
+    test.model_1_scale(),
+    test.model_2(),
+    test.model_2_add(),
+    test.model_1_sqrt(),
+    test.model_1_sin(),
+    robot_control.model(),
+    sensor.model(steady=True),
+    sensor.model(steady=False),
 ]
 
 # energy model: page 26 of thesis, chapter 2

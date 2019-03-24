@@ -51,7 +51,7 @@ inline void write_dac1_value(experiment_t * expr, int idx){
   analogWrite(DAC1, get_value(expr,expr->dac_offsets[1] + i )); 
 }
 inline void set_SDA(int SDA_VAL){
-  digitalWrite(SDA,SDA_VAL);
+  digitalWrite(SDA_PIN,SDA_VAL);
 }
 
 void _update_wave(){
@@ -87,7 +87,7 @@ void _update_wave(){
 
 
 void setup_experiment(experiment_t* expr) {
-  pinMode(SDA, OUTPUT);
+  pinMode(SDA_PIN, OUTPUT);
   // put your setup code here, to run once:
   analogWriteResolution(12);  // set the analog output resolution to 12 bit (4096 levels)
   expr->databuf = DATABUF;
@@ -298,7 +298,7 @@ void set_dac_values(experiment_t* expr, float * inbuf, int dac_id, int n, int of
   int buf_idx = offset + expr->dac_offsets[dac_id];
   for(int idx = 0; idx < n; idx+=1){
       // 4096, zero at 2047
-      unsigned short value = (unsigned short) (inbuf[idx]*2047+2048) & 0xfff;
+      unsigned short value = (unsigned short) (inbuf[idx]*2047+2047) & 0xfff;
       comm::print_header();
       Serial.print(idx+offset);
       Serial.print("=");

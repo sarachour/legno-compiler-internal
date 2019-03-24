@@ -40,22 +40,38 @@ def model_2():
     prob = MathProg("mod2")
     prob.bind('X1', op.ExtVar("I1"))
     prob.bind('X2', op.ExtVar("I2"))
-    prob.bind('O1', op.Emit(
-        op.Mult(op.Var("X1"),
-                op.Const(0.5))
-    ))
-    prob.bind('O2', op.Emit(
+    prob.bind('O', op.Emit(
         op.Mult(op.Var("X2"),
                 op.Const(0.8))
     ))
     prob.set_bandwidth("I1",1e-2)
     prob.set_bandwidth("I2",1)
-    prob.set_interval("I1",-5,5)
-    prob.set_interval("I2",-0.3,0.3)
-    prob.set_max_sim_time(2000)
+    prob.set_interval("I1",-1,1)
+    prob.set_interval("I2",-1,1)
+    prob.set_max_sim_time(200)
     prob.compile()
     menv = menvs.get_math_env('t2ksin2')
     return menv,prob
+
+def model_2_add():
+    prob = MathProg("mod2add")
+    prob.bind('X1', op.ExtVar("I1"))
+    prob.bind('X2', op.ExtVar("I2"))
+    prob.bind('O', op.Emit(
+          op.Add(
+            op.Var("X1"),
+            op.Var("X2"))
+        )
+    )
+    prob.set_bandwidth("I1",1e-2)
+    prob.set_bandwidth("I2",1)
+    prob.set_interval("I1",-1,1)
+    prob.set_interval("I2",-1,1)
+    prob.set_max_sim_time(200)
+    prob.compile()
+    menv = menvs.get_math_env('t2ksin2')
+    return menv,prob
+
 
 def model_1_sqrt():
     prob = MathProg("mod1sqrt")
@@ -92,7 +108,8 @@ def execute(menv,prob):
 
 if __name__ == "__main__":
   for model in [model_1, model_1_scale,
-                model_2,model_1_sqrt,
+                model_2,model_2_add,
+                model_1_sqrt,
                 model_1_sin]:
     menv,prob = model()
     print(prob.name)

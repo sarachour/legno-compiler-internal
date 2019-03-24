@@ -59,5 +59,8 @@ def get_all_ports(circuit,evaluate=False):
 def get_ports(circuit,evaluate=False):
   n = len(get_integrator_ports(circuit,evaluate,1.0))
 
-  return get_iface_ports(circuit,evaluate,1.0) + \
-    get_integrator_ports(circuit,evaluate,1.0/n)
+  if n > 1:
+    return get_iface_ports(circuit,evaluate,1.0) + \
+      get_integrator_ports(circuit,evaluate,1.0/n)
+  else:
+    return get_iface_ports(circuit,evaluate,1.0)

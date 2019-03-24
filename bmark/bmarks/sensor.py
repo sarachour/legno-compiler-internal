@@ -10,35 +10,44 @@ from bmark.bmarks.common import *
 import math
 import bmark.menvs as menvs
 
-def model():
-  prob = MathProg("sensor")
+def model(steady=False):
+  if steady:
+    tag = 'steady'
+  else:
+    tag = 'diff'
+  prob = MathProg("sensor-%s" % tag)
   params = {
     'A0': 0,
     'one':0.99999
   }
   prob.bind('P', op.ExtVar('SENSE'))
   prob.bind('X', op.ExtVar('MOTOR'))
-  XSQ = parse_fn('X*X',params)
-  A = parse_diffeq('{one}*(P-A*XSQ)*XSQ',  \
+  A = parse_diffeq('{one}*(P*{one}-{one}*A*X)*X',  \
                            'A0', ':a', params)
-  prob.bind('XSQ', XSQ)
   prob.bind('A', A)
   prob.bind('PARAM', op.Emit(op.Var('A')))
-  prob.set_interval("A",0,1)
+  prob.set_interval("A",-1.5,1.5)
   prob.set_interval("SENSE",0,0.1)
-  prob.set_interval("MOTOR",-0.5,0.5)
-  prob.set_bandwidth("SENSE",0.002)
-  prob.set_bandwidth("MOTOR",0.002)
-  prob.set_max_sim_time(2000)
+  prob.set_interval("MOTOR",-0.3,0.3)
+
+  prob.set_bandwidth("SENSE",0.2)
+  prob.set_max_sim_time(400)
+  if not steady:
+    menv = menvs.get_math_env('sendiff')
+    prob.set_bandwidth("MOTOR",0.2)
+  else:
+    menv = menvs.get_math_env('sensteady')
+    prob.set_bandwidth("MOTOR",0.2)
+
   prob.compile()
-  menv = menvs.get_math_env('sensorenv')
   return menv,prob
 
-def execute():
-  menv,prob = model()
+def execute(steady):
+  menv,prob = model(steady)
   T,Y = run_diffeq(menv,prob)
   plot_diffeq(menv,prob,T,Y)
 
 
 if __name__ == "__main__":
-  execute()
+  execute(False)
+  #execute(True)

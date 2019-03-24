@@ -101,6 +101,7 @@ def read_meas_data(filename):
 def analyze(entry):
   path_h = paths.PathHandler('default',entry.bmark)
   QUALITIES = []
+  print(entry)
   VARS = set(map(lambda o: o.varname, entry.outputs()))
   for output in entry.outputs():
     varname = output.varname

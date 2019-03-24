@@ -98,8 +98,12 @@ def make_board():
                 layer3 = slce.layer(3)
 
                 if slice_idx in [0,2]:
-                    layer0.inst('tile_adc')
-                    layer0.inst('lut')
+                    # DEMO_BOARD_6, adc doesn't work on 0.0.0.0
+                    if not (slice_idx == 0 and \
+                            tile_idx == 0 and \
+                            chip_idx == 0):
+                        layer0.inst('tile_adc')
+                        layer0.inst('lut')
 
                 layer0.inst('tile_dac')
                 layer0.inst('fanout')

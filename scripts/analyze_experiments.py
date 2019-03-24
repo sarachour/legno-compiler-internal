@@ -34,7 +34,7 @@ def execute_once(args,debug=True):
   db = ExperimentDB()
   entries = list(db.get_by_status(ExperimentStatus.PENDING))
   for entry in tqdm.tqdm(entries):
-    if not missing_params(entry) is None and not recompute_params:
+    if not missing_params(entry) and not recompute_params:
       continue
 
     if debug:

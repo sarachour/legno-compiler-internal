@@ -144,7 +144,7 @@ def scale_model(integ):
                                       glb.ANALOG_MAX, \
                                       glb.ANALOG_MINSIG_CONST,
                                       glb.ANALOG_MINSIG_DYN)
-      analog_in.set_bandwidth(0,20,units.khz)
+      analog_in.set_bandwidth(0,glb.MAX_FREQ_INTEG,units.khz)
       dig_props = util.make_dig_props(chipcmd.RangeType.MED, \
                                           glb.DAC_MIN, \
                                           glb.DAC_MAX, \

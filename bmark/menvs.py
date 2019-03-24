@@ -66,18 +66,40 @@ def gentoggle_env():
   exp.set_input('PROT',expr1)
   return exp
 
-def sensor_env():
-  exp = MathEnv('sensorenv')
+def sensor_env_steady():
+  exp = MathEnv('sensteady')
+  sense = op.Mult(op.Const(0.1), \
+                  op.Abs(
+                    op.Sin(op.Mult(op.Const(0.1),op.Var('t')))
+                  )
+    )
+  motor = op.Mult(op.Const(0.5), \
+                  op.Sin(op.Mult(op.Const(0.1),op.Var('t'))))
+
+  exp.set_sim_time(1000)
+  exp.set_input_time(1000)
+  exp.set_input('MOTOR',motor)
+  exp.set_input('SENSE',sense)
+  return exp
+
+
+def sensor_env_diff():
+  exp = MathEnv('sendiff')
+  max_time = 400
   sense = op.Mult(op.Const(0.1), \
             op.Abs(
               op.Sin(op.Mult(op.Const(0.1),op.Var('t')))
             )
     )
-  motor = op.Mult(op.Const(0.5), \
-            op.Sin(op.Mult(op.Const(0.1),op.Var('t'))))
-
-  exp.set_sim_time(2000)
-  exp.set_input_time(2000)
+  motor = op.Add(
+    op.Mult(op.Div(op.Var('t'),op.Const(max_time/3.0)),sense),
+    op.Mult(
+      op.Div(op.Const(1),op.Add(op.Var('t'), op.Const(100))),
+      op.UniformNoise(0.3,period=200,seed=35)
+    )
+  )
+  exp.set_sim_time(max_time)
+  exp.set_input_time(max_time)
   exp.set_input('MOTOR',motor)
   exp.set_input('SENSE',sense)
   return exp
@@ -89,9 +111,9 @@ def robot_env():
     op.UniformNoise(0.09,period=200,seed=15)
   )
   expr2 = op.Add(
-    op.Mult(op.Const(0.02), \
+    op.Mult(op.Const(0.08), \
             op.Sin(op.Mult(op.Const(0.1),op.Var('t')))),
-    op.UniformNoise(0.08,period=200,seed=35)
+    op.UniformNoise(0.02,period=200,seed=35)
   )
 
   exp = MathEnv('robotenv')
@@ -103,18 +125,18 @@ def robot_env():
 
 
 def long_sin2():
-  expr1 = op.Mult(op.Const(5.0), \
-                 op.Sin(op.Mult(op.Const(0.01), op.Var('t'))))
+  expr1 = op.Mult(op.Const(1.0), \
+                 op.Sin(op.Mult(op.Const(0.1), op.Var('t'))))
   expr2 = op.Add(
-    op.Mult(op.Const(0.2), \
+    op.Mult(op.Const(0.5), \
             op.Sin(op.Mult(op.Const(0.037), op.Var('t')))),
-    op.Mult(op.Const(0.1), \
+    op.Mult(op.Const(0.5), \
             op.Sin(op.Mult(op.Const(0.01), op.Var('t'))))
   )
 
   exp = MathEnv('t2ksin2')
-  exp.set_sim_time(2000)
-  exp.set_input_time(2000)
+  exp.set_sim_time(200)
+  exp.set_input_time(200)
   exp.set_input('I2',expr1)
   exp.set_input('I1',expr2)
   return exp
@@ -129,7 +151,8 @@ MATH_ENVS = [
   long_sin2(),
   robot_env(),
   gentoggle_env(),
-  sensor_env()
+  sensor_env_steady(),
+  sensor_env_diff()
 ]
 
 def get_math_env(name):

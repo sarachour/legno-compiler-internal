@@ -173,7 +173,7 @@ def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
     # expression for scaling math range
     mathscvar = jop.JVar(jenv.get_scvar(block.name,loc,port,handle))
     hwscvar = jop.JVar(jenv.get_op_range_var(block.name,loc,port,handle))
-
+    print("%s[%s].%s" % (block.name,loc,port))
     scale_model = block.scale_model(config.comp_mode)
     baseline = scale_model.baseline
     prop = block.props(config.comp_mode,baseline,port,handle=handle)

@@ -4,6 +4,7 @@ import chip.props as props
 from enum import Enum
 import compiler.jaunt_pass.jaunt_util as jaunt_util
 import util.util as util
+import util.config as CONFIG
 import numpy as np
 
 def decl_scale_variables(jenv,circ):
@@ -36,6 +37,9 @@ def decl_scale_variables(jenv,circ):
         s_scf = jenv.get_scvar(sblk,sloc,sport)
         d_scf = jenv.get_scvar(dblk,dloc,dport)
         jenv.eq(jop.JVar(s_scf),jop.JVar(d_scf))
+
+def _to_phys_time(circ,time):
+    return time/circ.board.time_constant
 
 def _to_phys_bandwidth(circ,bw):
     return bw*circ.board.time_constant
@@ -117,23 +121,24 @@ def digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):
     elif prop.kind == props.DigitalProperties.ClockType.CLOCKED:
         jenv.use_tau()
         # time between samples
-        hw_sample_rate = prop.sample_rate
+        hw_sample_freq = 1.0/prop.sample_rate
         # maximum number of samples
-        hw_max_samples = prop.max_samples
-        # maximum simulation time
-        m_exptime = prob.max_sim_time
-        assert(not m_exptime is None)
         # sample frequency required
-        sample_freq = 2.0*physbw
-        sample_ival = 1.0/sample_freq
-        jenv.gte(jop.JMult(tau_inv,jop.JConst(sample_ival)), \
-                           jop.JConst(hw_sample_rate))
+        sim_sample_freq = 2.0*physbw
+        jenv.lte(jop.JMult(tau, jop.JConst(sim_sample_freq)), \
+                 jop.JConst(hw_sample_freq))
+        if not prop.max_samples is None:
+            # (max_sim_time/tau)*(sim_sample_freq*tau)
+            # max_sim_time*sim_sample_freq < hw_max_samples
+            max_sim_time = _to_phys_time(circ,prob.max_sim_time)
+            sim_max_samples = max_sim_time*sim_sample_freq
+            hw_max_samples = prop.max_samples
 
-        if not hw_max_samples is None:
-            print(hw_max_samples, m_exptime)
-            input()
-            jenv.lte(jop.JMult(tau_inv,jop.JConst(m_exptime)),  \
-                     jop.JConst(hw_max_samples))
+            print("max_samples=%s n_samples=%s" % \
+                  (hw_max_samples, sim_max_samples))
+
+            if sim_max_samples > hw_max_samples:
+                raise Exception("[error] not enough storage in arduino to record data")
 
     elif prop.kind == props.DigitalProperties.ClockType.CONTINUOUS:
         hwbw = prop.bandwidth()

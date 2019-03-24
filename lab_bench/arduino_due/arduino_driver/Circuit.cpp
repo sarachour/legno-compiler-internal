@@ -4,7 +4,9 @@
 #include "Comm.h"
 #include <assert.h>
 
-char HCDC_DEMO_BOARD = 4;
+char HCDC_DEMO_BOARD = 6;
+//char HCDC_DEMO_BOARD = 4;
+
 
 namespace circ {
   

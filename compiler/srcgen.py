@@ -374,14 +374,18 @@ def get_ext_adcs_in_use(board,conc_circ,menv):
 
   return info
 
+def to_hw_time(circ,time):
+  scaled_time = time/circ.tau
+  hw_time = scaled_time/(circ.board.time_constant)
+  return hw_time
 
 def preamble(gren,board,conc_circ,mathenv,hwenv):
   dacs_in_use = get_ext_dacs_in_use(board,conc_circ,mathenv)
   adcs_in_use = get_ext_adcs_in_use(board,conc_circ,mathenv)
   # compute times
   scaled_tc_hz = board.time_constant*conc_circ.tau
-  scaled_sim_time = mathenv.sim_time/scaled_tc_hz
-  scaled_input_time = mathenv.input_time/scaled_tc_hz
+  scaled_sim_time = to_hw_time(conc_circ,mathenv.sim_time)
+  scaled_input_time = to_hw_time(conc_circ,mathenv.input_time)
   gren.add(parse('micro_reset'))
   # initialize oscilloscope
   if hwenv.use_oscilloscope:

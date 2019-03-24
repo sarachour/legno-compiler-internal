@@ -172,7 +172,6 @@ class JauntEnv:
         input()
       self._ltes.append((v1,v2))
 
-
   def gte(self,v1,v2):
       # TODO: equality
       self.lte(v2,v1)

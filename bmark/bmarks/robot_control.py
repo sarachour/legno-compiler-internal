@@ -32,9 +32,9 @@ def model():
   prob.bind('COS', op.Call([op.Var('DEG')], cos_fun))
   prob.bind('Rot', op.Emit(op.Var('Y')))
   pos = 1.0
-  xrng = 0.25
-  yrng = 0.25
-  degrng = 0.25
+  xrng = 2.5
+  yrng = 2.5
+  degrng = 1.0
   prob.set_interval("X",-xrng,xrng)
   prob.set_interval("Y",-yrng,yrng)
   prob.set_interval("DEG",-degrng,degrng)

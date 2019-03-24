@@ -149,4 +149,3 @@ def solve_gpkit_problem(gpmodel,timeout=10):
 def debug_gpkit_problem(gpprob):
   jaunt_util.log_warn(">>> DEBUG <<<")
   result = gpprob.debug(solver=CONFIG.GPKIT_SOLVER)
-  print(result)

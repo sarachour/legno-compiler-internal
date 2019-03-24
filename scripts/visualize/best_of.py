@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 def visualize(series,key,executed_only=True):
   data = common.get_data(series,executed_only=executed_only)
   for ser in data.series():
+    print("== %s ==" % ser)
     idents,values = data.get_data(ser,['ident',key],
                            [MismatchStatus.UNKNOWN, MismatchStatus.IDEAL])
     indices = np.argsort(values)

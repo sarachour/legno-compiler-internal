@@ -9,6 +9,8 @@
 // max value is 32000
 # define MAX_N_BYTES 5500
 #define MAX_N_SAMPLES (MAX_N_BYTES>>1)
+//#define SDA_PIN SDA
+#define SDA_PIN SDA1
 
 namespace experiment {
 

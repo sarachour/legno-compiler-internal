@@ -45,11 +45,18 @@ def rank(circ):
       noises.append(weight*noise)
 
   norm_sigs = list(map(lambda s: s/max(signals), signals))
-  norm_noises = list(map(lambda s: s/max(noises), signals))
+  max_noises = max(noises)
+  if max_noises == 0:
+    max_noises = 1e-6
+
+  norm_noises = list(map(lambda s: s/max_noises, signals))
   n = len(signals)
-  print(dict(zip(snrs, evalheur.get_ports(circ,evaluate=True))))
+  score = sum(snrs)
+  print("score= %s" % score)
+  for snr,port in zip(snrs, evalheur.get_ports(circ,evaluate=True)):
+    print("  %s: %s" % (str(port),snr))
   #return (sum(norm_noises)/n*max(noises))**-1+sum(norm_sigs)/n*max(signals)
-  return sum(snrs)
+  return score
 
 def clear(circ):
   for _,_,config in circ.instances():
