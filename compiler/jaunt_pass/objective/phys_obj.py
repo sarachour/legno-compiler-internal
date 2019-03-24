@@ -3,6 +3,7 @@ import ops.nop as nop
 import util.util as util
 import compiler.common.evaluator_heuristic as evalheur
 import compiler.jaunt_pass.objective.obj as optlib
+import compiler.jaunt_pass.objective.basic_obj as boptlib
 import compiler.jaunt_pass.objective.sweep_obj as swoptlib
 import math
 
@@ -49,7 +50,7 @@ def gpkit_expr(jenv,varmap,circ,expr,refs):
       # compute integral
       fmax = circ.config(block,loc).bandwidth(port).bandwidth
       tc = circ.board.time_constant
-      value = (tc*fmax*varmap['tau'])**expo
+      value = (tc*fmax*varmap[jenv.tau()])**expo
       return value
 
     elif expr.op == nop.NOpType.REF:
@@ -142,7 +143,7 @@ def compute_snr_info(ports,signals,means,variances):
 
 def compute(varmap,jenv,circ,models,ports,method='low-snr'):
   time_constant = 1.0/circ.board.time_constant
-  Jtau = varmap['tau']
+  Jtau = varmap[jenv.tau()]
   signals,means,variances = compute_distributions(varmap,jenv,circ,models,ports)
   if method == 'low_snr':
     sig,nz,snr = compute_snr_info(ports,signals,means,variances)
@@ -202,11 +203,10 @@ class LowNoiseObjFunc(optlib.JauntObjectiveFunction):
     yield LowNoiseObjFunc(opt)
 
 
-
 class TauSweepSNRObjFunc(swoptlib.MultSpeedObjFunc):
 
-  def __init__(self,obj,idx,tau,cstrs):
-    boptlib.MultSpeedObjFunc.__init__(self,obj,idx,tau,cstrs)
+  def __init__(self,obj,idx,cstrs):
+    swoptlib.MultSpeedObjFunc.__init__(self,obj,idx,cstrs)
 
   def mktag(self,idx):
     return "lnz-tau%d" % idx
@@ -220,12 +220,12 @@ class TauSweepSNRObjFunc(swoptlib.MultSpeedObjFunc):
   @staticmethod
   def mkobj(circ,jobj,varmap,idx,tau,cstrs):
     obj = list(LowNoiseObjFunc.make(circ,jobj,varmap))[0].objective()
-    return MaxSNRAtSpeedObjFunc(obj,
-                                idx=idx,
-                                tau=tau,
-                                cstrs=cstrs)
+    return TauSweepSNRObjFunc(obj,
+                              idx=idx,
+                              cstrs=cstrs)
 
   @staticmethod
   def make(circ,jobj,varmap,n=7):
     return swoptlib.MultSpeedObjFunc.make(
-      MaxSNRAtSpeedObjFunc,circ, jobj,varmap,n=n)
+      TauSweepSNRObjFunc,circ, jobj,varmap,n=n)
+

@@ -42,9 +42,12 @@ def visualize():
                                                    [MismatchStatus.BAD])
 
 
+    '''
     sel_inds = list(filter(lambda i: 'rand' in opt[i] or 'sig-tau0' == opt[i] or \
                            'lnz-tau0' in opt[i], \
                            range(0,len(_rank))))
+    '''
+    sel_inds = list(range(0,len(_rank)))
     if len(sel_inds) == 0:
       continue
     rank = list(map(lambda i : _rank[i], sel_inds))

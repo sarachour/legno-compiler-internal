@@ -542,9 +542,10 @@ class ExperimentEntry:
                               self._objective_fun,
                               self._math_env,
                               self._hw_env)
- 
+
   def __repr__(self):
     s = "{\n"
+    s += "bmark=%s\n" % (self.bmark)
     s += "ident=%s\n" % (self.ident)
     s += "status=%s\n" % (self._status.value)
     s += "grendel_file=%s\n" % (self._grendel_file)

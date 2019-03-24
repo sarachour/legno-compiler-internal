@@ -1,7 +1,9 @@
 import ops.jop as jop
 import ops.op as ops
 import ops.interval as interval
+
 import logging
+import networkx as nx
 
 logger = logging.getLogger('jaunt')
 logger.setLevel(logging.DEBUG)
@@ -140,10 +142,10 @@ def reduce_vars(jenv):
     graph = nx.Graph()
 
     varsets = []
-    for v in jenv.variables():
+    for v in jenv.variables(in_use=True):
         graph.add_node(v)
 
-    for (_lhs,_rhs) in jobj.jenv.eqs():
+    for (_lhs,_rhs) in jenv.eqs():
         _,lhs = _lhs.factor_const()
         _,rhs = _rhs.factor_const()
         if lhs.op == jop.JOpType.VAR and \

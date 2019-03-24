@@ -1,8 +1,9 @@
-import networkx as nx
 import compiler.jaunt_pass.objective.obj as optlib
 import compiler.jaunt_pass.objective.basic_obj as boptlib
+import compiler.jaunt_pass.jaunt_util as jaunt_util
 import ops.jop as jop
 import random
+import numpy as np
 
 class MultScaleObjFunc(optlib.JauntObjectiveFunction):
 
@@ -58,39 +59,22 @@ class MultScaleObjFunc(optlib.JauntObjectiveFunction):
     if not jobj.jenv.uses_tau():
       return
 
-    graph = nx.Graph()
-
-    varsets = []
-    for v in jobj.jenv.variables():
-      graph.add_node(v)
-
-    for (_lhs,_rhs) in jobj.jenv.eqs():
-      _,lhs = _lhs.factor_const()
-      _,rhs = _rhs.factor_const()
-      if lhs.op == jop.JOpType.VAR and \
-         rhs.op == jop.JOpType.VAR:
-        graph.add_node(lhs.name)
-        graph.add_node(rhs.name)
-        graph.add_edge(lhs.name,rhs.name)
-
-    for subg in nx.connected_components(graph):
-      varsets.append(subg)
-
+    varsets = jaunt_util.reduce_vars(jobj.jenv)
     print("num agg vars: %d" % len(varsets))
     trnum = lambda i : "tr%d" % i
     filename = circ.filename
     for obj in boptlib.SlowObjFunc.make(circ,jobj,varmap):
       yield obj
 
-    tau=jobj.result('slow')['freevariables'][jobj.jenv.TAU]
+    tau=jobj.result('slow')['freevariables'][jobj.jenv.tau()]
 
     ntries =50
     idx = 0
     for tryno in range(0,ntries):
       weights = MultScaleObjFunc.build_weights(varsets,varmap)
       cstrs = [
-        varmap[jobj.jenv.TAU] <= tau*1.1,
-        varmap[jobj.jenv.TAU] >= tau*0.9
+        varmap[jobj.jenv.tau()] <= tau*1.1,
+        varmap[jobj.jenv.tau()] >= tau*0.9
       ]
       thisobj = cls.mkobj(circ,jobj,varmap,idx,weights,cstrs)
       yield thisobj
@@ -163,8 +147,8 @@ class MultSpeedObjFunc(optlib.JauntObjectiveFunction):
       yield obj
 
     jenv = jobj.jenv
-    min_t=jobj.result('slow')['freevariables'][jenv.TAU]
-    max_t=jobj.result('fast')['freevariables'][jenv.TAU]
+    min_t=jobj.result('slow')['freevariables'][jenv.tau()]
+    max_t=jobj.result('fast')['freevariables'][jenv.tau()]
     if abs(min_t-max_t) < 1e-6:
       return
 
@@ -172,8 +156,8 @@ class MultSpeedObjFunc(optlib.JauntObjectiveFunction):
     for idx in range(0,n):
       tau = taus[idx]
       cstrs = [
-        varmap[jenv.TAU] <= tau*1.1,
-        varmap[jenv.TAU] >= tau*0.9
+        varmap[jenv.tau()] <= tau*1.1,
+        varmap[jenv.tau()] >= tau*0.9
       ]
       yield cls.mkobj(circ,jobj,varmap,idx,tau,cstrs)
 
@@ -191,12 +175,12 @@ class TauSweepSigObjFunc(MultSpeedObjFunc):
 
   @staticmethod
   def mkobj(circ,jobj,varmap,idx,tau,cstrs):
-    obj = list(MaxSignalObjFunc.make(circ,jobj,varmap))[0].objective()
-    return MaxSignalAtSpeedObjFunc(obj,
-                                   idx=idx,
-                                   cstrs=cstrs)
+    obj = list(boptlib.MaxSignalObjFunc.make(circ,jobj,varmap))[0].objective()
+    return TauSweepSigObjFunc(obj,
+                              idx=idx,
+                              cstrs=cstrs)
 
   @staticmethod
   def make(circ,jobj,varmap,n=7):
-    return MultSpeedObjFunc.make(MaxSignalAtSpeedObjFunc,circ, \
+    return MultSpeedObjFunc.make(TauSweepSigObjFunc,circ, \
                                  jobj,varmap,n=n)

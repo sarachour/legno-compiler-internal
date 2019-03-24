@@ -421,7 +421,7 @@ class BaseMathPropagator(ExpressionPropagator):
     u,v = m.mean,m.variance
     return SymbolicModel(nop.NConstRV(1.0,0.0),
                          nop.NConstRV(0.0,0.0),
-                         nop.NConstRV(0.0,1.0))
+                         nop.NConstRV(1.0,0.0))
 
   def plus(self,m1,m2):
     s1,u1,v1 = m1.signal,m1.mean,m1.variance
