@@ -109,6 +109,8 @@ def visualize():
 
   coeff = np.corrcoef(all_ranks,all_qualities)
   for ser,corr in corrs.items():
+    if corr is None:
+      continue
     print("%s\t%f" % (ser,corr))
 
   print("global\t%f" % coeff[1][0])

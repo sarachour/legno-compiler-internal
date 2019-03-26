@@ -147,12 +147,12 @@ def compute(varmap,jenv,circ,models,ports,method='low-snr'):
   signals,means,variances = compute_distributions(varmap,jenv,circ,models,ports)
   if method == 'low_snr':
     sig,nz,snr = compute_snr_info(ports,signals,means,variances)
-    #return nz*(sig**-1)
+    return nz*(sig**-1)
     return snr
 
-  elif method == 'snr_to_tau':
+  elif method == 'snr_x_tau':
     sig,nz,snr = compute_snr_info(ports,signals,means,variances)
-    return snr*(Jtau**(-1))
+    return snr*Jtau
 
   else:
     raise Exception("unknown method <%s>" % method)
@@ -177,7 +177,7 @@ class FastLowNoiseObjFunc(optlib.JauntObjectiveFunction):
       models.append(model)
 
     opt = compute(varmap,jenv,circuit,models,ports, \
-                  method='snr_to_tau')
+                  method='snr')
     yield FastLowNoiseObjFunc(opt)
 
 class LowNoiseObjFunc(optlib.JauntObjectiveFunction):
@@ -199,7 +199,7 @@ class LowNoiseObjFunc(optlib.JauntObjectiveFunction):
                      .propagated_noise(out)
       models.append(model)
     opt = compute(varmap,jenv,circuit,models,ports, \
-                  method='low_snr')
+                  method='snr_x_tau')
     yield LowNoiseObjFunc(opt)
 
 

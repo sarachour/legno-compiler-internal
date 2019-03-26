@@ -16,10 +16,8 @@ def model():
   sin_fun = op.Func(['T'], op.Sin(op.Var('T')))
   cos_fun = op.Func(['T'], op.Cos(op.Var('T')))
 
-  ampl,freq = 0.3,0.01
-  W,_ = build_bb_sys(prob,ampl,freq,0)
-  ampl,freq = 0.3,0.01
-  V,_ = build_bb_sys(prob,ampl,freq,1)
+  ampl,freq = 0.3,0.25
+  W,V = build_bb_sys(prob,ampl,freq,0)
   params = {
     'DEG0' : 0,
     'X0': 0,

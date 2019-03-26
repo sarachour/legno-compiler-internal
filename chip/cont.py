@@ -46,14 +46,6 @@ class CSMVar:
     return self._port
 
   @property
-  def interval(self):
-    return self._ival
-
-  def set_interval(self,low,high):
-    assert(low <= high)
-    self._ival = interval.Interval.type_infer(low,high)
-
-  @property
   def varname(self):
     return "%s_%s_%s" % (self._type.value,self._port,self._handle)
 
@@ -199,12 +191,6 @@ class ContinuousScaleModel:
   def decl_var(self,var):
     self._vars[var.varname] = var
     return var
-
-  def lte(self,expr1,expr2):
-    self._lte.append((expr1,expr2))
-
-  def ltes(self):
-    return self._lte
 
   def eq(self,expr1,expr2):
     self._eq.append((expr1,expr2))

@@ -29,6 +29,8 @@ class Shader:
       return SNRShader(circ)
     if method == 'interval':
       return IntervalShader(circ)
+    if method == 'bandwidth':
+      return BandwidthShader(circ)
     elif method == 'scaled-interval':
       return ScaledIntervalShader(circ)
     elif method == 'scale-factor':
@@ -245,6 +247,21 @@ class ScaledIntervalShader(CircShader):
       return Shader.ERROR,"skip"
     else:
       return ival.bound*scf,"%s*%.3e" % (ival,scf)
+
+
+class BandwidthShader(CircShader):
+
+  def __init__(self,circ):
+    CircShader.__init__(self,circ,None)
+
+  def get_port_value(self,name,loc,port):
+    cfg = self.circ.config(name,loc)
+    ival = cfg.bandwidth(port)
+    scf = cfg.scf(port)
+    if ival is None or scf is None:
+      return Shader.ERROR,"skip"
+    else:
+      return ival.bandwidth, "%s" % ival
 
 
 class IntervalShader(CircShader):

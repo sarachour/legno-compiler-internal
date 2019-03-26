@@ -10,12 +10,17 @@ from bmark.bmarks.common import *
 import bmark.menvs as menvs
 
 
+def emit(v):
+  return op.Emit(op.Mult(op.Const(0.99999), v))
 
-def model(n):
+
+def model(n,obs_idx):
   params = {
     'init_heat': 2.0,
-    'ic': 0
+    'ic': 0,
+    'coeff': 1/(2.0*n)
   }
+  params['2coeff'] = params['coeff']*2
 
   prob = MathProg('heat1d-g%d' % n)
   for i in range(0,n):
@@ -23,33 +28,38 @@ def model(n):
     if i > 0 and i < n-1:
       params['prev'] = "u%d" % (i-1)
       params['next'] = "u%d" % (i+1)
-      eqn=parse_diffeq('{prev} - 2*{curr} + {next}', 'ic', \
-                   ':q%d' % i, params)
+      eqn=parse_diffeq('{coeff}*{prev} + {2coeff}*(-{curr}) + {coeff}*{next}',\
+                       'ic', \
+                       ':q%d' % i, params)
     elif i > 0:
       assert(i == n-1)
       params['prev'] = "u%d" % (i-1)
-      eqn=parse_diffeq('{prev} - 2*{curr}', 'init_heat', \
-                   ':q%d' % i, params)
+      eqn=parse_diffeq('{coeff}*{prev} + {2coeff}*(-{curr})', \
+                       'init_heat', \
+                       ':q%d' % i, params)
     elif i < n-1:
       params['next'] = "u%d" % (i+1)
-      eqn=parse_diffeq('{next}-2*{curr}', 'ic', \
+      eqn=parse_diffeq('{coeff}*{next}+{2coeff}*(-{curr})', 'ic', \
                    ':q%d' % i, params)
     else:
       raise Exception("???")
 
-    coeff = 1/(2.0*n)
-    prob.bind(params['curr'], op.Mult(op.Const(coeff),eqn))
+    prob.bind(params['curr'], eqn)
     prob.set_interval(params['curr'],-2,2)
 
-  #prob.compile()
-  menv = menvs.get_math_env('t20')
+  prob.bind("POINT", emit(op.Var("u%d" % obs_idx)))
+  prob.set_max_sim_time(200)
+  prob.compile()
+  menv = menvs.get_math_env('t200')
   return menv,prob
 
-def execute():
-  menv,prob = model()
+def execute(n,o):
+  menv,prob = model(n,o)
   T,Y = run_diffeq(menv,prob)
   plot_diffeq(menv,prob,T,Y)
 
 
 if __name__ == "__main__":
-  execute()
+  execute(4,2)
+  execute(8,0)
+  execute(16,13)

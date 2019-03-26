@@ -9,6 +9,13 @@ from ops import op, opparse
 from bmark.bmarks.common import *
 import bmark.menvs as menvs
 
+def zero():
+    prob = MathProg("zero")
+    prob.bind('O', op.Const(0.0))
+    prob.compile()
+    menv = menvs.get_math_env('t20')
+    return menv,prob
+
 def model_1():
     prob = MathProg("mod1")
     prob.bind('X', op.ExtVar("I"))

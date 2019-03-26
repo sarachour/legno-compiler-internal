@@ -1,13 +1,13 @@
 data={
     "block": {
-        "baseline": 1.0,
+        "baseline": 10.0,
         "coeffs": {
             "integ": 0.1,
             "mult": 0.5,
             "vga": 1.0,
             "dac": 0.1,
             "adc": 0.6,
-            "fanout": 0.1
+            "fanout": 0.2
         }
     },
     "scale-mode": {
@@ -20,13 +20,15 @@ data={
         "weights": {
             "mult": 0.02,
             "vga": 0.02,
-            "integ": 0.1
+            "integ": 0.0
         }
     },
     "freq": {
       'baseline':1.0,
         "coeffs": {
-            "adc": 1.0
+            "adc": 1.0,
+            "mult": 1.0,
+            "vga": 1.0
         }
     }
 }

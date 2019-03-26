@@ -33,7 +33,6 @@ def execute_once(args,debug=True):
 
   db = ExperimentDB()
   entries = list(db.get_by_status(ExperimentStatus.PENDING))
-  whitelist = ['pend','spring','micro-osc-quarter','cosc']
   #whitelist = ['micro-osc-quarter','bbsys']
   whitelist = None
   for entry in tqdm.tqdm(entries):
@@ -46,8 +45,8 @@ def execute_once(args,debug=True):
     if debug:
       print(entry)
 
-    conc_circ = ConcCirc.read(hdacv2_board,entry.skelt_circ_file)
-    params.analyze(entry,conc_circ)
+    #conc_circ = ConcCirc.read(hdacv2_board,entry.skelt_circ_file)
+    #params.analyze(entry,conc_circ)
 
   entries = list(db.get_by_status(ExperimentStatus.RAN))
   for entry in tqdm.tqdm(entries):

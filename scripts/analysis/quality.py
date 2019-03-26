@@ -34,11 +34,9 @@ def apply_linear_noise_model(mean,stdev,yref):
   return nzref,snrref
 
 
-def scale_ref_data(entry,tref,yref):
-  fmax = entry.fmax
-  scf = entry.scf
-  thw = list(map(lambda t: t/entry.tau, tref))
-  yhw = list(map(lambda x: x*entry.scf*0.5, yref))
+def scale_ref_data(tau,scf,tref,yref):
+  thw = list(map(lambda t: t/tau, tref))
+  yhw = list(map(lambda x: x*scf, yref))
   return thw, yhw
 
 
@@ -107,17 +105,18 @@ def analyze(entry):
     varname = output.varname
     trial = output.trial
     TREF,YREF = compute_ref(entry.bmark,entry.math_env,varname)
-    THW,YHW = scale_ref_data(output,TREF,YREF)
-
     TMEAS,YMEAS = read_meas_data(output.out_file)
+    scf = max(abs(np.array(YMEAS)))/max(abs(np.array(YREF)))
+    THW,YHW = scale_ref_data(output.tau,scf,TREF,YREF)
+
 
     common.simple_plot(output,path_h,output.trial,'ref',TREF,YREF)
     common.simple_plot(output,path_h,output.trial,'meas',TMEAS,YMEAS)
 
     RUNTIME = entry.runtime
     TMEAS_CUT, YMEAS_CUT = truncate_signal(TMEAS,YMEAS,RUNTIME)
-    YMEAS_ZERO = demean_signal(YMEAS_CUT)
-    common.simple_plot(output,path_h,output.trial,'cut',TMEAS_CUT,YMEAS_ZERO)
+    #YMEAS_ZERO = demean_signal(YMEAS_CUT)
+    common.simple_plot(output,path_h,output.trial,'cut',TMEAS_CUT,YMEAS_CUT)
     TIME,MEAN,STDEV,_ = \
           compute_running_snr(TMEAS_CUT,YMEAS_CUT)
 

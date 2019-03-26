@@ -31,10 +31,9 @@ def xbar_continuous_model(xbar):
   csm.eq(ops.Mult(ops.Var(inp.varname),
                   ops.Var(coeff.varname)), \
          ops.Var(out.varname))
-  inp.set_interval(1.0,1.0)
-  coeff.set_interval(1.0,1.0)
-  out.set_interval(1.0,1.0)
   csm.discrete.add_mode("*")
+  csm.discrete.add_cstr("*",out,1.0)
+  csm.discrete.add_cstr("*",inp,1.0)
   xbar.set_scale_model("*", csm)
 
 

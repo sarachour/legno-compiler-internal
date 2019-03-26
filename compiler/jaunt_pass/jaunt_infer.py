@@ -109,24 +109,11 @@ def sc_generate_scale_model_constraints(jenv,circ):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         scale_model = block.scale_model(config.comp_mode)
-        for v in scale_model.variables():
-            jvar = sc_get_scm_var(jenv,block_name,loc,v)
-            ival = v.interval
-            if not ival is None:
-                jaunt_util.in_interval_constraint(jenv,jop.JVar(jvar),
-                                        interval.Interval.type_infer(1.0,1.0),
-                                                  ival,'scale-model-ival')
-
         visitor = ScaleModelExprVisitor(jenv,circ,block,loc)
         for lhs,rhs in scale_model.eqs():
             j_lhs = visitor.visit_expr(lhs)
             j_rhs = visitor.visit_expr(rhs)
             jenv.eq(j_lhs,j_rhs,'scale-model-eqcstr')
-
-        for lhs,rhs in scale_model.ltes():
-            j_lhs = visitor.visit_expr(lhs)
-            j_rhs = visitor.visit_expr(rhs)
-            jenv.lte(j_lhs,j_rhs,'scale-model-lte')
 
         modevars = []
         for mode in scale_model.discrete.modes():
@@ -140,10 +127,10 @@ def sc_generate_scale_model_constraints(jenv,circ):
         jenv.exactly_one(modevars)
 
     # set operating ranges
-    for sblk,sloc,sport,dblk,dloc,dport in circ.conns():
-        s_opr = jenv.get_op_range_var(sblk,sloc,sport)
-        d_opr = jenv.get_op_range_var(dblk,dloc,dport)
-        jenv.eq(jop.JVar(s_opr),jop.JVar(d_opr),'scale-model-conn')
+    #for sblk,sloc,sport,dblk,dloc,dport in circ.conns():
+    #    s_opr = jenv.get_op_range_var(sblk,sloc,sport)
+    #    d_opr = jenv.get_op_range_var(dblk,dloc,dport)
+    #    jenv.eq(jop.JVar(s_opr),jop.JVar(d_opr),'scale-model-conn')
 
 
 def sc_build_jaunt_env(prog,circ):

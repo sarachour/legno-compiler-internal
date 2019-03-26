@@ -52,17 +52,19 @@ def continuous_scale_model(fanout):
         csm = ContinuousScaleModel()
         csm.set_baseline((chipcmd.RangeType.MED))
         inp = csm.decl_var(CSMOpVar("in"))
-        inp.set_interval(1.0,10.0)
+        outs = [None]*3
         for i in range(0,3):
-            out = csm.decl_var(CSMOpVar("out%d" % i))
+            outs[i] = csm.decl_var(CSMOpVar("out%d" % i))
             coeff = csm.decl_var(CSMCoeffVar("out%d" % i))
-            out.set_interval(1.0,10.0)
-            coeff.set_interval(1.0,1.0)
-            csm.eq(ops.Var(out.varname), ops.Var(inp.varname))
+            csm.eq(ops.Var(outs[i].varname), \
+                   ops.Mult(ops.Var(inp.varname),ops.Var(coeff.varname)))
+            csm.eq(ops.Var(outs[i].varname), ops.Var(inp.varname))
 
         for scm in scale_modes:
             csm.discrete.add_mode(scm)
             csm.discrete.add_cstr(scm,inp,scm.coeff())
+            for i in range(0,3):
+                csm.discrete.add_cstr(scm,outs[i],scm.coeff())
 
         fanout.set_scale_model(comp_mode,csm)
 

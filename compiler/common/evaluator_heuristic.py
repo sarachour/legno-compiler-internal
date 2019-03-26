@@ -34,8 +34,7 @@ def get_integrator_ports(circuit,evaluate=False,weight=1.0):
 
 def get_computation_ports(circuit,evaluate=False,weight=1.0):
   ports = []
-  comp_ports = ['integrator', 'fanout', 'multiplier', \
-                'adc', 'dac']
+  comp_ports = ['integrator',  'multiplier', 'adc']
   for block_name,loc,config in circuit.instances():
     block = circuit.board.block(block_name)
     if not block_name in comp_ports:
@@ -57,12 +56,11 @@ def get_all_ports(circuit,evaluate=False,weight=1.0):
   return ports
 
 def get_ports(circuit,evaluate=False):
-  n = len(get_integrator_ports(circuit,evaluate,1.0))
+  n = len(get_computation_ports(circuit,evaluate,1.0))
+  m = len(get_iface_ports(circuit,evaluate,1.0))
 
-  if n > 1:
-    #return get_iface_ports(circuit,evaluate,1.0) + \
-    #  get_integrator_ports(circuit,evaluate,1.0)
-    n = len(get_all_ports(circuit,evaluate,1.0))
-    return get_all_ports(circuit,evaluate,1.0/n)
+  if n + m > 1:
+    return get_iface_ports(circuit,evaluate,1.0/(n+m)) + \
+      get_computation_ports(circuit,evaluate,1.0/(n+m))
   else:
     return get_iface_ports(circuit,evaluate,1.0)

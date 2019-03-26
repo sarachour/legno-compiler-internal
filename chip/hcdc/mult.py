@@ -93,19 +93,6 @@ def continuous_scale_model_vga(mult):
   op_out = csm.decl_var(CSMOpVar("out"))
   scf_tf = csm.decl_var(CSMCoeffVar("out"))
 
-  for csmvar in [scf_tf]:
-    #scf_tf.set_interval(0.01,100.0)
-    csmvar.set_interval(0.1,10.0)
-    #csmvar.set_interval(1.0,1.0)
-
-
-  for csmvar in [op_in0,op_out]:
-    csmvar.set_interval(0.1,10.0)
-
-
-  for csmvar in [op_coeff]:
-    csmvar.set_interval(1.0,1.0)
-
   csm.eq(ops.Mult(ops.Var(op_in0.varname),
                   ops.Var(scf_tf.varname)),
          ops.Var(op_out.varname))
@@ -117,6 +104,7 @@ def continuous_scale_model_vga(mult):
     #  continue
     csm.discrete.add_mode(scm)
     csm.discrete.add_cstr(scm,op_in0,scm_i.coeff())
+    csm.discrete.add_cstr(scm,op_coeff,1.0)
     csm.discrete.add_cstr(scm,op_out,scm_o.coeff())
     csm.discrete.add_cstr(scm,scf_tf,coeff)
 
@@ -138,9 +126,6 @@ def continuous_scale_model_mult(mult):
                   ops.Var(scf_tf.varname)), \
          ops.Var(out.varname))
 
-
-  for csmvar in [in0,in1,out]:
-    csmvar.set_interval(0.1,10.0)
 
   for scm in mul_modes:
     scm_i0,scm_i1,scm_o = scm

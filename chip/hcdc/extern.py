@@ -17,22 +17,22 @@ def extern_continuous_in_model(xbar):
   csm.eq(ops.Mult(ops.Var(inp.varname),
                   ops.Var(coeff.varname)), \
          ops.Var(out.varname))
-  inp.set_interval(1.0,1.0)
-  coeff.set_interval(1.0,1.0)
   csm.discrete.add_mode("*")
+  csm.discrete.add_cstr("*",out,1.0)
+  csm.discrete.add_cstr("*",inp,1.0)
   xbar.set_scale_model("*", csm)
 
 
 # DUE DAC -> VTOI
+ext_chip_in_coeff = 2.0
 ext_chip_in_props = util.make_dig_props(chipcmd.RangeType.MED, \
-                                        -1.0,1.0,
+                                        glb.ANALOG_MIN/ext_chip_in_coeff,
+                                        glb.ANALOG_MAX/ext_chip_in_coeff,
                                         glb.EXT_DAC_SAMPLES)
 ext_chip_in_props.set_min_quantize(ext_chip_in_props.SignalType.DYNAMIC, \
                                    glb.MIN_QUANT_EXTIN_DYNAMIC)
 ext_chip_in_props.set_clocked(10,glb.MAX_BUFFER_DAC_SAMPLES,units.us)
-# do note there's a weird offset of 0..
-#ext_chip_in_coeff = 0.030/0.055*2.0
-ext_chip_in_coeff = 2.0
+
 block_in = Block('ext_chip_in',type=BlockType.DAC) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.DIGITAL,["in"]) \
@@ -57,16 +57,19 @@ def extern_continuous_out_model(xbar):
   csm.eq(ops.Mult(ops.Var(inp.varname),
                   ops.Var(coeff.varname)), \
          ops.Var(out.varname))
-  inp.set_interval(1.0,1.0)
-  coeff.set_interval(1.0,1.0)
+
   csm.discrete.add_mode("*")
+  csm.discrete.add_cstr("*",inp,1.0)
+  csm.discrete.add_cstr("*",out,1.0)
   xbar.set_scale_model("*", csm)
 
 
 
 # DUE ADC -> VTOI
+ext_chip_out_coeff = 2.7/2.0
 ext_chip_out_props = util.make_dig_props(chipcmd.RangeType.MED, \
-                                         -1.2,1.2, \
+                                         glb.ANALOG_MIN*ext_chip_out_coeff,
+                                         glb.ANALOG_MAX*ext_chip_out_coeff, \
                                          glb.EXT_DAC_SAMPLES)
 ext_chip_out_props.set_min_quantize(ext_chip_in_props.SignalType.DYNAMIC, \
                                    glb.MIN_QUANT_EXTOUT_DYNAMIC)
@@ -75,7 +78,6 @@ ext_chip_out_props.set_min_quantize(ext_chip_in_props.SignalType.DYNAMIC, \
 ext_chip_out_props.set_clocked(1,glb.MAX_BUFFER_ADC_SAMPLES,units.ns)
 # for adc
 #ext_chip_out_props.set_clocked(1,units.ns)
-ext_chip_out_coeff = 2.7/2.0
 block_out = Block('ext_chip_out',type=BlockType.ADC) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \

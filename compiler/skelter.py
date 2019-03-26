@@ -61,6 +61,9 @@ def rank_model(circ):
       noises.append(weight*noise)
 
   norm_sigs = list(map(lambda s: s/max(signals), signals))
+  if len(noises) == 0:
+    return
+
   max_noises = max(noises)
   if max_noises == 0:
     max_noises = 1e-6
@@ -68,7 +71,8 @@ def rank_model(circ):
   norm_noises = list(map(lambda s: s/max_noises, signals))
   n = len(signals)
   #score = sum(snrs) + 10.0/circ.tau
-  score = sum(snrs)/circ.tau
+  #score = sum(snrs)/circ.tau
+  score = sum(snrs)
   print("score= %s" % score)
   for snr,port in zip(snrs, evalheur.get_ports(circ,evaluate=True)):
     print("  %s: %s" % (str(port),snr))

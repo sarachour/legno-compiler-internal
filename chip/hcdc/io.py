@@ -47,8 +47,6 @@ def dac_continuous_scale_model(dac):
   csm.eq(ops.Mult(ops.Var(inp.varname),
                   ops.Var(coeff.varname)), \
          ops.Var(out.varname))
-  inp.set_interval(1.0,1.0)
-  coeff.set_interval(1.0,10.0)
   for scm in modes:
      _,scm_o = scm
      csm.discrete.add_mode(scm)
@@ -124,9 +122,6 @@ def adc_continuous_scale_model(adc):
    csm.eq(ops.Mult(ops.Var(inp.varname),
                    ops.Var(coeff.varname)), \
           ops.Var(out.varname))
-   inp.set_interval(1.0,10.0)
-   coeff.set_interval(0.1,1.0)
-   out.set_interval(1.0,1.0)
    for scm_i in modes:
      csm.discrete.add_mode(scm_i)
      csm.discrete.add_cstr(scm_i,inp,scm_i.coeff())
