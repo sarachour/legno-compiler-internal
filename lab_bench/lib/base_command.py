@@ -290,7 +290,8 @@ class ArduinoCommand(Command):
             if self.is_response(line):
                 resp = self.parse_response(line)
                 if resp.type == ArduinoResponseType.PROCESS:
-                    assert(state == ArduinoResponseState.PENDING)
+                    if not (state == ArduinoResponseState.PENDING):
+                        raise Exception("expected pending, received <%s>" % resp)
                     state = ArduinoResponseState.PROCESSED
 
                 elif resp.type == ArduinoResponseType.RESPONSE:
@@ -380,7 +381,8 @@ class ArduinoCommand(Command):
                 header_type= self.build_ctype(offset=offset,n=n)
                 header_data = self._c_type.build(header_type)
                 # pad to fill up rest of struct before tacking on data.
-                n_pad = util.compute_pad_bytes(len(header_data),24)
+                pad_size=24
+                n_pad = util.compute_pad_bytes(len(header_data),pad_size)
                 pad_data = bytearray([0]*n_pad)
                 # data
                 chunk = raw_data[offset:offset+n]
@@ -415,6 +417,7 @@ class ArduinoCommand(Command):
             return resp
 
         return None
+
 
 class FlushCommand(ArduinoCommand):
     def __init__(self):

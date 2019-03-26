@@ -61,7 +61,6 @@ class Config:
             return naked_expr
 
         repl = {}
-        print(self._injs)
         for inj_port,value in self._injs.items():
             repl[inj_port] = ops.Mult(ops.Const(value), \
                                   ops.Var(inj_port))

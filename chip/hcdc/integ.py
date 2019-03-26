@@ -179,7 +179,7 @@ def scale_model(integ):
                       util.make_ana_props(outrng,
                                           glb.ANALOG_MIN,
                                           glb.ANALOG_MAX,
-                                          glb.ANALOG_MINSIG_CONST, 
+                                          glb.ANALOG_MINSIG_CONST,
                                           glb.ANALOG_MINSIG_DYN))
 
       scf_inout = outrng.coeff()/inrng.coeff()

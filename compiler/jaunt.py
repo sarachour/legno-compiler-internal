@@ -4,6 +4,7 @@ from compiler.common import infer
 import compiler.jaunt_pass.jaunt_util as jaunt_util
 import compiler.jaunt_pass.jaunt_common as jaunt_common
 import compiler.jaunt_pass.jenv as jenvlib
+import compiler.jaunt_pass.jenv_smt as jsmt
 import compiler.jaunt_pass.jenv_gpkit as jgpkit
 
 from chip.conc import ConcCirc
@@ -31,12 +32,17 @@ def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
     prop = block.props(config.comp_mode,config.scale_mode,port,handle=handle)
     hwrng,hwbw = prop.interval(), prop.bandwidth()
     if isinstance(prop, props.AnalogProperties):
-        jaunt_common.analog_op_range_constraint(jenv,prop,scfvar,jop.JConst(1.0),mrng,hwrng)
+        jaunt_common.analog_op_range_constraint(jenv,prop,scfvar, \
+                                                jop.JConst(1.0),mrng,hwrng, \
+                                                block.name)
         jaunt_common.analog_bandwidth_constraint(jenv,circ,mbw,hwbw)
 
     elif isinstance(prop, props.DigitalProperties):
-        jaunt_common.analog_op_range_constraint(jenv,prop,scfvar,jop.JConst(1.0),mrng,hwrng)
-        jaunt_common.digital_quantize_constraint(jenv,scfvar,mrng, prop)
+        jaunt_common.digital_op_range_constraint(jenv,prop,scfvar, \
+                                                 jop.JConst(1.0),mrng,hwrng, \
+                                                 block.name)
+        jaunt_common.digital_quantize_constraint(jenv,scfvar,
+                                                 jop.JConst(1.0),mrng,prop)
         jaunt_common.digital_bandwidth_constraint(jenv,prob,circ, \
                                                   mbw, prop)
     else:
@@ -71,10 +77,10 @@ def sc_generate_problem(jenv,prob,circ):
 
 
     if not jenv.uses_tau():
-        jenv.eq(jop.JVar(jenv.tau()), jop.JConst(1.0))
+        jenv.eq(jop.JVar(jenv.tau()), jop.JConst(1.0),'tau_fixed')
     else:
-        jenv.lte(jop.JVar(jenv.tau()), jop.JConst(1e6))
-        jenv.gte(jop.JVar(jenv.tau()), jop.JConst(1e-6))
+        jenv.lte(jop.JVar(jenv.tau()), jop.JConst(1e6),'tau_min')
+        jenv.gte(jop.JVar(jenv.tau()), jop.JConst(1e-6),'tau_max')
 
 
 def sc_build_jaunt_env(prog,circ,infer=False):
@@ -116,6 +122,12 @@ def compute_scale(prog,circ,objfun):
     jenv = sc_build_jaunt_env(prog,circ)
     jopt = JauntObjectiveFunctionManager(jenv)
     jopt.method = objfun.name()
+    blacklist = []
+    smtenv = jsmt.build_smt_prob(circ,jenv,blacklist=blacklist)
+    results = list(jsmt.solve_smt_prob(smtenv,nslns=1))
+    if len(results) == 0:
+        raise Exception("no solution exists")
+
     for gpprob,thisobj in \
         jgpkit.build_gpkit_problem(circ,jenv,jopt):
         if gpprob is None:
@@ -125,7 +137,7 @@ def compute_scale(prog,circ,objfun):
         if sln == None:
             print("<< solution is none >>")
             jgpkit.debug_gpkit_problem(gpprob)
-            raise Exception("bug: SMT worked, but CVX didn't")
+            continue
 
         jopt.add_result(thisobj.tag(),sln)
         new_circ = apply_result(jenv,circ,sln)
@@ -144,18 +156,7 @@ def scale_again(prog,circ,do_physical, do_sweep):
 
 def scale(prog,circ,nslns):
     objs = JauntObjectiveFunctionManager.basic_methods()
-    idx = 0
-    for infer_circ in jaunt_infer.infer_scale_config(prog,circ,nslns):
-        succ = False
+    for idx,infer_circ in enumerate(jaunt_infer.infer_scale_config(prog,circ,nslns)):
         for obj in objs:
             for final_obj,final_circ in compute_scale(prog,infer_circ,obj):
-                if not succ:
-                    idx += 1
-                    succ = True
-                    if idx > nslns:
-                        return
-
                 yield idx,final_obj.tag(), final_circ
-
-            if not succ:
-                break

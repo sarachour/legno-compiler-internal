@@ -29,7 +29,7 @@ def smt_expr(smtenv,expr):
     raise Exception("unsupported <%s>" % expr)
 
 
-def build_smt_prob(circ,jenv):
+def build_smt_prob(circ,jenv,blacklist=[]):
   failed = jenv.failed()
   if failed:
     jaunt_util.log_warn("==== FAIL ====")
@@ -47,33 +47,37 @@ def build_smt_prob(circ,jenv):
       smtenv.decl(var,smtop.SMTEnv.Type.REAL)
 
   constraints = []
-  for lhs,rhs in jenv.eqs():
+  for lhs,rhs,annot in jenv.eqs():
     smt_lhs = smt_expr(smtenv,lhs)
     smt_rhs = smt_expr(smtenv,rhs)
-    smtenv.eq(smt_lhs,smt_rhs)
+    if not annot in blacklist:
+      smtenv.eq(smt_lhs,smt_rhs)
 
-  for lhs,rhs in jenv.ltes():
+  for lhs,rhs,annot in jenv.ltes():
     smt_lhs = smt_expr(smtenv,lhs)
     smt_rhs = smt_expr(smtenv,rhs)
-    smtenv.lte(smt_lhs,smt_rhs)
+    if not annot in blacklist:
+      smtenv.lte(smt_lhs,smt_rhs)
 
-  for boolvar,var,value in jenv.get_implies():
-    smtboolvar = smtenv.get_smtvar(boolvar)
-    smtvar = smtenv.get_smtvar(var)
-    smtval = math.log10(value)
-    impl = smtop.SMTImplies(
-      smtop.SMTVar(smtboolvar),
-      smtop.SMTEq(
-        smtop.SMTVar(smtvar), \
-        smtop.SMTConst(smtval)
+  if hasattr(jenv,'get_implies'):
+    for boolvar,var,value in jenv.get_implies():
+      smtboolvar = smtenv.get_smtvar(boolvar)
+      smtvar = smtenv.get_smtvar(var)
+      smtval = math.log10(value)
+      impl = smtop.SMTImplies(
+        smtop.SMTVar(smtboolvar),
+        smtop.SMTEq(
+          smtop.SMTVar(smtvar), \
+          smtop.SMTConst(smtval)
+        )
       )
-    )
-    smtenv.cstr(impl)
+      smtenv.cstr(impl)
 
-  for boolvars in jenv.get_exactly_one():
-    smtvars = list(map(lambda bv: smtenv.get_smtvar(bv), boolvars))
-    kofn = smtop.SMTExactlyN(smtvars,1)
-    smtenv.cstr(kofn)
+  if hasattr(jenv,'get_exactly_one'):
+    for boolvars in jenv.get_exactly_one():
+      smtvars = list(map(lambda bv: smtenv.get_smtvar(bv), boolvars))
+      kofn = smtop.SMTExactlyN(smtvars,1)
+      smtenv.cstr(kofn)
 
   if failed:
     print("<< failed >>")

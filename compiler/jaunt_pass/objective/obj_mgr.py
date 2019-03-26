@@ -29,9 +29,9 @@ class JauntObjectiveFunctionManager():
     @staticmethod
     def sweep_methods():
         return [
-            #sweepoptlib.MaxRandomSignalObjFunc,
-            #sweepoptlib.TauSweepSigObjFunc,
-            physoptlib.TauSweepSNRObjFunc
+            sweepoptlib.MaxRandomSignalObjFunc,
+            sweepoptlib.TauSweepSigObjFunc
+            #physoptlib.TauSweepSNRObjFunc
         ]
 
 

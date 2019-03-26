@@ -1,0 +1,1 @@
+- the continuous models do not handle the scaled minimum signal constraint. This should probably be handled, as the SMT solver might return a combination that is ultimately not possible.

@@ -70,7 +70,8 @@ def gen_use_lut(circ,block,locstr,config,source):
 def nearest_value(value):
   if value == 0.0:
     return 0.0
-  vals = np.linspace(-1,1,256)
+  delta = 1.0/256
+  vals = np.linspace(-1,1-delta,256)
   idx = (np.abs(vals - value)).argmin()
   return vals[idx]
 

@@ -13,24 +13,26 @@ import bmark.menvs as menvs
 def model():
     prob = MathProg("bmmrxn")
     params = {
-      'E0' : 0.9999,
-      'S0' : 0.9999,
+      'E0' : 1.2,
+      'S0' : 1.0,
       'ES0' : 0.0,
-      'kf' : 0.01,
-      'kr' : 0.09999,
-      'one': 0.9999,
+      'kf' : 0.6,
+      'kr' : 0.7,
+      'one': 0.7,
     }
-    E = parse_fn('{E0}+{one}*(-ES)',params)
-    S = parse_fn('{S0}+{one}*(-ES)',params)
     ES = parse_diffeq("({one}*({kf}*E)*S) + {kr}*(-ES)", "ES0", ":z", params)
+    E = parse_diffeq("(({kf}*(-E))*S) + {kr}*(ES)", "E0", ":y", params)
+    S = parse_diffeq("(({kf}*(-E))*S) + {kr}*(ES)", "S0", ":x", params)
     prob.bind("E",E)
     prob.bind("S",S)
     prob.bind("ES",ES)
     prob.set_interval("E",0,params['E0'])
     prob.set_interval("S",0,params['S0'])
     max_ES = min(params['E0'],params['S0'])
-    prob.set_interval("ES",-max_ES,max_ES)
-    prob.bind("COMPLEX", op.Emit(op.Var("ES")))
+    prob.set_interval("ES",0,max_ES)
+    prob.bind("COMPLEX", op.Emit(
+      op.Mult(op.Const(params['one']),op.Var("ES"))
+    ))
     prob.set_max_sim_time(20)
     prob.compile()
     menv = menvs.get_math_env('t20')

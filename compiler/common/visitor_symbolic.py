@@ -38,15 +38,24 @@ def scaled_expr(block,config,output,expr):
   else:
       return expr
 
+def scaled_lut_dynamics_approx(config,output):
+  terms = []
+  for inp in config.expr(output).vars():
+    inj = config.inject_var(inp)
+    terms.append(ops.Mult(op.Const(inj),op.Var(inp)))
+  expr = ops.mkadd(terms)
+  return expr
+
 def scaled_dynamics(block,config,output):
    comp_mode,scale_mode = config.comp_mode,config.scale_mode
    if config.has_expr(output):
-     expr = config.expr(output,inject=False)
+     expr = config.expr(output,inject=True)
    else:
      expr = block.get_dynamics(comp_mode,output)
 
    scexpr = scaled_expr(block,config,output,expr)
-   return wrap_coeff(block.coeff(comp_mode,scale_mode,output), scexpr)
+   finalexpr = wrap_coeff(block.coeff(comp_mode,scale_mode,output), scexpr)
+   return finalexpr
 
 class SymbolicModel:
   IGNORE_CHECKS = True
@@ -421,7 +430,7 @@ class BaseMathPropagator(ExpressionPropagator):
     u,v = m.mean,m.variance
     return SymbolicModel(nop.NConstRV(1.0,0.0),
                          nop.NConstRV(0.0,0.0),
-                         nop.NConstRV(1.0,0.0))
+                         nop.NConstRV(0.1,0.0))
 
   def plus(self,m1,m2):
     s1,u1,v1 = m1.signal,m1.mean,m1.variance

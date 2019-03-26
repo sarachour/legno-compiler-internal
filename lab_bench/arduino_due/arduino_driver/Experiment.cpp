@@ -305,6 +305,8 @@ void set_dac_values(experiment_t* expr, float * inbuf, int dac_id, int n, int of
       Serial.println(inbuf[idx]);
       store_value(expr,buf_idx + idx, value);
   }
+  comm::print_header();
+  Serial.println("done");
 }
 
 

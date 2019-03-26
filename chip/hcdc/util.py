@@ -2,9 +2,11 @@ import chip.props as props
 import chip.units as units
 import numpy as np
 import os
-import util.util as glbl_util
+import chip.hcdc.globals as glb
 import lab_bench.lib.chipcmd.data as chipcmd
 import ops.interval as interval
+import util.util as glbl_util
+import math
 
 truncate = glbl_util.truncate
 equals = glbl_util.equals
@@ -51,10 +53,10 @@ def make_ana_props(rng,lb,ub,min_const,min_dyn):
                               ub*rng.coeff(),
                               unit=units.uA)
     prop.set_min_signal(props.AnalogProperties.SignalType.CONSTANT,
-                        min_const,
+                        min_const*(rng.coeff()**glb.MIN_QUANT_EXPO),
                         units.uA)
     prop.set_min_signal(props.AnalogProperties.SignalType.DYNAMIC,
-                        min_dyn,
+                        min_dyn*(rng.coeff()**glb.MIN_QUANT_EXPO),
                         units.uA)
 
     return prop

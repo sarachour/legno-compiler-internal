@@ -178,21 +178,8 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
 		//}
 		// if (!dac->findBiasAdc (dac->negGainCalCode)) return false;
 
-	} else if (HCDC_DEMO_BOARD==6){
-    if (sliceId==slice0 || sliceId==slice2) {
-			if (
-          sliceId==slice0
-          && parentTile->tileRowId==tileRow0
-          && parentTile->tileColId==tileCol0
-          && parentTile->parentChip->chipRowId==chipRow0
-          && parentTile->parentChip->chipColId==chipCol0
-          ) SerialUSB.println("SKIPPING THIS ADC");
-			else
-        if (!adc->calibrate()) return false;
-		}
-  }
-  else {
-		error("HCDC_DEMO_BOARD # not recognized. Only [1-6] are valid.");
+	} else {
+		error("HCDC_DEMO_BOARD # not recongized. Only 1,2,3,4,5 are valid.");
 	}
 
 	SerialUSB.println("Calibrating DAC");

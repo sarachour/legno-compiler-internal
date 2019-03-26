@@ -24,17 +24,29 @@ def compute():
   corrs['global'] = coeff[1][0]
   return corrs
 
+def strip_tau(opt):
+  if '-tau' in opt:
+    return opt.split('-tau')[0]
+  elif 'rand' in opt:
+    return 'rand'
+  else:
+    return opt
+
 def visualize():
   data = common.get_data(series_type='bmark')
 
   all_ranks = []
   all_qualities = []
   corrs = {}
+  color_by_circ = {}
+  opt_by_marker = {}
+
   for ser in data.series():
 
-    opt,_ident,_rank,_quality,_quality_var = data.get_data(ser, \
+    _opt,_ident,_rank,_quality,_quality_var,_circ_ident = data.get_data(ser, \
                                                    ['objective_fun','ident','rank',\
-                                                    'quality','quality_variance'], \
+                                                    'quality','quality_variance',
+                                                   'circ_ident'], \
                                                    [MismatchStatus.UNKNOWN, MismatchStatus.IDEAL])
     bad_ident,bad_rank,bad_quality = data.get_data(ser, \
                                                    ['ident','rank', \
@@ -42,17 +54,16 @@ def visualize():
                                                    [MismatchStatus.BAD])
 
 
-    '''
-    sel_inds = list(filter(lambda i: 'rand' in opt[i] or 'sig-tau0' == opt[i] or \
-                           'lnz-tau0' in opt[i], \
+    sel_inds = list(filter(lambda i: 'micro-osc-quarter' in _ident[i], \
                            range(0,len(_rank))))
-    '''
     sel_inds = list(range(0,len(_rank)))
     if len(sel_inds) == 0:
       continue
     rank = list(map(lambda i : _rank[i], sel_inds))
+    opt = list(map(lambda i : _opt[i], sel_inds))
     quality= list(map(lambda i : _quality[i], sel_inds))
     ident = list(map(lambda i : _ident[i], sel_inds))
+    circ_ident = list(map(lambda i : _circ_ident[i], sel_inds))
     quality_var= list(map(lambda i : _quality_var[i], sel_inds))
     max_rank = max(rank)
     max_quality= max(quality)
@@ -77,10 +88,17 @@ def visualize():
 
     print("\n")
 
-    plot_ranks = list(map(lambda r: r/max_rank, rank))
-    plt.errorbar(plot_ranks,quality,quality_var,fmt='^',
-                 marker='.',label=ser)
+    for sid in set(map(lambda o: strip_tau(o), opt)):
+    #for sid in set(map(lambda c: c, circ_ident)):
+      inds = list(filter(lambda i:strip_tau(opt[i]) == sid, range(0,len(quality))))
+      #inds = list(filter(lambda i:circ_ident[i] == sid, range(0,len(quality))))
+      ser_rank = list(map(lambda i: rank[i]/max_rank, inds))
+      ser_quality = list(map(lambda i: quality[i], inds))
+      ser_variance = list(map(lambda i: quality_var[i], inds))
+      plt.errorbar(ser_rank,ser_quality,ser_variance,fmt='^',
+                   marker='.',label=sid)
 
+    plt.xlim(0,1.0)
     plt.xlabel('rank (norm)')
     plt.ylabel('quality (norm)')
     plt.title('rank vs quality')

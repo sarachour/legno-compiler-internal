@@ -42,17 +42,17 @@ def get_computation_ports(circuit,evaluate=False,weight=1.0):
       continue
 
     for port in block.inputs + block.outputs:
-      ports.append((weight,weight,block_name,loc,port))
+      ports.append((weight,block_name,loc,port))
 
   return ports
 
 
-def get_all_ports(circuit,evaluate=False):
+def get_all_ports(circuit,evaluate=False,weight=1.0):
   ports = []
   for block_name,loc,config in circuit.instances():
     block = circuit.board.block(block_name)
     for port in block.inputs + block.outputs:
-      ports.append((block_name,loc,port))
+      ports.append((weight,block_name,loc,port))
 
   return ports
 
@@ -60,7 +60,9 @@ def get_ports(circuit,evaluate=False):
   n = len(get_integrator_ports(circuit,evaluate,1.0))
 
   if n > 1:
-    return get_iface_ports(circuit,evaluate,1.0) + \
-      get_integrator_ports(circuit,evaluate,1.0/n)
+    #return get_iface_ports(circuit,evaluate,1.0) + \
+    #  get_integrator_ports(circuit,evaluate,1.0)
+    n = len(get_all_ports(circuit,evaluate,1.0))
+    return get_all_ports(circuit,evaluate,1.0/n)
   else:
     return get_iface_ports(circuit,evaluate,1.0)

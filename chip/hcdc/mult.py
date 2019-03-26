@@ -138,10 +138,6 @@ def continuous_scale_model_mult(mult):
                   ops.Var(scf_tf.varname)), \
          ops.Var(out.varname))
 
-  for csmvar in [scf_tf]:
-    #scf_tf.set_interval(0.01,100.0)
-    csmvar.set_interval(0.1,10.0)
-    #csmvar.set_interval(1.0,1.0)
 
   for csmvar in [in0,in1,out]:
     csmvar.set_interval(0.1,10.0)
@@ -153,7 +149,6 @@ def continuous_scale_model_mult(mult):
     csm.discrete.add_cstr(scm,in0,scm_i0.coeff())
     csm.discrete.add_cstr(scm,in1,scm_i1.coeff())
     csm.discrete.add_cstr(scm,out,scm_o.coeff())
-    csm.discrete.add_cstr(scm,scf_tf,coeff)
 
   mult.set_scale_model('mul',csm)
 
@@ -174,7 +169,8 @@ def scale_model(mult):
                                         glb.DAC_MIN,
                                         glb.DAC_MAX,
                                         glb.ANALOG_DAC_SAMPLES)
-      dig_props.set_min_quantize(dig_props.SignalType.CONSTANT, glb.MIN_QUANT_CONST)
+      dig_props.set_min_quantize(dig_props.SignalType.CONSTANT,\
+                                 glb.MIN_QUANT_CONST)
       dig_props.set_constant()
       mult.set_props("mul",mode,["in0"],
                     util.make_ana_props(in0rng,
@@ -227,6 +223,7 @@ def scale_model(mult):
                                         glb.ANALOG_MINSIG_CONST,
                                         glb.ANALOG_MINSIG_DYN))
       mult.set_coeff("vga",mode,'out', scf)
+
 
 
 block = Block('multiplier') \

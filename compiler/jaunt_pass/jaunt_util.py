@@ -59,7 +59,7 @@ def same_sign(v1,v2):
     else:
         return False
 
-def lower_bound_constraint(jenv,expr,math_lower,hw_lower):
+def lower_bound_constraint(jenv,expr,math_lower,hw_lower,annot):
     if is_zero(math_lower) and hw_lower <= 0:
         return
     elif is_zero(math_lower) and hw_lower > 0:
@@ -75,12 +75,12 @@ def lower_bound_constraint(jenv,expr,math_lower,hw_lower):
     if same_sign(math_lower,hw_lower) and \
        math_lower > 0 and hw_lower > 0:
         jenv.gte(jop.JMult(expr,jop.JConst(math_lower)),
-                 jop.JConst(hw_lower))
+                 jop.JConst(hw_lower),annot)
 
     elif same_sign(math_lower,hw_lower) and \
          math_lower < 0 and hw_lower < 0:
         jenv.lte(jop.JMult(expr,jop.JConst(-math_lower)),
-                 jop.JConst(-hw_lower))
+                 jop.JConst(-hw_lower),annot)
 
     elif not same_sign(math_lower,hw_lower) and \
          hw_lower < 0 and math_lower > 0:
@@ -88,13 +88,15 @@ def lower_bound_constraint(jenv,expr,math_lower,hw_lower):
 
     elif not same_sign(math_lower,hw_lower) and \
          hw_lower > 0 and math_lower < 0:
-        log_info("[[fail]] dne A st: %s < A*%s" % (hw_lower,math_lower))
-        jenv.fail("(3) %s <= %s*%s impossible" % (hw_lower,math_lower,expr))
+        log_info("[[fail]] dne A st: %s < A*%s [%s]" \
+                 % (hw_lower,math_lower,annot))
+        jenv.fail("(3) %s <= %s*%s impossible" \
+                  % (hw_lower,math_lower,expr))
     else:
-        raise Exception("uncovered lb: %s %s" % (math_lower,hw_lower))
+        raise Exception("uncovered lb: %s %s [%s]" % (math_lower,hw_lower,annot))
 
 
-def upper_bound_constraint(jenv,expr,math_upper,hw_upper):
+def upper_bound_constraint(jenv,expr,math_upper,hw_upper,annot):
     if is_zero(math_upper) and hw_upper >= 0:
         return
 
@@ -105,7 +107,8 @@ def upper_bound_constraint(jenv,expr,math_upper,hw_upper):
         return
 
     elif is_zero(hw_upper) and math_upper > 0:
-        return jenv.fail("(1) %s*%s <= %s impossible" (math_upper,expr,hw_upper))
+        return jenv.fail("(1) %s*%s <= %s impossible [%s]" \
+                         % (math_upper,expr,hw_upper,annot))
 
     assert(not is_zero(math_upper))
     assert(not is_zero(hw_upper))
@@ -113,12 +116,12 @@ def upper_bound_constraint(jenv,expr,math_upper,hw_upper):
     if same_sign(math_upper,hw_upper) and \
        math_upper > 0 and hw_upper > 0:
         jenv.lte(jop.JMult(expr,jop.JConst(math_upper)),
-                 jop.JConst(hw_upper))
+                 jop.JConst(hw_upper),annot)
 
     elif same_sign(math_upper,hw_upper) and \
          math_upper < 0 and hw_upper < 0:
         jenv.lte(jop.JMult(expr,jop.JConst(-math_upper)),
-                 jop.JConst(-hw_upper))
+                 jop.JConst(-hw_upper),annot)
 
     elif not same_sign(math_upper,hw_upper) and \
          hw_upper > 0 and math_upper < 0:
@@ -127,16 +130,17 @@ def upper_bound_constraint(jenv,expr,math_upper,hw_upper):
     elif not same_sign(math_upper,hw_upper) and \
          hw_upper < 0 and math_upper > 0:
         print("[[fail]] dne A st: %s > A*%s" % (hw_upper,math_upper))
-        return jenv.fail("(2) %s*%s <= %s impossible" (math_upper,expr,hw_upper))
+        return jenv.fail("(2) %s*%s <= %s impossible [%s]" % \
+                         (math_upper,expr,hw_upper,annot))
     else:
         raise Exception("uncovered ub: %s %s" % (math_upper,hw_upper))
 
 
-def in_interval_constraint(jenv,scale_expr,math_rng,hw_rng):
+def in_interval_constraint(jenv,scale_expr,math_rng,hw_rng,annot):
     upper_bound_constraint(jenv,scale_expr, \
-                            math_rng.upper,hw_rng.upper)
+                            math_rng.upper,hw_rng.upper,annot)
     lower_bound_constraint(jenv,scale_expr, \
-                            math_rng.lower,hw_rng.lower)
+                            math_rng.lower,hw_rng.lower,annot)
 
 def reduce_vars(jenv):
     graph = nx.Graph()
@@ -145,7 +149,7 @@ def reduce_vars(jenv):
     for v in jenv.variables(in_use=True):
         graph.add_node(v)
 
-    for (_lhs,_rhs) in jenv.eqs():
+    for (_lhs,_rhs,_) in jenv.eqs():
         _,lhs = _lhs.factor_const()
         _,rhs = _rhs.factor_const()
         if lhs.op == jop.JOpType.VAR and \

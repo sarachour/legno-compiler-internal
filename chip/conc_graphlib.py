@@ -13,7 +13,12 @@ class Shader:
 
   def __init__(self):
     self._min = 0
-    self._max = max(self.all_values())*2
+    vals = list(self.all_values())
+    if len(vals) > 0:
+      self._max = max(vals)*2
+    else:
+      self._max = 0
+
     self._n = 500
     sch = colorlover.scales['9']['seq']['BuPu']
     self._scheme = colorlover.interp(sch,500)
@@ -384,6 +389,31 @@ def build_block(env,block_name,block_loc,cfg):
 
     env.qn("}")
 
+def build_scf(env,block,loc,cfg,port):
+  body = '''
+  <table border="0">
+  <tr><td><font color="#5D6D7E">scf:{scf:.3e}</font></td></tr>
+  </table>
+  '''
+
+  port_handle = env.port_handle(block,loc,port)
+  label_handle = "%s_scf" % (port_handle)
+  scf = undef_to_one(cfg.scf(port))
+  params = {
+    'scf':scf
+  }
+  if cfg.has_expr(port):
+    label = body.format(**params)
+  else:
+    label = body.format(**params)
+
+  env.qn("%s [" % (label_handle))
+  env.qn("shape=cds",2)
+  env.qn("label=<%s>" % label,2)
+  env.qn("]")
+  env.qc("%s->%s [penwidth=3.0 color=black]" % (port_handle,label_handle),1)
+
+
 def build_label(env,block,loc,cfg,port,math_label,kind):
   body = '''
   <table border="0">
@@ -468,9 +498,12 @@ def write_graph(circ,filename,color_method=None,write_png=False):
     env = build_environment(circ,color_method)
     for block,loc,cfg in circ.instances():
         build_block(env,block,loc,cfg)
-
+        blk = circ.board.block(block)
         for port,math_label,kind in cfg.labels():
             build_label(env,block,loc,cfg,port,math_label,kind)
+
+        for port in blk.outputs:
+            build_scf(env,block,loc,cfg,port)
 
         for port,expr in cfg.exprs(inject=False):
             build_expr(env,block,loc,cfg,port,expr)

@@ -97,11 +97,11 @@ class SCFPropExprVisitor(ExprVisitor):
     expr1 = self.visit_expr(expr.arg(0))
     expr2 = self.visit_expr(expr.arg(1))
     if expr.arg(1).op == ops.OpType.CONST:
-      self.jenv.eq(expr2, jop.JConst(1.0))
+      self.jenv.eq(expr2, jop.JConst(1.0), 'expr-visit-pow')
       return jop.expo(expr1, expr.arg(1).value)
     else:
-      self.jenv.eq(expr1, jop.JConst(1.0))
-      self.jenv.eq(expr2, jop.JConst(1.0))
+      self.jenv.eq(expr1, jop.JConst(1.0), 'expr-visit-pow')
+      self.jenv.eq(expr2, jop.JConst(1.0), 'expr-visit-pow')
       return jop.JConst(1.0)
 
   def visit_var(self,expr):
@@ -114,11 +114,6 @@ class SCFPropExprVisitor(ExprVisitor):
     else:
       return jop.JVar(scvar)
 
-  def visit_pow(self,expr):
-    expr1 = self.visit_expr(expr.arg1)
-    expr2 = self.visit_expr(expr.arg2)
-    return jop.expo(expr1,expr2)
-
 
   def visit_mult(self,expr):
     expr1 = self.visit_expr(expr.arg1)
@@ -128,7 +123,7 @@ class SCFPropExprVisitor(ExprVisitor):
   def visit_add(self,expr):
     expr1 = self.visit_expr(expr.arg1)
     expr2 = self.visit_expr(expr.arg2)
-    self.jenv.eq(expr1,expr2)
+    self.jenv.eq(expr1,expr2,'expr-visit-add')
     return expr1
 
   def visit_sgn(self,expr):
@@ -146,7 +141,7 @@ class SCFPropExprVisitor(ExprVisitor):
 
   def visit_cos(self,expr):
     expr = self.visit_expr(expr.arg(0))
-    self.jenv.eq(expr, jop.JConst(1.0))
+    self.jenv.eq(expr, jop.JConst(1.0), 'expr-visit-cos')
     return jop.JConst(1.0)
 
   def visit_sin(self,expr):
@@ -169,16 +164,17 @@ class SCFPropExprVisitor(ExprVisitor):
     coeff_state = self.coeff(expr.handle)
     coeff_ic = self.coeff(expr.ic_handle)
 
-    jenv.eq(jop.JMult(scexpr_ic,coeff_ic), scvar_ic)
-    jenv.eq(scvar_ic, scvar_state)
+    jenv.eq(jop.JMult(scexpr_ic,coeff_ic), scvar_ic,'expr-visit-integ')
+    jenv.eq(scvar_ic, scvar_state,'expr-visit-integ')
 
-    jenv.eq(jop.JMult(scexpr_deriv, coeff_deriv), scvar_deriv)
+    jenv.eq(jop.JMult(scexpr_deriv, coeff_deriv), scvar_deriv, \
+            'expr-visit-integ')
 
     scexpr_state = jop.JMult(jop.JVar(jenv.tau(), \
                                       exponent=-1), scvar_deriv)
 
     jenv.eq(jop.JMult(scexpr_state, coeff_state),  \
-            scvar_state)
+            scvar_state,'expr-visit-integ')
 
     jenv.use_tau()
     return scvar_state
@@ -199,4 +195,4 @@ class SCFPropExprVisitor(ExprVisitor):
 
       coeffvar = self.coeff(None)
       total_rhsexpr = jop.JMult(rhsexpr,coeffvar)
-      self.jenv.eq(lhsexpr,total_rhsexpr)
+      self.jenv.eq(lhsexpr,total_rhsexpr, 'expr-visit-out')

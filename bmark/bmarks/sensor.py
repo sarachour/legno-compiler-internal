@@ -7,47 +7,39 @@ if __name__ == "__main__":
 from lang.prog import MathProg
 from ops import op, opparse
 from bmark.bmarks.common import *
+from bmark.bmarks.bbsys import build_bb_sys
 import math
 import bmark.menvs as menvs
 
-def model(steady=False):
-  if steady:
-    tag = 'steady'
-  else:
-    tag = 'diff'
-  prob = MathProg("sensor-%s" % tag)
+def model():
+  prob = MathProg("sensor")
+  ampl,freq = 0.5,0.90
+  SENSE,_ = build_bb_sys(prob,ampl,freq,0)
+  ampl,freq = 0.5,0.99
+  MOTOR,_ = build_bb_sys(prob,ampl,freq,1)
   params = {
     'A0': 0,
-    'one':0.99999
+    'one':0.99999,
+    'sense':SENSE,
+    'motor':MOTOR
   }
-  prob.bind('P', op.ExtVar('SENSE'))
-  prob.bind('X', op.ExtVar('MOTOR'))
-  A = parse_diffeq('{one}*(P*{one}-{one}*A*X)*X',  \
-                           'A0', ':a', params)
+  A = parse_diffeq('{one}*(({one}*{sense})+A*({one}*(-{motor})))*{motor}',  \
+                           'A0', ':q', params)
   prob.bind('A', A)
-  prob.bind('PARAM', op.Emit(op.Var('A')))
+  prob.bind('PARAM', op.Emit(op.Mult(op.Const(0.99999),op.Var('A'))))
   prob.set_interval("A",-1.5,1.5)
-  prob.set_interval("SENSE",0,0.1)
-  prob.set_interval("MOTOR",-0.3,0.3)
 
-  prob.set_bandwidth("SENSE",0.2)
-  prob.set_max_sim_time(400)
-  if not steady:
-    menv = menvs.get_math_env('sendiff')
-    prob.set_bandwidth("MOTOR",0.2)
-  else:
-    menv = menvs.get_math_env('sensteady')
-    prob.set_bandwidth("MOTOR",0.2)
+  prob.set_max_sim_time(200)
+  menv = menvs.get_math_env('t200')
 
   prob.compile()
   return menv,prob
 
-def execute(steady):
-  menv,prob = model(steady)
+def execute():
+  menv,prob = model()
   T,Y = run_diffeq(menv,prob)
   plot_diffeq(menv,prob,T,Y)
 
 
 if __name__ == "__main__":
-  execute(False)
-  #execute(True)
+  execute()

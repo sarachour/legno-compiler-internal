@@ -7,6 +7,7 @@ if __name__ == "__main__":
 from lang.prog import MathProg
 from ops import op, opparse
 from bmark.bmarks.common import *
+from bmark.bmarks.bbsys import build_bb_sys
 import math
 import bmark.menvs as menvs
 
@@ -15,39 +16,38 @@ def model():
   sin_fun = op.Func(['T'], op.Sin(op.Var('T')))
   cos_fun = op.Func(['T'], op.Cos(op.Var('T')))
 
+  ampl,freq = 0.3,0.01
+  W,_ = build_bb_sys(prob,ampl,freq,0)
+  ampl,freq = 0.3,0.01
+  V,_ = build_bb_sys(prob,ampl,freq,1)
   params = {
     'DEG0' : 0,
     'X0': 0,
-    'Y0': 0
+    'Y0': 0,
+    'W': W,
+    'V': V,
+    'one':0.999999
   }
-  DEG = parse_diffeq('0.999999*W', 'DEG0', ':t', params)
-  X = parse_diffeq('V*COS', 'X0',':u', params)
-  Y = parse_diffeq('V*SIN', 'Y0',':v', params)
+  DEG = parse_diffeq('{one}*{W}', 'DEG0', ':t', params)
+  X = parse_diffeq('{V}*COS', 'X0',':u', params)
+  Y = parse_diffeq('{V}*SIN', 'Y0',':v', params)
   prob.bind('DEG',DEG)
   prob.bind('X',X)
   prob.bind('Y',Y)
-  prob.bind('W', op.ExtVar('I1'))
-  prob.bind('V', op.ExtVar('I2'))
   prob.bind('SIN', op.Call([op.Var('DEG')], sin_fun))
   prob.bind('COS', op.Call([op.Var('DEG')], cos_fun))
   prob.bind('Rot', op.Emit(op.Var('Y')))
   pos = 1.0
-  xrng = 2.5
+  xrng = 1.5
   yrng = 2.5
-  degrng = 1.0
+  degrng = 0.5
   prob.set_interval("X",-xrng,xrng)
-  prob.set_interval("Y",-yrng,yrng)
+  prob.set_interval("Y",0,yrng)
   prob.set_interval("DEG",-degrng,degrng)
   # W
-  wrng = 0.1
-  vrng = 0.1
-  prob.set_interval("I1",-wrng,wrng)
-  prob.set_interval("I2",-vrng,vrng)
-  prob.set_bandwidth("I1",0.1)
-  prob.set_bandwidth("I2",0.1)
   prob.set_max_sim_time(200)
   prob.compile()
-  menv = menvs.get_math_env('robotenv')
+  menv = menvs.get_math_env('t200')
   return menv,prob
 
 def execute():

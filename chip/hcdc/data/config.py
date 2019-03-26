@@ -1,5 +1,39 @@
 data={
     "block": {
+        "baseline": 1.0,
+        "coeffs": {
+            "integ": 0.1,
+            "mult": 0.5,
+            "vga": 1.0,
+            "dac": 0.1,
+            "adc": 0.6,
+            "fanout": 0.1
+        }
+    },
+    "scale-mode": {
+        "delta": 0.9
+    },
+    "coeff-mode": {
+        "delta": 0.0
+    },
+    "signal": {
+        "weights": {
+            "mult": 0.02,
+            "vga": 0.02,
+            "integ": 0.1
+        }
+    },
+    "freq": {
+      'baseline':1.0,
+        "coeffs": {
+            "adc": 1.0
+        }
+    }
+}
+
+'''
+data={
+    "block": {
         "baseline": 4.180403432712413,
         "coeffs": {
             "integ": 0.00026469960380313615,
@@ -24,3 +58,4 @@ data={
         }
     }
 }
+'''

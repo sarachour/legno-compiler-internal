@@ -33,8 +33,14 @@ def execute_once(args,debug=True):
 
   db = ExperimentDB()
   entries = list(db.get_by_status(ExperimentStatus.PENDING))
+  whitelist = ['pend','spring','micro-osc-quarter','cosc']
+  #whitelist = ['micro-osc-quarter','bbsys']
+  whitelist = None
   for entry in tqdm.tqdm(entries):
     if not missing_params(entry) and not recompute_params:
+      continue
+
+    if not whitelist is None and not entry.bmark in whitelist:
       continue
 
     if debug:
@@ -50,6 +56,9 @@ def execute_once(args,debug=True):
       and not missing_params(entry) \
       and not entry.energy is None \
       and not recompute_any:
+      continue
+
+    if not whitelist is None and not entry.bmark in whitelist:
       continue
 
     if debug:

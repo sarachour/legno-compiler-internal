@@ -115,18 +115,18 @@ def sc_generate_scale_model_constraints(jenv,circ):
             if not ival is None:
                 jaunt_util.in_interval_constraint(jenv,jop.JVar(jvar),
                                         interval.Interval.type_infer(1.0,1.0),
-                                        ival)
+                                                  ival,'scale-model-ival')
 
         visitor = ScaleModelExprVisitor(jenv,circ,block,loc)
         for lhs,rhs in scale_model.eqs():
             j_lhs = visitor.visit_expr(lhs)
             j_rhs = visitor.visit_expr(rhs)
-            jenv.eq(j_lhs,j_rhs)
+            jenv.eq(j_lhs,j_rhs,'scale-model-eqcstr')
 
         for lhs,rhs in scale_model.ltes():
             j_lhs = visitor.visit_expr(lhs)
             j_rhs = visitor.visit_expr(rhs)
-            jenv.lte(j_lhs,j_rhs)
+            jenv.lte(j_lhs,j_rhs,'scale-model-lte')
 
         modevars = []
         for mode in scale_model.discrete.modes():
@@ -139,11 +139,11 @@ def sc_generate_scale_model_constraints(jenv,circ):
 
         jenv.exactly_one(modevars)
 
-    # set scaling factors connected by a wire equal
+    # set operating ranges
     for sblk,sloc,sport,dblk,dloc,dport in circ.conns():
         s_opr = jenv.get_op_range_var(sblk,sloc,sport)
         d_opr = jenv.get_op_range_var(dblk,dloc,dport)
-        jenv.eq(jop.JVar(s_opr),jop.JVar(d_opr))
+        jenv.eq(jop.JVar(s_opr),jop.JVar(d_opr),'scale-model-conn')
 
 
 def sc_build_jaunt_env(prog,circ):
@@ -180,13 +180,16 @@ def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
     hwrng,hwbw = prop.interval(), prop.bandwidth()
     if isinstance(prop, props.AnalogProperties):
         jaunt_common.analog_op_range_constraint(jenv,prop,mathscvar,hwscvar, \
-                                                mrng,hwrng)
+                                                mrng,hwrng, \
+                                                '%s-%s' % (block.name,port))
         jaunt_common.analog_bandwidth_constraint(jenv,circ,mbw,hwbw)
 
     elif isinstance(prop, props.DigitalProperties):
-        jaunt_common.analog_op_range_constraint(jenv,prop,mathscvar,hwscvar,mrng,hwrng)
-        jaunt_common.digital_quantize_constraint(jenv,mathscvar, mrng, prop)
-        jaunt_common.digital_bandwidth_constraint(jenv,prob,circ, mbw, prop)
+        jaunt_common.digital_op_range_constraint(jenv,prop,mathscvar,hwscvar, \
+                                                mrng,hwrng, \
+                                                '%s-%s' % (block.name,port))
+        jaunt_common.digital_quantize_constraint(jenv,mathscvar,hwscvar,mrng, prop)
+        jaunt_common.digital_bandwidth_constraint(jenv,prob,circ,mbw,prop)
     else:
         raise Exception("unknown")
 
@@ -216,10 +219,10 @@ def sc_generate_problem(jenv,prob,circ):
 
 
     if not jenv.uses_tau():
-        jenv.eq(jop.JVar(jenv.tau()), jop.JConst(1.0))
+        jenv.eq(jop.JVar(jenv.tau()), jop.JConst(1.0),'tau-fixed')
     else:
-        jenv.lte(jop.JVar(jenv.tau()), jop.JConst(1e10))
-        jenv.gte(jop.JVar(jenv.tau()), jop.JConst(1e-10))
+        jenv.lte(jop.JVar(jenv.tau()), jop.JConst(1e10),'tau-min')
+        jenv.gte(jop.JVar(jenv.tau()), jop.JConst(1e-10),'tau-max')
 
 
 

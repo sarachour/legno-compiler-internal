@@ -21,14 +21,17 @@ def model():
 
     params = {
       'V0': -2,
-      'P0': 9
+      'P0': 9,
+      'one':0.9999
     }
-    V = parse_diffeq('-0.22*V - 0.84*P', 'P0', ':a', params)
-    P = parse_diffeq('V', 'P0', ':b', params)
+    V = parse_diffeq('0.22*(-V) + 0.84*(-P)', 'P0', ':a', params)
+    P = parse_diffeq('{one}*V', 'P0', ':b', params)
 
     prob.bind('V', V)
     prob.bind('P', P)
-    prob.bind('Loc', op.Emit(op.Var('P')))
+    prob.bind('Loc', op.Emit(
+      op.Mult(op.Const(1.0),op.Var('P'))
+    ))
     prob.set_interval("V",-10,10)
     prob.set_interval("P",-10,15)
     prob.set_interval("Loc",-10,15)

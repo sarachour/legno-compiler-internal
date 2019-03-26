@@ -75,12 +75,12 @@ class JauntEnv:
         yield var
 
   def eqs(self):
-    for lhs,rhs in self._eqs:
-      yield (lhs,rhs)
+    for lhs,rhs,annot in self._eqs:
+      yield (lhs,rhs,annot)
 
   def ltes(self):
-    for lhs,rhs in self._ltes:
-      yield (lhs,rhs)
+    for lhs,rhs,annot in self._ltes:
+      yield (lhs,rhs,annot)
 
 
   def get_jaunt_var_info(self,scvar_var):
@@ -147,19 +147,19 @@ class JauntEnv:
                               tag=JauntVarType.SCALE_VAR)
 
 
-  def eq(self,v1,v2):
-      jaunt_util.log_debug("%s == %s" % (v1,v2))
+  def eq(self,v1,v2,annot):
+      jaunt_util.log_debug("%s == %s {%s}" % (v1,v2,annot))
       # TODO: equality
       if self._interactive:
         input()
       succ,lhs,rhs = jaunt_util.cancel_signs(v1,v2)
       if not succ:
         self.fail("could not cancel signs: %s == %s" % (v1,v2))
-      self._eqs.append((lhs,rhs))
+      self._eqs.append((lhs,rhs,annot))
 
 
-  def lte(self,v1,v2):
-      jaunt_util.log_debug("%s <= %s" % (v1,v2))
+  def lte(self,v1,v2,annot):
+      jaunt_util.log_debug("%s <= %s {%s}" % (v1,v2,annot))
       c1,_ = v1.factor_const()
       c2,_ = v2.factor_const()
       if c1 == 0 and c2 >= 0:
@@ -170,11 +170,11 @@ class JauntEnv:
       # TODO: equality
       if self._interactive:
         input()
-      self._ltes.append((v1,v2))
+      self._ltes.append((v1,v2,annot))
 
-  def gte(self,v1,v2):
+  def gte(self,v1,v2,annot):
       # TODO: equality
-      self.lte(v2,v1)
+      self.lte(v2,v1,annot)
 
 class JauntInferEnv(JauntEnv):
 

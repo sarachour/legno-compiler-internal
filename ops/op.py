@@ -1128,3 +1128,16 @@ class Square(Op):
 
 def Div(a,b):
     return Mult(a,Pow(b,Const(-1)))
+
+def mkadd(terms):
+    if len(terms) == 0:
+        return Const(0)
+    elif len(terms) == 1:
+        return terms[0]
+    elif len(terms) == 2:
+        return Add(terms[0],terms[1])
+    else:
+        curr = Add(terms[0],terms[1])
+        for t in range(2,len(terms)):
+            curr = Add(curr,t)
+        return curr

@@ -34,24 +34,27 @@ def build_gpkit_cstrs(circ,jenv):
 
   variables = {}
   constraints = []
+  blacklist = []
   for var in jenv.variables(in_use=True):
     gpvar = gpkit.Variable(var)
     variables[var] = gpvar
     #constraints.append((gpvar <= VMAX,""))
     #constraints.append((VMIN <= gpvar,""))
 
-  for lhs,rhs in jenv.eqs():
+  for lhs,rhs,annot in jenv.eqs():
       gp_lhs = gpkit_expr(variables,lhs)
       gp_rhs = gpkit_expr(variables,rhs)
       result = (gp_lhs == gp_rhs)
       msg="%s == %s" % (gp_lhs,gp_rhs)
-      constraints.append((gp_lhs == gp_rhs,msg))
+      if not annot in blacklist:
+        constraints.append((gp_lhs == gp_rhs,msg))
 
-  for lhs,rhs in jenv.ltes():
+  for lhs,rhs,annot in jenv.ltes():
       gp_lhs = gpkit_expr(variables,lhs)
       gp_rhs = gpkit_expr(variables,rhs)
       msg="%s <= %s" % (gp_lhs,gp_rhs)
-      constraints.append((gp_lhs <= gp_rhs,msg))
+      if not annot in blacklist:
+        constraints.append((gp_lhs <= gp_rhs,msg))
 
 
   gpkit_cstrs = []

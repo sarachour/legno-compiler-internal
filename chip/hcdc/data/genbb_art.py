@@ -8,11 +8,42 @@ import numpy as np
 import chip.hcdc.data.config as cfg
 
 
-def get_param_rng_weight(bmark,scf):
-  slack = cfg.data['scale-mode']['delta']
-  if bmark == 'adc':
+def get_param_scf_weight(blk,scf):
+  slack = cfg.data['coeff-mode']['delta']
+  if blk == 'adc':
+    scfmap = {'10x':'01x','01x':'10x','1x':'1x'}
+    scf = scfmap[scf]
+
+  if scf == '10x':
+    return (1.0+slack)
+  elif scf == '1x':
+    return 1.0
+  elif '01x':
+    return (1.0-slack)
+
+
+def get_numerical_range(blk,scf):
+  if blk == 'adc':
     scfmap = {'l':'h','h':'l','m':'m'}
     scf = scfmap[scf]
+
+  if scf == 'l':
+    return 0.1
+  elif scf == 'm':
+    return 1.0
+  else:
+    return 10.0
+
+
+def get_param_rng_weight(blk,scf):
+  slack = cfg.data['scale-mode']['delta']
+  if blk == 'adc':
+    scfmap = {'l':'h','h':'l','m':'m'}
+    scf = scfmap[scf]
+
+  whitelist = ['mult','vga','integrator','adc','dac']
+  if blk not in whitelist:
+    return 1.0
 
   if scf == 'l':
     return (1.0-slack)
@@ -20,17 +51,6 @@ def get_param_rng_weight(bmark,scf):
     return 1.0
   elif 'h':
     return (1.0+slack)
-
-
-def get_param_scf_weight(scf):
-  #slack = cfg.data['coeff-mode']['delta']
-  slack = 0.0
-  if scf =='10x':
-    return 1.0-slack
-  elif scf == '1x':
-    return 1.0
-  elif '01x':
-    return 1.0+slack
 
 def get_param_blk_weight(blk):
   baseline = cfg.data['block']['baseline']
@@ -51,7 +71,7 @@ def get_param_freq_weight(blk):
   #exp = cfg.data['freq']['exponent']
   exp = 1.0
   if blk in cfg.data['freq']['coeffs']:
-    return cfg.data['freq']['coeffs'][blk],exp
+    return cfg.data['freq']['coeffs'][blk]*cfg.data['freq']['baseline'],exp
   else:
     return 0.0,exp
 
@@ -64,9 +84,11 @@ def get_param_port(blk):
 def mk_noise_model(blk,scf,rng):
   pblk = get_param_blk_weight(blk)
   prng = get_param_rng_weight(blk,rng)
+  pscf = get_param_scf_weight(blk,scf)
+  numer_rng = get_numerical_range(blk,rng)
 
-  wt = pblk*prng
-  psig = get_param_sig_weight(blk)
+  wt = pblk*prng*pscf
+  psig = get_param_sig_weight(blk)/numer_rng
   pfreq,pfreqexp = get_param_freq_weight(blk)
   port = get_param_port(blk)
 

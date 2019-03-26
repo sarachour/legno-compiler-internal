@@ -12,13 +12,15 @@ import bmark.bmarks.vanderpol as vanderpol
 import bmark.bmarks.heat as heat
 import bmark.bmarks.pendulum as pendulum
 import bmark.bmarks.sensor as sensor
+import bmark.bmarks.bbsys as bbsys
 
+# commented out any benchmarks that don't work.
 BMARKS = [
-    rxn.model_bimolec(),
-    rxn.model_dissoc(),
-    rxn.model_dimer_mult(),
-    rxn.model_dimer_lut(),
-    rxn.model_bidir(),
+    #rxn.model_bimolec(),
+    #rxn.model_dissoc(),
+    #rxn.model_dimer_mult(),
+    #rxn.model_dimer_lut(),
+    #rxn.model_bidir(),
     simple_osc.model("one",1.0),
     simple_osc.model("quad",4.0),
     simple_osc.model("quarter",0.25, \
@@ -27,22 +29,22 @@ BMARKS = [
     oscillator.model(),
     pendulum.model(),
     bmmrxn.model(),
-    compinh.model(),
+    #compinh.model(),
     repri.model(),
     vanderpol.model(),
-    heat.model(4),
-    heat.model(8),
-    heat.model(16),
+    #heat.model(4),
+    #heat.model(8),
+    #heat.model(16),
     # external inputs
-    test.model_1(),
-    test.model_1_scale(),
-    test.model_2(),
-    test.model_2_add(),
-    test.model_1_sqrt(),
-    test.model_1_sin(),
+    #test.model_1(),
+    #test.model_1_scale(),
+    #test.model_2(),
+    #test.model_2_add(),
+    #test.model_1_sqrt(),
+    #test.model_1_sin(),
     robot_control.model(),
-    sensor.model(steady=True),
-    sensor.model(steady=False),
+    sensor.model(),
+    bbsys.model()
 ]
 
 # energy model: page 26 of thesis, chapter 2
