@@ -1,8 +1,14 @@
 import compiler.skelter as skelter
 import compiler.common.prop_noise as pnlib
 import bmark.menvs as menvs
+from enum import Enum
 
-def compute_params(conc_circ,entry,varname):
+class RankMethod:
+  SKELTER = "skelter"
+  MAXSIGFAST = "maxsigfast"
+  MAXSIGSLOW = "maxsigslow"
+
+def compute_params(conc_circ,entry,varname,method=RankMethod.SKELTER):
   LOC = None
   for block_name,loc,config in conc_circ.instances():
     handle = conc_circ.board.handle_by_inst(block_name,loc)
@@ -15,29 +21,41 @@ def compute_params(conc_circ,entry,varname):
 
   block_name,loc,port = LOC
   cfg = conc_circ.config(block_name,loc)
-  scf = cfg.scf(port)
-  tau = (conc_circ.tau)
-  fmax = (conc_circ.tau)*conc_circ.board.time_constant
-
-  skelter.clear_noise_model(conc_circ)
-  pnlib.compute(conc_circ)
-  snr = skelter.snr(conc_circ,block_name,loc,port)
   menv = menvs.get_math_env(entry.math_env)
-  simtime = menv.sim_time
-  runtime = simtime/fmax
-  return snr,tau,fmax,scf,runtime
+
+  params = {}
+  params['scf'] = cfg.scf(port)
+  params['tau']= (conc_circ.tau)
+  params['fmax']= (conc_circ.tau)*conc_circ.board.time_constant
+  params['simtime'] = menv.sim_time
+  params['runtime'] = simtime/params['fmax']
+  return params
+
+def compute_rank(conc_circ,entry,varname,method=RankMethod.SKELTER):
+  if method == RankMethod.SKELTER:
+    skelter.clear_noise_model(conc_circ)
+    pnlib.compute(conc_circ)
+    return skelter.rank_model(conc_circ)
+
+  elif method == RankMethod.MAXSIGFAST:
+    return skelter.rank_maxsigfast_heuristic(conc_circ)
+
+  elif method == RankMethod.MAXSIGSLOW:
+    return skelter.rank_maxsigslow_heuristic(conc_circ)
 
 
-def analyze(entry,conc_circ):
+def analyze(entry,conc_circ,method=RankMethod.SKELTER):
+  RANK = compute_rank(conc_circ)
+  entry.set_rank(RANK)
+
   for output in entry.outputs():
     varname = output.varname
-    RANK,TAU,FMAX,SCF,RUNTIME = compute_params(conc_circ,entry,varname)
+    params = compute_params(conc_circ,entry,
+                            varname,
+                            method=method)
+    output.set_tau(params['tau'])
+    output.set_fmax(params['fmax'])
+    output.set_scf(params['scf'])
     output.set_rank(RANK)
-    output.set_tau(TAU)
-    output.set_fmax(FMAX)
-    output.set_scf(SCF)
 
-  entry.set_runtime(RUNTIME)
-
-  RANK = skelter.rank(conc_circ)
-  entry.set_rank(RANK)
+  entry.set_runtime(params['runtime'])

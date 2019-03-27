@@ -9,6 +9,8 @@ def strip_tau(opt):
     return opt.split('-tau')[0]
   elif 'rand' in opt:
     return 'rand'
+  else:
+    return opt
 
 def visualize():
   data = common.get_data(series_type='circ_ident')

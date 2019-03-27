@@ -1,5 +1,6 @@
 from scripts.db import ExperimentDB, ExperimentStatus, OutputStatus, MismatchStatus
 import numpy as np
+from enum import Enum
 
 class Dataset:
 
@@ -8,6 +9,7 @@ class Dataset:
     self._data = {}
     self._fields = ['ident','circ_ident','bmark', \
                     'objective_fun', 'rank', 'mismatch',
+                    'jaunt_circ_file',
                     'quality','runtime','energy']
     self._metafields = ['quality_variance','quality_time_ratio']
 
@@ -29,6 +31,9 @@ class Dataset:
     return self._data.keys()
 
   def add(self,entry):
+    if not isinstance(self._key, str):
+      raise Exception("not string: %s" % self._key)
+
     key = getattr(entry,self._key)
     if not key in self._data:
       self._data[key] = {}
@@ -69,3 +74,84 @@ def get_data(series_type='bmarks',executed_only=True):
     data.add(entry)
 
   return data
+
+
+class Table:
+  BENCHMARK_ORDER = ['micro-osc-quarter','cosc',
+                     'pend','spring','vanderpol',
+                     'sensor-fanout','sensor-dynsys']
+  BENCHMARK_NAMES = {
+    'micro-osc-quarter': 'sin',
+    'cosc': 'dampened-osc',
+    'vanderpol': 'vanderpol',
+    'pend': 'pendulum',
+    'spring': 'physics',
+    'sensor-dynsys': 'fit-square',
+    'sensor-fanout': 'fit-same'
+  }
+
+  class LineType(Enum):
+    HRULE = "hrule"
+    HEADER = "header"
+    DATA = "data"
+
+  def __init__(self,name,handle,layout,loc='tp'):
+    self._name = name
+    self._handle = handle
+    self._layout = layout
+    self._loc = loc
+    self.lines = []
+
+  def horiz_rule(self):
+    self.lines.append((Table.LineType.HRULE,None))
+
+  def header(self):
+    self.lines.append((Table.LineType.HEADER,None))
+
+  def data(self,bmark,fields):
+    paper_bmark = Table.BENCHMARK_NAMES[bmark]
+    assert(not 'benchmark' in fields)
+    fields['benchmark'] = paper_bmark
+    self.lines.append((Table.LineType.DATA,fields))
+
+  @property
+  def benchmarks(self):
+    return Table.BENCHMARK_ORDER
+
+
+  @property
+  def fields(self):
+    return self._fields
+
+  def set_fields(self,header):
+    self._fields = header
+
+  def to_table(self):
+    lines = []
+    hdr = ['benchmark']+self._fields
+    q = lambda l: lines.append(l)
+    q('table')
+    q(self._handle)
+    q('tbl:%s' % self._handle)
+    q(self._layout)
+    for typ,line in self.lines:
+      if typ == Table.LineType.HRULE:
+        q('HLINE')
+      elif typ == Table.LineType.HEADER:
+        headerstr = ",".join(hdr)
+        q(headerstr)
+      elif typ == Table.LineType.DATA:
+        els = []
+        for h in hdr:
+          if h in hdr:
+            els.append(str(line[h]))
+          else:
+            els.append("")
+        datastr = ",".join(els)
+        q(datastr)
+
+    return "\n".join(lines)
+
+  def write(self,filename):
+    with open(filename,'w') as fh:
+      fh.write(self.to_table())

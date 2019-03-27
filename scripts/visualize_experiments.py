@@ -6,6 +6,8 @@ import scripts.visualize.quality_vs_speed as quality_vs_speed
 import scripts.visualize.quality_vs_energy as quality_vs_energy
 import scripts.visualize.rank_vs_speed as rank_vs_speed
 import scripts.visualize.best_of as best_of
+import scripts.visualize.component_count as component_count
+import scripts.visualize.bmark_summary as bmark_summary
 import matplotlib.pyplot as plt
 import numpy as np
 import math
@@ -25,7 +27,9 @@ def execute(args):
     'best-quality-variance': best_of.quality_variance,
     'best-speed': best_of.speed,
     'paper-qvs': paper_quality_vs_speed.visualize,
-    'paper-evs': paper_energy_vs_speed.visualize
+    'paper-evs': paper_energy_vs_speed.visualize,
+    'component-summary': component_count.visualize,
+    'benchmark-summary': bmark_summary.visualize
 
   }
   if name in opts:

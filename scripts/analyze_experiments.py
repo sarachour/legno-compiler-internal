@@ -32,21 +32,22 @@ def execute_once(args,debug=True):
                   recompute_energy
 
   db = ExperimentDB()
+  rank_method = params.RankMethod(args.rank_method)
   entries = list(db.get_by_status(ExperimentStatus.PENDING))
-  #whitelist = ['micro-osc-quarter','bbsys']
   whitelist = None
-  for entry in tqdm.tqdm(entries):
-    if not missing_params(entry) and not recompute_params:
-      continue
+  if args.rank_pending:
+    for entry in tqdm.tqdm(entries):
+      if not missing_params(entry) and not recompute_params:
+        continue
 
-    if not whitelist is None and not entry.bmark in whitelist:
-      continue
+      if not whitelist is None and not entry.bmark in whitelist:
+        continue
 
-    if debug:
-      print(entry)
+      if debug:
+        print(entry)
 
-    #conc_circ = ConcCirc.read(hdacv2_board,entry.skelt_circ_file)
-    #params.analyze(entry,conc_circ)
+      conc_circ = ConcCirc.read(hdacv2_board,entry.skelt_circ_file)
+      params.analyze(entry,conc_circ,method=rank_method)
 
   entries = list(db.get_by_status(ExperimentStatus.RAN))
   for entry in tqdm.tqdm(entries):
@@ -65,7 +66,7 @@ def execute_once(args,debug=True):
 
     if missing_params(entry) or recompute_params:
       conc_circ = ConcCirc.read(hdacv2_board,entry.skelt_circ_file)
-      params.analyze(entry,conc_circ)
+      params.analyze(entry,conc_circ,method=args.rank_method)
 
     if entry.energy is None or recompute_energy:
       conc_circ = ConcCirc.read(hdacv2_board,entry.skelt_circ_file)

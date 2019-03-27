@@ -26,18 +26,32 @@ def snr(circ,block_name,loc,port):
   _,nz,snr = compute_snr(nz_eval,circ,block_name,loc,port)
   return snr
 
-def rank_heur(circ):
+def rank_maxsigslow_heuristic(circ):
   score = 0
   for block_name,loc,config in circ.instances():
     block = circ.board.block(block_name)
     for port in block.inputs + block.outputs:
       scf = config.scf(port)
-      ival = config.interval(port)
-      if scf is None or ival is None:
+      if scf is None:
         continue
 
-      scaled_ival = ival.scale(scf)
-      score += scf
+      subscore = ival.scale(scf)/circ.tau
+      score += subscore
+
+  return score
+
+
+def rank_maxsigfast_heuristic(circ):
+  score = 0
+  for block_name,loc,config in circ.instances():
+    block = circ.board.block(block_name)
+    for port in block.inputs + block.outputs:
+      scf = config.scf(port)
+      if scf is None:
+        continue
+
+      subscore = scf*circ.tau
+      score += subscore
 
   return score
 
