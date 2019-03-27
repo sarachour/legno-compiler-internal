@@ -8,12 +8,14 @@ import ops.op as op
 
 DESCRIPTIONS = {
   'micro-osc-quarter': 'differential equation representation of sin function',
-  'pend': 'pendulum physics simulation with no small angle estimation',
-  'spring': 'physics simulation of two boxes connected with springs',
+  'pend': 'pendulum simulation with no small angle estimation',
+  'spring': 'simulation of two boxes connected with springs',
   'vanderpol': 'stiff vanderpol oscillator',
   'sensor-dynsys': 'linear parameter estimation between $x(t)$ and $y(t) ~ x(t)^2$',
   'sensor-fanout': 'linear parameter estimation between $x(t)$ and $y(t)~x(t)$',
-  'cosc': 'dampened spring physics simulation'
+  'cosc': 'dampened spring physics simulation',
+  'heat1d-g8': 'movement of heat through lattice'
+
 }
 OBSERVATIONS = {
   'micro-osc-quarter': '',
@@ -22,11 +24,13 @@ OBSERVATIONS = {
   'vanderpol': '',
   'sensor-dynsys': 'parameter A',
   'sensor-fanout': 'parameter A',
-  'cosc': 'position'
+  'cosc': 'position',
+  'heat1d-g8': 'heat at point XXX'
 }
 NONLINEAR = {
   'micro-osc-quarter': False,
   'pend': True,
+  'heat1d-g8': False,
   'spring': True,
   'vanderpol': True,
   'sensor-dynsys': True,
@@ -35,7 +39,8 @@ NONLINEAR = {
 }
 def visualize():
   header = ['description', 'observation','time','diffeqs','funcs','nonlinear']
-  table = common.Table('Benchmarks', 'bmarksumm', 'c|lcc')
+  desc = 'dynamical system benchmarks used in evaluation'
+  table = common.Table('Benchmarks',desc, 'bmarksumm', 'c|lccccc')
   bool_to_field = {True:'yes',False:'no'}
   table.set_fields(header)
   table.horiz_rule()

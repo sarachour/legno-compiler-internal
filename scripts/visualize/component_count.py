@@ -20,7 +20,8 @@ def to_table(summary):
     'integrator': 'integrator',
     'conns': 'connections'
   }
-  table = common.Table('Circuit Configurations', 'circcfg','c|ccccccc|c')
+  desc = 'analog chip configuration statistics'
+  table = common.Table('Circuit Configurations',desc, 'circcfg','c|ccccccc|c')
   table.set_fields(['integrator','multiplier', \
                     'fanout','adc','dac','lut', \
                     'crossbar','connections'])

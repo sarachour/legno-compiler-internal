@@ -77,15 +77,22 @@ def get_data(series_type='bmarks',executed_only=True):
 
 
 class Table:
-  BENCHMARK_ORDER = ['micro-osc-quarter','cosc',
-                     'pend','spring','vanderpol',
-                     'sensor-fanout','sensor-dynsys']
+  BENCHMARK_ORDER = ['micro-osc-quarter',
+                     'cosc',
+                     'pend',
+                     'vanderpol',
+                     'sensor-fanout',
+                     'sensor-dynsys',
+                     'spring',
+                     'heat1d-g8'
+  ]
   BENCHMARK_NAMES = {
     'micro-osc-quarter': 'sin',
     'cosc': 'dampened-osc',
     'vanderpol': 'vanderpol',
     'pend': 'pendulum',
     'spring': 'physics',
+    'heat1d-g8': 'heat8',
     'sensor-dynsys': 'fit-square',
     'sensor-fanout': 'fit-same'
   }
@@ -95,11 +102,12 @@ class Table:
     HEADER = "header"
     DATA = "data"
 
-  def __init__(self,name,handle,layout,loc='tp'):
+  def __init__(self,name,description,handle,layout,loc='tp'):
     self._name = name
     self._handle = handle
     self._layout = layout
     self._loc = loc
+    self._description = description
     self.lines = []
 
   def horiz_rule(self):
@@ -131,7 +139,8 @@ class Table:
     hdr = ['benchmark']+self._fields
     q = lambda l: lines.append(l)
     q('table')
-    q(self._handle)
+    q(self._loc)
+    q(self._description)
     q('tbl:%s' % self._handle)
     q(self._layout)
     for typ,line in self.lines:

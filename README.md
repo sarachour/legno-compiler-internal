@@ -84,16 +84,20 @@ Currently, Legno requires `python-3.7.x`. Make sure you are using the correct py
       
 Install pip3:
 
-      sudo apt-get install python3 python3-pip python3-tk graphviz mailutils
+      sudo apt-get install python3 python3-pip python3-tk graphviz mailutils tqdm
 
 The Legno compiler requires `python3` and `pip3`. Install the dependences with the following command:
 
-      pip3 install matplotlib scipy numpy pwlf networkx cvxopt colorlover
+      pip3 install matplotlib scipy numpy pwlf networkx cvxopt colorlover 
       
 You need the the following `lab-bench` dependencies for the compiler to interface nicely with the lab bench tooling:
 
-      pip3 install parse construct sklearn fastdtw tqdm
-    
+      pip3 install parse construct sklearn fastdtw
+      
+You need the following dependencies to execute `exp_driver.py`. 
+   
+      pip3 install seaborn opencv-python numba 
+      
 ### Installing Mosek
 
 _coming soon..._
