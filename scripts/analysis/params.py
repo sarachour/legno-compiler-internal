@@ -3,12 +3,12 @@ import compiler.common.prop_noise as pnlib
 import bmark.menvs as menvs
 from enum import Enum
 
-class RankMethod:
+class RankMethod(Enum):
   SKELTER = "skelter"
   MAXSIGFAST = "maxsigfast"
   MAXSIGSLOW = "maxsigslow"
 
-def compute_params(conc_circ,entry,varname,method=RankMethod.SKELTER):
+def compute_params(conc_circ,entry,varname):
   LOC = None
   for block_name,loc,config in conc_circ.instances():
     handle = conc_circ.board.handle_by_inst(block_name,loc)
@@ -28,10 +28,10 @@ def compute_params(conc_circ,entry,varname,method=RankMethod.SKELTER):
   params['tau']= (conc_circ.tau)
   params['fmax']= (conc_circ.tau)*conc_circ.board.time_constant
   params['simtime'] = menv.sim_time
-  params['runtime'] = simtime/params['fmax']
+  params['runtime'] = params['simtime']/params['fmax']
   return params
 
-def compute_rank(conc_circ,entry,varname,method=RankMethod.SKELTER):
+def compute_rank(conc_circ,method=RankMethod.SKELTER):
   if method == RankMethod.SKELTER:
     skelter.clear_noise_model(conc_circ)
     pnlib.compute(conc_circ)
@@ -45,14 +45,13 @@ def compute_rank(conc_circ,entry,varname,method=RankMethod.SKELTER):
 
 
 def analyze(entry,conc_circ,method=RankMethod.SKELTER):
-  RANK = compute_rank(conc_circ)
+  RANK = compute_rank(conc_circ,method)
   entry.set_rank(RANK)
 
   for output in entry.outputs():
     varname = output.varname
     params = compute_params(conc_circ,entry,
-                            varname,
-                            method=method)
+                            varname)
     output.set_tau(params['tau'])
     output.set_fmax(params['fmax'])
     output.set_scf(params['scf'])

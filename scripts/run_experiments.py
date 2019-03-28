@@ -6,6 +6,12 @@ import os
 import time
 import util.config as CONFIG
 
+def chunks(l, n):
+    # For item i in a range that is a length of l,
+    for i in range(0, len(l), n):
+        # Create an index range for l of n items:
+        yield l[i:i+n]
+
 def ping_user(email,benchmark,script_list):
     msg = "benchmark=%s"
     cmd = "mail -s \"job finished\" %s  <<< \"%s\"" % (email, msg)
@@ -24,12 +30,13 @@ def execute_script(ip,script_file,native=False):
     os.system(exec_cmd)
     time.sleep(1)
 
-def execute(args):
+def execute(args,batch_size=5):
   db = ExperimentDB()
   ip = args.ip
   if args.ip is None:
       ip = CONFIG.OSC_IP
   native = args.native
+  entries = []
   for entry in db.get_by_status(ExperimentStatus.PENDING):
     entry.synchronize()
     if not args.bmark is None and entry.bmark != args.bmark:
@@ -39,6 +46,19 @@ def execute(args):
       continue
 
     if entry.status == ExperimentStatus.PENDING:
-      execute_script(ip,entry.grendel_file,native=native)
+        entries.append(entry)
 
-    entry.synchronize()
+
+  for chunk in chunks(entries,batch_size):
+      prog = ""
+      for entry in chunk:
+          snippet = open(entry.grendel_file, 'r').read()
+          prog += snippet
+
+      with open('batch.grendel','w') as fh:
+          fh.write(prog)
+
+      execute_script(ip,'batch.grendel',native=native)
+
+      for entry in chunk:
+          entry.synchronize()

@@ -28,8 +28,11 @@ def to_table(summary):
   table.horiz_rule()
   table.header()
   for bmark in table.benchmarks:
-    data = summary[bmark]
     fields = dict(map(lambda f: (f,0), table.fields))
+    if not bmark in summary:
+      continue
+
+    data = summary[bmark]
     for key,value in data['blocks'].items():
       fields[to_header[key]] += value
 

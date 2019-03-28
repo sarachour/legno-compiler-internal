@@ -24,7 +24,7 @@ data={
         }
     },
     "freq": {
-      'baseline':1.0,
+      'baseline':2.0,
         "coeffs": {
             "adc": 1.0,
             "mult": 1.0,

@@ -3,6 +3,7 @@ from scripts.db import MismatchStatus
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import math
 
 def strip_tau(opt):
   return opt.split('-tau')[0]
@@ -41,8 +42,9 @@ def plot_series(data,colormap,ser):
   x = []
   y =[]
   e=[]
-  for sel_opt in opt_order('lnz'):
-    opt_quals,opt_vars, opt_speedup = by_opt(sel_opt,opts,[qualities,variances,speedup])
+  for sel_opt in opt_order('sig'):
+    opt_quals,opt_vars, opt_speedup = by_opt(sel_opt,opts, \
+                                             [qualities,variances,speedup])
     if not (len(opt_quals) == 1):
       print("skipped: '%s:%s [%d]" % (ser,sel_opt,len(opt_quals)))
       continue

@@ -127,10 +127,10 @@ def sc_generate_scale_model_constraints(jenv,circ):
         jenv.exactly_one(modevars)
 
     # set operating ranges
-    #for sblk,sloc,sport,dblk,dloc,dport in circ.conns():
-    #    s_opr = jenv.get_op_range_var(sblk,sloc,sport)
-    #    d_opr = jenv.get_op_range_var(dblk,dloc,dport)
-    #    jenv.eq(jop.JVar(s_opr),jop.JVar(d_opr),'scale-model-conn')
+    for sblk,sloc,sport,dblk,dloc,dport in circ.conns():
+        s_opr = jenv.get_op_range_var(sblk,sloc,sport)
+        d_opr = jenv.get_op_range_var(dblk,dloc,dport)
+        jenv.eq(jop.JVar(s_opr),jop.JVar(d_opr),'scale-model-conn')
 
 
 def sc_build_jaunt_env(prog,circ):

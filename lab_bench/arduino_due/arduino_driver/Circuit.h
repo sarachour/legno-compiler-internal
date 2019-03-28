@@ -4,6 +4,7 @@
 #include <HCDC_DEMO_API.h>
 
 namespace circ {
+
 typedef enum block_type {
   TILE_DAC,
   CHIP_INPUT,
@@ -153,6 +154,7 @@ typedef struct cmd {
 } cmd_t;
 
 Fabric* setup_board();
+void init_calibrations();
 void timeout(Fabric * fab, unsigned int timeout);
 void print_command(cmd_t& cmd);
 void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf);

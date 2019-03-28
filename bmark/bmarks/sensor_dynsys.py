@@ -23,13 +23,13 @@ def model():
   prob.bind(MOTOR, op.Mult(op.Var(SENSE), op.Var(SENSE)))
 
   params = {
-    'A0': 1,
+    'A0': 0,
     'one':0.99999,
     'sense':SENSE,
     'motor':MOTOR,
-    'reltau':15.0
+    'reltau':10.0
   }
-  A = parse_diffeq('{reltau}*(({one}*{sense})+A*({one}*(-{motor})))*{motor}',  \
+  A = parse_diffeq('(({reltau}*{sense})+{reltau}*(A*(-{motor})))*{motor}',  \
                            'A0', ':q', params)
   prob.bind('A', A)
   prob.set_interval("A",-1.5,1.5)

@@ -9,16 +9,16 @@ from ops import op, opparse
 from bmark.bmarks.common import *
 import bmark.menvs as menvs
 
-
 def emit(v):
   return op.Emit(op.Mult(op.Const(0.99999), v))
 
 
 def model(n,obs_idx):
   params = {
-    'init_heat': 2.0,
+    'init_heat': 1.0,
     'ic': 0,
-    'coeff': 1/(2.0*n)
+    #'coeff': 1/(2.0*n)
+    'coeff': 0.9999999
   }
   params['2coeff'] = params['coeff']*2
 
@@ -45,7 +45,7 @@ def model(n,obs_idx):
       raise Exception("???")
 
     prob.bind(params['curr'], eqn)
-    prob.set_interval(params['curr'],-2,2)
+    prob.set_interval(params['curr'],0,params['init_heat'])
 
   prob.bind("POINT", emit(op.Var("u%d" % obs_idx)))
   prob.set_max_sim_time(200)
