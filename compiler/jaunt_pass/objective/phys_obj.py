@@ -203,6 +203,28 @@ class LowNoiseObjFunc(optlib.JauntObjectiveFunction):
     yield LowNoiseObjFunc(opt)
 
 
+class HeuristicObjFunc(optlib.JauntObjectiveFunction):
+
+  def __init__(self,obj):
+    optlib.JauntObjectiveFunction.__init__(self,obj)
+
+  @staticmethod
+  def name():
+    return 'heur'
+
+  @staticmethod
+  def make(circuit,jobj,varmap):
+    jenv = jobj.jenv
+    ports = evalheur.get_iface_ports(circuit,False,1.0)
+    obj = 0
+    for _,block_name,loc,port in ports:
+      scf = jenv.get_scvar(block_name,loc,port)
+      obj += varmap[jenv.tau()]/varmap[scf]
+
+    yield HeuristicObjFunc(obj)
+
+
+
 class TauSweepSNRObjFunc(swoptlib.MultSpeedObjFunc):
 
   def __init__(self,obj,idx,cstrs):

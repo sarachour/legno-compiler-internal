@@ -65,7 +65,8 @@ def visualize():
     ident = list(map(lambda i : _ident[i], sel_inds))
     circ_ident = list(map(lambda i : _circ_ident[i], sel_inds))
     quality_var= list(map(lambda i : _quality_var[i], sel_inds))
-    max_rank = max(rank)
+    max_rank = (max(rank)-min(rank))+0.1
+    min_rank = min(rank)-0.1
     max_quality= max(quality)
 
     for r,q,o in zip(bad_rank,bad_quality,bad_ident):
@@ -92,13 +93,13 @@ def visualize():
     #for sid in set(map(lambda c: c, circ_ident)):
       inds = list(filter(lambda i:strip_tau(opt[i]) == sid, range(0,len(quality))))
       #inds = list(filter(lambda i:circ_ident[i] == sid, range(0,len(quality))))
-      ser_rank = list(map(lambda i: rank[i]/max_rank, inds))
+      ser_rank = list(map(lambda i: (rank[i]-min_rank)/max_rank, inds))
       ser_quality = list(map(lambda i: quality[i], inds))
       ser_variance = list(map(lambda i: quality_var[i], inds))
       plt.errorbar(ser_rank,ser_quality,ser_variance,fmt='^',
                    marker='.',label=sid)
 
-    plt.xlim(0,1.0)
+    plt.xlim(0,1.1)
     plt.xlabel('rank (norm)')
     plt.ylabel('quality (norm)')
     plt.title('rank vs quality')

@@ -432,6 +432,9 @@ class ExperimentEntry:
       if os.path.isfile(output.out_file):
         if output.status == OutputStatus.PENDING:
           output.set_status(OutputStatus.RAN)
+      else:
+        if output.status == OutputStatus.RAN:
+          output.set_status(OutputStatus.PENDING)
 
 
     not_done = any(map(lambda out: out.status == OutputStatus.PENDING, \

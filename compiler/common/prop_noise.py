@@ -2,11 +2,9 @@ import ops.op as op
 import ops.nop as nop
 import numpy as np
 import ops.interval as interval
-from compiler.common.visitor_symbolic  \
-  import ExpressionPropagator, \
-  SymbolicModel, \
-  SymbolicInferenceVisitor, \
-  MathPropagator
+from compiler.common.data_symbolic import SymbolicModel
+from compiler.common.visitor_symbolic import SymbolicInferenceVisitor
+from compiler.common.base_propagator_symbolic import MathPropagator
 import util.util as util
 
 class PropNoiseVisitor(SymbolicInferenceVisitor):

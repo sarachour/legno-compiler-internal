@@ -7,6 +7,9 @@ class RankMethod(Enum):
   SKELTER = "skelter"
   MAXSIGFAST = "maxsigfast"
   MAXSIGSLOW = "maxsigslow"
+  SCALE = "scale"
+  INTERVAL = "interval"
+  HANDTUNED = "handtuned"
 
 def compute_params(conc_circ,entry,varname):
   LOC = None
@@ -31,7 +34,7 @@ def compute_params(conc_circ,entry,varname):
   params['runtime'] = params['simtime']/params['fmax']
   return params
 
-def compute_rank(conc_circ,method=RankMethod.SKELTER):
+def compute_rank(conc_circ,entry,method=RankMethod.SKELTER):
   if method == RankMethod.SKELTER:
     skelter.clear_noise_model(conc_circ)
     pnlib.compute(conc_circ)
@@ -43,9 +46,19 @@ def compute_rank(conc_circ,method=RankMethod.SKELTER):
   elif method == RankMethod.MAXSIGSLOW:
     return skelter.rank_maxsigslow_heuristic(conc_circ)
 
+  elif method == RankMethod.SCALE:
+    return skelter.rank_scale_heuristic(conc_circ)
+
+  elif method == RankMethod.INTERVAL:
+    return skelter.rank_scale_heuristic(conc_circ)
+
+  elif method == RankMethod.HANDTUNED:
+    return skelter.rank_handtuned_heuristic(entry.bmark,conc_circ)
+
+
 
 def analyze(entry,conc_circ,method=RankMethod.SKELTER):
-  RANK = compute_rank(conc_circ,method)
+  RANK = compute_rank(conc_circ,entry,method)
   entry.set_rank(RANK)
 
   for output in entry.outputs():

@@ -1,5 +1,6 @@
 from scripts.db import ExperimentDB, ExperimentStatus, OutputStatus, MismatchStatus
 import scripts.visualize.correlation as correlation
+import scripts.visualize.scalecorr as scale_analysis
 import scripts.visualize.paper_quality_vs_speed as paper_quality_vs_speed
 import scripts.visualize.paper_energy_vs_speed as paper_energy_vs_speed
 import scripts.visualize.quality_vs_speed as quality_vs_speed
@@ -21,6 +22,7 @@ def execute(args):
     'quality-vs-energy':quality_vs_energy.visualize,
     'rank-vs-speed':rank_vs_speed.visualize,
     'correlation': correlation.visualize,
+    'scale-analysis': scale_analysis.visualize,
     'best-rank': best_of.rank,
     'best-quality': best_of.quality,
     'best-quality-to-speed': best_of.quality_to_speed,

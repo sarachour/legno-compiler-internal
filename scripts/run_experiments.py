@@ -37,6 +37,9 @@ def execute(args,batch_size=5):
       ip = CONFIG.OSC_IP
   native = args.native
   entries = []
+  for entry in db.get_by_status(ExperimentStatus.RAN):
+    entry.synchronize()
+
   for entry in db.get_by_status(ExperimentStatus.PENDING):
     entry.synchronize()
     if not args.bmark is None and entry.bmark != args.bmark:

@@ -21,20 +21,6 @@ def get_param_scf_weight(blk,scf):
   elif '01x':
     return (1.0-slack)
 
-
-def get_numerical_range(blk,scf):
-  if blk == 'adc':
-    scfmap = {'l':'h','h':'l','m':'m'}
-    scf = scfmap[scf]
-
-  if scf == 'l':
-    return 0.1
-  elif scf == 'm':
-    return 1.0
-  else:
-    return 10.0
-
-
 def get_param_rng_weight(blk,scf):
   slack = cfg.data['scale-mode']['delta']
   if blk == 'adc':
@@ -62,9 +48,10 @@ def get_param_blk_weight(blk):
 
 def get_param_sig_weight(blk):
   if blk in cfg.data['signal']['weights']:
-    return cfg.data['signal']['weights'][blk]
+    for port,weight in cfg.data['signal']['weights'][blk].items():
+      yield port,weight
   else:
-    return 0.0
+    return
 
 
 def get_param_freq_weight(blk):
@@ -85,26 +72,27 @@ def mk_noise_model(blk,scf,rng):
   pblk = get_param_blk_weight(blk)
   prng = get_param_rng_weight(blk,rng)
   pscf = get_param_scf_weight(blk,scf)
-  numer_rng = get_numerical_range(blk,rng)
 
   wt = pblk*prng*pscf
-  psig = get_param_sig_weight(blk)/numer_rng
+  terms = []
+
   pfreq,pfreqexp = get_param_freq_weight(blk)
   port = get_param_port(blk)
 
-  terms = []
+  for port,weight in get_param_sig_weight(blk):
+    if weight == 0.0:
+      continue
+    terms.append(nops.mkmult([
+      nops.NConstRV(0.0,weight),
+      nops.NSig(port)
+    ]))
+
   if wt > 0:
     terms.append(nops.NConstRV(0,wt))
   if pfreq > 0.0:
     terms.append(nops.mkmult([
       nops.NConstRV(0.0,pfreq),
       nops.NFreq(port,power=pfreqexp)
-    ]))
-
-  if psig > 0.0:
-    terms.append(nops.mkmult([
-      nops.NConstRV(0.0,psig),
-      nops.NSig(port)
     ]))
 
   sumexpr = nops.mkadd(terms)

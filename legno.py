@@ -48,6 +48,7 @@ skelt_subp.add_argument('--recompute', action='store_true',
                        help='recompute skelter.')
 
 graph_subp = subparsers.add_parser('graph', help='generate graphs for noise analysis')
+graph_subp.add_argument('--circ', help='circuit.')
 
 gren_subp = subparsers.add_parser('srcgen', help='generate grendel.')
 gren_subp.add_argument('hw_env', type=str, \

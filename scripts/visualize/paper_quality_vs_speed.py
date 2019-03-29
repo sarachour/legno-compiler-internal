@@ -20,12 +20,19 @@ def by_opt(sel,opt,data):
     new_data.append(new_datum)
   return new_data
 
-def plot_series(data,colormap,ser):
+def plot_bmark(data,colormap,ser):
   fields = ['runtime','quality','objective_fun','quality_variance','bmark']
   colors = sns.color_palette()
+  exec_to_series = {
+    'sig': 'executions',
+    'rand':'executions',
+    'maxsigfast':'all-fast',
+    'maxsigslow':'all-slow',
+    'heur': 'out-slow'
+  }
   runtimes,qualities,opts,variances,bmarks = data.get_data(ser, fields, \
                                                            [MismatchStatus.UNKNOWN, \
-                                                           MismatchStatus.IDEAL])
+                                                            MismatchStatus.IDEAL])
   bmark = bmarks[0]
   if not bmark in colormap:
     colormap[bmark] = colors[len(colormap.keys())]
@@ -39,9 +46,10 @@ def plot_series(data,colormap,ser):
   max_time = max(runtimes)
   speedup = list(map(lambda x : max_time/x, runtimes))
   # plot tradeoff curve
-  x = []
-  y =[]
-  e=[]
+  #data = {'executions':[],'all-fast':{'x':[],'y':[]},''}
+  for key in set(exec_to_series.values()):
+    data[key] = {'x':[],'y':[],'e':[]}
+
   for sel_opt in opt_order('sig'):
     opt_quals,opt_vars, opt_speedup = by_opt(sel_opt,opts, \
                                              [qualities,variances,speedup])
@@ -58,15 +66,15 @@ def plot_series(data,colormap,ser):
   plt.errorbar(opt_speedup,opt_quals,opt_vars,fmt='^', \
                   marker='o',c=color)
 
-def visualize():
-  data = common.get_data(series_type='circ_ident')
-  colormap = {}
-  for ser in data.series():
-    plot_series(data,colormap,ser)
-
   plt.xlabel('speedup (norm)')
   plt.ylabel('quality (snr)')
   plt.title('quality vs speedup')
   plt.legend()
   plt.savefig("paper_qvs.png")
   plt.clf()
+
+def visualize():
+  data = common.get_data(series_type='circ_ident')
+  colormap = {}
+  for ser in data.series():
+    plot_bmark(data,colormap,ser)

@@ -15,8 +15,8 @@ def strip_tau(opt):
 def visualize():
   data = common.get_data(series_type='circ_ident')
   fields = ['runtime','quality','objective_fun','quality_variance']
-  whitelist = ['sig','lnz','lo-noise','maxsig','rand', \
-               'lo-noise-fast','maxsigslow']
+  whitelist = ['sig','lnz','lo-noise','maxsigfast','rand', \
+               'lo-noise-fast','maxsigslow','heur']
   for ser in data.series():
     runtimes,qualities,opts,variances = data.get_data(ser, fields, \
                                    [MismatchStatus.UNKNOWN, \

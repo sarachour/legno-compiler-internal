@@ -123,11 +123,15 @@ class NVar(NOp):
     self._instance = (block,loc)
     NOp.__init__(self,op,[])
 
-
   def terms(self):
     yield self
 
-  def decompose(self):
+  def decompose_exponent(self):
+    n = self.copy()
+    n._power = 1.0
+    return self.power,n
+
+  def decompose_coefficient(self):
     return NConstRV(1.0,0.0),self
 
   def mult_hash(self):
@@ -335,7 +339,7 @@ class NConstRV(NOp):
   def sum_hash(self):
     return None
 
-  def decompose(self):
+  def decompose_coefficient(self):
     return NConstRV(self._mu,self._sigma),NConstRV(1.0,0.0)
 
   def terms(self):
@@ -366,8 +370,8 @@ class NConstRV(NOp):
 
     mean = self.mu**p
     variance = abs(p*self.mu**(p-1)*self.sigma)
-    assert(mean >= 0)
-    assert(variance >= 0)
+    assert(float(mean) >= 0)
+    assert(float(variance) >= 0)
     return NConstRV(mean,variance)
 
 
@@ -415,10 +419,6 @@ class NMult(NOp):
 
   def __init__(self,args):
     assert(len(args) > 1)
-    for arg in args:
-      assert(arg.op != NOpType.ADD and \
-             arg.op != NOpType.MULT)
-
     NOp.__init__(self,NOpType.MULT,args)
 
   def terms(self):
@@ -447,11 +447,14 @@ class NMult(NOp):
     return result
 
 
-  def decompose(self):
+  def decompose_exponent(self):
+    return 1.0,self
+
+  def decompose_coefficient(self):
     rv = mkone()
     terms = []
     for arg in self.args():
-      crv,term = arg.decompose()
+      crv,term = arg.decompose_coefficient()
       rv = rv.mult(crv)
       if term != mkone():
         terms.append(term)
@@ -584,6 +587,20 @@ class NAdd(NOp):
     self._test_constant(result)
     return result
 
+  def decompose_coefficient(self):
+    return mkone(),self
+
+
+  def decompose_exponent(self):
+    return 1.0,self
+
+  def mult_hash(self):
+    return str(self)
+
+  def sum_hash(self):
+    return str(self)
+
+
   def exponent(self,p):
     result = NOp.exponent(self,p,toplevel=False)
     if not result is None:
@@ -593,7 +610,6 @@ class NAdd(NOp):
     terms = list(map(lambda t: t.exponent(p),self.terms()))
     coeff = 2**p
     return mkmult([mkconst(coeff), NAdd(terms)])
-
 
   def terms(self):
     for arg in self._args:
@@ -746,11 +762,18 @@ def mkmult(args):
   sums = []
   terms = []
   coeffs = [mkone()]
+  expos = {}
   def add_term(term):
     if term.op == NOpType.CONST_RV:
       coeffs.append(term)
     else:
-      terms.append(term)
+      mhash = term.mult_hash()
+      expo,term = term.decompose_exponent()
+      if not mhash in expos:
+        expos[mhash] = expo
+        terms.append(term)
+      else:
+        expos[mhash] += expo
 
   for arg in args:
     #if not (arg.is_posynomial()) and not arg.is_zero():
@@ -767,15 +790,22 @@ def mkmult(args):
       add_term(arg)
 
 
-  expr = _wrap_mult(coeffs,terms)
+  expo_terms = []
+  for term in terms:
+    power = expos[term.mult_hash()]
+    expo_terms.append(term.exponent(power))
+
   if len(sums) > 0:
-    expr_terms= list(expr.terms())
-    result = distribute(sums,coeff=expr_terms)
+    if len(sums) == 1:
+      result = _wrap_mult(coeffs,expo_terms+sums)
+    else:
+      result = _wrap_mult(coeffs,expo_terms+[NMult(sums)])
   else:
-    result = expr
+    result = _wrap_mult(coeffs,expo_terms)
 
   #assert(result.is_posynomial())
   #print("mkmult OLD:%s\n\nNEW:%s\n\n" % (args,result))
+  #input()
   return result
 
 def mkadd(args):
@@ -786,7 +816,7 @@ def mkadd(args):
     if term.is_zero():
       return
     else:
-      crv,cterm = term.decompose()
+      crv,cterm = term.decompose_coefficient()
       hashv = cterm.sum_hash()
       if not hashv in rvs:
         terms.append(cterm)

@@ -46,8 +46,9 @@ class JauntObjectiveFunctionManager():
         #return ['lo-noise', 'lo-bias', 'lo-delay']
         # boptlib.MaxSignalAtSpeedObjFunc
         return [
-            physoptlib.LowNoiseObjFunc,
-            physoptlib.FastLowNoiseObjFunc
+            #physoptlib.LowNoiseObjFunc,
+            #physoptlib.FastLowNoiseObjFunc
+            physoptlib.HeuristicObjFunc
 
         ]
 

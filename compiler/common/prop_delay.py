@@ -2,21 +2,15 @@ import ops.op as op
 import ops.nop as nop
 import numpy as np
 import ops.interval as interval
-from compiler.common.visitor_symbolic import SymbolicInferenceVisitor, \
-  ExpressionPropagator, SymbolicModel
+from compiler.common.data_symbolic import SymbolicModel
+from compiler.common.visitor_symbolic import SymbolicInferenceVisitor
+from compiler.common.propagator_symbolic import ExpressionPropagator
 
 
 class DelayPropagator(ExpressionPropagator):
 
-  def __init__(self,env):
-    ExpressionPropagator.__init__(self)
-    self._env = env
-  def op_var(self,name):
-    block,loc,_ = self.place
-    model = self._env.get_propagate_model(block, \
-                                          loc, \
-                                          name)
-    return model
+  def __init__(self,intbl,outtbl):
+    ExpressionPropagator.__init__(self,intbl,outtbl)
 
   def sel(self,m1,m2):
     u1,v1 = m1.mean,m1.variance
@@ -27,6 +21,11 @@ class DelayPropagator(ExpressionPropagator):
 
   def sgn(self,m):
     return m
+
+  def rv(self,rv):
+    return SymbolicModel(nop.mkzero(),nop.mkconst(rv.mu),nop.mkconst(rv.sigma))
+
+
 
   def cos(self,m):
     return m

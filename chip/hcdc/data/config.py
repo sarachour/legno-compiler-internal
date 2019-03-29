@@ -1,34 +1,35 @@
 data={
     "block": {
-        "baseline": 10.0,
+        "baseline": 0.001,
         "coeffs": {
-            "integ": 0.1,
-            "mult": 0.5,
+            "integ": 0.0,
+            "mult": 1.0,
             "vga": 1.0,
-            "dac": 0.1,
-            "adc": 0.6,
-            "fanout": 0.2
+            "dac": 0.0,
+            "adc": 1.0,
+            "fanout": 0.0
         }
     },
     "scale-mode": {
-        "delta": 0.9
+        "delta": 0.2
     },
     "coeff-mode": {
         "delta": 0.0
     },
     "signal": {
         "weights": {
-            "mult": 0.02,
-            "vga": 0.02,
-            "integ": 0.0
+          "mult": {
+            'out': 0.0
+          },
+          "vga": {
+            'out': 0.0
+          }
         }
     },
     "freq": {
-      'baseline':2.0,
+      'baseline':1.0,
         "coeffs": {
-            "adc": 1.0,
-            "mult": 1.0,
-            "vga": 1.0
+            "adc": 1.0
         }
     }
 }

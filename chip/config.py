@@ -1,7 +1,7 @@
 from enum import Enum
 from ops.interval import Interval
 from ops.bandwidth import Bandwidth
-from compiler.common.visitor_symbolic import SymbolicModel
+from compiler.common.data_symbolic import SymbolicModel
 import ops.op as ops
 
 class Labels(Enum):

@@ -1,8 +1,9 @@
 import ops.op as op
 import numpy as np
 import ops.interval as interval
-from compiler.common.visitor_symbolic import SymbolicInferenceVisitor, \
-  MathPropagator
+from compiler.common.data_symbolic import SymbolicModel
+from compiler.common.visitor_symbolic import SymbolicInferenceVisitor
+from compiler.common.base_propagator_symbolic import MathPropagator
 
 class PropBiasVisitor(SymbolicInferenceVisitor):
 

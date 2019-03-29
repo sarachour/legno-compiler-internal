@@ -147,37 +147,30 @@ def exec_srcgen(hdacv2_board,args):
         gren_file.write(filename)
 
 
-def exec_graph(hdacv2_board, args):
-  path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
-  circ_dir = path_handler.skelt_circ_dir()
-  scores = []
-  filenames = []
-  for dirname, subdirlist, filelist in os.walk(circ_dir):
-    for fname in filelist:
-      if fname.endswith('.circ'):
-        circ_bmark,circ_indices,circ_scale_index,opt = \
-                                                       path_handler.conc_circ_to_args(fname)
+def exec_graph_one(hdacv2_board,path_handler,fname):
+    dirname = path_handler.skelt_circ_dir()
+    circ_bmark,circ_indices,circ_scale_index,opt = \
+                                                   path_handler.conc_circ_to_args(fname)
 
-        skelt_circ = path_handler.skelt_circ_file(circ_bmark,
-                                                  circ_indices,
-                                                  circ_scale_index,
-                                                  opt)
-        print('<<<< %s >>>>' % fname)
-        with open("%s/%s" % (dirname,fname),'r') as fh:
-          obj = json.loads(fh.read())
-          conc_circ = ConcCirc.from_json(hdacv2_board, \
-                                                  obj)
-          '''
+    skelt_circ = path_handler.skelt_circ_file(circ_bmark,
+                                              circ_indices,
+                                              circ_scale_index,
+                                              opt)
+    print('<<<< %s >>>>' % fname)
+    with open("%s/%s" % (dirname,fname),'r') as fh:
+        obj = json.loads(fh.read())
+        conc_circ = ConcCirc.from_json(hdacv2_board, \
+                                       obj)
+        '''
           methods = ['interval','scaled-interval', \
                          'gen-delay','prop-delay', \
                          'scale-factor','delay-mismatch', \
                          'gen-noise','prop-noise',\
                          'gen-bias','prop-bias']
           '''
-
-          methods = ['gen-noise', 'prop-noise', 'scaled-interval','interval','snr', 'bandwidth']
-          for method in methods:
-
+        methods = ['gen-noise', 'prop-noise',  \
+                   'scaled-interval','interval','snr', 'bandwidth']
+        for method in methods:
             filename = path_handler.skelt_graph_file(circ_bmark,
                                                      circ_indices,
                                                      circ_scale_index,
@@ -185,6 +178,21 @@ def exec_graph(hdacv2_board, args):
             conc_circ.write_graph(filename,\
                                   write_png=True,\
                                   color_method=method)
+
+def exec_graph(hdacv2_board, args):
+  path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
+  circ_dir = path_handler.skelt_circ_dir()
+  scores = []
+  filenames = []
+
+  if not args.circ is None:
+      exec_graph_one(hdacv2_board,path_handler,args.circ)
+      return
+
+  for dirname, subdirlist, filelist in os.walk(circ_dir):
+    for fname in filelist:
+      if fname.endswith('.circ'):
+          exec_graph_one(hdacv2_board,path_handler,fname)
 
 def exec_skelter_existing(hdacv2_board,args):
     path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
