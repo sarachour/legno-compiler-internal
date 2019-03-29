@@ -1,6 +1,7 @@
 from scripts.db import ExperimentDB, ExperimentStatus, OutputStatus, MismatchStatus
 import numpy as np
 from enum import Enum
+import seaborn as sns
 
 class Dataset:
 
@@ -26,6 +27,9 @@ class Dataset:
     for field in fields:
       ord_data.append(data[field])
     return ord_data
+
+  def has_series(self,ser):
+    return ser in self._data
 
   def series(self):
     return self._data.keys()
@@ -75,8 +79,7 @@ def get_data(series_type='bmarks',executed_only=True):
 
   return data
 
-
-class Table:
+class BenchmarkVisualization:
   BENCHMARK_ORDER = ['micro-osc-quarter',
                      'cosc',
                      'pend',
@@ -97,12 +100,48 @@ class Table:
     'sensor-fanout': 'fit-same'
   }
 
+  @staticmethod
+  def benchmark(runname):
+    return BenchmarkVisualization.BENCHMARK_NAMES[runname]
+
+  @staticmethod
+  def benchmarks():
+    return BenchmarkVisualization.BENCHMARK_ORDER
+
+
+class Plot(BenchmarkVisualization):
+
+  MARKERS = ['x','^',',','_','v','+','|','D','s']
+  COLORS = sns.color_palette()
+
+  MARKER_MAP = {}
+  COLOR_MAP = {}
+  for i,bmark in \
+      enumerate(BenchmarkVisualization.BENCHMARK_ORDER):
+    MARKER_MAP[bmark] = MARKERS[i]
+    COLOR_MAP[bmark] = COLORS[i]
+
+  def __init__(self):
+    BenchmarkVisualization.__init__(self)
+
+  @staticmethod
+  def get_color(bmark):
+    return Plot.COLOR_MAP[bmark]
+
+  @staticmethod
+  def get_marker(bmark):
+    return Plot.MARKER_MAP[bmark]
+
+
+class Table(BenchmarkVisualization):
+
   class LineType(Enum):
     HRULE = "hrule"
     HEADER = "header"
     DATA = "data"
 
   def __init__(self,name,description,handle,layout,loc='tp'):
+    BenchmarkVisualization.__init__(self)
     self._name = name
     self._handle = handle
     self._layout = layout
@@ -110,6 +149,7 @@ class Table:
     self._description = description
     self.lines = []
 
+ 
   def horiz_rule(self):
     self.lines.append((Table.LineType.HRULE,None))
 
@@ -121,11 +161,6 @@ class Table:
     assert(not 'benchmark' in fields)
     fields['benchmark'] = paper_bmark
     self.lines.append((Table.LineType.DATA,fields))
-
-  @property
-  def benchmarks(self):
-    return Table.BENCHMARK_ORDER
-
 
   @property
   def fields(self):

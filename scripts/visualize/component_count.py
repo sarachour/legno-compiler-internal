@@ -21,13 +21,14 @@ def to_table(summary):
     'conns': 'connections'
   }
   desc = 'analog chip configuration statistics'
-  table = common.Table('Circuit Configurations',desc, 'circcfg','c|ccccccc|c')
+  table = common.Table('Circuit Configurations',desc, 'circcfg','|c|ccccccc|c|')
   table.set_fields(['integrator','multiplier', \
                     'fanout','adc','dac','lut', \
                     'crossbar','connections'])
   table.horiz_rule()
   table.header()
-  for bmark in table.benchmarks:
+  table.horiz_rule()
+  for bmark in table.benchmarks():
     fields = dict(map(lambda f: (f,0), table.fields))
     if not bmark in summary:
       continue

@@ -2,7 +2,8 @@ from scripts.db import ExperimentDB, ExperimentStatus, OutputStatus, MismatchSta
 import scripts.visualize.correlation as correlation
 import scripts.visualize.scalecorr as scale_analysis
 import scripts.visualize.paper_quality_vs_speed as paper_quality_vs_speed
-import scripts.visualize.paper_energy_vs_speed as paper_energy_vs_speed
+import scripts.visualize.paper_quality_vs_energy as paper_quality_vs_energy
+import scripts.visualize.paper_quality_vs_runtime as paper_quality_vs_runtime
 import scripts.visualize.quality_vs_speed as quality_vs_speed
 import scripts.visualize.quality_vs_energy as quality_vs_energy
 import scripts.visualize.rank_vs_speed as rank_vs_speed
@@ -29,7 +30,8 @@ def execute(args):
     'best-quality-variance': best_of.quality_variance,
     'best-speed': best_of.speed,
     'paper-qvs': paper_quality_vs_speed.visualize,
-    'paper-evs': paper_energy_vs_speed.visualize,
+    'paper-qve': paper_quality_vs_energy.visualize,
+    'paper-qvr': paper_quality_vs_runtime.visualize,
     'component-summary': component_count.visualize,
     'benchmark-summary': bmark_summary.visualize
 
