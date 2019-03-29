@@ -1,12 +1,15 @@
 *.pyc
 calibrate
 transform
-outputs
+batch.grendel
+outputs*
 *.grendel-list
 *.log
 rank_*.txt
 *.json
 *.png
+*.tbl
+paper*.pdf
 .#*.py
 .DS_STORE
 
