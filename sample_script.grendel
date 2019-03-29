@@ -1,0 +1,39 @@
+micro_reset
+micro_use_osc
+osc_set_volt_range 0 -1.500000 1.500000
+osc_set_sim_time 0.000251
+osc_set_volt_range 1 -1.500000 1.500000
+osc_set_sim_time 0.000251
+micro_set_sim_time 0.000251 0.000251
+micro_compute_offsets
+micro_get_num_adc_samples
+micro_get_num_dac_samples
+micro_get_time_delta
+micro_use_chip
+use_fanout 0 0 0 0 sgn + - + rng m
+get_integ_status 0 0 0
+use_integ 0 0 0 sgn + val 0.197656 rng m m debug
+get_integ_status 0 0 1
+use_integ 0 0 1 sgn + val 0.000000 rng m m debug
+use_mult 0 0 0 0 val 0.988266 rng m m
+use_mult 0 0 0 1 val 0.792570 rng m h
+mkconn integ 0 0 0 fanout 0 0 0 0
+mkconn integ 0 0 1 integ 0 0 0
+mkconn mult 0 0 0 0 integ 0 0 1
+mkconn fanout 0 0 0 0 port 1 mult 0 0 0 0 port 0
+mkconn mult 0 0 0 1 tile_output 0 0 0 0
+mkconn tile_output 0 0 0 0 chip_output 0 3 2
+mkconn fanout 0 0 0 0 port 0 mult 0 0 0 1 port 0
+micro_setup_chip
+micro_get_status
+osc_setup_trigger
+micro_run
+osc_get_values differential 0 1 Loc outputs//legno/default/micro-osc-quarter/out-waveform/micro-osc-quarter_0_0_0_0_s0_fast_t200_default_Loc_0_DUMMY.json
+osc_setup_trigger
+micro_run
+osc_get_values differential 0 1 Loc outputs//legno/default/micro-osc-quarter/out-waveform/micro-osc-quarter_0_0_0_0_s0_fast_t200_default_Loc_1_DUMMY.json
+osc_setup_trigger
+micro_run
+osc_get_values differential 0 1 Loc outputs//legno/default/micro-osc-quarter/out-waveform/micro-osc-quarter_0_0_0_0_s0_fast_t200_default_Loc_2_DUMMY.json
+micro_get_status
+micro_teardown_chip
