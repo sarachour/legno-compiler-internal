@@ -136,9 +136,6 @@ def sc_generate_scale_model_constraints(jenv,circ):
 def sc_build_jaunt_env(prog,circ):
     jenv = jenvlib.JauntInferEnv()
     # declare scaling factors
-    infer.clear(circ)
-    infer.infer_intervals(prog,circ)
-    infer.infer_bandwidths(prog,circ)
     jaunt_common.decl_scale_variables(jenv,circ)
     # build continuous model constraints
     sc_decl_scale_model_variables(jenv,circ)
@@ -152,7 +149,6 @@ def sc_traverse_dynamics(jenv,circ,block,loc,out):
     visitor = SCFInferExprVisitor(jenv,circ,block,loc,out)
     visitor.visit()
 
-
 def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
     config = circ.config(block.name,loc)
     mrng = config.interval(port)
@@ -164,18 +160,22 @@ def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
     scale_model = block.scale_model(config.comp_mode)
     baseline = scale_model.baseline
     prop = block.props(config.comp_mode,baseline,port,handle=handle)
-    hwrng,hwbw = prop.interval(), prop.bandwidth()
+    phys = jaunt_common.noise_model(circ,block,loc,port)
+    hwrng,hwbw,snr = prop.interval(), prop.bandwidth(), config.snr(port)
     if isinstance(prop, props.AnalogProperties):
-        jaunt_common.analog_op_range_constraint(jenv,prop,mathscvar,hwscvar, \
-                                                mrng,hwrng, \
+        jaunt_common.analog_op_range_constraint(jenv,circ,phys,prop,
+                                                mathscvar,hwscvar, \
+                                                mrng,hwrng,snr,\
                                                 '%s-%s' % (block.name,port))
         jaunt_common.analog_bandwidth_constraint(jenv,circ,mbw,hwbw)
 
     elif isinstance(prop, props.DigitalProperties):
-        jaunt_common.digital_op_range_constraint(jenv,prop,mathscvar,hwscvar, \
+        jaunt_common.digital_op_range_constraint(jenv,phys,prop, \
+                                                 mathscvar,hwscvar, \
                                                 mrng,hwrng, \
                                                 '%s-%s' % (block.name,port))
-        jaunt_common.digital_quantize_constraint(jenv,mathscvar,hwscvar,mrng, prop)
+        jaunt_common.digital_quantize_constraint(jenv,phys,prop,
+                                                 mathscvar,hwscvar,mrng,snr)
         jaunt_common.digital_bandwidth_constraint(jenv,prob,circ,mbw,prop)
     else:
         raise Exception("unknown")

@@ -22,6 +22,9 @@ def smt_expr(smtenv,expr):
     e2 = recurse(expr.arg(1))
     return smtop.SMTAdd(e1,e2)
 
+  elif expr.op == jop.JOpType.ADD:
+    raise Exception("unsupported <%s>" % expr)
+
   elif expr.op == jop.JOpType.CONST:
     return smtop.SMTConst(math.log10(float(expr.value)))
 

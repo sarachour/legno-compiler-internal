@@ -24,6 +24,7 @@ class Config:
         self._intervals = {}
         # (scaled) bandwidth
         self._bandwidths = {}
+        self._snrs = {}
 
         # physical model data
         self._gen_delays = {}
@@ -128,6 +129,8 @@ class Config:
         get_port_handle_dict(cfg._scfs, obj, 'scfs')
         get_port_handle_dict(cfg._intervals, obj, 'intervals', \
                              lambda v: Interval.from_json(v))
+        get_port_dict(cfg._snrs, obj, 'snrs')
+
         get_port_handle_dict(cfg._op_ranges, obj, 'op-ranges', \
                              lambda v: Interval.from_json(v))
         get_port_handle_dict(cfg._bandwidths, obj, 'bandwidths', \
@@ -174,7 +177,7 @@ class Config:
         set_port_handle_dict('scfs',self._scfs)
         set_port_handle_dict('intervals',self._intervals, \
                              lambda value: value.to_json())
-
+        set_port_dict('snrs',self._snrs)
         set_port_handle_dict('op-ranges', self._op_ranges, \
                              lambda value: value.to_json())
         set_port_handle_dict('bandwidths', self._bandwidths, \
@@ -206,6 +209,7 @@ class Config:
       cfg._labels = dict(self._labels)
       cfg._scfs = dict(self._scfs)
       cfg._intervals = dict(self._intervals)
+      cfg._snrs = dict(self._snrs)
       cfg._bandwidths = dict(self._bandwidths)
       cfg._op_ranges = dict(self._op_ranges)
       cfg._exprs = dict(self._exprs)
@@ -397,6 +401,9 @@ class Config:
       self._op_ranges[port][handle] = op_range
 
 
+    def set_snr(self,port,snr):
+      self._snrs[port] = snr
+
     def set_interval(self,port,interval,handle=None):
       self._make(self._intervals,port)
       self._intervals[port][handle] = interval
@@ -438,6 +445,13 @@ class Config:
       return self._bandwidths[port][handle]
 
 
+    def snr(self,port,handle=None):
+      if not port in self._snrs:
+        return None
+
+      return self._snrs[port]
+
+
     def interval(self,port,handle=None):
       if not port in self._intervals or \
          not handle in self._intervals[port]:
@@ -470,6 +484,14 @@ class Config:
             bandwidths[handle] = bw.timescale(1.0/time_constant)
 
       return bandwidths
+
+
+    def snrs(self):
+      snrs = {}
+      for port,snr in self._snrs.items():
+          snrs[port] = snr
+
+      return snrs
 
 
     def intervals(self):

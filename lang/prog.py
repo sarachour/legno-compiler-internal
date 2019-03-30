@@ -58,11 +58,28 @@ class MathProg:
         self._intervals = {}
         self._bandwidths= {}
         self._variables = []
+        self._snr = {}
+        self._default_snr = 5.0
         self._max_sim_time = 1.0
 
         self.__order = None
         self.__order_integs = None
         self.__types = None
+
+    def default_snr(self):
+        return self._default_snr
+
+    def set_default_snr(self,v):
+        self._default_snr =v
+
+    def set_snr(self,var,snr):
+        self._snr[var] = snr
+
+    def snr(self,var):
+        if var in self._snr:
+            return self._snr[var]
+        else:
+            return self.default_snr()
 
     def _compute_order(self):
         self.__order = []

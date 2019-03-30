@@ -83,9 +83,7 @@ def scale_model(fanout):
                 .set_props(comp_mode,rng,["out0","out1","out2","in"],
                         util.make_ana_props(rng,
                                             glb.ANALOG_MIN, \
-                                            glb.ANALOG_MAX,
-                                            glb.ANALOG_MINSIG_CONST,
-                                            glb.ANALOG_MINSIG_DYN))
+                                            glb.ANALOG_MAX))
 
     fanout.check()
 

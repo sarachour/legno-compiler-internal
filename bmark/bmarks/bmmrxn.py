@@ -12,15 +12,16 @@ import bmark.menvs as menvs
 
 def model():
     prob = MathProg("bmmrxn")
+    prob.set_default_snr(6)
     params = {
       'E0' : 1.2,
       'S0' : 1.0,
       'ES0' : 0.0,
       'kf' : 0.6,
       'kr' : 0.7,
-      'one': 0.7,
+      'one': 0.9999
     }
-    ES = parse_diffeq("({one}*({kf}*E)*S) + {kr}*(-ES)", "ES0", ":z", params)
+    ES = parse_diffeq("(({kf}*E)*S) + {kr}*(-ES)", "ES0", ":z", params)
     E = parse_diffeq("(({kf}*(-E))*S) + {kr}*(ES)", "E0", ":y", params)
     S = parse_diffeq("(({kf}*(-E))*S) + {kr}*(ES)", "S0", ":x", params)
     prob.bind("E",E)

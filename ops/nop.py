@@ -333,6 +333,9 @@ class NConstRV(NOp):
     self._sigma = sigma
     self._mu = mu
 
+  def copy(self):
+    return NConstRV(self.mu,self.sigma)
+
   def is_posynomial(self):
     return self._mu >= 0.0 and self._sigma >= 0.0
 
@@ -428,6 +431,9 @@ class NMult(NOp):
           yield term
       else:
         yield arg
+
+  def copy(self):
+    return NMult(list(map(lambda a: a.copy(), self.args())))
 
   def exponent(self,p):
     result = NOp.exponent(self,p,toplevel=False)
@@ -578,6 +584,10 @@ class NAdd(NOp):
       assert(arg.op != NOpType.ADD)
 
     NOp.__init__(self,NOpType.ADD,args)
+
+  def copy(self):
+    return NAdd(list(map(lambda a: a.copy(), self.args())))
+
 
   def compute(self,freqs,intervals):
     result = interval.Interval.type_infer(0,0)

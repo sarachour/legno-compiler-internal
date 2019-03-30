@@ -17,6 +17,9 @@ from bmark.bmarks.common import *
 import math
 import bmark.menvs as menvs
 
+def emit(v):
+  return op.Emit(op.Mult(op.Const(0.99999), v))
+
 
 def model():
   prob = MathProg("compinh")
@@ -44,7 +47,7 @@ def model():
   prob.set_interval("S",0,0.5)
   prob.set_interval("A",0,0.5)
   prob.set_interval("B",0,0.5)
-  prob.bind("COMPLEX", op.Emit(op.Var("S")))
+  prob.bind("COMPLEX", emit(op.Var("S")))
   prob.set_max_sim_time(20)
   prob.compile()
   menv = menvs.get_math_env('t20')

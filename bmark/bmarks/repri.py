@@ -8,45 +8,51 @@ from ops import op, opparse
 from bmark.bmarks.common import *
 import bmark.menvs as menvs
 
+def emit(v):
+  return op.Emit(op.Mult(op.Const(0.99999), v))
+
+
 def model():
-    K = 20.0
+    #K = 20.0
+    K = 2.0
     params = {
-        'LacLm0':0.5,
-        'clm0':0.25,
-        'TetRm0':0.12,
-        #'LacLp0':60.0,
-        #'clp0':20.0,
-        #'TetRp0':40.0,
-        'LacLp0':60.0*0.1,
-        'clp0':20.0*0.1,
-        'TetRp0':40.0*0.1,
-        'K':K,
-        'n':2.0,
-        'a_tr':0.4995,
-        'kd_mrna' : 0.15051499783,
-        #'a0_tr':0.0005,
-        'a0_tr':0.0,
-        'k_tl': 3.01029995664,
-        #'k_tl': 3.01029995664*0.05,
-        #'kd_prot': 0.03010299956*0.5,
-        'kd_prot': 0.03010299956,
-        'kf_bind':1.0,
-        'kd_bind':1.0/K
+      'LacLm0':0.5,
+      'clm0':0.25,
+      'TetRm0':0.12,
+      #'LacLp0':60.0,
+      #'clp0':20.0,
+      #'TetRp0':40.0,
+      'LacLp0':60.0*0.1,
+      'clp0':20.0*0.1,
+      'TetRp0':40.0*0.1,
+      'K':K,
+      'n':2.0,
+      'a_tr':0.4995,
+      'kd_mrna' : 0.15051499783,
+      #'a0_tr':0.005,
+      'a0_tr':0.0,
+      'k_tl': 3.01029995664,
+      #'kd_prot': 0.03010299956,
+      'kd_prot': 0.6010299956,
+      'kf_bind':1.0,
+      'kd_bind':1.0/K,
+      'one': 0.9999999
 
     }
 
     prob = MathProg("repri")
 
-    LacLm  = parse_diffeq('{a0_tr}+ALacL+{kd_mrna}*(-LacLm)', \
+    prob.set_default_snr(8.0)
+    LacLm  = parse_diffeq('{a0_tr}+{one}*ALacL+{kd_mrna}*(-LacLm)', \
                    'LacLm0',':a',params)
 
-    clm = parse_diffeq('{a0_tr}+Aclp+{kd_mrna}*(-clm)', \
+    clm = parse_diffeq('{a0_tr}+{one}*Aclp+{kd_mrna}*(-clm)', \
                    'clm0',':b',params)
 
-    TetRm = parse_diffeq('{a0_tr}+ATetR+{kd_mrna}*(-TetRm)', \
+    TetRm = parse_diffeq('{a0_tr}+{one}*ATetR+{kd_mrna}*(-TetRm)', \
                   'TetRm0',':c',params)
 
-    mrna_bnd = 2.5
+    mrna_bnd = 1.5
     prob.bind("LacLm",LacLm)
     prob.bind("clm",clm)
     prob.bind("TetRm",TetRm)
@@ -61,13 +67,14 @@ def model():
     TetRp = parse_diffeq('{k_tl}*TetRm + {kd_prot}*(-TetRp)', \
                   'TetRp0',':f',params)
 
-    prot_bnd = 13.0
+    prot_bnd = 10.0
     prob.bind("LacLp",LacLp)
     prob.bind("clp",clp)
     prob.bind("TetRp",TetRp)
     prob.set_interval("LacLp",0,prot_bnd)
     prob.set_interval("clp",0,prot_bnd)
     prob.set_interval("TetRp",0,prot_bnd)
+
 
     K = params['K']
     n = params['n']
@@ -78,7 +85,7 @@ def model():
             op.Const(-1.0)
         )
     ))
-    closed_form = False
+    closed_form = True
     if closed_form:
         ALacL = op.Call(
             [op.Var('clp')],
@@ -97,23 +104,25 @@ def model():
         ALacL = parse_diffeq('{a_tr_kf_bind}+{kf_bind}*(-ALacL) + {kd_bind}*(-ALacL)*clp*clp',
                     'a_tr',':g',params)
 
-        ATetR = parse_diffeq('{a_tr_kf_bind}+{kf_bind}*(-ATetR) + {kd_bind}*(-ATetR)*LacLp*LacLp',
+        ATetR = parse_diffeq('{at_tr_kf_bind}+{kf_bind}*(-ATetR) + {kd_bind}*(-ATetR)*LacLp*LacLp',
                     'a_tr',':h',params)
 
         Aclp = parse_diffeq('{a_tr_kf_bind}+{kf_bind}*(-Aclp) + {kd_bind}*(-Aclp)*TetRp*TetRp',
                     'a_tr',':i',params)
+
     prob.bind("ALacL",ALacL)
     prob.bind("Aclp",Aclp)
     prob.bind("ATetR",ATetR)
+    prob.bind("OBS",emit(op.Var('Aclp')))
 
     act_bnd = params['a_tr']
     prob.set_interval("ALacL",0,act_bnd)
     prob.set_interval("Aclp",0,act_bnd)
     prob.set_interval("ATetR",0,act_bnd)
-    prob.set_max_sim_time(2000)
+    prob.set_max_sim_time(200)
     prob.compile()
     #menv = menvs.get_math_env('t200')
-    menv = menvs.get_math_env('t2k')
+    menv = menvs.get_math_env('t200')
     return menv,prob
 
 def execute():

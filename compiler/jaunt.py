@@ -30,19 +30,21 @@ def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
     scfvar = jop.JVar(jenv.get_scvar(block.name,loc,port,handle))
 
     prop = block.props(config.comp_mode,config.scale_mode,port,handle=handle)
-    hwrng,hwbw = prop.interval(), prop.bandwidth()
+    phys = jaunt_common.noise_model(circ,block,loc,port)
+    hwrng,hwbw,snr= prop.interval(), prop.bandwidth(), config.snr(port)
     if isinstance(prop, props.AnalogProperties):
-        jaunt_common.analog_op_range_constraint(jenv,prop,scfvar, \
-                                                jop.JConst(1.0),mrng,hwrng, \
-                                                block.name)
+        jaunt_common.analog_op_range_constraint(jenv,circ,phys,prop,
+                                                scfvar,jop.JConst(1.0),
+                                                mrng,hwrng, \
+                                                snr,annot=block.name)
         jaunt_common.analog_bandwidth_constraint(jenv,circ,mbw,hwbw)
 
     elif isinstance(prop, props.DigitalProperties):
-        jaunt_common.digital_op_range_constraint(jenv,prop,scfvar, \
+        jaunt_common.digital_op_range_constraint(jenv,phys,prop,scfvar, \
                                                  jop.JConst(1.0),mrng,hwrng, \
                                                  block.name)
-        jaunt_common.digital_quantize_constraint(jenv,scfvar,
-                                                 jop.JConst(1.0),mrng,prop)
+        jaunt_common.digital_quantize_constraint(jenv,phys,prop,scfvar,
+                                                 jop.JConst(1.0),mrng,snr)
         jaunt_common.digital_bandwidth_constraint(jenv,prob,circ, \
                                                   mbw, prop)
     else:
@@ -83,14 +85,9 @@ def sc_generate_problem(jenv,prob,circ):
         jenv.gte(jop.JVar(jenv.tau()), jop.JConst(1e-6),'tau_max')
 
 
-def sc_build_jaunt_env(prog,circ,infer=False):
+def sc_build_jaunt_env(prog,circ):
     jenv = jenvlib.JauntEnv()
     # declare scaling factors
-    if infer:
-        infer.clear(circ)
-        infer.infer_intervals(prog,circ)
-        infer.infer_bandwidths(prog,circ)
-
     jaunt_common.decl_scale_variables(jenv,circ)
     # build continuous model constraints
     sc_generate_problem(jenv,prog,circ)
@@ -155,6 +152,10 @@ def scale_again(prog,circ,do_physical, do_sweep):
             yield objf.tag(),new_circ
 
 def scale(prog,circ,nslns):
+    infer.clear(circ)
+    infer.infer_intervals(prog,circ)
+    infer.infer_bandwidths(prog,circ)
+    infer.infer_snrs(prog,circ)
     objs = JauntObjectiveFunctionManager.basic_methods()
     for idx,infer_circ in enumerate(jaunt_infer.infer_scale_config(prog,circ,nslns)):
         for obj in objs:

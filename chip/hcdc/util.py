@@ -46,19 +46,12 @@ def build_oprange_cstr(cstrlst,scale):
         contcstrlst.append((var,cstr))
     return contcstrlst
 
-def make_ana_props(rng,lb,ub,min_const,min_dyn):
+def make_ana_props(rng,lb,ub):
     assert(lb < ub)
     prop = props.AnalogProperties() \
                 .set_interval(lb*rng.coeff(),
                               ub*rng.coeff(),
                               unit=units.uA)
-    prop.set_min_signal(props.AnalogProperties.SignalType.CONSTANT,
-                        min_const*(rng.coeff()**glb.MIN_QUANT_EXPO),
-                        units.uA)
-    prop.set_min_signal(props.AnalogProperties.SignalType.DYNAMIC,
-                        min_dyn*(rng.coeff()**glb.MIN_QUANT_EXPO),
-                        units.uA)
-
     return prop
 
 def make_dig_props(rng,lb,ub,npts):

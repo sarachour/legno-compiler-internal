@@ -1,20 +1,20 @@
 data={
     "block": {
-        "baseline": 0.001,
+        "baseline": 0.05,
         "coeffs": {
-            "integ": 0.0,
+            "integ": 1.0,
             "mult": 1.0,
-            "vga": 1.0,
-            "dac": 0.0,
+            "vga": 0.5,
+            "dac": 0.1,
             "adc": 1.0,
-            "fanout": 0.0
+            "fanout": 0.1
         }
     },
     "scale-mode": {
-        "delta": 0.2
+        "delta": 3.0
     },
     "coeff-mode": {
-        "delta": 0.0
+        "delta": 1.0
     },
     "signal": {
         "weights": {
@@ -28,9 +28,7 @@ data={
     },
     "freq": {
       'baseline':1.0,
-        "coeffs": {
-            "adc": 1.0
-        }
+        "coeffs": {}
     }
 }
 

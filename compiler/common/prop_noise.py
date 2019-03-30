@@ -5,13 +5,14 @@ import ops.interval as interval
 from compiler.common.data_symbolic import SymbolicModel
 from compiler.common.visitor_symbolic import SymbolicInferenceVisitor
 from compiler.common.base_propagator_symbolic import MathPropagator
+from compiler.common.dummy_propagator_symbolic import ZeroPropagator
 import util.util as util
 
 class PropNoiseVisitor(SymbolicInferenceVisitor):
 
   def __init__(self,circ):
     SymbolicInferenceVisitor.__init__(self,circ,\
-                                      MathPropagator)
+                                      ZeroPropagator)
 
   def get_generate_expr(self,stump):
     return stump.noise

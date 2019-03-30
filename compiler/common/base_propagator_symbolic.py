@@ -25,6 +25,10 @@ class MathPropagator(ExpressionPropagator):
     else:
       return nop.mkzero()
 
+  def power(self,e1,e2):
+    # TODO: proper propagation, if necessary
+    return self.plus(e1,e2)
+
   def integ(self,deriv,ic):
     return deriv
 
@@ -90,7 +94,6 @@ class MathPropagator(ExpressionPropagator):
     u = nop.mkadd([u1,u2])
     # compute variance: cov <= sqrt(var1*var2)
     cov = self.covariance(v1,v2)
-    #cov = nop.mkmult([v1,v2])
 
     v = nop.mkadd([v1,v2,cov])
     return SymbolicModel(s,u,v)
@@ -107,15 +110,12 @@ class MathPropagator(ExpressionPropagator):
       nop.mkmult([u1,u2])
     ])
     # compute variance
-    #cov = nop.mkmult([nop.mkconst(2.0), \
-    #                            s1,s2, \
-    #                            v1,v2])
-    #cov = nop.mkmult([nop.mkconst(2.0), \
-    #                  self.covariance(v1,v2), \
-    #                  s1,s2])
+    cov = nop.mkmult([nop.mkconst(2.0), \
+                      self.covariance(v1,v2), \
+                      s1,s2])
     t1 = nop.mkmult([x1,x1,v2])
     t2 = nop.mkmult([x2,x2,v1])
     v = nop.mkadd([
-      t1,t2
+      t1,t2,cov
     ])
     return SymbolicModel(s,u,v)

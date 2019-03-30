@@ -39,6 +39,9 @@ class DelayPropagator(ExpressionPropagator):
   def abs(self,m):
     return m
 
+  def power(self,m1,m2):
+    return self.sel(m1,m2)
+
   def plus(self,m1,m2):
     return self.sel(m1,m2)
 

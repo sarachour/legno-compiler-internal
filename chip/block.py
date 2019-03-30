@@ -99,50 +99,6 @@ class Block:
         else:
             return ops.Mult(ops.Const(coeff,tag='scf'),expr)
 
-    '''
-    def _perform_scale(self,comp_mode,scale_mode,output,expr):
-        def recurse(e):
-            return self._perform_scale(comp_mode,scale_mode,output,e)
-
-        if expr.op == ops.OpType.INTEG:
-            ic_coeff = self.coeff(comp_mode,scale_mode,output,expr.ic_handle)
-            deriv_coeff = self.coeff(comp_mode,scale_mode,output,expr.deriv_handle)
-            stvar_coeff = self.coeff(comp_mode,scale_mode,output,expr.handle)
-            return self._wrap_coeff(stvar_coeff,
-                                    ops.Integ(\
-                                              self._wrap_coeff(deriv_coeff,\
-                                                               recurse(expr.deriv)),
-                                              self._wrap_coeff(ic_coeff,\
-                                                               recurse(expr.init_cond)),
-                                              expr.handle
-                                    )
-            )
-
-        elif expr.op == ops.OpType.MULT:
-            return ops.Mult(
-                recurse(expr.arg1), recurse(expr.arg2)
-            )
-        else:
-            return expr
-
-
-    def scaled_dynamics(self,comp_mode,scale_mode,output,expr):
-        if scale_mode is None:
-            return expr
-
-        return self._wrap_coeff(self.coeff(comp_mode,scale_mode,output), \
-                                self._perform_scale(comp_mode,scale_mode,output,expr))
-
-    def get_dynamics(self,comp_mode,output,scale_mode=None):
-        copy_data = self._get_comp_dict(comp_mode,self._copies)
-        op_data = self._get_comp_dict(comp_mode,self._ops)
-        if output in copy_data:
-            output = copy_data[output]
-
-        expr = op_data[output]
-        return self.scaled_dynamics(comp_mode,scale_mode,output,expr)
-
-    '''
     def get_dynamics(self,comp_mode,output):
         copy_data = self._get_comp_dict(comp_mode,self._copies)
         op_data = self._get_comp_dict(comp_mode,self._ops)

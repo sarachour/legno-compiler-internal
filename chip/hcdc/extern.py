@@ -29,8 +29,6 @@ ext_chip_in_props = util.make_dig_props(chipcmd.RangeType.MED, \
                                         glb.ANALOG_MIN/ext_chip_in_coeff,
                                         glb.ANALOG_MAX/ext_chip_in_coeff,
                                         glb.EXT_DAC_SAMPLES)
-ext_chip_in_props.set_min_quantize(ext_chip_in_props.SignalType.DYNAMIC, \
-                                   glb.MIN_QUANT_EXTIN_DYNAMIC)
 ext_chip_in_props.set_clocked(10,glb.MAX_BUFFER_DAC_SAMPLES,units.us)
 
 block_in = Block('ext_chip_in',type=BlockType.DAC) \
@@ -41,9 +39,7 @@ block_in = Block('ext_chip_in',type=BlockType.DAC) \
 .set_props("*","*",["out"], \
           util.make_ana_props(chipcmd.RangeType.MED,\
                               glb.ANALOG_MIN,
-                              glb.ANALOG_MAX,
-                              glb.ANALOG_MINSIG_CONST,
-                              glb.ANALOG_MINSIG_DYN)) \
+                              glb.ANALOG_MAX)) \
 .set_coeff("*","*","out",ext_chip_in_coeff) \
 .check()
 extern_continuous_in_model(block_in)
@@ -71,8 +67,6 @@ ext_chip_out_props = util.make_dig_props(chipcmd.RangeType.MED, \
                                          glb.ANALOG_MIN*ext_chip_out_coeff,
                                          glb.ANALOG_MAX*ext_chip_out_coeff, \
                                          glb.EXT_DAC_SAMPLES)
-ext_chip_out_props.set_min_quantize(ext_chip_in_props.SignalType.DYNAMIC, \
-                                   glb.MIN_QUANT_EXTOUT_DYNAMIC)
 
 #sample rate
 ext_chip_out_props.set_clocked(1,glb.MAX_BUFFER_ADC_SAMPLES,units.ns)
@@ -86,9 +80,7 @@ block_out = Block('ext_chip_out',type=BlockType.ADC) \
 .set_props("*","*",["in"], \
           util.make_ana_props(chipcmd.RangeType.MED,\
                               glb.ANALOG_MIN,
-                              glb.ANALOG_MAX,
-                              glb.ANALOG_MINSIG_CONST,
-                              glb.ANALOG_MINSIG_DYN)) \
+                              glb.ANALOG_MAX)) \
 .set_coeff("*","*","out",ext_chip_out_coeff) \
 .check()
 extern_continuous_out_model(block_out)

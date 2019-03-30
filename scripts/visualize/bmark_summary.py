@@ -14,7 +14,9 @@ DESCRIPTIONS = {
   'sensor-dynsys': 'linear parameter estimation between $x(t)$ and $y(t) ~ x(t)^2$',
   'sensor-fanout': 'linear parameter estimation between $x(t)$ and $y(t)~x(t)$',
   'cosc': 'dampened spring physics simulation',
-  'heat1d-g8': 'movement of heat through lattice'
+  'heat1d-g6': 'movement of heat through lattice'
+  'robot': 'robotics control system'
+  'repri': 'reprissilator'
 
 }
 OBSERVATIONS = {
@@ -25,12 +27,13 @@ OBSERVATIONS = {
   'sensor-dynsys': 'parameter A',
   'sensor-fanout': 'parameter A',
   'cosc': 'position',
-  'heat1d-g8': 'heat at point XXX'
+  'repri': 'chemical compounds',
+  'heat1d-g6': 'heat at point XXX'
 }
 NONLINEAR = {
   'micro-osc-quarter': False,
   'pend': True,
-  'heat1d-g8': False,
+  'heat1d-g6': False,
   'spring': True,
   'vanderpol': True,
   'sensor-dynsys': True,

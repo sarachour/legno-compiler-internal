@@ -1,4 +1,5 @@
 import ops.jop as jop
+import ops.nop as nop
 import ops.op as ops
 import chip.props as props
 from enum import Enum
@@ -7,6 +8,22 @@ import chip.hcdc.globals as glb
 import util.util as util
 import util.config as CONFIG
 import numpy as np
+
+def noise_model(circ,block,loc,port):
+    config = circ.config(block.name,loc)
+    baseline = block.scale_model(config.comp_mode).baseline
+    if port in block.outputs:
+        phys_model = block \
+                     .physical(config.comp_mode,baseline,port) \
+                     .noise.copy()
+        phys_model.bind_instance(block.name,loc)
+        phys = [phys_model]
+    else:
+        phys = []
+        for sb,sl,sp in circ.get_conns_by_dest(block.name,loc,port):
+            phys.append(noise_model(circ,circ.board.block(sb),sl,sp)[0])
+
+    return phys
 
 def decl_scale_variables(jenv,circ):
     # define scaling factors
@@ -69,7 +86,7 @@ def analog_bandwidth_constraint(jenv,circ,mbw,hwbw):
                  'jcom-analog-bw'
         )
 
-def digital_op_range_constraint(jenv,prop,mscale,hscale,mrng,hwrng,annot=""):
+def digital_op_range_constraint(jenv,phys,prop,mscale,hscale,mrng,hwrng,annot=""):
     assert(isinstance(prop, props.DigitalProperties))
     jaunt_util.upper_bound_constraint(jenv,
                                       jop.JMult(mscale,
@@ -82,7 +99,67 @@ def digital_op_range_constraint(jenv,prop,mscale,hscale,mrng,hwrng,annot=""):
                                       mrng.lower, hwrng.lower,
                                       'jcom-digital-oprange-%s' % annot)
 
-def analog_op_range_constraint(jenv,prop,mscale,hscale,mrng,hwrng,annot=""):
+def noise_model_to_noise_expr(jenv,circ,phys):
+    def to_magnitude(blk,loc,port):
+        cfg = circ.config(blk,loc)
+        ival = cfg.interval(port)
+        if ival.spread == 0:
+            return ival.bound
+        else:
+            return ival.spread
+
+    def to_jop(expr):
+        if expr.op == nop.NOpType.CONST_RV:
+            return jop.JConst(abs(expr.sigma))
+        if expr.op == nop.NOpType.ADD:
+            e1 = to_jop(expr.arg(0))
+            e2 = to_jop(expr.arg(1))
+            return jop.JAdd(e1,e2)
+        if expr.op == nop.NOpType.SIG:
+            blk,loc = expr.instance
+            jvar = jenv.get_scvar(blk,loc,expr.port)
+            jrng = to_magnitude(blk,loc,expr.port)
+            return jop.JMult(
+                jop.JVar(jvar),
+                jop.JConst(jrng)
+            )
+
+        if expr.op == nop.NOpType.MULT:
+            e1 = to_jop(expr.arg(0))
+            e2 = to_jop(expr.arg(1))
+            return jop.JMult(e1,e2)
+
+        else:
+            raise Exception("unimplemented: %s" % expr)
+
+    model = nop.mkadd(phys)
+    noise_expr = to_jop(model)
+    return noise_expr
+
+def compute_nsr(noise_expr,mscale,mrng):
+    if mrng.spread == 0:
+        if mrng.bound == 0:
+            return
+
+        signal_expr = jop.JMult(mscale,jop.JConst(mrng.bound))
+        return jop.JMult(jop.expo(signal_expr,-1), noise_expr)
+
+    else:
+        if mrng.bound == 0:
+            return
+
+        signal_expr = jop.JMult(mscale,jop.JConst(mrng.spread))
+        noise_expr = jop.JMult(jop.JConst(2.0), noise_expr)
+        return jop.JMult(jop.expo(signal_expr,-1), noise_expr)
+
+def compute_max_nsr(min_snr):
+    if min_snr == 0:
+        return None
+    max_nsr = 1.0/min_snr
+    return max_nsr
+
+def analog_op_range_constraint(jenv,circ,phys,prop, \
+                               mscale,hscale,mrng,hwrng,snr,annot=""):
     assert(isinstance(prop, props.AnalogProperties))
     jaunt_util.upper_bound_constraint(jenv,
                                       jop.JMult(mscale,
@@ -95,58 +172,29 @@ def analog_op_range_constraint(jenv,prop,mscale,hscale,mrng,hwrng,annot=""):
                                       mrng.lower, hwrng.lower,
                                       'jcom-analog-oprange-%s' % annot)
 
-    if mrng.spread == 0 and abs(mrng.lower) > 0:
-        jaunt_util.lower_bound_constraint(jenv,
-                                          jop.JMult(mscale,
-                                                jop.expo(hscale,-glb.MIN_QUANT_EXPO)),
-                                          abs(mrng.lower), \
-                                            prop.min_signal(prop.SignalType.CONSTANT), \
-                                            'jcom-analog-minsig-const-%s' % annot
-        )
+    nz_expr = noise_model_to_noise_expr(jenv,circ,phys)
+    nsr_expr = compute_nsr(nz_expr,mscale,mrng)
+    max_nsr = compute_max_nsr(snr)
+    if max_nsr is None:
+        return
 
-    elif mrng.spread > 0:
-        jaunt_util.lower_bound_constraint(jenv,
-                                          jop.JMult(mscale,
-                                                    jop.expo(hscale,-glb.MIN_QUANT_EXPO)),
-                                          mrng.spread, \
-                                            prop.min_signal(prop.SignalType.DYNAMIC), \
-                                            'jcom-analog-minsig-dyn-%s' % annot
-        )
+    if not nsr_expr is None:
+        jenv.lte(nsr_expr,jop.JConst(max_nsr), \
+                 annot='jcom-analog-minsig')
 
 
 
-def digital_quantize_constant(jenv,mscale,hscale,math_val,props):
-    delta_h = np.mean(np.diff(props.values()))
-    min_quants = props.min_quantize(props.SignalType.CONSTANT)
-    if abs(math_val) > 0:
-        jaunt_util.lower_bound_constraint(jenv,
-                                          #mscale,\
-                                          jop.JMult(mscale,
-                                                    jop.expo(hscale,-1.0)),
-                                          abs(math_val)/delta_h,
-                                          min_quants,
-                                          'jcom-digital-minsig-const'
-        )
+def digital_quantize_constraint(jenv,phys,prop,mscale,hscale,math_rng,snr):
+    delta_h = np.mean(np.diff(prop.values()))
+    nsr_expr = compute_nsr(jop.JConst(delta_h), mscale, math_rng)
+    max_nsr = compute_max_nsr(snr)
+    if max_nsr is None:
+        return
 
-def digital_quantize_signal(jenv,mscale,hscale,math_ival,props):
-    delta_h = np.mean(np.diff(props.values()))
-    min_quants = props.min_quantize(props.SignalType.DYNAMIC)
-    lb = delta_h*min_quants
-    jaunt_util.lower_bound_constraint(jenv,
-                                      #mscale,\
-                                      jop.JMult(mscale,
-                                                jop.expo(hscale,-1.0)),
-                                      math_ival.spread/delta_h,
-                                      min_quants,
-                                      'jcom-digital-minsig-dyn'
-    )
+    if not nsr_expr is None:
+        jenv.lte(nsr_expr,jop.JConst(max_nsr), \
+                 annot='jcom-digital-minsig')
 
-
-def digital_quantize_constraint(jenv,mscale,hscale,math_rng,props):
-    if math_rng.lower < math_rng.upper:
-        digital_quantize_signal(jenv,mscale,hscale,math_rng,props)
-    else:
-        digital_quantize_constant(jenv,mscale,hscale,math_rng.value,props)
 
 def digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):
     tau = jop.JVar(jenv.tau())

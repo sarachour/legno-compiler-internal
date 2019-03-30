@@ -38,7 +38,6 @@ class AnalogProperties(Properties):
         Properties.__init__(self,Properties.ANALOG)
         self._bounds = (None,None,units.unknown)
         self._bandwidth = (None,None,units.unknown)
-        self._min_signal = {}
 
     def set_bandwidth(self,lower,upper,unit):
         assert(lower is None or upper is None or lower <= upper)
@@ -49,13 +48,6 @@ class AnalogProperties(Properties):
         assert(lower is None or upper is None or lower <= upper)
         self._bounds = (lower,upper,unit)
         return self
-
-    def set_min_signal(self,typ,min_sig,units):
-        self._min_signal[typ] = (min_sig,units)
-
-    def min_signal(self,typ):
-        sig,unit = self._min_signal[typ]
-        return sig
 
     def interval(self):
         lb,ub,unit = self._bounds
@@ -99,8 +91,6 @@ class DigitalProperties(Properties):
         self._sample_rate = (None,units.unknown)
         # for continuous
         self._bandwidth = (None,None,units.unknown)
-        # quantization
-        self._min_quantize = {}
 
     def __repr__(self):
         clk = "Synch(kind=%s, rate=%s, samps=%s, bw=%s)" % \
@@ -118,17 +108,6 @@ class DigitalProperties(Properties):
         self._sample_rate = (sample_rate,unit)
         self._max_samples = max_samples
         return self
-
-    def set_min_quantize(self,typ,v):
-        assert(not typ in self._min_quantize)
-        self._min_quantize[typ] = v
-
-    def min_quantize(self,typ):
-        if not typ in self._min_quantize:
-            for k,q in self._min_quantize.items():
-                print("%s=%s" % (k,q))
-            raise Exception("not in min-quantize: <%s>" % typ)
-        return self._min_quantize[typ]
 
     def interval(self):
         lb = min(self.values())

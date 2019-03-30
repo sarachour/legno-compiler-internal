@@ -60,12 +60,7 @@ class PropIntervalVisitor(Visitor):
                     handle = None
 
                 mrng = prog.interval(label)
-                mbw = prog.bandwidth(label)
-                print("lbl: %s[%s].%s := %s" % \
-                      (block_name,loc,port,mrng))
                 config.set_interval(port,mrng,\
-                                    handle=handle)
-                config.set_bandwidth(port,mbw,\
                                     handle=handle)
 
 

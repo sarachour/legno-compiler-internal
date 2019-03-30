@@ -23,6 +23,7 @@ def model(n,obs_idx):
   params['2coeff'] = params['coeff']*2
 
   prob = MathProg('heat1d-g%d' % n)
+  prob.set_default_snr(4)
   for i in range(0,n):
     params['curr'] = "u%d" % (i)
     if i > 0 and i < n-1:

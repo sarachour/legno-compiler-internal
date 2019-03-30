@@ -30,14 +30,14 @@ BMARKS = [
     spring.model(),
     oscillator.model(),
     pendulum.model(),
-    #bmmrxn.model(),
-    #compinh.model(),
+    bmmrxn.model(),
+    compinh.model(),
     repri.model(),
     vanderpol.model(),
-    #heat.model(4),
-    #heat.model(8),
-    heat.model(8,0),
-    heat.model(16,13),
+    heat.model(4,2),
+    heat.model(6,2),
+    heat.model(8,2),
+    heat.model(16,2),
     # external inputs
     #test.model_1(),
     #test.model_1_scale(),
@@ -48,8 +48,7 @@ BMARKS = [
     test.zero(),
     robot_control.model(),
     sensor_fanout.model(),
-    sensor_dynsys.model(),
-    bbsys.model()
+    sensor_dynsys.model()
 ]
 
 # energy model: page 26 of thesis, chapter 2

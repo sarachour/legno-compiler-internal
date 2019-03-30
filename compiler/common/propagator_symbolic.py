@@ -38,10 +38,14 @@ class ExpressionPropagator:
   def sgn(self,m):
     raise NotImplementedError
 
+  def power(self,m1,m2):
+    raise NotImplementedError
+
 
   def _get_model(self,port):
     block,loc,_ = self.place
-    if self._out.has(block,loc,port):
+    if not self._out is None and \
+       self._out.has(block,loc,port):
       model = self._out.get(block,loc,port)
     else:
       model = self._in.get(block,loc,port)
@@ -118,6 +122,13 @@ class ExpressionPropagator:
       self.expr = expr
       model = self.integ(m1,m2)
 
+    elif expr.op == op.OpType.ADD:
+      m1 = recurse(expr.arg1)
+      m2 = recurse(expr.arg2)
+      self.expr = expr
+      model = self.plus(m1,m2)
+
+
     elif expr.op == op.OpType.MULT:
       m1 = recurse(expr.arg1)
       m2 = recurse(expr.arg2)
@@ -157,6 +168,12 @@ class ExpressionPropagator:
       m1 = recurse(expr.arg(0))
       self.expr = expr
       model = self.sin(m1)
+
+    elif expr.op == op.OpType.POW:
+      m1 = recurse(expr.arg1)
+      m2 = recurse(expr.arg2)
+      self.expr = expr
+      model = self.power(m1,m2)
 
     else:
       raise Exception("unimplemented: %s" % (expr))

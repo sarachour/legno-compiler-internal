@@ -154,28 +154,20 @@ def scale_model(mult):
                                         glb.DAC_MIN,
                                         glb.DAC_MAX,
                                         glb.ANALOG_DAC_SAMPLES)
-      dig_props.set_min_quantize(dig_props.SignalType.CONSTANT,\
-                                 glb.MIN_QUANT_CONST)
       dig_props.set_constant()
       mult.set_props("mul",mode,["in0"],
                     util.make_ana_props(in0rng,
                                         glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX,
-                                        glb.ANALOG_MINSIG_CONST,
-                                        glb.ANALOG_MINSIG_DYN))
+                                        glb.ANALOG_MAX))
       mult.set_props("mul",mode,["in1"],
                     util.make_ana_props(in1rng,
                                         glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX,
-                                        glb.ANALOG_MINSIG_CONST,
-                                        glb.ANALOG_MINSIG_DYN))
+                                        glb.ANALOG_MAX))
       mult.set_props("mul",mode,["coeff"], dig_props)
       mult.set_props("mul",mode,["out"],
                     util.make_ana_props(outrng,
                                         glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX,
-                                        glb.ANALOG_MINSIG_CONST,
-                                        glb.ANALOG_MINSIG_DYN))
+                                        glb.ANALOG_MAX))
       mult.set_coeff("mul",mode,'out', scf)
 
   for mode in vga_modes:
@@ -186,27 +178,20 @@ def scale_model(mult):
                                       glb.DAC_MIN,
                                       glb.DAC_MAX, \
                                       glb.ANALOG_DAC_SAMPLES)
-      dig_props.set_min_quantize(dig_props.SignalType.CONSTANT, glb.MIN_QUANT_CONST)
       dig_props.set_constant()
       mult.set_props("vga",mode,["in0"],
                     util.make_ana_props(in0rng, \
                                         glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX,
-                                        glb.ANALOG_MINSIG_CONST,
-                                        glb.ANALOG_MINSIG_DYN))
+                                        glb.ANALOG_MAX))
       mult.set_props("vga",mode,["in1"],
                     util.make_ana_props(chipcmd.RangeType.MED, \
                                         glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX,
-                                        glb.ANALOG_MINSIG_CONST,
-                                        glb.ANALOG_MINSIG_DYN))
+                                        glb.ANALOG_MAX))
       mult.set_props("vga",mode,["coeff"], dig_props)
       mult.set_props("vga",mode,["out"],
                     util.make_ana_props(outrng, \
                                         glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX,
-                                        glb.ANALOG_MINSIG_CONST,
-                                        glb.ANALOG_MINSIG_DYN))
+                                        glb.ANALOG_MAX))
       mult.set_coeff("vga",mode,'out', scf)
 
 

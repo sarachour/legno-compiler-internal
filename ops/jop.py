@@ -4,6 +4,7 @@ from enum import Enum
 
 class JOpType(Enum):
     MULT  = "*"
+    ADD = "+"
     CONST = "const"
     VAR = "var"
 
@@ -87,6 +88,16 @@ class JMult(JOp):
             return c, x1
         else:
             return c,JMult(x1,x2)
+
+
+
+class JAdd(JOp):
+
+    def __init__(self,arg1,arg2):
+        JOp.__init__(self,JOpType.ADD,[arg1,arg2])
+
+    def factor_const(self):
+        return 1.0,self
 
 
 
