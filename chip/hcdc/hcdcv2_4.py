@@ -240,3 +240,7 @@ def make_board():
 
 board = make_board()
 test_board(board)
+#for blk in board.blocks:
+#    n = board.num_blocks(blk.name)
+#    print("%s = %d" % (blk.name,n))
+#input()

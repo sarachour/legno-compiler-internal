@@ -22,7 +22,7 @@ def to_table(summary):
   }
   desc = 'analog chip configuration statistics'
   table = common.Table('Circuit Configurations',desc, 'circcfg','|c|ccccccc|c|')
-  table.set_fields(['integrator','multiplier', \
+  table.set_fields(['blocks','integrator','multiplier', \
                     'fanout','adc','dac','lut', \
                     'crossbar','connections'])
   table.horiz_rule()
@@ -38,6 +38,7 @@ def to_table(summary):
       fields[to_header[key]] += value
 
     fields[to_header['conns']] += data['conns']
+    fields['blocks'] = data['blocks']
     table.data(bmark,fields)
 
   table.horiz_rule()
@@ -57,6 +58,7 @@ def visualize():
 
     summary[bmark] = {
       'conns': 0,
+      'total': 0,
       'blocks': {}
     }
 
@@ -65,6 +67,7 @@ def visualize():
       if not block_name in summary[bmark]['blocks']:
         summary[bmark]['blocks'][block_name] = 0
       summary[bmark]['blocks'][block_name] += 1
+      summary[bmark]['total'] += 1
 
     summary[bmark]['conns']= len(list(conc_circ.conns()))
 

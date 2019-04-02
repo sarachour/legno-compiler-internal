@@ -8,6 +8,7 @@ import time
 import json
 import shutil
 import numpy as np
+from util.util import Timer
 
 # TODO: in concrete specification, connection is made to same dest.
 def compile(board,problem):
@@ -35,6 +36,8 @@ def exec_arco(hdacv2_board, args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
   problem = bmark.get_prog(args.benchmark)
 
+  timer = Timer('arco_%s' % args.benchmark)
+  timer.start()
   for indices,conc_circ in \
       arco.compile(hdacv2_board,
                               problem,
@@ -42,19 +45,25 @@ def exec_arco(hdacv2_board, args):
                               max_abs_circs=args.abs_circuits,
                               max_conc_circs=args.conc_circuits):
 
+      timer.end()
       filename = path_handler.abs_circ_file(indices)
       print("<<< writing circuit>>>")
       conc_circ.write_circuit(filename)
       filename = path_handler.abs_graph_file(indices)
       print("<<< writing graph >>>")
       conc_circ.write_graph(filename,write_png=True)
-      time.sleep(1)
+      timer.start()
+
+  timer.kill()
+  print(timer)
+  timer.save()
 
 def exec_jaunt_phys(hdacv2_board,args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
   prog = bmark.get_prog(args.benchmark)
   circ_dir = path_handler.skelt_circ_dir()
   generated = {}
+  timer = Timer('jphys_%s' % args.benchmark)
   for dirname, subdirlist, filelist in os.walk(circ_dir):
     for fname in filelist:
       if fname.endswith('.circ'):
@@ -71,9 +80,11 @@ def exec_jaunt_phys(hdacv2_board,args):
 
         filename = "%s/%s" % (dirname,fname)
         conc_circ = ConcCirc.read(hdacv2_board, filename)
+        timer.start()
         for opt,scaled_circ in jaunt.scale_again(prog,conc_circ, \
                                                     args.physical,
                                                     args.sweep):
+            timer.end()
             filename = path_handler.conc_circ_file(circ_bmark,
                                                     circ_indices,
                                                     circ_scale_index,
@@ -86,12 +97,19 @@ def exec_jaunt_phys(hdacv2_board,args):
                                                     opt)
             scaled_circ.write_graph(filename,write_png=True)
             generated[gen_key] = True
+            timer.start()
 
+        timer.kill()
+
+
+    print(timer)
+    timer.save()
 
 def exec_jaunt(hdacv2_board, args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
   prog = bmark.get_prog(args.benchmark)
   circ_dir = path_handler.abs_circ_dir()
+  timer = Timer('jaunt_%s' % args.benchmark)
   for dirname, subdirlist, filelist in os.walk(circ_dir):
     for fname in filelist:
       if fname.endswith('.circ'):
@@ -101,18 +119,24 @@ def exec_jaunt(hdacv2_board, args):
         filename = "%s/%s" % (dirname,fname)
         conc_circ = ConcCirc.read(hdacv2_board, filename)
 
+        timer.start()
         for idx,opt,scale_circ in jaunt.scale(prog,conc_circ,args.scale_circuits):
             filename = path_handler.conc_circ_file(circ_bmark,
                                                     circ_indices,
                                                     idx,
                                                     opt)
+            timer.end()
             scale_circ.write_circuit(filename)
             filename = path_handler.conc_graph_file(circ_bmark,
                                                     circ_indices,
                                                     idx,
                                                     opt)
             scale_circ.write_graph(filename,write_png=True)
+            timer.start()
+        timer.kill()
 
+    print(timer)
+    timer.save()
 
 def exec_srcgen(hdacv2_board,args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
@@ -120,6 +144,7 @@ def exec_srcgen(hdacv2_board,args):
   hwenv = hwenvs.get_hw_env(args.hw_env)
   recompute = args.recompute
   circ_dir = path_handler.skelt_circ_dir()
+  timer = Timer('srcgen_%s' % args.benchmark)
   for dirname, subdirlist, filelist in os.walk(circ_dir):
     for fname in filelist:
       if fname.endswith('.circ'):
@@ -137,6 +162,7 @@ def exec_srcgen(hdacv2_board,args):
             continue
 
         conc_circ = ConcCirc.read(hdacv2_board,"%s/%s" % (dirname,fname))
+        timer.start()
         gren_file = srcgen.generate(path_handler,
                                     hdacv2_board,\
                                     conc_circ,\
@@ -144,8 +170,11 @@ def exec_srcgen(hdacv2_board,args):
                                     hwenv,
                                     filename=filename,
                                     ntrials=args.trials)
+        timer.end()
         gren_file.write(filename)
 
+  print(timer)
+  timer.save()
 
 def exec_graph_one(hdacv2_board,path_handler,fname):
     dirname = path_handler.skelt_circ_dir()

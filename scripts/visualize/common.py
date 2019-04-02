@@ -85,19 +85,18 @@ class BenchmarkVisualization:
                      'pend',
                      'vanderpol',
                      'sensor-fanout',
-                     'sensor-dynsys',
                      'spring',
-                     'heat1d-g8'
+                     'robot',
+                     'heat1d-g6'
   ]
   BENCHMARK_NAMES = {
     'micro-osc-quarter': 'sin',
-    'cosc': 'dampened-osc',
+    'cosc': 'damp',
     'vanderpol': 'vanderpol',
     'pend': 'pendulum',
-    'spring': 'physics',
-    'heat1d-g8': 'heat8',
-    'sensor-dynsys': 'fit-square',
-    'sensor-fanout': 'fit-same'
+    'spring': 'blocks',
+    'heat1d-g6': 'heat6',
+    'sensor-fanout': 'linfit'
   }
 
   @staticmethod

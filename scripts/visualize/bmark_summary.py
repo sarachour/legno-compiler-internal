@@ -11,12 +11,10 @@ DESCRIPTIONS = {
   'pend': 'pendulum simulation with no small angle estimation',
   'spring': 'simulation of two boxes connected with springs',
   'vanderpol': 'stiff vanderpol oscillator',
-  'sensor-dynsys': 'linear parameter estimation between $x(t)$ and $y(t) ~ x(t)^2$',
-  'sensor-fanout': 'linear parameter estimation between $x(t)$ and $y(t)~x(t)$',
+  'sensor': 'linear parameter estimation between $x(t)$ and $y(t)~x(t)$',
   'cosc': 'dampened spring physics simulation',
-  'heat1d-g6': 'movement of heat through lattice'
+  'heat1d-g6': 'movement of heat through lattice',
   'robot': 'robotics control system'
-  'repri': 'reprissilator'
 
 }
 OBSERVATIONS = {
@@ -28,7 +26,7 @@ OBSERVATIONS = {
   'sensor-fanout': 'parameter A',
   'cosc': 'position',
   'repri': 'chemical compounds',
-  'heat1d-g6': 'heat at point XXX'
+  'heat1d-g6': 'heat at point 2'
 }
 NONLINEAR = {
   'micro-osc-quarter': False,

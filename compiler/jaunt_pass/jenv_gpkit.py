@@ -122,7 +122,7 @@ def solve_gpkit_problem_mosek(gpmodel,timeout=10):
         signal.alarm(timeout)
         sln = gpmodel.solve(solver=CONFIG.GPKIT_SOLVER,
                             warn_on_check=True,
-                            verbosity=3)
+                            verbosity=0)
         signal.alarm(0)
     except TimeoutError as te:
         jaunt_util.log_warn("Timeout: mosek timed out or hung")

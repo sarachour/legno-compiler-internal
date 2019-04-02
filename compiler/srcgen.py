@@ -377,7 +377,7 @@ def get_ext_adcs_in_use(board,conc_circ,menv):
 
 def to_hw_time(circ,time):
   scaled_time = time/circ.tau
-  hw_time = scaled_time/(circ.board.time_constant)
+  hw_time = scaled_time/(circ.board.time_constant)*2.0
   return hw_time
 
 def preamble(gren,board,conc_circ,mathenv,hwenv):

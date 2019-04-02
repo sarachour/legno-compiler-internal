@@ -7,6 +7,7 @@ import itertools
 import logging
 import compiler.arco_pass.util as arco_util
 logger = logging.getLogger('arco_route')
+logger.setLevel(logging.ERROR)
 
 class RouteGraph:
     class RNode:
@@ -540,7 +541,7 @@ def tac_abs_get_resolutions(graph,ctx):
 
 
         if n_choices == 0:
-            print("-> no valid routes exist")
+            logger.warn("-> no valid routes exist")
             break
 
     for choices in itertools.product(*choice_list):
@@ -558,9 +559,9 @@ def tac_abs_get_resolutions(graph,ctx):
                 conns.append((this_route[i], this_route[i+1]))
 
         if arco_util.has_duplicates(nodes):
-            print("=== skipping ===")
+            logger.info("=== skipping ===")
             for node,cnts in arco_util.counts(nodes).items():
-                print("%s: %d" % (node,cnts))
+                logger.info("%s: %d" % (node,cnts))
             continue
 
         yield cstr_list,nodes,conns
@@ -582,7 +583,7 @@ def tac_abs_rslv_constraints(graph,ctx):
 
         for blk,loc in intermediate_nodes:
             node = RouteGraph.RNode(graph,blk,loc)
-            print("use %s" % (node))
+            logger.info("use %s" % (node))
             cfg = Config()
             cfg.set_comp_mode("*")
             step = DFSUseNode(node,
@@ -591,11 +592,11 @@ def tac_abs_rslv_constraints(graph,ctx):
             base_ctx.add(step)
 
         base_ctx.commit()
-        print("-- new conns --")
+        logger.info("-- new conns --")
         for (sblk,sloc,sport),(dblk,dloc,dport) in conns:
             src_node = graph.get_node(sblk,sloc)
             dest_node = graph.get_node(dblk,dloc)
-            print("%s.%s -> %s.%s" % (src_node,sport,dest_node,dport))
+            logger.info("%s.%s -> %s.%s" % (src_node,sport,dest_node,dport))
             step = DFSConnNode(src_node,sport, \
                                dest_node,dport)
             base_ctx.add(step)
@@ -787,7 +788,7 @@ def derive_abs_circuit_constraints(fragment_map):
 def traverse_abs_circuits(graph,variables,fragment_map,ctx=None):
     variable = variables[0]
     fragment = fragment_map[variable]
-    print(">>> compute variable [%s] <<<" % variable)
+    logger.info(">>> compute variable [%s] <<<" % variable)
     for result in \
         graph.try_search.iterate(traverse_abs_circuit(graph,variable,fragment,
                                                    ctx=ctx)):
@@ -805,12 +806,12 @@ def traverse_abs_circuits(graph,variables,fragment_map,ctx=None):
                 unresolved = list(new_result.context().unresolved_constraints())
                 total = len(new_result.constraints())
                 if len(unresolved) > 0:
-                    print("-> skipping <%d/%d> unresolved configs" % \
+                    logger.info("-> skipping <%d/%d> unresolved configs" % \
                           (len(unresolved),total))
                     input("<continue>")
                     continue
 
-                print(">>> found solution [%d/%d unresolved] <<<" % (len(unresolved),\
+                logger.info(">>> found solution [%d/%d unresolved] <<<" % (len(unresolved),\
                                                                    total))
                 yield new_result
 
@@ -819,10 +820,10 @@ def build_concrete_circuit(graph,prob,fragment_map):
     for var,frag in fragment_map.items():
         logger.info("=== %s ===" % var)
 
-    print(">>> derive constraints <<<")
+    logger.info(">>> derive constraints <<<")
     all_cstrs = list(derive_abs_circuit_constraints(fragment_map))
-    print("# cstrs: %s" % len(all_cstrs))
-    print(">>> route circuit <<<")
+    logger.info("# cstrs: %s" % len(all_cstrs))
+    logger.info(">>> route circuit <<<")
     starting_ctx = RouteDFSState(fragment_map,all_cstrs)
     for idx,result in enumerate(traverse_abs_circuits(graph, \
                                                     variables, \
@@ -832,7 +833,7 @@ def build_concrete_circuit(graph,prob,fragment_map):
         circ = ccirc.ConcCirc(graph.board)
 
         for node in state.nodes():
-            print(node.block_name,node.loc)
+            logger.info(node.block_name,node.loc)
             circ.use(node.block_name,node.loc,config=node.config)
 
         for n1,p1,n2,p2 in state.conns():
@@ -854,7 +855,7 @@ def route(board,prob,node_map,cutoff=7,max_failures=None,max_resolutions=None):
                                  max_resolutions=max_resolutions)
     logger.info('--- concrete circuit ---')
     for conc_circ in build_concrete_circuit(graph,prob,node_map):
-        print("<<<< CONCRETE CIRCUIT >>>>")
+        logger.info("<<<< CONCRETE CIRCUIT >>>>")
         yield conc_circ
 
     graph.try_search.clear()

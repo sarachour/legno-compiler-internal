@@ -17,7 +17,7 @@ import compiler.arco_pass.util as arco_util
 #logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('arco')
-
+logger.setLevel(logging.ERROR)
 
 def bind_namespace(node,namespace,ids=[]):
     if node.id in ids:
@@ -64,7 +64,7 @@ def compile_sample_fragments_and_add_fanouts(board,frag_node_map, \
     while True:
         frag_nodes = {}
         frag_outputs = {}
-        print("-> sampling circuit")
+        logger.info("-> sampling circuit")
         choices = arcolib_util.sample(frag_node_map)
         for variable,index in choices.items():
             frag_nodes[variable],_ = \
@@ -100,7 +100,6 @@ def compile_sample_fragments_and_add_fanouts(board,frag_node_map, \
                 break
 
         if skip_circuit:
-            print("-> invalid. skipping...")
             continue
 
         logger.info("--- Fan outs ---")
@@ -130,7 +129,7 @@ def compile_combine_fragments(subcircuit_optmap):
             source_map = {}
             node_map = {}
             for variable,index in zip(variables,selection):
-                print(variable)
+                logger.info(variable)
                 source_map[variable] = subcirc_sources[variable][index]
                 node_map[variable] = subcirc_nodes[variable][index]
 
@@ -150,7 +149,7 @@ def compile(board,prob,depth=3, \
         logger.info("# xforms: %d" %  len(xform_map[var]))
         logger.info("# unique-xforms: %d" %  len(set(map(lambda x: str(x),xform_map[var]))))
         for xform in xform_map[var]:
-            print(xform)
+            logger.info(xform)
         logger.info("# frags: %d" %  len(frags))
         if len(frags) == 0:
             raise Exception("cannot model variable <%s>" % var)
@@ -168,13 +167,13 @@ def compile(board,prob,depth=3, \
 
         try_merge.clear()
         try_conc.clear()
-        print(">>> combine fragments <<<")
+        logger.info(">>> combine fragments <<<")
         for merge_idx,source_map,node_map in \
             try_merge.iterate(compile_combine_fragments(subcircuits_optmap),do_succeed=False):
 
             refs,stubs = arcolib_mkfan.count_var_refs(node_map)
             n_conc = 0;
-            print(">>> compute matches from stubs to sources <<<")
+            logger.info(">>> compute matches from stubs to sources <<<")
             for stub_src_idx,mapping in \
                 enumerate(arcolib_mkfan.match_stubs_to_sources(source_map,stubs)):
 
@@ -182,16 +181,16 @@ def compile(board,prob,depth=3, \
                     logger.info("-> found %d/%d conc circuits" % \
                                 (n_conc,max_conc_circs))
                     break
-                print(">>> connect stubs to sources <<<")
+                logger.info(">>> connect stubs to sources <<<")
                 arcolib_mkfan.connect_stubs_to_sources(board,
                                                        node_map, \
                                                        mapping)
 
-                print(">>> bind namespaces <<<")
+                logger.info(">>> bind namespaces <<<")
                 for var,node in node_map.items():
                     bind_namespace(node,var)
 
-                print(">>> route <<<")
+                logger.info(">>> route <<<")
                 for route_index,conc_circ in try_conc.enumerate(arco_route.route(board,
                                                                                  prob,
                                                                                  node_map,

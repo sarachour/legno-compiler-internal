@@ -1,9 +1,38 @@
 import cProfile
 import json
 import zlib
+import numpy as np
 import binascii
+import time
 
+class Timer:
 
+    def __init__(self,name):
+        self._runs = []
+        self._name = name
+
+    def start(self):
+        self._start = time.time()
+
+    def kill(self):
+        self._start = None
+
+    def end(self):
+        end = time.time()
+        self._runs.append(end-self._start)
+        self._start = None
+
+    def __repr__(self):
+        mean = np.mean(self._runs)
+        std = np.std(self._runs)
+        return "%s mean=%s std=%s" % (self._name,mean,std)
+
+    def save(self):
+        with open("time_%s.txt" % self._name,'w') as fh:
+            fh.write("%s\n" % self._name)
+            for run in self._runs:
+                fh.write("%f\n" % run)
+ 
 def flatten(dictionary, level = []):
     tmp_dict = {}
     for key, val in dictionary.items():
