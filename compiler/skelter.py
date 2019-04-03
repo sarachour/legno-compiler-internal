@@ -42,86 +42,6 @@ def rank_maxsigslow_heuristic(circ):
 
   return score
 
-HANDTUNED = {
-  'micro-osc-quarter':{
-    (jenvlib.JauntVarType.TAU,()): (-1,0.7081),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('tile_out','(HDACv2,0,0,0,0)','in')): (1,0.801),
-    #(jenvlib.JauntVarType.SCALE_VAR, \
-    # ('integrator','(HDACv2,0,0,0,0)','ic')): (1,0.801)
-
-  },
-  'cosc':{
-    (jenvlib.JauntVarType.TAU,()): (-1,0.8202),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('multiplier','(HDACv2,0,0,0,0)','coeff')): (-1,0.82),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('multiplier','(HDACv2,0,0,1,0)','coeff')): (-1,0.68),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('fanout','(HDACv2,0,0,0,1)','in')): (1,0.60),
-
-  },
-  'pend':{
-    (jenvlib.JauntVarType.TAU,()): (1,0.39),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('fanout','(HDACv2,0,0,0,0)','in')): (1,0.964),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('ext_chip_out','(HDACv2,0,3,2)','out')): (1,0.968),
-  },
-  'vanderpol':{
-    (jenvlib.JauntVarType.TAU,()): (-1,0.7509),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('integrator','(HDACv2,0,0,0,0)','in')): (-1,0.7494),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('integrator','(HDACv2,0,0,1,0)','in')): (-1,0.67),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('multiplier','(HDACv2,0,0,0,1)','out')): (-1,0.67),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('multiplier','(HDACv2,0,0,2,1)','out')): (-1,0.675)
-  },
-  'sensor-fanout':{
-    (jenvlib.JauntVarType.TAU,()): (-1,0.299),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('ext_chip_out','(HDACv2,0,3,2)','out')): (1,0.73),
-  },
-  'sensor-dynsys':{
-    (jenvlib.JauntVarType.TAU,()): (1,0.30),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('integrator','(HDACv2,0,0,1,0)','ic')): (1,0.71),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('multiplier','(HDACv2,0,0,0,0)','in0')): (1,0.71),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('ext_chip_out','(HDACv2,0,3,2)','out')): (1,0.84)
-  },
-  'spring':{
-    (jenvlib.JauntVarType.TAU,()): (-1,0.61),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('fanout','(HDACv2,0,0,0,0)','in')): (1,0.789),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('ext_chip_out','(HDACv2,0,3,2)','out')): (1,0.789),
-    (jenvlib.JauntVarType.SCALE_VAR, \
-     ('integrator','(HDACv2,0,0,1,0)','ic')): (1,0.722),
-
-
-  }
-}
-def rank_handtuned_heuristic(bmark,circ):
-  data = HANDTUNED[bmark]
-  score = 1.0
-  for (tag,info),(direc,weight) in data.items():
-    if tag == jenvlib.JauntVarType.TAU:
-      scf = circ.tau
-    else:
-      (block,loc,port) = info
-      config = circ.config(block,loc)
-      scf = config.scf(port)
-      if scf is None:
-        continue
-
-    score += weight*(scf*direc)
-
-  return score
-
 def rank_maxsigfast_heuristic(circ):
   score = 0
   for block_name,loc,config in circ.instances():
@@ -165,40 +85,21 @@ def rank_scale_heuristic(circ):
 
 def rank_model(circ):
   snrs = []
-  locs = []
+  iface_snrs = []
   nz_eval = evaluator.propagated_noise_evaluator(circ)
   # mismatch in seconds
-  signals = []
-  noises =[]
-  for weight,block_name,loc,port in evalheur.get_ports(circ,evaluate=True):
-    config = circ.config(block_name,loc)
-    signal,noise,snr = compute_snr(nz_eval,circ,block_name,loc,port)
+  for _,block_name,loc,port in evalheur.get_iface_ports(circ,False,1.0):
+    _,_,snr = compute_snr(nz_eval,circ,block_name,loc,port)
     if not snr is None and snr > 0:
-      snrs.append(weight*snr)
+      iface_snrs.append(snr)
 
-    if not signal is None:
-      signals.append(weight*signal)
+  for _,block_name,loc,port in evalheur.get_all_ports(circ,True,1.0):
+    config = circ.config(block_name,loc)
+    _,_,snr = compute_snr(nz_eval,circ,block_name,loc,port)
+    if not snr is None and snr > 0:
+      snrs.append(snr)
 
-    if not noise is None:
-      noises.append(weight*noise)
-
-  norm_sigs = list(map(lambda s: s/max(signals), signals))
-  if len(noises) == 0:
-    return
-
-  max_noises = max(noises)
-  if max_noises == 0:
-    max_noises = 1e-6
-
-  norm_noises = list(map(lambda s: s/max_noises, signals))
-  n = len(signals)
-  #score = sum(snrs) + 10.0/circ.tau
-  score = min(snrs)/circ.tau
-  #score = sum(map(lambda n: 1/n, noises))*(1.0/circ.tau)
-  print("score= %s" % score)
-  for snr,port in zip(snrs, evalheur.get_ports(circ,evaluate=True)):
-    print("  %s: %s" % (str(port),snr))
-  #return (sum(norm_noises)/n*max(noises))**-1+sum(norm_sigs)/n*max(signals)
+  score = np.log10(min(snrs)*min(iface_snrs))
   return score
 
 def rank(circ):

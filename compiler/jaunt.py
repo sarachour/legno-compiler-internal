@@ -62,6 +62,7 @@ def sc_port_used(jenv,block_name,loc,port,handle=None):
                        tag=jenvlib.JauntVarType.SCALE_VAR)
 
 def sc_generate_problem(jenv,prob,circ):
+
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for out in block.outputs:
@@ -83,10 +84,10 @@ def sc_generate_problem(jenv,prob,circ):
     else:
         jenv.lte(jop.JVar(jenv.tau()), jop.JConst(1e6),'tau_min')
         jenv.gte(jop.JVar(jenv.tau()), jop.JConst(1e-6),'tau_max')
+        jaunt_common.max_sim_time_constraint(jenv,prob,circ)
 
 
-def sc_build_jaunt_env(prog,circ):
-    jenv = jenvlib.JauntEnv()
+def sc_build_jaunt_env(jenv,prog,circ):
     # declare scaling factors
     jaunt_common.decl_scale_variables(jenv,circ)
     # build continuous model constraints
@@ -114,9 +115,9 @@ def apply_result(jenv,circ,sln):
 
     return new_circ
 
-def compute_scale(prog,circ,objfun):
+def compute_scale(jenv,prog,circ,objfun):
     assert(isinstance(circ,ConcCirc))
-    jenv = sc_build_jaunt_env(prog,circ)
+    jenv = sc_build_jaunt_env(jenv,prog,circ)
     jopt = JauntObjectiveFunctionManager(jenv)
     jopt.method = objfun.name()
     blacklist = []
@@ -140,16 +141,27 @@ def compute_scale(prog,circ,objfun):
         new_circ = apply_result(jenv,circ,sln)
         yield thisobj,new_circ
 
-def scale_again(prog,circ,do_physical, do_sweep):
+def scale_again(prog,circ,do_physical, do_sweep, no_quality=False):
     objs = []
+    infer.clear(circ)
+    infer.infer_intervals(prog,circ)
+    infer.infer_bandwidths(prog,circ)
+    infer.infer_snrs(prog,circ)
+
     if do_physical:
         objs += JauntObjectiveFunctionManager.physical_methods()
     if do_sweep:
         objs += JauntObjectiveFunctionManager.sweep_methods()
 
+    jenv = jenvlib.JauntEnv()
+    jenv.no_quality = no_quality
+
     for obj in objs:
-        for objf,new_circ in compute_scale(prog,circ,obj):
-            yield objf.tag(),new_circ
+        for objf,new_circ in compute_scale(jenv,prog,circ,obj):
+            if no_quality:
+                yield "noq-%s" % objf.tag(),new_circ
+            else:
+                yield objf.tag(),new_circ
 
 def scale(prog,circ,nslns):
     infer.clear(circ)
@@ -159,5 +171,6 @@ def scale(prog,circ,nslns):
     objs = JauntObjectiveFunctionManager.basic_methods()
     for idx,infer_circ in enumerate(jaunt_infer.infer_scale_config(prog,circ,nslns)):
         for obj in objs:
-            for final_obj,final_circ in compute_scale(prog,infer_circ,obj):
+            jenv = jenvlib.JauntEnv()
+            for final_obj,final_circ in compute_scale(jenv,prog,infer_circ,obj):
                 yield idx,final_obj.tag(), final_circ

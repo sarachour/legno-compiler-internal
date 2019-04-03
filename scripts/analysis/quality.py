@@ -26,9 +26,13 @@ def truncate_signal(t,y,pred_runtime):
   return t[0:idx],y[0:idx]
 
 def apply_linear_noise_model(mean,stdev,yref):
-  slope,intercept,_,_,stderr = stats.linregress(mean,stdev)
-  print("err: %s" % stderr)
-  print("model: %s*v+%s" % (slope,intercept))
+  if len(mean) == 0 or len(stdev) == 0:
+    slope = 1.0
+    intercept = 0.0
+  else:
+    slope,intercept,_,_,stderr = stats.linregress(mean,stdev)
+    print("err: %s" % stderr)
+    print("model: %s*v+%s" % (slope,intercept))
   nzref = list(map(lambda y: (y*slope + intercept).real, yref))
   snrref = list(map(lambda args: abs(args[0])/args[1], zip(yref,nzref)))
   return nzref,snrref

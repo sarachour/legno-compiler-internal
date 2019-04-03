@@ -13,7 +13,6 @@ class PropSNRVisitor(Visitor):
   def __init__(self,prog,circ):
     Visitor.__init__(self,circ)
     self._prog = prog
-    self.default_snr = prog.default_snr()
     self.math_label_ranges()
 
   def math_label_ranges(self):
@@ -36,7 +35,7 @@ class PropSNRVisitor(Visitor):
                 snr = prog.snr(label)
                 config.set_snr(port,snr)
             else:
-              config.set_snr(port,self._prog.default_snr())
+              config.set_snr(port,self._prog.analog_snr())
 
 
   def is_free(self,block_name,loc,port):
@@ -47,21 +46,14 @@ class PropSNRVisitor(Visitor):
     Visitor.input_port(self,block_name,loc,port)
     circ = self._circ
     config = circ.config(block_name,loc)
+    block = circ.board.block(block_name)
     interval = config.interval(port)
 
-    snrs = []
-    n_inps = 0
-    for src_block_name,src_loc,src_port in \
-        circ.get_conns_by_dest(block_name,loc,port):
-      src_config = circ.config(src_block_name,src_loc)
-      src_snr = src_config.snr(src_port)
-      snrs.append(src_snr)
-      n_inps += 1
-
-    if n_inps == 0:
-      snr = self.default_snr
+    prop = block.signals(port)
+    if prop == 'digital':
+      snr = self._prog.digital_snr()
     else:
-      snr = max(snrs)
+      snr = self._prog.analog_snr()
 
     print("snr in %s[%s].%s => %s" % (block_name,loc,port,snr))
     config.set_snr(port,snr)
@@ -72,20 +64,16 @@ class PropSNRVisitor(Visitor):
     block = circ.board.block(block_name)
     config = circ.config(block_name,loc)
     # don't apply any coefficients
-    if not config.has_expr(port):
-      expr = block.get_dynamics(config.comp_mode,port)
-    else:
-      expr = config.expr(port,inject=False)
 
-    snrmap = config.snrs()
-    snrs = []
-    for var in expr.vars():
-      snrs.append(snrmap[var])
+    prop = block.signals(port)
+    if prop == 'digital':
+      snr = self._prog.digital_snr()
+    else:
+      snr = self._prog.analog_snr()
 
     if block_name == 'integrator':
       return
 
-    snr = max(snrs)
     print("snr out %s[%s].%s => %s" % (block_name,loc,port,snr))
     config.set_snr(port,snr)
 

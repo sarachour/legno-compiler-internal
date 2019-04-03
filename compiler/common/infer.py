@@ -7,6 +7,7 @@ def clear(circ):
   for block_name,loc,config in circ.instances():
         config.clear_bandwidths()
         config.clear_intervals()
+        config.clear_snrs()
 
 def infer_intervals(prog,circ):
   prop_interval.compute_intervals(prog,circ)

@@ -48,7 +48,8 @@ class JauntObjectiveFunctionManager():
         return [
             #physoptlib.LowNoiseObjFunc,
             #physoptlib.FastLowNoiseObjFunc
-            physoptlib.HeuristicObjFunc
+            physoptlib.HeuristicObjFunc,
+            physoptlib.FastHeuristicObjFunc
 
         ]
 

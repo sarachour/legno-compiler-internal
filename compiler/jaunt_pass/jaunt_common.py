@@ -148,8 +148,7 @@ def compute_nsr(noise_expr,mscale,mrng):
         if mrng.bound == 0:
             return
 
-        signal_expr = jop.JMult(mscale,jop.JConst(mrng.spread))
-        noise_expr = jop.JMult(jop.JConst(2.0), noise_expr)
+        signal_expr = jop.JMult(mscale,jop.JConst(mrng.bound))
         return jop.JMult(jop.expo(signal_expr,-1), noise_expr)
 
 def compute_max_nsr(min_snr):
@@ -171,6 +170,8 @@ def analog_op_range_constraint(jenv,circ,phys,prop, \
                                                 jop.expo(hscale,-1.0)),
                                       mrng.lower, hwrng.lower,
                                       'jcom-analog-oprange-%s' % annot)
+    if jenv.no_quality:
+        return
 
     nz_expr = noise_model_to_noise_expr(jenv,circ,phys)
     nsr_expr = compute_nsr(nz_expr,mscale,mrng)
@@ -185,6 +186,9 @@ def analog_op_range_constraint(jenv,circ,phys,prop, \
 
 
 def digital_quantize_constraint(jenv,phys,prop,mscale,hscale,math_rng,snr):
+    if jenv.no_quality:
+        return
+
     delta_h = np.mean(np.diff(prop.values()))
     nsr_expr = compute_nsr(jop.JConst(delta_h), mscale, math_rng)
     max_nsr = compute_max_nsr(snr)
@@ -194,6 +198,16 @@ def digital_quantize_constraint(jenv,phys,prop,mscale,hscale,math_rng,snr):
     if not nsr_expr is None:
         jenv.lte(nsr_expr,jop.JConst(max_nsr), \
                  annot='jcom-digital-minsig')
+
+
+def max_sim_time_constraint(jenv,prob,circ):
+    max_time = 3.0
+    max_sim_time = _to_phys_time(circ,prob.max_sim_time)
+    tau_inv = jop.JVar(jenv.tau(),exponent=-1.0)
+    hw_time = jop.JMult(
+        jop.JConst(max_sim_time), tau_inv
+    )
+    jenv.lte(hw_time, jop.JConst(max_time), 'max-time')
 
 
 def digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):

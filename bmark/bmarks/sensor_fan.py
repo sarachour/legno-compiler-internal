@@ -16,6 +16,7 @@ def emit(v):
  
 def model():
   prob = MathProg("sensor-fanout")
+  prob.set_digital_snr(10.0)
   ampl,freq = 0.5,0.99
   SENSE,_ = build_bb_sys(prob,ampl,freq,0)
   #ampl,freq = 0.5,0.99

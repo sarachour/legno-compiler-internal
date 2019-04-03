@@ -33,6 +33,8 @@ class JauntEnv:
     self._interactive = False
     self.decl_jaunt_var((),JauntVarType.TAU)
 
+    self.no_quality = False
+
   def tau(self):
     return self.to_jaunt_var(JauntVarType.TAU,())
 

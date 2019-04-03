@@ -12,6 +12,9 @@ import bmark.menvs as menvs
 
 def model():
   prob = MathProg('pend')
+  prob.set_digital_snr(10.0)
+  prob.set_analog_snr(5.0)
+
   params = {
     'angvel0': -1.0,
     'angle0': 1.0,

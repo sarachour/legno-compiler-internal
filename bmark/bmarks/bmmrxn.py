@@ -12,7 +12,8 @@ import bmark.menvs as menvs
 
 def model():
     prob = MathProg("bmmrxn")
-    prob.set_default_snr(6)
+    prob.set_analog_snr(5.0)
+    prob.set_digital_snr(10.0)
     params = {
       'E0' : 1.2,
       'S0' : 1.0,

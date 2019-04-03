@@ -24,6 +24,10 @@ def find_closest(array,value,round_mode):
         for curr_val in array:
             if curr_val >= value and sel_value is None:
                 sel_value = curr_val
+
+        if sel_value is None:
+            sel_value = array[-1]
+
         dist = abs(value-sel_value)
 
     elif round_mode == RoundMode.DOWN:
@@ -31,6 +35,9 @@ def find_closest(array,value,round_mode):
         for curr_val in array:
             if curr_val >= value and sel_value is None:
                 sel_value = curr_val
+        if sel_value is None:
+            sel_value = array[-1]
+
         dist = abs(value-sel_value)
 
     return dist,sel_value

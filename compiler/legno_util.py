@@ -82,8 +82,9 @@ def exec_jaunt_phys(hdacv2_board,args):
         conc_circ = ConcCirc.read(hdacv2_board, filename)
         timer.start()
         for opt,scaled_circ in jaunt.scale_again(prog,conc_circ, \
-                                                    args.physical,
-                                                    args.sweep):
+                                                 args.physical,
+                                                 args.sweep,
+                                                 no_quality=args.no_quality):
             timer.end()
             filename = path_handler.conc_circ_file(circ_bmark,
                                                     circ_indices,

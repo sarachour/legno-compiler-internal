@@ -25,6 +25,7 @@ def model():
   params['k2_k3'] = params['k3'] + params['k2']
 
   prob = MathProg("spring")
+  prob.set_digital_snr(15.0)
   spec_fun = op.Func(['V'], op.Mult(op.Sgn(op.Var('V')),\
                                     op.Sqrt(op.Abs(op.Var('V')))))
   PA = parse_diffeq('{one}*VA', 'PA0', ':a', params)

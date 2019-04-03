@@ -253,6 +253,10 @@ class Config:
       if not port in dict_:
         dict_[port] = {}
 
+    def clear_snrs(self):
+      self._snrs= {}
+
+
     def clear_bandwidths(self):
       self._bandwidths = {}
 

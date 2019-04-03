@@ -7,12 +7,16 @@ import matplotlib.pyplot as plt
 def visualize(series,key,executed_only=True):
   data = common.get_data(series,executed_only=executed_only)
   for ser in data.series():
-    print("== %s ==" % ser)
     idents,values = data.get_data(ser,['ident',key],
-                           [MismatchStatus.UNKNOWN, MismatchStatus.IDEAL])
-    indices = np.argsort(values)
+                           [MismatchStatus.UNKNOWN,
+                            MismatchStatus.IDEAL,
+                            MismatchStatus.NONIDEAL])
+    def_inds = list(filter(lambda i: not values[i] is None, range(0,len(values))))
+    values_def = list(map(lambda i: values[i], def_inds))
+    idents_def = list(map(lambda i: idents[i], def_inds))
+    indices = np.argsort(values_def)
     for i in indices:
-      print("   %s: %s" % (idents[i],values[i]))
+      print("   %s: %s" % (idents_def[i],values_def[i]))
 
     print("\n")
 

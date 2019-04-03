@@ -59,18 +59,25 @@ class MathProg:
         self._bandwidths= {}
         self._variables = []
         self._snr = {}
-        self._default_snr = 5.0
+        self._analog_snr= 5.0
+        self._digital_snr= 5.0
         self._max_sim_time = 1.0
 
         self.__order = None
         self.__order_integs = None
         self.__types = None
 
-    def default_snr(self):
-        return self._default_snr
+    def digital_snr(self):
+        return self._digital_snr
 
-    def set_default_snr(self,v):
-        self._default_snr =v
+    def analog_snr(self):
+        return self._analog_snr
+
+    def set_analog_snr(self,v):
+        self._analog_snr =v
+
+    def set_digital_snr(self,v):
+        self._digital_snr =v
 
     def set_snr(self,var,snr):
         self._snr[var] = snr
@@ -79,7 +86,7 @@ class MathProg:
         if var in self._snr:
             return self._snr[var]
         else:
-            return self.default_snr()
+            return self.analog_snr()
 
     def _compute_order(self):
         self.__order = []

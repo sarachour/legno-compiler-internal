@@ -19,7 +19,7 @@ def get_param_scf_weight(blk,scf):
   elif scf == '1x':
     return 1.0
   elif '01x':
-    return (1.0/slack)
+    return (1.0)
 
 def get_param_rng_weight(blk,scf):
   slack = cfg.data['scale-mode']['delta']
@@ -32,7 +32,7 @@ def get_param_rng_weight(blk,scf):
     return 1.0
 
   if scf == 'l':
-    return (1.0*slack)
+    return 1.0
   elif scf == 'm':
     return 1.0
   elif 'h':

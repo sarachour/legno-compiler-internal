@@ -210,6 +210,7 @@ def sc_generate_problem(jenv,prob,circ):
     else:
         jenv.lte(jop.JVar(jenv.tau()), jop.JConst(1e10),'tau-min')
         jenv.gte(jop.JVar(jenv.tau()), jop.JConst(1e-10),'tau-max')
+        jaunt_common.max_sim_time_constraint(jenv,prob,circ)
 
 
 

@@ -18,6 +18,7 @@ def model(name,omega,menv_name='t20'):
     }
     # t20
     prob = MathProg("micro-osc-%s" % name)
+    prob.set_digital_snr(10.0)
     P = parse_diffeq("V", "P0", ":a", params)
     V = parse_diffeq("{omega}*P", "V0", ":b", params)
 
@@ -32,7 +33,7 @@ def model(name,omega,menv_name='t20'):
     base_bnd = 0.12
     prob.set_interval("P",-base_bnd,base_bnd)
     prob.set_interval("V",-base_bnd*scf,base_bnd*scf)
-    prob.set_max_sim_time(20)
+    prob.set_max_sim_time(200)
     prob.compile()
     menv = menvs.get_math_env(menv_name)
     return menv,prob

@@ -1,17 +1,17 @@
 data={
     "block": {
-        "baseline": 0.05,
+        "baseline": 0.02,
         "coeffs": {
             "integ": 1.0,
             "mult": 1.0,
-            "vga": 0.5,
-            "dac": 0.1,
+            "vga": 1.0,
+            "dac": 1.0,
             "adc": 1.0,
             "fanout": 0.1
         }
     },
     "scale-mode": {
-        "delta": 3.0
+        "delta": 10.0
     },
     "coeff-mode": {
         "delta": 1.0

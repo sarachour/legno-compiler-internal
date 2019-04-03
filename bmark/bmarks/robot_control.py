@@ -20,7 +20,7 @@ def model():
   sin_fun = op.Func(['T'], op.Sin(op.Var('T')))
   cos_fun = op.Func(['T'], op.Cos(op.Var('T')))
 
-  ampl,freq = 0.3,0.25
+  ampl,freq = 0.5,0.99
   W,V = build_bb_sys(prob,ampl,freq,0)
   params = {
     'DEG0' : 0,
@@ -33,11 +33,9 @@ def model():
   DEG = parse_diffeq('{one}*{W}', 'DEG0', ':t', params)
   X = parse_diffeq('{one}*{V}*COS', 'X0',':u', params)
   Y = parse_diffeq('{one}*{V}*SIN', 'Y0',':v', params)
-  prob.set_default_snr(2.5)
-  prob.set_snr('X',5)
-  prob.set_snr('Y',5)
-  prob.set_snr('DEG',2)
-  prob.set_snr('Rot',5)
+  prob.set_digital_snr(10)
+  prob.set_analog_snr(5)
+  #prob.set_snr('DEG',2)
   prob.bind('DEG',DEG)
   prob.bind('X',X)
   prob.bind('Y',Y)
