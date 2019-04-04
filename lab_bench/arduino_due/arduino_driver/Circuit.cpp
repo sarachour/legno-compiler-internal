@@ -1,5 +1,5 @@
 #define _DUE
-#include <HCDC_DEMO_API.h>
+#include <AnalogLib.h>
 #include "Circuit.h"
 #include "Comm.h"
 #include <assert.h>

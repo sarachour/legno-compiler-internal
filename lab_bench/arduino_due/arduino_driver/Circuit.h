@@ -1,7 +1,7 @@
 #ifndef CIRCUIT_H
 #define CIRCUIT_H
 #define _DUE
-#include <HCDC_DEMO_API.h>
+#include <AnalogLib.h>
 
 namespace circ {
 
