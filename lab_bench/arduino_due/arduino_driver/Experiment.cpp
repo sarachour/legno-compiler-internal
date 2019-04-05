@@ -19,8 +19,6 @@ volatile int SDA_VAL = LOW;
 experiment_t* EXPERIMENT;
 Fabric* FABRIC;
 
-short BITMASK_ONE[] = {0x0000,0xffff};
-short BITMASK_ZERO[] = {0xffff, 0x0000};
 
 inline void store_value(experiment_t * expr,uint32_t offset, int16_t value){
   expr->databuf[offset] = value;
@@ -219,8 +217,8 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   delay(10);
   // commit the configuration once.
   if(expr->use_analog_chip){
-    fab->cfgCommit();
-    fab->cfgStop();
+    fab->prog_commit();
+    fab->prog_done();
   }
   //attach the interrupt for the wave
   Timer3.attachInterrupt(_update_wave);
@@ -234,9 +232,9 @@ void run_experiment(experiment_t * expr, Fabric * fab){
     //set a timeout within the chip
     Timer3.start(expr->time_between_samps_us);
     set_SDA(HIGH);
-    fab->execStart();
+    fab->run_sim();
     delayMicroseconds(sleep_time_us);
-    fab->execStop();
+    fab->stop_sim();
     Timer3.stop();
     set_SDA(LOW);
   }
@@ -246,9 +244,9 @@ void run_experiment(experiment_t * expr, Fabric * fab){
     //set a timeout within the chip, if the timeout fits in uint max
     Timer3.start(expr->time_between_samps_us);
     set_SDA(HIGH);
-    fab->execStart();
+    fab->run_sim();
     delay(sleep_time_ms);
-    fab->execStop();
+    fab->stop_sim();
     Timer3.stop();
     set_SDA(LOW);
   }

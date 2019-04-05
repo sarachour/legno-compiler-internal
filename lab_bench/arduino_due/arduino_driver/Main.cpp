@@ -31,7 +31,7 @@ void setup() {
   Serial.begin(115200);
   Serial.flush();
   experiment::setup_experiment(&this_experiment);
-  circ::init_calibrations();
+  //circ::init_calibrations();
 }
 
 void loop() {

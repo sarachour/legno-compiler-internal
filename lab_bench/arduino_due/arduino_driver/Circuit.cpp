@@ -12,7 +12,7 @@ namespace circ {
  
 bool caltbl[2][4][4];
 
-
+  /*
 void init_calibrations(){
   for(int chipno=0; chipno < 2; chipno ++){
     for(int tileno = 0; tileno < 4; tileno ++){
@@ -71,6 +71,7 @@ Fabric::Chip::Tile::Slice::Fanout* get_fanout(Fabric * fab, circ_loc_idx1_t& loc
   }
   return fanout;
 }
+
 
 Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab, uint16_t& btype, circ_loc_idx2_t& loc){
   switch(btype){
@@ -228,7 +229,6 @@ void load_dac_source(uint8_t source, bool * mem, bool * ext, bool * lut0, bool *
     default:
       comm::error("[ERROR] unknown source");
   }
-  
 }
 
 void load_lut_source(uint8_t source, bool * ext, bool * adc0, bool * adc1){
@@ -248,9 +248,8 @@ void load_lut_source(uint8_t source, bool * ext, bool * adc0, bool * adc1){
     default:
       comm::error("[ERROR] unknown source");
   }
-  
 }
-
+  */
 
 Fabric* setup_board(){
   Fabric* fabric = new Fabric();
@@ -262,32 +261,31 @@ void debug_command(Fabric * fab, cmd_t& cmd, float* inbuf){
       case cmd_type_t::CONFIG_DAC:
         comm::response("[dbg] configured dac (direct)",0);
         break;
-        
+
       case cmd_type_t::USE_ADC:
         comm::response("[dbg] enabled adc",0);
         break;
-        
+
       case cmd_type_t::USE_DAC:
         comm::response("[dbg] enabled dac",0);
         break;
-      
+
       case cmd_type_t::CONFIG_MULT:
         comm::response("[dbg] configured mult [direct]",0);
         break;
-        
+
       case cmd_type_t::USE_MULT:
         comm::response("[dbg] enabled mult",0);
         break;
- 
-        
+
       case cmd_type_t::USE_FANOUT:
         comm::response("[dbg] enabled fanout",0);
         break;
-   
+
     case cmd_type_t::CONFIG_INTEG:
         comm::response("[dbg] configured integ [direct]",0);
         break;
-        
+
     case cmd_type_t::USE_INTEG:
         comm::response("[dbg] enabled integ",0);
         break;
@@ -378,6 +376,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   bool s1,s2,s3,s4;
   uint8_t byteval;
   char buf[16];
+  /*
   Fabric::Chip::Tile::Slice* slice;
   Fabric::Chip::Tile::Slice::Dac* dac;
   Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -607,7 +606,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
       comm::error("unknown command");
       break;
   }
-  
+  */
 }
 
 
