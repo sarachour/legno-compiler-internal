@@ -251,6 +251,53 @@ void load_lut_source(uint8_t source, bool * ext, bool * adc0, bool * adc1){
 }
   */
 
+RANGE_TYPE to_range(unsigned char code){
+  switch(code){
+  case 0: return RANGE_TYPE::RNG_LOW;
+  case 1: return RANGE_TYPE::RNG_MED;
+  case 2: return RANGE_TYPE::RNG_HIGH;
+  default:
+    comm::error("unknown range");
+  }
+  return RANGE_TYPE::RNG_MED;
+}
+
+PORT_NAME to_out_port(unsigned char index){
+  switch(index){
+  case 0: return PORT_NAME::OUT0;
+  case 1: return PORT_NAME::OUT1;
+  case 2: return PORT_NAME::OUT2;
+  default:
+    comm::error("unknown");
+  }
+  return PORT_NAME::OUT0;
+}
+PORT_NAME to_in_port(unsigned char index){
+  switch(index){
+  case 0: return PORT_NAME::IN0;
+  case 1: return PORT_NAME::IN1;
+  default:
+    comm::error("unknown");
+  }
+  return PORT_NAME::IN0;
+
+}
+
+BLOCK_TYPE to_blk(unsigned char btype){
+  switch(btype){
+  case block_type_t::TILE_DAC: return BLOCK_TYPE::TILE_DAC;
+  case block_type_t::TILE_INPUT: return BLOCK_TYPE::TILE_IN;
+  case block_type_t::TILE_OUTPUT: return BLOCK_TYPE::TILE_OUT;
+  case block_type_t::CHIP_INPUT: return BLOCK_TYPE::CHIP_IN;
+  case block_type_t::CHIP_OUTPUT: return BLOCK_TYPE::CHIP_OUT;
+  case block_type_t::MULT: return BLOCK_TYPE::MULT;
+  case block_type_t::FANOUT: return BLOCK_TYPE::FANOUT;
+  case block_type_t::INTEG: return BLOCK_TYPE::INTEG;
+  case block_type_t::LUT: return BLOCK_TYPE::TILE_LUT;
+  case block_type_t::TILE_ADC: return BLOCK_TYPE::TILE_ADC;
+  }
+}
+
 Fabric* setup_board(){
   Fabric* fabric = new Fabric();
   return fabric;
@@ -362,6 +409,7 @@ void debug_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   
 }
 void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
+  /*
   cmd_use_dac_t dacd;
   cmd_use_mult_t multd;
   cmd_use_fanout_t fod;
@@ -376,7 +424,6 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   bool s1,s2,s3,s4;
   uint8_t byteval;
   char buf[16];
-  /*
   Fabric::Chip::Tile::Slice* slice;
   Fabric::Chip::Tile::Slice::Dac* dac;
   Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -386,8 +433,13 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   Fabric::Chip::Tile::Slice::ChipAdc * adc;
   Fabric::Chip::Tile::Slice::FunctionUnit::Interface* src;
   Fabric::Chip::Tile::Slice::FunctionUnit::Interface* dst;
-  
+  */
+  block_t blk;
+  block_t blk2;
+  PORT_NAME port;
+  PORT_NAME port2;
   switch(cmd.type){
+    /*
       case cmd_type_t::CONFIG_DAC:
         dacd = cmd.data.dac; 
         dac = get_slice(fab,dacd.loc)->dac;
@@ -423,44 +475,34 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
         }
         comm::response("enabled dac",0);
         break;
-      
-      case cmd_type_t::CONFIG_MULT:
-        // multiplier doesn't actually support inversion
-        // multiplier uses dac from same row.
-        multd = cmd.data.mult;
-        mult = get_mult(fab,multd.loc);
-        if(multd.use_coeff){
-          // determine if we're in the high or low output range.
-          load_range(multd.out_range, &lo1, &hi1);
-          comm::test(mult->setGainDirect(multd.coeff, hi1, true),
-             "failed to set gain");
-        }
-        comm::response("configured mult [direct]",0);
-        break;
-        
+  */
       case cmd_type_t::USE_MULT:
         // multiplier doesn't actually support inversion
         // multiplier uses dac from same row.
-        multd = cmd.data.mult;
-        mult = get_mult(fab,multd.loc);
-        mult->setEnable(true);
-        mult->setVga(multd.use_coeff);
-        load_range(multd.in0_range, &lo1, &hi1);
-        load_range(multd.in1_range, &lo2, &hi2);
-        load_range(multd.out_range, &lo3, &hi3);
-        mult->in0->setRange(lo1,hi1);
-        mult->out0->setRange(lo3,hi3);
-        if(not multd.use_coeff){
-           mult->in1->setRange(lo2,hi2);
+        blk = fab->block(BLOCK_TYPE::MULT,
+                         cmd.data.mult.loc.loc.chip,
+                         cmd.data.mult.loc.loc.tile,
+                         cmd.data.mult.loc.loc.slice,
+                         cmd.data.mult.loc.idx
+                         );
+
+        mult::set_enable(blk,true);
+        mult::set_vga(blk,cmd.data.mult.use_coeff);
+        mult::set_range(blk, PORT_NAME::OUT0,
+                        to_range(cmd.data.mult.in0_range));
+        mult::set_range(blk, PORT_NAME::IN1,
+                        to_range(cmd.data.mult.out_range));
+
+        if(not cmd.data.mult.use_coeff){
+          mult::set_range(blk, PORT_NAME::IN1,
+                          to_range(cmd.data.mult.in1_range));
         }
         else{
-          comm::test(mult->setGainDirect(multd.coeff, hi3, false),
-             "failed to set gain");
+          mult::set_gain(blk, cmd.data.mult.coeff);
         }
         comm::response("enabled mult",0);
         break;
- 
-        
+        /*
       case cmd_type_t::USE_FANOUT:
         fod = cmd.data.fanout;
         fanout = get_fanout(fab,fod.loc);
@@ -576,22 +618,35 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
         comm::response("disabled integ",0);
         break;
 
+        */
     case cmd_type_t::CONNECT:
-        connd = cmd.data.conn;
-        src = get_output_port(fab,connd.src_blk,connd.src_loc);
-        dst = get_input_port(fab,connd.dst_blk,connd.dst_loc);
-        Fabric::Chip::Connection(src,dst).setConn();
-        comm::response("connected",0);
-        break;
+      blk = fab->block(to_blk(cmd.data.conn.src_blk),
+                           cmd.data.conn.src_loc.idxloc.loc.chip,
+                           cmd.data.conn.src_loc.idxloc.loc.tile,
+                           cmd.data.conn.src_loc.idxloc.loc.slice,
+                           cmd.data.conn.src_loc.idxloc.idx);
+      blk2 = fab->block(to_blk(cmd.data.conn.dst_blk),
+                           cmd.data.conn.dst_loc.idxloc.loc.chip,
+                           cmd.data.conn.dst_loc.idxloc.loc.tile,
+                           cmd.data.conn.dst_loc.idxloc.loc.slice,
+                           cmd.data.conn.dst_loc.idxloc.idx);
 
+      port = to_out_port(cmd.data.conn.src_loc.idx2);
+      port2 = to_in_port(cmd.data.conn.dst_loc.idx2);
+      conn::mkconn(blk,port,blk2,port2);
+      comm::response("connected",0);
+      break;
+
+      /*
     case cmd_type_t::BREAK:
-        connd = cmd.data.conn;
-        src = get_output_port(fab,connd.src_blk,connd.src_loc);
-        dst = get_input_port(fab,connd.dst_blk,connd.dst_loc);
-        Fabric::Chip::Connection(src,dst).brkConn();
-        comm::response("disconnected",0);
-        break;
-        
+      blk = mkblock(cmd.data.src_blk, cmd.data.src_loc);
+      blk2 = mkblock(cmd.data.dst_blk, cmd.data.dst_loc);
+      port = mkport(cmd.data.src_blk, cmd.data.circ_loc);
+      port2 = mkport(cmd.data.src_blk, cmd.data.circ_loc);
+      brkconn(blk,port,blk2,port2);
+      comm::response("disconnected",0);
+      break;
+
     case cmd_type_t::CALIBRATE:
         slice = get_slice(fab,cmd.data.circ_loc);
         if(do_calibrate(cmd.data.circ_loc.chip,
@@ -601,12 +656,11 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
         }
         comm::response("calibrated",0);
         break;
-        
+      */
     default:
       comm::error("unknown command");
       break;
   }
-  */
 }
 
 

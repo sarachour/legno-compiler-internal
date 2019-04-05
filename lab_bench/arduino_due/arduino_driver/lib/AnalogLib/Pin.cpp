@@ -1,4 +1,6 @@
 #include "include/Pin.h"
+#include "include/Logger.h"
+
 void setup_pins(){
   pinMode(PIN_ctrRst, OUTPUT);
 	pinMode(PIN_spiClk, OUTPUT);
@@ -124,7 +126,7 @@ void read_extern2(unsigned char chip,
   float sumsq = (ALPHA*ALPHA*lsumsq + 2.0*ALPHA*BETA*lsum + BETA*BETA*((float) n))/(scale*scale);
   mean = sum/n;
   variance = (sumsq - 2.0*sum*mean +  mean*mean*n)/(n-1);
-  assert(variance > 0);
+  logger::assert(variance > 0, "variance must be positive");
 }
 
 void pin_reset(){

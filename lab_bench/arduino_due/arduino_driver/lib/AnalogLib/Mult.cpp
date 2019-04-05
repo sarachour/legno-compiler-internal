@@ -1,7 +1,9 @@
 #include "include/Block.h"
 #include "include/Util.h"
+#include "include/Logger.h"
 
 namespace mult {
+
 
   vector_t mult_vect(block_t& blk, unsigned char line, unsigned char data){
     const unsigned char to_sel_row[4] = {2,3,4,5};
@@ -19,6 +21,13 @@ namespace mult {
   unsigned char get_config(block_t& blk, unsigned char line){
     return blk.iface->get(mult_vect(blk,line,0));
 
+  }
+
+  bool has_port(PORT_NAME port){
+    return port == PORT_NAME::IN0 or
+      port == PORT_NAME::IN1 or
+      port == PORT_NAME::COEFF or
+      port == PORT_NAME::OUT0;
   }
 
   void set_enable(block_t& blk, bool enabled){
@@ -54,6 +63,10 @@ namespace mult {
     configure(blk,2,gain);
   }
 
+  void set_gain(block_t& blk, float value){
+    logger::warn("todo: set_gain");
+  }
+
   void set_range(block_t& blk, PORT_NAME port, RANGE_TYPE range){
     unsigned char cfg = get_config(blk,0);
     unsigned char range_code = to_range_code(blk.type,range);
@@ -64,21 +77,21 @@ namespace mult {
     case PORT_NAME::IN1:
       cfg = copy_bits(cfg,range_code,2,2);
       break;
-    case PORT_NAME::OUT:
+    case PORT_NAME::OUT0:
       cfg = copy_bits(cfg,range_code,0,2);
       break;
     default:
-      error("unexpected port for mult.");
+      logger::error("unexpected port for mult.");
     }
     configure(blk,0,cfg);
 
   }
   void set_offset_code(block_t& blk, PORT_NAME port, unsigned char offset_code){
-    assert(port == PORT_NAME::IN0 ||
-           port == PORT_NAME::IN1 ||
-           port == PORT_NAME::OUT ||
-           port == PORT_NAME::COEFF);
-    assert(offset_code <= 63);
+    logger::assert(port == PORT_NAME::IN0 ||
+                   port == PORT_NAME::IN1 ||
+                   port == PORT_NAME::OUT0 ||
+                   port == PORT_NAME::COEFF, "not valid mult port");
+    logger::assert(offset_code <= 63, "offset code oob");
     unsigned char cfg;
     switch(port){
     case PORT_NAME::IN1:
@@ -89,7 +102,7 @@ namespace mult {
       cfg = offset_code << 2;
       configure(blk,4,cfg);
       break;
-    case PORT_NAME::OUT:
+    case PORT_NAME::OUT0:
       cfg = offset_code << 2;
       configure(blk,3,cfg);
       break;
@@ -99,7 +112,7 @@ namespace mult {
       configure(blk,1,cfg);
       break;
     default:
-      assert(false);
+      logger::assert(false, "unknown port");
     }
   }
 

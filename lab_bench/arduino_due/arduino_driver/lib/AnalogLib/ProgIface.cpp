@@ -1,6 +1,7 @@
 #include "include/ProgIface.h"
 #include "include/Util.h"
 #include "include/Pin.h"
+#include "include/Logger.h"
 #include "include/SPI.h"
 
 const bool noOp[] = {
@@ -19,9 +20,25 @@ void ProgIface::_spiDriveData(
                    unsigned char line,
                    unsigned char cfg
                    ) const {
-	DigitalWriteP(PIN_spiSSPin[m_chip][tileno], LOW);
-	spiDrive ( row, col, line, cfg);
-	DigitalWriteP(PIN_spiSSPin[m_chip][tileno], HIGH);
+  if(not m_dryrun){
+    DigitalWriteP(PIN_spiSSPin[m_chip][tileno], LOW);
+    spiDrive ( row, col, line, cfg);
+    DigitalWriteP(PIN_spiSSPin[m_chip][tileno], HIGH);
+  }
+  else{
+    logger::tag("spi");
+    logger::print("data[");
+    logger::print(tileno);
+    logger::print(",");
+    logger::print(row);
+    logger::print(",");
+    logger::print(col);
+    logger::print(",");
+    logger::print(line);
+    logger::print("] = ");
+    logger::print(cfg);
+    logger::newline();
+  }
 }
 
 int ProgIface::_spiDriveInstr (unsigned char tileno,const bool* vector) const {
@@ -49,13 +66,20 @@ void ProgIface::reset(){
   }
 }
 
-void ProgIface::enqueue(vector_t vec){
-	if (vec.row<0||N_ROWS-1<vec.row) error ("vec.selRow out of bounds");
-	if (vec.col<0||N_COLS-1<vec.col) error ("vec.selCol out of bounds");
-	if (vec.line<0||N_LINES-1<vec.line) error ("vec.selLine out of bounds");
-	if (vec.row==8&&vec.col==0) error ("vec cache cannot handle ctlr cmmds");
-	if (vec.cfg<0||255<vec.cfg) error ("vec.cfgTile out of bounds");
-
+void ProgIface::_check(const vector_t vec) const{
+  if (vec.row<0||N_ROWS-1<vec.row) logger::error ("vec.selRow out of bounds");
+	if (vec.col<0||N_COLS-1<vec.col) logger::error ("vec.selCol out of bounds");
+	if (vec.line<0||N_LINES-1<vec.line) logger::error ("vec.selLine out of bounds");
+	if (vec.row==8&&vec.col==0) logger::error ("vec cache cannot handle ctlr cmmds");
+	if (vec.cfg<0||255<vec.cfg) logger::error ("vec.cfgTile out of bounds");
+  return;
+}
+unsigned char ProgIface::get(const vector_t vec) const{
+  _check(vec);
+  return m_cfgBuf[vec.tile][vec.row][vec.col][vec.line];
+}
+void ProgIface::enqueue(const vector_t vec){
+  _check(vec);
   if (m_cfgBuf[vec.tile][vec.row][vec.col][vec.line] != vec.cfg) {
 		if (vec.row==9) m_cfgLutTag[vec.tile][0]=true;
 		if (vec.row==10) m_cfgLutTag[vec.tile][1]=true;
@@ -82,11 +106,11 @@ void ProgIface::_startLUT(unsigned char tileno, unsigned char slice){
 
 	/*DETERMINE SEL_COL*/
   unsigned char selRow = 7;
-	unsigned char selCol;
+	unsigned char selCol = 0;
 	switch (slice) {
   case 0: selCol = 1; break;
   case 2: selCol = 2; break;
-  default: error ("invalid slice. Only even slices have LUTs"); break;
+  default: logger::error ("invalid slice. Only even slices have LUTs"); break;
 	}
 
 	_spiDriveData( tileno, selRow, selCol, 0, endian(cfgTile) );

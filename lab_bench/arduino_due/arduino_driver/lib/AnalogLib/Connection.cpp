@@ -1,8 +1,13 @@
 #include "include/Block.h"
 #include "include/Util.h"
 #include "include/Vector.h"
+#include "include/Connection.h"
+#include "include/Logger.h"
 
-vector_t build_connection_vector(block_t src, PORT_NAME sport, block_t dst, PORT_NAME dport, bool & cross_tile);
+namespace conn {
+
+vector_t build_connection_vector(block_t src, PORT_NAME sport,
+                                 block_t dst, PORT_NAME dport, bool & cross_tile);
 vector_t null_neighbor_row1(vector_t& v, unsigned char row){
   v = mkvector(v.tile,row,v.col,v.line,0);
   return v;
@@ -18,7 +23,7 @@ vector_t null_neighbor_row2(vector_t& v, unsigned char tile_row, unsigned char r
 
 void brkconn(block_t src,PORT_NAME sport, block_t dst, PORT_NAME dport){
   if(src.chip != dst.chip){
-    error("cannot connect different chips");
+    logger::error("cannot connect different chips");
   }
   bool cross_tile = false;
   vector_t v = build_connection_vector(src,sport,dst,dport,cross_tile);
@@ -37,7 +42,7 @@ void brkconn(block_t src,PORT_NAME sport, block_t dst, PORT_NAME dport){
 void mkconn(block_t& src,PORT_NAME sport, block_t& dst, PORT_NAME dport)
 {
   if(src.chip != dst.chip){
-    error("cannot connect different chips");
+    logger::error("cannot connect different chips");
   }
 
   bool cross_tile = false;
@@ -53,10 +58,10 @@ void mkconn(block_t& src,PORT_NAME sport, block_t& dst, PORT_NAME dport)
       src.iface->enqueue(null_neighbor_row1(v,row));
     }
   }
-  assert(block::has_port(src.type,sport));
-  assert(block::output_port(sport));
-  assert(block::has_port(dst.type,dport));
-  assert(block::input_port(dport));
+  logger::assert(block::has_port(src.type,sport), "does not have source port");
+  logger::assert(block::output_port(sport), "port is not output port");
+  logger::assert(block::has_port(dst.type,dport), "does not have dest port");
+  logger::assert(block::input_port(dport), "port is not input port");
   block::set_enable(src,true);
   block::set_enable(dst,true);
   if(src.type == BLOCK_TYPE::FANOUT && sport == PORT_NAME::OUT2){
@@ -86,15 +91,15 @@ unsigned char findGlobalSelCol(block_t& blk){
     case 3:
       return 14;
     default:
-      error("unknown tile");
+      logger::error("unknown tile");
       break;
     }
     break;
   default:
-    error("unknown block");
+    logger::error("unknown block");
     break;
   }
-  error("logic error");
+  logger::error("logic logger::error");
   return 0;
 }
 unsigned char findGlobalSelRow(block_t& blk){
@@ -113,9 +118,9 @@ unsigned char findGlobalSelRow(block_t& blk){
     break;
 
   default:
-    error("cannot have arbitrary block bridging tiles.");
+    logger::error("cannot have arbitrary block bridging tiles.");
   }
-  error("logic error");
+  logger::error("logic logger::error");
   return 0;
 
 }
@@ -139,26 +144,26 @@ unsigned char findLocalSelBit(block_t& blk, PORT_NAME port){
     return 2;
   case BLOCK_TYPE::FANOUT:
     return FANOUT_BITS[blk.index];
-  case BLOCK_TYPE::ADC:
+  case BLOCK_TYPE::TILE_ADC:
     return 7;
   case BLOCK_TYPE::TILE_OUT:
     return TILEOUT_BITS[blk.index][blk.slice];
-  case BLOCK_TYPE::LUT:
-  case BLOCK_TYPE::DAC:
+  case BLOCK_TYPE::TILE_LUT:
+  case BLOCK_TYPE::TILE_DAC:
   case BLOCK_TYPE::CHIP_IN:
   case BLOCK_TYPE::TILE_IN:
-    error("unsupported");
+    logger::error("unsupported");
     break;
   default:
-    error("unsupported");
+    logger::error("unsupported");
     break;
   }
-  error("logic error");
+  logger::error("logic logger::error");
   return 0;
 }
 unsigned char findLocalSelLine(block_t& blk,PORT_NAME port){
-  assert(block::has_port(blk.type,port));
-  assert(block::output_port(port));
+  logger::assert(block::has_port(blk.type,port), "does not have port");
+  logger::assert(block::output_port(port), "not output port");
 
   const unsigned char TILE_LINES[4][4] = {
     {10,2,6,10},
@@ -179,7 +184,7 @@ unsigned char findLocalSelLine(block_t& blk,PORT_NAME port){
   case BLOCK_TYPE::MULT:
     return MULT_LINES[blk.slice];
 
-  case BLOCK_TYPE::DAC:
+  case BLOCK_TYPE::TILE_DAC:
     return DAC_LINES[blk.slice];
 
   case BLOCK_TYPE::INTEG:
@@ -189,15 +194,15 @@ unsigned char findLocalSelLine(block_t& blk,PORT_NAME port){
     return FANOUT_LINES[blk.slice][block::port_to_index(port)];
 
   case BLOCK_TYPE::CHIP_IN:
-  case BLOCK_TYPE::ADC:
-  case BLOCK_TYPE::LUT:
+  case BLOCK_TYPE::TILE_ADC:
+  case BLOCK_TYPE::TILE_LUT:
   case BLOCK_TYPE::TILE_OUT:
   case BLOCK_TYPE::CHIP_OUT:
-    error("cannot use as destination"); break;
+    logger::error("cannot use as destination"); break;
   default:
-    error("cannot get line"); break;
+    logger::error("cannot get line"); break;
   }
-  error("global logic error");
+  logger::error("global logic logger::error");
   return 0;
 }
 unsigned char findLocalSelCol(block_t& blk){
@@ -217,7 +222,7 @@ unsigned char findLocalSelCol(block_t& blk){
   case BLOCK_TYPE::MULT:
     return MULT_COLS[blk.index];
 
-  case BLOCK_TYPE::DAC:
+  case BLOCK_TYPE::TILE_DAC:
     return DAC_COLS[blk.slice];
     break;
 
@@ -228,33 +233,33 @@ unsigned char findLocalSelCol(block_t& blk){
     return FANOUT_COLS[blk.index];
     break;
   case BLOCK_TYPE::CHIP_IN:
-  case ADC:
-  case LUT:
+  case TILE_ADC:
+  case TILE_LUT:
   case TILE_OUT:
   case CHIP_OUT:
-    error("invalid unit");
+    logger::error("invalid unit");
     break;
   default:
-    error("unknown unit");
+    logger::error("unknown unit");
     break;
   }
-  error("could not find block");
+  logger::error("could not find block");
   return 0;
 }
 unsigned char findLocalSelRow(block_t& blk){
   switch(blk.type) {
-  case DAC:
-    error("cannot connect dac");
-  case ADC:
+  case TILE_DAC:
+    logger::error("cannot connect dac");
+  case TILE_ADC:
     switch(blk.slice){
     case 0: return 4;
-    case 1: error("ADC only on [0,2]");
+    case 1: logger::error("ADC only on [0,2]");
     case 2: return 5;
-    case 3: error("ADC only on [0,2]");
+    case 3: logger::error("ADC only on [0,2]");
     }
     break;
-  case LUT:
-    error("LUT cannot be destination");
+  case TILE_LUT:
+    logger::error("LUT cannot be destination");
   case TILE_OUT:
     switch(blk.slice){
     case 0:
@@ -264,7 +269,7 @@ unsigned char findLocalSelRow(block_t& blk){
     }
     break;
   case CHIP_OUT:
-    error("chip_out cannot be destination");
+    logger::error("chip_out cannot be destination");
   default:
     switch(blk.slice){
     case 0: return 2;
@@ -274,7 +279,7 @@ unsigned char findLocalSelRow(block_t& blk){
     }
     break;
   }
-  error("logic error");
+  logger::error("logic logger::error");
   return 0;
 }
 
@@ -283,7 +288,7 @@ unsigned char findLocalSelRow(block_t& blk){
     (dst.type == CHIP_OUT or dst.type == TILE_IN);
 
   if(not cross_tile && src.tile != dst.tile){
-    error("cannot connect functional units on different tiles");
+    logger::error("cannot connect functional units on different tiles");
   }
   const unsigned char CONN_TILE[4][4] = {
     {0,1,0,1},
@@ -310,4 +315,6 @@ unsigned char findLocalSelRow(block_t& blk){
   }
   vector_t v = mkvector(selTile, selRow, selCol, selLine, selBit);
   return v;
+}
+
 }

@@ -40,7 +40,7 @@ void data(const char * msg,const char * type_sig){
   header();
   Serial.print("[data][");
   Serial.print(type_sig);
-  Serial.print("] ");  
+  Serial.print("] ");
   Serial.println(msg);
 }
 void response(const char * msg,int args){

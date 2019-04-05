@@ -7,6 +7,20 @@
 #define ALPHA -0.001592251629
 #define BETA 3.267596063219
 
+/*
+extern size_t dynamic_memory;
+
+template <typename type>
+void tally_dyn_mem(
+                   const char * name
+                   ) {
+	dynamic_memory += sizeof(type);
+	// Serial.print(sizeof(type));
+	// Serial.print('\t');
+	// Serial.println(name);
+}
+*/
+
 const unsigned char PIN_ctrRst= 2; /*ctrRst*/
 const unsigned char PIN_spiClk = 7; /*spi clk*/
 const unsigned char PIN_spiMosi= 8; /*spi master out slave in*/

@@ -1,8 +1,11 @@
+#ifndef CONNECTION_H
+#define CONNECTION_H
 
-typedef struct CONNECTION {
-  block_t src;
-  block_t dst;
-} conn_t;
+#include "include/Block.h"
 
-conn_t mkconn(block_t& b1,PORT p1, block_t& b2, PORT p2);
-conn_t brkconn(block_t& b1,PORT p1, block_t& b2, PORT p2);
+namespace conn {
+void mkconn(block_t& b1,PORT_NAME p1, block_t& b2, PORT_NAME p2);
+void brkconn(block_t& b1,PORT_NAME p1, block_t& b2, PORT_NAME p2);
+}
+
+#endif
