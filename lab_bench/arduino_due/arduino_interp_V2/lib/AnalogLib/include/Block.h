@@ -22,7 +22,8 @@ typedef enum _PORT {
   IC,
   OUT0,
   OUT1,
-  OUT2
+  OUT2,
+  UNKNOWN_PORT
 } PORT_NAME;
 
 typedef enum _BLOCK {
@@ -35,7 +36,8 @@ typedef enum _BLOCK {
   TILE_IN,
   TILE_OUT,
   CHIP_IN,
-  CHIP_OUT
+  CHIP_OUT,
+  UNKNOWN_BLOCK
 } BLOCK_TYPE;
 
 

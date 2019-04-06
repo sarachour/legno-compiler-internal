@@ -1,10 +1,10 @@
 #include "include/Pin.h"
-
+namespace spi {
 static inline void spiBit (bool sendBit) {
 	/*clock low*/
-  DigitalWriteP(PIN_spiClk, LOW);
-  DigitalWriteP(PIN_spiMosi, sendBit);
-  DigitalWriteP(PIN_spiClk, HIGH);
+  pin::DigitalWriteP(PIN_spiClk, LOW);
+  pin::DigitalWriteP(PIN_spiMosi, sendBit);
+  pin::DigitalWriteP(PIN_spiClk, HIGH);
 }
 
 static inline void spiDrive (
@@ -72,4 +72,6 @@ static inline int spiDrive (const bool * vector, int spiMisoPin) {
 	// Serial.println("MISO from HCDC:");
 	// Serial.println(misoBuffer);
 	return misoBuffer;
+}
+
 }

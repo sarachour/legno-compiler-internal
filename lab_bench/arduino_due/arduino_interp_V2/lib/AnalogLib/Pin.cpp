@@ -1,6 +1,8 @@
 #include "include/Pin.h"
 #include "include/Logger.h"
 
+namespace pin {
+
 void setup_pins(){
   pinMode(PIN_ctrRst, OUTPUT);
 	pinMode(PIN_spiClk, OUTPUT);
@@ -47,15 +49,10 @@ void setup_io(){
 	while ((ADC->ADC_ISR & 0x1000000) == 0);
 }
 
-void set_pin(unsigned char pin, unsigned int value){
-#ifdef _DUE
-  // Serial.println("fast reset");
-  digitalWriteDirect(PIN_ctrRst, value);
-#else
-  // Serial.println("regular reset");
-  digitalWrite(PIN_ctrRst, value);
-#endif
-}
+  void setup(){
+    setup_pins();
+    setup_io();
+  }
 
 int get_due_adc_index(unsigned char chip,unsigned char tile,unsigned char slice){
   for(int i=0; i < 4; i+=1){
@@ -129,7 +126,9 @@ void read_extern2(unsigned char chip,
   logger::assert(variance > 0, "variance must be positive");
 }
 
-void pin_reset(){
-  set_pin(PIN_ctrRst, HIGH);
-  set_pin(PIN_ctrRst, LOW);
+void reset(){
+  DigitalWriteP(PIN_ctrRst, HIGH);
+  DigitalWriteP(PIN_ctrRst, LOW);
+}
+
 }

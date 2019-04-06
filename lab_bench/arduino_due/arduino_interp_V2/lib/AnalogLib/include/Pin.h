@@ -61,6 +61,7 @@ const unsigned char PIN_tdi[8] = {35,37,39,41,43,45,47,49};
 const unsigned char PIN_tdoClk = 34;
 const unsigned char PIN_tdo[8] = {34,36,38,40,42,44,46,48};
 
+namespace pin {
 #ifdef _DUE
 static inline void DigitalWriteP(unsigned char pin, unsigned char val) {
 if (val) g_APinDescription[pin].pPort -> PIO_SODR = g_APinDescription[pin].ulPin;
@@ -81,7 +82,6 @@ return digitalRead(pin);
 
 void setup_io();
 void setup_pins();
-void pin_reset();
-void set_pin(unsigned char pin, unsigned int value);
-
+void setup();
+void reset();
 #endif

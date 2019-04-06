@@ -11,6 +11,12 @@
 #define N_LUT_ROWS 32
 #define N_LUT_COLS 8
 
+typedef enum STATE_ {
+  CONFIGURE,
+  EXECUTE,
+  STANDBY
+} STATE;
+
 typedef enum {
  ADCL= 0,
  ADCR= 1,
@@ -24,6 +30,7 @@ class ProgIface{
   void reset();
   unsigned char get(const vector_t vec) const;
   void enqueue(const vector_t vec);
+  void set_state(STATE state);
   void write();
  private:
   void _spiDriveData(unsigned char tileno, unsigned char row, unsigned char col,
@@ -37,7 +44,6 @@ class ProgIface{
   unsigned char m_cfgTag [N_TILES][N_ROWS][N_COLS][N_TAGS]; // bit indicating configuration has changed
   bool m_cfgLutTag[2][N_TILES]; // bit indicating configuration has changed
   unsigned char m_cfgBuf[N_TILES][N_ROWS][N_COLS][N_LINES]; // buffer for all the configuration writes
-  
 };
 
 #endif

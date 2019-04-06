@@ -5,10 +5,9 @@
 
 Fabric::Fabric () {
 	/*SPI PINS*/
-  setup_pins();
-  setup_io();
+  pin::setup();
   /*scan chain disable*/
-  pin_reset();
+  pin::reset();
 	/*create chips*/
   delete [] m_ifaces;
 	m_ifaces = new ProgIface[2] {
