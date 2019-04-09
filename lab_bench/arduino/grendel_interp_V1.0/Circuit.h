@@ -1,8 +1,9 @@
 #ifndef CIRCUIT_H
 #define CIRCUIT_H
-#define _DUE
-#include <HCDC_DEMO_API.h>
 
+//#define _DUE
+#include <HCDC_DEMO_API.h>
+#include "Arduino.h"
 namespace circ {
 
 typedef enum block_type {

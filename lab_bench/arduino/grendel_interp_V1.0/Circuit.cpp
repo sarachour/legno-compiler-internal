@@ -1,4 +1,4 @@
-#define _DUE
+//#define _DUE
 #include <HCDC_DEMO_API.h>
 #include "Circuit.h"
 #include "Comm.h"

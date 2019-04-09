@@ -1,4 +1,3 @@
-#include <DueTimer.h>
 #include "Experiment.h"
 #include "Comm.h"
 #include "Circuit.h"
