@@ -62,26 +62,27 @@ const unsigned char PIN_tdoClk = 34;
 const unsigned char PIN_tdo[8] = {34,36,38,40,42,44,46,48};
 
 namespace pin {
-#ifdef _DUE
-static inline void DigitalWriteP(unsigned char pin, unsigned char val) {
-if (val) g_APinDescription[pin].pPort -> PIO_SODR = g_APinDescription[pin].ulPin;
- else g_APinDescription[pin].pPort -> PIO_CODR = g_APinDescription[pin].ulPin;
-}
+  #ifdef _DUE
+  static inline void DigitalWriteP(unsigned char pin, unsigned char val) {
+    if (val) g_APinDescription[pin].pPort -> PIO_SODR = g_APinDescription[pin].ulPin;
+    else g_APinDescription[pin].pPort -> PIO_CODR = g_APinDescription[pin].ulPin;
+  }
 
-static inline unsigned char DigitalReadP(unsigned char pin) {
-return !!(g_APinDescription[pin].pPort -> PIO_PDSR & g_APinDescription[pin].ulPin);
-}
-#else
-static inline void DigitalWriteP(unsigned char pin, unsigned char val){
-digitalWrite(pin,val);
-}
-static inline unsigned char DigitalReadP(unsigned char pin){
-return digitalRead(pin);
-}
-#endif
+  static inline unsigned char DigitalReadP(unsigned char pin) {
+    return !!(g_APinDescription[pin].pPort -> PIO_PDSR & g_APinDescription[pin].ulPin);
+  }
+  #else
+  static inline void DigitalWriteP(unsigned char pin, unsigned char val){
+    digitalWrite(pin,val);
+  }
+  static inline unsigned char DigitalReadP(unsigned char pin){
+    return digitalRead(pin);
+  }
+  #endif
 
-void setup_io();
-void setup_pins();
-void setup();
-void reset();
+  void setup_io();
+  void setup_pins();
+  void setup();
+  void reset();
+}
 #endif

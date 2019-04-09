@@ -24,7 +24,8 @@ unsigned char set_bit(unsigned char bitno){
   unsigned char cfg = 1<<exponent;
   return cfg;
 }
-unsigned char copy_bits(unsigned char dat, unsigned char buf, unsigned char offset, unsigned char size){
+unsigned char copy_bits(unsigned char dat, unsigned char buf,
+                        unsigned char offset, unsigned char size){
   unsigned char mask = 0;
   logger::assert(offset+size-1 < 8, "out of bounds copy");
   for(int i=0; i < size; i+=1){

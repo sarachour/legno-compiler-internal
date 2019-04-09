@@ -21,9 +21,9 @@ void ProgIface::_spiDriveData(
                    unsigned char cfg
                    ) const {
   if(not m_dryrun){
-    DigitalWriteP(PIN_spiSSPin[m_chip][tileno], LOW);
-    spiDrive ( row, col, line, cfg);
-    DigitalWriteP(PIN_spiSSPin[m_chip][tileno], HIGH);
+    pin::DigitalWriteP(PIN_spiSSPin[m_chip][tileno], LOW);
+    spi::spiDrive ( row, col, line, cfg);
+    pin::DigitalWriteP(PIN_spiSSPin[m_chip][tileno], HIGH);
   }
   else{
     logger::tag("spi");
@@ -42,11 +42,11 @@ void ProgIface::_spiDriveData(
 }
 
 int ProgIface::_spiDriveInstr (unsigned char tileno,const bool* vector) const {
- 	DigitalWriteP(PIN_spiSSPin[m_chip][tileno], LOW);
+  pin::DigitalWriteP(PIN_spiSSPin[m_chip][tileno], LOW);
 	// Serial.print("spiMisoPin = "); Serial.println(spiMisoPin);
-	int result = spiDrive ( vector, PIN_spiMiso[m_chip][tileno] );
+	int result = spi::spiDrive ( vector, PIN_spiMiso[m_chip][tileno] );
 	// Serial.print("result = "); Serial.println(result);
-	DigitalWriteP(PIN_spiSSPin[m_chip][tileno], HIGH);
+  pin::DigitalWriteP(PIN_spiSSPin[m_chip][tileno], HIGH);
 	return result;
 }
 ProgIface::ProgIface(unsigned char iface){
