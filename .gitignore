@@ -1,4 +1,5 @@
 build-uno
+build-arduino_due_x
 *.pyc
 calibrate
 transform
