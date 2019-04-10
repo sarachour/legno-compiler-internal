@@ -1,56 +1,14 @@
 #ifndef BLOCK_H
 #define BLOCK_H
 #include "include/ProgIface.h"
+#include "include/Enums.h"
 #include "include/Util.h"
 #include "include/Logger.h"
-
-typedef enum _RANGE_TYPE {
-  RNG_LOW,
-  RNG_MED,
-  RNG_HIGH
-} RANGE_TYPE;
-
-typedef enum _SIGN_TYPE {
-  POS,
-  NEG
-} SIGN_TYPE;
-
-#define LEFT 0
-#define RIGHT 1
-
-typedef enum _PORT {
-  COEFF,
-  IN0,
-  IN1,
-  IC,
-  OUT0,
-  OUT1,
-  OUT2,
-  UNKNOWN_PORT
-} PORT_NAME;
-
-typedef enum _BLOCK {
-  MULT,
-  TILE_DAC,
-  TILE_ADC,
-  TILE_LUT,
-  INTEG,
-  FANOUT,
-  TILE_IN,
-  TILE_OUT,
-  CHIP_IN,
-  CHIP_OUT,
-  UNKNOWN_BLOCK
-} BLOCK_TYPE;
-
 
 typedef struct _BLOCK_DATA {
   ProgIface * iface;
   BLOCK_TYPE type;
-  unsigned char chip;
-  unsigned char tile;
-  unsigned char slice;
-  unsigned char index;
+  block_loc_t place;
 } block_t;
 
 #define LEFT 0
@@ -76,11 +34,11 @@ namespace mult{
   void set_iref_pmos_code(block_t& blk, unsigned char pmos);
   void set_iref_nmos_code(block_t& blk, unsigned char nmos);
   void set_gain_code(block_t& blk, unsigned char gain_code);
+  void set_gain(block_t& blk, float gain);
   void set_range(block_t& blk, PORT_NAME port, RANGE_TYPE range);
   void set_vga(block_t& blk, bool value);
   void set_inv(block_t& blk, bool value);
   void set_enable(block_t& blk, bool value);
-  //void set_gain(block_t& blk, float value);
 }
 
 namespace fanout{
@@ -94,5 +52,22 @@ namespace fanout{
 namespace integ {
   void set_exception(block_t& blk, bool value);
 }
+
+namespace tile_dac {
+  typedef enum _DAC_SOURCE_T{
+    DSRC_MEM,
+    DSRC_LUT,
+    DSRC_PARALLEL_IO
+  } dac_source_t;
+
+  void initialize(block_t& blk);
+  void set_enable(block_t& blk, bool value);
+  void set_source(block_t& blk, dac_source_t value);
+  void set_value(block_t& blk, const char value);
+  void set_offset_code(block_t& blk, const char value);
+  void set_iref_pmos_code(block_t& blk, unsigned char pmos);
+  void set_iref_nmos_code(block_t& blk, unsigned char nmos);
+}
+
 int to_range_code(BLOCK_TYPE blk, RANGE_TYPE t);
 #endif

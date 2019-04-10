@@ -84,8 +84,8 @@ void ProgIface::enqueue(const vector_t vec){
 		if (vec.row==9) m_cfgLutTag[vec.tile][0]=true;
 		if (vec.row==10) m_cfgLutTag[vec.tile][1]=true;
 		// m_cfgTag [vec.tileRowId] [vec.tileColId] [vec.selRow] [vec.selCol] [vec.selLine>>3] |= (1<<(vec.selLine&7));
-		bitSet(m_cfgTag[vec.tile][vec.row][vec.col][vec.line>>3], vec.line&7);
-		m_cfgBuf[vec.tile][vec.row][vec.col][vec.line] = vec.cfg;
+		bitSet(m_cfgTag[vec.loc.tile][vec.loc.row][vec.loc.col][vec.loc.line>>3], vec.line&7);
+		m_cfgBuf[vec.tile][vec.loc.row][vec.loc.col][vec.loc.line] = vec.cfg;
 	}
 
 }

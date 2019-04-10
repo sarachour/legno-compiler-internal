@@ -3,6 +3,8 @@
 
 #include "include/Globals.h"
 #include "include/Vector.h"
+#include "include/Layout.h"
+
 #define N_ROWS 11
 #define N_COLS  16
 #define N_LINES  16
@@ -10,6 +12,7 @@
 
 #define N_LUT_ROWS 32
 #define N_LUT_COLS 8
+
 
 typedef enum STATE_ {
   CONFIGURE,
@@ -30,6 +33,7 @@ class ProgIface{
   void reset();
   unsigned char get(const vector_t vec) const;
   void enqueue(const vector_t vec);
+  void set(loc_t loc, const char data);
   void set_state(STATE state);
   void write();
  private:

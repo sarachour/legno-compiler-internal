@@ -177,7 +177,8 @@ namespace circ {
                         to_range(cmd.data.mult.in1_range));
       }
       else{
-        mult::set_gain(blk, cmd.data.mult.coeff);
+        mult::set_gain(blk,
+                       cmd.data.mult.coeff);
       }
       comm::response("enabled mult",0);
       break;

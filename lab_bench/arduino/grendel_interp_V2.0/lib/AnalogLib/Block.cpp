@@ -79,9 +79,10 @@ namespace block {
     block_t blk;
     blk.iface = 0;
     blk.type = type;
-    blk.chip = chip;
-    blk.slice = slice;
-    blk.index = index;
+    blk.place.chip = chip;
+    blk.place.slice = slice;
+    blk.place.tile = tile;
+    blk.place.index = index;
     return blk;
   }
 
