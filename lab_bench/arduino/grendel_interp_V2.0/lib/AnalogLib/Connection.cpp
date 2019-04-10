@@ -283,7 +283,8 @@ unsigned char findLocalSelRow(block_t& blk){
   return 0;
 }
 
- vector_t build_connection_vector(block_t src, PORT_NAME sport, block_t dst, PORT_NAME dport, bool & cross_tile){
+ vector_t build_connection_vector(block_t src, PORT_NAME sport,
+                                  block_t dst, PORT_NAME dport, bool & cross_tile){
   cross_tile = (src.type == CHIP_IN or src.type == TILE_OUT) or \
     (dst.type == CHIP_OUT or dst.type == TILE_IN);
 

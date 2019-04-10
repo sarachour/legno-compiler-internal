@@ -15,6 +15,9 @@ typedef enum _SIGN_TYPE {
   NEG
 } SIGN_TYPE;
 
+#define LEFT 0
+#define RIGHT 1
+
 typedef enum _PORT {
   COEFF,
   IN0,
@@ -70,16 +73,23 @@ namespace block{
 namespace mult{
   bool has_port(PORT_NAME port);
   void set_offset_code(block_t& blk, PORT_NAME port, unsigned char offset_code);
+  void set_iref_pmos_code(block_t& blk, unsigned char pmos);
+  void set_iref_nmos_code(block_t& blk, unsigned char nmos);
   void set_gain_code(block_t& blk, unsigned char gain_code);
   void set_range(block_t& blk, PORT_NAME port, RANGE_TYPE range);
   void set_vga(block_t& blk, bool value);
+  void set_inv(block_t& blk, bool value);
   void set_enable(block_t& blk, bool value);
-  void set_gain(block_t& blk, float value);
-  void calibrate(block_t& blk);
+  //void set_gain(block_t& blk, float value);
 }
 
 namespace fanout{
   void set_out3(block_t& blk, bool value);
+  void set_range(block_t& blk, PORT_NAME port, RANGE_TYPE range);
+  void set_offset_code(block_t& blk, PORT_NAME port, unsigned char offset_code);
+  void set_iref_pmos_code(block_t& blk, unsigned char pmos);
+  void set_iref_nmos_code(block_t& blk, unsigned char nmos);
+
 }
 namespace integ {
   void set_exception(block_t& blk, bool value);
