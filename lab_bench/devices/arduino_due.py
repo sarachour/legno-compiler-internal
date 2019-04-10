@@ -9,7 +9,7 @@ class ArduinoDue:
     def __init__(self,native=True):
         self._baud_rate = 115200
         if not native:
-            self._serial_port = '/dev/tty.usbmodem1411';
+            self._serial_port = '/dev/tty.usbmodem14101';
         else:
             self._serial_port = '/dev/ttyACM0'
 
