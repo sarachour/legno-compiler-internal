@@ -329,6 +329,9 @@ def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
     return
   if sblk == 'tile_adc' and dblk == 'lut':
     return
+  # this is hard wired
+  if sblk == 'chip_out' and dblk == 'chip_in':
+    return
 
   chip,tile,slce,index =gen_unpack_loc(circ,slocstr)
   src_port = TO_PORT_ID[sport]
