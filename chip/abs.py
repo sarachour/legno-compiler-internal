@@ -124,9 +124,9 @@ class ANode:
                 yield result
 
     @staticmethod
-    def make_node(board,name):
+    def make_node(board,name,loc=None):
         block = board.block(name)
-        node = ABlockInst(block)
+        node = ABlockInst(block,loc=loc)
         return node
 
     @staticmethod
@@ -369,13 +369,18 @@ class AConn(ANode):
 
 
 class ABlockInst(ANode):
-    def __init__(self,node):
+    def __init__(self,node,loc=None):
         ANode.__init__(self)
         self._block = node
         self._inputs = node.inputs
         self._outputs = node.outputs
+        self._loc = loc
         self.config = Config()
         self._used = []
+
+    @property
+    def loc(self):
+        return self._loc
 
     @property
     def block(self):
@@ -388,6 +393,7 @@ class ABlockInst(ANode):
     def _copy(self,eng):
         blk = ABlockInst(self._block)
         blk.config = self.config.copy()
+        blk._loc = self._loc
         success = eng.register(self,blk)
         if not success:
             return eng.get(self)

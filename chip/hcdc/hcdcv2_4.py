@@ -5,6 +5,7 @@ from chip.hcdc.crossbar import tile_in, tile_out, \
 
 from chip.hcdc.extern import block_in as ext_chip_in
 from chip.hcdc.extern import block_out as ext_chip_out
+from chip.hcdc.extern import block_analog_in as ext_chip_analog_in
 from chip.hcdc.io import dac as tile_dac
 from chip.hcdc.io import adc as tile_adc
 from chip.hcdc.fanout import block as fanout
@@ -23,6 +24,14 @@ def test_board(board):
                             mult.name,board.position_string([0,0,0,0]),'in0', cutoff=5))
     assert(board.route_exists(mult.name,board.position_string([1,1,1,1]),'out',
                             mult.name,board.position_string([1,0,0,0]),'in0',cutoff=7))
+    assert(board.route_exists(mult.name,board.position_string([0,1,1,1]),'out',
+                              mult.name,board.position_string([1,0,0,0]),'in0',cutoff=9))
+
+    #ext_in = board.block('ext_chip_analog_in')
+    #ext_out = board.block('ext_chip_out')
+    #assert(board.route_exists(ext_in.name,board.position_string([1,3,2]),'out',
+    #                          ext_out.name,board.position_string([0,3,2]),'in',
+    #                          cutoff=12))
 
 
 def connect(hw,scope1,block1,scope2,block2,negs=[]):
@@ -81,7 +90,7 @@ def make_board():
     hw = Board("HDACv2",Board.CURRENT_MODE)
     hw.add([lut,integ,tile_dac,tile_adc,mult,fanout] + \
            [tile_in,tile_out,chip_in,chip_out,inv_conn] + \
-           [ext_chip_in,ext_chip_out])
+           [ext_chip_in,ext_chip_out,ext_chip_analog_in])
 
     hw.set_time_constant(glb.TIME_FREQUENCY)
 
@@ -123,21 +132,23 @@ def make_board():
 
                     if chip_idx == 0:
                         dac = slce.inst('ext_chip_in')
+                    elif chip_idx == 1:
+                        dac = slce.inst('ext_chip_analog_in')
 
                     assert(tile_idx == 3)
                     assert(slice_idx == 2 or slice_idx == 3)
                     if slice_idx == 2 and chip_idx == 0:
-                        hw.add_handle('A0','ext_chip_out',adc)
-                        hw.add_handle('D0','ext_chip_in',dac)
+                        hw.add_handle('A0','ext_chip_out',loc=adc)
+                        hw.add_handle('D0','ext_chip_in',loc=dac)
                     elif slice_idx == 3 and chip_idx == 0:
-                        hw.add_handle('A1','ext_chip_out',adc)
-                        hw.add_handle('D1','ext_chip_in',dac)
+                        hw.add_handle('A1','ext_chip_out',loc=adc)
+                        hw.add_handle('D1','ext_chip_in',loc=dac)
                     elif slice_idx == 2 and chip_idx == 1:
-                        hw.add_handle('A2','ext_chip_out',adc)
-                        #hw.add_handle(dac,handle='D2')
+                        hw.add_handle('A2','ext_chip_out',loc=adc)
+                        hw.add_handle('E1','ext_chip_analog_in',loc=dac)
                     elif slice_idx == 3 and chip_idx == 1:
-                        hw.add_handle('A3','ext_chip_out',adc)
-                        #hw.add_handle(dac,handle='D3')
+                        hw.add_handle('A3','ext_chip_out',loc=adc)
+                        hw.add_handle('E2','ext_chip_analog_in',loc=dac)
 
     chip0_chip1 = [
         ([0,0,0],[1,1,3],'+'),
@@ -220,7 +231,8 @@ def make_board():
                 for block2 in [chip_out,ext_chip_out]:
                     connect(hw,tile_layer,block1,chip_layer,block2)
 
-            for block1 in [chip_in,ext_chip_in]:
+            for block1 in [chip_in, \
+                           ext_chip_in if chip_no == 0 else ext_chip_analog_in]:
                 for block2 in [tile_in]:
                     connect(hw,chip_layer,block1,tile_layer,block2)
 

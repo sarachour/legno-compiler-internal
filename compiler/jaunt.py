@@ -37,7 +37,7 @@ def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
                                                 scfvar,jop.JConst(1.0),
                                                 mrng,hwrng, \
                                                 snr,annot=block.name)
-        jaunt_common.analog_bandwidth_constraint(jenv,circ,mbw,hwbw)
+        jaunt_common.analog_bandwidth_constraint(jenv,circ,prop,mbw,hwbw)
 
     elif isinstance(prop, props.DigitalProperties):
         jaunt_common.digital_op_range_constraint(jenv,phys,prop,scfvar, \

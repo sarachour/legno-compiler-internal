@@ -7,7 +7,7 @@ import itertools
 import logging
 import compiler.arco_pass.util as arco_util
 logger = logging.getLogger('arco_route')
-logger.setLevel(logging.ERROR)
+logger.setLevel(logging.DEBUG)
 
 class RouteGraph:
     class RNode:
@@ -507,9 +507,10 @@ def tac_abs_get_resolutions(graph,ctx):
             continue
 
         paths= list(graph.board.find_routes(
-                src_rnode.block_name,src_rnode.loc,src_port,
-                dest_rnode.block_name,dest_rnode.loc,dest_port,
-                cutoff=graph.cutoff
+            src_rnode.block_name,src_rnode.loc,src_port,
+            dest_rnode.block_name,dest_rnode.loc,dest_port,
+            cutoff=graph.cutoff,
+            count=100
         ))
         all_routes = []
         n_choices = 1.0
@@ -539,6 +540,8 @@ def tac_abs_get_resolutions(graph,ctx):
         node_list.append(nodes)
         cstr_list.append(cstr)
 
+        logger.debug("# routes %s.%s->%s.%s [%d]" % (src_rnode, src_port, \
+                                                     dest_rnode,dest_port,len(routes)))
 
         if n_choices == 0:
             logger.warn("-> no valid routes exist")
@@ -616,21 +619,40 @@ def tac_abs_block_inst(graph,namespace,fragment,ctx=None):
     used_nodes = ctx.context().nodes_of_block(fragment.block.name)
     free_nodes = list(graph.nodes_of_block(fragment.block.name,
                                            used=used_nodes))
-
-    for node in free_nodes:
+    if not fragment.loc is None:
         base_ctx=ctx.copy()
+        node = graph.get_node(fragment.block.name,fragment.loc)
+        assert(node in free_nodes)
         base_ctx.add(DFSUseNode(node,fragment,
-                                    fragment.config))
+                                fragment.config))
         base_ctx.commit()
-        for new_base_ctx in graph.try_search.iterate(tac_abs_rslv_constraints(graph, \
-                                                                              ctx=base_ctx)):
+        for new_base_ctx in \
+            graph.try_search.iterate(tac_abs_rslv_constraints(graph, \
+                                                              ctx=base_ctx)):
             for new_ctx in tac_iterate_over_sources(graph,\
                                                     namespace,
                                                     new_base_ctx,
                                                     src_list=fragment.subnodes()):
                 yield new_ctx
 
-        #ctx.pop()
+
+
+    else:
+        for node in free_nodes:
+            base_ctx=ctx.copy()
+            base_ctx.add(DFSUseNode(node,fragment,
+                                    fragment.config))
+            base_ctx.commit()
+            for new_base_ctx in \
+                graph.try_search.iterate(tac_abs_rslv_constraints(graph, \
+                                                                  ctx=base_ctx)):
+                for new_ctx in tac_iterate_over_sources(graph,\
+                                                        namespace,
+                                                        new_base_ctx,
+                                                        src_list=fragment.subnodes()):
+                    yield new_ctx
+
+            #ctx.pop()
 
 
 def tac_abs_conn(graph,namespace,fragment,ctx):
@@ -660,10 +682,11 @@ def tac_iterate_over_sources(graph,namespace,ctx, src_list):
                                                           namespace,
                                                           src_frag,
                                                           ctx=ctx)):
-            for very_new_ctx in graph.try_search.iterate(tac_iterate_over_sources(graph,
-                                                                                  namespace,
-                                                                                  new_ctx,
-                                                                                  src_list[1:])):
+            for very_new_ctx in \
+                graph.try_search.iterate(tac_iterate_over_sources(graph,
+                                                                  namespace,
+                                                                  new_ctx,
+                                                                  src_list[1:])):
                 yield very_new_ctx
 
 
@@ -808,6 +831,8 @@ def traverse_abs_circuits(graph,variables,fragment_map,ctx=None):
                 if len(unresolved) > 0:
                     logger.info("-> skipping <%d/%d> unresolved configs" % \
                           (len(unresolved),total))
+                    for bs,ps,bd,pd in unresolved:
+                        logger.info("  %s.%s -> %s.%s" % (bs.name,ps,bd.name,pd));
                     input("<continue>")
                     continue
 
@@ -833,7 +858,7 @@ def build_concrete_circuit(graph,prob,fragment_map):
         circ = ccirc.ConcCirc(graph.board)
 
         for node in state.nodes():
-            logger.info(node.block_name,node.loc)
+            logger.info("node %s" % node)
             circ.use(node.block_name,node.loc,config=node.config)
 
         for n1,p1,n2,p2 in state.conns():
@@ -847,7 +872,7 @@ def build_concrete_circuit(graph,prob,fragment_map):
     return
 
 GRAPH = {}
-def route(board,prob,node_map,cutoff=7,max_failures=None,max_resolutions=None):
+def route(board,prob,node_map,cutoff=12,max_failures=None,max_resolutions=None):
     #sys.setrecursionlimit(1000)
     graph = build_instance_graph(board,
                                  cutoff=cutoff,

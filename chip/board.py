@@ -198,11 +198,12 @@ class Board(Layer):
 
     def route_exists(self,sblk,skey,sport,dblk,dkey,dport,cutoff=3):
         for route in self.find_routes(sblk,skey,sport,
-                                      dblk,dkey,dport,cutoff=cutoff):
+                                      dblk,dkey,dport,cutoff=cutoff,
+                                      count=1):
             return True
         return False
 
-    def find_routes(self,sblk,skey,sport,dblk,dkey,dport,cutoff=3):
+    def find_routes(self,sblk,skey,sport,dblk,dkey,dport,cutoff=3,count=-1):
         assert(isinstance(skey,str))
         assert(isinstance(dkey,str))
 
@@ -222,10 +223,19 @@ class Board(Layer):
                             (dblk,dkey,dport))
 
 
-        all_routes = list(nx.all_simple_paths(self._routes,
+        pathgen = nx.all_simple_paths(self._routes,
                                          source=(sblk,skey,sport),
                                          target=(dblk,dkey,dport),
-                                         cutoff=cutoff))
+                                         cutoff=cutoff)
+
+        if count >= 0:
+            all_routes = []
+            for path in pathgen:
+                all_routes.append(path)
+                if(len(all_routes) >= count):
+                    break;
+        else:
+            all_routes=list(pathgen)
 
         all_routes.sort(key=lambda route:len(route))
         for route in all_routes:

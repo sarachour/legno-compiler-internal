@@ -387,9 +387,10 @@ class Integ(Op2):
 
 class ExtVar(Op):
 
-    def __init__(self,name):
+    def __init__(self,name,loc=None):
         Op.__init__(self,OpType.EXTVAR,[])
         self._name = name
+        self._loc = loc
 
     def coefficient(self):
         return 1.0
@@ -399,6 +400,10 @@ class ExtVar(Op):
 
     def prod_terms(self):
         return [self]
+
+    @property
+    def loc(self):
+        return self._loc
 
     @property
     def name(self):
@@ -415,10 +420,6 @@ class ExtVar(Op):
         assert(self._name in bandwidths)
         return bandwidth.BandwidthCollection(bandwidths[self._name])
 
-    @staticmethod
-    def from_json(obj):
-        return ExtVar(obj['name'])
-
 
     @property
     def name(self):
@@ -433,12 +434,13 @@ class ExtVar(Op):
 
     @staticmethod
     def from_json(obj):
-        return ExtVar(obj['name'])
+        return ExtVar(obj['name'],obj['physical'])
 
 
     def to_json(self):
         obj = Op.to_json(self)
         obj['name'] = self._name
+        obj['physical'] = self._physical
         return obj
 
 class Var(Op):
@@ -580,9 +582,14 @@ class Const(Op):
 
 class Emit(Op):
 
-    def __init__(self,node):
+    def __init__(self,node,loc=None):
         Op.__init__(self,OpType.EMIT,[node])
+        self._loc = loc
         pass
+
+    @property
+    def loc(self):
+        return self._loc
 
     def infer_bandwidth(self,intervals,bandwidths={}):
         return self.arg(0).infer_bandwidth(intervals,bandwidths)

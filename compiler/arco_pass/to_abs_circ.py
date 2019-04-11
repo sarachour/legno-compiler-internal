@@ -116,7 +116,15 @@ def to_abs_circ(board,ast):
         yield stub,"out"
 
     elif ast.op == aop.AOpType.EXTVAR:
-        node = acirc.ANode.make_node(board,"ext_chip_in")
+        if ast.has_loc:
+            name,loc = board.handle(ast.loc)
+            print(name)
+            assert(name == 'ext_chip_in' or name == 'ext_chip_analog_in')
+        else:
+            loc = None
+            name = 'ext_chip_in'
+
+        node = acirc.ANode.make_node(board,name,loc=loc)
         node.config.set_label("in", ast.name,kind=Labels.DYNAMIC_INPUT)
         node.config.set_comp_mode("*")
         yield node,"out"
@@ -136,7 +144,13 @@ def to_abs_circ(board,ast):
 
     elif ast.op == aop.AOpType.EMIT:
         for in_node,in_port in to_abs_circ(board,ast.input(0)):
-            node = acirc.ANode.make_node(board,"ext_chip_out")
+            if ast.has_loc:
+                name,loc = board.handle(ast.loc)
+                assert(name == 'ext_chip_out')
+            else:
+                loc = None
+
+            node = acirc.ANode.make_node(board,"ext_chip_out",loc=loc)
             node.config.set_comp_mode("*")
             acirc.ANode.connect(in_node,in_port,node,"in")
             yield node,"out"

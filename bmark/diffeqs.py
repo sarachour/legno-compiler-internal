@@ -15,6 +15,8 @@ import bmark.bmarks.sensor_dynsys as sensor_dynsys
 import bmark.bmarks.sensor_fan as sensor_fanout
 import bmark.bmarks.bbsys as bbsys
 
+import bmark.bmarks.audiotest as audiotest
+
 # commented out any benchmarks that don't work.
 BMARKS = [
     rxn.model_bimolec(),
@@ -48,7 +50,8 @@ BMARKS = [
     test.zero(),
     robot_control.model(),
     sensor_fanout.model(),
-    sensor_dynsys.model()
+    sensor_dynsys.model(),
+    audiotest.model()
 ]
 
 # energy model: page 26 of thesis, chapter 2

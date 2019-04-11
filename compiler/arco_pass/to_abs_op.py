@@ -52,11 +52,11 @@ def make_abstract(ast):
       return aop.AInteg(deriv,ic)
 
     elif ast.op == mop.OpType.EXTVAR:
-      return aop.AExtVar(ast.name)
+      return aop.AExtVar(ast.name,ast.loc)
 
     elif ast.op == mop.OpType.EMIT:
       expr = make_abstract(ast.args[0])
-      return aop.AFunc(aop.AOpType.EMIT, [expr])
+      return aop.AFunc(aop.AOpType.EMIT, [expr], loc=ast.loc)
 
     elif ast.op == mop.OpType.CALL:
       values = list(map(lambda v: make_abstract(v),ast.values))

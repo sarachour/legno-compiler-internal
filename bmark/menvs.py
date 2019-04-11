@@ -1,6 +1,11 @@
 from lang.prog import MathEnv
 import ops.op as op
 
+def audio():
+  exp = MathEnv('audio');
+  exp.set_sim_time(2)
+  exp.set_input_time(2)
+  return exp
 
 def short_time():
   exp = MathEnv('t2')
@@ -103,6 +108,7 @@ def long_sin2():
 MATH_ENVS = [
   short_time(),
   med_time(),
+  audio(),
   long_time(),
   medlong_time(),
   long_sin0(),

@@ -38,6 +38,14 @@ class AnalogProperties(Properties):
         Properties.__init__(self,Properties.ANALOG)
         self._bounds = (None,None,units.unknown)
         self._bandwidth = (None,None,units.unknown)
+        self._physical = False
+
+    def set_physical(self,v):
+        self._physical = v
+
+    @property
+    def is_physical(self):
+        return self._physical
 
     def set_bandwidth(self,lower,upper,unit):
         assert(lower is None or upper is None or lower <= upper)

@@ -167,7 +167,7 @@ def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
                                                 mathscvar,hwscvar, \
                                                 mrng,hwrng,snr,\
                                                 '%s-%s' % (block.name,port))
-        jaunt_common.analog_bandwidth_constraint(jenv,circ,mbw,hwbw)
+        jaunt_common.analog_bandwidth_constraint(jenv,circ,prop,mbw,hwbw)
 
     elif isinstance(prop, props.DigitalProperties):
         jaunt_common.digital_op_range_constraint(jenv,phys,prop, \

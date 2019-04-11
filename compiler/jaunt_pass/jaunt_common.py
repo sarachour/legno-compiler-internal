@@ -59,18 +59,24 @@ def decl_scale_variables(jenv,circ):
 def _to_phys_time(circ,time):
     return time/circ.board.time_constant
 
+
 def _to_phys_bandwidth(circ,bw):
     return bw*circ.board.time_constant
 
-def analog_bandwidth_constraint(jenv,circ,mbw,hwbw):
+def analog_bandwidth_constraint(jenv,circ,prop,mbw,hwbw):
     tau = jop.JVar(jenv.tau())
-    if hwbw.unbounded_lower() and hwbw.unbounded_upper():
-        return
+    if isinstance(prop,props.AnalogProperties) and prop.is_physical:
+        jenv.eq(tau,jop.JConst(1.0),'jcom-physical-bw')
 
     if mbw.is_infinite():
         return
 
+    if hwbw.unbounded_lower() and hwbw.unbounded_upper():
+        return
+
+    # physical signals are not corrected by the board's time constant
     physbw = _to_phys_bandwidth(circ,mbw.bandwidth)
+
     jenv.use_tau()
     if hwbw.upper > 0:
         jenv.lte(jop.JMult(tau,jop.JConst(physbw)), \
@@ -173,6 +179,9 @@ def analog_op_range_constraint(jenv,circ,phys,prop, \
     if jenv.no_quality:
         return
 
+    if prop.is_physical:
+        jenv.eq(mscale, jop.JConst(1.0),'jcom-analog-physical-rng')
+
     nz_expr = noise_model_to_noise_expr(jenv,circ,phys)
     nsr_expr = compute_nsr(nz_expr,mscale,mrng)
     max_nsr = compute_max_nsr(snr)
@@ -246,7 +255,7 @@ def digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):
 
     elif prop.kind == props.DigitalProperties.ClockType.CONTINUOUS:
         hwbw = prop.bandwidth()
-        analog_bandwidth_constraint(jenv,circ, \
+        analog_bandwidth_constraint(jenv,circ,prop, \
                                     mbw,hwbw)
     else:
         raise Exception("unknown not permitted")

@@ -98,12 +98,20 @@ class AOp:
 
 class AExtVar(AOp):
 
-    def __init__(self,var):
+    def __init__(self,var,loc=None):
         AOp.__init__(self,AOpType.EXTVAR,[])
         self._var = var
+        self._loc = loc
 
     def make(self,inputs):
-        return AExtVar(self._var)
+        return AExtVar(self._var, self._loc)
+
+    @property
+    def loc(self):
+        return self._loc
+
+    def has_loc(self):
+        return (not self._loc is None)
 
     @property
     def name(self):
@@ -275,13 +283,22 @@ class AInteg(AOp):
 
 class AFunc(AOp):
 
-    def __init__(self,kind,inputs,expr=None):
+    def __init__(self,kind,inputs,expr=None, loc=None):
         AOp.__init__(self,kind,inputs)
         self._expr = expr
+        self._loc = loc
 
     def make(self,inputs):
-        return AFunc(self._op,inputs,self._expr)
+        return AFunc(self._op,inputs,self._expr,self._loc)
 
+
+    @property
+    def has_loc(self):
+        return not self._loc is None
+
+    @property
+    def loc(self):
+        return self._loc
 
 
     @property

@@ -23,6 +23,9 @@ class Bandwidth:
   def union(self,bw2):
     return Bandwidth(max(bw2.bandwidth,self._bw))
 
+  def scale(self,v):
+    return Bandwidth(self._bw*v)
+
   def mult(self,bw2):
     return Bandwidth(bw2.bandwidth+self._bw)
 

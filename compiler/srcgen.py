@@ -284,6 +284,7 @@ def gen_block(gprog,circ,block,locstr,config,no_calib=False):
     generator = gen_use_fanout(circ,block,locstr,config)
 
   elif block.name == 'ext_chip_in' or \
+       block.name == 'ext_chip_analog_in' or \
        block.name == 'tile_in' or \
        block.name == 'chip_in' or \
        block.name == 'ext_chip_out' or \
@@ -307,7 +308,10 @@ def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
     'tile_dac': 'dac',
     'tile_adc': 'adc',
     'multiplier':'mult',
+    'chip_in': 'chip_input',
+    'chip_out': 'chip_output',
     'ext_chip_in': 'chip_input',
+    'ext_chip_analog_in': 'chip_input',
     'ext_chip_out': 'chip_output',
   }
   TO_PORT_ID = {

@@ -99,6 +99,12 @@ def rank_model(circ):
     if not snr is None and snr > 0:
       snrs.append(snr)
 
+  score = 1.0
+  if len(snrs) == 0 or len(iface_snrs) == 0:
+    return 0.0
+
+  snrs = [1] if len(snrs) == 0 else snrs
+  iface_snrs [1] if len(iface_snrs) == 0 else iface_snrs
   score = np.log10(min(snrs)*min(iface_snrs))
   return score
 
