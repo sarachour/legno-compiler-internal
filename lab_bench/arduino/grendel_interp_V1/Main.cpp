@@ -2,14 +2,15 @@
 #include "Comm.h"
 #include "Circuit.h"
 #include "assert.h"
+#include "Main.h"
 
 experiment::experiment_t this_experiment;
 Fabric * this_fabric;
 
 typedef enum cmd_type {
-    CIRC_CMD,
-    EXPERIMENT_CMD,
-    FLUSH_CMD
+  CIRC_CMD,
+  EXPERIMENT_CMD,
+  FLUSH_CMD
 } cmd_type_t;
 
 
@@ -25,13 +26,16 @@ typedef struct cmd_{
   cmd_data_t data;
 } cmd_t;
 
-void setup() {
+namespace main {
+
+void init() {
   this_fabric = circ::setup_board();
   Serial.begin(115200);
   Serial.flush();
   experiment::setup_experiment(&this_experiment);
   circ::init_calibrations();
 }
+
 
 void loop() {
   if(comm::read_mode()){
@@ -40,6 +44,7 @@ void loop() {
     float * inbuf = NULL;
     bool debug = cmd.test == 0 ? false : true;
     comm::process_command();
+
     switch(cmd.type){
       case cmd_type_t::CIRC_CMD:
         assert(this_fabric != NULL);
@@ -50,6 +55,7 @@ void loop() {
         }
         else{
           circ::print_command(cmd.data.circ_cmd);
+
           circ::debug_command(this_fabric,cmd.data.circ_cmd,inbuf);
         }
         break;
@@ -72,6 +78,7 @@ void loop() {
         comm::print_header();
         Serial.print(cmd.type);
         Serial.println(" unknown");
+        comm::error("unknown command");
         break;
     }
     comm::reset();
@@ -79,9 +86,6 @@ void loop() {
   else{
     comm::listen();
   }
-  
-  
-  
 }
 
-
+}

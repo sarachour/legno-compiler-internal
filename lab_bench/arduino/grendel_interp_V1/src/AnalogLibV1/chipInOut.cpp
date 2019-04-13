@@ -1,4 +1,4 @@
-#include "HCDC_DEMO_API.h"
+#include "AnalogLib.h"
 #include "assert.h"
 // y = -0.001592x + 3.267596
 // R^2 = 0.999464

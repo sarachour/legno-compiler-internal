@@ -1,4 +1,4 @@
-#include "HCDC_DEMO_API.h"
+#include "AnalogLib.h"
 
 /*Auxiliary function for converting between endian formats for 8 bit values*/
 unsigned char endian (unsigned char input) {

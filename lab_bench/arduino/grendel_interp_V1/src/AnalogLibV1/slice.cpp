@@ -1,4 +1,4 @@
-#include "HCDC_DEMO_API.h"
+#include "AnalogLib.h"
 extern const char HCDC_DEMO_BOARD;
 
 Fabric::Chip::Tile::Slice::Slice (
@@ -76,6 +76,8 @@ Fabric::Chip::Tile::Slice::~Slice () {
 
 bool Fabric::Chip::Tile::Slice::calibrate () const {
 
+  Serial.println("AC:>[msg] Calibrating ADC");
+  Serial.flush();
 	if (HCDC_DEMO_BOARD==1) {
 
 		if (sliceId==slice0 || sliceId==slice2) {
@@ -178,22 +180,53 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
 		//}
 		// if (!dac->findBiasAdc (dac->negGainCalCode)) return false;
 
-	} else {
-		error("HCDC_DEMO_BOARD # not recongized. Only 1,2,3,4,5 are valid.");
+	} else if (HCDC_DEMO_BOARD==6) {
+    if (
+				sliceId==slice0
+				&& parentTile->tileRowId==tileRow0
+				&& parentTile->tileColId==tileCol0
+				&& parentTile->parentChip->chipRowId==chipRow0
+				&& parentTile->parentChip->chipColId==chipCol0
+        )
+      Serial.println("AC:>[msg] SKIPPING THIS ADC 0.0.0.0");
+    else if
+    (
+     sliceId==slice1
+     && parentTile->tileRowId==tileRow0
+     && parentTile->tileColId==tileCol0
+     && parentTile->parentChip->chipRowId==chipRow0
+     && parentTile->parentChip->chipColId==chipCol0
+     )
+      Serial.println("AC:>[msg] SKIPPING ADC 0.0.0.1");
+
+    else{
+      if (!adc->calibrate()) return false;
+    }
+  }
+  else {
+		error("HCDC_DEMO_BOARD # not recognized. Only 1,2,3,4,5 are valid.");
 	}
 
-	SerialUSB.println("Calibrating DAC");
+	Serial.println("AC:>[msg] Calibrating DAC");
+  Serial.flush();
 	if (!dac->calibrate()) return false;
-	SerialUSB.println("Calibrating Fanout 0");
+	Serial.println("AC:>[msg] Calibrating Fanout 0");
+  Serial.flush();
 	if (!fans[0].calibrate()) return false;
-	SerialUSB.println("Calibrating Fanout 1");
+	Serial.println("AC:>[msg] Calibrating Fanout 1");
+  Serial.flush();
 	if (!fans[1].calibrate()) return false;
-	SerialUSB.println("Calibrating Multiplier 0");
+	Serial.println("AC:>[msg] Calibrating Multiplier 0");
+  Serial.flush();
 	if (!muls[0].calibrate()) return false;
-	SerialUSB.println("Calibrating Multiplier 1");
+	Serial.println("AC:>[msg] Calibrating Multiplier 1");
+  Serial.flush();
 	if (!muls[1].calibrate()) return false;
-	SerialUSB.println("Calibrating Integrator");
+	Serial.println("AC:>[msg] Calibrating Integrator");
+  Serial.flush();
 	if (!integrator->calibrate()) return false;
+	Serial.println("AC:>[msg] Done");
+  Serial.flush();
 	return true;
 
 }

@@ -1,4 +1,4 @@
-#include "HCDC_DEMO_API.h"
+#include "AnalogLib.h"
 
 /*Set connection*/
 void Fabric::Chip::Connection::setConn () const {

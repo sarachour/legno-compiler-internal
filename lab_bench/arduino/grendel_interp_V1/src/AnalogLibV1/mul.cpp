@@ -1,4 +1,4 @@
-#include "HCDC_DEMO_API.h"
+#include "AnalogLib.h"
 #include <float.h>
 
 void Fabric::Chip::Tile::Slice::Multiplier::setEnable (

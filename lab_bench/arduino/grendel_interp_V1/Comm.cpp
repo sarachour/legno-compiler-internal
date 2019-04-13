@@ -30,6 +30,7 @@ void process_command(){
 void done_command(){
   header();
   Serial.println("[done]");
+  Serial.flush();
 }
 
 void payload(){
@@ -40,8 +41,9 @@ void data(const char * msg,const char * type_sig){
   header();
   Serial.print("[data][");
   Serial.print(type_sig);
-  Serial.print("] ");  
+  Serial.print("] ");
   Serial.println(msg);
+  Serial.flush();
 }
 void response(const char * msg,int args){
   header();
@@ -49,12 +51,14 @@ void response(const char * msg,int args){
   Serial.print(args);
   Serial.print("]");
   Serial.println(msg);
+  Serial.flush();
 }
 void error(const char * msg){
   while(1){
      header();
      Serial.print("[error]");
      Serial.println(msg);
+     Serial.flush();
      delay(100);
   }
 }
@@ -94,7 +98,6 @@ void listen(){
       return;
     }
   }
-  
 }
 
 void* get_data_ptr(int offset){

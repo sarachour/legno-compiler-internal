@@ -1,3 +1,5 @@
+#include "AnalogLib.h"
+
 class Fabric::Chip::Tile::Slice::TileInOut : public Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
 

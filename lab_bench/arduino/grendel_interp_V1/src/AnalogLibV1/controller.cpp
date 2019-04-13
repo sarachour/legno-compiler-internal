@@ -1,4 +1,4 @@
-#include "HCDC_DEMO_API.h"
+#include "AnalogLib.h"
 
 /*empty instruction vector*/
 // send empty instruction vector to controller address, 0101,1000,0000,0000

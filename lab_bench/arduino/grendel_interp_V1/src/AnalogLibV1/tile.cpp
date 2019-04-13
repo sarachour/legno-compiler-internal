@@ -1,4 +1,4 @@
-#include "HCDC_DEMO_API.h"
+#include "AnalogLib.h"
 
 Fabric::Chip::Tile::Tile (
 	Chip * parentChip,

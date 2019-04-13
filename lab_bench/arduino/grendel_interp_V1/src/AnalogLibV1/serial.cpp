@@ -1,4 +1,4 @@
-#include "HCDC_DEMO_API.h"
+#include "AnalogLib.h"
 
 /*Start serial digital data output*/
 void Fabric::serialOutReq () {

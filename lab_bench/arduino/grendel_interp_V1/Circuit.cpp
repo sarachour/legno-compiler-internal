@@ -1,11 +1,11 @@
 //#define _DUE
-#include <HCDC_DEMO_API.h>
+#include "src/AnalogLibV1/AnalogLib.h"
 #include "Circuit.h"
 #include "Comm.h"
 #include <assert.h>
 
-//char HCDC_DEMO_BOARD = 6;
-char HCDC_DEMO_BOARD = 4;
+char HCDC_DEMO_BOARD = 6;
+//char HCDC_DEMO_BOARD = 4;
 
 
 namespace circ {
@@ -17,7 +17,7 @@ void init_calibrations(){
   for(int chipno=0; chipno < 2; chipno ++){
     for(int tileno = 0; tileno < 4; tileno ++){
       for(int sliceno = 0; sliceno < 4; sliceno ++){
-        caltbl[chipno][tileno][sliceno] = false;   
+        caltbl[chipno][tileno][sliceno] = false;
       }
     }
   }
@@ -592,18 +592,23 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
         Fabric::Chip::Connection(src,dst).brkConn();
         comm::response("disconnected",0);
         break;
-        
+
     case cmd_type_t::CALIBRATE:
         slice = get_slice(fab,cmd.data.circ_loc);
         if(do_calibrate(cmd.data.circ_loc.chip,
                         cmd.data.circ_loc.tile,
                         cmd.data.circ_loc.slice)){
-            assert(slice->calibrate());
+          comm::test(slice->calibrate(), "calibration failed");
+        }
+        else{
+          comm::print_header();
+          Serial.println("skipping calibration.");
+          Serial.flush();
         }
         comm::response("calibrated",0);
         break;
-        
-    default:
+
+   default:
       comm::error("unknown command");
       break;
   }

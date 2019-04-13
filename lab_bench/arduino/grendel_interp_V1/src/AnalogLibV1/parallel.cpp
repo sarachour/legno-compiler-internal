@@ -1,4 +1,4 @@
-#include "HCDC_DEMO_API.h"
+#include "AnalogLib.h"
 
 /*Set parallel digital data output on off*/
 void Fabric::Chip::Tile::Slice::FunctionUnit::setParallelOut (

@@ -1,13 +1,12 @@
 #include "math.h"
 #include "Experiment.h"
-#include "Arduino.h"
 #include "Circuit.h"
 #include "Comm.h"
 #include <assert.h>
 
 namespace experiment {
 
-int16_t DATABUF[MAX_N_BYTES/sizeof(int16_t)];
+int16_t DATABUF[MAX_N_SAMPLES];
 
 volatile int IDX;
 int N;
@@ -213,8 +212,8 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   FABRIC = fab;
   EXPERIMENT = expr;
   // clear dacs
-  analogWrite(DAC0, 0); 
-  analogWrite(DAC1, 0); 
+  analogWrite(DAC0, 0);
+  analogWrite(DAC1, 0);
   // wait a bit for the dac values to take
   delay(10);
   // commit the configuration once.
@@ -229,6 +228,7 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   // compute the timeout to set of the analog timer
   // if we're conducting a short simulation ,use delayus
   set_SDA(LOW);
+  delayMicroseconds(2);
   if(expr->sim_time_sec < 0.1 && expr->use_analog_chip){
     unsigned int sleep_time_us = (unsigned int) (sim_time_sec*1e6);
     //set a timeout within the chip
@@ -238,7 +238,6 @@ void run_experiment(experiment_t * expr, Fabric * fab){
     delayMicroseconds(sleep_time_us);
     fab->execStop();
     Timer3.stop();
-    set_SDA(LOW);
   }
   // if we're conducting a longer simulation
   else if(expr->sim_time_sec >= 0.1 && expr->use_analog_chip){
@@ -250,7 +249,6 @@ void run_experiment(experiment_t * expr, Fabric * fab){
     delay(sleep_time_ms);
     fab->execStop();
     Timer3.stop();
-    set_SDA(LOW);
   }
   else if(expr->sim_time_sec < 0.1 && not expr->use_analog_chip){
     unsigned int sleep_time_us = (unsigned int) (sim_time_sec*1e6);
@@ -258,7 +256,6 @@ void run_experiment(experiment_t * expr, Fabric * fab){
     set_SDA(HIGH);
     delayMicroseconds(sleep_time_us);
     Timer3.stop();
-    set_SDA(LOW);
   }
   else if(expr->sim_time_sec >= 0.1 && not expr->use_analog_chip){
     unsigned long sleep_time_ms = (unsigned long) (sim_time_sec*1e3);
@@ -266,12 +263,12 @@ void run_experiment(experiment_t * expr, Fabric * fab){
     set_SDA(HIGH);
     delay(sleep_time_ms);
     Timer3.stop();
-    set_SDA(LOW);
   }
   else{
     comm::error("unrecognized case");
   }
-  analogWrite(DAC0, 0); 
+  set_SDA(LOW);
+  analogWrite(DAC0, 0);
   analogWrite(DAC1, 0);
 }
 

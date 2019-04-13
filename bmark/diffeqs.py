@@ -15,7 +15,8 @@ import bmark.bmarks.sensor_dynsys as sensor_dynsys
 import bmark.bmarks.sensor_fan as sensor_fanout
 import bmark.bmarks.bbsys as bbsys
 
-import bmark.bmarks.audiotest as audiotest
+import bmark.bmarks.audio.test as audio_test
+import bmark.bmarks.audio.lpf as audio_lpf
 
 # commented out any benchmarks that don't work.
 BMARKS = [
@@ -51,7 +52,8 @@ BMARKS = [
     robot_control.model(),
     sensor_fanout.model(),
     sensor_dynsys.model(),
-    audiotest.model()
+    audio_test.model(),
+    audio_lpf.model()
 ]
 
 # energy model: page 26 of thesis, chapter 2

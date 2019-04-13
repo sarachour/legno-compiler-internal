@@ -1,4 +1,4 @@
-#include "HCDC_DEMO_API.h"
+#include "AnalogLib.h"
 
 void Fabric::Chip::Tile::Slice::LookupTable::setSource (
 	bool external, // lut takes input from chip parallel input
