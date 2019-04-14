@@ -442,6 +442,9 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
 def execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trialno):
   if hwenv.use_oscilloscope and len(hwenv.oscilloscope.outputs()) > 0:
     gren.add(parse('osc_setup_trigger'))
+  if hwenv.manual:
+    gren.add(parse('wait_for_key'))
+
   gren.add(parse('micro_run'))
   circ_bmark,circ_indices,circ_scale_index,circ_opt,_,_ = \
                     path_handler.grendel_file_to_args(filename)

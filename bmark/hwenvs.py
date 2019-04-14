@@ -15,12 +15,31 @@ def noosc():
   exp.add_adc(due_adc=3,handle="A3")
   return exp
 
+def microphone():
+  exp = HWEnv('microphone')
+  osc = exp.use_oscilloscope()
+  osc.add_range(0,-1.5,1.5)
+  osc.add_range(1,-1.5,1.5)
+  exp.set_manual(True)
+  exp.add_dac(due_dac=0,handle='D0')
+  exp.add_dac(due_dac=1,handle='D1')
+  # read one value with oscilloscope, 3 with adc
+  osc.add_output(DiffPinMode(0,1),handle="A0")
+  osc.add_output(DiffPinMode(0,1),handle="A1")
+  osc.add_output(DiffPinMode(0,1),handle="A2")
+  osc.add_output(DiffPinMode(0,1),handle="A3")
+  #exp.add_adc(due_adc=1,handle="A1")
+  #exp.add_adc(due_adc=2,handle="A2")
+  #exp.add_adc(due_adc=3,handle="A3")
+
+  return exp
+
+
 def default():
   exp = HWEnv('default')
   osc = exp.use_oscilloscope()
   osc.add_range(0,-1.5,1.5)
   osc.add_range(1,-1.5,1.5)
-
   exp.add_dac(due_dac=0,handle='D0')
   exp.add_dac(due_dac=1,handle='D1')
   # read one value with oscilloscope, 3 with adc
@@ -37,7 +56,8 @@ def default():
 
 HW_ENVS = [
   default(),
-  noosc()
+  noosc(),
+  microphone()
 ]
 
 def get_hw_env(name):

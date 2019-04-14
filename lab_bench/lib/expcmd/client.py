@@ -4,7 +4,7 @@ class WaitForKeypress(Command):
 
 
   def __init__(self):
-    pass
+    Command.__init__(self)
 
   @staticmethod
   def name():

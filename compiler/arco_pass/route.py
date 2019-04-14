@@ -88,11 +88,10 @@ class RouteGraph:
             fragstr = self._fragment.id if not self._fragment is None else "none"
             return "%d.%s%s [%s]" % (self.id,self._block,self._loc,fragstr)
 
-    def __init__(self,board,cutoff,max_failures,max_resolutions):
+    def __init__(self,board,max_failures,max_resolutions):
         self._nodes = {}
         self._nodes_by_block = {}
         self.board = board
-        self.cutoff = cutoff
         self.try_search = arco_util.TryObject("search",n_succ=None,n_fail=max_failures)
         self.try_resolve = arco_util.TryObject("rslv",n_succ=None,n_fail=max_resolutions)
 
@@ -127,14 +126,13 @@ class RouteGraph:
 
 
 GRAPHS = {}
-def build_instance_graph(board,cutoff,max_failures,max_resolutions):
+def build_instance_graph(board,max_failures,max_resolutions):
     if board.name in GRAPHS:
         return GRAPHS[board.name]
 
     graph = RouteGraph(board,
                        max_failures=max_failures,
-                       max_resolutions=max_resolutions,
-                       cutoff=cutoff)
+                       max_resolutions=max_resolutions)
 
     for block,loc,metadata in board.instances():
         graph.add_node(block,loc)
@@ -509,7 +507,6 @@ def tac_abs_get_resolutions(graph,ctx):
         paths= list(graph.board.find_routes(
             src_rnode.block_name,src_rnode.loc,src_port,
             dest_rnode.block_name,dest_rnode.loc,dest_port,
-            cutoff=graph.cutoff,
             count=5
         ))
         all_routes = []
@@ -872,10 +869,9 @@ def build_concrete_circuit(graph,prob,fragment_map):
     return
 
 GRAPH = {}
-def route(board,prob,node_map,cutoff=12,max_failures=None,max_resolutions=None):
+def route(board,prob,node_map,max_failures=None,max_resolutions=None):
     #sys.setrecursionlimit(1000)
     graph = build_instance_graph(board,
-                                 cutoff=cutoff,
                                  max_failures=max_failures,
                                  max_resolutions=max_resolutions)
     logger.info('--- concrete circuit ---')

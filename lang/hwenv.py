@@ -35,6 +35,14 @@ class HWEnv:
     self._osc = None
     self._dacs = {}
     self._adcs = {}
+    self._manual = False
+
+  @property
+  def manual(self):
+    return self._manual
+
+  def set_manual(self,v):
+    self._manual = v
 
   def dac(self,handle):
     return self._dacs[handle]
