@@ -17,6 +17,7 @@ import bmark.bmarks.bbsys as bbsys
 
 import bmark.bmarks.audio.test as audio_test
 import bmark.bmarks.audio.lpf as audio_lpf
+import bmark.bmarks.audio.mixer as audio_mixer
 
 # commented out any benchmarks that don't work.
 BMARKS = [
@@ -53,7 +54,8 @@ BMARKS = [
     sensor_fanout.model(),
     sensor_dynsys.model(),
     audio_test.model(),
-    audio_lpf.model()
+    audio_lpf.model(),
+    audio_mixer.model()
 ]
 
 # energy model: page 26 of thesis, chapter 2

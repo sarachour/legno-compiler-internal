@@ -194,7 +194,7 @@ def compile(board,prob,depth=3, \
                 for route_index,conc_circ in try_conc.enumerate(arco_route.route(board,
                                                                                  prob,
                                                                                  node_map,
-                                                                                 max_failures=100,
+                                                                                 max_failures=1000,
                                                                                  max_resolutions=100)):
 
                     indices = [abs_idx,merge_idx,stub_src_idx,route_index]

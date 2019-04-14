@@ -10,11 +10,10 @@ import chip.units as units
 import chip.hcdc.globals as glb
 
 def model():
-    prob = MathProg("aud-lpf")
+    prob = MathProg("aud-mixer")
 
     params = {
-      'tau': 0.1,
-      'Z0':0
+      'tau': 0.9999
     }
 
     # cutoff = 1/(2*pi*RC) = tau*1/(2*pi)
@@ -24,15 +23,18 @@ def model():
     # cutoff is 1592 hz (15920 hz?)
 
     params['leak'] = params['tau']
-    Z = parse_diffeq('{tau}*X + {leak}*(-Z)', 'Z0',':v',params)
 
-    prob.bind('X', op.ExtVar("I",loc='E1'))
+    prob.bind('X', op.ExtVar("I1",loc='E1'))
+    prob.bind('Y', op.ExtVar("I2",loc='E2'))
+    Z = parse_fn('({tau}*Y)*X', params)
     prob.bind('Z', Z)
     prob.bind('OUT',op.Emit(op.Var('Z'), loc='A0'))
 
-    prob.set_bandwidth("I",20*units.khz/glb.TIME_FREQUENCY)
-    prob.set_interval("I",-0.25,0.25)
-    prob.set_interval("Z",-0.25,0.25)
+    prob.set_bandwidth("I1",20*units.khz/glb.TIME_FREQUENCY)
+    prob.set_bandwidth("I2",20*units.khz/glb.TIME_FREQUENCY)
+    prob.set_interval("I1",-0.50,0.50)
+    prob.set_interval("I2",-0.50,0.50)
+    prob.set_interval("Z",-0.50,0.50)
 
     time = 0.4
     prob.set_max_sim_time(time*glb.TIME_FREQUENCY)

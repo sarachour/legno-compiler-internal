@@ -27,12 +27,6 @@ def test_board(board):
     assert(board.route_exists(mult.name,board.position_string([0,1,1,1]),'out',
                               mult.name,board.position_string([1,0,0,0]),'in0'))
 
-    #ext_in = board.block('ext_chip_analog_in')
-    #ext_out = board.block('ext_chip_out')
-    #assert(board.route_exists(ext_in.name,board.position_string([1,3,2]),'out',
-    #                          ext_out.name,board.position_string([0,3,2]),'in',
-    #                          cutoff=12))
-
 
 def connect(hw,scope1,block1,scope2,block2,negs=[]):
     count = 0
