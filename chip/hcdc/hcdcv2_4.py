@@ -215,7 +215,8 @@ def make_board():
 
                 for block1 in [tile_out]:
                     for block2 in [tile_in]:
-                        connect(hw,tile1_layer,block1,tile2_layer,block2)
+                        if tile1 != tile2:
+                            connect(hw,tile1_layer,block1,tile2_layer,block2)
 
         # connect components in each tile
         for tile_no in range(0,n_tiles):

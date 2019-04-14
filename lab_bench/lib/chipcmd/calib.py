@@ -52,8 +52,9 @@ class CalibrateCmd(AnalogChipCommand):
                                       CalibrateCmd.name(),
                                       index=False)
         if result.success:
-            return CalibrateCmd(result['chip'],result['tile'],
-                                result['slice'])
+            data = result.value
+            return CalibrateCmd(data['chip'],data['tile'],
+                                data['slice'])
         else:
             print(result.message)
             raise Exception("<parse_failure>: %s" % args)

@@ -510,7 +510,7 @@ def tac_abs_get_resolutions(graph,ctx):
             src_rnode.block_name,src_rnode.loc,src_port,
             dest_rnode.block_name,dest_rnode.loc,dest_port,
             cutoff=graph.cutoff,
-            count=100
+            count=5
         ))
         all_routes = []
         n_choices = 1.0

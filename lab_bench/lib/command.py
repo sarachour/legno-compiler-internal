@@ -34,7 +34,7 @@ COMMANDS = [
     # circuit commands that are automatically generated
     #DisableCmd,
     #BreakConnCmd,
-    #CalibrateCmd,
+    CalibrateCmd,
     # experiment commands dispatched to microcontroller
     MicroResetCmd,
     MicroRunCmd,

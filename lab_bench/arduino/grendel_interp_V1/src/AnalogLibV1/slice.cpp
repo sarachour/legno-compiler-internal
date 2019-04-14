@@ -181,26 +181,18 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
 		// if (!dac->findBiasAdc (dac->negGainCalCode)) return false;
 
 	} else if (HCDC_DEMO_BOARD==6) {
-    if (
-				sliceId==slice0
-				&& parentTile->tileRowId==tileRow0
-				&& parentTile->tileColId==tileCol0
-				&& parentTile->parentChip->chipRowId==chipRow0
-				&& parentTile->parentChip->chipColId==chipCol0
-        )
-      Serial.println("AC:>[msg] SKIPPING THIS ADC 0.0.0.0");
-    else if
-    (
-     sliceId==slice1
-     && parentTile->tileRowId==tileRow0
-     && parentTile->tileColId==tileCol0
-     && parentTile->parentChip->chipRowId==chipRow0
-     && parentTile->parentChip->chipColId==chipCol0
-     )
-      Serial.println("AC:>[msg] SKIPPING ADC 0.0.0.1");
-
-    else{
-      if (!adc->calibrate()) return false;
+    if (sliceId == slice0 || sliceId == slice2) {
+      if (
+          sliceId==slice0
+          && parentTile->tileRowId==tileRow0
+          && parentTile->tileColId==tileCol0
+          && parentTile->parentChip->chipRowId==chipRow0
+          && parentTile->parentChip->chipColId==chipCol0
+          )
+        Serial.println("AC:>[msg] SKIPPING THIS ADC 0.0.0.0");
+      else{
+        if (!adc->calibrate()) return false;
+      }
     }
   }
   else {

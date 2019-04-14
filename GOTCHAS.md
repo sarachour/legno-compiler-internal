@@ -1,0 +1,2 @@
+- make sure trigger is set to `rising`
+- for some reason, looping from tile0.out->tile1.in->tile1.out->tile0.in doesn't work.

@@ -203,7 +203,7 @@ class Board(Layer):
             return True
         return False
 
-    def find_routes(self,sblk,skey,sport,dblk,dkey,dport,cutoff=3,count=-1):
+    def find_routes(self,sblk,skey,sport,dblk,dkey,dport,cutoff=3,count=1):
         assert(isinstance(skey,str))
         assert(isinstance(dkey,str))
 
@@ -223,21 +223,22 @@ class Board(Layer):
                             (dblk,dkey,dport))
 
 
-        pathgen = nx.all_simple_paths(self._routes,
-                                         source=(sblk,skey,sport),
-                                         target=(dblk,dkey,dport),
-                                         cutoff=cutoff)
+        all_routes = []
+        for n in range(0,cutoff+1):
+            if len(all_routes) >= count and count > 0:
+                continue
 
-        if count >= 0:
-            all_routes = []
+            pathgen = filter(
+                lambda route: len(route) == n+1,
+                nx.all_simple_paths(self._routes,
+                                    source=(sblk,skey,sport),
+                                    target=(dblk,dkey,dport),
+                                    cutoff=n)
+            )
             for path in pathgen:
-                all_routes.append(path)
-                if(len(all_routes) >= count):
-                    break;
-        else:
-            all_routes=list(pathgen)
+                if len(all_routes) < count or count < 0:
+                    all_routes.append(path)
 
-        all_routes.sort(key=lambda route:len(route))
         for route in all_routes:
             yield list(map(lambda args:
                            (args[0],
