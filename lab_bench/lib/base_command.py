@@ -368,7 +368,8 @@ class ArduinoCommand(Command):
             # twenty bytes
             state.arduino.write_bytes(cdata)
             state.arduino.write_newline()
-            return self.get_response(state)
+            resp = self.get_response(state)
+            return resp
 
         return None
 
