@@ -9,6 +9,7 @@ from lab_bench.lib.chipcmd.misc import *
 from lab_bench.lib.expcmd.micro_action import *
 from lab_bench.lib.expcmd.micro_getter import *
 from lab_bench.lib.expcmd.osc import *
+from lab_bench.lib.expcmd.client import *
 '''
 ###################
 CIRCUIT COMMANDS
@@ -55,9 +56,9 @@ COMMANDS = [
     OscGetValuesCmd,
     OscSetVoltageRangeCmd,
     OscSetupTrigger,
-    OscSetSimTimeCmd
+    OscSetSimTimeCmd,
     # virtual commands, deprecated
-    #SetReferenceFunction
+    WaitForKeypress
 ]
 
 
