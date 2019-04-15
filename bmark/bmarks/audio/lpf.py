@@ -13,8 +13,9 @@ def model():
     prob = MathProg("aud-lpf")
 
     params = {
-      'tau': 0.1,
-      'Z0':0
+        'fill': 0.08,
+        'leak': 0.08,
+        'IC':0
     }
 
     # cutoff = 1/(2*pi*RC) = tau*1/(2*pi)
@@ -23,18 +24,24 @@ def model():
     # we multiply cutoff by capacitor time constant
     # cutoff is 1592 hz (15920 hz?)
 
-    params['leak'] = params['tau']
-    Z = parse_diffeq('{tau}*X + {leak}*(-Z)', 'Z0',':v',params)
+    prob.bind('X0', op.ExtVar("I",loc='E1'))
+    bw = 20*units.khz/glb.TIME_FREQUENCY
+    ampl = 0.5
+    prob.set_bandwidth("I",bw)
+    prob.set_interval("I",-ampl,ampl)
+    stages = 8
+    for i in range(1,stages):
+        E = parse_diffeq('{fill}*X%d + {leak}*(-X%d)' % (i-1,i), \
+                         'IC', \
+                         ':v%d' % i, \
+                         params)
 
-    prob.bind('X', op.ExtVar("I",loc='E1'))
-    prob.bind('Z', Z)
-    prob.bind('OUT',op.Emit(op.Var('Z'), loc='A0'))
+        prob.bind('X%d' % i, E)
+        prob.set_interval("X%d" % i,-ampl,ampl)
 
-    prob.set_bandwidth("I",20*units.khz/glb.TIME_FREQUENCY)
-    prob.set_interval("I",-0.25,0.25)
-    prob.set_interval("Z",-0.25,0.25)
+    prob.bind('OUT',op.Emit(op.Var('X%d' % (stages-1)), loc='A0'))
 
-    time = 0.4
+    time = 0.1
     prob.set_max_sim_time(time*glb.TIME_FREQUENCY)
     prob.compile()
 
