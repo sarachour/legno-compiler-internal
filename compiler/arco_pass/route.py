@@ -6,8 +6,8 @@ import sys
 import itertools
 import logging
 import compiler.arco_pass.util as arco_util
-import compiler.arco_pass.route_smt as route_smt
+import compiler.arco_pass.route_ilp as route_ilp
 
 def route(board,prob,node_map,max_failures=None,max_resolutions=None):
     #sys.setrecursionlimit(1000)
-    yield route_smt.route(board,prob,node_map)
+    yield route_ilp.route(board,prob,node_map)

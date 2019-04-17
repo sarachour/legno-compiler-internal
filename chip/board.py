@@ -241,7 +241,7 @@ class Board(Layer):
                            target=(dblk,dkey,dport))
 
 
-    def find_routes(self,sblk,skey,sport,dblk,dkey,dport,count=1):
+    def find_routes(self,sblk,skey,sport,dblk,dkey,dport,count=-1):
         assert(isinstance(skey,str))
         assert(isinstance(dkey,str))
 
@@ -264,7 +264,10 @@ class Board(Layer):
             for path in pathgen:
                 if len(all_routes) < count or count < 0:
                     all_routes.append(path)
+
         except nx.NetworkXNoPath as e:
+            print("no path: %s[%s].%s->%s[%s].%s" % (sblk,skey,sport, \
+                                                     dblk,dkey,dport))
             return
 
         for route in all_routes:
