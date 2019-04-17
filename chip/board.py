@@ -323,6 +323,11 @@ class Board(Layer):
         _,_,invert = self._connections[(sblk,sport)][(dblk,dport)][(skey,dkey)]
         return invert
 
+    def connection_list(self):
+        for (sblk,sport) in self._connections:
+            for (dblk,dport) in self._connections[(sblk,sport)]:
+                yield (sblk,sport),(dblk,dport),self._connections[(sblk,sport)][(dblk,dport)]
+
     def connections(self):
         for (sblk,sport) in self._connections:
             for (dblk,dport) in self._connections[(sblk,sport)]:

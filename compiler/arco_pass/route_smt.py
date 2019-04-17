@@ -1,6 +1,7 @@
 import chip.abs as acirc
 import chip.block as blocklib
 import chip.conc as ccirc
+import logging
 
 logger = logging.getLogger('arco_route')
 logger.setLevel(logging.DEBUG)
@@ -55,6 +56,7 @@ class RoutingEnv:
     self.parent_layers = parent_layers
     self.assigns = assigns
     self.layers = []
+    print("-> compute layers")
     for parent_layer in parent_layers:
       self.layers += list(map(lambda i: parent_layer.layer(i), \
                    parent_layer.identifiers()))
@@ -63,6 +65,7 @@ class RoutingEnv:
                     tuple(layer.position), self.layers))
 
     # compute quantities
+    print("-> compute counts")
     self.counts = {}
     for layer in self.layers:
       group = tuple(layer.position)
@@ -71,18 +74,23 @@ class RoutingEnv:
         self.counts[(group,blk.name)] = n
 
     # compute possible connections.
+    locmap = {}
+    for locstr in set(map(lambda args: args[1], board.instances())):
+      grp = self.loc_to_group(locstr)
+      locmap[locstr] = grp
+
+    print("-> compute connections")
     self.widths = {}
-    for (sblkname,sloc,sport),(dblkname,dloc,dport) \
-        in board.connections():
-      sgrp = self.loc_to_group(sloc)
-      dgrp = self.loc_to_group(dloc)
-      key = (sblkname,sgrp,dblkname,dgrp)
-      if sgrp != dgrp:
+    for (sblk,sport),(dblk,dport),locs in board.connection_list():
+
+      for sloc,dloc in filter(lambda args: \
+                              locmap[args[0]] != locmap[args[1]], locs):
+        key = (sblk,locmap[sloc],dblk,locmap[dloc])
         if not key in self.widths:
           self.widths[key] = []
-
         if not dloc in self.widths[key]:
           self.widths[key].append((dloc))
+
 
 
   def loc_to_group(self,loc):
@@ -263,6 +271,8 @@ def hierarchical_route(board,locs,conns,parent_layers,assigns):
   smt_instance_assign_cstr(smtenv,renv)
   xlayers = smt_connection_assign_cstr(smtenv,renv)
   print("-> generate z3")
+  print("# vars: %d" % smtenv.num_vars())
+  print("# cstrs: %d" % smtenv.num_cstrs())
   ctx = smtenv.to_z3()
   print("-> solve problem")
   result = ctx.solve()
