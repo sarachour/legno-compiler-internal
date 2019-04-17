@@ -9,6 +9,9 @@ class Layer:
         self._parent = parent
         self._layers = {}
 
+    def identifiers(self):
+        return self._layers.keys()
+
     def sublayer(self,pos):
         layer = self.layer(pos[0])
         if len(pos) > 1:
@@ -23,6 +26,20 @@ class Layer:
         layer = Layer(self._board,index,parent=self)
         self._layers[index] = layer
         return layer
+
+    @staticmethod
+    def from_position_string(position):
+        args = position.split("(")[1].split(")")[0].split(",")
+        unboxed = []
+        for arg in args:
+            try:
+                unbox_arg = int(arg)
+            except Exception as e:
+                unbox_arg = arg
+
+            unboxed.append(unbox_arg)
+
+        return unboxed
 
     @staticmethod
     def _position_string(position):
@@ -47,6 +64,15 @@ class Layer:
     def index(self):
         return self._index
 
+
+    def is_member(self,sub_pos):
+        super_pos = self.position
+        assert(len(super_pos) <= len(sub_pos))
+        for idx in range(0,len(super_pos)):
+            if super_pos[idx] != sub_pos[idx]:
+                return False
+
+        return True
 
     def subpositions(self,recurse=False):
         if len(self._layers) == 0:
@@ -300,7 +326,7 @@ class Board(Layer):
     def connections(self):
         for (sblk,sport) in self._connections:
             for (dblk,dport) in self._connections[(sblk,sport)]:
-                for spos,dpos in self._connections[(sblk,sport)][(dblk,dport)].values():
+                for spos,dpos in self._connections[(sblk,sport)][(dblk,dport)]:
                     yield (sblk,spos,sport),(dblk,dpos,dport)
 
     def conn(self,sblkname,skey,sport,dblkname,dkey,dport):
@@ -339,7 +365,8 @@ class Board(Layer):
         if not dblkport in self._connections[sblkport]:
             self._connections[sblkport][dblkport] = []
 
-        self._connections[sblkport][dblkport].append((skey,dkey))
+        if not (skey,dkey) in self._connections[sblkport][dblkport]:
+            self._connections[sblkport][dblkport].append((skey,dkey))
 
         if not self._routes.has_node((dblkname,dkey,dport)):
             self._routes.add_node((dblkname,dkey,dport))

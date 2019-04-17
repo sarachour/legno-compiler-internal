@@ -219,16 +219,10 @@ def concretize_result(jenv,circ,nslns):
     for result in jsmt.solve_smt_prob(smtenv,nslns=nslns):
         new_circ = circ.copy()
         for key,value in result.items():
-            if str(value) == 'True' or \
-               str(value) == 'False':
+            if isinstance(value,bool):
                 continue
 
-            if not value is None:
-                fltstr = value.as_decimal(12).split('?')[0]
-                flt = float(str(fltstr))
-                print("%s=%s" % (key,10**(flt)))
-            else:
-                print("%s=<DONT CARE>" % key)
+            print("%s=%s" % (key,value))
 
         for block_name,loc,config in new_circ.instances():
             block = circ.board.block(block_name)

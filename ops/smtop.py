@@ -24,13 +24,30 @@ class Z3Ctx:
       v = z3.Real(var)
     elif typ == SMTEnv.Type.BOOL:
       v = z3.Bool(var)
+    elif typ == SMTEnv.Type.INT:
+      v = z3.Int(var)
+    else:
+      raise Exception("????")
+
     self._z3vars[var] = v
     self._smtvars[v] = var
+
+  def push(self):
+    self._solver.push()
+
+  def pop(self):
+    self._solver.pop()
 
   def cstr(self,cstr):
     self._solver.add(cstr)
 
   def z3var(self,name):
+    if not name in self._z3vars:
+      for v in self._z3vars.keys():
+        print(v)
+
+      raise Exception("not declared: <%s>" % str(name))
+
     return self._z3vars[name]
 
   def translate(self,model):
@@ -38,7 +55,23 @@ class Z3Ctx:
     for v in self._z3vars.values():
       smtvar = self._smtvars[v]
       jvar = self._smtenv.from_smtvar(smtvar)
-      assigns[jvar] = model[v]
+      value = model[v]
+      if value is None:
+        unboxed = None
+      elif isinstance(value,z3.IntNumRef):
+        unboxed = value.as_long()
+      elif isinstance(value,z3.BoolRef):
+        if str(value) == 'True':
+          unboxed = True
+        else:
+          unboxed = False
+      elif isinstance(value,z3.RatNumRef):
+        fltstr = value.as_decimal(12).split('?')[0]
+        unboxed = float(str(fltstr))
+      else:
+        raise Exception("unknown class <%s> " % (model[v].__class__.__name__))
+
+      assigns[jvar] = unboxed
 
     return assigns
 
@@ -75,6 +108,7 @@ class SMTEnv:
   class Type(Enum):
     REAL = "Real"
     BOOL = "Bool"
+    INT = "Int"
 
   def __init__(self):
     self._decls = []
@@ -82,6 +116,13 @@ class SMTEnv:
     self._index = 0
     self._to_smtvar = {}
     self._from_smtvar = {}
+
+  def num_vars(self):
+    return len(self._to_smtvar)
+
+  def num_cstrs(self):
+    return len(self._cstrs)
+
 
   def decl(self,name,typ):
     if name in self._to_smtvar:
@@ -93,9 +134,13 @@ class SMTEnv:
     self._decls.append(SMTDecl(vname,typ))
     self._to_smtvar[name] = vname
     self._from_smtvar[vname] = name
+    return vname
 
   def from_smtvar(self,name):
     return self._from_smtvar[name]
+
+  def has_smtvar(self,name):
+    return name in self._to_smtvar
 
   def get_smtvar(self,name):
     return self._to_smtvar[name]
@@ -108,6 +153,12 @@ class SMTEnv:
 
   def lte(self,e1,e2):
     self._cstrs.append(SMTAssert(SMTLTE(e1,e2)))
+
+  def gte(self,e1,e2):
+    self.lte(e2,e1)
+
+  def gt(self,e1,e2):
+    self.lt(e2,e1)
 
   def cstr(self,c):
     self._cstrs.append(SMTAssert(c))
@@ -135,20 +186,26 @@ class SMTEnv:
     prog += "(exit)\n"
     return prog
 
-class SMTVar:
+class SMTOp:
+  def __init__(self):
+    pass
+
+class SMTVar(SMTOp):
 
   def __init__(self,name):
+    SMTOp.__init__(self)
     self._name = name
 
   def to_smtlib2(self):
-    return "%s" % self._name
+    return "%s" % str(self._name)
 
   def to_z3(self,ctx):
     return ctx.z3var(self._name)
 
-class SMTConst:
+class SMTConst(SMTOp):
 
   def __init__(self,value):
+    SMTOp.__init__(self)
     self._value = value
 
   def to_z3(self,ctx):
@@ -157,9 +214,10 @@ class SMTConst:
   def to_smtlib2(self):
     return "%f" % self._value
 
-class SMTMult:
+class SMTMult(SMTOp):
 
   def __init__(self,e1,e2):
+    SMTOp.__init__(self)
     self._arg1 = e1
     self._arg2 = e2
 
@@ -172,8 +230,25 @@ class SMTMult:
        self._arg2.to_smtlib2())
 
 
-class SMTAdd:
+class SMTLeftShift(SMTOp):
   def __init__(self,e1,e2):
+    SMTOp.__init__(self)
+    self._arg1 = e1
+    self._arg2 = e2
+
+  def to_z3(self,ctx):
+    return z3.self._arg1.to_z3(ctx)<<self._arg2.to_z3(ctx)
+
+
+  def to_smtlib2(self):
+    return "(<< %s %s)" % \
+      (self._arg1.to_smtlib2(),
+       self._arg2.to_smtlib2())
+
+
+class SMTAdd(SMTOp):
+  def __init__(self,e1,e2):
+    SMTOp.__init__(self)
     self._arg1 = e1
     self._arg2 = e2
 
@@ -186,9 +261,10 @@ class SMTAdd:
       (self._arg1.to_smtlib2(),
        self._arg2.to_smtlib2())
 
-class SMTDecl:
+class SMTDecl(SMTOp):
 
   def __init__(self,name,t):
+    SMTOp.__init__(self)
     self._name = name
     self._type = t
 
@@ -199,9 +275,61 @@ class SMTDecl:
     return "(declare-const %s %s)"  \
       % (self._name,self._type.value)
 
-class SMTEq:
+class SMTNot(SMTOp):
+
+  def __init__(self,e1):
+    SMTOp.__init__(self)
+    self._arg = e1
+
+  def to_z3(self,ctx):
+    return z3.Not(self._arg.to_z3(ctx))
+
+
+  def to_smtlib2(self):
+    return "(not %s)"  \
+      % (self._arg.to_smtlib2())
+
+class SMTOr(SMTOp):
 
   def __init__(self,e1,e2):
+    SMTOp.__init__(self)
+    self._arg1 = e1
+    self._arg2 = e2
+
+  def to_z3(self,ctx):
+    return z3.Or(self._arg1.to_z3(ctx), self._arg2.to_z3(ctx))
+
+
+  def to_smtlib2(self):
+    return "(or %s %s)"  \
+      % (self._arg1.to_smtlib2(),
+         self._arg2.to_smtlib2())
+
+
+
+class SMTAnd(SMTOp):
+
+  def __init__(self,e1,e2):
+    SMTOp.__init__(self)
+    self._arg1 = e1
+    self._arg2 = e2
+
+  def to_z3(self,ctx):
+    return z3.And(self._arg1.to_z3(ctx), self._arg2.to_z3(ctx))
+
+
+  def to_smtlib2(self):
+    return "(and %s %s)"  \
+      % (self._arg1.to_smtlib2(),
+         self._arg2.to_smtlib2())
+
+
+class SMTEq(SMTOp):
+
+  def __init__(self,e1,e2):
+    SMTOp.__init__(self)
+    assert(isinstance(e1,SMTOp))
+    assert(isinstance(e2,SMTOp))
     self._arg1 = e1
     self._arg2 = e2
 
@@ -215,9 +343,12 @@ class SMTEq:
          self._arg2.to_smtlib2())
 
 
-class SMTLT:
+class SMTLT(SMTOp):
 
   def __init__(self,e1,e2):
+    SMTOp.__init__(self)
+    assert(isinstance(e1,SMTOp))
+    assert(isinstance(e2,SMTOp))
     self._arg1 = e1
     self._arg2 = e2
 
@@ -230,9 +361,31 @@ class SMTLT:
          self._arg2.to_smtlib2())
 
 
-class SMTExactlyN:
+class SMTAtMostN(SMTOp):
 
   def __init__(self,vs,n):
+    SMTOp.__init__(self)
+    self._vars = vs
+    self._n = n
+
+  def to_z3(self,ctx):
+    args = list(map(lambda v: (ctx.z3var(v),1), self._vars))
+    return z3.PbLe(args,self._n)
+
+  def to_smtlib2(self):
+    args = self._vars
+    argstr = " ".join(args)
+    typstr = " ".join(map(lambda i: '1', \
+                          range(1,len(args)+1)))
+    return "((_ pble %s %d) %s)"  \
+      % (typstr,self._n,argstr)
+
+
+
+class SMTExactlyN(SMTOp):
+
+  def __init__(self,vs,n):
+    SMTOp.__init__(self)
     self._vars = vs
     self._n = n
 
@@ -249,9 +402,12 @@ class SMTExactlyN:
       % (typstr,self._n,argstr)
 
 
-class SMTAssert:
+class SMTAssert(SMTOp):
 
   def __init__(self,cstr):
+    SMTOp.__init__(self)
+    assert(isinstance(cstr,SMTOp))
+    assert(not isinstance(cstr,SMTConst))
     self._cstr = cstr
 
   def to_z3(self,ctx):
@@ -262,9 +418,12 @@ class SMTAssert:
       % (self._cstr.to_smtlib2())
 
 
-class SMTImplies:
+class SMTImplies(SMTOp):
 
   def __init__(self,e1,e2):
+    SMTOp.__init__(self)
+    assert(isinstance(e1,SMTOp))
+    assert(isinstance(e2,SMTOp))
     self._arg1 = e1
     self._arg2 = e2
 
@@ -278,9 +437,12 @@ class SMTImplies:
          self._arg2.to_smtlib2())
 
 
-class SMTLTE:
+class SMTLTE(SMTOp):
 
   def __init__(self,e1,e2):
+    assert(isinstance(e1,SMTOp))
+    assert(isinstance(e2,SMTOp))
+    SMTOp.__init__(self)
     self._arg1 = e1
     self._arg2 = e2
 
@@ -291,4 +453,46 @@ class SMTLTE:
     return "(<= %s %s)"  \
       % (self._arg1.to_smtlib2(),
          self._arg2.to_smtlib2())
+
+
+def SMTBidirImplies(c1,c2):
+  return SMTAnd(
+    SMTImplies(c1,c2),
+    SMTImplies(c2,c1)
+  )
+
+def SMTNeq(c1,c2):
+  return SMTNot(SMTEq(c1,c2))
+
+def SMTMapAdd(clauses):
+  assert(len(clauses) > 0)
+  clause = clauses[0]
+  if len(clauses) == 1:
+    return clause
+
+  for next_clause in clauses[1:]:
+    clause = SMTAdd(clause,next_clause)
+  return clause
+
+
+def SMTMapOr(clauses):
+  assert(len(clauses) > 0)
+  clause = clauses[0]
+  if len(clauses) == 1:
+    return clause
+
+  for next_clause in clauses[1:]:
+    clause = SMTOr(clause,next_clause)
+  return clause
+
+
+def SMTAllFalse(clauses):
+  assert(len(clauses) > 0)
+  clause = SMTNot(clauses[0])
+  if len(clauses) == 1:
+    return clause
+
+  for next_clause in clauses[1:]:
+    clause = SMTAnd(clause,SMTNot(next_clause))
+  return clause
 

@@ -9,7 +9,7 @@ char HCDC_DEMO_BOARD = 6;
 
 
 namespace circ {
- 
+
 bool caltbl[2][4][4];
 
 
@@ -56,7 +56,7 @@ Fabric::Chip::Tile::Slice::Multiplier* get_mult(Fabric * fab, circ_loc_idx1_t& l
 }
 
 Fabric::Chip::Tile::Slice::Fanout* get_fanout(Fabric * fab, circ_loc_idx1_t& loc){
-  Fabric::Chip::Tile::Slice::Fanout * fanout; 
+  Fabric::Chip::Tile::Slice::Fanout * fanout;
   Fabric::Chip::Tile::Slice * slice = get_slice(fab,loc.loc);
   switch(loc.idx){
      case 0:
@@ -81,7 +81,7 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab,
     case TILE_ADC:
       return get_slice(fab,loc.idxloc.loc)->adc->in0;
       break;
-      
+
     case MULT:
        switch(loc.idx2){
          case 0:
@@ -93,30 +93,29 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab,
         default:
            comm::error("unknown mult input");
            break;
-    
       }
    case INTEG:
         return get_slice(fab,loc.idxloc.loc)->integrator->in0; 
         break;
-        
+
    case TILE_INPUT:
         return get_slice(fab,loc.idxloc.loc)
                 ->tileInps[loc.idx2].in0;
         break;
-        
+
    case TILE_OUTPUT:
         return get_slice(fab,loc.idxloc.loc)
                 ->tileOuts[loc.idx2].in0;
         break;
-        
+
    case FANOUT:
         return get_fanout(fab,loc.idxloc)->in0;
         break;
-        
+
    case CHIP_OUTPUT:
         return get_slice(fab,loc.idxloc.loc)->chipOutput->in0;
         break;
-        
+
    case CHIP_INPUT:
         comm::error("no input port for chip_input");
         break;
@@ -124,7 +123,7 @@ Fabric::Chip::Tile::Slice::FunctionUnit::Interface* get_input_port(Fabric * fab,
    case LUT:
         comm::error("unhandled: lut");
         break;
-    
+
   }
 }
 

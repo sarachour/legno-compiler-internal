@@ -64,7 +64,7 @@ black_box_model_tile(tile_in)
 xbar_continuous_model(tile_in)
 
 
-inv_conn = Block('conn_inv',type=BlockType.BUS) \
+inv_conn = Block('conn_inv') \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
