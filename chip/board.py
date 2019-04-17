@@ -222,12 +222,24 @@ class Board(Layer):
 
         return posstr
 
+
     def route_exists(self,sblk,skey,sport,dblk,dkey,dport):
-        for route in self.find_routes(sblk,skey,sport,
-                                      dblk,dkey,dport,
-                                      count=1):
+
+        if self.can_connect(sblk,skey,sport,dblk,dkey,dport):
             return True
-        return False
+
+        assert(skey in self._key_to_pos)
+        assert(dkey in self._key_to_pos)
+        if not self._routes.has_node((sblk,skey,sport)):
+            return False
+
+        if not self._routes.has_node((dblk,dkey,dport)):
+            return False
+
+        return nx.has_path(self._routes,
+                           source=(sblk,skey,sport),
+                           target=(dblk,dkey,dport))
+
 
     def find_routes(self,sblk,skey,sport,dblk,dkey,dport,count=1):
         assert(isinstance(skey,str))
@@ -239,23 +251,21 @@ class Board(Layer):
         assert(skey in self._key_to_pos)
         assert(dkey in self._key_to_pos)
         if not self._routes.has_node((sblk,skey,sport)):
-            insts = list(self.instances_of_block(sblk))
-            raise Exception("find_routes: source <%s.%s.%s> not in board [%d insts]" % \
-                            (sblk,skey,sport, len(insts)))
+            return
 
         if not self._routes.has_node((dblk,dkey,dport)):
-            insts = list(self.instances_of_block(dblk))
-            raise Exception("find_routes: dest <%s.%s.%s> not in board" % \
-                            (dblk,dkey,dport))
-
+            return
 
         all_routes = []
         pathgen = nx.all_shortest_paths(self._routes,
                                 source=(sblk,skey,sport),
                                 target=(dblk,dkey,dport))
-        for path in pathgen:
-            if len(all_routes) < count or count < 0:
-                all_routes.append(path)
+        try:
+            for path in pathgen:
+                if len(all_routes) < count or count < 0:
+                    all_routes.append(path)
+        except nx.NetworkXNoPath as e:
+            return
 
         for route in all_routes:
             yield list(map(lambda args:

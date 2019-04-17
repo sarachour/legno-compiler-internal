@@ -1,52 +1,13 @@
 import chip.abs as acirc
 import chip.block as blocklib
 import chip.conc as ccirc
+import ops.smtop as smtop
 import logging
 
 logger = logging.getLogger('arco_route')
 logger.setLevel(logging.DEBUG)
 
-def extract_src_node(fragment,port=None):
-    if isinstance(fragment,acirc.ABlockInst):
-      assert(not port is None)
-      yield fragment,port
-
-    elif isinstance(fragment,acirc.AConn):
-      sb,sp = fragment.source
-      db,dp = fragment.dest
-      for block,port in extract_src_node(sb,port=sp):
-        yield block,port
-
-    elif isinstance(fragment,acirc.AInput):
-      node,output = fragment.source
-      for block,port in extract_src_node(node,port=output):
-        yield block,port
-
-    elif isinstance(fragment,acirc.AJoin):
-      for ch in fragment.parents():
-        for node,port in extract_src_node(ch):
-          yield node,port
-
-    else:
-        raise Exception(fragment)
-import ops.smtop as smtop
-
-def extract_backward_paths(nodes,starting_node):
-  conns = []
-  for next_node in starting_node.parents():
-    if isinstance(next_node,acirc.AConn):
-      src_node,src_port_orig = next_node.source
-      dest_block,dest_port = next_node.dest
-      assert(isinstance(dest_block,acirc.ABlockInst))
-      dest_key =(dest_block.block.name, dest_block.id)
-      for src_block,src_port in \
-          extract_src_node(src_node,port=src_port_orig):
-        src_key = (src_block.block.name, src_block.id)
-        conns.append((src_key,src_port, \
-                      dest_key,dest_port))
-
-  return conns
-
+import networkx as nx
 class RoutingEnv:
 
   def __init__(self,board,instances,connections,parent_layers,assigns):
@@ -64,6 +25,29 @@ class RoutingEnv:
     self.groups = list(map(lambda layer: \
                     tuple(layer.position), self.layers))
 
+    # compute possible connections.
+    locmap = {}
+    for locstr in set(map(lambda args: args[1], board.instances())):
+      grp = self.loc_to_group(locstr)
+      locmap[locstr] = grp
+
+    print("-> compute connections")
+    self.widths = {}
+    by_group = dict(map(lambda g: (g,{'src':{},'dest':{}}), self.groups))
+    for (sblk,sport),(dblk,dport),locs in board.connection_list():
+      for sloc,dloc in filter(lambda args: \
+                              locmap[args[0]] != locmap[args[1]], locs):
+        sgrp = locmap[sloc]
+        dgrp = locmap[dloc]
+        key = (sblk,sgrp,dblk,dgrp)
+        by_group[sgrp]['src'][(sblk,sport)] = sloc
+        by_group[dgrp]['dest'][(dblk,dport)] = dloc
+
+        if not key in self.widths:
+          self.widths[key] = []
+        if not dloc in self.widths[key]:
+          self.widths[key].append((dloc))
+
     # compute quantities
     print("-> compute counts")
     self.counts = {}
@@ -73,24 +57,37 @@ class RoutingEnv:
         n = len(list(board.block_locs(layer,blk.name)))
         self.counts[(group,blk.name)] = n
 
-    # compute possible connections.
-    locmap = {}
-    for locstr in set(map(lambda args: args[1], board.instances())):
-      grp = self.loc_to_group(locstr)
-      locmap[locstr] = grp
 
-    print("-> compute connections")
-    self.widths = {}
-    for (sblk,sport),(dblk,dport),locs in board.connection_list():
+    print("-> compute reachable")
+    self.connectivities = {}
+    for layer in self.layers:
+      group = tuple(layer.position)
+      for blk in board.blocks:
+        if self.counts[(group,blk.name)] == 0:
+          continue
 
-      for sloc,dloc in filter(lambda args: \
-                              locmap[args[0]] != locmap[args[1]], locs):
-        key = (sblk,locmap[sloc],dblk,locmap[dloc])
-        if not key in self.widths:
-          self.widths[key] = []
-        if not dloc in self.widths[key]:
-          self.widths[key].append((dloc))
+        loc = list(board.block_locs(layer,blk.name))[0]
+        for dport in blk.inputs:
+          sinks = []
+          for (sblk,sport),sloc in by_group[group]['src'].items():
+            if board.route_exists(sblk,sloc,sport,\
+                                  blk.name,loc,dport):
+              if not dblk in sinks:
+                sinks.append(sblk)
 
+
+          self.connectivities[(blk.name,group,dport)] = sinks
+
+        for sport in blk.outputs:
+          sources= []
+          for (dblk,dport),dloc in by_group[group]['dest'].items():
+            if board.route_exists(blk.name,loc,sport,
+                                  dblk,dloc,dport):
+              if not dblk in sources:
+                sources.append(dblk)
+
+
+          self.connectivities[(blk.name,group,sport)] = sources
 
 
   def loc_to_group(self,loc):
@@ -101,7 +98,7 @@ class RoutingEnv:
       raise Exception("%s: <%d matches>" % (loc,len(matches)))
     return tuple(matches[0].position)
 
-def smt_instance_assign_cstr(smtenv,renv):
+def smt_instance_cstr(smtenv,renv):
   # create group-conn hot coding
   by_block_group = {}
   for (blk,frag_id),loc in renv.instances.items():
@@ -151,40 +148,99 @@ def smt_instance_assign_cstr(smtenv,renv):
     n = renv.counts[(grp,blk)]
     smtenv.lte(smtop.SMTMapAdd(clauses), smtop.SMTConst(n))
 
-def smt_connection_assign_cstr(smtenv,renv):
-  by_card_group = {}
-  xlayers = []
+def smt_single_connection_cstr(smtenv,renv,conn_id,conn,by_straddle):
   board = renv.board
-  for conn_id,((sblkname,sfragid),sport,(dblkname,dfragid),dport) \
+  ((sblkname,sfragid),sport,(dblkname,dfragid),dport) = conn
+
+  sblk = board.block(sblkname)
+  dblk = board.block(dblkname)
+
+  by_group = {}
+
+  for cardkey,locs in renv.widths.items():
+    (scblkname,sgrp,dcblkname,dgrp) = cardkey
+    scblk = board.block(scblkname)
+    dcblk = board.block(dcblkname)
+
+    # the source block does not exist in this group
+    if not (sgrp,sblkname) in renv.counts or \
+        renv.counts[(sgrp,sblkname)] == 0:
+      continue
+
+    # the dest block does not exist in this group
+    if not (dgrp,dblkname) in renv.counts or \
+        renv.counts[(dgrp,dblkname)] == 0:
+      continue
+
+    # the src block cannot be connected to this straddling edge
+    if not dcblkname in renv.connectivities[(sblkname,sgrp,sport)]:
+      continue
+
+    # the dest block cannot be connect to this straddling edge
+    if not scblkname in renv.connectivities[(dblkname,dgrp,dport)]:
+      continue
+
+    # this block fragment is constrained in a way where it can't be in this group
+    if not smtenv.has_smtvar(('inst',sblkname,sfragid,sgrp)):
+      continue
+
+    # this block fragment is constrained in a way where it can't be in this group
+    if not smtenv.has_smtvar(('inst',dblkname,dfragid,dgrp)):
+      continue
+
+    # this block is a computational block that is not the source block
+    if scblk.type != blocklib.BlockType.BUS and \
+        scblk.name != sblk.name:
+      continue
+
+    # this block is a computational block that is not the dest block
+    if dcblk.type != blocklib.BlockType.BUS and \
+        dcblk.name != dblk.name:
+      continue
+
+    connvar = smtenv.decl(('conn',conn_id,cardkey),
+                      smtop.SMTEnv.Type.INT)
+    smtenv.lte(smtop.SMTVar(connvar), smtop.SMTConst(1))
+    smtenv.gte(smtop.SMTVar(connvar), smtop.SMTConst(0))
+
+    if not (sgrp,dgrp) in by_group:
+      by_group[(sgrp,dgrp)] = []
+
+    by_group[(sgrp,dgrp)].append(connvar)
+
+    if not cardkey in by_straddle:
+      by_straddle[cardkey] = []
+
+    by_straddle[cardkey].append(connvar)
+
+  return by_group
+
+def smt_connection_cstr(smtenv,renv):
+  by_straddle = {}
+  xgroups = []
+  board = renv.board
+  for conn_id,conn \
       in enumerate(renv.connections):
-    sblk = board.block(sblkname)
-    dblk = board.block(dblkname)
-    choices = []
-    xlayervar = smtenv.decl(('xlayer',conn_id), smtop.SMTEnv.Type.INT)
-    for cardkey,locs in renv.widths.items():
-      (scblkname,sgrp,dcblkname,dgrp) = cardkey
-      scblk = board.block(scblkname)
-      dcblk = board.block(dcblkname)
 
-      if scblk.type != blocklib.BlockType.BUS and \
-         scblk.name != sblk.name:
-        continue
-      if dcblk.type != blocklib.BlockType.BUS and \
-         dcblk.name != dblk.name:
-        continue
+    by_group = smt_single_connection_cstr(smtenv,renv,conn_id,conn, \
+                                          by_straddle=by_straddle)
+    # add this straddlevar to the list of straddle vars
+    ((sblkname,sfragid),sport,(dblkname,dfragid),dport) = conn
 
-      if not smtenv.has_smtvar(('inst',sblkname,sfragid,sgrp)):
-        continue
+    for (sgrp,dgrp),group_conns in by_group.items():
+      xgroup = smtenv.decl(('xgroup',conn_id,sgrp,dgrp), smtop.SMTEnv.Type.INT)
+      smtenv.lte(smtop.SMTVar(xgroup), smtop.SMTConst(1))
+      smtenv.gte(smtop.SMTVar(xgroup), smtop.SMTConst(0))
 
-      if not smtenv.has_smtvar(('inst',dblkname,dfragid,dgrp)):
-        continue
-
-      connvar = smtenv.decl(('conn',conn_id,cardkey),
-                        smtop.SMTEnv.Type.INT)
-      smtenv.lte(smtop.SMTVar(connvar), smtop.SMTConst(1))
-      smtenv.gte(smtop.SMTVar(connvar), smtop.SMTConst(0))
+      xgroups.append(xgroup)
+      smtenv.eq(
+        smtop.SMTMapAdd(
+          list(map(lambda v: smtop.SMTVar(v), group_conns))
+        ),
+        smtop.SMTVar(xgroup)
+      )
       smtenv.cstr(
-        smtop.SMTImplies(
+        smtop.SMTBidirImplies(
           smtop.SMTAnd(
             smtop.SMTEq(
               smtop.SMTVar(smtenv.get_smtvar(('inst',sblkname,sfragid,sgrp))),
@@ -196,34 +252,14 @@ def smt_connection_assign_cstr(smtenv,renv):
             )
           ),
           smtop.SMTEq(
-            smtop.SMTVar(xlayervar),
+            smtop.SMTVar(xgroup),
             smtop.SMTConst(1)
           )
         )
       );
-      choices.append(connvar)
-      if not cardkey in by_card_group:
-        by_card_group[cardkey] = []
-
-      by_card_group[cardkey].append(connvar)
-
-    xlayers.append(xlayervar)
-    if len(choices) == 0:
-      smtenv.eq(
-        smtop.SMTConst(0),
-        smtop.SMTVar(xlayervar)
-      )
-
-    else:
-      smtenv.eq(
-        smtop.SMTMapAdd(
-          list(map(lambda v: smtop.SMTVar(v), choices))
-        ),
-        smtop.SMTVar(xlayervar)
-      )
 
 
-  for cardkey,variables in by_card_group.items():
+  for cardkey,variables in by_straddle.items():
     cardinality = len(renv.widths[cardkey])
     smtenv.lte(
       smtop.SMTMapAdd(
@@ -232,7 +268,7 @@ def smt_connection_assign_cstr(smtenv,renv):
       smtop.SMTConst(cardinality)
     );
 
-  return xlayers
+  return xgroups
 
 def hierarchical_route(board,locs,conns,parent_layers,assigns):
   def get_n_conns(result):
@@ -268,8 +304,8 @@ def hierarchical_route(board,locs,conns,parent_layers,assigns):
   renv = RoutingEnv(board,locs,conns,parent_layers,assigns)
   smtenv = smtop.SMTEnv()
   print("-> generating problem")
-  smt_instance_assign_cstr(smtenv,renv)
-  xlayers = smt_connection_assign_cstr(smtenv,renv)
+  smt_instance_cstr(smtenv,renv)
+  xlayers = smt_connection_cstr(smtenv,renv)
   print("-> generate z3")
   print("# vars: %d" % smtenv.num_vars())
   print("# cstrs: %d" % smtenv.num_cstrs())
@@ -297,39 +333,58 @@ def hierarchical_route(board,locs,conns,parent_layers,assigns):
 
 def find_routes(board,locs,conns,inst_assigns):
   def to_conns(route):
-    conns = []
+    result = []
     for i in range(0,len(route)-1):
       sb,sl,sp = route[i]
       db,dl,dp = route[i+1]
       # internal connection
       if sb == db and sl == dl:
         continue
-      conns.append([(sb,sl,sp),(db,dl,dp)])
-    return conns
+      result.append([(sb,sl,sp),(db,dl,dp)])
+    return result
 
-  in_use = []
-  routes = []
-  for (sblk,sfragid),sport, \
-      (dblk,dfragid),dport in conns:
-    sloc = board.position_string(inst_assigns[(sblk,sfragid)])
-    dloc = board.position_string(inst_assigns[(dblk,dfragid)])
-    found_route = False
-    for route in board.find_routes(sblk,sloc,sport,dblk,dloc,dport):
-      double_use = list(filter(lambda place: place in in_use, route))
-      if len(double_use) > 0:
-        continue
+  def recurse(in_use,routes,remaining_conns):
+    if len(remaining_conns) == 0:
+      yield routes
 
-      routes.append(to_conns(route))
-      found_route = True
-      in_use += route[0:-1]
-      break
+    else:
+      (sblk,sfragid),sport,(dblk,dfragid),dport = remaining_conns[0]
+      print("[%d] %s[%s].%s -> %s[%s].%s" % (len(remaining_conns), sblk,sfragid,sport,dblk,dfragid,dport))
+      sloc = board.position_string(inst_assigns[(sblk,sfragid)])
+      dloc = board.position_string(inst_assigns[(dblk,dfragid)])
+      for route in board.find_routes(sblk,sloc,sport,dblk,dloc,dport):
+        double_use = list(filter(lambda place: place in in_use, route))
+        if len(double_use) > 0:
+          continue
 
-    if not found_route:
-      print("no route found %s[%s].%s -> %s[%s].%s" % \
-            (sblk,sloc,sport,dblk,dloc,dport))
-      return None
+        new_routes = list(routes)
+        new_routes.append(to_conns(route))
+        new_in_use = list(in_use) + route[0:-1]
+        for solution in recurse(new_in_use, new_routes, remaining_conns[1:]):
+          yield solution
 
-  return routes
+
+  def sort_conns(conns):
+    lengths = {}
+    for conn in conns:
+      (sblk,sfragid),sport,(dblk,dfragid),dport= conn
+      sloc = board.position_string(inst_assigns[(sblk,sfragid)])
+      dloc = board.position_string(inst_assigns[(dblk,dfragid)])
+      print("%s[%s].%s -> %s[%s].%s" % (sblk,sloc,sport,dblk,dloc,dport))
+      for route in board.find_routes(sblk,sloc,sport,dblk,dloc,dport):
+        lengths[conn] = len(route)
+        print(" -> %d" % len(route))
+        break
+
+    new_conns = sorted(conns, key=lambda c: -lengths[c])
+    print(lengths[new_conns[0]])
+    input()
+    return new_conns
+
+  new_conns = sort_conns(conns)
+  for solution in recurse([],[],new_conns):
+    yield solution
+ 
 
 def make_concrete_circuit(board,routes,inst_assigns,configs):
   circ = ccirc.ConcCirc(board)
@@ -347,6 +402,51 @@ def make_concrete_circuit(board,routes,inst_assigns,configs):
       circ.conn(sblk,sloc,sport,dblk,dloc,dport)
 
   return circ
+
+
+
+# TODO: check if there exists a path through port before adding to cardinality.
+
+def extract_src_node(fragment,port=None):
+    if isinstance(fragment,acirc.ABlockInst):
+      assert(not port is None)
+      yield fragment,port
+
+    elif isinstance(fragment,acirc.AConn):
+      sb,sp = fragment.source
+      db,dp = fragment.dest
+      for block,port in extract_src_node(sb,port=sp):
+        yield block,port
+
+    elif isinstance(fragment,acirc.AInput):
+      node,output = fragment.source
+      for block,port in extract_src_node(node,port=output):
+        yield block,port
+
+    elif isinstance(fragment,acirc.AJoin):
+      for ch in fragment.parents():
+        for node,port in extract_src_node(ch):
+          yield node,port
+
+    else:
+        raise Exception(fragment)
+
+def extract_backward_paths(nodes,starting_node):
+  conns = []
+  for next_node in starting_node.parents():
+    if isinstance(next_node,acirc.AConn):
+      src_node,src_port_orig = next_node.source
+      dest_block,dest_port = next_node.dest
+      assert(isinstance(dest_block,acirc.ABlockInst))
+      dest_key =(dest_block.block.name, dest_block.id)
+      for src_block,src_port in \
+          extract_src_node(src_node,port=src_port_orig):
+        src_key = (src_block.block.name, src_block.id)
+        conns.append((src_key,src_port, \
+                      dest_key,dest_port))
+
+  return conns
+
 
 def route(board,prob,node_map):
   nodes = {}
@@ -379,6 +479,11 @@ def route(board,prob,node_map):
                                             slices,slice_assigns)
 
 
-  routes = find_routes(board,locs,conns,inst_assigns)
+  print("=== finding routes ===")
+  routes = None
+  for routes in find_routes(board,locs,conns,inst_assigns):
+    break;
+
+  print("=== making concrete circuit ===")
   assert(not routes is None)
   return make_concrete_circuit(board,routes,inst_assigns,configs)
