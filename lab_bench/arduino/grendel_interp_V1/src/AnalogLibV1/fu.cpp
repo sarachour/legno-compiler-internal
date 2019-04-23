@@ -31,6 +31,7 @@ bool Fabric::Chip::Tile::Slice::FunctionUnit::findBiasHelper (
 bool Fabric::Chip::Tile::Slice::FunctionUnit::Interface::findBiasHelper (
 	unsigned char & code
 ) const {
+  // find code.
 	binarySearch ( 0, FLT_MAX, 63, FLT_MAX, code );
 
 //        SerialUSB.print("\ntile row ");
@@ -45,12 +46,20 @@ bool Fabric::Chip::Tile::Slice::FunctionUnit::Interface::findBiasHelper (
 //        SerialUSB.print(ifcId);
 //        SerialUSB.print(" code ");
 //        SerialUSB.println(code);
+  Serial.print("AC:>[msg]    bias_code=");
+  Serial.print(code);
+  Serial.print(" nmos_code=");
+  Serial.println(parentFu->anaIrefDacNmos);
 
 	if (code==0 || code==1) {
 		// bipolar so if running out of code also increase
+    // increment
+    Serial.println("AC:>[msg] code too low, increment.");
 		parentFu->setAnaIrefDacNmos(false, true);
 		return false;
 	} else if (code==63 || code==62) {
+    // decrement
+    Serial.println("AC:>[msg] code too high, decrement.");
 		parentFu->setAnaIrefDacNmos(false, true);
 		return false;
 	} else {

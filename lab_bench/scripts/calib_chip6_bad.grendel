@@ -1,7 +1,43 @@
-# initial power on
+# ==== failed calibrate 6/16 ======
+#
+# cal_lower=8
+# cal_upper=8
+# bias_code=62
+# nmos_code=7
+calibrate 0 0 0
+
+# cal_lower=11
+# cal_upper=11
+# bias_code=62
+# nmos_code=7
 calibrate 0 3 2
+
+#
+# cal_lower=8
+# cal_upper=8
+# bias_code=62
+# nmos_code=7
 calibrate 1 1 2
-calibrate 1 3 0
-# next power on
+
+# cal_lower=9
+# cal_upper=9
+# bias_code=62
+# nmos_code=7
+calibrate 1 2 2
+#
+# cal_lower=11
+# cal_upper=11
+# bias_code=never settles
+# nmos_code=never_settles
+#calibrate 1 3 0
+
+#
+#
+# ==== failed calibrate 6/18 ======
+#
+# cal_lower=2
+# cal_upper=2
+# bias_code=never settles
+# nmos_code=never_settles
 calibrate 1 0 2
 

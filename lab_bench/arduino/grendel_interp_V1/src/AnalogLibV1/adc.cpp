@@ -221,9 +221,10 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate () {
 	conn0.setConn();
 	setEnable (true);
 
+  Serial.println("AC:>[msg] -> finding posneg/fullscale settings");
 	if (!findCalCompFs()) return false;
-	// Serial.print("calCompLower "); Serial.print(calCompLower);
-	// Serial.print(" calCompUpper "); Serial.println(calCompUpper);
+	Serial.print("AC:>[msg] calCompLower="); Serial.println(calCompLower);
+	Serial.print("AC:>[msg] calCompUpper="); Serial.println(calCompUpper);
 	// Serial.println("fullscale and spread and posneg settings found");
 
 	conn0.brkConn();
@@ -231,8 +232,10 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate () {
 
 	// once fullscale and spread and posneg settings found
 	// find I2V offset code
+  Serial.println("AC:>[msg] -> finding i2v bias");
 	in0->findBias ( calI2V );
 
+  Serial.println("AC:>[msg] -> done");
 	setEnable (false);
 	// Serial.println("offset settings found");
 	return true;
@@ -311,6 +314,10 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::findBias (
 
 	bool biasStable = false;
 	while (!biasStable) {
+    Serial.print("AC:>[msg]    bias_code=");
+    Serial.print(offsetCode);
+    Serial.print(" nmos_code=");
+    Serial.println(parentFu->anaIrefDacNmos);
 		biasStable = findBiasHelper (offsetCode);
 	}
 
@@ -325,21 +332,39 @@ void Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::binarySearch (
 	unsigned char & finalI2VCode
 ) const {
 
-	if (binarySearchAvg (minI2VCode, minBest, maxI2VCode, maxBest, finalI2VCode)) return;
+	if (binarySearchAvg (minI2VCode, minBest, maxI2VCode, maxBest, finalI2VCode)){
+    Serial.println("AC:>[msg] done.");
+    return;
+  }
 
 	parentFu->setParam1 ();
 	parentFu->parentSlice->parentTile->parentChip->parentFabric->cfgCommit();
 
 	unsigned char adcRead = parentAdc->getData();
+	float target = 128.0;
+  float error = fabs(adcRead-target);
 	// Serial.print("finalI2VCode = ");
 	// Serial.println(finalI2VCode);
-	// Serial.print("adcRead = ");
-	// Serial.println(adcRead);
-	float target = 128.0;
+	Serial.print("AC:>[msg] adc=");
+	Serial.print(adcRead);
+  Serial.print(" target=");
+	Serial.print(target);
+  Serial.print(" curr_code=");
+	Serial.print(finalI2VCode);
+  Serial.print(" min_code=");
+	Serial.print(minI2VCode);
+  Serial.print(" max_code=");
+	Serial.print(maxI2VCode);
+  Serial.print(" min_error=");
+	Serial.print(minBest);
+  Serial.print(" max_error=");
+	Serial.print(maxBest);
+  Serial.print(" error=");
+	Serial.println(error);
 	if (adcRead < target) {
-		return binarySearch (minI2VCode, minBest, finalI2VCode, fabs(adcRead-target), finalI2VCode);
+		return binarySearch (minI2VCode, minBest, finalI2VCode, error, finalI2VCode);
 	} else {
-		return binarySearch (finalI2VCode, fabs(adcRead-target), maxI2VCode, maxBest, finalI2VCode);
+		return binarySearch (finalI2VCode, error, maxI2VCode, maxBest, finalI2VCode);
 	}
 
 }
