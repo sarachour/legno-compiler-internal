@@ -25,4 +25,4 @@ bool read_mode();
 void reset();
 int write_pos();
 }
-#endif 
+#endif

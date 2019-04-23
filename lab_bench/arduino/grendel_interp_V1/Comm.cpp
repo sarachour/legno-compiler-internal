@@ -2,7 +2,6 @@
 #include <Arduino.h>
 
 namespace comm {
-  
 #define BUFSIZ 512
 
 byte INBUF[BUFSIZ];

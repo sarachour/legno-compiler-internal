@@ -12,6 +12,12 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
 			bool third // whether third output is on
 		);
 		bool calibrate ();
+    unsigned char getAnaIrefPmos(){
+      return anaIrefPmos;
+    }
+    unsigned char getAnaIrefNmos(){
+      return anaIrefPmos;
+    }
 	private:
 		class FanoutOut;
 		Fanout (Slice * parentSlice, unit unitId);
