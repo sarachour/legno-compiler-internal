@@ -2,7 +2,6 @@
 #include "Comm.h"
 #include "Circuit.h"
 #include "assert.h"
-#include "Main.h"
 
 experiment::experiment_t this_experiment;
 Fabric * this_fabric;
@@ -26,14 +25,12 @@ typedef struct cmd_{
   cmd_data_t data;
 } cmd_t;
 
-namespace main {
 
-void init() {
-  this_fabric = circ::setup_board();
+void setup() {
+  this_fabric = new Fabric();
   Serial.begin(115200);
   Serial.flush();
   experiment::setup_experiment(&this_experiment);
-  circ::init_calibrations();
 }
 
 
@@ -88,4 +85,3 @@ void loop() {
   }
 }
 
-}

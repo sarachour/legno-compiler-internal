@@ -20,7 +20,6 @@ class State:
             self.arduino = None
             self.oscilloscope = None
 
-        self.prog = [];
 
         ## State committed to chip
         self.use_osc = False;
@@ -47,7 +46,6 @@ class State:
 
 
     def reset(self):
-        self.prog = []
         self.use_analog_chip = False;
         self.n_samples = 0
         self.ref_func = None
@@ -103,94 +101,4 @@ class State:
             flush_cmd = FlushCommand()
             while not flush_cmd.execute(self):
                 continue
-
-    def order(self,insts):
-        pq = {}
-        priorities = [Priority.FIRST, \
-                      Priority.EARLY, \
-                      Priority.NORMAL, \
-                      Priority.LATE,
-                      Priority.LAST]
-
-        for prio in priorities:
-            pq[prio] = []
-
-        for inst in insts:
-            prio = inst.priority()
-            pq[prio].append(inst)
-
-        for prio in priorities:
-            for inst in pq[prio]:
-                yield inst
-
-
-    def enqueue(self,stmt):
-        if stmt.test():
-            print("[enq] %s" % stmt)
-            self.prog.append(stmt)
-        else:
-            print("[error] " + stmt.error_msg())
-
-    def calibrate_chip(self):
-        if not self.use_analog_chip:
-            return
-
-        calibs = []
-        for stmt in self.prog:
-            if isinstance(stmt, AnalogChipCommand):
-                calib_stmt = stmt.calibrate()
-                if not calib_stmt is None:
-                    calibs.append(calib_stmt)
-
-        for calib in self.order(set(calibs)):
-            print("[calibrate] %s" % calib)
-            yield calib
-
-    def analyze_chip(self):
-        if not self.use_analog_chip:
-            return
-
-        hooks = []
-        for stmt in self.prog:
-            if isinstance(stmt, AnalogChipCommand):
-                hook_stmt = stmt.analyze()
-                if not hook_stmt is None:
-                    hooks.append(hook_stmt)
-
-        for hook in self.order(set(hooks)):
-            print("[analyze] %s" % hook)
-            yield hook
-
-
-    def teardown_chip(self):
-        if not self.use_analog_chip:
-            return
-
-        teardown = []
-        for stmt in self.prog:
-            if isinstance(stmt, AnalogChipCommand):
-                dis_stmt = stmt.disable()
-                if not dis_stmt is None:
-                    teardown.append(dis_stmt)
-
-        for tstmt in self.order(set(teardown)):
-            print("[teardown] %s" % tstmt)
-            yield tstmt
-
-    def configure_chip(self):
-        if not self.use_analog_chip:
-            return
-
-        cfg = []
-        for stmt in self.prog:
-            if isinstance(stmt, AnalogChipCommand):
-                config_stmt = stmt.configure()
-                if not config_stmt is None:
-                    cfg.append(config_stmt)
-
-        for cfgstmt in self.order(set(cfg)):
-            print("[config] %s" % cfgstmt)
-            yield cfgstmt
-
-
 

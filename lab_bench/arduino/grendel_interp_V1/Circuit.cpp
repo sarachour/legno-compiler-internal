@@ -1,5 +1,5 @@
 //#define _DUE
-#include "src/AnalogLibV1/AnalogLib.h"
+#include "AnalogLib.h"
 #include "Circuit.h"
 #include "Comm.h"
 #include <assert.h>
@@ -536,7 +536,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
         }
         comm::response("write lut",0);
         break;
-        
+
     case cmd_type_t::DISABLE_DAC:
         dac = get_slice(fab,cmd.data.circ_loc)->dac;
         dac->setEnable(false);
@@ -554,7 +554,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
         //lut->setEnable(false);
         comm::response("disabled lut",0);
         break;
-        
+
     case cmd_type_t::DISABLE_MULT:
         multd = cmd.data.mult;
         mult = get_mult(fab,multd.loc);

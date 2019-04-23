@@ -65,6 +65,7 @@ namespace layout {
 
  loc_t DAC_enable(block_loc_t& blk);
  loc_t DAC_range(block_loc_t& blk);
+ loc_t DAC_use_mem(block_loc_t& blk);
  loc_t DAC_value(block_loc_t& blk);
  loc_t DAC_clk_sel(block_loc_t& blk);
  loc_t DAC_input_sel(block_loc_t& blk);

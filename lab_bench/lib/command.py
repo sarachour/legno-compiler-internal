@@ -32,9 +32,13 @@ COMMANDS = [
     UseFanoutCmd,
     MakeConnCmd,
     # circuit commands that are automatically generated
-    #DisableCmd,
-    #BreakConnCmd,
+    DisableCmd,
+    BreakConnCmd,
     CalibrateCmd,
+    # offset commands
+    GetCodesCmd,
+    SetCodesCmd,
+    MeasureCmd,
     # experiment commands dispatched to microcontroller
     MicroResetCmd,
     MicroRunCmd,

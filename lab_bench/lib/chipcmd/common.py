@@ -25,6 +25,32 @@ def float_to_byte(fvalue):
     assert(value >= 0 and value <= 255)
     return value
 
+def parse_pattern_port(args,name):
+    line = " ".join(args)
+
+    cmds = [
+        '{blk:w} {chip:d} {tile:d} {slice:d} {index:d} port {port:d}',
+        '{blk:w} {chip:d} {tile:d} {slice:d} port {port:d}',
+        '{blk:w} {chip:d} {tile:d} {slice:d} {index:d}',
+        '{blk:w} {chip:d} {tile:d} {slice:d}'
+    ]
+    result = None
+    for cmd in cmds:
+       if result is None:
+           full_cmd = "%s %s" % (name,cmd)
+           result = parselib.parse(full_cmd,line)
+
+    if result is None:
+        return OptionalValue.error("usage:<%s>\nline:<%s>" % (cmd,line))
+
+    result = dict(result.named.items())
+    if not 'index' in result:
+        result['index'] = None
+    if not 'port' in result:
+        result['port'] = None
+
+    return OptionalValue.value(result)
+
 def parse_pattern_conn(args,name):
     line = " ".join(args)
 

@@ -27,11 +27,13 @@ namespace logger {
   void log(const char * msg){
     tag("msg");
     print(msg);
+    newline();
   }
   void error(const char * msg){
     while(1){
       tag("error");
       print(msg);
+      newline();
       delay(100);
     }
   }
@@ -39,12 +41,14 @@ namespace logger {
   void warn(const char * msg){
     tag("warn");
     print(msg);
+    newline();
 
 
   }
   void debug(const char * msg){
     tag("debug");
     print(msg);
+    newline();
   }
 
   void assert(bool assertion, const char * msg){

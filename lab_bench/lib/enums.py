@@ -34,7 +34,10 @@ class CircCmdType(Enum):
     CONFIG_INTEG = 'config_integ';
     CONFIG_DAC = 'config_dac';
     CONFIG_MULT = 'config_mult';
-    WRITE_LUT = "write_lut"
+    WRITE_LUT = "write_lut";
+    GET_CODES = "get_codes";
+    SET_CODES = "set_codes";
+    MEASURE = "measure"
 
 class ExpCmdType(Enum):
     RESET = 'reset';

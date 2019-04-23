@@ -53,7 +53,7 @@ const unsigned char PIN_spiSSPin[2][4] = {
 const unsigned char PIN_spiMiso[2][4] = {
   {9,10,11,12},
   {14,15,16,17}
-    };
+};
 
 
 const unsigned char PIN_tdiClk = 32;
@@ -72,12 +72,27 @@ namespace pin {
     return !!(g_APinDescription[pin].pPort -> PIO_PDSR & g_APinDescription[pin].ulPin);
   }
   #else
+  #ifdef _DEBUG
+  static inline void DigitalWriteP(unsigned char pin, unsigned char val){
+    Serial.print("AC:>[write]");
+    Serial.print(pin);
+    Serial.print(',');
+    Serial.println(val);
+
+  }
+  static inline unsigned char DigitalReadP(unsigned char pin){
+  Serial.print("AC:>[read]");
+  Serial.println(pin);
+  return 0;
+  }
+  #else
   static inline void DigitalWriteP(unsigned char pin, unsigned char val){
     digitalWrite(pin,val);
   }
   static inline unsigned char DigitalReadP(unsigned char pin){
     return digitalRead(pin);
   }
+  #endif
   #endif
 
   void setup_io();

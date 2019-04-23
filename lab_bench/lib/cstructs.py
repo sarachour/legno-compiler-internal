@@ -57,7 +57,10 @@ def circ_cmd_type():
         CircCmdType.CONFIG_DAC.name:17,
         CircCmdType.CONFIG_MULT.name:18,
         CircCmdType.CONFIG_INTEG.name:19,
-        CircCmdType.WRITE_LUT.name:20
+        CircCmdType.WRITE_LUT.name:20,
+        CircCmdType.GET_CODES.name:21,
+        CircCmdType.SET_CODES.name:22,
+        CircCmdType.MEASURE.name:23,
 
     }
     return cstruct.Enum(cstruct.Int24ul,
@@ -151,19 +154,26 @@ def circ_connection_t():
     )
 
 
+def circ_acc_code_t():
+    return cstruct.Struct(
+        "blk" / block_type_t(),
+        "loc" / circ_loc_idx2_t(),
+        "keyvals" / cstruct.Array(10,cstruct.Int8ul)
+    )
 def circ_cmd_data():
     return cstruct.Union(None,
-        circ_loc=circ_loc_t(),
-        circ_loc_idx1=circ_loc_idx1_t(),
-        circ_loc_idx2=circ_loc_idx2_t(),
-        fanout=circ_use_fanout_t(),
-        integ=circ_use_integ_t(),
-        mult=circ_use_mult_t(),
-        dac=circ_use_dac_t(),
-        lut=circ_use_lut_t(),
-        write_lut=circ_write_lut_t(),
-        adc=circ_use_adc_t(),
-        conn=circ_connection_t()
+                         circ_loc=circ_loc_t(),
+                         circ_loc_idx1=circ_loc_idx1_t(),
+                         circ_loc_idx2=circ_loc_idx2_t(),
+                         fanout=circ_use_fanout_t(),
+                         integ=circ_use_integ_t(),
+                         mult=circ_use_mult_t(),
+                         dac=circ_use_dac_t(),
+                         lut=circ_use_lut_t(),
+                         write_lut=circ_write_lut_t(),
+                         adc=circ_use_adc_t(),
+                         conn=circ_connection_t(),
+                         codes=circ_acc_code_t()
     )
 
 def circ_cmd_t():

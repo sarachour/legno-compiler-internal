@@ -336,7 +336,6 @@ class AnalogChipCommand(ArduinoCommand):
     def specify_input_port(self,block):
         return (block == enums.BlockType.MULT)
 
-
     def test_loc(self,block,loc):
         NCHIPS = 2
         NTILES = 4
@@ -377,21 +376,3 @@ class AnalogChipCommand(ArduinoCommand):
 
     def priority(self):
         return Priority.EARLY
-
-    def analyze(self):
-        return None
-
-    def calibrate(self):
-        return None
-
-    def disable(self):
-        return None
-
-    def configure(self):
-        return None
-
-    def apply(self,state):
-        if state.dummy:
-            return
-        resp = ArduinoCommand.execute(self,state)
-        return resp

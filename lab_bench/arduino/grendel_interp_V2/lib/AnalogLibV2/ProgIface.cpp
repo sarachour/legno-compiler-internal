@@ -67,24 +67,31 @@ void ProgIface::reset(){
 }
 
 void ProgIface::_check(const vector_t vec) const{
-  if (vec.row<0||N_ROWS-1<vec.row) logger::error ("vec.selRow out of bounds");
-	if (vec.col<0||N_COLS-1<vec.col) logger::error ("vec.selCol out of bounds");
-	if (vec.line<0||N_LINES-1<vec.line) logger::error ("vec.selLine out of bounds");
-	if (vec.row==8&&vec.col==0) logger::error ("vec cache cannot handle ctlr cmmds");
-	if (vec.cfg<0||255<vec.cfg) logger::error ("vec.cfgTile out of bounds");
+  if (vec.loc.row<0||N_ROWS-1<vec.loc.row)
+    logger::error ("vec.selRow out of bounds");
+	if (vec.loc.col<0||N_COLS-1<vec.loc.col)
+    logger::error ("vec.selCol out of bounds");
+	if (vec.loc.line<0||N_LINES-1<vec.loc.line)
+    logger::error ("vec.selLine out of bounds");
+	if (vec.loc.row==8&&vec.loc.col==0)
+    logger::error ("vec cache cannot handle ctlr cmmds");
+	if (vec.cfg<0||255<vec.cfg)
+    logger::error ("vec.cfgTile out of bounds");
   return;
 }
 unsigned char ProgIface::get(const vector_t vec) const{
   _check(vec);
-  return m_cfgBuf[vec.tile][vec.row][vec.col][vec.line];
+  return m_cfgBuf[vec.loc.tile][vec.loc.row][vec.loc.col][vec.loc.line];
 }
 void ProgIface::enqueue(const vector_t vec){
   _check(vec);
-  if (m_cfgBuf[vec.tile][vec.row][vec.col][vec.line] != vec.cfg) {
-		if (vec.row==9) m_cfgLutTag[vec.tile][0]=true;
-		if (vec.row==10) m_cfgLutTag[vec.tile][1]=true;
+  unsigned char this_cfg;
+  this_cfg = m_cfgBuf[vec.tile][vec.loc.row][vec.loc.col][vec.loc.line];
+  if (this_cfg != vec.cfg) {
+		if (vec.loc.row==9) m_cfgLutTag[vec.tile][0]=true;
+		if (vec.loc.row==10) m_cfgLutTag[vec.tile][1]=true;
 		// m_cfgTag [vec.tileRowId] [vec.tileColId] [vec.selRow] [vec.selCol] [vec.selLine>>3] |= (1<<(vec.selLine&7));
-		bitSet(m_cfgTag[vec.loc.tile][vec.loc.row][vec.loc.col][vec.loc.line>>3], vec.line&7);
+		bitSet(m_cfgTag[vec.loc.tile][vec.loc.row][vec.loc.col][vec.loc.line>>3], vec.loc.line&7);
 		m_cfgBuf[vec.tile][vec.loc.row][vec.loc.col][vec.loc.line] = vec.cfg;
 	}
 
@@ -143,7 +150,7 @@ void ProgIface::write() {
 	// (7,1) LUT configuration and crossbar messages (See LUT Bits [12:23])
 	for (unsigned char tile=0; tile<N_TILES; tile++) {
     // program values to LUT0
-    if (m_cfgLutTag[tile][0]) { // if there are changes to make
+    if (m_cfgLutTag[tile][0] == true) { // if there are changes to make
 				unsigned char lutTempL = m_cfgBuf[tile][7][1][0];
         _startLUT(tile,0);
 				for (unsigned char row= 0; row< N_LUT_ROWS; row++) {

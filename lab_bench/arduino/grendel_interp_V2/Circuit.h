@@ -1,6 +1,7 @@
 #ifndef CIRCUIT_H
 #define CIRCUIT_H
 #define _DUE
+#define _DEBUG
 #include <AnalogLib.h>
 
 namespace circ {

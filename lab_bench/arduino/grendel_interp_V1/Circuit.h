@@ -2,7 +2,7 @@
 #define CIRCUIT_H
 
 #define _DUE
-#include "src/AnalogLibV1/AnalogLib.h"
+#include "AnalogLib.h"
 namespace circ {
 
 typedef enum block_type {
@@ -20,32 +20,36 @@ typedef enum block_type {
 
 // TODO interpreter for commands
 typedef enum cmd_type {
-    /*use components*/
+    /*use components 0-5 */
     USE_DAC,
     USE_MULT,
     USE_FANOUT,
     USE_INTEG,
     USE_LUT,
     USE_ADC,
-    /*disable components*/
+    /*disable components 6-12 */
     DISABLE_DAC,
     DISABLE_MULT,
     DISABLE_INTEG,
     DISABLE_FANOUT,
     DISABLE_LUT,
     DISABLE_ADC,
-    /*connection*/
+    /*connection 12-15 */
     CONNECT,
     BREAK,
     CALIBRATE,
-    /*debug*/
+    /*debug 15-17 */
     GET_INTEG_STATUS,
     GET_ADC_STATUS,
-    /*set values*/
+    /*set values 17-21 */
     CONFIG_DAC,
     CONFIG_MULT,
     CONFIG_INTEG,
-    WRITE_LUT
+    WRITE_LUT,
+    /*code setting*/
+    GET_CODES,
+    SET_CODES,
+    MEASURE
 } cmd_type_t;
 
 typedef struct circ_loc {
@@ -72,6 +76,14 @@ typedef struct use_integ {
    uint8_t debug;
    float value;
 } cmd_use_integ_t;
+
+ typedef enum code_type {
+   CODE_PMOS,
+   CODE_NMOS,
+   CODE_OFFSET,
+   CODE_COMP_LOWER_FS,
+   CODE_COMP_UPPER_FS
+ } code_type_t;
 
 
 typedef enum dac_source {
@@ -134,6 +146,12 @@ typedef struct connection {
    circ_loc_idx2_t dst_loc;
 } cmd_connection_t;
 
+ typedef struct acc_code {
+   uint16_t src_blk;
+   circ_loc_idx2_t port;
+   uint8_t keyvals[10];
+ } cmd_acc_code_t;
+
 typedef union cmddata {
   cmd_use_fanout_t fanout;
   cmd_use_integ_t integ;
@@ -146,6 +164,7 @@ typedef union cmddata {
   circ_loc_t circ_loc;
   circ_loc_idx1_t circ_loc_idx1;
   circ_loc_idx2_t circ_loc_idx2;
+  cmd_acc_code_t codes;
 } cmd_data_t;
 
 typedef struct cmd {
@@ -153,8 +172,8 @@ typedef struct cmd {
   cmd_data_t data;
 } cmd_t;
 
-Fabric* setup_board();
-void init_calibrations();
+//Fabric* setup_board();
+//void init_calibrations();
 void timeout(Fabric * fab, unsigned int timeout);
 void print_command(cmd_t& cmd);
 void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf);

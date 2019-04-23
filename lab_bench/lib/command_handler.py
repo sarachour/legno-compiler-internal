@@ -16,12 +16,8 @@ def execute(state,line):
         print("[error] %s" % command_obj.error_msg())
         return False
 
-    if isinstance(command_obj, cmd.AnalogChipCommand) and \
-       not isinstance(command_obj, cmd.CalibrateCmd):
-        state.enqueue(command_obj)
-        return True
 
-    elif isinstance(command_obj,cmd.Command):
+    if isinstance(command_obj,cmd.Command):
         command_obj.execute(state)
         return True
 

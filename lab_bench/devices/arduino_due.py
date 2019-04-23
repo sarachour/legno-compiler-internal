@@ -3,16 +3,13 @@ import time
 import re
 from tqdm import tqdm
 import numpy as np
+import util.config as CONFIG
 
 class ArduinoDue:
 
     def __init__(self,native=True):
         self._baud_rate = 115200
-        if not native:
-            self._serial_port = '/dev/tty.usbmodem14101';
-        else:
-            self._serial_port = '/dev/ttyACM0'
-
+        self._serial_port = CONFIG.ARDUINO_FILE_DESC
         self._comm = None
 
     def close(self):

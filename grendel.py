@@ -11,6 +11,7 @@ from lab_bench.lib.state import State
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--native", action='store_true',help="use native mode for arduino DUE.")
+parser.add_argument("--no-oscilloscope", action='store_true',help="use native mode for arduino DUE.")
 parser.add_argument("--ip", type=str, help="ip address of oscilloscope.")
 parser.add_argument("--port", type=int, default=5024, help="port number of oscilloscope.")
 parser.add_argument("--output", type=str, default="noise_output", help="output directory for data files.")
@@ -28,8 +29,11 @@ else:
     ArduinoCommand.set_debug(False)
 
 ip = args.ip
-if args.ip is None:
+if args.ip is None and not args.no_oscilloscope:
     ip = CONFIG.OSC_IP
+elif args.no_oscilloscope:
+    ip = None
+
 state = State(ip,args.port,
               ard_native=args.native,
               validate=args.validate)

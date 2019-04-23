@@ -56,8 +56,9 @@ namespace integ {
 namespace tile_dac {
   typedef enum _DAC_SOURCE_T{
     DSRC_MEM,
-    DSRC_LUT,
-    DSRC_PARALLEL_IO
+    DSRC_LUT0,
+    DSRC_LUT1,
+    DSRC_PARA
   } dac_source_t;
 
   void initialize(block_t& blk);

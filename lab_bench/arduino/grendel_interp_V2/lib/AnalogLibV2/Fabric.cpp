@@ -2,20 +2,19 @@
 #include "include/Pin.h"
 #include "include/ProgIface.h"
 #include "include/Block.h"
+#include "include/Logger.h"
 
 Fabric::Fabric () {
 	/*SPI PINS*/
-  pin::setup();
-  /*scan chain disable*/
-  pin::reset();
-	/*create chips*/
-  delete [] m_ifaces;
 	m_ifaces = new ProgIface[2] {
 		ProgIface(0),
 		ProgIface(1)
 	};
 }
 
+Fabric::~Fabric() {
+  delete [] m_ifaces;
+}
 block_t Fabric::block(BLOCK_TYPE type,
                    unsigned char chip,
                    unsigned char tile,
@@ -25,6 +24,15 @@ block_t Fabric::block(BLOCK_TYPE type,
   blk.iface = &m_ifaces[chip];
   return blk;
 
+}
+
+void Fabric::initialize(){
+  logger::debug("setting up..");
+  pin::setup();
+  /*scan chain disable*/
+  logger::debug("reset config..");
+  pin::reset();
+	/*create chips*/ 
 }
 void Fabric::prog_commit(){
 }

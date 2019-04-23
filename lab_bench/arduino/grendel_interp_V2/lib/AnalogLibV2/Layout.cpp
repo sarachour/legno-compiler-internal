@@ -7,12 +7,14 @@ namespace layout {
 
   loc_t mkloc(unsigned char row,
               unsigned char col,
+              unsigned char line,
               unsigned char offset,
               unsigned char size,
               bool flip_endian){
     loc_t loc;
     loc.row = row;
     loc.col = col;
+    loc.line = line;
     loc.offset = offset;
     loc.size = size;
     loc.flip_endian = flip_endian;

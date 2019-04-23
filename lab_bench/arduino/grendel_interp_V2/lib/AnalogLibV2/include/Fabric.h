@@ -11,6 +11,7 @@ class Fabric {
   block_t block(BLOCK_TYPE block,unsigned char chip, unsigned char slice,
              unsigned char tile, unsigned char index);
   void reset();
+  void initialize();
   void prog_start();
   void prog_commit();
   void prog_done();

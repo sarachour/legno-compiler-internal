@@ -5,7 +5,7 @@
 #include "assert.h"
 
 experiment::experiment_t this_experiment;
-Fabric * this_fabric;
+Fabric this_fabric;
 
 typedef enum cmd_type {
     CIRC_CMD,
@@ -27,11 +27,10 @@ typedef struct cmd_{
 } cmd_t;
 
 void setup() {
-  this_fabric = circ::setup_board();
   Serial.begin(115200);
   Serial.flush();
+  this_fabric.initialize();
   experiment::setup_experiment(&this_experiment);
-  //circ::init_calibrations();
 }
 
 void loop() {
@@ -43,26 +42,27 @@ void loop() {
     comm::process_command();
     switch(cmd.type){
       case cmd_type_t::CIRC_CMD:
-        assert(this_fabric != NULL);
         inbuf = (float*) comm::get_data_ptr(nbytes);
         if(!debug){
           circ::print_command(cmd.data.circ_cmd);
-          circ::exec_command(this_fabric,cmd.data.circ_cmd,inbuf);
+          circ::exec_command(&this_fabric,cmd.data.circ_cmd,inbuf);
         }
         else{
           circ::print_command(cmd.data.circ_cmd);
-          circ::debug_command(this_fabric,cmd.data.circ_cmd,inbuf);
+          circ::debug_command(&this_fabric,cmd.data.circ_cmd,inbuf);
         }
         break;
       case cmd_type_t::EXPERIMENT_CMD:
         inbuf = (float*) comm::get_data_ptr(nbytes);
         if(!debug){
           experiment::print_command(cmd.data.exp_cmd,inbuf);
-          experiment::exec_command(&this_experiment,this_fabric,cmd.data.exp_cmd,inbuf);
+          experiment::exec_command(&this_experiment,&this_fabric,
+                                   cmd.data.exp_cmd,inbuf);
         }
         else{
           experiment::print_command(cmd.data.exp_cmd,inbuf);
-          experiment::debug_command(&this_experiment,this_fabric,cmd.data.exp_cmd,inbuf);
+          experiment::debug_command(&this_experiment,&this_fabric,
+                                    cmd.data.exp_cmd,inbuf);
         }
         // in the event the fabric has not been initialized, initialize it
         break;

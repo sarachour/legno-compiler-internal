@@ -1,5 +1,5 @@
 #define _DUE
-#include <AnalogLib.h>
+#include "AnalogLib.h"
 #include "Circuit.h"
 #include "Comm.h"
 #include <assert.h>
@@ -59,11 +59,6 @@ namespace circ {
     }
     comm::error("error");
     return BLOCK_TYPE::UNKNOWN_BLOCK;
-  }
-
-  Fabric* setup_board(){
-    Fabric* fabric = new Fabric();
-    return fabric;
   }
   void debug_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     cmd_write_lut_t wrlutd;
