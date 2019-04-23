@@ -158,6 +158,7 @@ def circ_acc_code_t():
     return cstruct.Struct(
         "blk" / block_type_t(),
         "loc" / circ_loc_idx2_t(),
+        "range" / cstruct.Int8ul,
         "keyvals" / cstruct.Array(10,cstruct.Int8ul)
     )
 def circ_cmd_data():

@@ -339,6 +339,14 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
               cmd.data.codes.loc,
               cmd.data.codes.range,
               buf);
+    comm::response("returning codes",1);
+    comm::data("16","I");
+    comm::payload();
+    for(int i=0; i < 16; i+=1){
+      Serial.print(" ");
+      Serial.print((uint8_t) buf[i]);
+    }
+    Serial.println("");
     break;
   default:
     comm::error("unknown command");

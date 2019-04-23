@@ -416,13 +416,13 @@ void exec_command(experiment_t* expr, Fabric* fab, cmd_t& cmd, float * inbuf){
       sprintf(buf,"%g",expr->time_between_samps_us*1e-6);
       comm::data(buf,"f");
       break;
-      
+
     case cmd_type_t::GET_NUM_DAC_SAMPLES:
       comm::response("get num dac samples",1);
       sprintf(buf,"%d",expr->dac_samples);
       comm::data(buf,"i");
       break;
-      
+
     case cmd_type_t::GET_NUM_ADC_SAMPLES:
       comm::response("get num adc samples",1);
       sprintf(buf,"%d",expr->adc_samples);
@@ -443,7 +443,7 @@ void print_command(cmd_t& cmd, float* inbuf){
       Serial.print(" osc=");
       Serial.println(cmd.args.floats[2]);
       break;
-      
+
     case cmd_type_t::USE_OSC:
       Serial.println("use_osc");
       break;
@@ -471,14 +471,14 @@ void print_command(cmd_t& cmd, float* inbuf){
     case cmd_type_t::GET_NUM_DAC_SAMPLES:
       Serial.println("get_num_dac_samples");
       break;
-    
+
     case cmd_type_t::GET_NUM_ADC_SAMPLES:
       Serial.println("get_num_adc_samples");
       break;
     case cmd_type_t::GET_TIME_BETWEEN_SAMPLES:
       Serial.println("get_time_between_samples");
       break;
-      
+
     case cmd_type_t::GET_ADC_VALUES:
       Serial.print("get_adc_values adc_id=");
       Serial.print(cmd.args.ints[0]);
@@ -506,11 +506,11 @@ void print_command(cmd_t& cmd, float* inbuf){
     case cmd_type_t::RESET:
       Serial.println("reset");
       break;
-      
+
     case cmd_type_t::RUN:
       Serial.println("run");
       break;
-      
+
     default:
       Serial.print(cmd.type);
       Serial.print(" ");

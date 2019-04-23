@@ -374,5 +374,3 @@ class AnalogChipCommand(ArduinoCommand):
         else:
             self.fail("not in block list <%s>" % block)
 
-    def priority(self):
-        return Priority.EARLY

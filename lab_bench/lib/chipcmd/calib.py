@@ -31,10 +31,11 @@ class SetCodesCmd(AnalogChipCommand):
 
 class GetCodesCmd(AnalogChipCommand):
 
-    def __init__(self,blk,loc):
+    def __init__(self,blk,loc,rng):
         AnalogChipCommand.__init__(self)
-        self._blk = enums.BlockType(blk);
-        self._loc = loc;
+        self._blk = enums.BlockType(blk)
+        self._loc = loc
+        self._rng = RangeType.from_abbrev(rng)
         self.test_loc(self._blk, self._loc.loc)
         assert(not loc is None and \
                isinstance(loc,CircPortLoc))
@@ -55,6 +56,7 @@ class GetCodesCmd(AnalogChipCommand):
                 'codes':{
                     'blk': self._blk.name,
                     'loc': self._loc.build_ctype(),
+                    'range': self._rng.code(),
                     'keyvals': [0]*10
                 }
             }
@@ -69,10 +71,16 @@ class GetCodesCmd(AnalogChipCommand):
             loc = CircPortLoc(data['chip'],data['tile'],
                                  data['slice'],data['port'],
                                  data['index'])
-            return GetCodesCmd(data['blk'],loc)
+            return GetCodesCmd(data['blk'],loc,data['range'])
         else:
             print(result.message)
             raise Exception("<parse_failure>: %s" % args)
+
+
+    def execute_command(self,state):
+        resp = ArduinoCommand.execute_command(self,state)
+        print(resp)
+        return True
 
 
     def __repr__(self):
