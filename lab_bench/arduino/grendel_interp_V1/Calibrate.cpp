@@ -43,8 +43,16 @@ namespace calibrate {
       add_to_buf(buf,idx,circ::code_type_t::CODE_OFFSET, get_offset_code(iface,rng));
       finish_buf(buf,idx);
       break;
-    default:
+
+    case circ::block_type_t::MULT:
+      // TODO: indicate if input or output.
+      add_to_buf(buf,idx,circ::code_type_t::CODE_PMOS, fanout->getAnaIrefPmos());
+      add_to_buf(buf,idx,circ::code_type_t::CODE_NMOS, fanout->getAnaIrefNmos());
+      finish_buf(buf,idx);
       break;
+
+    default:
+      comm::error("get_offset_code: unexpected block");
 
     }
 
