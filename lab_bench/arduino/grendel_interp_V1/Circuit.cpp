@@ -124,7 +124,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   bool lo3,hi3;
   bool s1,s2,s3,s4;
   uint8_t byteval;
-  char buf[16];
+  char buf[32];
   Fabric::Chip::Tile::Slice* slice;
   Fabric::Chip::Tile::Slice::Dac* dac;
   Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -341,9 +341,9 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
                          cmd.data.codes.range,
                          buf);
     comm::response("returning codes",1);
-    comm::data("16","I");
+    comm::data("32","I");
     comm::payload();
-    for(int i=0; i < 16; i+=1){
+    for(int i=0; i < 32; i+=1){
       Serial.print(" ");
       Serial.print((uint8_t) buf[i]);
     }

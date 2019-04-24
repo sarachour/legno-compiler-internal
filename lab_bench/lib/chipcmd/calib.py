@@ -1,7 +1,7 @@
 import lab_bench.lib.enums as enums
 from lab_bench.lib.chipcmd.data import AnalogChipCommand, CircLoc
 from lab_bench.lib.chipcmd.common import *
-
+import json
 
 class MeasureCmd(AnalogChipCommand):
 
@@ -30,6 +30,8 @@ class SetCodesCmd(AnalogChipCommand):
 
 
 class GetCodesCmd(AnalogChipCommand):
+
+    FILE = "codes.txt"
 
     def __init__(self,blk,loc,port_type,rng):
         AnalogChipCommand.__init__(self)
@@ -81,9 +83,33 @@ class GetCodesCmd(AnalogChipCommand):
             raise Exception("<parse_failure>: %s" % args)
 
 
+
+    def to_key_value(self,array):
+        i = 0;
+        data = {}
+        print("# els: %d" % len(array))
+        while i < len(array):
+            key = enums.CodeType.from_code(array[i])
+            if key == enums.CodeType.CODE_END:
+                return data
+
+            value = array[i+1]
+            assert(not key.value in data)
+            data[key.value] = value
+            i += 2;
+
+        raise Exception("no terminator")
+
     def execute_command(self,state):
         resp = ArduinoCommand.execute_command(self,state)
-        print(resp)
+        datum = self._loc.to_json()
+        datum['block_type'] = self._blk.value
+        datum['port_type'] = self._port_type.value
+        datum['scale_mode'] = self._rng.value
+        datum['codes'] = self.to_key_value(resp.data(0))
+        with open(GetCodesCmd.FILE, 'a') as fh:
+            fh.write(json.dumps(datum))
+            fh.write("\n")
         return True
 
 

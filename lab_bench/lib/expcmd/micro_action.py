@@ -353,62 +353,6 @@ class MicroUseOscCmd(ArduinoCommand):
     def __repr__(self):
         return self.name()
 
-class MicroSetupChipCmd(ArduinoCommand):
-
-    def __init__(self):
-        ArduinoCommand.__init__(self)
-
-
-    @staticmethod
-    def name():
-        return 'micro_setup_chip'
-
-    @staticmethod
-    def desc():
-        return "[microcontroller] calibrate+setup blocks/conns in chip."
-
-    @staticmethod
-    def parse(args):
-        return strict_do_parse("",args,MicroSetupChipCmd)
-
-
-
-    def __repr__(self):
-        return self.name()
-
-
-    def execute(self,state):
-        for stmt in state.calibrate_chip():
-            stmt.apply(state)
-
-        for stmt in state.configure_chip():
-            stmt.apply(state)
-
-
-class MicroTeardownChipCmd(ArduinoCommand):
-
-    def __init__(self):
-        ArduinoCommand.__init__(self)
-
-    @staticmethod
-    def name():
-        return 'micro_teardown_chip'
-
-    @staticmethod
-    def desc():
-        return "[microcontroller] calibrate+teardown blocks/conns in chip."
-
-    @staticmethod
-    def parse(args):
-        return strict_do_parse("",args,MicroTeardownChipCmd)
-
-    def __repr__(self):
-        return self.name()
-
-    def execute(self,state):
-        for stmt in state.teardown_chip():
-            stmt.apply(state)
-
 
 class MicroRunCmd(ArduinoCommand):
 

@@ -244,6 +244,14 @@ class CircLoc:
         self.slice = slice;
         self.index = index;
 
+    def to_json(self):
+        return {
+            'chip': self.chip,
+            'tile': self.tile,
+            'slice': self.slice,
+            'index': self.index
+        }
+
     def __hash__(self):
         return hash(str(self))
 
@@ -288,6 +296,12 @@ class CircPortLoc:
         self.loc = CircLoc(chip,tile,slice,index)
         assert(isinstance(port,int) or port is None)
         self.port = port
+
+    def to_json(self):
+        return {
+            'loc': self.loc.to_json(),
+            'port_id': self.port
+        }
 
     def build_ctype(self):
         if self.loc.index is None:

@@ -42,8 +42,6 @@ COMMANDS = [
     # experiment commands dispatched to microcontroller
     MicroResetCmd,
     MicroRunCmd,
-    MicroTeardownChipCmd,
-    MicroSetupChipCmd,
     MicroGetStatusCmd,
     MicroUseOscCmd,
     MicroUseArdDACCmd,

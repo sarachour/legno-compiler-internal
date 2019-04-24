@@ -295,8 +295,11 @@ def gen_block(gprog,circ,block,locstr,config,no_calib=False):
   else:
     raise Exception("unimplemented: <%s>" % block.name)
 
+  stmts = []
   for cmd in generator:
-    gprog.add(cmd)
+    stmts.append(cmd)
+
+  return stmts
 
 def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
   TO_BLOCK_TYPE = {
@@ -347,8 +350,7 @@ def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
                     src_loc, \
                     dest_blk,
                     dest_loc)
-  gprog.add(cmd)
-
+  return [cmd]
 
 def parse(line):
   cmd = toplevel_cmd.parse(line)
@@ -480,13 +482,11 @@ def execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trialno):
 
 
 def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,ntrials):
-  gren.add(parse('micro_setup_chip'))
   gren.add(parse('micro_get_status'))
   for trial in range(0,ntrials):
     execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trial)
 
   gren.add(parse('micro_get_status'))
-  gren.add(parse('micro_teardown_chip'))
   return gren
 
 def generate(paths,board,conc_circ,menv,hwenv,filename,ntrials):
@@ -497,14 +497,27 @@ def generate(paths,board,conc_circ,menv,hwenv,filename,ntrials):
   #  if block_name == 'lut' or block_name == 'tile_adc':
   #    no_calib = True
 
+  stmts = []
   for block_name,loc,config in conc_circ.instances():
     block = conc_circ.board.block(block_name)
-    gen_block(gren,conc_circ,block,loc,config,no_calib=no_calib)
+    stmts += gen_block(gren,conc_circ,block,loc,config,no_calib=no_calib)
 
   for sblk,sloc,sport, \
       dblk,dloc,dport in conc_circ.conns():
-    gen_conn(gren,conc_circ,sblk,sloc,sport, \
-             dblk,dloc,dport)
+    stmts += gen_conn(gren,conc_circ,sblk,sloc,sport, \
+                      dblk,dloc,dport)
+
+
+  for stmt in stmts:
+    gprog.add(cmd.calibrate())
+
+  for stmt in stmts:
+    gprog.add(cmd)
 
   postconfig(paths,gren,board,conc_circ,menv,hwenv,filename,ntrials)
+
+  for stmt in stmts:
+    gprog.add(cmd.teardown())
+
+
   return gren
