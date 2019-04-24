@@ -37,7 +37,7 @@ def parse_pattern_port(args,name):
     result = None
     for cmd in cmds:
        if result is None:
-           full_cmd = "%s %s {range:w}" % (name,cmd)
+           full_cmd = "%s %s {port_type:w} {range:w}" % (name,cmd)
            result = parselib.parse(full_cmd,line)
 
     if result is None:

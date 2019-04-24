@@ -10,6 +10,11 @@ namespace circ {
   const uint8_t MED_RANGE = 1;
   const uint8_t HI_RANGE = 2;
 
+  typedef enum port_type {
+    PORT_INPUT,
+    PORT_OUTPUT
+  } port_type_t;
+
   typedef enum block_type {
     TILE_DAC,
     CHIP_INPUT,
@@ -85,9 +90,14 @@ namespace circ {
   typedef enum code_type {
     CODE_END,
     CODE_PMOS,
+    CODE_PMOS2,
     CODE_NMOS,
     CODE_OFFSET,
+    CODE_GAIN_OFFSET,
+    CODE_I2V_OFFSET,
+    CODE_COMP_LOWER,
     CODE_COMP_LOWER_FS,
+    CODE_COMP_UPPER,
     CODE_COMP_UPPER_FS
   } code_type_t;
 
@@ -155,6 +165,7 @@ namespace circ {
   typedef struct acc_code {
     uint16_t blk;
     circ_loc_idx2_t loc;
+    uint8_t port_type;
     uint8_t range;
     uint8_t keyvals[10];
   } cmd_acc_code_t;

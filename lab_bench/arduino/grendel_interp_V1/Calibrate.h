@@ -8,6 +8,7 @@ namespace calibrate {
   void get_codes(Fabric* fab,
                  uint16_t blk,
                  circ::circ_loc_idx2_t port,
+                 uint8_t port_type,
                  uint8_t rng,
                  uint8_t* buf);
 

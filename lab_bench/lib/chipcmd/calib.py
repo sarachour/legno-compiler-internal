@@ -31,10 +31,11 @@ class SetCodesCmd(AnalogChipCommand):
 
 class GetCodesCmd(AnalogChipCommand):
 
-    def __init__(self,blk,loc,rng):
+    def __init__(self,blk,loc,port_type,rng):
         AnalogChipCommand.__init__(self)
         self._blk = enums.BlockType(blk)
         self._loc = loc
+        self._port_type = enums.PortType(port_type)
         self._rng = RangeType.from_abbrev(rng)
         self.test_loc(self._blk, self._loc.loc)
         assert(not loc is None and \
@@ -56,6 +57,7 @@ class GetCodesCmd(AnalogChipCommand):
                 'codes':{
                     'blk': self._blk.name,
                     'loc': self._loc.build_ctype(),
+                    'port_type': self._port_type.code(),
                     'range': self._rng.code(),
                     'keyvals': [0]*10
                 }
@@ -71,7 +73,9 @@ class GetCodesCmd(AnalogChipCommand):
             loc = CircPortLoc(data['chip'],data['tile'],
                                  data['slice'],data['port'],
                                  data['index'])
-            return GetCodesCmd(data['blk'],loc,data['range'])
+            return GetCodesCmd(data['blk'],loc,
+                               data['port_type'],
+                               data['range'])
         else:
             print(result.message)
             raise Exception("<parse_failure>: %s" % args)

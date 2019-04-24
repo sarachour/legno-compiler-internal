@@ -1,5 +1,15 @@
 from enum import Enum
 
+class PortType(Enum):
+    PORT_INPUT = 'input';
+    PORT_OUTPUT= 'output';
+
+    def code(self):
+        if self == PortType.PORT_INPUT:
+            return 0
+        else:
+            return 1
+
 class BlockType(Enum):
     DAC = 'dac';
     ADC = 'adc';

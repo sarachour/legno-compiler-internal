@@ -34,6 +34,30 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 		unsigned char getData () const;
 		unsigned char getStatusCode() const;
 		bool getException() const;
+    unsigned char getCalCompLower(){
+      return calCompLower;
+    }
+    unsigned char getCalCompLowerFS(){
+      return calCompLowerFs;
+    }
+    unsigned char getCalCompUpper(){
+      return calCompUpper;
+    }
+    unsigned char getCalCompUpperFS(){
+      return calCompUpperFs;
+    }
+    unsigned char getI2VOffset(){
+      return calI2V;
+    }
+    unsigned char getAnaIrefNmos(){
+      return anaIrefDacNmos;
+    }
+    unsigned char getAnaIrefPmos1(){
+      return anaIref1Pmos;
+    }
+    unsigned char getAnaIrefPmos2(){
+      return anaIref2Pmos;
+    }
 	private:
 		class AdcIn;
 		ChipAdc (Slice * parentSlice);

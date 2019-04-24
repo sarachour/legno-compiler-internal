@@ -18,6 +18,9 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 		void setVga (
 			bool vga // constant coefficient multiplier mode
 		);
+    unsigned char getAnaIrefPmos(){
+      return anaIrefPmos;
+    }
 	private:
 		class MultiplierInterface;
 		Multiplier (Slice * parentSlice, unit unitId);

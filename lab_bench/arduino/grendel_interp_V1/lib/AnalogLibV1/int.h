@@ -31,6 +31,9 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 			// turning false overflow detection saves power if it is known to be unnecessary
 		);
 		bool getException() const;
+    unsigned char getAnaIrefPmos(){
+      return anaIrefPmos;
+    }
 	private:
 		class IntegratorInterface;
 		class IntegratorIn;

@@ -335,10 +335,11 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     break;
   case cmd_type_t::GET_CODES:
     calibrate::get_codes(fab,
-              cmd.data.codes.blk,
-              cmd.data.codes.loc,
-              cmd.data.codes.range,
-              buf);
+                         cmd.data.codes.blk,
+                         cmd.data.codes.loc,
+                         cmd.data.codes.port_type,
+                         cmd.data.codes.range,
+                         buf);
     comm::response("returning codes",1);
     comm::data("16","I");
     comm::payload();

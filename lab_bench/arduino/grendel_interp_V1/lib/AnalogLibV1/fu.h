@@ -34,6 +34,14 @@ class Fabric::Chip::Tile::Slice::FunctionUnit {
 		Interface * out0;
 		Interface * out1;
 		Interface * out2;
+    unsigned char getAnaIrefNmos(){
+      return anaIrefDacNmos;
+    }
+    unsigned char getGainOffsetCode(){
+      return negGainCalCode;
+    }
+
+
 	private:
 		class GenericInterface;
 		FunctionUnit (
