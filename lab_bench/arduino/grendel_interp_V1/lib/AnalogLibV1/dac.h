@@ -62,23 +62,6 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 		void setAnaIrefNmos () const override;
 		void setAnaIrefPmos () const override {};
 
-		bool findBiasAdc (
-			unsigned char & gainCalCode
-		);
-		void findBiasHelperAdc (
-                            unsigned char & code,
-                            bool& new_search,
-                            bool& calib_failed
-		);
-		void binarySearchAdc (
-			unsigned char minGainCalCode,
-			float minBest,
-			unsigned char maxGainCalCode,
-			float maxBest,
-			unsigned char & finalGainCalCode,
-      float & finalError
-		);
-
 };
 
 class Fabric::Chip::Tile::Slice::Dac::DacOut : public Fabric::Chip::Tile::Slice::FunctionUnit::Interface  {

@@ -227,41 +227,12 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrate (
 }
 
 bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget () {
-    //    SerialUSB.print("\nIntegrator calibrateTarget hiRange ");
-    //    SerialUSB.print(hiRange);
-    //    SerialUSB.print(" initial ");
-    //    SerialUSB.println(initial);
-
   if(!m_codes.enable){
     return true;
   }
-	// preserve mul state because we will clobber it
   bool hiRange = (m_codes.range[out0Id] == RANGE_HIGH);
   float initial = m_codes.ic_val;
   mult_code_t user_mul0 = parentSlice->muls[0].m_codes;
-	//unsigned char userMulPmos = parentSlice->muls[0].anaIrefPmos;
-	//unsigned char userVgaNmos = parentSlice->muls[0].anaIrefDacNmos;
-	//unsigned char userVgaCalCode = parentSlice->muls[0].negGainCalCode;
-	//bool userVga = parentSlice->muls[0].vga;
-	//unsigned char userVgaGain = parentSlice->muls[0].gainCode;
-
-	//bool userOutLo = parentSlice->muls[0].out0->loRange;
-	//bool userOutHi = parentSlice->muls[0].out0->hiRange;
-	//unsigned char userOutLoOffsetCode = parentSlice->muls[0].out0->loOffsetCode;
-	//unsigned char userOutMidOffsetCode = parentSlice->muls[0].out0->midOffsetCode;
-	//unsigned char userOutHiOffsetCode = parentSlice->muls[0].out0->hiOffsetCode;
-
-	//bool userIn0Lo = parentSlice->muls[0].in0->loRange;
-	//bool userIn0Hi = parentSlice->muls[0].in0->hiRange;
-	//unsigned char userIn0LoOffsetCode = parentSlice->muls[0].in0->loOffsetCode;
-	//unsigned char userIn0MidOffsetCode = parentSlice->muls[0].in0->midOffsetCode;
-	//unsigned char userIn0HiOffsetCode = parentSlice->muls[0].in0->hiOffsetCode;
-
-	//bool userIn1Lo = parentSlice->muls[0].in1->loRange;
-	//bool userIn1Hi = parentSlice->muls[0].in1->hiRange;
-	//unsigned char userIn1LoOffsetCode = parentSlice->muls[0].in1->loOffsetCode;
-	//unsigned char userIn1MidOffsetCode = parentSlice->muls[0].in1->midOffsetCode;
-	//unsigned char userIn1HiOffsetCode = parentSlice->muls[0].in1->hiOffsetCode;
 	if (hiRange) parentSlice->muls[0].setGain(-0.1);
 
 	// output side
@@ -285,44 +256,44 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget () {
 	Connection conn3 = Connection ( parentSlice->tileOuts[3].out0, parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 	conn3.setConn();
 
-  /*
-	bool userIntOutLo=out0->loRange; bool userIntOutHi=out0->hiRange;
-	bool userIntInLo=in0->loRange; bool userIntInHi=in0->hiRange;
-	in0->setRange(false,false);
-    //     SerialUSB.println("\nCalibrate output");
-	out0->calibrate();
-    //     SerialUSB.println("\nCalibrate input");
-	in0->calibrate();
-	out0->setRange(userIntOutLo,userIntOutHi);
-	in0->setRange(userIntInLo,userIntInHi);
-	anaIrefDacNmos = 0;
-  */
-		/*calibrate integrator gain to target scale*/
-        //         SerialUSB.print("\nIntegrator gain calibration ");
-        //         SerialUSB.print(initial);
-        //         SerialUSB.print(" initialCode ");
-        //         SerialUSB.println(initialCode);
-
-    m_codes.nmos = 0;
-    setAnaIrefNmos();
-    if (hiRange) {
-      conn0.setConn();
-      conn1.setConn();
-    }
-    bool new_search = true;
-    bool calib_failed = true;
-		while (new_search) {
-      bool succ = out0->calibrate();
-      succ &= in0->calibrate();
-			findBiasHelper (
-				hiRange ? -initial : initial,
-				m_codes.gain_cal,
-        m_codes.nmos,
-        new_search,
-        calib_failed
-			);
-      calib_failed |= !succ;
-		}
+  if (hiRange) {
+    conn0.setConn();
+    conn1.setConn();
+  }
+  bool new_search = true;
+  bool calib_failed = true;
+  while (new_search) {
+    float errors[3];
+    unsigned char codes[3];
+    m_codes.cal_enable[out0Id] = true;
+    binsearch::find_bias(this, 0.0,
+                         m_codes.port_cal[out0Id],
+                         errors[0],
+                         MEAS_CHIP_OUTPUT
+                         );
+    codes[0] = m_codes.port_cal[out0Id];
+    m_codes.cal_enable[out0Id] = false;
+    m_codes.cal_enable[in0Id] = true;
+    binsearch::find_bias(this, 0.0,
+                         m_codes.port_cal[in0Id],
+                         errors[1],
+                         MEAS_CHIP_OUTPUT
+                         );
+    codes[1] = m_codes.port_cal[in0Id];
+    m_codes.cal_enable[in0Id] = false;
+    binsearch::find_bias(this,
+                         hiRange ? -initial : initial,
+                         m_codes.gain_cal,
+                         errors[2],
+                         MEAS_CHIP_OUTPUT
+                         );
+    codes[2] = m_codes.gain_cal;
+    binsearch::multi_test_stab_and_update_nmos(this,
+                                               codes, errors, 3,
+                                               m_codes.nmos,
+                                               new_search,
+                                               calib_failed);
+  }
 
 	if (hiRange) {
 		conn0.brkConn();
@@ -330,30 +301,8 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget () {
 		if (userConn01.sourceIfc) userConn01.setConn();
 
     parentSlice->muls[0].update(user_mul0);
-		//parentSlice->muls[0].anaIrefPmos = userMulPmos;
-		//parentSlice->muls[0].setAnaIrefPmos();
-		//parentSlice->muls[0].anaIrefDacNmos = userVgaNmos;
-		//parentSlice->muls[0].setAnaIrefDacNmos( false, false );
-		//parentSlice->muls[0].negGainCalCode = userVgaCalCode;
-		//parentSlice->muls[0].setGainCode( userVgaGain );
-		//parentSlice->muls[0].setVga( userVga );
 
-		//parentSlice->muls[0].out0->loOffsetCode = userOutLoOffsetCode;
-		//parentSlice->muls[0].out0->midOffsetCode = userOutMidOffsetCode;
-		//parentSlice->muls[0].out0->hiOffsetCode = userOutHiOffsetCode;
-		//parentSlice->muls[0].out0->setRange( userOutLo, userOutHi );
-
-		//parentSlice->muls[0].in0->loOffsetCode = userIn0LoOffsetCode;
-		//parentSlice->muls[0].in0->midOffsetCode = userIn0MidOffsetCode;
-		//parentSlice->muls[0].in0->hiOffsetCode = userIn0HiOffsetCode;
-		//parentSlice->muls[0].in0->setRange( userIn0Lo, userIn0Hi );
-
-		//parentSlice->muls[0].in1->loOffsetCode = userIn1LoOffsetCode;
-		//parentSlice->muls[0].in1->midOffsetCode = userIn1MidOffsetCode;
-		//parentSlice->muls[0].in1->hiOffsetCode = userIn1HiOffsetCode;
-		//parentSlice->muls[0].in1->setRange( userIn1Lo, userIn1Hi );
-
-		conn1.brkConn();
+    conn1.brkConn();
 		if (userConn10.destIfc) userConn10.setConn();
 		if (userConn11.sourceIfc) userConn11.setConn();
 	} else {
@@ -369,24 +318,12 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget () {
 	return calib_failed;
 }
 
-bool Fabric::Chip::Tile::Slice::Integrator::IntegratorInterface::calibrate () {
-    //    SerialUSB.print("\nIntegrator interface calibration");
-	parentIntegrator->m_codes.cal_enable[ifcId] = true;
-  float delta = FLT_MAX;
-  bool failed = false;
-  unsigned char code;
-	binarySearch ( 0, FLT_MAX, 63, FLT_MAX, code, delta);
-	if ( code<1 || code>62 ) error ("INT offset failure");
-  parentFu->testStab(code,parentIntegrator->m_codes.nmos,delta,failed);
-  parentIntegrator->m_codes.port_cal[ifcId] = code;
-  return !failed;
-}
 
 void Fabric::Chip::Tile::Slice::Integrator::setAnaIrefNmos () const {
 	unsigned char selRow=0;
 	unsigned char selCol=2;
 	unsigned char selLine;
-  testIref(m_codes.nmos);
+  binsearch::test_iref(m_codes.nmos);
 	switch (parentSlice->sliceId) {
 		case slice0: selLine=1; break;
 		case slice1: selLine=2; break;
@@ -416,7 +353,7 @@ void Fabric::Chip::Tile::Slice::Integrator::setAnaIrefPmos () const {
 	unsigned char selRow=0;
 	unsigned char selCol;
 	unsigned char selLine;
-  testIref(m_codes.pmos);
+  binsearch::test_iref(m_codes.pmos);
 	switch (parentSlice->sliceId) {
 		case slice0: selCol=3; selLine=4; break;
 		case slice1: selCol=3; selLine=5; break;

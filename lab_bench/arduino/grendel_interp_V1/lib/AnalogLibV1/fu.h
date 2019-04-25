@@ -39,6 +39,11 @@ typedef enum {
 } lut_source_t;
 
 typedef struct {
+  bool test_en;
+  bool test_adc;
+  bool test_i2v;
+  bool test_rs;
+  bool test_rsinc;
   bool enable;
   bool inv;
   uint8_t pmos;
@@ -107,7 +112,51 @@ typedef struct {
   lut_source_t source;
 } lut_code_t;
 
+typedef enum {
+  MEAS_CHIP_OUTPUT,
+  MEAS_ADC
+} meas_method_t;
 
+namespace binsearch {
+  bool find_bias_and_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                          float target,
+                          unsigned char & code,
+                          unsigned char & nmos,
+                          meas_method_t method);
+
+  void find_pmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                 float target,
+                 unsigned char & code,
+                 float & error,
+                 meas_method_t method);
+
+  void find_bias(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                 float target,
+                 unsigned char & code,
+                 float & error,
+                 meas_method_t method);
+
+  void multi_test_stab_and_update_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                                       unsigned char* codes,
+                                       float* errors,
+                                       int n_vals,
+                                       unsigned char& nmos,
+                                       bool& new_search,
+                                       bool& calib_failed);
+
+  void test_stab_and_update_nmos( Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                                 unsigned char code,
+                                 float error,
+                                 unsigned char& nmos,
+                                 bool& new_search,
+                                 bool& calib_failed);
+  void test_stab(unsigned char code,
+                 float error,
+                 bool& calib_failed);
+
+  void test_iref(unsigned char code);
+
+}
 class Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
 	friend Connection;
@@ -115,7 +164,7 @@ class Fabric::Chip::Tile::Slice::FunctionUnit {
 
 	public:
 		class Interface;
-		virtual void setEnable ( bool enable ) { error("not implemented"); };
+		virtual void setEnable ( bool enable ) { error("setEnable not implemented"); };
 		void setParallelOut ( bool onOff ) const;
 		Interface * in0;
 		Interface * in1;
@@ -123,7 +172,21 @@ class Fabric::Chip::Tile::Slice::FunctionUnit {
 		Interface * out1;
 		Interface * out2;
 
+    virtual void setAnaIrefNmos () const {
+			error("setAnaIrefNmos not implemented");
+		};
+		virtual void setAnaIrefPmos () const {
+			error("setAnaIrefPmos not implemented");
+		};
 
+    Fabric* getFabric(){
+      return parentSlice->parentTile->parentChip->parentFabric;
+    }
+    Fabric::Chip* getChip(){
+      return parentSlice->parentTile->parentChip;
+    }
+    void updateFu();
+    /*
     void testIref(unsigned char code) const;
     void testStab(unsigned char code,
                   unsigned char nmos,
@@ -134,6 +197,7 @@ class Fabric::Chip::Tile::Slice::FunctionUnit {
                                float error,
                                bool& new_search,
                                bool& calib_failed);
+    */
 
 	private:
 		class GenericInterface;
@@ -147,44 +211,12 @@ class Fabric::Chip::Tile::Slice::FunctionUnit {
     };
 
 		virtual ~FunctionUnit () {};
-    void updateFu();
-		virtual void setParam0 () const { error("not implemented"); };
-		virtual void setParam1 () const { error("not implemented"); };
-		virtual void setParam2 () const { error("not implemented"); };
-		virtual void setParam3 () const { error("not implemented"); };
-		virtual void setParam4 () const { error("not implemented"); };
-		virtual void setParam5 () const { error("not implemented"); };
-		void findBiasHelper (
-			float target,
-			unsigned char & code,
-      unsigned char & nmos,
-      bool& new_search,
-      bool& calib_failed
-		);
-		void binarySearchTarget (
-			float target,
-			unsigned char minCode,
-			float minBest,
-			unsigned char maxCode,
-			float maxBest,
-			unsigned char & finalCode,
-      float& finalScore
-		) const;
-		bool binarySearchAvg (
-			unsigned char minCode,
-			float minBest,
-			unsigned char maxCode,
-			float maxBest,
-			unsigned char & finalCode
-		) const;
-		float binarySearchMeas () const;
-
-		virtual void setAnaIrefNmos () const {
-			error("not implemented");
-		};
-		virtual void setAnaIrefPmos () const {
-			error("not implemented");
-		};
+		virtual void setParam0 () const { error("setParam0 not implemented"); };
+		virtual void setParam1 () const { error("setParam1 not implemented"); };
+		virtual void setParam2 () const { error("setParam2 not implemented"); };
+		virtual void setParam3 () const { error("setParam3 not implemented"); };
+		virtual void setParam4 () const { error("setParam4 not implemented"); };
+		virtual void setParam5 () const { error("setParam5 not implemented"); };
 
 		const Slice * const parentSlice;
 		// used for gain and initial condition range calibration
@@ -205,10 +237,10 @@ class Fabric::Chip::Tile::Slice::FunctionUnit::Interface {
 		virtual void setInv (
 			bool inverse
 		) {
-			error("not implemented");
+			error("setInv not implemented");
 		}; // whether output is negated
 		virtual void setRange (range_t range) {
-			error("not implemented");
+			error("setRange not implemented");
 		};
 		virtual ~Interface () {};
 	private:
@@ -219,41 +251,6 @@ class Fabric::Chip::Tile::Slice::FunctionUnit::Interface {
 			parentFu(parentFu),
 			ifcId(ifcId)
 		{};
-		virtual bool calibrate() {
-			error("not implemented");
-      return false;
-		};
-		virtual void findBias (
-                           unsigned char & offsetCode,
-                           bool& new_search,
-                           bool& calib_failed
-		) {
-			error("not implemented");
-      new_search = true;
-      calib_failed = true;
-		};
-		void findBiasHelper (
-                         unsigned char & code,
-                         unsigned char & nmos,
-                         bool& new_search,
-                         bool& calib_failed
-		) const;
-		virtual void binarySearch (
-			unsigned char minCode,
-			float minBest,
-			unsigned char maxCode,
-			float maxBest,
-			unsigned char & finalCode,
-      float& finalScore
-		) const;
-		bool binarySearchAvg (
-			unsigned char minGainCode,
-			float minBest,
-			unsigned char maxGainCode,
-			float maxBest,
-			unsigned char & finalGainCode
-		) const;
-		float binarySearchMeas () const;
 		FunctionUnit * const parentFu;
 		const ifc ifcId;
 		Interface * userSourceDest = NULL;

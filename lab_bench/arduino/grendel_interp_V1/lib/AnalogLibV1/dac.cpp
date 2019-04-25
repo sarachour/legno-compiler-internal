@@ -4,7 +4,8 @@
 
 void Fabric::Chip::Tile::Slice::Dac::setEnable (
 	bool enable
-) {
+)
+{
 	m_codes.enable = enable;
 	setParam0 ();
 	setParam1 ();
@@ -190,7 +191,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
 
 	//bool userOutLo = parentSlice->muls[1].out0->loRange;
 	//bool userOutHi = parentSlice->muls[1].out0->hiRange;
-	//unsigned char userOutLoOffsetCode = parentSlice->muls[1].out0->loOffsetCode;
+	//unsigned char userOutLoOffsetCode = parentSlice->muls[1].out0->loOffetCode;
 	//unsigned char userOutMidOffsetCode = parentSlice->muls[1].out0->midOffsetCode;
 	//unsigned char userOutHiOffsetCode = parentSlice->muls[1].out0->hiOffsetCode;
 
@@ -242,18 +243,12 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
 
 	m_codes.nmos = 0;
 	setAnaIrefNmos ();
-  bool new_search = true;
-  bool calib_failed = true;
-	while (new_search) {
-		findBiasHelper (
-			hiRange ? -constant : constant,
-			m_codes.gain_cal,
-      m_codes.nmos,
-      new_search,
-      calib_failed
-		);
-	}
-
+  bool succ = binsearch::find_bias_and_nmos(
+                       this,
+                       hiRange ? -constant : constant,
+                       m_codes.gain_cal,
+                       m_codes.nmos,
+                       MEAS_CHIP_OUTPUT);
 	if (hiRange) {
 		conn0.brkConn();
 		if (userConn00.destIfc) userConn00.setConn();
@@ -296,14 +291,14 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
 	if (userConn30.destIfc) userConn30.setConn();
 	if (userConn31.sourceIfc) userConn31.setConn();
 
-	return not calib_failed;
+	return succ;
 }
 
 void Fabric::Chip::Tile::Slice::Dac::setAnaIrefNmos () const {
 	unsigned char selRow;
 	unsigned char selCol=2;
 	unsigned char selLine;
-  testIref(m_codes.nmos);
+  binsearch::test_iref(m_codes.nmos);
 	switch (parentSlice->sliceId) {
 		case slice0: selRow=0; selLine=3; break;
 		case slice1: selRow=1; selLine=0; break;
@@ -325,104 +320,5 @@ void Fabric::Chip::Tile::Slice::Dac::setAnaIrefNmos () const {
 	parentSlice->parentTile->parentChip->cacheVec (
 		vec
 	);
-
-}
-
-// binary search so dac scale matches adc scale
-bool Fabric::Chip::Tile::Slice::Dac::findBiasAdc (
-	unsigned char & gainCalCode
-) {
-	// Serial.println("Dac gain calibration");
-
-	setRange(RANGE_HIGH);
-	setConstantCode(2);
-	ChipAdc * adc;
-	switch (parentSlice->sliceId) {
-  case slice0: adc=parentSlice->adc; break;
-  case slice1: adc=parentSlice->parentTile->slices[0].adc; break;
-  case slice2: adc=parentSlice->adc; break;
-  case slice3: adc=parentSlice->parentTile->slices[2].adc; break;
-  default:
-    adc=NULL;
-    break;
-	}
-	Connection conn = Connection ( out0, adc->in0 );
-	conn.setConn();
-
-  bool new_search = true;
-  bool calib_failed = true;
-	while (new_search) {
-		findBiasHelperAdc (gainCalCode, new_search, calib_failed);
-	}
-	setEnable (false);
-	conn.brkConn();
-	adc->setEnable (false);
-
-	// switch to finding full scale
-	setConstantCode(0);
-	Connection conn0 = Connection ( out0, parentSlice->tileOuts[3].in0 );
-	conn0.setConn();
-	Connection conn1 = Connection ( parentSlice->tileOuts[3].out0, parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
-	conn1.setConn();
-	parentSlice->parentTile->parentChip->parentFabric->cfgCommit();
-
-	float midNegTarget = binarySearchMeas();
-	Serial.print("midNegTarget = ");
-	Serial.println(midNegTarget);
-
-	conn0.brkConn();
-	conn1.brkConn();
-	setEnable(false);
-
-	return not calib_failed;
-}
-
-void Fabric::Chip::Tile::Slice::Dac::findBiasHelperAdc (
-                                                        unsigned char & code,
-                                                        bool& new_search,
-                                                        bool& calib_failed
-) {
-  float err = FLT_MAX;
-	binarySearchAdc ( 0, FLT_MAX, 63, FLT_MAX, code, err);
-  testStabAndUpdateNmos(code,m_codes.nmos,err,new_search,calib_failed);
-}
-
-// binary search so dac scale matches adc scale
-void Fabric::Chip::Tile::Slice::Dac::binarySearchAdc (
-	unsigned char minGainCalCode,
-	float minBest,
-	unsigned char maxGainCalCode,
-	float maxBest,
-	unsigned char & finalGainCalCode,
-  float& finalError
-) {
-	if (binarySearchAvg (minGainCalCode, minBest, maxGainCalCode, maxBest, finalGainCalCode)) return;
-
-	setParam1 ();
-	parentSlice->parentTile->parentChip->parentFabric->cfgCommit();
-
-	ChipAdc * adc;
-	switch (parentSlice->sliceId) {
-		case slice0: adc=parentSlice->adc; break;
-		case slice1: adc=parentSlice->parentTile->slices[0].adc; break;
-		case slice2: adc=parentSlice->adc; break;
-		case slice3: adc=parentSlice->parentTile->slices[2].adc; break;
-	}
-
-	unsigned char adcRead = adc->getData();
-	Serial.print("adcRead = ");
-	Serial.println(adcRead);
-
-	float target = 2.0;
-  float err = fabs(adcRead-target);
-  finalError = err;
-	if ( adcRead < target ) {
-		return binarySearchAdc (minGainCalCode, minBest, finalGainCalCode, err,
-                            finalGainCalCode, finalError);
-	} else {
-		return binarySearchAdc (finalGainCalCode, err,
-                            maxGainCalCode, maxBest,
-                            finalGainCalCode, finalError);
-	}
 
 }

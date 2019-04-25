@@ -60,10 +60,5 @@ class Fabric::Chip::Tile::Slice::Fanout::FanoutOut : public Fabric::Chip::Tile::
 			Interface(parentFu, ifcId),
 			parentFanout(parentFu)
 		{};
-		void findBias (
-                   unsigned char & offsetCode,
-                   bool& new_search,
-                   bool& calib_failed
-		) override;
 		Fanout * const parentFanout;
 };

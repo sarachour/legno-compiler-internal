@@ -61,7 +61,6 @@ class Fabric::Chip::Tile::Slice::Integrator::IntegratorInterface : public Fabric
 
 	private:
 		IntegratorInterface (Integrator * parentFu, ifc ifcId) : Interface(parentFu, ifcId), parentIntegrator(parentFu) {};
-		bool calibrate() override;
 		Integrator * parentIntegrator;
 };
 

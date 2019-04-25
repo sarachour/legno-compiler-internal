@@ -166,29 +166,50 @@ bool Fabric::Chip::Tile::Slice::Fanout::calibrate () {
 
   bool new_search = true;
   bool calib_failed = true;
-  bool new_searches[3];
-  bool calib_fails[3];
 	while (new_search) {
-		out0->findBias(m_codes.port_cal[out0Id],
-                   new_searches[0],calib_fails[0]);
-		out1->findBias(m_codes.port_cal[out1Id],
-                   new_searches[1],calib_fails[1]);
-		out2->findBias(m_codes.port_cal[out2Id],
-                   new_searches[2],calib_fails[2]);
-    new_search = false;
-    calib_failed = false;
-    for(int i=0; i < 3; i+=1){
-      new_search |= new_searches[i];
-      calib_failed |= calib_fails[i];
-    }
-	}
+    float errors[3];
+    unsigned char codes[3];
+    Connection conn0 = Connection (out0, this->parentSlice->tileOuts[3].in0);
+    conn0.setConn();
+    binsearch::find_bias(this,0.0,
+                         m_codes.port_cal[out0Id],
+                         errors[0],
+                         MEAS_CHIP_OUTPUT);
+    codes[0] = m_codes.port_cal[out0Id];
+    conn0.brkConn();
 
+    Connection conn1 = Connection (out1, this->parentSlice->tileOuts[3].in0);
+    conn1.setConn();
+    binsearch::find_bias(this,0.0,
+                         m_codes.port_cal[out1Id],
+                         errors[1],
+                         MEAS_CHIP_OUTPUT);
+    codes[1] = m_codes.port_cal[out1Id];
+    conn1.brkConn();
+
+    Connection conn2 = Connection (out2, this->parentSlice->tileOuts[3].in0);
+    conn1.setConn();
+    setThird(true);
+    binsearch::find_bias(this,0.0,
+                         m_codes.port_cal[out2Id],
+                         errors[2],
+                         MEAS_CHIP_OUTPUT);
+    codes[2] = m_codes.port_cal[out2Id];
+    setThird(false);
+    conn2.brkConn();
+    // update nmos for multiple stability statements
+    binsearch::multi_test_stab_and_update_nmos(this,
+                                               codes, errors, 3,
+                                               m_codes.nmos,
+                                               new_search,
+                                               calib_failed);
+	}
 	conn.brkConn();
 	setEnable ( false );
 
 	return !calib_failed;
 }
-
+/*
 void Fabric::Chip::Tile::Slice::Fanout::FanoutOut::findBias (
                                                              unsigned char & offsetCode,
                                                              bool& new_search,
@@ -204,13 +225,13 @@ void Fabric::Chip::Tile::Slice::Fanout::FanoutOut::findBias (
 	if (ifcId==out2Id) parentFanout->setThird(false);
 
 }
-
+*/
 
 void Fabric::Chip::Tile::Slice::Fanout::setAnaIrefNmos () const {
 	unsigned char selRow=0;
 	unsigned char selCol;
 	unsigned char selLine;
-  testIref(m_codes.nmos);
+  binsearch::test_iref(m_codes.nmos);
 	switch (unitId) {
 		case unitFanL: switch (parentSlice->sliceId) {
 			case slice0: selCol=0; selLine=0; break;
@@ -265,7 +286,7 @@ void Fabric::Chip::Tile::Slice::Fanout::setAnaIrefPmos () const {
 	unsigned char selRow=0;
 	unsigned char selCol;
 	unsigned char selLine;
-  testIref(m_codes.pmos);
+  binsearch::test_iref(m_codes.pmos);
 	switch (unitId) {
 		case unitFanL: switch (parentSlice->sliceId) {
 			case slice0: selLine=3; break;

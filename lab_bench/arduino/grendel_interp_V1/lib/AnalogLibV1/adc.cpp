@@ -1,5 +1,6 @@
 #include "AnalogLib.h"
 #include "assert.h"
+#include "fu.h"
 
 void Fabric::Chip::Tile::Slice::ChipAdc::setEnable (
 	bool enable
@@ -86,6 +87,10 @@ Fabric::Chip::Tile::Slice::ChipAdc::ChipAdc (
   m_codes.enable = false;
   m_codes.inv = false;
   m_codes.range = RANGE_MED;
+  m_codes.test_adc = false;
+  m_codes.test_i2v = false;
+  m_codes.test_rs = false;
+  m_codes.test_rsinc = false;
 	setAnaIrefNmos();
 	setAnaIrefPmos();
 }
@@ -131,21 +136,29 @@ void Fabric::Chip::Tile::Slice::ChipAdc::setParam3 () const {
 	cfgTile += m_codes.upper_fs<<0;
 	setParamHelper (3, cfgTile);
 }
-
+void Fabric::Chip::Tile::Slice::ChipAdc::setTestParams (
+                                                        bool testEn, /*Configure the entire block in testing mode so that I2V and A/D can be tested individually*/
+                                                        bool testAdc, /*Testing the ADC individually.*/
+                                                        bool testIv, /*Testing the I2V individually.*/
+                                                        bool testRs, /*Testing the rstring individually.*/
+                                                        bool testRsInc /*Configure the counter for upward or downward increments during set up for testing R-string separately (w/ cfgCalEN=1)*/
+                                                        )
+{
+  m_codes.test_en = testEn;
+  m_codes.test_adc = testAdc;
+  m_codes.test_i2v = testIv;
+  m_codes.test_rs = testRs;
+  m_codes.test_rsinc = testRsInc;
+  setParam4();
+}
 /*Set testEn, testAdc, testIv, testRs, testRsInc*/
-void Fabric::Chip::Tile::Slice::ChipAdc::setParam4 (
-	bool testEn, /*Configure the entire block in testing mode so that I2V and A/D can be tested individually*/
-	bool testAdc, /*Testing the ADC individually.*/
-	bool testIv, /*Testing the I2V individually.*/
-	bool testRs, /*Testing the rstring individually.*/
-	bool testRsInc /*Configure the counter for upward or downward increments during set up for testing R-string separately (w/ cfgCalEN=1)*/
-) const {
+void Fabric::Chip::Tile::Slice::ChipAdc::setParam4 () const {
 	unsigned char cfgTile = 0;
-	cfgTile += testEn ? 1<<7 : 0;
-	cfgTile += testAdc ? 1<<6 : 0;
-	cfgTile += testIv ? 1<<5 : 0;
-	cfgTile += testRs ? 1<<4 : 0;
-	cfgTile += testRsInc ? 1<<3 : 0;
+	cfgTile += m_codes.test_en ? 1<<7 : 0;
+	cfgTile += m_codes.test_adc ? 1<<6 : 0;
+	cfgTile += m_codes.test_i2v ? 1<<5 : 0;
+	cfgTile += m_codes.test_rs ? 1<<4 : 0;
+	cfgTile += m_codes.test_rsinc ? 1<<3 : 0;
 	setParamHelper (4, cfgTile);
 }
 
@@ -181,8 +194,8 @@ void Fabric::Chip::Tile::Slice::ChipAdc::setAnaIrefPmos () const {
 	unsigned char selRow=0;
 	unsigned char selCol=3;
 	unsigned char selLine;
-  testIref(m_codes.pmos);
-  testIref(m_codes.pmos2);
+  binsearch::test_iref(m_codes.pmos);
+  binsearch::test_iref(m_codes.pmos2);
 	switch (parentSlice->sliceId) {
 		case slice0: selLine=1; break;
 		case slice2: selLine=3; break;
@@ -235,14 +248,9 @@ void Fabric::Chip::Tile::Slice::ChipAdc::setAnaIrefPmos () const {
 
 bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate () {
 
-  Serial.println("AC:>[msg] -> starting");
-  Serial.flush();
+  dac_code_t codes_dac = parentSlice->dac->m_codes;
 	Connection conn0 = Connection ( parentSlice->dac->out0, in0 );
-  Serial.println("AC:>[msg] -> set conn");
-  Serial.flush();
 	conn0.setConn();
-  Serial.println("AC:>[msg] -> set enable");
-  Serial.flush();
 	setEnable (true);
 
   Serial.println("AC:>[msg] -> finding posneg/fullscale settings");
@@ -261,13 +269,15 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate () {
 	// find I2V offset code
   Serial.println("AC:>[msg] -> finding i2v bias");
   Serial.flush();
-  bool new_search,calib_failed;
-	in0->findBias ( m_codes.i2v_cal, new_search, calib_failed);
-  Serial.println("AC:>[msg] -> done");
-  Serial.flush();
+  bool succ = binsearch::find_bias_and_nmos(this,
+                                   128.0,
+                                   m_codes.i2v_cal,
+                                   m_codes.nmos,
+                                   MEAS_ADC);
 	setEnable (false);
+  parentSlice->dac->update(codes_dac);
 	// Serial.println("offset settings found");
-	return !calib_failed;
+	return !succ;
 }
 
 bool Fabric::Chip::Tile::Slice::ChipAdc::findCalCompFs () {
@@ -338,6 +348,7 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::checkSteady (
 	return success;
 }
 
+/*
 void Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::findBias (
                                                           unsigned char & offsetCode,
                                                           bool& new_search,
@@ -350,7 +361,6 @@ void Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::findBias (
 		findBiasHelper (offsetCode, adc->m_codes.nmos, new_search, calib_failed);
 	}
 }
-
 void Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::binarySearch (
 	unsigned char minI2VCode,
 	float minBest,
@@ -402,7 +412,7 @@ void Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::binarySearch (
 	}
 
 }
-
+*/
 void Fabric::Chip::Tile::Slice::ChipAdc::setAnaIrefNmos () const {
 	// anaIrefI2V mapped to anaIrefDacNmos
 	unsigned char selRow=0;

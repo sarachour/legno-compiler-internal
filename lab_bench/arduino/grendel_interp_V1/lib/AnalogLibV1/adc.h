@@ -39,6 +39,13 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 		class AdcIn;
 		ChipAdc (Slice * parentSlice);
 		~ChipAdc () override { delete in0; };
+    void setTestParams (
+                        bool testEn, /*Configure the entire block in testing mode so that I2V and A/D can be tested individually*/
+                        bool testAdc, /*Testing the ADC individually.*/
+                        bool testIv, /*Testing the I2V individually.*/
+                        bool testRs, /*Testing the rstring individually.*/
+                        bool testRsInc /*Configure the counter for upward or downward increments during set up for testing R-string separately (w/ cfgCalEN=1)*/
+                        );
 		/*Set enable, range, delay, decRst*/
 		void setParam0 () const override;
 		/*Set calibration enable, calCompUpperEn, calIv*/
@@ -48,13 +55,8 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 		/*Set calCompUpper, calCompUpperFs*/
 		void setParam3 () const override;
 		/*Set testEn, testAdc, testIv, testRs, testRsInc*/
-		void setParam4 (
-			bool testEn, /*Configure the entire block in testing mode so that I2V and A/D can be tested individually*/
-			bool testAdc, /*Testing the ADC individually.*/
-			bool testIv, /*Testing the I2V individually.*/
-			bool testRs, /*Testing the rstring individually.*/
-			bool testRsInc /*Configure the counter for upward or downward increments during set up for testing R-string separately (w/ cfgCalEN=1)*/
-		) const;
+    void setParam4 () const override;
+    void setParam5() const override {};
 		/*Helper function*/
 		void setParamHelper (
 			unsigned char selLine,
@@ -101,18 +103,5 @@ class Fabric::Chip::Tile::Slice::ChipAdc::AdcIn : public Fabric::Chip::Tile::Sli
 			Interface(parentFu, in0Id),
 			parentAdc(parentFu)
 		{};
-		void findBias (
-                   unsigned char & offsetCode,
-                   bool& new_search,
-                   bool& calib_failed
-		) override;
-		void binarySearch (
-			unsigned char minCode,
-			float minBest,
-			unsigned char maxCode,
-			float maxBest,
-			unsigned char & finalCode,
-      float & finalError
-		) const override;
 		const ChipAdc * const parentAdc;
 };

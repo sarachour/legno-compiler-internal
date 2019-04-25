@@ -2,17 +2,6 @@
 #include "fu.h"
 #include <float.h>
 #include "assert.h"
-
-bool decrement_iref(uint8_t& code){
-  if (code==0) return false; // error ("Bias already set to extreme value");
-  else code--;
-  return true;
-}
-bool increment_iref(uint8_t& code){
-  if (code==7) return false; // error ("Bias already set to extreme value");
-  else code++;
-  return true;
-}
 void Fabric::Chip::Tile::Slice::FunctionUnit::updateFu(){
   setAnaIrefPmos();
   setAnaIrefNmos();
@@ -23,75 +12,231 @@ void Fabric::Chip::Tile::Slice::FunctionUnit::updateFu(){
   setParam4();
   setParam5();
 }
+namespace binsearch {
+  void bin_search(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                  float target,
+                  unsigned char lo_code, float lo_error,
+                  unsigned char hi_code, float hi_error,
+                  unsigned char& curr_code, float curr_error,
+                  meas_method_t method);
 
-void Fabric::Chip::Tile::Slice::FunctionUnit::testIref(unsigned char code) const{
-  assert(code <= 7);
-  assert(code >= 0);
-}
-void Fabric::Chip::Tile::Slice::FunctionUnit::testStab(unsigned char code,
-                                                       unsigned char nmos,
-                                                       float error,
-                                                       bool& calib_failed) const{
-  const float MIN_ERROR = 1e-2;
-  Serial.print("AC:>[msg] result! bias_code=");
-  Serial.print(code);
-  Serial.print(" nmos_code=");
-  Serial.print(nmos);
-  Serial.print(" error=");
-  Serial.println(error);
-  if(error < MIN_ERROR){
-    calib_failed = false;
+  bool decrement_iref(uint8_t& code){
+    if (code==0) return false; // error ("Bias already set to extreme value");
+    else code--;
+    return true;
   }
-  else{
-    calib_failed = true;
+  bool increment_iref(uint8_t& code){
+    if (code==7) return false; // error ("Bias already set to extreme value");
+    else code++;
+    return true;
   }
-}
-void Fabric::Chip::Tile::Slice::FunctionUnit::testStabAndUpdateNmos(
-                                                                    unsigned char code,
-                                                                    unsigned char& nmos,
-                                                                    float error,
-                                                                    bool& new_search,
-                                                                    bool& calib_failed)
-{
-  new_search = false;
-  testStab(code,nmos,error,calib_failed);
-  if(not calib_failed){
-    return;
+
+
+  void test_iref(unsigned char code){
+    assert(code <= 7);
+    assert(code >= 0);
   }
-  if (code==0 || code==1) {
-    if(decrement_iref(nmos)) new_search=true;
-    else calib_failed = true;
-	} else if (code==63 || code==62) {
-		if(increment_iref(nmos)) new_search=true;
-    else calib_failed = true;
-	}
+
+  void test_stab(unsigned char code,
+                float error,
+                bool& calib_failed){
+    const float MIN_ERROR = 1e-2;
+    Serial.print("AC:>[msg] result! bias_code=");
+    Serial.print(code);
+    Serial.print(" error=");
+    Serial.println(error);
+    if(error < MIN_ERROR){
+      calib_failed = false;
+    }
+    else{
+      calib_failed = true;
+    }
+  }
+
+  void test_stab_and_update_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                                unsigned char code,
+                                float error,
+                                unsigned char& nmos,
+                                bool& new_search,
+                                bool& calib_failed)
+  {
+    new_search = false;
+    test_stab(code,error,calib_failed);
+    if(not calib_failed){
+      return;
+    }
+    if (code==0 || code==1) {
+      if(decrement_iref(nmos)) new_search=true;
+      else calib_failed = true;
+    } else if (code==63 || code==62) {
+      if(increment_iref(nmos)) new_search=true;
+      else calib_failed = true;
+    }
+    fu->setAnaIrefNmos();
+  }
+
+  void multi_test_stab_and_update_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                                unsigned char* codes,
+                                float* errors,
+                                int n_vals,
+                                unsigned char& nmos,
+                                bool& new_search,
+                                bool& calib_failed)
+    {
+      new_search = false;
+      calib_failed = false;
+      float avg_code = 0;
+      for(int i = 0; i < n_vals; i+= 1){
+        bool this_failed;
+        test_stab(codes[i], errors[i], this_failed);
+        calib_failed |= this_failed;
+        avg_code += codes[i];
+      }
+      if(not calib_failed){
+        return;
+      }
+      char code = avg_code/n_vals;
+      if (code==0 || code==1) {
+        if(decrement_iref(nmos)) new_search=true;
+        else calib_failed = true;
+      }
+      else if (code==63 || code==62) {
+        if(increment_iref(nmos)) new_search=true;
+        else calib_failed = true;
+      }
+      fu->setAnaIrefNmos();
+  }
+
+  bool find_bias_and_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                float target,
+                unsigned char & code,
+                unsigned char & nmos,
+                meas_method_t method)
+  {
+    bool new_search=true;
+    bool calib_failed=true;
+    float error;
+    nmos = 0;
+    fu->setAnaIrefNmos();
+    while(new_search){
+      find_bias(fu,target,code,error,method);
+      test_stab_and_update_nmos(fu,code,error,nmos,
+                                new_search,calib_failed);
+    }
+    return !calib_failed;
+
+  }
+  void find_pmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                 float target,
+                 unsigned char & code,
+                 float & error,
+                 meas_method_t method)
+  {
+    // find code.
+    error = FLT_MAX;
+    bin_search(fu, target, 0, FLT_MAX, 7, FLT_MAX, code, error,method);
+  }
+  void find_bias(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                float target,
+                unsigned char & code,
+                float & error,
+                meas_method_t method)
+  {
+    // find code.
+    error = FLT_MAX;
+    bin_search(fu, target, 0, FLT_MAX, 63, FLT_MAX, code, error,method);
+  }
+
+  float bin_search_meas(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                        meas_method_t method)
+  {
+    Fabric::Chip::Tile::Slice::ChipAdc* adc;
+    switch(method)
+      {
+      case MEAS_CHIP_OUTPUT:
+        return fu->getChip()->tiles[3].slices[2].chipOutput
+          ->analogAvg(CAL_REPS,1.0);
+
+      case MEAS_ADC:
+        adc = fu;
+        return adc->getData();
+
+      default:
+        error("unknown measurement method");
+      }
+    return FLT_MAX;
+  }
+
+  bool bin_search_next_code (
+                             unsigned char lo_code,
+                             float lo_error,
+                             unsigned char hi_code,
+                             float hi_error,
+                             unsigned char & curr_code
+                             ) {
+    if (lo_code+1==hi_code) {
+      if (lo_error<hi_error) curr_code=lo_code;
+      else curr_code=hi_code;
+      return true;
+    } else {
+      curr_code = (lo_code + hi_code) / 2;
+      return false;
+    }
 }
-void Fabric::Chip::Tile::Slice::FunctionUnit::findBiasHelper (
-	float target,
-	unsigned char & code,
-  unsigned char & nmos,
-  bool& new_search,
-  bool& calib_failed
-) {
-  float error = FLT_MAX;
-	binarySearchTarget ( target, 0, FLT_MAX, 63, FLT_MAX, code, error);
-  testStabAndUpdateNmos(code,nmos,error,new_search,calib_failed);
-  setAnaIrefNmos();
+  void bin_search(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                        float target,
+                        unsigned char lo_code, float lo_error,
+                        unsigned char hi_code, float hi_error,
+                        unsigned char& curr_code, float curr_error,
+                        meas_method_t method)
+  {
+    //test if finished
+    // parentSlice->parentTile->parentChip->parentFabric
+    Fabric* fab = fu->getFabric();
+    if (bin_search_next_code(lo_code, lo_error,
+                             hi_code, hi_error, curr_code)) return;
+    fu->updateFu();
+    fab->cfgCommit();
+    float meas = bin_search_meas(fu,method);
+    float delta = meas - target;
+    float error = fabs(delta);
+    curr_error = error;
+    Serial.print("AC:>[msg] meas=");
+    Serial.print(meas);
+    Serial.print(" target=");
+    Serial.print(target);
+    Serial.print(" curr_code=");
+    Serial.print(curr_code);
+    Serial.print(" min_code=");
+    Serial.print(lo_code);
+    Serial.print(" max_code=");
+    Serial.print(hi_code);
+    Serial.print(" min_error=");
+    Serial.print(lo_error);
+    Serial.print(" max_error=");
+    Serial.print(hi_error);
+    Serial.print(" error=");
+    Serial.println(error);
+    if(meas > target) {
+      return bin_search(fu,target,
+                        lo_code, lo_error,
+                        curr_code, curr_error,
+                        curr_code, curr_error,
+                        method);
+    }
+    else {
+      return bin_search( fu, target,
+                         curr_code, curr_error,
+                         hi_code, hi_error,
+                         curr_code, curr_error,
+                         method);
+    }
+
+  }
+
 }
 
-void Fabric::Chip::Tile::Slice::FunctionUnit::Interface::findBiasHelper (
-                                                                         unsigned char & code,
-                                                                         unsigned char & nmos,
-                                                                         bool& new_search,
-                                                                         bool& calib_failed
-) const {
-  // find code.
-  float error = FLT_MAX;
-	binarySearch ( 0, FLT_MAX, 63, FLT_MAX, code, error);
-  parentFu->testStabAndUpdateNmos(code,nmos,error,new_search,calib_failed);
-  parentFu->setAnaIrefNmos();
-}
-
+/*
 void Fabric::Chip::Tile::Slice::FunctionUnit::binarySearchTarget (
 	float target,
 	unsigned char minGainCode,
@@ -102,8 +247,9 @@ void Fabric::Chip::Tile::Slice::FunctionUnit::binarySearchTarget (
   float& finalError
 ) const {
 	if (binarySearchAvg (minGainCode, minBest, maxGainCode, maxBest, finalGainCode)) return;
-	setAnaIrefPmos ();
-	setParam1 ();
+  updateFu();
+  //setAnaIrefPmos ();
+	//setParam1 ();
 	parentSlice->parentTile->parentChip->parentFabric->cfgCommit();
 	float voltageDiff = binarySearchMeas ();
   float error = fabs(voltageDiff-target);
@@ -125,8 +271,9 @@ void Fabric::Chip::Tile::Slice::FunctionUnit::binarySearchTarget (
   Serial.print(" error=");
 	Serial.println(error);
 
+  finalError = error;
 	//if ( (voltageDiff*target<0) || (fabs(target*FULL_SCALE)<fabs(voltageDiff)) ) {
-  if(voltageDiff >= target) {
+  if(voltageDiff > target) {
 		return binarySearchTarget ( target,
                                 minGainCode, minBest,
                                 finalGainCode, error,
@@ -148,12 +295,7 @@ void Fabric::Chip::Tile::Slice::FunctionUnit::Interface::binarySearch (
   float& finalError
 ) const {
 	if (binarySearchAvg (minOffsetCode, minBest, maxOffsetCode, maxBest, finalOffsetCode)) return;
-	parentFu->setParam0();
-	parentFu->setParam1();
-	parentFu->setParam2();
-	parentFu->setParam3();
-	parentFu->setParam4();
-	parentFu->setParam5();
+  parentFu->updateFu();
 	parentFu->parentSlice->parentTile->parentChip->parentFabric->cfgCommit();
 	if (ifcId==in0Id) parentFu->parentSlice->parentTile->parentChip->parentFabric->execStart();
 	float voltageDiff = binarySearchMeas();
@@ -170,24 +312,23 @@ void Fabric::Chip::Tile::Slice::FunctionUnit::Interface::binarySearch (
                           finalOffsetCode, finalError);
 	}
 }
-
-bool Fabric::Chip::Tile::Slice::FunctionUnit::binarySearchAvg (
-	unsigned char minCode,
-	float minBest,
-	unsigned char maxCode,
-	float maxBest,
-	unsigned char & finalCode
+bool fabric::chip::tile::slice::functionunit::binarysearchavg (
+	unsigned char mincode,
+	float minbest,
+	unsigned char maxcode,
+	float maxbest,
+	unsigned char & finalcode
 ) const {
-//        SerialUSB.print(" minCode ");
-//        SerialUSB.print(minCode);
-//        SerialUSB.print(" maxCode ");
-//        SerialUSB.println(maxCode);
-	if (minCode+1==maxCode) {
-		if (minBest<maxBest) finalCode=minCode;
-		else finalCode=maxCode;
+//        serialusb.print(" mincode ");
+//        serialusb.print(mincode);
+//        serialusb.print(" maxcode ");
+//        serialusb.println(maxcode);
+	if (mincode+1==maxcode) {
+		if (minbest<maxbest) finalcode=mincode;
+		else finalcode=maxcode;
 		return true;
 	} else {
-		finalCode = (maxCode + minCode) / 2;
+		finalcode = (maxcode + mincode) / 2;
 		return false;
 	}
 }
@@ -227,24 +368,6 @@ float Fabric::Chip::Tile::Slice::FunctionUnit::Interface::binarySearchMeas () co
 	return voltageDiff;
 }
 
-/*
-bool Fabric::Chip::Tile::Slice::FunctionUnit::setAnaIrefDacNmosHelper (
-	bool decrement,
-	bool increment
-) {
-	if (decrement&&increment) {
-		error ("Cannot both increment and decrement");
-		return false;
-	} else if (decrement) {
-		if (anaIrefDacNmos==0) return false; // error ("Bias already set to extreme value");
-		else anaIrefDacNmos--;
-	} else if (increment) {
-		if (anaIrefDacNmos==7) return false; // error ("Bias already set to extreme value");
-		else anaIrefDacNmos++;
-	}
 
-//        SerialUSB.print("anaIrefDacNmos = ");
-//        SerialUSB.println(anaIrefDacNmos);
-	return true;
-}
+
 */

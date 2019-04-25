@@ -57,6 +57,5 @@ class Fabric::Chip::Tile::Slice::Multiplier::MultiplierInterface : public Fabric
 		void setRange (range_t range) override;
 	private:
 		MultiplierInterface (Multiplier * parentFu, ifc ifcId) : Interface(parentFu, ifcId), parentMultiplier(parentFu) {};
-		bool calibrate () override;
 		Multiplier * const parentMultiplier;
 };
