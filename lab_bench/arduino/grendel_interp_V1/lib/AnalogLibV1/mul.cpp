@@ -27,13 +27,15 @@ void Fabric::Chip::Tile::Slice::Multiplier::setGainCode (
 	// Serial.println("setGainCode");
 	// Serial.println(gainCode);
 	setVga (true);
-	m_codes.gain = gainCode;
+	m_codes.gain_code = gainCode;
+  m_codes.gain_val = (gainCode-128)/128.0;
 	setParam2 ();
 }
 
 bool Fabric::Chip::Tile::Slice::Multiplier::setGain(float gain){
   if(-1.0000001 < gain && gain < 127.0/128.0){
     setGainCode(gain*128.0+128.0);
+    m_codes.gain_val= gain;
     return true;
   }
   else{
@@ -65,7 +67,8 @@ Fabric::Chip::Tile::Slice::Multiplier::Multiplier (
   m_codes.pmos = 3;
   m_codes.nmos = 0;
   m_codes.vga = false;
-  m_codes.gain = 128;
+  m_codes.gain_code = 128;
+  m_codes.gain_val = 0.0;
   m_codes.gain_cal = 0;
   m_codes.inv[in0Id] = false;
   m_codes.inv[in1Id] = false;
@@ -73,6 +76,9 @@ Fabric::Chip::Tile::Slice::Multiplier::Multiplier (
   m_codes.range[in0Id] = RANGE_MED;
   m_codes.range[in1Id] = RANGE_MED;
   m_codes.range[out0Id] = RANGE_MED;
+  m_codes.port_cal[in0Id] = 31;
+  m_codes.port_cal[in1Id] = 31;
+  m_codes.port_cal[out0Id] = 31;
   m_codes.enable = false;
   setAnaIrefNmos();
 	setAnaIrefPmos();
@@ -108,7 +114,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::setParam1 () const {
 
 /*Set gain if VGA mode*/
 void Fabric::Chip::Tile::Slice::Multiplier::setParam2 () const {
-  unsigned char gainCode = m_codes.gain;
+  unsigned char gainCode = m_codes.gain_code;
 	if (gainCode<0||255<gainCode) error ("gain out of bounds");
 	setParamHelper (2, gainCode);
 }
@@ -181,11 +187,11 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrate () {
 }
 
 bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
-  float gain = 2.0*m_codes.gain/256.0 - 1.0;
+  float gain = m_codes.gain_val;
   bool hiRange = m_codes.range[out0Id] == RANGE_HIGH;
 	// preserve dac state because we will clobber it
   // can only calibrate target for vga.
-  if(!m_codes.vga){
+  if(!m_codes.vga or !m_codes.enable){
     return true;
   }
   dac_code_t codes_dac = parentSlice->dac->m_codes;

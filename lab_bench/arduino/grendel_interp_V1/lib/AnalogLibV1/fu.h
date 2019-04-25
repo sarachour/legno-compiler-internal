@@ -61,32 +61,35 @@ typedef struct {
   uint8_t nmos;
   uint8_t port_cal[3];
   uint8_t gain_cal;
-  uint8_t gain;
+  uint8_t gain_code;
+  float gain_val;
 } mult_code_t;
 
 
 typedef struct {
   bool enable;
   bool inv;
+  range_t range;
+  dac_source_t source;
   uint8_t pmos;
   uint8_t nmos;
   uint8_t gain_cal;
-  uint8_t constant;
-  range_t range;
-  dac_source_t source;
+  uint8_t const_code;
+  float const_val;
 } dac_code_t;
 
 typedef struct {
-  uint8_t pmos;
-  uint8_t nmos;
-  uint8_t gain_cal;
-  uint8_t init_cond;
-  uint8_t port_cal[3];
-  range_t range[3];
   bool cal_enable[3];
   bool inv[2];
   bool enable;
   bool exception;
+  range_t range[3];
+  uint8_t pmos;
+  uint8_t nmos;
+  uint8_t gain_cal;
+  uint8_t ic_code;
+  uint8_t port_cal[3];
+  float ic_val;
 } integ_code_t;
 
 

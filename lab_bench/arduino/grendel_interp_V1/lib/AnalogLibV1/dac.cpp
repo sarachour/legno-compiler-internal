@@ -58,7 +58,8 @@ void Fabric::Chip::Tile::Slice::Dac::setConstantCode (
 	unsigned char constantCode // fixed point representation of desired constant
 	// 0 to 255 are valid
 ) {
-  m_codes.constant = constantCode;
+  m_codes.const_code = constantCode;
+  m_codes.const_val = (constantCode - 128)/128.0;
   setSource(DSRC_MEM);
 	parentSlice->parentTile->parentChip->parentFabric->cfgCommit();
 	unsigned char selLine = 0;
@@ -75,6 +76,7 @@ void Fabric::Chip::Tile::Slice::Dac::setConstantCode (
 bool Fabric::Chip::Tile::Slice::Dac::setConstant(float constant){
   if(-1.0000001 < constant && constant< 127.0/128.0){
     setConstantCode(round(constant*128.0+128.0));
+    m_codes.const_val = constant;
     return true;
   }
   else{
@@ -92,7 +94,8 @@ Fabric::Chip::Tile::Slice::Dac::Dac (
   m_codes.pmos = 0;
   m_codes.nmos = 0;
   m_codes.gain_cal = 0;
-  m_codes.constant = 0;
+  m_codes.const_code = 128;
+  m_codes.const_val = 0.0;
   m_codes.enable = false;
 	out0 = new DacOut (this);
 	tally_dyn_mem <DacOut> ("DacOut");
@@ -156,18 +159,27 @@ void Fabric::Chip::Tile::Slice::Dac::setParamHelper (
 }
 
 bool Fabric::Chip::Tile::Slice::Dac::calibrate (
-) {
+)
+{
 	return true;
 }
 
-bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget () {
+bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
+{
   //setConstantCode(round(constant*128.0+128.0));
-  float constant = (m_codes.constant-128)/128.0;
+  if(!m_codes.enable){
+    Serial.println("AC:>[msg] DAC not enabled");
+    return true;
+  }
+  float constant = m_codes.const_val;
   bool hiRange = (m_codes.range == RANGE_HIGH);
-  Serial.print("AC:>[msg] ");
-  Serial.println(m_codes.constant);
+  Serial.print("AC:>[msg] DAC ");
+  Serial.print(m_codes.const_val);
   Serial.print(" ");
-  Serial.println(constant);
+  Serial.print(m_codes.const_code);
+  Serial.print(" ");
+  Serial.println(hiRange);
+
   mult_code_t user_mul1 = parentSlice->muls[1].m_codes;
 	// preserve mul state because we will clobber it
 	//unsigned char userMulPmos = parentSlice->muls[1].anaIrefPmos;

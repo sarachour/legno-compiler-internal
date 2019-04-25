@@ -35,7 +35,8 @@ void Fabric::Chip::Tile::Slice::Integrator::IntegratorIn::setRange (range_t rang
 void Fabric::Chip::Tile::Slice::Integrator::setInitialCode (
 	unsigned char initialCode // fixed point representation of initial condition
 ) {
-  m_codes.init_cond = initialCode;
+  m_codes.ic_code = initialCode;
+  m_codes.ic_val = (initialCode-128)/128.0;
 	setParam2 ();
 }
 
@@ -43,6 +44,7 @@ bool Fabric::Chip::Tile::Slice::Integrator::setInitial(float initial)
 {
   if(-1.0000001 < initial && initial < 127.0/128.0){
     setInitialCode(initial*128.0+128.0);
+    m_codes.ic_val = initial;
     return true;
   }
   else{
@@ -79,13 +81,16 @@ Fabric::Chip::Tile::Slice::Integrator::Integrator (
 	tally_dyn_mem <IntegratorOut> ("IntegratorOut");
   m_codes.pmos = 5;
   m_codes.nmos = 0;
-  m_codes.init_cond= 0;
+  m_codes.ic_code = 128;
+  m_codes.ic_val = 0.0;
   m_codes.inv[in0Id] = false;
   m_codes.inv[out0Id] = false;
   m_codes.range[in0Id] = RANGE_MED;
   m_codes.range[out0Id] = RANGE_MED;
   m_codes.cal_enable[in0Id] = false;
   m_codes.cal_enable[in1Id] = false;
+  m_codes.port_cal[in0Id] = 31;
+  m_codes.port_cal[out0Id] = 31;
   m_codes.exception = false;
   m_codes.gain_cal = 32;
 	setAnaIrefNmos();
@@ -145,7 +150,7 @@ void Fabric::Chip::Tile::Slice::Integrator::setParam1 () const {
 
 /*Set initial condition*/
 void Fabric::Chip::Tile::Slice::Integrator::setParam2 () const {
-	setParamHelper (2, m_codes.init_cond);
+	setParamHelper (2, m_codes.ic_code);
 }
 
 /*Set calOutOs, calOutEn*/
@@ -227,9 +232,12 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget () {
     //    SerialUSB.print(" initial ");
     //    SerialUSB.println(initial);
 
+  if(!m_codes.enable){
+    return true;
+  }
 	// preserve mul state because we will clobber it
   bool hiRange = (m_codes.range[out0Id] == RANGE_HIGH);
-  float initial = (m_codes.init_cond-128)/128.0;
+  float initial = m_codes.ic_val;
   mult_code_t user_mul0 = parentSlice->muls[0].m_codes;
 	//unsigned char userMulPmos = parentSlice->muls[0].anaIrefPmos;
 	//unsigned char userVgaNmos = parentSlice->muls[0].anaIrefDacNmos;
