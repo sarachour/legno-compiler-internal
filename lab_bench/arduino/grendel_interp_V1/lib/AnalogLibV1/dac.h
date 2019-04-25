@@ -26,12 +26,6 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 			unsigned char constantCode // fixed point representation of desired constant
 			// 0 to 255 are valid
 		);
-    bool setConstantDirect (
-                      float constant, // floating point representation of desired constant
-                      bool hiRange,
-                      bool set_bias
-                      // -10.0 to 10.0 are valid
-    );
     bool setConstant (
 			float constant // floating point representation of desired constant
 			// -10.0 to 10.0 are valid
@@ -53,10 +47,7 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 			unsigned char selLine,
 			unsigned char cfgTile
 		) const;
-    void update(dac_code_t codes){
-      m_codes = codes;
-      updateFu();
-    }
+    void update(dac_code_t codes);
 		bool calibrate ();
 		bool calibrateTarget ();
 		void setAnaIrefNmos () const override;

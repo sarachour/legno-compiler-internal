@@ -139,6 +139,12 @@ namespace binsearch {
                  meas_method_t method,
                  bool reverse);
 
+  void multi_test_stab(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                       unsigned char* codes,
+                       float* errors,
+                       int n_vals,
+                       bool& calib_failed);
+
   void multi_test_stab_and_update_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                                        unsigned char* codes,
                                        float* errors,

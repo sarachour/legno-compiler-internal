@@ -20,10 +20,7 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 			delete in0;
 			delete in1;
 		};
-    void update(mult_code_t codes){
-      m_codes = codes;
-      updateFu();
-    }
+    void update(mult_code_t codes);
 		bool calibrate ();
 		bool calibrateTarget();
 		/*Set enable, input 1 range, input 2 range, output range*/

@@ -3,8 +3,8 @@
 #include <float.h>
 #include "assert.h"
 void Fabric::Chip::Tile::Slice::FunctionUnit::updateFu(){
-  setAnaIrefPmos();
   setAnaIrefNmos();
+  setAnaIrefPmos();
   setParam0();
   setParam1();
   setParam2();
@@ -72,7 +72,24 @@ namespace binsearch {
       if(increment_iref(nmos)) new_search=true;
       else calib_failed = true;
     }
+    if(!new_search){
+      calib_failed = true;
+      }
     fu->setAnaIrefNmos();
+  }
+
+  void multi_test_stab(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                                       unsigned char* codes,
+                                       float* errors,
+                                       int n_vals,
+                                       bool& calib_failed)
+  {
+    calib_failed = false;
+    for(int i = 0; i < n_vals; i+= 1){
+      bool this_failed;
+      test_stab(codes[i], errors[i], this_failed);
+      calib_failed |= this_failed;
+    }
   }
 
   void multi_test_stab_and_update_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
@@ -103,6 +120,9 @@ namespace binsearch {
       else if (code==63 || code==62) {
         if(increment_iref(nmos)) new_search=true;
         else calib_failed = true;
+      }
+      if(!new_search){
+        calib_failed = true;
       }
       fu->setAnaIrefNmos();
   }
@@ -158,11 +178,14 @@ namespace binsearch {
                         meas_method_t method)
   {
     Fabric::Chip::Tile::Slice::ChipAdc* adc;
+    float value;
     switch(method)
       {
       case MEAS_CHIP_OUTPUT:
-        return fu->getChip()->tiles[3].slices[2].chipOutput
+        value = fu->getChip()->tiles[3].slices[2].chipOutput
           ->analogAvg(CAL_REPS,1.0);
+        //value /= FULL_SCALE;
+        return value;
 
       case MEAS_ADC:
         adc = fu;

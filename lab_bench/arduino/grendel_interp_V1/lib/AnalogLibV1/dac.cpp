@@ -1,6 +1,12 @@
 #include "AnalogLib.h"
 #include <float.h>
 #include "assert.h"
+void Fabric::Chip::Tile::Slice::Dac::update(dac_code_t codes){
+  m_codes = codes;
+  updateFu();
+  setConstant(m_codes.const_val);
+  setSource(m_codes.source);
+}
 
 void Fabric::Chip::Tile::Slice::Dac::setEnable (
 	bool enable
@@ -172,6 +178,10 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
     Serial.println("AC:>[msg] DAC not enabled");
     return true;
   }
+  if(m_codes.source != DSRC_MEM){
+    Serial.println("AC:>[msg] DAC must have memory as source.");
+    return true;
+  }
   float constant = m_codes.const_val;
   bool hiRange = (m_codes.range == RANGE_HIGH);
   Serial.print("AC:>[msg] DAC ");
@@ -182,30 +192,8 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
   Serial.println(hiRange);
 
   mult_code_t user_mul1 = parentSlice->muls[1].m_codes;
-	// preserve mul state because we will clobber it
-	//unsigned char userMulPmos = parentSlice->muls[1].anaIrefPmos;
-	//unsigned char userVgaNmos = parentSlice->muls[1].anaIrefDacNmos;
-	//unsigned char userVgaCalCode = parentSlice->muls[1].negGainCalCode;
-	//bool userVga = parentSlice->muls[1].vga;
-	//unsigned char userVgaGain = parentSlice->muls[1].gainCode;
-
-	//bool userOutLo = parentSlice->muls[1].out0->loRange;
-	//bool userOutHi = parentSlice->muls[1].out0->hiRange;
-	//unsigned char userOutLoOffsetCode = parentSlice->muls[1].out0->loOffetCode;
-	//unsigned char userOutMidOffsetCode = parentSlice->muls[1].out0->midOffsetCode;
-	//unsigned char userOutHiOffsetCode = parentSlice->muls[1].out0->hiOffsetCode;
-
-	//bool userIn0Lo = parentSlice->muls[1].in0->loRange;
-	//bool userIn0Hi = parentSlice->muls[1].in0->hiRange;
-	//unsigned char userIn0LoOffsetCode = parentSlice->muls[1].in0->loOffsetCode;
-	//unsigned char userIn0MidOffsetCode = parentSlice->muls[1].in0->midOffsetCode;
-	//unsigned char userIn0HiOffsetCode = parentSlice->muls[1].in0->hiOffsetCode;
-
-	//bool userIn1Lo = parentSlice->muls[1].in1->loRange;
-	//bool userIn1Hi = parentSlice->muls[1].in1->hiRange;
-	//unsigned char userIn1LoOffsetCode = parentSlice->muls[1].in1->loOffsetCode;
-	//unsigned char userIn1MidOffsetCode = parentSlice->muls[1].in1->midOffsetCode;
-	//unsigned char userIn1HiOffsetCode = parentSlice->muls[1].in1->hiOffsetCode;
+  dac_code_t codes_self = m_codes;
+  update(m_codes);
 
 	Connection userConn00 = Connection ( out0, out0->userSourceDest );
 	Connection userConn01 = Connection ( parentSlice->muls[1].in0->userSourceDest,
@@ -243,42 +231,20 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
 
 	m_codes.nmos = 0;
 	setAnaIrefNmos ();
+  float target = hiRange ? -constant : constant;
   bool succ = binsearch::find_bias_and_nmos(
                        this,
-                       hiRange ? -constant : constant,
+                       target,
                        m_codes.gain_cal,
                        m_codes.nmos,
                        MEAS_CHIP_OUTPUT,
-                       false);
+                       target >= 0.0 ? false : true);
 	if (hiRange) {
 		conn0.brkConn();
 		if (userConn00.destIfc) userConn00.setConn();
 		if (userConn01.sourceIfc) userConn01.setConn();
 
     parentSlice->muls[1].update(user_mul1);
-		//parentSlice->muls[1].anaIrefPmos = userMulPmos;
-		//parentSlice->muls[1].setAnaIrefPmos();
-		//parentSlice->muls[1].anaIrefDacNmos = userVgaNmos;
-		//parentSlice->muls[1].setAnaIrefDacNmos();
-		//parentSlice->muls[1].negGainCalCode = userVgaCalCode;
-		//parentSlice->muls[1].setGainCode( userVgaGain );
-		//parentSlice->muls[1].setVga( userVga );
-
-		//parentSlice->muls[1].out0->loOffsetCode = userOutLoOffsetCode;
-		//parentSlice->muls[1].out0->midOffsetCode = userOutMidOffsetCode;
-		//parentSlice->muls[1].out0->hiOffsetCode = userOutHiOffsetCode;
-		//parentSlice->muls[1].out0->setRange( userOutLo, userOutHi );
-
-		//parentSlice->muls[1].in0->loOffsetCode = userIn0LoOffsetCode;
-		//parentSlice->muls[1].in0->midOffsetCode = userIn0MidOffsetCode;
-		//parentSlice->muls[1].in0->hiOffsetCode = userIn0HiOffsetCode;
-		//parentSlice->muls[1].in0->setRange( userIn0Lo, userIn0Hi );
-
-		//parentSlice->muls[1].in1->loOffsetCode = userIn1LoOffsetCode;
-		//parentSlice->muls[1].in1->midOffsetCode = userIn1MidOffsetCode;
-		//parentSlice->muls[1].in1->hiOffsetCode = userIn1HiOffsetCode;
-		//parentSlice->muls[1].in1->setRange( userIn1Lo, userIn1Hi );
-
 		conn1.brkConn();
 		if (userConn10.destIfc) userConn10.setConn();
 		if (userConn11.sourceIfc) userConn11.setConn();
@@ -292,6 +258,9 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
 	if (userConn30.destIfc) userConn30.setConn();
 	if (userConn31.sourceIfc) userConn31.setConn();
 
+  codes_self.nmos = m_codes.nmos;
+  codes_self.gain_cal = m_codes.gain_cal;
+  update(codes_self);
 	return succ;
 }
 

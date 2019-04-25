@@ -24,6 +24,7 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 		);
 		bool getException() const;
 
+    void update(integ_code_t codes);
     integ_code_t m_codes;
 	private:
 		class IntegratorInterface;

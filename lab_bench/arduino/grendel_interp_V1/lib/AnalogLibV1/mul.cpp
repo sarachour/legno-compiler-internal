@@ -2,6 +2,11 @@
 #include "fu.h"
 #include <float.h>
 
+void Fabric::Chip::Tile::Slice::Multiplier::update(mult_code_t codes){
+  m_codes = codes;
+  updateFu();
+}
+
 void Fabric::Chip::Tile::Slice::Multiplier::setEnable (
 	bool enable
 ) {
@@ -181,10 +186,17 @@ void Fabric::Chip::Tile::Slice::Multiplier::setParamHelper (
 }
 
 bool Fabric::Chip::Tile::Slice::Multiplier::calibrate () {
+  mult_code_t codes_self = m_codes;
 	setGain(-1.0);
-  calibrateTarget();
-	setVga(false);
-	return true;
+  bool succ = calibrateTarget();
+  codes_self.nmos = m_codes.nmos;
+  codes_self.pmos = m_codes.pmos;
+  codes_self.port_cal[in0Id] = m_codes.port_cal[in0Id];
+  codes_self.port_cal[in1Id] = m_codes.port_cal[in1Id];
+  codes_self.port_cal[out0Id] = m_codes.port_cal[out0Id];
+  codes_self.gain_cal = m_codes.gain_cal;
+  update(codes_self);
+	return succ;
 }
 
 bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
@@ -192,7 +204,12 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
   bool hiRange = m_codes.range[out0Id] == RANGE_HIGH;
 	// preserve dac state because we will clobber it
   // can only calibrate target for vga.
-  if(!m_codes.vga or !m_codes.enable){
+  if(!m_codes.enable){
+    Serial.println("AC:>[msg] not enabled");
+    return true;
+  }
+  if(!m_codes.vga){
+    Serial.println("AC:>[msg] not in vga mode");
     return true;
   }
   dac_code_t codes_dac = parentSlice->dac->m_codes;
@@ -200,8 +217,6 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
   mult_code_t codes_self = m_codes;
   fanout_code_t codes_fan = parentSlice->fans[unitId==unitMulL?0:1].m_codes;
 
-  parentSlice->dac->setConstant(-1.0);
-	if (hiRange) parentSlice->muls[unitId==unitMulL?1:0].setGain(-0.1);
 
 	Connection userConn40 = Connection ( parentSlice->dac->out0, parentSlice->dac->out0->userSourceDest );
 	Connection userConn41 = Connection ( parentSlice->fans[unitId==unitMulL?0:1].in0->userSourceDest, parentSlice->fans[unitId==unitMulL?0:1].in0 );
@@ -239,19 +254,63 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
 	Connection conn3 = Connection ( parentSlice->tileOuts[3].out0, parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 	conn3.setConn();
 
-	unsigned char ttl = 64;
+
+  /*
+    compute calibrations for the following blocks:
+      - gain block of 0.1
+      - dac with value -1.0
+      - dac with value 0.0
+   */
+  dac_code_t dac_code_zero;
+  dac_code_t dac_code_neg1;
+  mult_code_t mult_code_0p1;
+  if(hiRange){
+    parentSlice->muls[unitId==unitMulL?1:0].setGain(-0.1);
+    parentSlice->muls[unitId==unitMulL?1:0].calibrateTarget();
+    mult_code_0p1 = parentSlice->muls[unitId==unitMulL?1:0].m_codes;
+  }
+  parentSlice->dac->setConstant(0);
+  parentSlice->dac->out0->setInv(true);
+  if(!parentSlice->dac->calibrateTarget()){
+    Serial.println("AC:>[msg] !!cannot calibrate DAC=0");
+  }
+  dac_code_zero = parentSlice->dac->m_codes;
+  // done computing preset codes
+
+  parentSlice->dac->setConstant(-1);
+  parentSlice->dac->out0->setInv(false);
+  if(!parentSlice->dac->calibrateTarget()){
+    Serial.println("AC:>[msg] !!cannot calibrate DAC=-1");
+  }
+  dac_code_neg1 = parentSlice->dac->m_codes;
+
+	unsigned char tries = 64;
   bool new_search = true;
   bool calib_failed = true;
-
 	m_codes.nmos = 0;
 	setAnaIrefNmos ();
 	do {
     float errors[4];
     unsigned char codes[4];
     float dummy;
-    //in0Id
-    setGainCode(255);
+    Serial.print("AC:>[msg] nmos=");
+    Serial.println(m_codes.nmos);
+    //out0Id
+    Serial.println("AC:>[msg] out0 calibrate");
+    setGain(0.0);
     setVga(true);
+    parentSlice->dac->setEnable(false);
+    binsearch::find_bias(this, 0.0,
+                         m_codes.port_cal[out0Id],
+                         errors[1],
+                         MEAS_CHIP_OUTPUT,
+                         false);
+    codes[1] = m_codes.port_cal[out0Id];
+    //in0Id
+    Serial.println("AC:>[msg] in0 calibrate");
+    setGain(1.0);
+    setVga(true);
+    parentSlice->dac->setEnable(false);
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[in0Id],
                          errors[0],
@@ -259,34 +318,33 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
                          false);
     codes[0] = m_codes.port_cal[in0Id];
 
-    //out0Id
-    setGainCode(128);
-    setVga(true);
-    binsearch::find_bias(this, 0.0,
-                         m_codes.port_cal[out0Id],
-                         errors[1],
-                         MEAS_CHIP_OUTPUT,
-                         false);
-    codes[1] = m_codes.port_cal[out0Id];
     //in1id
+    Serial.println("AC:>[msg] in1 calibrate");
     Connection conn_in1 = Connection ( parentSlice->dac->out0, in0);
     setVga(false);
-    parentSlice->dac->setConstantCode(0);
-    parentSlice->dac->out0->setInv(true);
+    parentSlice->dac->update(dac_code_zero);
+    parentSlice->dac->setEnable(true);
     conn_in1.setConn();
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[in1Id],
                          errors[2],
                          MEAS_CHIP_OUTPUT,
-                         false);
+                         true);
     codes[2] = m_codes.port_cal[in1Id];
     conn_in1.brkConn();
+    parentSlice->dac->setEnable(false);
 
-    // Serial.println("\nMultiplier gain calibration");
+    Serial.println("AC:>[msg] pmos calibrate");
+    /*
+      connect two dac values of -1 to the multiplier, and try and maximize
+      the output
+     */
     range_t outrng = m_codes.range[out0Id];
     range_t in0rng = m_codes.range[in0Id];
     range_t in1rng = m_codes.range[in1Id];
 
+    parentSlice->dac->update(dac_code_neg1);
+    parentSlice->dac->setEnable(true);
 		conn4.setConn();
 		conn5.setConn();
 		conn6.setConn();
@@ -300,54 +358,65 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
                          dummy,
                          MEAS_CHIP_OUTPUT,
                          false);
-    // Serial.print("anaIrefPmos = ");
-    // Serial.println(anaIrefPmos);
     out0->setRange(outrng);
     in0->setRange(in0rng);
     in1->setRange(in1rng);
 
+		conn4.brkConn();
+		conn5.brkConn();
+		conn6.brkConn();
+
+    Serial.println("AC:>[msg] gain calibrate");
+    /*
+      - connect a dac value of (-1) to the multiplier at in0
+      - set the gain to the expected gain.
+      - if our multiplier is emitting a high-range signal, introduce a second multiplier.
+    */
+    parentSlice->dac->setEnable(true);
+    parentSlice->dac->setConstant(-1);
+    parentSlice->dac->out0->setInv(false);
+    setVga(true);
+    setGain(codes_self.gain_val);
+		conn4.setConn();
+		conn5.setConn();
     if (hiRange) {
+      parentSlice->muls[unitId==unitMulL?1:0].update(mult_code_0p1);
       conn0.setConn();
       conn1.setConn();
-      // parentSlice->dac->setConstant(-0.1);
+
     }
 
     /*calibrate VGA gain to negative full scale*/
     // Serial.print("\nVGA gain calibration ");
     // Serial.println(gain);
-    setVga(true);
+    float target = (hiRange ? gain : -gain);
     binsearch::find_bias(this,
-                         hiRange ? gain : -gain,
+                         target,
                          m_codes.gain_cal,
                          errors[3],
                          MEAS_CHIP_OUTPUT,
-                         false);
+                         target >= 0.0 ? false : true);
     codes[3] = m_codes.gain_cal;
 
-    binsearch::multi_test_stab_and_update_nmos(this,
-                                               codes,errors,4,
-                                               m_codes.nmos,
-                                               new_search,
-                                               calib_failed);
+    binsearch::test_stab_and_update_nmos(this,
+                                         codes[3],errors[3],
+                                         m_codes.nmos,
+                                         new_search,
+                                         calib_failed);
     if (hiRange) {
+      conn0.brkConn();
+      conn1.brkConn();
       conn2.setConn();
     }
-
 		conn4.brkConn();
 		conn5.brkConn();
 		conn6.brkConn();
 		parentSlice->fans[unitId==unitMulL?0:1].setEnable(false);
+    parentSlice->dac->setEnable(false);
 
-		ttl--;
+		tries--;
 
-	} while (new_search && ttl);
-
-  codes_self.nmos = m_codes.nmos;
-  codes_self.pmos = m_codes.pmos;
-  codes_self.port_cal[in0Id] = m_codes.port_cal[in0Id];
-  codes_self.port_cal[in1Id] = m_codes.port_cal[in1Id];
-  codes_self.port_cal[out0Id] = m_codes.port_cal[out0Id];
-  codes_self.gain_cal = m_codes.gain_cal;
+	} while (new_search && tries);
 
 	/*teardown*/
 	if (hiRange) {
@@ -375,6 +444,13 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
 	if (userConn50.destIfc) userConn50.setConn();
 	if (userConn41.sourceIfc) userConn41.setConn();
 	if (userConn40.destIfc) userConn40.setConn();
+
+  codes_self.nmos = m_codes.nmos;
+  codes_self.pmos = m_codes.pmos;
+  codes_self.port_cal[in0Id] = m_codes.port_cal[in0Id];
+  codes_self.port_cal[in1Id] = m_codes.port_cal[in1Id];
+  codes_self.port_cal[out0Id] = m_codes.port_cal[out0Id];
+  codes_self.gain_cal = m_codes.gain_cal;
 
   parentSlice->dac->update(codes_dac);
   parentSlice->fans[unitId==unitMulL?0:1].update(codes_fan);

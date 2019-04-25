@@ -1,6 +1,10 @@
 #include "AnalogLib.h"
 #include <float.h>
 
+void Fabric::Chip::Tile::Slice::Integrator::update(integ_code_t codes){
+  m_codes = codes;
+  updateFu();
+}
 void Fabric::Chip::Tile::Slice::Integrator::setEnable (
 	bool enable
 ) {
@@ -205,25 +209,56 @@ void Fabric::Chip::Tile::Slice::Integrator::setParamHelper (
 
 bool Fabric::Chip::Tile::Slice::Integrator::calibrate (
 ) {
-  return true;
-  /*
+  integ_code_t codes_self = m_codes;
+
 	setEnable(true);
 	Connection conn2 = Connection ( out0, parentSlice->tileOuts[3].in0 );
 	Connection conn3 = Connection ( parentSlice->tileOuts[3].out0, parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 	conn2.setConn();
 	conn3.setConn();
 
-	bool succ = true;
-    //    SerialUSB.println("\nCalibrate output");
-	succ = succ && in0->calibrate();
-  succ = succ && out0->calibrate();
-  //    SerialUSB.println("\nCalibrate input");
-	conn2.brkConn();
+  bool new_search = true;
+  bool calib_failed = true;
+
+	m_codes.nmos = 0;
+	setAnaIrefNmos ();
+
+  while (new_search) {
+    float errors[2];
+    unsigned char codes[2];
+    Serial.print("AC:>[msg] nmos=");
+    Serial.println(m_codes.nmos);
+    m_codes.cal_enable[out0Id] = true;
+    binsearch::find_bias(this, 0.0,
+                         m_codes.port_cal[out0Id],
+                         errors[0],
+                         MEAS_CHIP_OUTPUT,
+                         true);
+    codes[0] = m_codes.port_cal[out0Id];
+    m_codes.cal_enable[out0Id] = false;
+    m_codes.cal_enable[in0Id] = true;
+    binsearch::find_bias(this, 0.0,
+                         m_codes.port_cal[in0Id],
+                         errors[1],
+                         MEAS_CHIP_OUTPUT,
+                         true);
+    codes[1] = m_codes.port_cal[in0Id];
+    m_codes.cal_enable[in0Id] = false;
+    binsearch::multi_test_stab_and_update_nmos(this,
+                                               codes, errors, 2,
+                                               m_codes.nmos,
+                                               new_search,
+                                               calib_failed);
+  }
+  conn2.brkConn();
 	conn3.brkConn();
-	setEnable(false); // commits inteface calibration settings
-  // ignore our success calibrating.
-	return true;
-  */
+	setEnable(false);
+  codes_self.nmos = m_codes.nmos;
+  codes_self.port_cal[out0Id] = m_codes.port_cal[out0Id];
+  codes_self.port_cal[in0Id] = m_codes.port_cal[in0Id];
+  update(codes_self);
+  return !calib_failed;
+
 }
 
 bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget () {
@@ -232,6 +267,7 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget () {
   }
   bool hiRange = (m_codes.range[out0Id] == RANGE_HIGH);
   float initial = m_codes.ic_val;
+  integ_code_t codes_self = m_codes;
   mult_code_t user_mul0 = parentSlice->muls[0].m_codes;
 	if (hiRange) parentSlice->muls[0].setGain(-0.1);
 
@@ -319,6 +355,11 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget () {
 	if (userConn30.destIfc) userConn30.setConn();
 	if (userConn31.sourceIfc) userConn31.setConn();
 
+  codes_self.nmos = m_codes.nmos;
+  codes_self.gain_cal = m_codes.gain_cal;
+  codes_self.port_cal[out0Id] = m_codes.port_cal[out0Id];
+  codes_self.port_cal[in0Id] = m_codes.port_cal[in0Id];
+  update(codes_self);
 	return calib_failed;
 }
 
