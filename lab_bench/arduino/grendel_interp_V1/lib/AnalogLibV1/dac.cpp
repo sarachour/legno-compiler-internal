@@ -175,21 +175,18 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
 {
   //setConstantCode(round(constant*128.0+128.0));
   if(!m_codes.enable){
-    Serial.println("AC:>[msg] DAC not enabled");
+    print_log("DAC not enabled");
     return true;
   }
   if(m_codes.source != DSRC_MEM){
-    Serial.println("AC:>[msg] DAC must have memory as source.");
+    print_log("DAC must have memory as source.");
     return true;
   }
   float constant = m_codes.const_val;
   bool hiRange = (m_codes.range == RANGE_HIGH);
-  Serial.print("AC:>[msg] DAC ");
-  Serial.print(m_codes.const_val);
-  Serial.print(" ");
-  Serial.print(m_codes.const_code);
-  Serial.print(" ");
-  Serial.println(hiRange);
+  sprintf(FMTBUF,"DAC %f %s", m_codes.const_val,
+          m_codes.const_code);
+  print_debug(FMTBUF);
 
   mult_code_t user_mul1 = parentSlice->muls[1].m_codes;
   dac_code_t codes_self = m_codes;

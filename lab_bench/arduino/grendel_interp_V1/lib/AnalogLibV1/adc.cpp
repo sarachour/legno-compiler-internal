@@ -256,22 +256,18 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate () {
 	conn0.setConn();
 	setEnable (true);
 
-  Serial.println("AC:>[msg] -> finding posneg/fullscale settings");
+  print_log("-> finding posneg/fullscale settings");
   Serial.flush();
 	if (!findCalCompFs()) return false;
-	Serial.print("AC:>[msg] m_codes.lower="); Serial.println(m_codes.lower);
-  Serial.flush();
-	Serial.print("AC:>[msg] m_codes.upper="); Serial.println(m_codes.upper);
-  Serial.flush();
-	// Serial.println("fullscale and spread and posneg settings found");
+  sprintf(FMTBUF, "lower=%d upper=%d", m_codes.lower, m_codes.upper);
+  print_debug(FMTBUF);
 
 	conn0.brkConn();
 	parentSlice->dac->setEnable(false);
 
 	// once fullscale and spread and posneg settings found
 	// find I2V offset code
-  Serial.println("AC:>[msg] -> finding i2v bias");
-  Serial.flush();
+  print_log("-> finding i2v bias");
   bool succ = binsearch::find_bias_and_nmos(this,
                                             128.0,
                                             m_codes.i2v_cal,
@@ -383,7 +379,6 @@ void Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::binarySearch (
 ) const {
 
 	if (binarySearchAvg (minI2VCode, minBest, maxI2VCode, maxBest, finalI2VCode)){
-    Serial.println("AC:>[msg] done.");
     return;
   }
 
@@ -395,7 +390,6 @@ void Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::binarySearch (
   float error = fabs(adcRead-target);
 	// Serial.print("finalI2VCode = ");
 	// Serial.println(finalI2VCode);
-	Serial.print("AC:>[msg] adc=");
 	Serial.print(adcRead);
   Serial.print(" nmos=");
 	Serial.print(parentAdc->m_codes.nmos);

@@ -77,28 +77,26 @@ Fabric::Chip::Tile::Slice::~Slice () {
 };
 
 bool Fabric::Chip::Tile::Slice::calibrateTarget () const {
-	Serial.println("AC:>[msg] Calib.TARGET DAC");
+	print_log("Calib.TARGET DAC");
   Serial.flush();
 	if (!dac->calibrateTarget()) return false;
-	Serial.println("AC:>[msg] Calib.TARGET Multiplier 0");
+	print_log("Calib.TARGET Multiplier 0");
   Serial.flush();
 	if (!muls[0].calibrateTarget()) return false;
-  /*
-	Serial.println("AC:>[msg] Calib.TARGET Multiplier 1");
+	print_log("Calib.TARGET Multiplier 1");
   Serial.flush();
 	if (!muls[1].calibrateTarget()) return false;
-	Serial.println("AC:>[msg] Calib.TARGET Integrator");
+	print_log("Calib.TARGET Integrator");
   Serial.flush();
 	if (!integrator->calibrateTarget()) return false;
-  */
-	Serial.println("AC:>[msg] Done");
+	print_log("Done");
   Serial.flush();
 	return true;
 
 }
 bool Fabric::Chip::Tile::Slice::calibrate () const {
 
-  Serial.println("AC:>[msg] Calibrating ADC");
+  print_log("Calibrating ADC");
   Serial.flush();
 	if (HCDC_DEMO_BOARD==1) {
 
@@ -210,27 +208,19 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
   else {
 		error("HCDC_DEMO_BOARD # not recognized. Only 1,2,3,4,5 are valid.");
 	}
-  Serial.flush();
-	Serial.println("AC:>[msg] Calibrating DAC");
-  Serial.flush();
+	print_log("Calibrating DAC");
 	if (!dac->calibrate()) return false;
-	Serial.println("AC:>[msg] Calibrating Fanout 0");
-  Serial.flush();
+	print_log("Calibrating Fanout 0");
 	if (!fans[0].calibrate()) return false;
-	Serial.println("AC:>[msg] Calibrating Fanout 1");
-  Serial.flush();
+	print_log("Calibrating Fanout 1");
 	if (!fans[1].calibrate()) return false;
-  Serial.println("AC:>[msg] Calibrating Multiplier 0");
-  Serial.flush();
+  print_log("Calibrating Multiplier 0");
 	if (!muls[0].calibrate()) return false;
-	Serial.println("AC:>[msg] Calibrating Multiplier 1");
-  Serial.flush();
+	print_log("Calibrating Multiplier 1");
 	if (!muls[1].calibrate()) return false;
-	Serial.println("AC:>[msg] Calibrating Integrator");
-  Serial.flush();
+	print_log("Calibrating Integrator");
 	if (!integrator->calibrate()) return false;
-	Serial.println("AC:>[msg] Done");
-  Serial.flush();
+	print_log("Done");
 	return true;
 
 }

@@ -2,6 +2,10 @@
 #include "fu.h"
 #include <float.h>
 #include "assert.h"
+
+
+char FMTBUF[64];
+
 void Fabric::Chip::Tile::Slice::FunctionUnit::updateFu(){
   setAnaIrefNmos();
   setAnaIrefPmos();
@@ -41,10 +45,10 @@ namespace binsearch {
                 float error,
                 bool& calib_failed){
     const float MIN_ERROR = 1e-2;
-    Serial.print("AC:>[msg] result! bias_code=");
-    Serial.print(code);
-    Serial.print(" error=");
-    Serial.println(error);
+    sprintf(FMTBUF,
+            "result: bias=%d error=%f max-error=%f",
+            code, error, MIN_ERROR);
+    print_debug(FMTBUF);
     if(error < MIN_ERROR){
       calib_failed = false;
     }
@@ -140,8 +144,8 @@ namespace binsearch {
     nmos = 0;
     fu->setAnaIrefNmos();
     while(new_search){
-      Serial.print("AC:>[msg] nmos=");
-      Serial.println(nmos);
+      sprintf(FMTBUF, "nmos=%d",nmos);
+      print_debug(FMTBUF);
       find_bias(fu,target,code,error,method, reverse);
       test_stab_and_update_nmos(fu,code,error,nmos,
                                 new_search,calib_failed);
@@ -232,22 +236,11 @@ namespace binsearch {
     float error = fabs(meas-target);
     curr_error = error;
 
-    Serial.print("AC:>[msg] meas=");
-    Serial.print(meas);
-    Serial.print(" target=");
-    Serial.print(target);
-    Serial.print(" curr_code=");
-    Serial.print(curr_code);
-    Serial.print(" min_code=");
-    Serial.print(lo_code);
-    Serial.print(" max_code=");
-    Serial.print(hi_code);
-    Serial.print(" min_error=");
-    Serial.print(lo_error);
-    Serial.print(" max_error=");
-    Serial.print(hi_error);
-    Serial.print(" error=");
-    Serial.println(error);
+    sprintf(FMTBUF,"meas=%f targ=%f code=(%d,%d,%d) error=(%f,%f,%f)",
+            meas, target,
+            curr_code,lo_code,hi_code,
+            curr_error,lo_error,hi_error);
+    print_debug(FMTBUF);
     if((meas > target && !reverse) ||
        (meas < target && reverse)) {
       return bin_search(fu,target,
@@ -287,7 +280,6 @@ void Fabric::Chip::Tile::Slice::FunctionUnit::binarySearchTarget (
 	float voltageDiff = binarySearchMeas ();
   float error = fabs(voltageDiff-target);
   finalError = error;
-  Serial.print("AC:>[msg] meas=");
 	Serial.print(voltageDiff);
   Serial.print(" target=");
 	Serial.print(target);

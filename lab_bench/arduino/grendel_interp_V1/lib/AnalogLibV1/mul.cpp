@@ -205,11 +205,11 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
 	// preserve dac state because we will clobber it
   // can only calibrate target for vga.
   if(!m_codes.enable){
-    Serial.println("AC:>[msg] not enabled");
+    print_log("not enabled");
     return true;
   }
   if(!m_codes.vga){
-    Serial.println("AC:>[msg] not in vga mode");
+    print_log("not in vga mode");
     return true;
   }
   dac_code_t codes_dac = parentSlice->dac->m_codes;
@@ -272,7 +272,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
   parentSlice->dac->setConstant(0);
   parentSlice->dac->out0->setInv(true);
   if(!parentSlice->dac->calibrateTarget()){
-    Serial.println("AC:>[msg] !!cannot calibrate DAC=0");
+    print_log("!!cannot calibrate DAC=0");
   }
   dac_code_zero = parentSlice->dac->m_codes;
   // done computing preset codes
@@ -280,7 +280,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
   parentSlice->dac->setConstant(-1);
   parentSlice->dac->out0->setInv(false);
   if(!parentSlice->dac->calibrateTarget()){
-    Serial.println("AC:>[msg] !!cannot calibrate DAC=-1");
+    print_log("!!cannot calibrate DAC=-1");
   }
   dac_code_neg1 = parentSlice->dac->m_codes;
 
@@ -293,10 +293,10 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     float errors[4];
     unsigned char codes[4];
     float dummy;
-    Serial.print("AC:>[msg] nmos=");
-    Serial.println(m_codes.nmos);
+    sprintf(FMTBUF, "nmos=%d", m_codes.nmos);
+    print_debug(FMTBUF);
     //out0Id
-    Serial.println("AC:>[msg] out0 calibrate");
+    print_debug("out0 calibrate");
     setGain(0.0);
     setVga(true);
     parentSlice->dac->setEnable(false);
@@ -307,7 +307,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
                          false);
     codes[1] = m_codes.port_cal[out0Id];
     //in0Id
-    Serial.println("AC:>[msg] in0 calibrate");
+    print_debug("in0 calibrate");
     setGain(1.0);
     setVga(true);
     parentSlice->dac->setEnable(false);
@@ -319,7 +319,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     codes[0] = m_codes.port_cal[in0Id];
 
     //in1id
-    Serial.println("AC:>[msg] in1 calibrate");
+    print_debug("in1 calibrate");
     Connection conn_in1 = Connection ( parentSlice->dac->out0, in0);
     setVga(false);
     parentSlice->dac->update(dac_code_zero);
@@ -334,7 +334,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     conn_in1.brkConn();
     parentSlice->dac->setEnable(false);
 
-    Serial.println("AC:>[msg] pmos calibrate");
+    print_debug("pmos calibrate");
     /*
       connect two dac values of -1 to the multiplier, and try and maximize
       the output
@@ -366,7 +366,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
 		conn5.brkConn();
 		conn6.brkConn();
 
-    Serial.println("AC:>[msg] gain calibrate");
+    print_debug("gain calibrate");
     /*
       - connect a dac value of (-1) to the multiplier at in0
       - set the gain to the expected gain.

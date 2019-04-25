@@ -6,6 +6,11 @@
 
 extern size_t dynamic_memory;
 
+#define LEVEL 3
+#define LOG_LEVEL 2
+#define DEBUG_LEVEL 3
+
+extern char FMTBUF[64];
 template <typename type>
 void tally_dyn_mem(
 	const char * name
@@ -14,6 +19,23 @@ void tally_dyn_mem(
 	// Serial.print(sizeof(type));
 	// Serial.print('\t');
 	// Serial.println(name);
+}
+
+static void print_log (const char * message) {
+  // trap for printing error
+  if(LEVEL > LOG_LEVEL){
+    Serial.print("AC:>[msg] ");
+    Serial.println(message);
+    Serial.flush();
+  }
+}
+static void print_debug (const char * message) {
+  // trap for printing error
+  if(LEVEL > DEBUG_LEVEL){
+    Serial.print("AC:>[msg] ");
+    Serial.println(message);
+    Serial.flush();
+  }
 }
 
 static void error (

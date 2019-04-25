@@ -226,7 +226,8 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrate (
   while (new_search) {
     float errors[2];
     unsigned char codes[2];
-    Serial.print("AC:>[msg] nmos=");
+    sprintf(FMTBUF, "nmos=%d", m_codes.nmos);
+    print_debug(FMTBUF);
     Serial.println(m_codes.nmos);
     m_codes.cal_enable[out0Id] = true;
     binsearch::find_bias(this, 0.0,
