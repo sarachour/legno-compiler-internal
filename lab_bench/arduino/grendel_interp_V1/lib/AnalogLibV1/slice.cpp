@@ -10,7 +10,8 @@ Fabric::Chip::Tile::Slice::Slice (
 	sliceId (sliceId),
 	ardAnaDiffChan (ardAnaDiffChan)
 {
-
+  Serial.print("allocating slice ");
+  Serial.println(sliceId);
 	chipInput = new ChipInput (this);
 	tally_dyn_mem <ChipInput> ("ChipInput");
 
@@ -57,6 +58,7 @@ Fabric::Chip::Tile::Slice::Slice (
 
 	chipOutput = new ChipOutput (this, ardAnaDiffChan);
 	tally_dyn_mem <ChipOutput> ("ChipOutput");
+  Serial.println("allocated slice");
 }
 
 Fabric::Chip::Tile::Slice::~Slice () {
@@ -74,6 +76,24 @@ Fabric::Chip::Tile::Slice::~Slice () {
 	delete chipOutput;
 };
 
+bool Fabric::Chip::Tile::Slice::calibrateTarget () const {
+	Serial.println("AC:>[msg] Calib.TARGET DAC");
+  Serial.flush();
+	if (!dac->calibrateTarget()) return false;
+	Serial.println("AC:>[msg] Calib.TARGET Multiplier 0");
+  Serial.flush();
+	if (!muls[0].calibrateTarget()) return false;
+	Serial.println("AC:>[msg] Calib.TARGET Multiplier 1");
+  Serial.flush();
+	if (!muls[1].calibrateTarget()) return false;
+	Serial.println("AC:>[msg] Calib.TARGET Integrator");
+  Serial.flush();
+	if (!integrator->calibrateTarget()) return false;
+	Serial.println("AC:>[msg] Done");
+  Serial.flush();
+	return true;
+
+}
 bool Fabric::Chip::Tile::Slice::calibrate () const {
 
   Serial.println("AC:>[msg] Calibrating ADC");
@@ -188,7 +208,7 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
   else {
 		error("HCDC_DEMO_BOARD # not recognized. Only 1,2,3,4,5 are valid.");
 	}
-
+  Serial.flush();
 	Serial.println("AC:>[msg] Calibrating DAC");
   Serial.flush();
 	if (!dac->calibrate()) return false;

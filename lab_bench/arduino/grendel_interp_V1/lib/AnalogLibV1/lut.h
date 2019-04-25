@@ -28,12 +28,7 @@ class Fabric::Chip::Tile::Slice::LookupTable : public Fabric::Chip::Tile::Slice:
 	friend Slice;
 
 	public:
-		void setSource (
-			bool external, // lut takes input from chip parallel input
-			bool adc0, // lut takes input from first analog to digital converter
-			bool adc1 // lut takes input from second analog to digital converter
-			// only one of these should be true
-		);
+  void setSource (lut_source_t src);
 		/*Set LUT SRAM contents*/
 		void setLut (
 			unsigned char addr,
@@ -44,6 +39,7 @@ class Fabric::Chip::Tile::Slice::LookupTable : public Fabric::Chip::Tile::Slice:
 		/*Remove LUT in writing mode*/
 		// void setStop ();
 	private:
+    lut_code_t m_codes;
 		LookupTable (
 			Slice * parentSlice
 		) :
@@ -63,8 +59,5 @@ class Fabric::Chip::Tile::Slice::LookupTable : public Fabric::Chip::Tile::Slice:
 			unsigned char selLine,
 			unsigned char cfgTile
 		) const;
-		bool external = false;
-		bool adc0 = false;
-		bool adc1 = false;
 		const Slice * const parentSlice;
 };

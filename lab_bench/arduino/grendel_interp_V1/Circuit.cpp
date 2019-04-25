@@ -39,70 +39,6 @@ bool do_calibrate(int chipno, int tileno, int sliceno){
 
 
 
-void load_range(uint8_t range, bool * lo, bool * hi){
-  switch(range){
-    case LOW_RANGE:
-      *lo = true;
-      *hi = false;
-      break;
-    case MED_RANGE:
-      *lo = false;
-      *hi = false;
-      break;
-    case HI_RANGE:
-      *lo = false;
-      *hi = true;
-      break;
-    default:
-      comm::error("[ERROR] unknown range");
-      break;
-  }
-  
-}
-
-void load_dac_source(uint8_t source, bool * mem, bool * ext,
-                     bool * lut0, bool * lut1){
-  *lut0 = false;
-  *lut1 = false;
-  *mem = false;
-  *ext = false;
-  switch(source){
-    case circ::DS_MEM:
-      *mem = true;
-      break;
-    case circ::DS_EXT:
-      *ext = true;
-      break;
-    case circ::DS_LUT0:
-      *lut0 = true;
-      break;
-    case circ::DS_LUT1:
-      *lut1 = true;
-      break;
-    default:
-      comm::error("[ERROR] unknown source");
-  }
-}
-
-void load_lut_source(uint8_t source, bool * ext, bool * adc0, bool * adc1){
-  *adc0 = false;
-  *adc1 = false;
-  *ext = false;
-  switch(source){
-    case circ::LS_EXT:
-      *ext = true;
-      break;
-    case circ::LS_ADC0:
-      *adc0 = true;
-      break;
-    case circ::LS_ADC1:
-      *adc1 = true;
-      break;
-    default:
-      comm::error("[ERROR] unknown source");
-  }
-}
-
 
 Fabric* setup_board(){
   Fabric* fabric = new Fabric();
@@ -119,10 +55,6 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   cmd_write_lut_t wrlutd;
   cmd_use_adc_t adcd;
   cmd_connection_t connd;
-  bool lo1,hi1;
-  bool lo2,hi2;
-  bool lo3,hi3;
-  bool s1,s2,s3,s4;
   uint8_t byteval;
   char buf[32];
   Fabric::Chip::Tile::Slice* slice;
@@ -135,22 +67,11 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   Fabric::Chip::Tile::Slice::FunctionUnit::Interface* src;
   Fabric::Chip::Tile::Slice::FunctionUnit::Interface* dst;
   switch(cmd.type){
-  case cmd_type_t::CONFIG_DAC:
-    dacd = cmd.data.dac;
-    dac = common::get_slice(fab,dacd.loc)->dac;
-    load_range(dacd.out_range, &lo1, &hi1);
-    if(dacd.source == circ::dac_source::DS_MEM){
-      comm::test(dac->setConstantDirect(dacd.value,hi1,true),
-                 "failed to configure dac value");
-    }
-    comm::response("configured dac (direct)",0);
-    break;
   case cmd_type_t::USE_ADC:
     adcd = cmd.data.adc;
     adc = common::get_slice(fab,adcd.loc)->adc;
     adc->setEnable(true);
-    load_range(adcd.in_range, &lo1, &hi1);
-    adc->setHiRange(hi1);
+    adc->setRange((range_t) adcd.in_range);
     comm::response("enabled adc",0);
     break;
   case cmd_type_t::USE_DAC:
@@ -158,29 +79,15 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     dac = common::get_slice(fab,dacd.loc)->dac;
     dac->setEnable(true);
     dac->out0->setInv(dacd.inv);
-    load_range(dacd.out_range, &lo1, &hi1);
-    dac->setHiRange(hi1);
-    load_dac_source(dacd.source, &s1, &s2, &s3, &s4);
-    dac->setSource(s1,s2,s3,s4);
-    if(dacd.source == circ::dac_source::DS_MEM){
-      comm::test(dac->setConstantDirect(dacd.value,hi1,false), 
+    dac->setRange((range_t) dacd.out_range);
+    dac->setSource((dac_source_t) dacd.source);
+    if(dacd.source == DSRC_MEM){
+      comm::test(dac->setConstant(dacd.value),
                  "failed to set dac value");
     }
     comm::response("enabled dac",0);
     break;
-  case cmd_type_t::CONFIG_MULT:
-    // multiplier doesn't actually support inversion
-    // multiplier uses dac from same row.
-    multd = cmd.data.mult;
-    mult = common::get_mult(fab,multd.loc);
-    if(multd.use_coeff){
-      // determine if we're in the high or low output range.
-      load_range(multd.out_range, &lo1, &hi1);
-      comm::test(mult->setGainDirect(multd.coeff, hi1, true),
-                 "failed to set gain");
-    }
-    comm::response("configured mult [direct]",0);
-    break;
+
   case cmd_type_t::USE_MULT:
     // multiplier doesn't actually support inversion
     // multiplier uses dac from same row.
@@ -188,16 +95,13 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     mult = common::get_mult(fab,multd.loc);
     mult->setEnable(true);
     mult->setVga(multd.use_coeff);
-    load_range(multd.in0_range, &lo1, &hi1);
-    load_range(multd.in1_range, &lo2, &hi2);
-    load_range(multd.out_range, &lo3, &hi3);
-    mult->in0->setRange(lo1,hi1);
-    mult->out0->setRange(lo3,hi3);
+    mult->in0->setRange((range_t) multd.in0_range);
+    mult->out0->setRange((range_t) multd.out_range);
     if(not multd.use_coeff){
-      mult->in1->setRange(lo2,hi2);
+      mult->in1->setRange((range_t) multd.in1_range);
     }
     else{
-      comm::test(mult->setGainDirect(multd.coeff, hi3, false),
+      comm::test(mult->setGain(multd.coeff),
                  "failed to set gain");
     }
     comm::response("enabled mult",0);
@@ -206,33 +110,22 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     fod = cmd.data.fanout;
     fanout = common::get_fanout(fab,fod.loc);
     fanout->setEnable(true);
-    load_range(fod.in_range, &lo1, &hi1);
-    assert(!lo1);
-    fanout->setHiRange(hi1);
+    fanout->setRange((range_t) fod.in_range);
     fanout->out0->setInv(fod.inv[0]);
     fanout->out1->setInv(fod.inv[1]);
     fanout->out2->setInv(fod.inv[2]);
     comm::response("enabled fanout",0);
     break;
-  case cmd_type_t::CONFIG_INTEG:
-    integd = cmd.data.integ;
-    integ = common::get_slice(fab,integd.loc)->integrator;
-    load_range(integd.out_range, &lo1, &hi1);
-    comm::test(integ->setInitialDirect(integd.value, hi1, true),
-               "failed to set integ value");
-    comm::response("configured integ [direct]",0);
-    break;
+
   case cmd_type_t::USE_INTEG:
     integd = cmd.data.integ;
     integ = common::get_slice(fab,integd.loc)->integrator;
     integ->setEnable(true);
     integ->setException( integd.debug == 1 ? true : false);
     integ->out0->setInv(integd.inv);
-    load_range(integd.in_range, &lo1, &hi1);
-    load_range(integd.out_range, &lo2, &hi2);
-    integ->in0->setRange(lo1,hi1);
-    integ->out0->setRange(lo2,hi2);
-    comm::test(integ->setInitialDirect(integd.value, hi2, false),
+    integ->in0->setRange((range_t) integd.in_range);
+    integ->out0->setRange((range_t) integd.out_range);
+    comm::test(integ->setInitial(integd.value),
                "failed to set integ value");
     comm::response("enabled integ",0);
     break;
@@ -250,8 +143,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   case cmd_type_t::USE_LUT:
     lutd = cmd.data.lut;
     lut = common::get_slice(fab,lutd.loc)->lut;
-    load_lut_source(lutd.source, &s1, &s2, &s3);
-    lut->setSource(s1,s2,s3);
+    lut->setSource((lut_source_t) lutd.source);
     comm::response("use lut",0);
     break;
   case cmd_type_t::WRITE_LUT:
@@ -325,6 +217,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
                     cmd.data.circ_loc.tile,
                     cmd.data.circ_loc.slice)){
       comm::test(slice->calibrate(), "calibration failed");
+      comm::test(slice->calibrateTarget(), "calibration target failed");
     }
     else{
       comm::print_header();
@@ -339,7 +232,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
                          cmd.data.codes.loc,
                          cmd.data.codes.port_type,
                          cmd.data.codes.range,
-                         buf);
+                         (uint8_t *)buf);
     comm::response("returning codes",1);
     comm::data("32","I");
     comm::payload();

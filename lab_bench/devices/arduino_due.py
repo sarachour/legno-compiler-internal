@@ -34,6 +34,11 @@ class ArduinoDue:
         for _ in tqdm(np.linspace(0,startup_time,n_divs)):
             time.sleep(delta)
 
+        line = self.try_readline()
+        while not line is None:
+            print(line)
+            line = self.try_readline()
+
         self.flush()
         return True
 

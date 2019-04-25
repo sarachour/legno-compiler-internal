@@ -1,20 +1,22 @@
 #include "AnalogLib.h"
+#include "assert.h"
 
 void Fabric::Chip::Tile::Slice::ChipAdc::setEnable (
 	bool enable
 ) {
-	this->enable = enable;
+	m_codes.enable = enable;
 	setParam0 ();
 	setParam1 ();
 	setParam2 ();
 	setParam3 ();
 }
 
-void Fabric::Chip::Tile::Slice::ChipAdc::setHiRange (
+void Fabric::Chip::Tile::Slice::ChipAdc::setRange (
 	// default is 2uA mode
-	bool hiRange // 20 uA mode
+	range_t range
 ) {
-	in0->hiRange = hiRange;
+  assert(range != RANGE_LOW);
+  m_codes.range = range;
 	setParam0();
 }
 
@@ -73,46 +75,60 @@ Fabric::Chip::Tile::Slice::ChipAdc::ChipAdc (
 {
 	in0 = new AdcIn (this);
 	tally_dyn_mem <AdcIn> ("AdcIn");
-	setAnaIrefDacNmos( false, false );
+  m_codes.upper = 31;
+  m_codes.upper_fs = nA100;
+  m_codes.lower = 31;
+  m_codes.lower_fs = nA100;
+  m_codes.pmos = 4;
+  m_codes.pmos2 = 4;
+  m_codes.nmos = 0;
+  m_codes.i2v_cal = 31;
+  m_codes.enable = false;
+  m_codes.inv = false;
+  m_codes.range = RANGE_MED;
+	setAnaIrefNmos();
 	setAnaIrefPmos();
 }
 
 /*Set enable, range, delay, decRst*/
 void Fabric::Chip::Tile::Slice::ChipAdc::setParam0 () const {
 	unsigned char cfgTile = 0;
-	cfgTile += enable ? 1<<7 : 0;
-	cfgTile += (in0->hiRange ? adcHi : adcMid) ? 1<<5 : 0;
+	cfgTile += m_codes.enable ? 1<<7 : 0;
+  bool is_hi = (m_codes.range == RANGE_HIGH);
+	cfgTile += is_hi ? 1<<5 : 0;
 	cfgTile += ns11_5<<3;
 	cfgTile += false ? 1<<2 : 0;
 	cfgTile += (ns3==ns6) ? 1 : 0;
 	setParamHelper (0, cfgTile);
 }
 
-/*Set calibration enable, calCompUpperEn, calI2V*/
+/*Set calibration enable, m_codes.upperEn, calI2V*/
 void Fabric::Chip::Tile::Slice::ChipAdc::setParam1 () const {
-	if (calI2V<0||63<calI2V) error ("calI2V out of bounds");
+	if (m_codes.i2v_cal<0||63<m_codes.i2v_cal)
+    error ("m_codes.i2v_cal out of bounds");
 	unsigned char cfgTile = 0;
 	cfgTile += false ? 1<<7 : 0;
 	cfgTile += false ? 1<<6 : 0;
-	cfgTile += calI2V<<0;
+	cfgTile += m_codes.i2v_cal<<0;
 	setParamHelper (1, cfgTile);
 }
 
-/*Set calCompLower, calCompLowerFs*/
+/*Set m_codes.lower, m_codes.lower_fs*/
 void Fabric::Chip::Tile::Slice::ChipAdc::setParam2 () const {
-	if (calCompLower<0||63<calCompLower) error ("calCompLower out of bounds");
+	if (m_codes.lower<0||63<m_codes.lower)
+    error ("m_codes.lower out of bounds");
 	unsigned char cfgTile = 0;
-	cfgTile += calCompLower<<2;
-	cfgTile += calCompLowerFs<<0;
+	cfgTile += m_codes.lower <<2;
+	cfgTile += m_codes.lower_fs <<0;
 	setParamHelper (2, cfgTile);
 }
 
-/*Set calCompUpper, calCompUpperFs*/
+/*Set m_codes.upper, m_codes.upper_fs*/
 void Fabric::Chip::Tile::Slice::ChipAdc::setParam3 () const {
-	if (calCompUpper<0||63<calCompUpper) error ("calCompUpper out of bounds");
+	if (m_codes.upper<0||63<m_codes.upper) error ("m_codes.upper out of bounds");
 	unsigned char cfgTile = 0;
-	cfgTile += calCompUpper<<2;
-	cfgTile += calCompUpperFs<<0;
+	cfgTile += m_codes.upper <<2;
+	cfgTile += m_codes.upper_fs<<0;
 	setParamHelper (3, cfgTile);
 }
 
@@ -165,13 +181,15 @@ void Fabric::Chip::Tile::Slice::ChipAdc::setAnaIrefPmos () const {
 	unsigned char selRow=0;
 	unsigned char selCol=3;
 	unsigned char selLine;
+  testIref(m_codes.pmos);
+  testIref(m_codes.pmos2);
 	switch (parentSlice->sliceId) {
 		case slice0: selLine=1; break;
 		case slice2: selLine=3; break;
 		default: error ("ADC invalid slice"); break;
 	}
 	unsigned char cfgTile = endian(parentSlice->parentTile->parentChip->cfgBuf[parentSlice->parentTile->tileRowId][parentSlice->parentTile->tileColId][selRow][selCol][selLine]);
-	cfgTile = (cfgTile & 0b00000111) + ((anaIref1Pmos<<3) & 0b00111000);
+	cfgTile = (cfgTile & 0b00000111) + ((m_codes.pmos<<3) & 0b00111000);
 
 	Vector vec = Vector (
 		*this,
@@ -197,8 +215,8 @@ void Fabric::Chip::Tile::Slice::ChipAdc::setAnaIrefPmos () const {
 	cfgTile = endian(parentSlice->parentTile->parentChip->cfgBuf[parentSlice->parentTile->tileRowId][parentSlice->parentTile->tileColId][selRow][selCol][selLine]);
 
 	switch (parentSlice->sliceId) {
-		case slice0: cfgTile = (cfgTile & 0b00000111) + ((anaIref2Pmos<<3) & 0b00111000);break;
-		case slice2: cfgTile = (cfgTile & 0b00111000) + (anaIref2Pmos & 0b00000111);break;
+		case slice0: cfgTile = (cfgTile & 0b00000111) + ((m_codes.pmos2<<3) & 0b00111000);break;
+		case slice2: cfgTile = (cfgTile & 0b00111000) + (m_codes.pmos2 & 0b00000111);break;
 		default: error ("ADC invalid slice"); break;
 	}
 
@@ -217,14 +235,23 @@ void Fabric::Chip::Tile::Slice::ChipAdc::setAnaIrefPmos () const {
 
 bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate () {
 
+  Serial.println("AC:>[msg] -> starting");
+  Serial.flush();
 	Connection conn0 = Connection ( parentSlice->dac->out0, in0 );
+  Serial.println("AC:>[msg] -> set conn");
+  Serial.flush();
 	conn0.setConn();
+  Serial.println("AC:>[msg] -> set enable");
+  Serial.flush();
 	setEnable (true);
 
   Serial.println("AC:>[msg] -> finding posneg/fullscale settings");
+  Serial.flush();
 	if (!findCalCompFs()) return false;
-	Serial.print("AC:>[msg] calCompLower="); Serial.println(calCompLower);
-	Serial.print("AC:>[msg] calCompUpper="); Serial.println(calCompUpper);
+	Serial.print("AC:>[msg] m_codes.lower="); Serial.println(m_codes.lower);
+  Serial.flush();
+	Serial.print("AC:>[msg] m_codes.upper="); Serial.println(m_codes.upper);
+  Serial.flush();
 	// Serial.println("fullscale and spread and posneg settings found");
 
 	conn0.brkConn();
@@ -233,31 +260,33 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate () {
 	// once fullscale and spread and posneg settings found
 	// find I2V offset code
   Serial.println("AC:>[msg] -> finding i2v bias");
-	in0->findBias ( calI2V );
-
+  Serial.flush();
+  bool new_search,calib_failed;
+	in0->findBias ( m_codes.i2v_cal, new_search, calib_failed);
   Serial.println("AC:>[msg] -> done");
+  Serial.flush();
 	setEnable (false);
 	// Serial.println("offset settings found");
-	return true;
+	return !calib_failed;
 }
 
 bool Fabric::Chip::Tile::Slice::ChipAdc::findCalCompFs () {
 
 	// Serial.println("nA100");
-	calCompLowerFs = nA100;
-	calCompUpperFs = nA100;
+	m_codes.lower_fs = nA100;
+	m_codes.upper_fs = nA100;
 	if (checkScale()) return true;
 	// Serial.println("nA200");
-	calCompLowerFs = nA200;
-	calCompUpperFs = nA200;
+	m_codes.lower_fs = nA200;
+	m_codes.upper_fs = nA200;
 	if (checkScale()) return true;
 	// Serial.println("nA300");
-	calCompLowerFs = nA300;
-	calCompUpperFs = nA300;
+	m_codes.lower_fs = nA300;
+	m_codes.upper_fs = nA300;
 	if (checkScale()) return true;
 	// Serial.println("nA400");
-	calCompLowerFs = nA400;
-	calCompUpperFs = nA400;
+	m_codes.lower_fs = nA400;
+	m_codes.upper_fs = nA400;
 	if (checkScale()) return true;
 
 	return false;
@@ -279,9 +308,9 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::checkSpread (
 	bool lowerPos,
 	bool upperPos
 ) {
-	calCompLower = lowerPos ? 31+spread : 31-spread;
+	m_codes.lower = lowerPos ? 31+spread : 31-spread;
 	setParam2();
-	calCompUpper = upperPos ? 31+spread : 31-spread;
+	m_codes.upper = upperPos ? 31+spread : 31-spread;
 	setParam3();
 
 	bool success=true;
@@ -298,30 +327,28 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::checkSpread (
 bool Fabric::Chip::Tile::Slice::ChipAdc::checkSteady (
 	unsigned char dacCode
 ) const {
+  dac_code_t codes_dac = parentSlice->dac->m_codes;
 	parentSlice->dac->setConstantCode (dacCode);
 	parentSlice->parentTile->parentChip->parentFabric->cfgCommit();
 	bool success=true;
 	unsigned char adcPrev = getData();
 	for (unsigned char rep=0; success&&(rep<16); rep++)
 		success &= adcPrev==getData();
+  parentSlice->dac->update(codes_dac);
 	return success;
 }
 
-bool Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::findBias (
-	unsigned char & offsetCode
+void Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::findBias (
+                                                          unsigned char & offsetCode,
+                                                          bool& new_search,
+                                                          bool& calib_failed
 ) {
 	// Serial.print("Adc offset calibration ");
 
-	bool biasStable = false;
-	while (!biasStable) {
-    Serial.print("AC:>[msg]    bias_code=");
-    Serial.print(offsetCode);
-    Serial.print(" nmos_code=");
-    Serial.println(parentFu->anaIrefDacNmos);
-		biasStable = findBiasHelper (offsetCode);
+  Fabric::Chip::Tile::Slice::ChipAdc* adc = this->parentFu;
+	while (new_search) {
+		findBiasHelper (offsetCode, adc->m_codes.nmos, new_search, calib_failed);
 	}
-
-	return biasStable;
 }
 
 void Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::binarySearch (
@@ -329,7 +356,8 @@ void Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::binarySearch (
 	float minBest,
 	unsigned char maxI2VCode,
 	float maxBest,
-	unsigned char & finalI2VCode
+	unsigned char & finalI2VCode,
+  float & finalI2VError
 ) const {
 
 	if (binarySearchAvg (minI2VCode, minBest, maxI2VCode, maxBest, finalI2VCode)){
@@ -347,6 +375,8 @@ void Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::binarySearch (
 	// Serial.println(finalI2VCode);
 	Serial.print("AC:>[msg] adc=");
 	Serial.print(adcRead);
+  Serial.print(" nmos=");
+	Serial.print(parentAdc->m_codes.nmos);
   Serial.print(" target=");
 	Serial.print(target);
   Serial.print(" curr_code=");
@@ -361,21 +391,20 @@ void Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::binarySearch (
 	Serial.print(maxBest);
   Serial.print(" error=");
 	Serial.println(error);
+
+  finalI2VError = error;
 	if (adcRead < target) {
-		return binarySearch (minI2VCode, minBest, finalI2VCode, error, finalI2VCode);
+		return binarySearch (minI2VCode, minBest, finalI2VCode, error,
+                         finalI2VCode, finalI2VError);
 	} else {
-		return binarySearch (finalI2VCode, error, maxI2VCode, maxBest, finalI2VCode);
+		return binarySearch (finalI2VCode, error, maxI2VCode, maxBest,
+                         finalI2VCode, finalI2VError);
 	}
 
 }
 
-bool Fabric::Chip::Tile::Slice::ChipAdc::setAnaIrefDacNmos (
-	bool decrement,
-	bool increment
-) {
+void Fabric::Chip::Tile::Slice::ChipAdc::setAnaIrefNmos () const {
 	// anaIrefI2V mapped to anaIrefDacNmos
-	if (!setAnaIrefDacNmosHelper (decrement, increment)) return false;
-
 	unsigned char selRow=0;
 	unsigned char selCol=3;
 	unsigned char selLine;
@@ -392,7 +421,7 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::setAnaIrefDacNmos (
 		[selCol]
 		[selLine]
 	);
-	cfgTile = (cfgTile & 0b00000111) + ((anaIrefDacNmos<<3) & 0b00111000);
+	cfgTile = (cfgTile & 0b00000111) + ((m_codes.nmos<<3) & 0b00111000);
 
 	Vector vec = Vector (
 		*this,
@@ -406,5 +435,4 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::setAnaIrefDacNmos (
 		vec
 	);
 
-	return true;
 }

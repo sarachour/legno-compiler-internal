@@ -1,13 +1,9 @@
 #include "AnalogLib.h"
 
-void Fabric::Chip::Tile::Slice::LookupTable::setSource (
-	bool external, // lut takes input from chip parallel input
-	bool adc0, // lut takes input from first analog to digital converter
-	bool adc1 // lut takes input from second analog to digital converter
-	// only one of these should be true
-) {
+void Fabric::Chip::Tile::Slice::LookupTable::setSource (lut_source_t src) {
 	/*check*/
-	if ( (external&&adc0) || (external&&adc1) || (adc0&&adc1) ) error ("LUT only one input can be selected");
+  bool external = (src == LSRC_EXTERN);
+  bool adc0 = (src == LSRC_ADC0);
 	if (external) {
 		parentSlice->parentTile->setParallelIn ( external );
 	}
@@ -20,9 +16,7 @@ void Fabric::Chip::Tile::Slice::LookupTable::setSource (
 		external ? extLut : ( adc0 ? adcL : adcR ) /*input signal selection*/
 	);
 	/*record*/
-	this->external = external;
-	this->adc0 = adc0;
-	this->adc1 = adc1;
+  m_codes.source = src;
 }
 
 /*Put LUT in writing mode*/

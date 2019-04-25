@@ -14,6 +14,10 @@ Fabric::Chip::Tile::Tile (
 	spiSSPin (spiSSPin),
 	spiMisoPin (spiMisoPin)
 {
+  Serial.print("allocating tile ");
+  Serial.print(tileRowId);
+  Serial.print(", ");
+  Serial.println(tileColId);
 	pinMode(spiSSPin, OUTPUT);
 	digitalWrite (spiSSPin, HIGH);
 	pinMode(spiMisoPin, INPUT);

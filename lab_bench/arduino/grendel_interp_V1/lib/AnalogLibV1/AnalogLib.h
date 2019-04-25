@@ -17,13 +17,17 @@ void tally_dyn_mem(
 }
 
 static void error (
-	const char * message
-) {
-	SerialUSB.print("ERROR: ");
-	SerialUSB.println(message);
-	SerialUSB.flush();
-	exit(1);
+                   const char * message
+                   ) {
+  // trap for printing error
+  while(true){
+    Serial.print("AC:>[msg] ERROR: ");
+    Serial.println(message);
+    Serial.flush();
+    delay(1000);
+  }
 }
+
 // how much to delay before measurement and how many times to measure
 #define CAL_REPS 65536
 #define FULL_SCALE 1.2

@@ -59,13 +59,16 @@ Fabric::Fabric () {
 		Chip (this, chipRow0, chipCol0, 30, 25, 24, 3, 9, 4),
 		Chip (this, chipRow0, chipCol1, 31, 23, 22, 50, 14, 0)
 	};
+	Serial.println("allocated chips");
 	tally_dyn_mem <Chip[2]> ("Chip[2]");
 
 	Serial.println("allocated hcdc");
+  Serial.flush();
 
 	cfgCommit();
 
 	Serial.println("initialized hcdc");
+  Serial.flush();
 }
 
 Fabric::~Fabric() { 

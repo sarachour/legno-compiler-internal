@@ -6,22 +6,13 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 			unsigned char gainCode // fixed point representation of desired gain
 			// 0 to 255 are valid
 		);
-    bool setGainDirect (
-                        float gain,// floating point representation of desired gain
-                        bool hirange,
-                        bool setBias
-                        );
-    bool setGain (
-			float gain // floating point representation of desired gain
-			// -100.0 to 100.0 are valid
-		);
+    bool setGain(float gain);
 		void setVga (
 			bool vga // constant coefficient multiplier mode
 		);
-    unsigned char getAnaIrefPmos(){
-      return anaIrefPmos;
-    }
+
 	private:
+    mult_code_t m_codes;
 		class MultiplierInterface;
 		Multiplier (Slice * parentSlice, unit unitId);
 		~Multiplier () override {
@@ -29,11 +20,12 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 			delete in0;
 			delete in1;
 		};
+    void update(mult_code_t codes){
+      m_codes = codes;
+      updateFu();
+    }
 		bool calibrate ();
-		bool calibrateTarget (
-			bool hiRange,
-			float gain
-		);
+		bool calibrateTarget();
 		/*Set enable, input 1 range, input 2 range, output range*/
 		void setParam0 () const override;
 		/*Set calDac, enable variable gain amplifer mode*/
@@ -51,28 +43,20 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 			unsigned char selLine,
 			unsigned char cfgTile
 		) const;
-		bool setAnaIrefDacNmos (
-			bool decrement,
-			bool increment
-		) override;
+		void setAnaIrefNmos () const override;
 		void setAnaIrefPmos () const override;
-		bool vga = false;
-		unsigned char gainCode = 128;
+		//bool vga = false;
+		//unsigned char gainCode = 128;
 	public:
-		unsigned char anaIrefPmos = 3;
+		//unsigned char anaIrefPmos = 3;
 };
 
 class Fabric::Chip::Tile::Slice::Multiplier::MultiplierInterface : public Fabric::Chip::Tile::Slice::FunctionUnit::Interface  {
 	friend Multiplier;
 	public:
-		void setRange (
-			bool loRange, // 0.2uA mode
-			bool hiRange // 20 uA mode
-			// default is 2uA mode
-			// this setting should match the unit that gives the input to the multiplier
-		) override;
+		void setRange (range_t range) override;
 	private:
 		MultiplierInterface (Multiplier * parentFu, ifc ifcId) : Interface(parentFu, ifcId), parentMultiplier(parentFu) {};
-		void calibrate () override;
+		bool calibrate () override;
 		Multiplier * const parentMultiplier;
 };

@@ -27,38 +27,15 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 	friend Slice;
 	public:
 		void setEnable ( bool enable ) override;
-		void setHiRange (
+		void setRange (
 			// default is 2uA mode
-			bool hiRange // 20 uA mode
+			range_t range // 20 uA mode
 		);
 		unsigned char getData () const;
 		unsigned char getStatusCode() const;
 		bool getException() const;
-    unsigned char getCalCompLower(){
-      return calCompLower;
-    }
-    unsigned char getCalCompLowerFS(){
-      return calCompLowerFs;
-    }
-    unsigned char getCalCompUpper(){
-      return calCompUpper;
-    }
-    unsigned char getCalCompUpperFS(){
-      return calCompUpperFs;
-    }
-    unsigned char getI2VOffset(){
-      return calI2V;
-    }
-    unsigned char getAnaIrefNmos(){
-      return anaIrefDacNmos;
-    }
-    unsigned char getAnaIrefPmos1(){
-      return anaIref1Pmos;
-    }
-    unsigned char getAnaIrefPmos2(){
-      return anaIref2Pmos;
-    }
 	private:
+    adc_code_t m_codes;
 		class AdcIn;
 		ChipAdc (Slice * parentSlice);
 		~ChipAdc () override { delete in0; };
@@ -94,12 +71,10 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 		bool checkSteady (
 			unsigned char dacCode
 		) const;
-		bool setAnaIrefDacNmos (
-			bool decrement,
-			bool increment
-		) override;
+		void setAnaIrefNmos () const override;
 		void setAnaIrefPmos () const override;
 
+    /*
 		unsigned char calI2V = 31;
 		// anaIrefI2V is remapped in SW to AnaIrefDacNmos
 
@@ -110,6 +85,7 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 		unsigned char calCompUpper = 31;
 		adcCalCompFs calCompUpperFs = nA100;
 		const unsigned char anaIref2Pmos = 4;
+    */
 };
 
 class Fabric::Chip::Tile::Slice::ChipAdc::AdcIn : public Fabric::Chip::Tile::Slice::FunctionUnit::Interface {
@@ -125,15 +101,18 @@ class Fabric::Chip::Tile::Slice::ChipAdc::AdcIn : public Fabric::Chip::Tile::Sli
 			Interface(parentFu, in0Id),
 			parentAdc(parentFu)
 		{};
-		bool findBias (
-			unsigned char & offsetCode
+		void findBias (
+                   unsigned char & offsetCode,
+                   bool& new_search,
+                   bool& calib_failed
 		) override;
 		void binarySearch (
 			unsigned char minCode,
 			float minBest,
 			unsigned char maxCode,
 			float maxBest,
-			unsigned char & finalCode
+			unsigned char & finalCode,
+      float & finalError
 		) const override;
 		const ChipAdc * const parentAdc;
 };

@@ -1,10 +1,11 @@
 #include "AnalogLib.h"
+#include "fu.h"
 #include <float.h>
 
 void Fabric::Chip::Tile::Slice::Multiplier::setEnable (
 	bool enable
 ) {
-	this->enable = enable;
+	m_codes.enable = enable;
 	setParam0 ();
 	/*establish calibration codes*/
 	setParam1 ();
@@ -16,7 +17,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::setEnable (
 void Fabric::Chip::Tile::Slice::Multiplier::setVga (
 	bool vga // constant coefficient multiplier mode
 ) {
-	this->vga = vga;
+	m_codes.vga = vga;
 	setParam1 ();
 }
 
@@ -26,103 +27,23 @@ void Fabric::Chip::Tile::Slice::Multiplier::setGainCode (
 	// Serial.println("setGainCode");
 	// Serial.println(gainCode);
 	setVga (true);
-	this->gainCode = gainCode;
+	m_codes.gain = gainCode;
 	setParam2 ();
 }
 
-bool Fabric::Chip::Tile::Slice::Multiplier::setGainDirect(float gain, bool hiRange,bool setBias){
+bool Fabric::Chip::Tile::Slice::Multiplier::setGain(float gain){
   if(-1.0000001 < gain && gain < 127.0/128.0){
     setGainCode(gain*128.0+128.0);
-    if(setBias){
-      return calibrateTarget(hiRange, gain);
-    }
-    else{
-      return true;
-    }
+    return true;
   }
   else{
     return false;
   }
 }
 
-bool Fabric::Chip::Tile::Slice::Multiplier::setGain (
-	float gain // floating point representation of desired gain
-	// -100.0 to 100.0 are valid
-) {
-	// Serial.print("setGain ");
-	// Serial.println(gain);
-	// Serial.flush();
 
-	if (-.010000001<gain && gain<1.27/128.) { // enable x0.01 gain using input & output attenuation
-		out0->setRange (
-			true, // 0.2uA mode
-			false // 20 uA mode
-		);
-		in0->setRange (
-			false, // 0.2uA mode
-			true // 20 uA mode
-		);
-		setGainCode ( (gain*100.0)*128.0 + 128.0 );
-		return calibrateTarget (false, gain);
-	} else if (-.10000001<gain && gain<12.7/128.) { // enable x0.1 gain using input attenuation
-		out0->setRange (
-			false, // 0.2uA mode
-			false // 20 uA mode
-		);
-		in0->setRange (
-			false, // 0.2uA mode
-			true // 20 uA mode
-		);
-		setGainCode ( round((gain*10.0)*128.0 + 128.0) );
-		return calibrateTarget (false, gain);
-	} else if (-1.0000001<gain && gain<127./128.) { // regular mode
-		out0->setRange (
-			false, // 0.2uA mode
-			false // 20 uA mode
-		);
-		in0->setRange (
-			false, // 0.2uA mode
-			false // 20 uA mode
-		);
-		setGainCode ( round(gain*128.0 + 128.0) );
-		return calibrateTarget (false, gain);
-	} else if (-10.0000001<gain && gain<127./12.8) { // enable x10 gain using output gain
-		out0->setRange (
-			false, // 0.2uA mode
-			true // 20 uA mode
-		);
-		in0->setRange (
-			false, // 0.2uA mode
-			false // 20 uA mode
-		);
-		setGainCode ( round((gain/10.0)*128.0 + 128.0) );
-		return calibrateTarget (true, gain);
-	} else if (-100.0000001<gain && gain<127./1.28) { // enable x100 gain using both input & output gain
-		out0->setRange (
-			false, // 0.2uA mode
-			true // 20 uA mode
-		);
-		in0->setRange ( // least reliable
-			true, // 0.2uA mode
-			false // 20 uA mode
-		);
-		setGainCode ( (gain/100.0)*128.0 + 128.0 );
-		return calibrateTarget (true, gain);
-	} else {
-		error ("VGA gain must be between -100.0 and 100.0");
-		return false;
-	};
-}
-
-void Fabric::Chip::Tile::Slice::Multiplier::MultiplierInterface::setRange (
-	bool loRange, // 0.2uA mode
-	bool hiRange // 20 uA mode
-	// default is 2uA mode
-	// this setting should match the unit that gives the input to the multiplier
-) {
-	if (loRange&&hiRange) error ("MUL low and high range cannot be selected at the same time");
-	this->loRange = loRange;
-	this->hiRange = hiRange;
+void Fabric::Chip::Tile::Slice::Multiplier::MultiplierInterface::setRange (range_t range) {
+  parentMultiplier->m_codes.range[ifcId] = range;
 	parentFu->setParam0 ();
 	parentFu->setParam3 ();
 	parentFu->setParam4 ();
@@ -141,38 +62,60 @@ Fabric::Chip::Tile::Slice::Multiplier::Multiplier (
 	tally_dyn_mem <MultiplierInterface> ("MultiplierInterface");
 	in1 = new MultiplierInterface (this, in1Id);
 	tally_dyn_mem <MultiplierInterface> ("MultiplierInterface");
-	setAnaIrefDacNmos( false, false );
+  m_codes.pmos = 3;
+  m_codes.nmos = 0;
+  m_codes.vga = false;
+  m_codes.gain = 128;
+  m_codes.gain_cal = 0;
+  m_codes.inv[in0Id] = false;
+  m_codes.inv[in1Id] = false;
+  m_codes.inv[out0Id] = false;
+  m_codes.range[in0Id] = RANGE_MED;
+  m_codes.range[in1Id] = RANGE_MED;
+  m_codes.range[out0Id] = RANGE_MED;
+  m_codes.enable = false;
+  setAnaIrefNmos();
 	setAnaIrefPmos();
 }
 
+mulRange range_to_mulRange(range_t rng){
+  switch(rng){
+  case RANGE_HIGH: return mulHi;
+  case RANGE_LOW: return mulLo;
+  case RANGE_MED: return mulMid;
+  }
+  return mulMid;
+}
 /*Set enable, input 1 range, input 2 range, output range*/
 void Fabric::Chip::Tile::Slice::Multiplier::setParam0 () const {
 	unsigned char cfgTile = 0;
-	cfgTile += enable ? 1<<7 : 0;
-	cfgTile += (in0->loRange ? mulLo : (in0->hiRange ? mulHi : mulMid))<<4;
-	cfgTile += (in1->loRange ? mulLo : (in1->hiRange ? mulHi : mulMid))<<2;
-	cfgTile += (out0->loRange ? mulLo : (out0->hiRange ? mulHi : mulMid))<<0;
+	cfgTile += m_codes.enable ? 1<<7 : 0;
+	cfgTile += (range_to_mulRange(m_codes.range[in0Id]))<<4;
+	cfgTile += (range_to_mulRange(m_codes.range[in1Id]))<<2;
+	cfgTile += (range_to_mulRange(m_codes.range[out0Id]))<<0;
 	setParamHelper (0, cfgTile);
 }
 
 /*Set calDac, enable variable gain amplifer mode*/
 void Fabric::Chip::Tile::Slice::Multiplier::setParam1 () const {
+  unsigned char negGainCalCode = m_codes.gain_cal;
 	if (negGainCalCode<0||63<negGainCalCode) error ("midNegGainCode out of bounds");
 	unsigned char cfgTile = 0;
 	cfgTile += negGainCalCode<<2;
-	cfgTile += vga ? 1<<1 : 0;
+	cfgTile += m_codes.vga ? 1<<1 : 0;
 	setParamHelper (1, cfgTile);
 }
 
 /*Set gain if VGA mode*/
 void Fabric::Chip::Tile::Slice::Multiplier::setParam2 () const {
+  unsigned char gainCode = m_codes.gain;
 	if (gainCode<0||255<gainCode) error ("gain out of bounds");
 	setParamHelper (2, gainCode);
 }
 
 /*Set calOutOs*/
 void Fabric::Chip::Tile::Slice::Multiplier::setParam3 () const {
-	unsigned char calOutOs = out0->loRange ? out0->loOffsetCode : (out0->hiRange ? out0->hiOffsetCode : out0->midOffsetCode);
+  unsigned char calOutOs = m_codes.port_cal[out0Id];
 	if (calOutOs<0||63<calOutOs) error ("calOutOs out of bounds");
 	unsigned char cfgTile = calOutOs<<2;
 	setParamHelper (3, cfgTile);
@@ -180,7 +123,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::setParam3 () const {
 
 /*Set calInOs1*/
 void Fabric::Chip::Tile::Slice::Multiplier::setParam4 () const {
-	unsigned char calInOs1 = in0->loRange ? in0->loOffsetCode : (in0->hiRange ? in0->hiOffsetCode : in0->midOffsetCode);
+  unsigned char calInOs1 = m_codes.port_cal[in0Id];
 	if (calInOs1<0||63<calInOs1) error ("calInOs1 out of bounds");
 	unsigned char cfgTile = calInOs1<<2;
 	setParamHelper (4, cfgTile);
@@ -188,7 +131,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::setParam4 () const {
 
 /*Set calInOs2*/
 void Fabric::Chip::Tile::Slice::Multiplier::setParam5 () const {
-	unsigned char calInOs2 = in1->loRange ? in1->loOffsetCode : (in1->hiRange ? in1->hiOffsetCode : in1->midOffsetCode);
+  unsigned char calInOs2 = m_codes.port_cal[in1Id];
 	if (calInOs2<0||63<calInOs2) error ("calInOs2 out of bounds");
 	unsigned char cfgTile = calInOs2<<2;
 	setParamHelper (5, cfgTile);
@@ -237,43 +180,49 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrate () {
 	return true;
 }
 
-bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (
-	bool hiRange,
-	float gain
-) {
-
+bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
+  float gain = 2.0*m_codes.gain/256.0 - 1.0;
+  bool hiRange = m_codes.range[out0Id] == RANGE_HIGH;
 	// preserve dac state because we will clobber it
-	unsigned char userDacNmos = parentSlice->dac->anaIrefDacNmos;
-	unsigned char userDacCalCode = parentSlice->dac->negGainCalCode;
-	unsigned char userDacConst = parentSlice->dac->constantCode;
-	bool userDacInv = parentSlice->dac->out0->inverse;
-	bool userDacHi = parentSlice->dac->out0->hiRange;
+  // can only calibrate target for vga.
+  if(!m_codes.vga){
+    return true;
+  }
+  dac_code_t codes_dac = parentSlice->dac->m_codes;
+  //block_code_t codes_self = m_codes;
+	//unsigned char userDacNmos = parentSlice->dac->anaIrefDacNmos;
+	//unsigned char userDacCalCode = parentSlice->dac->negGainCalCode;
+	//unsigned char userDacConst = parentSlice->dac->constantCode;
+	//bool userDacInv = parentSlice->dac->out0->inverse;
+	//bool userDacHi = parentSlice->dac->out0->hiRange;
 	parentSlice->dac->setConstant(-1.0);
 
+  mult_code_t codes_mul = parentSlice->muls[unitId==unitMulL?1:0].m_codes;
+  fanout_code_t codes_fan = parentSlice->fans[unitId==unitMulL?0:1].m_codes;
 	// preserve mul state because we will clobber it
-	unsigned char userMulPmos = parentSlice->muls[unitId==unitMulL?1:0].anaIrefPmos;
-	unsigned char userVgaNmos = parentSlice->muls[unitId==unitMulL?1:0].anaIrefDacNmos;
-	unsigned char userVgaCalCode = parentSlice->muls[unitId==unitMulL?1:0].negGainCalCode;
-	bool userVga = parentSlice->muls[unitId==unitMulL?1:0].vga;
-	unsigned char userVgaGain = parentSlice->muls[unitId==unitMulL?1:0].gainCode;
+	//unsigned char userMulPmos = parentSlice->muls[unitId==unitMulL?1:0].anaIrefPmos;
+	//unsigned char userVgaNmos = parentSlice->muls[unitId==unitMulL?1:0].anaIrefDacNmos;
+	//unsigned char userVgaCalCode = parentSlice->muls[unitId==unitMulL?1:0].negGainCalCode;
+	//bool userVga = parentSlice->muls[unitId==unitMulL?1:0].vga;
+	//unsigned char userVgaGain = parentSlice->muls[unitId==unitMulL?1:0].gainCode;
 
-	bool userOutLo = parentSlice->muls[unitId==unitMulL?1:0].out0->loRange;
-	bool userOutHi = parentSlice->muls[unitId==unitMulL?1:0].out0->hiRange;
-	unsigned char userOutLoOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].out0->loOffsetCode;
-	unsigned char userOutMidOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].out0->midOffsetCode;
-	unsigned char userOutHiOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].out0->hiOffsetCode;
+	//bool userOutLo = parentSlice->muls[unitId==unitMulL?1:0].out0->loRange;
+	//bool userOutHi = parentSlice->muls[unitId==unitMulL?1:0].out0->hiRange;
+	//unsigned char userOutLoOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].out0->loOffsetCode;
+	//unsigned char userOutMidOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].out0->midOffsetCode;
+	//unsigned char userOutHiOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].out0->hiOffsetCode;
 
-	bool userIn0Lo = parentSlice->muls[unitId==unitMulL?1:0].in0->loRange;
-	bool userIn0Hi = parentSlice->muls[unitId==unitMulL?1:0].in0->hiRange;
-	unsigned char userIn0LoOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].in0->loOffsetCode;
-	unsigned char userIn0MidOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].in0->midOffsetCode;
-	unsigned char userIn0HiOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].in0->hiOffsetCode;
+	//bool userIn0Lo = parentSlice->muls[unitId==unitMulL?1:0].in0->loRange;
+	//bool userIn0Hi = parentSlice->muls[unitId==unitMulL?1:0].in0->hiRange;
+	//unsigned char userIn0LoOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].in0->loOffsetCode;
+	//unsigned char userIn0MidOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].in0->midOffsetCode;
+	//unsigned char userIn0HiOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].in0->hiOffsetCode;
 
-	bool userIn1Lo = parentSlice->muls[unitId==unitMulL?1:0].in1->loRange;
-	bool userIn1Hi = parentSlice->muls[unitId==unitMulL?1:0].in1->hiRange;
-	unsigned char userIn1LoOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].in1->loOffsetCode;
-	unsigned char userIn1MidOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].in1->midOffsetCode;
-	unsigned char userIn1HiOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].in1->hiOffsetCode;
+	//bool userIn1Lo = parentSlice->muls[unitId==unitMulL?1:0].in1->loRange;
+	//bool userIn1Hi = parentSlice->muls[unitId==unitMulL?1:0].in1->hiRange;
+	//unsigned char userIn1LoOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].in1->loOffsetCode;
+	//unsigned char userIn1MidOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].in1->midOffsetCode;
+	//unsigned char userIn1HiOffsetCode = parentSlice->muls[unitId==unitMulL?1:0].in1->hiOffsetCode;
 	if (hiRange) parentSlice->muls[unitId==unitMulL?1:0].setGain(-0.1);
 
 	// preserve dac and fanout connections because we will clobber them
@@ -314,65 +263,67 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (
 	Connection conn3 = Connection ( parentSlice->tileOuts[3].out0, parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 	conn3.setConn();
 
-	anaIrefDacNmos = 0;
-	setAnaIrefDacNmos ( false, false );
-	bool biasStable;
+	m_codes.nmos = 0;
+	setAnaIrefNmos ();
 	unsigned char ttl = 64;
-
+  bool new_search = true;
+  bool calib_failed = true;
 	do {
-
+    bool succ;
 		// multiplier offset codes are mildly sensitive to bias code changes
 		// Serial.println("\nCalibrate output");
-		out0->calibrate();
+		succ = out0->calibrate();
 		// Serial.println("\nCalibrate input 0");
-		in0->calibrate();
+		succ &= in0->calibrate();
 		// Serial.println("\nCalibrate input 1");
-		in1->calibrate();
+		succ &= in1->calibrate();
 
 		conn4.setConn();
 		conn5.setConn();
 		conn6.setConn();
 
-			// Serial.println("\nMultiplier gain calibration");
-			bool multOutLo = out0->loRange;
-			bool multOutHi = out0->hiRange;
-			out0->setRange(false,false);
-			bool multIn0Lo = in0->loRange;
-			bool multIn0Hi = in0->hiRange;
-			in0->setRange(false,false);
-			bool multIn1Lo = in1->loRange;
-			bool multIn1Hi = in1->hiRange;
-			in1->setRange(false,false);
+    // Serial.println("\nMultiplier gain calibration");
+    range_t outrng = m_codes.range[out0Id];
+    range_t in0rng = m_codes.range[in0Id];
+    range_t in1rng = m_codes.range[in1Id];
+    out0->setRange(RANGE_MED);
+    in0->setRange(RANGE_MED);
+    in0->setRange(RANGE_MED);
+    setVga(false);
+    float delta;
+    binarySearchTarget ( 1.0, 0, FLT_MAX, 7, FLT_MAX,
+                         m_codes.pmos, delta);
+    // Serial.print("anaIrefPmos = ");
+    // Serial.println(anaIrefPmos);
+    out0->setRange(outrng);
+    in0->setRange(in0rng);
+    in1->setRange(in1rng);
 
-				setVga(false);
-				binarySearchTarget ( 1.0, 0, FLT_MAX, 7, FLT_MAX, anaIrefPmos );
-				// Serial.print("anaIrefPmos = ");
-				// Serial.println(anaIrefPmos);
+    if (hiRange) {
+      conn0.setConn();
+      conn1.setConn();
+      // parentSlice->dac->setConstant(-0.1);
+    }
 
-			out0->setRange(multOutLo,multOutHi);
-			in0->setRange(multIn0Lo,multIn0Hi);
-			in1->setRange(multIn1Lo,multIn1Hi);
+    /*calibrate VGA gain to negative full scale*/
+    // Serial.print("\nVGA gain calibration ");
+    // Serial.println(gain);
+    setVga(true);
 
-			if (hiRange) {
-				conn0.setConn();
-				conn1.setConn();
-				// parentSlice->dac->setConstant(-0.1);
-			}
+    findBiasHelper (
+                    hiRange ? gain : -gain,
+                    m_codes.gain_cal,
+                    m_codes.nmos,
+                    new_search,
+                    calib_failed
+                    );
+    if (hiRange) {
+      conn2.setConn();
+    }
 
-				/*calibrate VGA gain to negative full scale*/
-				// Serial.print("\nVGA gain calibration ");
-				// Serial.println(gain);
-				setVga(true);
-
-				biasStable = findBiasHelper (
-					hiRange ? gain/10.0 : -gain,
-					negGainCalCode
-				);
-
-			if (hiRange) {
-				conn2.setConn();
-			}
-
+    if(!succ){
+      calib_failed = true;
+    }
 		conn4.brkConn();
 		conn5.brkConn();
 		conn6.brkConn();
@@ -380,7 +331,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (
 
 		ttl--;
 
-	} while (!biasStable && ttl);
+	} while (new_search && ttl);
 
 	/*teardown*/
 	if (hiRange) {
@@ -388,28 +339,29 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (
 		if (userConn00.destIfc) userConn00.setConn();
 		if (userConn01.sourceIfc) userConn01.setConn();
 
-		parentSlice->muls[unitId==unitMulL?1:0].anaIrefPmos = userMulPmos;
-		parentSlice->muls[unitId==unitMulL?1:0].setAnaIrefPmos();
-		parentSlice->muls[unitId==unitMulL?1:0].anaIrefDacNmos = userVgaNmos;
-		parentSlice->muls[unitId==unitMulL?1:0].setAnaIrefDacNmos( false, false );
-		parentSlice->muls[unitId==unitMulL?1:0].negGainCalCode = userVgaCalCode;
-		parentSlice->muls[unitId==unitMulL?1:0].setGainCode( userVgaGain );
-		parentSlice->muls[unitId==unitMulL?1:0].setVga( userVga );
+		parentSlice->muls[unitId==unitMulL?1:0].update(codes_mul);
+		//parentSlice->muls[unitId==unitMulL?1:0].anaIrefPmos = userMulPmos;
+		//parentSlice->muls[unitId==unitMulL?1:0].setAnaIrefPmos();
+		//parentSlice->muls[unitId==unitMulL?1:0].anaIrefDacNmos = userVgaNmos;
+		//parentSlice->muls[unitId==unitMulL?1:0].setAnaIrefDacNmos( false, false );
+		//parentSlice->muls[unitId==unitMulL?1:0].negGainCalCode = userVgaCalCode;
+		//parentSlice->muls[unitId==unitMulL?1:0].setGainCode( userVgaGain );
+		//parentSlice->muls[unitId==unitMulL?1:0].setVga( userVga );
 
-		parentSlice->muls[unitId==unitMulL?1:0].out0->loOffsetCode = userOutLoOffsetCode;
-		parentSlice->muls[unitId==unitMulL?1:0].out0->midOffsetCode = userOutMidOffsetCode;
-		parentSlice->muls[unitId==unitMulL?1:0].out0->hiOffsetCode = userOutHiOffsetCode;
-		parentSlice->muls[unitId==unitMulL?1:0].out0->setRange( userOutLo, userOutHi );
+		//parentSlice->muls[unitId==unitMulL?1:0].out0->loOffsetCode = userOutLoOffsetCode;
+		//parentSlice->muls[unitId==unitMulL?1:0].out0->midOffsetCode = userOutMidOffsetCode;
+		//parentSlice->muls[unitId==unitMulL?1:0].out0->hiOffsetCode = userOutHiOffsetCode;
+		//parentSlice->muls[unitId==unitMulL?1:0].out0->setRange( userOutLo, userOutHi );
 
-		parentSlice->muls[unitId==unitMulL?1:0].in0->loOffsetCode = userIn0LoOffsetCode;
-		parentSlice->muls[unitId==unitMulL?1:0].in0->midOffsetCode = userIn0MidOffsetCode;
-		parentSlice->muls[unitId==unitMulL?1:0].in0->hiOffsetCode = userIn0HiOffsetCode;
-		parentSlice->muls[unitId==unitMulL?1:0].in0->setRange( userIn0Lo, userIn0Hi );
+		//parentSlice->muls[unitId==unitMulL?1:0].in0->loOffsetCode = userIn0LoOffsetCode;
+		//parentSlice->muls[unitId==unitMulL?1:0].in0->midOffsetCode = userIn0MidOffsetCode;
+		//parentSlice->muls[unitId==unitMulL?1:0].in0->hiOffsetCode = userIn0HiOffsetCode;
+		//parentSlice->muls[unitId==unitMulL?1:0].in0->setRange( userIn0Lo, userIn0Hi );
 
-		parentSlice->muls[unitId==unitMulL?1:0].in1->loOffsetCode = userIn1LoOffsetCode;
-		parentSlice->muls[unitId==unitMulL?1:0].in1->midOffsetCode = userIn1MidOffsetCode;
-		parentSlice->muls[unitId==unitMulL?1:0].in1->hiOffsetCode = userIn1HiOffsetCode;
-		parentSlice->muls[unitId==unitMulL?1:0].in1->setRange( userIn1Lo, userIn1Hi );
+		//parentSlice->muls[unitId==unitMulL?1:0].in1->loOffsetCode = userIn1LoOffsetCode;
+		//parentSlice->muls[unitId==unitMulL?1:0].in1->midOffsetCode = userIn1MidOffsetCode;
+		//parentSlice->muls[unitId==unitMulL?1:0].in1->hiOffsetCode = userIn1HiOffsetCode;
+		//parentSlice->muls[unitId==unitMulL?1:0].in1->setRange( userIn1Lo, userIn1Hi );
 
 		conn1.brkConn();
 		if (userConn10.destIfc) userConn10.setConn();
@@ -430,17 +382,19 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (
 	if (userConn41.sourceIfc) userConn41.setConn();
 	if (userConn40.destIfc) userConn40.setConn();
 
-	parentSlice->dac->anaIrefDacNmos = userDacNmos;
-	parentSlice->dac->setAnaIrefDacNmos( false, false );
-	parentSlice->dac->negGainCalCode = userDacCalCode;
-	parentSlice->dac->setHiRange(userDacHi);
-	parentSlice->dac->out0->setInv(userDacInv);
-	parentSlice->dac->setConstantCode(userDacConst);
+  parentSlice->dac->update(codes_dac);
+  parentSlice->fans[unitId==unitMulL?0:1].update(codes_fan);
+	//parentSlice->dac->anaIrefDacNmos = userDacNmos;
+	//parentSlice->dac->setAnaIrefDacNmos( false, false );
+	//parentSlice->dac->negGainCalCode = userDacCalCode;
+	//parentSlice->dac->setHiRange(userDacHi);
+	//parentSlice->dac->out0->setInv(userDacInv);
+	//parentSlice->dac->setConstantCode(userDacConst);
 
-	return true;
+	return !calib_failed;
 }
 
-void Fabric::Chip::Tile::Slice::Multiplier::MultiplierInterface::calibrate () {
+bool Fabric::Chip::Tile::Slice::Multiplier::MultiplierInterface::calibrate () {
 
 	/*setup*/
 	/*the multiplier is used as a VGA during calibration of the output and the first input*/
@@ -448,14 +402,15 @@ void Fabric::Chip::Tile::Slice::Multiplier::MultiplierInterface::calibrate () {
 	/*when calibrating the output offset, the zero value of the VGA, which has a very small offset, is used to provide a reference zero*/
 	/*the VGA has to be some large value when calibrating the first input, which is calibrated by tuning the first input to zero*/
 	/*Set gain if VGA mode*/
-	unsigned char userGainCode = parentMultiplier->gainCode;
+  mult_code_t user_self = parentMultiplier->m_codes;
+  dac_code_t user_dac = parentFu->parentSlice->dac->m_codes;
 	if (ifcId==out0Id || ifcId==in0Id) {
 		parentMultiplier->setGainCode((ifcId==in0Id) ? 255 : 128);
 	}
 	/*if calibrating the input offset of second input, feed an input to the MUL first input*/
 	Connection conn = Connection ( parentFu->parentSlice->dac->out0, parentFu->in0 );
-	unsigned char userConstantCode = parentFu->parentSlice->dac->constantCode;
-	bool userInverse = parentFu->parentSlice->dac->out0->inverse;
+	//unsigned char userConstantCode = parentFu->parentSlice->dac->constantCode;
+	//bool userInverse = parentFu->parentSlice->dac->out0->inverse;
 	if (ifcId==in1Id) {
 		parentFu->parentSlice->dac->setConstantCode (0);
 		parentFu->parentSlice->dac->out0->setInv (true);
@@ -463,39 +418,26 @@ void Fabric::Chip::Tile::Slice::Multiplier::MultiplierInterface::calibrate () {
 		parentMultiplier->setVga(false);
 	}
 
-	bool userLoRange = loRange;
-	bool userHiRange = hiRange;
-	setRange(true, false);
-	binarySearch ( 0, FLT_MAX, 63, FLT_MAX, loOffsetCode );
-	if ( loOffsetCode<1 || loOffsetCode>62 ) error ("MUL offset failure");
-	setRange(false, false);
-	binarySearch ( 0, FLT_MAX, 63, FLT_MAX, midOffsetCode );
-	if ( midOffsetCode<1 || midOffsetCode>62 ) error ("MUL offset failure");
-	setRange(false, true);
-	binarySearch ( 0, FLT_MAX, 63, FLT_MAX, hiOffsetCode );
-	if ( hiOffsetCode<1 || hiOffsetCode>62 ) error ("MUL offset failure");
-
-	/*teardown*/
-	setRange( userLoRange, userHiRange );
-	if (ifcId==in1Id) {
-		parentFu->parentSlice->dac->setConstantCode (userConstantCode);
-		parentFu->parentSlice->dac->out0->setInv (userInverse);
-		conn.brkConn();
-	}
-	if (ifcId==out0Id || ifcId==in0Id) {
-		parentMultiplier->setGainCode( userGainCode );
-	}
+  float delta = FLT_MAX;
+  unsigned char code = 0;
+  bool calib_failed;
+	//setRange(true, false);
+	binarySearch ( 0, FLT_MAX, 63, FLT_MAX,
+                 code,
+                 delta);
+	if ( code <1 || code >62 ) error ("MUL offset failure");
+  parentFu->testStab(code,parentMultiplier->m_codes.nmos,delta,calib_failed);
+  user_self.port_cal[ifcId] = code;
+  parentMultiplier->update(user_self);
+  parentFu->parentSlice->dac->update(user_dac);
+  return not calib_failed;
 }
 
-bool Fabric::Chip::Tile::Slice::Multiplier::setAnaIrefDacNmos (
-	bool decrement,
-	bool increment
-) {
-	if (!setAnaIrefDacNmosHelper (decrement, increment)) return false;
-
+void Fabric::Chip::Tile::Slice::Multiplier::setAnaIrefNmos () const {
 	unsigned char selRow;
 	unsigned char selCol;
 	unsigned char selLine;
+  testIref(m_codes.nmos);
 	switch (unitId) {
 		case unitMulL: switch (parentSlice->sliceId) {
 			case slice0: selRow=1; selCol=2; selLine=1; break;
@@ -516,17 +458,17 @@ bool Fabric::Chip::Tile::Slice::Multiplier::setAnaIrefDacNmos (
 	unsigned char cfgTile = endian(parentSlice->parentTile->parentChip->cfgBuf[parentSlice->parentTile->tileRowId][parentSlice->parentTile->tileColId][selRow][selCol][selLine]);
 	switch (unitId) {
 		case unitMulL: switch (parentSlice->sliceId) {
-			case slice0: cfgTile = (cfgTile & 0b00000111) + ((anaIrefDacNmos<<3) & 0b00111000); break;
-			case slice1: cfgTile = (cfgTile & 0b00111000) + (anaIrefDacNmos & 0b00000111); break;
-			case slice2: cfgTile = (cfgTile & 0b00000111) + ((anaIrefDacNmos<<3) & 0b00111000); break;
-			case slice3: cfgTile = (cfgTile & 0b00111000) + (anaIrefDacNmos & 0b00000111); break;
+			case slice0: cfgTile = (cfgTile & 0b00000111) + ((m_codes.nmos<<3) & 0b00111000); break;
+			case slice1: cfgTile = (cfgTile & 0b00111000) + (m_codes.nmos & 0b00000111); break;
+			case slice2: cfgTile = (cfgTile & 0b00000111) + ((m_codes.nmos<<3) & 0b00111000); break;
+			case slice3: cfgTile = (cfgTile & 0b00111000) + (m_codes.nmos & 0b00000111); break;
 			default: error ("MUL invalid slice"); break;
 		} break;
 		case unitMulR: switch (parentSlice->sliceId) {
-			case slice0: cfgTile = (cfgTile & 0b00111000) + (anaIrefDacNmos & 0b00000111); break;
-			case slice1: cfgTile = (cfgTile & 0b00111000) + (anaIrefDacNmos & 0b00000111); break;
-			case slice2: cfgTile = (cfgTile & 0b00111000) + (anaIrefDacNmos & 0b00000111); break;
-			case slice3: cfgTile = (cfgTile & 0b00111000) + (anaIrefDacNmos & 0b00000111); break;
+			case slice0: cfgTile = (cfgTile & 0b00111000) + (m_codes.nmos & 0b00000111); break;
+			case slice1: cfgTile = (cfgTile & 0b00111000) + (m_codes.nmos & 0b00000111); break;
+			case slice2: cfgTile = (cfgTile & 0b00111000) + (m_codes.nmos & 0b00000111); break;
+			case slice3: cfgTile = (cfgTile & 0b00111000) + (m_codes.nmos & 0b00000111); break;
 			default: error ("MUL invalid slice"); break;
 		} break;
 		default: error ("MUL invalid unitId"); break;
@@ -544,15 +486,15 @@ bool Fabric::Chip::Tile::Slice::Multiplier::setAnaIrefDacNmos (
 		vec
 	);
 
-	return true;
 }
 
 void Fabric::Chip::Tile::Slice::Multiplier::setAnaIrefPmos () const {
 
-	unsigned char setting=7-anaIrefPmos; // because pmos setting has opposite effect on gain
+	unsigned char setting=7-m_codes.pmos; // because pmos setting has opposite effect on gain
 	unsigned char selRow=0;
 	unsigned char selCol=4;
 	unsigned char selLine;
+  testIref(m_codes.pmos);
 	switch (unitId) {
 		case unitMulL: switch (parentSlice->sliceId) {
 			case slice0: selLine=2; break;

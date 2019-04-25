@@ -4,6 +4,7 @@
 #include "Comm.h"
 
 namespace calibrate {
+  /*
   uint8_t get_offset_code(Fabric::Chip::Tile::Slice::FunctionUnit::Interface* iface,
                           uint8_t range){
     switch(range){
@@ -16,7 +17,7 @@ namespace calibrate {
     }
     comm::error("get_offset_code: unexpected code");
   }
-
+  */
   void add_to_buf(uint8_t* buf, uint8_t& idx, circ::code_type_t key, uint8_t value){
     buf[idx] = key;
     buf[idx+1] = value;
@@ -48,6 +49,7 @@ namespace calibrate {
       iface = common::get_output_port(fab,blk,port);
       break;
     }
+    /*
     switch(blk){
     case circ::block_type_t::FANOUT:
       fanout = common::get_fanout(fab,port.idxloc);
@@ -102,7 +104,7 @@ namespace calibrate {
       comm::error("get_offset_code: unexpected block");
 
     }
-
+    */
   }
 
 }

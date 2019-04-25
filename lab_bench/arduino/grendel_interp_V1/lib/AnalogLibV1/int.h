@@ -17,23 +17,14 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 			unsigned char initialCode // fixed point representation of desired initial condition
 			// 0 to 255 are valid
 		);
-    bool setInitialDirect (
-                     float initial, // floating point representation of desired initial condition
-                     bool hirange, // -1.0 to 1.0 are valid
-                     bool setBias
-                     );
-    bool setInitial (
-			float initial // floating point representation of desired initial condition
-			// -10.0 to 10.0 are valid
-		);
+    bool setInitial(float initial);
 		void setException (
 			bool exception // turn on overflow detection
 			// turning false overflow detection saves power if it is known to be unnecessary
 		);
 		bool getException() const;
-    unsigned char getAnaIrefPmos(){
-      return anaIrefPmos;
-    }
+
+    integ_code_t m_codes;
 	private:
 		class IntegratorInterface;
 		class IntegratorIn;
@@ -41,10 +32,7 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 		Integrator (Slice * parentSlice);
 		~Integrator () override { delete in0; delete out0; };
 		bool calibrate ();
-		bool calibrateTarget (
-			bool hiRange,
-			float initial
-		);
+		bool calibrateTarget ();
 		/*Set enable, invert, range*/
 		void setParam0 () const override;
 		/*Set calIc, overflow enable*/
@@ -61,14 +49,11 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 			unsigned char selLine,
 			unsigned char cfgTile
 		) const;
-		bool setAnaIrefDacNmos (
-			bool decrement,
-			bool increment
-		) override;
+		void setAnaIrefNmos () const override;
 		void setAnaIrefPmos () const override;
-		const unsigned char anaIrefPmos = 5; /*5*/
-		unsigned char initialCode = 0; // fixed point representation of initial condition
-		bool exception = false; // turn on overflow detection
+		//const unsigned char anaIrefPmos = 5; /*5*/
+		//unsigned char initialCode = 0; // fixed point representation of initial condition
+		//bool exception = false; // turn on overflow detection
 };
 
 class Fabric::Chip::Tile::Slice::Integrator::IntegratorInterface : public Fabric::Chip::Tile::Slice::FunctionUnit::Interface {
@@ -76,21 +61,15 @@ class Fabric::Chip::Tile::Slice::Integrator::IntegratorInterface : public Fabric
 
 	private:
 		IntegratorInterface (Integrator * parentFu, ifc ifcId) : Interface(parentFu, ifcId), parentIntegrator(parentFu) {};
-		void calibrate() override;
-		const Integrator * const parentIntegrator;
+		bool calibrate() override;
+		Integrator * parentIntegrator;
 };
 
 class Fabric::Chip::Tile::Slice::Integrator::IntegratorIn : public Fabric::Chip::Tile::Slice::Integrator::IntegratorInterface {
 	friend Integrator;
 
 	public:
-		void setRange (
-			bool loRange, // 0.2uA mode
-			bool hiRange // 20 uA mode
-			// not both of the range settings should be true
-			// default is 2uA mode
-			// this setting should match the unit that gives the input to the integrator
-		) override;
+		void setRange (range_t range) override;
 	private:
 		IntegratorIn (Integrator * parentFu) : IntegratorInterface(parentFu, in0Id) {};
 };
@@ -100,13 +79,7 @@ class Fabric::Chip::Tile::Slice::Integrator::IntegratorOut : public Fabric::Chip
 
 	public:
 		void setInv ( bool inverse ) override; // whether output is negated
-		void setRange (
-			bool loRange, // 0.2uA mode
-			bool hiRange // 20 uA mode
-			// not both of the range settings should be true
-			// default is 2uA mode
-			// this setting should match the unit that gives the input to the integrator
-		) override;
+		void setRange (range_t range) override;
 	private:
 		IntegratorOut (Integrator * parentFu) : IntegratorInterface(parentFu, out0Id) {};
 };

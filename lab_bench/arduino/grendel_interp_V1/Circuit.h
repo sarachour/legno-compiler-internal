@@ -101,13 +101,14 @@ namespace circ {
     CODE_COMP_UPPER_FS
   } code_type_t;
 
-
+  /*
   typedef enum dac_source {
     DS_MEM,
     DS_EXT,
     DS_LUT0,
     DS_LUT1
   } dac_source_t;
+  */
 
   typedef struct use_dac {
     circ_loc_t loc;
@@ -126,11 +127,13 @@ namespace circ {
     float coeff;
   } cmd_use_mult_t;
 
+  /*
   typedef enum lut_source {
     LS_EXT,
     LS_ADC0,
     LS_ADC1
   } lut_source_t;
+  */
 
   typedef struct use_lut {
     circ_loc_t loc;

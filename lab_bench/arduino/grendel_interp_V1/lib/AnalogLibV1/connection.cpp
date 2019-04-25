@@ -27,7 +27,6 @@ void Fabric::Chip::Connection::setConn () const {
 			chip.cacheVec ( vec.nullNeighborRow(row) );
 		}
 	}
-
 	switch (sourceIfc->parentFu->unitId) {
 		case chipInp: sourceIfc->parentFu->parentSlice->chipInput->setEnable(true); break;
 		case unitDac: sourceIfc->parentFu->parentSlice->dac->setEnable(true); break;

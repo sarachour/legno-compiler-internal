@@ -1,4 +1,7 @@
+#ifndef FU_BASECLASS
+#define FU_BASECLASS
 /*Valid options for functional unit interface.*/
+// the order actually really matters here
 typedef enum {
 	in0Id,
 	in1Id,
@@ -8,17 +11,99 @@ typedef enum {
 } ifc;
 
 /*signal range configuration*/
-typedef enum {
-	fanLo = 0, /*2uA & 200nA*/
- 	fanMid = 0, /*2uA & 200nA*/
-	fanHi = 1 /*20uA*/
-} fanRange;
 
 typedef enum {
 	mulMid = 0, /* -2 to 2  uA*/
 	mulLo = 1,  /*-.2 to .2 uA*/
 	mulHi = 2,  /*-20 to 20 uA*/
 } mulRange;
+
+typedef enum {
+  RANGE_HIGH,
+  RANGE_MED,
+  RANGE_LOW
+} range_t;
+
+typedef enum {
+  DSRC_MEM,
+  DSRC_EXTERN,
+  DSRC_LUT0,
+  DSRC_LUT1
+} dac_source_t;
+
+typedef enum {
+  LSRC_ADC0,
+  LSRC_ADC1,
+  LSRC_EXTERN,
+  LSRC_CONTROLLER,
+} lut_source_t;
+
+typedef struct {
+  bool enable;
+  bool inv;
+  uint8_t pmos;
+  uint8_t nmos;
+  uint8_t pmos2;
+  uint8_t i2v_cal;
+  uint8_t upper_fs;
+  uint8_t upper;
+  uint8_t lower_fs;
+  uint8_t lower;
+  range_t range;
+} adc_code_t;
+
+typedef struct {
+  bool vga;
+  bool enable;
+  bool inv[3];
+  range_t range[3];
+  uint8_t pmos;
+  uint8_t nmos;
+  uint8_t port_cal[3];
+  uint8_t gain_cal;
+  uint8_t gain;
+} mult_code_t;
+
+
+typedef struct {
+  bool enable;
+  bool inv;
+  uint8_t pmos;
+  uint8_t nmos;
+  uint8_t gain_cal;
+  uint8_t constant;
+  range_t range;
+  dac_source_t source;
+} dac_code_t;
+
+typedef struct {
+  uint8_t pmos;
+  uint8_t nmos;
+  uint8_t gain_cal;
+  uint8_t init_cond;
+  uint8_t port_cal[3];
+  range_t range[3];
+  bool cal_enable[3];
+  bool inv[2];
+  bool enable;
+  bool exception;
+} integ_code_t;
+
+
+typedef struct {
+  uint8_t pmos;
+  uint8_t nmos;
+  range_t range[5];
+  uint8_t port_cal[5];
+  bool inv[5];
+  bool enable;
+  bool third;
+} fanout_code_t;
+
+typedef struct {
+  lut_source_t source;
+} lut_code_t;
+
 
 class Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
@@ -34,13 +119,18 @@ class Fabric::Chip::Tile::Slice::FunctionUnit {
 		Interface * out0;
 		Interface * out1;
 		Interface * out2;
-    unsigned char getAnaIrefNmos(){
-      return anaIrefDacNmos;
-    }
-    unsigned char getGainOffsetCode(){
-      return negGainCalCode;
-    }
 
+
+    void testIref(unsigned char code) const;
+    void testStab(unsigned char code,
+                  unsigned char nmos,
+                  float error,
+                  bool& calib_failed) const;
+    void testStabAndUpdateNmos(unsigned char code,
+                               unsigned char& nmos,
+                               float error,
+                               bool& new_search,
+                               bool& calib_failed);
 
 	private:
 		class GenericInterface;
@@ -50,17 +140,23 @@ class Fabric::Chip::Tile::Slice::FunctionUnit {
 		) :
 			parentSlice(parentSlice_),
 			unitId(unitId_)
-		{};
+		{
+    };
+
 		virtual ~FunctionUnit () {};
+    void updateFu();
 		virtual void setParam0 () const { error("not implemented"); };
 		virtual void setParam1 () const { error("not implemented"); };
 		virtual void setParam2 () const { error("not implemented"); };
 		virtual void setParam3 () const { error("not implemented"); };
 		virtual void setParam4 () const { error("not implemented"); };
 		virtual void setParam5 () const { error("not implemented"); };
-		bool findBiasHelper (
+		void findBiasHelper (
 			float target,
-			unsigned char & code
+			unsigned char & code,
+      unsigned char & nmos,
+      bool& new_search,
+      bool& calib_failed
 		);
 		void binarySearchTarget (
 			float target,
@@ -68,27 +164,20 @@ class Fabric::Chip::Tile::Slice::FunctionUnit {
 			float minBest,
 			unsigned char maxCode,
 			float maxBest,
-			unsigned char & finalCode
+			unsigned char & finalCode,
+      float& finalScore
 		) const;
 		bool binarySearchAvg (
-			unsigned char minGainCode,
+			unsigned char minCode,
 			float minBest,
-			unsigned char maxGainCode,
+			unsigned char maxCode,
 			float maxBest,
-			unsigned char & finalGainCode
+			unsigned char & finalCode
 		) const;
 		float binarySearchMeas () const;
-		bool setAnaIrefDacNmosHelper (
-			bool decrement,
-			bool increment
-		);
 
-		virtual bool setAnaIrefDacNmos (
-			bool decrement,
-			bool increment
-		) {
+		virtual void setAnaIrefNmos () const {
 			error("not implemented");
-			return false;
 		};
 		virtual void setAnaIrefPmos () const {
 			error("not implemented");
@@ -97,10 +186,6 @@ class Fabric::Chip::Tile::Slice::FunctionUnit {
 		const Slice * const parentSlice;
 		// used for gain and initial condition range calibration
 		const unit unitId;
-		bool enable = false;
-	public:
-		unsigned char negGainCalCode = 0;
-		unsigned char anaIrefDacNmos = 0;
 };
 
 class Fabric::Chip::Tile::Slice::FunctionUnit::Interface {
@@ -119,10 +204,7 @@ class Fabric::Chip::Tile::Slice::FunctionUnit::Interface {
 		) {
 			error("not implemented");
 		}; // whether output is negated
-		virtual void setRange (
-			bool loRange,
-			bool hiRange
-		) {
+		virtual void setRange (range_t range) {
 			error("not implemented");
 		};
 		virtual ~Interface () {};
@@ -134,24 +216,32 @@ class Fabric::Chip::Tile::Slice::FunctionUnit::Interface {
 			parentFu(parentFu),
 			ifcId(ifcId)
 		{};
-		virtual void calibrate() {
+		virtual bool calibrate() {
 			error("not implemented");
+      return false;
 		};
-		virtual bool findBias (
-			unsigned char & offsetCode
+		virtual void findBias (
+                           unsigned char & offsetCode,
+                           bool& new_search,
+                           bool& calib_failed
 		) {
 			error("not implemented");
-			return false;
+      new_search = true;
+      calib_failed = true;
 		};
-		bool findBiasHelper (
-			unsigned char & code
+		void findBiasHelper (
+                         unsigned char & code,
+                         unsigned char & nmos,
+                         bool& new_search,
+                         bool& calib_failed
 		) const;
 		virtual void binarySearch (
 			unsigned char minCode,
 			float minBest,
 			unsigned char maxCode,
 			float maxBest,
-			unsigned char & finalCode
+			unsigned char & finalCode,
+      float& finalScore
 		) const;
 		bool binarySearchAvg (
 			unsigned char minGainCode,
@@ -163,17 +253,9 @@ class Fabric::Chip::Tile::Slice::FunctionUnit::Interface {
 		float binarySearchMeas () const;
 		FunctionUnit * const parentFu;
 		const ifc ifcId;
-		Interface * userSourceDest = NULL; // TODO: incomplete implementation because multiple sources possible
+		Interface * userSourceDest = NULL;
+    // TODO: incomplete implementation because multiple sources possible
 
-		bool inverse = false;
-
-		bool loRange = false;
-		bool hiRange = false;
-	public:
-		unsigned char loOffsetCode = 31;
-		unsigned char midOffsetCode = 31;
-		unsigned char hiOffsetCode = 31;
-		bool calEn = false; /*Set high to configure integrator for output offset calibration*/
 };
 
 class Fabric::Chip::Tile::Slice::FunctionUnit::GenericInterface : public Fabric::Chip::Tile::Slice::FunctionUnit::Interface {
@@ -191,3 +273,5 @@ class Fabric::Chip::Tile::Slice::FunctionUnit::GenericInterface : public Fabric:
 			Interface (parentFu_, ifcId_)
 		{};
 };
+
+#endif

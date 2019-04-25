@@ -11,22 +11,17 @@ typedef enum {
 	adc		= 3  /*signals from ADC are selected*/
 } dacSel;
 
+
 class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
 
 	public:
 		void setEnable ( bool enable ) override;
-		void setHiRange (
+		void setRange (
 			// default is 2uA mode
-			bool hiRange // 20 uA mode
+			range_t rng// 20 uA mode
 		);
-		void setSource (
-			bool memory,
-			bool external, // digital to analog converter takes input from chip parallel input
-			bool lut0, // digital to analog converter takes input from first lookup table
-			bool lut1 // digital to analog converter takes input from second lookup table
-			// only one of these should be true
-		);
+		void setSource (dac_source_t src);
 		void setConstantCode (
 			unsigned char constantCode // fixed point representation of desired constant
 			// 0 to 255 are valid
@@ -41,6 +36,7 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 			float constant // floating point representation of desired constant
 			// -10.0 to 10.0 are valid
 		);
+    dac_code_t m_codes;
 	private:
 		class DacOut;
 		Dac (Slice * parentSlice);
@@ -49,40 +45,40 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 		void setParam0 () const override;
 		/*Set calDac, input select*/
 		void setParam1 () const override;
+    void setParam2 () const override {};
+    void setParam3 () const override {};
+    void setParam4 () const override {};
+    void setParam5 () const override {};
 		void setParamHelper (
 			unsigned char selLine,
 			unsigned char cfgTile
 		) const;
+    void update(dac_code_t codes){
+      m_codes = codes;
+      updateFu();
+    }
 		bool calibrate ();
-		bool calibrateTarget (
-			bool hiRange,
-			float constant
-		);
-		bool setAnaIrefDacNmos (
-			bool decrement,
-			bool increment
-		) override;
+		bool calibrateTarget ();
+		void setAnaIrefNmos () const override;
 		void setAnaIrefPmos () const override {};
 
 		bool findBiasAdc (
 			unsigned char & gainCalCode
 		);
-		bool findBiasHelperAdc (
-			unsigned char & code
+		void findBiasHelperAdc (
+                            unsigned char & code,
+                            bool& new_search,
+                            bool& calib_failed
 		);
 		void binarySearchAdc (
 			unsigned char minGainCalCode,
 			float minBest,
 			unsigned char maxGainCalCode,
 			float maxBest,
-			unsigned char & finalGainCalCode
+			unsigned char & finalGainCalCode,
+      float & finalError
 		);
 
-		bool memory=false;
-		bool external=false;
-		bool lut0=false;
-		bool lut1=false;
-		unsigned char constantCode;
 };
 
 class Fabric::Chip::Tile::Slice::Dac::DacOut : public Fabric::Chip::Tile::Slice::FunctionUnit::Interface  {
@@ -90,6 +86,6 @@ class Fabric::Chip::Tile::Slice::Dac::DacOut : public Fabric::Chip::Tile::Slice:
 
 	public:
 		void setInv ( bool inverse ) override; // whether output is negated
-	private:
+ private:
 		DacOut (Dac * parentFu) : Interface(parentFu, out0Id) {};
 };

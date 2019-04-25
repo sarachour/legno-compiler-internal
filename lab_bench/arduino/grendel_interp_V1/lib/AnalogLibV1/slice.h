@@ -27,6 +27,7 @@ class Fabric::Chip::Tile::Slice {
 		ChipOutput * chipOutput;
 
     bool calibrate() const;
+    bool calibrateTarget() const;
 
 	private:
 		Slice (
