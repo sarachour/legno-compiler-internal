@@ -34,6 +34,7 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 		unsigned char getData () const;
 		unsigned char getStatusCode() const;
 		bool getException() const;
+    void update(adc_code_t codes){m_codes = codes; updateFu();}
 	private:
     adc_code_t m_codes;
 		class AdcIn;

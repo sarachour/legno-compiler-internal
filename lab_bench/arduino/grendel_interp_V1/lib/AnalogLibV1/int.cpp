@@ -262,6 +262,10 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget () {
   }
   bool new_search = true;
   bool calib_failed = true;
+
+	m_codes.nmos = 0;
+	setAnaIrefNmos ();
+
   while (new_search) {
     float errors[3];
     unsigned char codes[3];
@@ -269,24 +273,24 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget () {
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[out0Id],
                          errors[0],
-                         MEAS_CHIP_OUTPUT
-                         );
+                         MEAS_CHIP_OUTPUT,
+                         false);
     codes[0] = m_codes.port_cal[out0Id];
     m_codes.cal_enable[out0Id] = false;
     m_codes.cal_enable[in0Id] = true;
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[in0Id],
                          errors[1],
-                         MEAS_CHIP_OUTPUT
-                         );
+                         MEAS_CHIP_OUTPUT,
+                         false);
     codes[1] = m_codes.port_cal[in0Id];
     m_codes.cal_enable[in0Id] = false;
     binsearch::find_bias(this,
                          hiRange ? -initial : initial,
                          m_codes.gain_cal,
                          errors[2],
-                         MEAS_CHIP_OUTPUT
-                         );
+                         MEAS_CHIP_OUTPUT,
+                         false);
     codes[2] = m_codes.gain_cal;
     binsearch::multi_test_stab_and_update_nmos(this,
                                                codes, errors, 3,

@@ -87,6 +87,7 @@ Fabric::Chip::Tile::Slice::ChipAdc::ChipAdc (
   m_codes.enable = false;
   m_codes.inv = false;
   m_codes.range = RANGE_MED;
+  m_codes.test_en = false;
   m_codes.test_adc = false;
   m_codes.test_i2v = false;
   m_codes.test_rs = false;
@@ -248,6 +249,8 @@ void Fabric::Chip::Tile::Slice::ChipAdc::setAnaIrefPmos () const {
 
 bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate () {
 
+  update(m_codes);
+  adc_code_t codes_self= m_codes;
   dac_code_t codes_dac = parentSlice->dac->m_codes;
 	Connection conn0 = Connection ( parentSlice->dac->out0, in0 );
 	conn0.setConn();
@@ -270,14 +273,23 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate () {
   Serial.println("AC:>[msg] -> finding i2v bias");
   Serial.flush();
   bool succ = binsearch::find_bias_and_nmos(this,
-                                   128.0,
-                                   m_codes.i2v_cal,
-                                   m_codes.nmos,
-                                   MEAS_ADC);
+                                            128.0,
+                                            m_codes.i2v_cal,
+                                            m_codes.nmos,
+                                            MEAS_ADC,
+                                            true);
 	setEnable (false);
   parentSlice->dac->update(codes_dac);
+  codes_self.i2v_cal = m_codes.i2v_cal;
+  codes_self.nmos = m_codes.nmos;
+  codes_self.lower = m_codes.lower;
+  codes_self.lower_fs = m_codes.lower_fs;
+  codes_self.upper = m_codes.upper;
+  codes_self.upper_fs = m_codes.upper_fs;
+  update(codes_self);
+
 	// Serial.println("offset settings found");
-	return !succ;
+	return succ;
 }
 
 bool Fabric::Chip::Tile::Slice::ChipAdc::findCalCompFs () {
@@ -403,10 +415,13 @@ void Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::binarySearch (
 	Serial.println(error);
 
   finalI2VError = error;
+  // read value less than target
 	if (adcRead < target) {
 		return binarySearch (minI2VCode, minBest, finalI2VCode, error,
                          finalI2VCode, finalI2VError);
-	} else {
+	}
+  // measured value more than target
+  else {
 		return binarySearch (finalI2VCode, error, maxI2VCode, maxBest,
                          finalI2VCode, finalI2VError);
 	}

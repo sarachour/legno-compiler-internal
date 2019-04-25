@@ -17,8 +17,8 @@ namespace binsearch {
                   float target,
                   unsigned char lo_code, float lo_error,
                   unsigned char hi_code, float hi_error,
-                  unsigned char& curr_code, float curr_error,
-                  meas_method_t method);
+                  unsigned char& curr_code, float& curr_error,
+                  meas_method_t method,bool reverse);
 
   bool decrement_iref(uint8_t& code){
     if (code==0) return false; // error ("Bias already set to extreme value");
@@ -108,10 +108,11 @@ namespace binsearch {
   }
 
   bool find_bias_and_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                float target,
-                unsigned char & code,
-                unsigned char & nmos,
-                meas_method_t method)
+                          float target,
+                          unsigned char & code,
+                          unsigned char & nmos,
+                          meas_method_t method,
+                          bool reverse)
   {
     bool new_search=true;
     bool calib_failed=true;
@@ -119,7 +120,9 @@ namespace binsearch {
     nmos = 0;
     fu->setAnaIrefNmos();
     while(new_search){
-      find_bias(fu,target,code,error,method);
+      Serial.print("AC:>[msg] nmos=");
+      Serial.println(nmos);
+      find_bias(fu,target,code,error,method, reverse);
       test_stab_and_update_nmos(fu,code,error,nmos,
                                 new_search,calib_failed);
     }
@@ -130,21 +133,25 @@ namespace binsearch {
                  float target,
                  unsigned char & code,
                  float & error,
-                 meas_method_t method)
+                 meas_method_t method,
+                 bool reverse)
   {
     // find code.
     error = FLT_MAX;
-    bin_search(fu, target, 0, FLT_MAX, 7, FLT_MAX, code, error,method);
+    bin_search(fu, target, 0, FLT_MAX, 7, FLT_MAX,
+               code,error,method,reverse);
   }
   void find_bias(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                float target,
-                unsigned char & code,
-                float & error,
-                meas_method_t method)
+                 float target,
+                 unsigned char & code,
+                 float & error,
+                 meas_method_t method,
+                 bool reverse)
   {
     // find code.
     error = FLT_MAX;
-    bin_search(fu, target, 0, FLT_MAX, 63, FLT_MAX, code, error,method);
+    bin_search(fu, target, 0, FLT_MAX, 63, FLT_MAX,
+               code, error,method,reverse);
   }
 
   float bin_search_meas(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
@@ -184,11 +191,12 @@ namespace binsearch {
     }
 }
   void bin_search(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                        float target,
-                        unsigned char lo_code, float lo_error,
-                        unsigned char hi_code, float hi_error,
-                        unsigned char& curr_code, float curr_error,
-                        meas_method_t method)
+                  float target,
+                  unsigned char lo_code, float lo_error,
+                  unsigned char hi_code, float hi_error,
+                  unsigned char& curr_code, float& curr_error,
+                  meas_method_t method,
+                  bool reverse)
   {
     //test if finished
     // parentSlice->parentTile->parentChip->parentFabric
@@ -198,9 +206,9 @@ namespace binsearch {
     fu->updateFu();
     fab->cfgCommit();
     float meas = bin_search_meas(fu,method);
-    float delta = meas - target;
-    float error = fabs(delta);
+    float error = fabs(meas-target);
     curr_error = error;
+
     Serial.print("AC:>[msg] meas=");
     Serial.print(meas);
     Serial.print(" target=");
@@ -217,19 +225,21 @@ namespace binsearch {
     Serial.print(hi_error);
     Serial.print(" error=");
     Serial.println(error);
-    if(meas > target) {
+    if((meas > target && !reverse) ||
+       (meas < target && reverse)) {
       return bin_search(fu,target,
                         lo_code, lo_error,
                         curr_code, curr_error,
                         curr_code, curr_error,
-                        method);
+                        method, reverse);
+
     }
     else {
       return bin_search( fu, target,
                          curr_code, curr_error,
                          hi_code, hi_error,
                          curr_code, curr_error,
-                         method);
+                         method,reverse);
     }
 
   }

@@ -122,19 +122,22 @@ namespace binsearch {
                           float target,
                           unsigned char & code,
                           unsigned char & nmos,
-                          meas_method_t method);
+                          meas_method_t method,
+                          bool reverse);
 
   void find_pmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                  float target,
                  unsigned char & code,
                  float & error,
-                 meas_method_t method);
+                 meas_method_t method,
+                 bool reverse);
 
   void find_bias(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                  float target,
                  unsigned char & code,
                  float & error,
-                 meas_method_t method);
+                 meas_method_t method,
+                 bool reverse);
 
   void multi_test_stab_and_update_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                                        unsigned char* codes,

@@ -248,7 +248,8 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
                        hiRange ? -constant : constant,
                        m_codes.gain_cal,
                        m_codes.nmos,
-                       MEAS_CHIP_OUTPUT);
+                       MEAS_CHIP_OUTPUT,
+                       false);
 	if (hiRange) {
 		conn0.brkConn();
 		if (userConn00.destIfc) userConn00.setConn();

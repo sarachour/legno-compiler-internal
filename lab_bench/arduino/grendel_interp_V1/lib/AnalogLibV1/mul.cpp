@@ -255,7 +255,8 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[in0Id],
                          errors[0],
-                         MEAS_CHIP_OUTPUT);
+                         MEAS_CHIP_OUTPUT,
+                         false);
     codes[0] = m_codes.port_cal[in0Id];
 
     //out0Id
@@ -264,7 +265,8 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[out0Id],
                          errors[1],
-                         MEAS_CHIP_OUTPUT);
+                         MEAS_CHIP_OUTPUT,
+                         false);
     codes[1] = m_codes.port_cal[out0Id];
     //in1id
     Connection conn_in1 = Connection ( parentSlice->dac->out0, in0);
@@ -275,7 +277,8 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[in1Id],
                          errors[2],
-                         MEAS_CHIP_OUTPUT);
+                         MEAS_CHIP_OUTPUT,
+                         false);
     codes[2] = m_codes.port_cal[in1Id];
     conn_in1.brkConn();
 
@@ -295,7 +298,8 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     binsearch::find_pmos(this,1.0,
                          m_codes.pmos,
                          dummy,
-                         MEAS_CHIP_OUTPUT);
+                         MEAS_CHIP_OUTPUT,
+                         false);
     // Serial.print("anaIrefPmos = ");
     // Serial.println(anaIrefPmos);
     out0->setRange(outrng);
@@ -316,7 +320,8 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
                          hiRange ? gain : -gain,
                          m_codes.gain_cal,
                          errors[3],
-                         MEAS_CHIP_OUTPUT);
+                         MEAS_CHIP_OUTPUT,
+                         false);
     codes[3] = m_codes.gain_cal;
 
     binsearch::multi_test_stab_and_update_nmos(this,
