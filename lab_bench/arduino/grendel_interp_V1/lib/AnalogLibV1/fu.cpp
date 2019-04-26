@@ -16,13 +16,32 @@ void Fabric::Chip::Tile::Slice::FunctionUnit::updateFu(){
   setParam4();
   setParam5();
 }
+
+namespace util{
+  float range_to_coeff(range_t rng){
+    switch(rng){
+    case RANGE_LOW:
+      return 0.1;
+    case RANGE_MED:
+      return 1.0;
+    case RANGE_HIGH:
+      return 10.0;
+    }
+    error("unknown range");
+    return -1.0;
+  }
+}
 namespace binsearch {
   void bin_search(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                   float target,
-                  unsigned char lo_code, float lo_error,
-                  unsigned char hi_code, float hi_error,
+                  unsigned char min_code,
+                  unsigned char max_code,
                   unsigned char& curr_code, float& curr_error,
-                  meas_method_t method,bool reverse);
+                  meas_method_t method);
+  float bin_search_get_delta(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                             float target,
+                             meas_method_t method,
+                             float& delta);
 
   bool decrement_iref(uint8_t& code){
     if (code==0) return false; // error ("Bias already set to extreme value");
@@ -35,10 +54,14 @@ namespace binsearch {
     return true;
   }
 
+  bool is_valid_iref(unsigned char code){
+    return (code <= 7 && code >= 0);
+  }
+
+
 
   void test_iref(unsigned char code){
-    assert(code <= 7);
-    assert(code >= 0);
+    assert(is_valid_iref(code));
   }
 
   void test_stab(unsigned char code,
@@ -49,7 +72,7 @@ namespace binsearch {
             "result: bias=%d error=%f max-error=%f",
             code, error, MIN_ERROR);
     print_debug(FMTBUF);
-    if(error < MIN_ERROR){
+    if(fabs(error) < MIN_ERROR){
       calib_failed = false;
     }
     else{
@@ -96,6 +119,15 @@ namespace binsearch {
     }
   }
 
+  int get_nmos_delta(unsigned char code){
+    if(code == 0 || code == 1){
+      return -1;
+    }
+    else if(code == 63 || code == 62){
+      return 1;
+    }
+    return 0;
+  }
   void multi_test_stab_and_update_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                                 unsigned char* codes,
                                 float* errors,
@@ -135,21 +167,39 @@ namespace binsearch {
                           float target,
                           unsigned char & code,
                           unsigned char & nmos,
-                          meas_method_t method,
-                          bool reverse)
+                          meas_method_t method)
   {
-    bool new_search=true;
     bool calib_failed=true;
-    float error;
+    float deltas[8];
+    unsigned char codes[8];
     nmos = 0;
-    fu->setAnaIrefNmos();
-    while(new_search){
-      sprintf(FMTBUF, "nmos=%d",nmos);
+    for(nmos=0; nmos < 8; nmos += 1){
+      float delta;
+      sprintf(FMTBUF, "find nmos=%d",nmos);
       print_debug(FMTBUF);
-      find_bias(fu,target,code,error,method, reverse);
-      test_stab_and_update_nmos(fu,code,error,nmos,
-                                new_search,calib_failed);
+      //compute bias
+      fu->setAnaIrefNmos();
+      find_bias(fu,target,code,delta,method);
+      codes[nmos] = code;
+      deltas[nmos] = delta;
+
+      test_stab(codes[nmos],deltas[nmos],calib_failed);
+      if(!calib_failed){
+        return true;
+      }
     }
+    unsigned char best_nmos = 0;
+    float best_delta = deltas[0];
+    for(int i=1; i < 8; i += 1){
+      if(fabs(deltas[i]) < fabs(best_delta)){
+        best_nmos = i;
+      }
+    }
+    code = codes[best_nmos];
+    nmos = best_nmos;
+    fu->setAnaIrefNmos();
+    fu->updateFu();
+    fu->getFabric()->cfgCommit();
     return !calib_failed;
 
   }
@@ -157,25 +207,21 @@ namespace binsearch {
                  float target,
                  unsigned char & code,
                  float & error,
-                 meas_method_t method,
-                 bool reverse)
+                 meas_method_t method)
   {
     // find code.
     error = FLT_MAX;
-    bin_search(fu, target, 0, FLT_MAX, 7, FLT_MAX,
-               code,error,method,reverse);
+    bin_search(fu, target,0,7,code,error,method);
   }
   void find_bias(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                  float target,
                  unsigned char & code,
                  float & error,
-                 meas_method_t method,
-                 bool reverse)
+                 meas_method_t method)
   {
     // find code.
     error = FLT_MAX;
-    bin_search(fu, target, 0, FLT_MAX, 63, FLT_MAX,
-               code, error,method,reverse);
+    bin_search(fu,target,0,63,code,error,method);
   }
 
   float bin_search_meas(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
@@ -216,52 +262,53 @@ namespace binsearch {
       curr_code = (lo_code + hi_code) / 2;
       return false;
     }
-}
-  void bin_search(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                  float target,
-                  unsigned char lo_code, float lo_error,
-                  unsigned char hi_code, float hi_error,
-                  unsigned char& curr_code, float& curr_error,
-                  meas_method_t method,
-                  bool reverse)
+  }
+
+  float bin_search_get_delta(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                           float target,
+                           meas_method_t method,
+                           float& delta)
   {
-    //test if finished
-    // parentSlice->parentTile->parentChip->parentFabric
     Fabric* fab = fu->getFabric();
-    if (bin_search_next_code(lo_code, lo_error,
-                             hi_code, hi_error, curr_code)) return;
     fu->updateFu();
     fab->cfgCommit();
     float meas = bin_search_meas(fu,method);
-    float error = fabs(meas-target);
-    curr_error = error;
+    delta = meas-target;
+  }
 
-    sprintf(FMTBUF,"meas=%f targ=%f code=(%d,%d,%d) error=(%f,%f,%f)",
-            meas, target,
-            curr_code,lo_code,hi_code,
-            curr_error,lo_error,hi_error);
+  void bin_search(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                   float target,
+                   unsigned char min_code, unsigned char max_code,
+                   unsigned char& curr_code, float& curr_delta,
+                   meas_method_t method)
+  {
+    //local minima finding array.
+    float deltas[64];
+    for(unsigned char code=min_code; code <= max_code; code+=1){
+      float delta;
+      curr_code = code;
+      bin_search_get_delta(fu,target,method,delta);
+      deltas[code-min_code] = delta;
+    }
+
+    unsigned char best_code = min_code;
+    float best_delta = deltas[0];
+    for(int code=min_code+1; code <= max_code; code+=1){
+      float delta = deltas[code-min_code];
+      if(fabs(delta) < fabs(best_delta)){
+        best_code = code;
+        best_delta = delta;
+      }
+    }
+    curr_code = best_code;
+    curr_delta = best_delta;
+    sprintf(FMTBUF, "BEST code=%d delta=%f",curr_code,curr_delta);
     print_debug(FMTBUF);
-    if((meas > target && !reverse) ||
-       (meas < target && reverse)) {
-      return bin_search(fu,target,
-                        lo_code, lo_error,
-                        curr_code, curr_error,
-                        curr_code, curr_error,
-                        method, reverse);
 
-    }
-    else {
-      return bin_search( fu, target,
-                         curr_code, curr_error,
-                         hi_code, hi_error,
-                         curr_code, curr_error,
-                         method,reverse);
-    }
 
   }
 
 }
-
 /*
 void Fabric::Chip::Tile::Slice::FunctionUnit::binarySearchTarget (
 	float target,
@@ -280,6 +327,7 @@ void Fabric::Chip::Tile::Slice::FunctionUnit::binarySearchTarget (
 	float voltageDiff = binarySearchMeas ();
   float error = fabs(voltageDiff-target);
   finalError = error;
+  Serial.print("AC:>[msg] meas=");
 	Serial.print(voltageDiff);
   Serial.print(" target=");
 	Serial.print(target);

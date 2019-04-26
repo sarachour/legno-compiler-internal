@@ -112,32 +112,47 @@ typedef struct {
   lut_source_t source;
 } lut_code_t;
 
+typedef union {
+  lut_code_t lut;
+  fanout_code_t fanout;
+  dac_code_t dac;
+  mult_code_t mult;
+  integ_code_t integ;
+
+} block_code_t;
 typedef enum {
   MEAS_CHIP_OUTPUT,
   MEAS_ADC
 } meas_method_t;
 
+namespace util {
+  float range_to_coeff(range_t range);
+  void save_conns(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                  int& n,
+                  int n_max);
+
+}
+
 namespace binsearch {
+  int get_nmos_delta(unsigned char code);
   bool find_bias_and_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                           float target,
                           unsigned char & code,
                           unsigned char & nmos,
                           meas_method_t method,
-                          bool reverse);
+     );
 
   void find_pmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                  float target,
                  unsigned char & code,
                  float & error,
-                 meas_method_t method,
-                 bool reverse);
+                 meas_method_t method);
 
   void find_bias(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                  float target,
                  unsigned char & code,
                  float & error,
-                 meas_method_t method,
-                 bool reverse);
+                 meas_method_t method);
 
   void multi_test_stab(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                        unsigned char* codes,
@@ -164,6 +179,7 @@ namespace binsearch {
                  bool& calib_failed);
 
   void test_iref(unsigned char code);
+  bool is_valid_iref(unsigned char code);
 
 }
 class Fabric::Chip::Tile::Slice::FunctionUnit {

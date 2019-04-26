@@ -184,7 +184,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
   }
   float constant = m_codes.const_val;
   bool hiRange = (m_codes.range == RANGE_HIGH);
-  sprintf(FMTBUF,"DAC %f %s", m_codes.const_val,
+  sprintf(FMTBUF,"DAC %f %d", m_codes.const_val,
           m_codes.const_code);
   print_debug(FMTBUF);
 
@@ -208,12 +208,24 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
 
 	if (hiRange) {
 		if (userConn01.sourceIfc) userConn01.brkConn();
+    // feed dac output into scaling down multiplier input
 		conn0.setConn();
-		parentSlice->muls[1].setGain(-0.1);
+    parentSlice->muls[1].m_codes.range[in0Id] = RANGE_HIGH;
+    parentSlice->muls[1].m_codes.range[out0Id] = RANGE_MED;
+		parentSlice->muls[1].setGain(-1.0);
+    if(!parentSlice->muls[1].calibrateTarget()){
+      print_log("cannot calibrate DAC/HIGH, failed to calibrate multiplier");
+      return false;
+    }
+    else{
+      print_debug("DAC/HI: CALIBRATED GAIN=-0.1");
+    }
 		if (userConn11.sourceIfc) userConn11.brkConn();
+    // feed output of scaledown multiplier to tile output.
 		conn1.setConn();
 	} else {
 		if (userConn11.sourceIfc) userConn11.brkConn();
+    // feed dac output into tile output
 		conn2.setConn();
 	}
 
@@ -226,16 +238,31 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
 	// Serial.println("Dac gain calibration");
 	// Serial.flush();
 
-	m_codes.nmos = 0;
-	setAnaIrefNmos ();
+  sprintf(FMTBUF, "this gain: %f %d %d", m_codes.const_val,
+          m_codes.const_code,
+          m_codes.range);
+  print_log(FMTBUF);
   float target = hiRange ? -constant : constant;
-  bool succ = binsearch::find_bias_and_nmos(
-                       this,
-                       target,
-                       m_codes.gain_cal,
-                       m_codes.nmos,
-                       MEAS_CHIP_OUTPUT,
-                       target >= 0.0 ? false : true);
+  int delta = 0;
+  bool succ = false;
+  while(!succ){
+    //adjust code
+    if(m_codes.const_code + delta > 255 || m_codes.const_code + delta < 0){
+      break;
+    }
+    setConstantCode(m_codes.const_code + delta);
+    sprintf(FMTBUF,"const code=%d",m_codes.const_code+delta);
+    print_debug(FMTBUF);
+
+    succ = binsearch::find_bias_and_nmos(
+                                         this,
+                                         target,
+                                         m_codes.gain_cal,
+                                         m_codes.nmos,
+                                         MEAS_CHIP_OUTPUT);
+    delta = binsearch::get_nmos_delta(m_codes.gain_cal);
+  }
+
 	if (hiRange) {
 		conn0.brkConn();
 		if (userConn00.destIfc) userConn00.setConn();
@@ -257,6 +284,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
 
   codes_self.nmos = m_codes.nmos;
   codes_self.gain_cal = m_codes.gain_cal;
+  codes_self.const_code = m_codes.const_code;
   update(codes_self);
 	return succ;
 }

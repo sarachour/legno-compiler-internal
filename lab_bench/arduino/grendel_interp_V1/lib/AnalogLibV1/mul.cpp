@@ -264,35 +264,59 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
   dac_code_t dac_code_zero;
   dac_code_t dac_code_neg1;
   mult_code_t mult_code_0p1;
+  bool config_failed = false;
   if(hiRange){
+    parentSlice->muls[unitId==unitMulL?1:0].setEnable(true);
     parentSlice->muls[unitId==unitMulL?1:0].setGain(-0.1);
-    parentSlice->muls[unitId==unitMulL?1:0].calibrateTarget();
+    if(!parentSlice->muls[unitId==unitMulL?1:0].calibrateTarget()){
+      print_log("MULT/HI: cannot calibrate GAIN=-0.1");
+      config_failed = true;
+
+    }
+    else{
+      print_debug("MULT: CALIBRATED GAIN=-0.1");
+    }
     mult_code_0p1 = parentSlice->muls[unitId==unitMulL?1:0].m_codes;
   }
+  parentSlice->dac->setEnable(true);
   parentSlice->dac->setConstant(0);
+  parentSlice->dac->setRange(RANGE_MED);
   parentSlice->dac->out0->setInv(true);
   if(!parentSlice->dac->calibrateTarget()){
-    print_log("!!cannot calibrate DAC=0");
+    print_log("MULT: cannot calibrate DAC=0");
+    config_failed = true;
+  }
+  else{
+    print_debug("MULT: CALIBRATED DAC=0");
   }
   dac_code_zero = parentSlice->dac->m_codes;
   // done computing preset codes
 
+  parentSlice->dac->setEnable(true);
   parentSlice->dac->setConstant(-1);
+  parentSlice->dac->setRange(RANGE_MED);
   parentSlice->dac->out0->setInv(false);
   if(!parentSlice->dac->calibrateTarget()){
-    print_log("!!cannot calibrate DAC=-1");
+    print_log("MULT: cannot calibrate DAC=-1");
+    return false;
+  }
+  else{
+    print_debug("MULT: CALIBRATED DAC=1");
   }
   dac_code_neg1 = parentSlice->dac->m_codes;
 
-	unsigned char tries = 64;
   bool new_search = true;
   bool calib_failed = true;
+  float nmos_errors[8];
+  mult_code_t best_code = m_codes;
+
 	m_codes.nmos = 0;
 	setAnaIrefNmos ();
 	do {
-    float errors[4];
-    unsigned char codes[4];
-    float dummy;
+    if(config_failed){
+      break;
+    }
+    float delta;
     sprintf(FMTBUF, "nmos=%d", m_codes.nmos);
     print_debug(FMTBUF);
     //out0Id
@@ -302,10 +326,8 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     parentSlice->dac->setEnable(false);
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[out0Id],
-                         errors[1],
-                         MEAS_CHIP_OUTPUT,
-                         false);
-    codes[1] = m_codes.port_cal[out0Id];
+                         delta,
+                         MEAS_CHIP_OUTPUT);
     //in0Id
     print_debug("in0 calibrate");
     setGain(1.0);
@@ -313,10 +335,8 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     parentSlice->dac->setEnable(false);
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[in0Id],
-                         errors[0],
-                         MEAS_CHIP_OUTPUT,
-                         false);
-    codes[0] = m_codes.port_cal[in0Id];
+                         delta,
+                         MEAS_CHIP_OUTPUT);
 
     //in1id
     print_debug("in1 calibrate");
@@ -327,10 +347,8 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     conn_in1.setConn();
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[in1Id],
-                         errors[2],
-                         MEAS_CHIP_OUTPUT,
-                         true);
-    codes[2] = m_codes.port_cal[in1Id];
+                         delta,
+                         MEAS_CHIP_OUTPUT);
     conn_in1.brkConn();
     parentSlice->dac->setEnable(false);
 
@@ -355,9 +373,8 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     setVga(false);
     binsearch::find_pmos(this,1.0,
                          m_codes.pmos,
-                         dummy,
-                         MEAS_CHIP_OUTPUT,
-                         false);
+                         delta,
+                         MEAS_CHIP_OUTPUT);
     out0->setRange(outrng);
     in0->setRange(in0rng);
     in1->setRange(in1rng);
@@ -389,20 +406,30 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     /*calibrate VGA gain to negative full scale*/
     // Serial.print("\nVGA gain calibration ");
     // Serial.println(gain);
-    float target = (hiRange ? gain : -gain);
+    float coeff = util::range_to_coeff(m_codes.range[out0Id]);
+    coeff /= util::range_to_coeff(m_codes.range[in0Id]);
+
+    float target = (hiRange ? gain : -gain)*coeff;
+    sprintf(FMTBUF, "target=%f*%f",gain,coeff);
+    print_debug(FMTBUF);
     binsearch::find_bias(this,
                          target,
                          m_codes.gain_cal,
-                         errors[3],
-                         MEAS_CHIP_OUTPUT,
-                         target >= 0.0 ? false : true);
-    codes[3] = m_codes.gain_cal;
+                         delta,
+                         MEAS_CHIP_OUTPUT);
 
-    binsearch::test_stab_and_update_nmos(this,
-                                         codes[3],errors[3],
-                                         m_codes.nmos,
-                                         new_search,
-                                         calib_failed);
+    // update nmos code
+    nmos_errors[m_codes.nmos] = delta;
+    binsearch::test_stab(m_codes.gain_cal,fabs(delta),calib_failed);
+    if(m_codes.nmos == 0 || !calib_failed ||
+       fabs(delta) < fabs(nmos_errors[m_codes.nmos-1])){
+      best_code = m_codes;
+    }
+    m_codes.nmos += 1;
+    setAnaIrefNmos ();
+
+
+    //teardown
     if (hiRange) {
       conn0.brkConn();
       conn1.brkConn();
@@ -414,10 +441,10 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
 		parentSlice->fans[unitId==unitMulL?0:1].setEnable(false);
     parentSlice->dac->setEnable(false);
 
-		tries--;
+	} while (m_codes.nmos <= 7 && calib_failed);
 
-	} while (new_search && tries);
-
+  m_codes = best_code;
+  update(m_codes);
 	/*teardown*/
 	if (hiRange) {
 		conn0.brkConn();
@@ -457,7 +484,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
   parentSlice->muls[unitId==unitMulL?1:0].update(codes_mul);
   update(codes_self);
 
-	return !calib_failed;
+	return !(calib_failed || config_failed);
 }
 
 /*

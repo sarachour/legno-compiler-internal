@@ -174,8 +174,7 @@ bool Fabric::Chip::Tile::Slice::Fanout::calibrate () {
     binsearch::find_bias(this,0.0,
                          m_codes.port_cal[out0Id],
                          errors[0],
-                         MEAS_CHIP_OUTPUT,
-                         false);
+                         MEAS_CHIP_OUTPUT);
     codes[0] = m_codes.port_cal[out0Id];
     conn0.brkConn();
 
@@ -184,8 +183,7 @@ bool Fabric::Chip::Tile::Slice::Fanout::calibrate () {
     binsearch::find_bias(this,0.0,
                          m_codes.port_cal[out1Id],
                          errors[1],
-                         MEAS_CHIP_OUTPUT,
-                         false);
+                         MEAS_CHIP_OUTPUT);
     codes[1] = m_codes.port_cal[out1Id];
     conn1.brkConn();
 
@@ -195,8 +193,7 @@ bool Fabric::Chip::Tile::Slice::Fanout::calibrate () {
     binsearch::find_bias(this,0.0,
                          m_codes.port_cal[out2Id],
                          errors[2],
-                         MEAS_CHIP_OUTPUT,
-                         false);
+                         MEAS_CHIP_OUTPUT);
     codes[2] = m_codes.port_cal[out2Id];
     setThird(false);
     conn2.brkConn();

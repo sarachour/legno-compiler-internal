@@ -233,16 +233,14 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrate (
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[out0Id],
                          errors[0],
-                         MEAS_CHIP_OUTPUT,
-                         true);
+                         MEAS_CHIP_OUTPUT);
     codes[0] = m_codes.port_cal[out0Id];
     m_codes.cal_enable[out0Id] = false;
     m_codes.cal_enable[in0Id] = true;
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[in0Id],
                          errors[1],
-                         MEAS_CHIP_OUTPUT,
-                         true);
+                         MEAS_CHIP_OUTPUT);
     codes[1] = m_codes.port_cal[in0Id];
     m_codes.cal_enable[in0Id] = false;
     binsearch::multi_test_stab_and_update_nmos(this,
@@ -310,24 +308,21 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget () {
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[out0Id],
                          errors[0],
-                         MEAS_CHIP_OUTPUT,
-                         false);
+                         MEAS_CHIP_OUTPUT);
     codes[0] = m_codes.port_cal[out0Id];
     m_codes.cal_enable[out0Id] = false;
     m_codes.cal_enable[in0Id] = true;
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[in0Id],
                          errors[1],
-                         MEAS_CHIP_OUTPUT,
-                         false);
+                         MEAS_CHIP_OUTPUT);
     codes[1] = m_codes.port_cal[in0Id];
     m_codes.cal_enable[in0Id] = false;
     binsearch::find_bias(this,
                          hiRange ? -initial : initial,
                          m_codes.gain_cal,
                          errors[2],
-                         MEAS_CHIP_OUTPUT,
-                         false);
+                         MEAS_CHIP_OUTPUT);
     codes[2] = m_codes.gain_cal;
     binsearch::multi_test_stab_and_update_nmos(this,
                                                codes, errors, 3,

@@ -272,8 +272,7 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate () {
                                             128.0,
                                             m_codes.i2v_cal,
                                             m_codes.nmos,
-                                            MEAS_ADC,
-                                            true);
+                                            MEAS_ADC);
 	setEnable (false);
   parentSlice->dac->update(codes_dac);
   codes_self.i2v_cal = m_codes.i2v_cal;

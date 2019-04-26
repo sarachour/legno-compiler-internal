@@ -31,11 +31,11 @@ class LUTSourceType(str,Enum):
 
     def code(self):
         if self == LUTSourceType.EXTERN:
-            return 0
-        elif self == LUTSourceType.ADC0:
-            return 1
-        elif self == LUTSourceType.ADC1:
             return 2
+        elif self == LUTSourceType.ADC0:
+            return 0
+        elif self == LUTSourceType.ADC1:
+            return 1
         else:
             raise Exception("unknown: %s" % self)
 
@@ -167,9 +167,9 @@ class RangeType(str,Enum):
         if self == RangeType.MED:
             return 1
         elif self == RangeType.LOW:
-            return 0
-        elif self == RangeType.HIGH:
             return 2
+        elif self == RangeType.HIGH:
+            return 0
         else:
             raise Exception("unknown")
 
