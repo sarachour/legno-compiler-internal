@@ -26,14 +26,14 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 
     void update(integ_code_t codes);
     integ_code_t m_codes;
+		bool calibrateTarget ();
+		bool calibrate ();
 	private:
 		class IntegratorInterface;
 		class IntegratorIn;
 		class IntegratorOut;
 		Integrator (Slice * parentSlice);
 		~Integrator () override { delete in0; delete out0; };
-		bool calibrate ();
-		bool calibrateTarget ();
 		/*Set enable, invert, range*/
 		void setParam0 () const override;
 		/*Set calIc, overflow enable*/

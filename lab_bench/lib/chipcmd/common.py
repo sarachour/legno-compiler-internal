@@ -89,6 +89,29 @@ def parse_pattern_conn(args,name):
 
     return OptionalValue.value(result)
 
+
+def parse_pattern_block_loc(args,name):
+    line = " ".join(args)
+    cmds = [
+        "{blk:w} {chip:d} {tile:d} {slice:d}",
+        "{blk:w} {chip:d} {tile:d} {slice:d} {index:d}",
+    ]
+    result = None
+    for cmd in cmds:
+        final_cmd = "%s %s" % (name,cmd)
+        if result is None:
+            result = parselib.parse(final_cmd,line)
+
+    if result is None:
+        return OptionalValue.error("usage:<%s>\nline:<%s>" % (cmd, line))
+
+    result = dict(result.named.items())
+    if not "index" in result:
+        result["index"] = None
+
+    return OptionalValue.value(result)
+
+
 def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
                         name,index=False,debug=False,source=None,expr=False):
     line = " ".join(args)

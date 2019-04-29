@@ -35,8 +35,9 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 		unsigned char getStatusCode() const;
 		bool getException() const;
     void update(adc_code_t codes){m_codes = codes; updateFu();}
-	private:
     adc_code_t m_codes;
+		bool calibrate ();
+	private:
 		class AdcIn;
 		ChipAdc (Slice * parentSlice);
 		~ChipAdc () override { delete in0; };
@@ -63,7 +64,6 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 			unsigned char selLine,
 			unsigned char cfgTile
 		) const;
-		bool calibrate ();
 		bool findCalCompFs ();
 		bool checkScale ();
 		bool checkSpread (

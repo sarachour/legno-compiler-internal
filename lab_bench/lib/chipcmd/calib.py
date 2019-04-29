@@ -13,7 +13,7 @@ class MeasureCmd(AnalogChipCommand):
         return 'measure'
 
 
-class SetCodesCmd(AnalogChipCommand):
+class SetStateCmd(AnalogChipCommand):
 
     def __init__(self,blk,loc):
         AnalogChipCommand.__init__(self)
@@ -29,23 +29,20 @@ class SetCodesCmd(AnalogChipCommand):
         return 'set_codes'
 
 
-class GetCodesCmd(AnalogChipCommand):
+class GetStateCmd(AnalogChipCommand):
 
-    FILE = "codes.txt"
 
-    def __init__(self,blk,loc,port_type,rng):
+    def __init__(self,blk,chip,tile,slce,index=None):
         AnalogChipCommand.__init__(self)
         self._blk = enums.BlockType(blk)
-        self._loc = loc
-        self._port_type = enums.PortType(port_type)
-        self._rng = RangeType.from_abbrev(rng)
-        self.test_loc(self._blk, self._loc.loc)
-        assert(not loc is None and \
-               isinstance(loc,CircPortLoc))
+        self._loc = CircLoc(chip,tile,slce,index=0 if index is None \
+                            else index)
+
+        self.test_loc(self._blk, self._loc)
 
     @staticmethod
     def name():
-        return 'get_codes'
+        return 'get_state'
 
     @staticmethod
     def desc():
@@ -54,14 +51,12 @@ class GetCodesCmd(AnalogChipCommand):
 
     def build_ctype(self):
         return build_circ_ctype({
-            'type':enums.CircCmdType.GET_CODES.name,
+            'type':enums.CircCmdType.GET_STATE.name,
             'data':{
-                'codes':{
+                'state':{
                     'blk': self._blk.name,
                     'loc': self._loc.build_ctype(),
-                    'port_type': self._port_type.code(),
-                    'range': self._rng.code(),
-                    'keyvals': [0]*10
+                    'data': [0]*64
                 }
             }
         })
@@ -69,15 +64,15 @@ class GetCodesCmd(AnalogChipCommand):
 
     @staticmethod
     def parse(args):
-        result = parse_pattern_port(args,GetCodesCmd.name())
+        result = parse_pattern_block_loc(args,GetStateCmd.name())
         if result.success:
             data = result.value
-            loc = CircPortLoc(data['chip'],data['tile'],
-                                 data['slice'],data['port'],
-                                 data['index'])
-            return GetCodesCmd(data['blk'],loc,
-                               data['port_type'],
-                               data['range'])
+            return GetStateCmd(data['blk'],
+                               data['chip'],
+                               data['tile'],
+                               data['slice'],
+                               data['index'])
+
         else:
             print(result.message)
             raise Exception("<parse_failure>: %s" % args)
@@ -104,12 +99,12 @@ class GetCodesCmd(AnalogChipCommand):
         resp = ArduinoCommand.execute_command(self,state)
         datum = self._loc.to_json()
         datum['block_type'] = self._blk.value
-        datum['port_type'] = self._port_type.value
-        datum['scale_mode'] = self._rng.value
-        datum['codes'] = self.to_key_value(resp.data(0))
-        with open(GetCodesCmd.FILE, 'a') as fh:
-            fh.write(json.dumps(datum))
-            fh.write("\n")
+        nels = resp.data(0)[0]
+        data = resp.data(0)[1:]
+        print(nels)
+        print(data)
+        print(len(data))
+        input()
         return True
 
 
@@ -119,10 +114,12 @@ class GetCodesCmd(AnalogChipCommand):
 
 class CalibrateCmd(AnalogChipCommand):
 
-    def __init__(self,chip,tile,slice):
+    def __init__(self,blk,chip,tile,slice,index=None):
         AnalogChipCommand.__init__(self)
-        self._loc = CircLoc(chip,tile,slice)
-        self.test_loc(enums.BlockType.NONE,self._loc)
+        self._loc = CircLoc(chip,tile,slice,index=0 if index is None \
+                            else index)
+        self._blk = enums.BlockType(blk)
+        self.test_loc(self._blk,self._loc)
 
     @staticmethod
     def name():
@@ -133,26 +130,29 @@ class CalibrateCmd(AnalogChipCommand):
         return "calibrate a slice on the hdacv2 board"
 
     def build_ctype(self):
+        loc_type = self._loc.build_ctype()
+        print(loc_type)
         return build_circ_ctype({
             'type':enums.CircCmdType.CALIBRATE.name,
             'data':{
-                'circ_loc':{
-                    'chip': self._loc.chip,
-                    'tile': self._loc.tile,
-                    'slice': self._loc.slice
+                'calib':{
+                    'blk': self._blk.code(),
+                    'loc': loc_type
                 }
             }
         })
 
     @staticmethod
     def parse(args):
-        result = parse_pattern_block(args,0,0,0,
-                                      CalibrateCmd.name(),
-                                      index=False)
+        result = parse_pattern_block_loc(args,
+                                      CalibrateCmd.name())
         if result.success:
             data = result.value
-            return CalibrateCmd(data['chip'],data['tile'],
-                                data['slice'])
+            return CalibrateCmd(data["blk"],
+                                data['chip'],
+                                data['tile'],
+                                data['slice'],
+                                data['index'])
         else:
             print(result.message)
             raise Exception("<parse_failure>: %s" % args)

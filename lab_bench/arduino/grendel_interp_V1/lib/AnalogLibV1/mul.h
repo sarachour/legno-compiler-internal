@@ -11,8 +11,11 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 			bool vga // constant coefficient multiplier mode
 		);
 
-	private:
     mult_code_t m_codes;
+    void update(mult_code_t codes);
+    bool calibrate ();
+		bool calibrateTarget();
+	private:
 		class MultiplierInterface;
 		Multiplier (Slice * parentSlice, unit unitId);
 		~Multiplier () override {
@@ -20,9 +23,6 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 			delete in0;
 			delete in1;
 		};
-    void update(mult_code_t codes);
-		bool calibrate ();
-		bool calibrateTarget();
 		/*Set enable, input 1 range, input 2 range, output range*/
 		void setParam0 () const override;
 		/*Set calDac, enable variable gain amplifer mode*/

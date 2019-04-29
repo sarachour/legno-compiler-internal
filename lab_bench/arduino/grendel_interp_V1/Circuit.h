@@ -10,20 +10,21 @@ namespace circ {
   const uint8_t MED_RANGE = 1;
   const uint8_t HI_RANGE = 2;
 
-  typedef enum port_type {
-    PORT_INPUT,
-    PORT_OUTPUT
-  } port_type_t;
-
   typedef enum block_type {
+    //0
     TILE_DAC,
+    // 1-4
     CHIP_INPUT,
     CHIP_OUTPUT,
     TILE_INPUT,
     TILE_OUTPUT,
+    //5
     MULT,
+    //6
     INTEG,
+    //7
     FANOUT,
+    //8-9
     LUT,
     TILE_ADC
   } block_type_t;
@@ -44,22 +45,20 @@ namespace circ {
     DISABLE_FANOUT,
     DISABLE_LUT,
     DISABLE_ADC,
-    /*connection 12-15 */
+    /*connection 12-14 */
     CONNECT,
     BREAK,
-    CALIBRATE,
-    /*debug 15-17 */
+    /*debug 14-15 */
     GET_INTEG_STATUS,
     GET_ADC_STATUS,
-    /*set values 17-21 */
-    CONFIG_DAC,
-    CONFIG_MULT,
-    CONFIG_INTEG,
+    /*set values 16 */
     WRITE_LUT,
-    /*code setting*/
-    GET_CODES,
-    SET_CODES,
-    MEASURE
+    /*calibration 17-18*/
+    CALIBRATE,
+    TUNE,
+    /*state 19-20*/
+    GET_STATE,
+    SET_STATE
   } cmd_type_t;
 
   typedef struct circ_loc {
@@ -165,13 +164,16 @@ namespace circ {
     circ_loc_idx2_t dst_loc;
   } cmd_connection_t;
 
-  typedef struct acc_code {
+  typedef struct {
     uint16_t blk;
-    circ_loc_idx2_t loc;
-    uint8_t port_type;
-    uint8_t range;
-    uint8_t keyvals[10];
-  } cmd_acc_code_t;
+    circ_loc_idx1_t loc;
+  } cmd_calib_t;
+
+  typedef struct {
+    uint16_t blk;
+    circ_loc_idx1_t loc;
+    uint8_t data[64];
+  } cmd_state_t;
 
   typedef union cmddata {
     cmd_use_fanout_t fanout;
@@ -184,8 +186,8 @@ namespace circ {
     cmd_connection_t conn;
     circ_loc_t circ_loc;
     circ_loc_idx1_t circ_loc_idx1;
-    circ_loc_idx2_t circ_loc_idx2;
-    cmd_acc_code_t codes;
+    cmd_state_t state;
+    cmd_calib_t calib;
   } cmd_data_t;
 
   typedef struct cmd {

@@ -60,6 +60,18 @@ class BlockType(Enum):
     LUT = "lut";
     NONE = "<none>";
 
+    def code(self):
+        mapping = {
+            BlockType.DAC: 0,
+            BlockType.MULT: 5,
+            BlockType.INTEG: 6,
+            BlockType.FANOUT: 7,
+            BlockType.LUT: 8,
+            BlockType.ADC: 9
+        }
+        return mapping[self]
+
+
 class CircCmdType(Enum):
     USE_DAC = 'use_dac';
     USE_MULT = 'use_mult';
@@ -78,13 +90,11 @@ class CircCmdType(Enum):
     CALIBRATE = 'calibrate';
     GET_INTEG_STATUS = 'get_integ_status';
     GET_ADC_STATUS = 'get_adc_status';
-    CONFIG_INTEG = 'config_integ';
-    CONFIG_DAC = 'config_dac';
-    CONFIG_MULT = 'config_mult';
     WRITE_LUT = "write_lut";
-    GET_CODES = "get_codes";
-    SET_CODES = "set_codes";
-    MEASURE = "measure"
+    GET_STATE = "get_state";
+    SET_STATE = "set_state";
+    MEASURE = "measure";
+    TUNE = "tune";
 
 class ExpCmdType(Enum):
     RESET = 'reset';

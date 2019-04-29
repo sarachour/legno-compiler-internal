@@ -51,17 +51,13 @@ def circ_cmd_type():
         CircCmdType.DISABLE_ADC.name:11,
         CircCmdType.CONNECT.name:12,
         CircCmdType.BREAK.name:13,
-        CircCmdType.CALIBRATE.name:14,
-        CircCmdType.GET_INTEG_STATUS.name:15,
-        CircCmdType.GET_ADC_STATUS.name:16,
-        CircCmdType.CONFIG_DAC.name:17,
-        CircCmdType.CONFIG_MULT.name:18,
-        CircCmdType.CONFIG_INTEG.name:19,
-        CircCmdType.WRITE_LUT.name:20,
-        CircCmdType.GET_CODES.name:21,
-        CircCmdType.SET_CODES.name:22,
-        CircCmdType.MEASURE.name:23,
-
+        CircCmdType.GET_INTEG_STATUS.name:14,
+        CircCmdType.GET_ADC_STATUS.name:15,
+        CircCmdType.WRITE_LUT.name:16,
+        CircCmdType.CALIBRATE.name:17,
+        CircCmdType.TUNE.name:18,
+        CircCmdType.GET_STATE.name:19,
+        CircCmdType.SET_STATE.name:20
     }
     return cstruct.Enum(cstruct.Int24ul,
                         **kwargs)
@@ -154,19 +150,22 @@ def circ_connection_t():
     )
 
 
-def circ_acc_code_t():
+def circ_state_t():
     return cstruct.Struct(
         "blk" / block_type_t(),
-        "loc" / circ_loc_idx2_t(),
-        "port_type" / cstruct.Int8ul,
-        "range" / cstruct.Int8ul,
-        "keyvals" / cstruct.Array(10,cstruct.Int8ul)
+        "loc" / circ_loc_idx1_t(),
+        "data" / cstruct.Array(64,cstruct.Int8ul)
     )
+
+
+def circ_calib_t():
+    return cstruct.Struct(
+        "blk" / block_type_t(),
+        "loc" / circ_loc_idx1_t()
+    )
+
 def circ_cmd_data():
     return cstruct.Union(None,
-                         circ_loc=circ_loc_t(),
-                         circ_loc_idx1=circ_loc_idx1_t(),
-                         circ_loc_idx2=circ_loc_idx2_t(),
                          fanout=circ_use_fanout_t(),
                          integ=circ_use_integ_t(),
                          mult=circ_use_mult_t(),
@@ -175,7 +174,10 @@ def circ_cmd_data():
                          write_lut=circ_write_lut_t(),
                          adc=circ_use_adc_t(),
                          conn=circ_connection_t(),
-                         codes=circ_acc_code_t()
+                         circ_loc=circ_loc_t(),
+                         circ_loc_idx1=circ_loc_idx1_t(),
+                         state=circ_state_t(),
+                         calib=circ_calib_t()
     )
 
 def circ_cmd_t():
@@ -221,4 +223,18 @@ def cmd_t():
         cstruct.Padding(2),
         "data" / cmd_data_t(),
     )
-#
+
+
+
+
+#def block_code_t():
+#    return cstruct.Union(None,
+#                         "lut"/ lut_code_t(),
+#                         "fanout" / fanout_code_t(),
+#                         "dac" / dac_code_t(),
+#                         "adc" / adc_code_t(),
+#                         "mult" / mult_code_t(),
+#                         "integ" / integ_code_t()
+#    )
+
+

@@ -4,35 +4,112 @@
 #include "Comm.h"
 
 namespace calibrate {
-  /*
-  uint8_t get_offset_code(Fabric::Chip::Tile::Slice::FunctionUnit::Interface* iface,
-                          uint8_t range){
-    switch(range){
-    case circ::HI_RANGE:
-      return iface->hiOffsetCode;
-    case circ::MED_RANGE:
-      return iface->midOffsetCode;
-    case circ::LOW_RANGE:
-      return iface->loOffsetCode;
+
+  bool calibrate(Fabric* fab,
+                 uint16_t blk,
+                 circ::circ_loc_idx1_t loc)
+  {
+    Fabric::Chip::Tile::Slice::Fanout * fanout;
+    Fabric::Chip::Tile::Slice::Multiplier * mult;
+    Fabric::Chip::Tile::Slice::ChipAdc * adc;
+    Fabric::Chip::Tile::Slice::Dac * dac;
+    Fabric::Chip::Tile::Slice::Integrator * integ;
+
+    switch(blk){
+    case circ::block_type_t::FANOUT:
+      fanout = common::get_fanout(fab,loc);
+      fanout->calibrate();
+      break;
+
+    case circ::block_type_t::MULT:
+      // TODO: indicate if input or output.
+      mult = common::get_mult(fab,loc);
+      if(mult->m_codes.vga){
+        return mult->calibrateTarget();
+      }
+      else{
+        return mult->calibrate();
+      }
+      break;
+
+    case circ::block_type_t::TILE_ADC:
+      adc = common::get_slice(fab,loc.loc)->adc;
+      adc->calibrate();
+      break;
+
+    case circ::block_type_t::TILE_DAC:
+      dac = common::get_slice(fab,loc.loc)->dac;
+      if(dac->m_codes.source == dac_source_t::DSRC_MEM){
+        return dac->calibrateTarget();
+      }
+      else{
+        return dac->calibrate();
+      }
+      break;
+
+    case circ::block_type_t::INTEG:
+      integ = common::get_slice(fab,loc.loc)->integrator;
+      integ->calibrate();
+      integ->calibrateTarget();
+      break;
+
+    default:
+      comm::error("get_offset_code: unexpected block");
+
     }
-    comm::error("get_offset_code: unexpected code");
-  }
-  */
-  void add_to_buf(uint8_t* buf, uint8_t& idx, circ::code_type_t key, uint8_t value){
-    buf[idx] = key;
-    buf[idx+1] = value;
-    idx += 2;
-  }
-  void finish_buf(uint8_t* buf,uint8_t& idx){
-    buf[idx] = circ::code_type_t::CODE_END;
+
   }
 
   void get_codes(Fabric* fab,
                  uint16_t blk,
-                 circ::circ_loc_idx2_t port,
-                 uint8_t port_type,
-                 uint8_t rng,
-                 uint8_t* buf)
+                 circ::circ_loc_idx1_t loc,
+                 uint8_t buf)
+  {
+    Fabric::Chip::Tile::Slice::Fanout * fanout;
+    Fabric::Chip::Tile::Slice::Multiplier * mult;
+    Fabric::Chip::Tile::Slice::ChipAdc * adc;
+    Fabric::Chip::Tile::Slice::Dac * dac;
+    Fabric::Chip::Tile::Slice::Integrator * integ;
+
+    block_code_t codes;
+    memcpy(codes.charbuf, buf, sizeof(block_code_t));
+    switch(blk){
+    case circ::block_type_t::FANOUT:
+      fanout = common::get_fanout(fab,loc);
+      fanout->update(codes.fanout);
+      break;
+
+    case circ::block_type_t::MULT:
+      // TODO: indicate if input or output.
+      mult = common::get_mult(fab,loc);
+      mult->update(codes.mult);
+      break;
+
+    case circ::block_type_t::TILE_ADC:
+      adc = common::get_slice(fab,loc.loc)->adc;
+      adc->update(codes.adc);
+      break;
+
+    case circ::block_type_t::TILE_DAC:
+      dac = common::get_slice(fab,loc.loc)->dac;
+      dac->update(codes.dac);
+      break;
+
+    case circ::block_type_t::INTEG:
+      integ = common::get_slice(fab,loc.loc)->integrator;
+      integ->update(codes.integ);
+      break;
+
+    default:
+      comm::error("get_offset_code: unexpected block");
+
+    }
+  }
+
+  void get_codes(Fabric* fab,
+                 uint16_t blk,
+                 circ::circ_loc_idx1_t loc,
+                 block_code_t& state)
   {
     uint8_t idx = 0;
     Fabric::Chip::Tile::Slice::Fanout * fanout;
@@ -40,71 +117,37 @@ namespace calibrate {
     Fabric::Chip::Tile::Slice::ChipAdc * adc;
     Fabric::Chip::Tile::Slice::Dac * dac;
     Fabric::Chip::Tile::Slice::Integrator * integ;
-    Fabric::Chip::Tile::Slice::FunctionUnit::Interface* iface;
-    switch(port_type){
-    case circ::port_type_t::PORT_INPUT:
-      iface = common::get_input_port(fab,blk,port);
-      break;
-    case circ::port_type_t::PORT_OUTPUT:
-      iface = common::get_output_port(fab,blk,port);
-      break;
-    }
-    /*
+
     switch(blk){
     case circ::block_type_t::FANOUT:
-      fanout = common::get_fanout(fab,port.idxloc);
-      add_to_buf(buf,idx,circ::code_type_t::CODE_PMOS, fanout->getAnaIrefPmos());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_NMOS, fanout->getAnaIrefNmos());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_OFFSET, get_offset_code(iface,rng));
-      finish_buf(buf,idx);
+      fanout = common::get_fanout(fab,loc);
+      state.fanout = fanout->m_codes;
       break;
 
     case circ::block_type_t::MULT:
       // TODO: indicate if input or output.
-      mult = common::get_mult(fab,port.idxloc);
-      add_to_buf(buf,idx,circ::code_type_t::CODE_PMOS, mult->getAnaIrefPmos());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_NMOS, mult->getAnaIrefNmos());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_GAIN_OFFSET,
-                 mult->getGainOffsetCode());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_OFFSET, get_offset_code(iface,rng));
-      finish_buf(buf,idx);
+      mult = common::get_mult(fab,loc);
+      state.mult = mult->m_codes;
       break;
 
     case circ::block_type_t::TILE_ADC:
-      adc = common::get_slice(fab,port.idxloc.loc)->adc;
-      add_to_buf(buf,idx,circ::code_type_t::CODE_PMOS, adc->getAnaIrefPmos1());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_PMOS2, adc->getAnaIrefPmos2());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_NMOS, adc->getAnaIrefNmos());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_COMP_LOWER, adc->getCalCompLower());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_COMP_LOWER_FS, adc->getCalCompLowerFS());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_COMP_UPPER, adc->getCalCompUpper());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_COMP_UPPER_FS, adc->getCalCompUpperFS());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_I2V_OFFSET, adc->getI2VOffset());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_OFFSET, get_offset_code(iface,rng));
-      finish_buf(buf,idx);
+      adc = common::get_slice(fab,loc.loc)->adc;
+      state.adc = adc->m_codes;
       break;
 
     case circ::block_type_t::TILE_DAC:
-      dac = common::get_slice(fab,port.idxloc.loc)->dac;
-      add_to_buf(buf,idx,circ::code_type_t::CODE_NMOS, dac->getAnaIrefNmos());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_GAIN_OFFSET,
-                 dac->getGainOffsetCode());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_OFFSET, get_offset_code(iface,rng));
-      finish_buf(buf,idx);
+      dac = common::get_slice(fab,loc.loc)->dac;
+      state.dac = dac->m_codes;
       break;
 
     case circ::block_type_t::INTEG:
-      integ = common::get_slice(fab,port.idxloc.loc)->integrator;
-      add_to_buf(buf,idx,circ::code_type_t::CODE_PMOS, mult->getAnaIrefPmos());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_NMOS, mult->getAnaIrefNmos());
-      add_to_buf(buf,idx,circ::code_type_t::CODE_OFFSET, get_offset_code(iface,rng));
-      finish_buf(buf,idx);
+      integ = common::get_slice(fab,loc.loc)->integrator;
+      state.integ = integ->m_codes;
       break;
     default:
       comm::error("get_offset_code: unexpected block");
 
     }
-    */
   }
 
 }

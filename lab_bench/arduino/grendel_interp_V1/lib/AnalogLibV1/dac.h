@@ -30,7 +30,10 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 			float constant // floating point representation of desired constant
 			// -10.0 to 10.0 are valid
 		);
+    void update(dac_code_t codes);
     dac_code_t m_codes;
+    bool calibrate ();
+		bool calibrateTarget ();
 	private:
 		class DacOut;
 		Dac (Slice * parentSlice);
@@ -47,9 +50,6 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 			unsigned char selLine,
 			unsigned char cfgTile
 		) const;
-    void update(dac_code_t codes);
-		bool calibrate ();
-		bool calibrateTarget ();
 		void setAnaIrefNmos () const override;
 		void setAnaIrefPmos () const override {};
 

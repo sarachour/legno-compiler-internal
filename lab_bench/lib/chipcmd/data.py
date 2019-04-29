@@ -381,7 +381,7 @@ class AnalogChipCommand(ArduinoCommand):
                           (block,loc.index,indices[block]))
 
         elif not block is None:
-           if not loc.index is None:
+           if not (loc.index is None or loc.index == 0):
                self.fail("expected no index <%s> <%d>" %\
                          (block,loc.index))
 

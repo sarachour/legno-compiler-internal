@@ -4,12 +4,19 @@
 #define CALIBRATE_H
 
 namespace calibrate {
-
-  void get_codes(Fabric* fab,
+  bool calibrate(Fabric * fab,
                  uint16_t blk,
-                 circ::circ_loc_idx2_t port,
-                 uint8_t port_type,
-                 uint8_t rng,
+                 circ::circ_loc_idx1_t loc);
+
+
+  void get_codes(Fabric * fab,
+                 uint16_t blk,
+                 circ::circ_loc_idx1_t loc,
+                 block_code_t& buf);
+
+  void set_codes(Fabric * fab,
+                 uint16_t blk,
+                 circ::circ_loc_idx1_t loc,
                  uint8_t* buf);
 
 }

@@ -55,6 +55,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   cmd_write_lut_t wrlutd;
   cmd_use_adc_t adcd;
   cmd_connection_t connd;
+  block_code_t state;
   uint8_t byteval;
   char buf[32];
   Fabric::Chip::Tile::Slice* slice;
@@ -212,36 +213,32 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     comm::response("disconnected",0);
     break;
   case cmd_type_t::CALIBRATE:
-    slice = common::get_slice(fab,cmd.data.circ_loc);
-    if(do_calibrate(cmd.data.circ_loc.chip,
-                    cmd.data.circ_loc.tile,
-                    cmd.data.circ_loc.slice)){
-      comm::test(slice->calibrate(), "calibration failed");
-      comm::test(slice->calibrateTarget(), "calibration target failed");
-    }
-    else{
-      comm::print_header();
-      Serial.println("skipping calibration.");
-      Serial.flush();
-    }
-    comm::response("calibrated",0);
+    comm::test(calibrate::calibrate(fab,
+                                    cmd.data.calib.blk,
+                                    cmd.data.calib.loc),
+               "calibration failed");
     break;
-  case cmd_type_t::GET_CODES:
+
+  case cmd_type_t::GET_STATE:
     calibrate::get_codes(fab,
-                         cmd.data.codes.blk,
-                         cmd.data.codes.loc,
-                         cmd.data.codes.port_type,
-                         cmd.data.codes.range,
-                         (uint8_t *)buf);
+                         cmd.data.state.blk,
+                         cmd.data.state.loc,
+                         state);
     comm::response("returning codes",1);
-    comm::data("32","I");
+    sprintf(FMTBUF,"%d",sizeof(state)+1);
+    comm::data(FMTBUF,"I");
     comm::payload();
-    for(int i=0; i < 32; i+=1){
+    Serial.print(sizeof(state));
+    for(int i=0; i < sizeof(state); i+=1){
       Serial.print(" ");
-      Serial.print((uint8_t) buf[i]);
+      Serial.print(state.charbuf[i]);
     }
     Serial.println("");
     break;
+  case cmd_type_t::SET_STATE:
+    comm::response("set state. unimplemented",0);
+    break;
+
   default:
     comm::error("unknown command");
     break;

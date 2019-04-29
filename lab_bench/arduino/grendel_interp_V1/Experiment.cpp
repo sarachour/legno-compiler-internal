@@ -56,29 +56,22 @@ inline void set_SDA(int SDA_VAL){
 void _update_wave(){
   int idx = IDX;
   IDX += 1;
-  
   if(EXPERIMENT->use_dac[0])
-    write_dac0_value(EXPERIMENT,idx);  
-
+    write_dac0_value(EXPERIMENT,idx);
   if(EXPERIMENT->use_dac[1])
     write_dac1_value(EXPERIMENT,idx);
-    
   if(EXPERIMENT->use_adc[0])
     save_adc0_value(EXPERIMENT,idx);
-  
   if(EXPERIMENT->use_adc[1])
     save_adc1_value(EXPERIMENT,idx);
-  
   if(EXPERIMENT->use_adc[2])
     save_adc2_value(EXPERIMENT,idx);
-  
   if(EXPERIMENT->use_adc[3])
     save_adc3_value(EXPERIMENT,idx);
-    
   //drive_sda_clock(idx);
   if(idx >= N){
     Timer3.detachInterrupt();
-    analogWrite(DAC0, 0); 
+    analogWrite(DAC0, 0);
     analogWrite(DAC1, 0);
   }
   // increment index
@@ -287,13 +280,13 @@ void set_sim_time(experiment_t * expr, float sim_time, float period_time, float 
   expr->compute_offsets = false;
 }
 
-void set_dac_values(experiment_t* expr, float * inbuf, int dac_id, int n, int offset){
-  if(not expr->compute_offsets){
-    Serial.print("[ERROR] must compute offsets before setting dac values.");
-    return;
-  }
-  int buf_idx = offset + expr->dac_offsets[dac_id];
-  for(int idx = 0; idx < n; idx+=1){
+  void set_dac_values(experiment_t* expr, float * inbuf, int dac_id, int n, int offset){
+    if(not expr->compute_offsets){
+      Serial.print("[ERROR] must compute offsets before setting dac values.");
+      return;
+    }
+    int buf_idx = offset + expr->dac_offsets[dac_id];
+    for(int idx = 0; idx < n; idx+=1){
       // 4096, zero at 2047
       unsigned short value = (unsigned short) (inbuf[idx]*2047+2047) & 0xfff;
       comm::print_header();
@@ -301,73 +294,16 @@ void set_dac_values(experiment_t* expr, float * inbuf, int dac_id, int n, int of
       Serial.print("=");
       Serial.println(inbuf[idx]);
       store_value(expr,buf_idx + idx, value);
+    }
+    comm::print_header();
+    Serial.println("done");
   }
-  comm::print_header();
-  Serial.println("done");
-}
-
-
-void debug_command(experiment_t* expr, Fabric* fab, cmd_t& cmd, float * inbuf){
-  char buf[128];
-  switch(cmd.type){
-    case cmd_type_t::RESET:
-      comm::response("[dbg] resetted",0);
-      break;
-    case cmd_type_t::RUN:
-      comm::response("[dbg] ran",0);
-      break;
-    case cmd_type_t::USE_ANALOG_CHIP:
-      comm::response("[dbg] use_analog_chip=true",0);
-      break;
-    case cmd_type_t::USE_DAC:
-      comm::response("[dbg] use_dac=true",0);
-      break;
-    case cmd_type_t::USE_ADC:
-      comm::response("[dbg] use_adc=true",0);
-      break;
-    case cmd_type_t::USE_OSC:
-      comm::response("[dbg] enable_trigger=true",0);
-      break;
-    case cmd_type_t::SET_SIM_TIME:
-      comm::response("[dbg] set simulation time",0);
-      break;
-
-    case cmd_type_t::COMPUTE_OFFSETS:
-      comm::response("[dbg] computed offsets",0);
-      break;
-    case cmd_type_t::SET_DAC_VALUES:
-      comm::response("[dbg] set dac values",0);
-      break;
-
-    case cmd_type_t::GET_ADC_VALUES:
-      comm::response("[dbg] get adc values",1);
-      comm::data("3","F");
-      comm::payload();
-      Serial.println(" 0.3 0.5 0.7");
-      break;
-
-    case cmd_type_t::GET_TIME_BETWEEN_SAMPLES:
-      comm::response("[dbg] get time between samples",1);
-      comm::data("0.1","f");
-      break;
-      
-    case cmd_type_t::GET_NUM_DAC_SAMPLES:
-      comm::response("get num dac samples",1);
-      comm::data("10","i");
-      break;
-      
-    case cmd_type_t::GET_NUM_ADC_SAMPLES:
-      comm::response("get num adc samples",1);
-      comm::data("15","i");
-      break;
-  }
-}
 
 
 
-void exec_command(experiment_t* expr, Fabric* fab, cmd_t& cmd, float * inbuf){
-  char buf[128];
-  switch(cmd.type){
+  void exec_command(experiment_t* expr, Fabric* fab, cmd_t& cmd, float * inbuf){
+    char buf[128];
+    switch(cmd.type){
     case cmd_type_t::RESET:
       reset_experiment(expr);
       comm::response("resetted",0);
@@ -428,101 +364,9 @@ void exec_command(experiment_t* expr, Fabric* fab, cmd_t& cmd, float * inbuf){
       sprintf(buf,"%d",expr->adc_samples);
       comm::data(buf,"i");
       break;
+    }
   }
-}
 
-
-void print_command(cmd_t& cmd, float* inbuf){
-  comm::print_header();
-  switch(cmd.type){
-    case cmd_type_t::SET_SIM_TIME:
-      Serial.print("set_sim_time sim=");
-      Serial.print(cmd.args.floats[0]);
-      Serial.print(" period=");
-      Serial.println(cmd.args.floats[1]);
-      Serial.print(" osc=");
-      Serial.println(cmd.args.floats[2]);
-      break;
-
-    case cmd_type_t::USE_OSC:
-      Serial.println("use_osc");
-      break;
-
-    case cmd_type_t::USE_DAC:
-      Serial.print("use_dac ");
-      Serial.print(cmd.args.ints[0]);
-      Serial.print(" periodic=");
-      Serial.println(cmd.flag ? "yes" : "no");
-      break;
-
-    case cmd_type_t::USE_ADC:
-      Serial.print("use_adc ");
-      Serial.println(cmd.args.ints[0]);
-      break;
-
-    case cmd_type_t::USE_ANALOG_CHIP:
-      Serial.println("use_analog_chip");
-      break;
-
-    case cmd_type_t::COMPUTE_OFFSETS:
-      Serial.println("compute_offsets");
-      break;
-
-    case cmd_type_t::GET_NUM_DAC_SAMPLES:
-      Serial.println("get_num_dac_samples");
-      break;
-
-    case cmd_type_t::GET_NUM_ADC_SAMPLES:
-      Serial.println("get_num_adc_samples");
-      break;
-    case cmd_type_t::GET_TIME_BETWEEN_SAMPLES:
-      Serial.println("get_time_between_samples");
-      break;
-
-    case cmd_type_t::GET_ADC_VALUES:
-      Serial.print("get_adc_values adc_id=");
-      Serial.print(cmd.args.ints[0]);
-      Serial.print(" nels=");
-      Serial.print(cmd.args.ints[1]);
-      Serial.print(" offset=");
-      Serial.println(cmd.args.ints[2]);
-      break;
-
-    case cmd_type_t::SET_DAC_VALUES:
-      Serial.print("set_dac_values dac_id=");
-      Serial.print(cmd.args.ints[0]);
-      Serial.print(" nels=");
-      Serial.print(cmd.args.ints[1]);
-      Serial.print(" offset=");
-      Serial.print(cmd.args.ints[2]);
-      Serial.print(" [");
-      for(int i=0; i < cmd.args.ints[1]; i++){
-        Serial.print(inbuf[i]);
-        Serial.print(" ");
-      }
-      Serial.println("]");
-      break;
-
-    case cmd_type_t::RESET:
-      Serial.println("reset");
-      break;
-
-    case cmd_type_t::RUN:
-      Serial.println("run");
-      break;
-
-    default:
-      Serial.print(cmd.type);
-      Serial.print(" ");
-      Serial.print(cmd.args.ints[0]);
-      Serial.print(" ");
-      Serial.print(cmd.args.ints[1]);
-      Serial.print(" ");
-      Serial.print(cmd.args.ints[2]);
-      Serial.println(" <unimpl experiment>");
-      break;
-  }
-}
 
 }
 

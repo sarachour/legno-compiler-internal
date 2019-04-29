@@ -1,5 +1,6 @@
 #include "AnalogLib.h"
 #include "Circuit.h"
+#include "Experiment.h"
 #include "Comm.h"
 
 namespace circ {
@@ -7,26 +8,17 @@ namespace circ {
 void debug_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   cmd_write_lut_t wrlutd;
   switch(cmd.type){
-      case cmd_type_t::CONFIG_DAC:
-        comm::response("[dbg] configured dac (direct)",0);
-        break;
       case cmd_type_t::USE_ADC:
         comm::response("[dbg] enabled adc",0);
         break;
       case cmd_type_t::USE_DAC:
         comm::response("[dbg] enabled dac",0);
         break;
-      case cmd_type_t::CONFIG_MULT:
-        comm::response("[dbg] configured mult [direct]",0);
-        break;
       case cmd_type_t::USE_MULT:
         comm::response("[dbg] enabled mult",0);
         break;
       case cmd_type_t::USE_FANOUT:
         comm::response("[dbg] enabled fanout",0);
-        break;
-    case cmd_type_t::CONFIG_INTEG:
-        comm::response("[dbg] configured integ [direct]",0);
         break;
     case cmd_type_t::USE_INTEG:
         comm::response("[dbg] enabled integ",0);
@@ -168,23 +160,6 @@ void print_command(cmd_t& cmd){
     Serial.print(" rng=");
     Serial.print(range_to_str(cmd.data.fanout.in_range));
     break;
-  case cmd_type_t::CONFIG_MULT:
-    Serial.print("config mult ");
-    print_idx_loc(cmd.data.mult.loc);
-    if(cmd.data.mult.use_coeff){
-      Serial.print(" gain coeff=");
-      Serial.print(cmd.data.mult.coeff);
-    }
-    else{
-      Serial.print(" prod");
-    }
-    Serial.print(" in0_rng=");
-    Serial.print(range_to_str(cmd.data.mult.in0_range));
-    Serial.print(" in1_rng=");
-    Serial.print(range_to_str(cmd.data.mult.in1_range));
-    Serial.print(" out_rng=");
-    Serial.print(range_to_str(cmd.data.mult.out_range));
-    break;
   case cmd_type_t::USE_MULT:
     Serial.print("use mult ");
     print_idx_loc(cmd.data.mult.loc);
@@ -201,12 +176,6 @@ void print_command(cmd_t& cmd){
     Serial.print(range_to_str(cmd.data.mult.in1_range));
     Serial.print(" out_rng=");
     Serial.print(range_to_str(cmd.data.mult.out_range));
-    break;
-  case cmd_type_t::CONFIG_DAC:
-    Serial.print("config dac ");
-    print_loc(cmd.data.dac.loc);
-    Serial.print(" val=");
-    Serial.print(cmd.data.dac.value);
     break;
   case cmd_type_t::USE_ADC:
     Serial.print("use adc ");
@@ -233,16 +202,6 @@ void print_command(cmd_t& cmd){
   case cmd_type_t::GET_INTEG_STATUS:
     Serial.print("get integ status ");
     print_loc(cmd.data.integ.loc);
-    break;
-  case cmd_type_t::CONFIG_INTEG:
-    Serial.print("config integ ");
-    print_loc(cmd.data.integ.loc);
-    Serial.print(" ic=");
-    Serial.print(cmd.data.integ.value);
-    Serial.print(" in_range=");
-    Serial.print(range_to_str(cmd.data.integ.in_range));
-    Serial.print(" out_range=");
-    Serial.print(range_to_str(cmd.data.integ.out_range));
     break;
   case cmd_type_t::USE_INTEG:
     Serial.print("use integ ");
@@ -312,20 +271,174 @@ void print_command(cmd_t& cmd){
     break;
   case cmd_type_t::CALIBRATE:
     Serial.print("calibrate ");
-    print_loc(cmd.data.circ_loc);
-    break;
-  case cmd_type_t::GET_CODES:
-    Serial.print("get_codes ");
-    print_block(cmd.data.codes.blk);
+    print_block(cmd.data.calib.blk);
     Serial.print(" ");
-    print_port_loc(cmd.data.codes.loc);
+    print_idx_loc(cmd.data.calib.loc);
+    break;
+  case cmd_type_t::GET_STATE:
+    Serial.print("get_state ");
+    print_block(cmd.data.state.blk);
+    Serial.print(" ");
+    print_idx_loc(cmd.data.state.loc);
     break;
   default:
     Serial.print(cmd.type);
-    Serial.print(" <unimpl circuit>");
+    Serial.print(" <unimpl print circuit>");
     break;
   }
   Serial.println("");
 }
+
+}
+
+namespace experiment {
+
+
+  void debug_command(experiment_t* expr, Fabric* fab, cmd_t& cmd, float * inbuf){
+    char buf[128];
+    switch(cmd.type){
+    case cmd_type_t::RESET:
+      comm::response("[dbg] resetted",0);
+      break;
+    case cmd_type_t::RUN:
+      comm::response("[dbg] ran",0);
+      break;
+    case cmd_type_t::USE_ANALOG_CHIP:
+      comm::response("[dbg] use_analog_chip=true",0);
+      break;
+    case cmd_type_t::USE_DAC:
+      comm::response("[dbg] use_dac=true",0);
+      break;
+    case cmd_type_t::USE_ADC:
+      comm::response("[dbg] use_adc=true",0);
+      break;
+    case cmd_type_t::USE_OSC:
+      comm::response("[dbg] enable_trigger=true",0);
+      break;
+    case cmd_type_t::SET_SIM_TIME:
+      comm::response("[dbg] set simulation time",0);
+      break;
+
+    case cmd_type_t::COMPUTE_OFFSETS:
+      comm::response("[dbg] computed offsets",0);
+      break;
+    case cmd_type_t::SET_DAC_VALUES:
+      comm::response("[dbg] set dac values",0);
+      break;
+
+    case cmd_type_t::GET_ADC_VALUES:
+      comm::response("[dbg] get adc values",1);
+      comm::data("3","F");
+      comm::payload();
+      Serial.println(" 0.3 0.5 0.7");
+      break;
+
+    case cmd_type_t::GET_TIME_BETWEEN_SAMPLES:
+      comm::response("[dbg] get time between samples",1);
+      comm::data("0.1","f");
+      break;
+    case cmd_type_t::GET_NUM_DAC_SAMPLES:
+      comm::response("get num dac samples",1);
+      comm::data("10","i");
+      break;
+    case cmd_type_t::GET_NUM_ADC_SAMPLES:
+      comm::response("get num adc samples",1);
+      comm::data("15","i");
+      break;
+    }
+  }
+
+  void print_command(cmd_t& cmd, float* inbuf){
+    comm::print_header();
+    switch(cmd.type){
+    case cmd_type_t::SET_SIM_TIME:
+      Serial.print("set_sim_time sim=");
+      Serial.print(cmd.args.floats[0]);
+      Serial.print(" period=");
+      Serial.println(cmd.args.floats[1]);
+      Serial.print(" osc=");
+      Serial.println(cmd.args.floats[2]);
+      break;
+
+    case cmd_type_t::USE_OSC:
+      Serial.println("use_osc");
+      break;
+
+    case cmd_type_t::USE_DAC:
+      Serial.print("use_dac ");
+      Serial.print(cmd.args.ints[0]);
+      Serial.print(" periodic=");
+      Serial.println(cmd.flag ? "yes" : "no");
+      break;
+
+    case cmd_type_t::USE_ADC:
+      Serial.print("use_adc ");
+      Serial.println(cmd.args.ints[0]);
+      break;
+
+    case cmd_type_t::USE_ANALOG_CHIP:
+      Serial.println("use_analog_chip");
+      break;
+
+    case cmd_type_t::COMPUTE_OFFSETS:
+      Serial.println("compute_offsets");
+      break;
+
+    case cmd_type_t::GET_NUM_DAC_SAMPLES:
+      Serial.println("get_num_dac_samples");
+      break;
+
+    case cmd_type_t::GET_NUM_ADC_SAMPLES:
+      Serial.println("get_num_adc_samples");
+      break;
+    case cmd_type_t::GET_TIME_BETWEEN_SAMPLES:
+      Serial.println("get_time_between_samples");
+      break;
+
+    case cmd_type_t::GET_ADC_VALUES:
+      Serial.print("get_adc_values adc_id=");
+      Serial.print(cmd.args.ints[0]);
+      Serial.print(" nels=");
+      Serial.print(cmd.args.ints[1]);
+      Serial.print(" offset=");
+      Serial.println(cmd.args.ints[2]);
+      break;
+
+    case cmd_type_t::SET_DAC_VALUES:
+      Serial.print("set_dac_values dac_id=");
+      Serial.print(cmd.args.ints[0]);
+      Serial.print(" nels=");
+      Serial.print(cmd.args.ints[1]);
+      Serial.print(" offset=");
+      Serial.print(cmd.args.ints[2]);
+      Serial.print(" [");
+      for(int i=0; i < cmd.args.ints[1]; i++){
+        Serial.print(inbuf[i]);
+        Serial.print(" ");
+      }
+      Serial.println("]");
+      break;
+
+    case cmd_type_t::RESET:
+      Serial.println("reset");
+      break;
+
+    case cmd_type_t::RUN:
+      Serial.println("run");
+      break;
+
+    default:
+      Serial.print(cmd.type);
+      Serial.print(" ");
+      Serial.print(cmd.args.ints[0]);
+      Serial.print(" ");
+      Serial.print(cmd.args.ints[1]);
+      Serial.print(" ");
+      Serial.print(cmd.args.ints[2]);
+      Serial.println(" <unimpl print experiment>");
+      break;
+    }
+  }
+
 
 }

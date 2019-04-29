@@ -116,10 +116,12 @@ typedef union {
   lut_code_t lut;
   fanout_code_t fanout;
   dac_code_t dac;
+  adc_code_t adc;
   mult_code_t mult;
   integ_code_t integ;
-
+  unsigned char charbuf[24];
 } block_code_t;
+
 typedef enum {
   MEAS_CHIP_OUTPUT,
   MEAS_ADC
@@ -139,7 +141,7 @@ namespace binsearch {
                           float target,
                           unsigned char & code,
                           unsigned char & nmos,
-                          meas_method_t method,
+                          meas_method_t method
      );
 
   void find_pmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
@@ -211,18 +213,6 @@ class Fabric::Chip::Tile::Slice::FunctionUnit {
       return parentSlice->parentTile->parentChip;
     }
     void updateFu();
-    /*
-    void testIref(unsigned char code) const;
-    void testStab(unsigned char code,
-                  unsigned char nmos,
-                  float error,
-                  bool& calib_failed) const;
-    void testStabAndUpdateNmos(unsigned char code,
-                               unsigned char& nmos,
-                               float error,
-                               bool& new_search,
-                               bool& calib_failed);
-    */
 
 	private:
 		class GenericInterface;

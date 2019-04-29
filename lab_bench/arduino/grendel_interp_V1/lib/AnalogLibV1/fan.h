@@ -14,6 +14,10 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
 		bool calibrate ();
 
     fanout_code_t m_codes;
+    void update(fanout_code_t codes){
+      m_codes = codes;
+      updateFu();
+    }
 	private:
 		class FanoutOut;
 		Fanout (Slice * parentSlice, unit unitId);
@@ -23,10 +27,6 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
 			delete out1;
 			delete out2;
 		};
-    void update(fanout_code_t codes){
-      m_codes = codes;
-      updateFu();
-    }
 		/*Set enable, range*/
 		void setParam0 () const override;
 		/*Set calDac1, invert output 1*/
