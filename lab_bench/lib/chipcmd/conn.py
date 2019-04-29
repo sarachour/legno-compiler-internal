@@ -1,6 +1,7 @@
 import lab_bench.lib.enums as enums
 from lab_bench.lib.chipcmd.data import *
 from lab_bench.lib.chipcmd.common import *
+from lab_bench.lib.base_command import AnalogChipCommand
 
 
 

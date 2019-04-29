@@ -1,5 +1,6 @@
 import lab_bench.lib.enums as enums
-from lab_bench.lib.chipcmd.data import AnalogChipCommand, CircLoc
+from lab_bench.lib.chipcmd.data import CircLoc
+from lab_bench.lib.base_command import AnalogChipCommand
 from lab_bench.lib.chipcmd.common import *
 
 class DisableCmd(AnalogChipCommand):

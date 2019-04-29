@@ -1,4 +1,6 @@
 from lab_bench.lib.enums import BlockType,ExpCmdType,CircCmdType,CmdType
+import lab_bench.lib.chipcmd.data as chipdata
+
 import construct as cstruct
 
 def block_type_t():
@@ -224,6 +226,56 @@ def cmd_t():
         "data" / cmd_data_t(),
     )
 
+def lut_source_t():
+    kwargs = {
+        chipdata.LUTSourceType.ADC0.name:0,
+        chipdata.LUTSourceType.ADC1.name:1,
+        chipdata.LUTSourceType.EXTERN.name:2,
+        chipdata.LUTSourceType.CONTROLLER.name:3
+    }
+    return cstruct.Enum(cstruct.Int8ul,**kwargs)
+
+def dac_source_t():
+    kwargs = {
+        chipdata.DACSourceType.MEM.name:0,
+        chipdata.DACSourceType.EXTERN.name:1,
+        chipdata.DACSourceType.LUT0.name:2,
+        chipdata.DACSourceType.LUT1.name:3
+    }
+    return cstruct.Enum(cstruct.Int8ul,**kwargs)
+
+def range_t():
+    kwargs = {
+        chipdata.RangeType.HIGH.name:0,
+        chipdata.RangeType.MED.name:1,
+        chipdata.RangeType.LOW.name:2
+    }
+    return cstruct.Enum(cstruct.Int8ul,**kwargs)
+
+def dac_state_t():
+    return cstruct.Struct(
+        "enable" / cstruct.Int8ul,
+        "inv" / cstruct.Int8ul,
+        "range" / range_t(),
+        "source" / dac_source_t(),
+        "pmos" / cstruct.Int8ul,
+        "nmos" / cstruct.Int8ul,
+        "gain_cal" / cstruct.Int8ul,
+        "const_code" / cstruct.Int8ul,
+        "const_val" / cstruct.Float32l
+    )
+
+def lut_state_t():
+    return cstruct.Struct(
+        "source" / lut_source_t()
+    )
+
+
+def state_t():
+    return cstruct.Union(None,
+                         "lut_code_t" / lut_state_t(),
+                         "dac_code_t"/ dac_state_t()
+    )
 
 
 

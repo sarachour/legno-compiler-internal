@@ -1,32 +1,12 @@
 from enum import Enum
-from lab_bench.lib.base_command import ArduinoCommand
 import lab_bench.lib.cstructs as cstructs
 import lab_bench.lib.enums as enums
-
-class Priority(str,Enum):
-    FIRST = "first"
-    EARLY = "early"
-    NORMAL = "normal"
-    LATE = "late"
-    LAST = "last"
-
-    def priority(self):
-        if self == Priority.FIRST:
-            return 0
-        elif self == Priority.EARLY:
-            return 1
-        elif self == Priority.NORMAL:
-            return 2
-        elif self == Priority.LATE:
-            return 3
-        elif self == Priority.LAST:
-            return 4
 
 class LUTSourceType(str,Enum):
     EXTERN = 'extern'
     ADC0 = "adc0"
     ADC1 = "adc1"
-
+    CONTROLLER = "controller"
 
 
     def code(self):
@@ -330,61 +310,4 @@ class CircPortLoc:
 
     def __repr__(self):
         return "port(%s,%s)" % (self.loc,self.port)
-
-
-
-class AnalogChipCommand(ArduinoCommand):
-
-    def __init__(self):
-        ArduinoCommand.__init__(self,cstructs.cmd_t())
-
-    def specify_index(self,block,loc):
-        return (block == enums.BlockType.FANOUT) \
-            or (block == enums.BlockType.TILE_INPUT) \
-            or (block == enums.BlockType.TILE_OUTPUT) \
-            or (block == enums.BlockType.MULT)
-
-    def specify_output_port(self,block):
-        return (block == enums.BlockType.FANOUT)
-
-    def specify_input_port(self,block):
-        return (block == enums.BlockType.MULT)
-
-    def test_loc(self,block,loc):
-        NCHIPS = 2
-        NTILES = 4
-        NSLICES = 4
-        NINDICES_COMP = 2
-        NINDICES_TILE = 4
-        if not loc.chip in range(0,NCHIPS):
-            self.fail("unknown chip <%d>" % loc.chip)
-        if not loc.tile in range(0,NTILES):
-            self.fail("unknown tile <%d>" % loc.tile)
-        if not loc.slice in range(0,NSLICES):
-            self.fail("unknown slice <%d>" % loc.slice)
-
-        if (block == enums.BlockType.FANOUT) \
-            or (block == enums.BlockType.TILE_INPUT) \
-            or (block == enums.BlockType.TILE_OUTPUT) \
-            or (block == enums.BlockType.MULT):
-            indices = {
-                enums.BlockType.FANOUT: range(0,NINDICES_COMP),
-                enums.BlockType.MULT: range(0,NINDICES_COMP),
-                enums.BlockType.TILE_INPUT: range(0,NINDICES_TILE),
-                enums.BlockType.TILE_OUTPUT: range(0,NINDICES_TILE)
-            }
-            if loc.index is None:
-                self.fail("expected index <%s>" % block)
-
-            elif not loc.index in indices[block]:
-                self.fail("block <%s> index <%d> must be from indices <%s>" %\
-                          (block,loc.index,indices[block]))
-
-        elif not block is None:
-           if not (loc.index is None or loc.index == 0):
-               self.fail("expected no index <%s> <%d>" %\
-                         (block,loc.index))
-
-        else:
-            self.fail("not in block list <%s>" % block)
 

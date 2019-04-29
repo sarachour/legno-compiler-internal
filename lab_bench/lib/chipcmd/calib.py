@@ -1,5 +1,7 @@
 import lab_bench.lib.enums as enums
-from lab_bench.lib.chipcmd.data import AnalogChipCommand, CircLoc
+import lab_bench.lib.cstructs as cstructs
+from lab_bench.lib.base_command import AnalogChipCommand
+from lab_bench.lib.chipcmd.data import CircLoc
 from lab_bench.lib.chipcmd.common import *
 import json
 
@@ -100,10 +102,15 @@ class GetStateCmd(AnalogChipCommand):
         datum = self._loc.to_json()
         datum['block_type'] = self._blk.value
         nels = resp.data(0)[0]
-        data = resp.data(0)[1:]
+        data = bytes(resp.data(0)[1:])
         print(nels)
+        print(resp.data(0)[1:])
         print(data)
         print(len(data))
+        typ = cstructs.state_t()
+        print(typ)
+        obj = typ.parse(data)
+        print(obj)
         input()
         return True
 

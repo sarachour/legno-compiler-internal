@@ -10,43 +10,6 @@ class PortType(Enum):
         else:
             return 1
 
-class CodeType(Enum):
-    CODE_END = "end"
-    CODE_PMOS = "pmos"
-    CODE_PMOS2 = "pmos2"
-    CODE_NMOS = "nmos"
-    CODE_OFFSET = "offset"
-    CODE_GAIN_OFFSET = "gain_offset"
-    CODE_I2V_OFFSET = "i2v_offset"
-    CODE_COMP_LOWER = "comp_lower"
-    CODE_COMP_LOWER_FS = "comp_lower_fs"
-    CODE_COMP_UPPER = "comp_upper"
-    CODE_COMP_UPPER_FS = "comp_upper_fs"
-
-    @staticmethod
-    def codes():
-        return {
-            CodeType.CODE_END:0,
-            CodeType.CODE_PMOS:1,
-            CodeType.CODE_PMOS2:2,
-            CodeType.CODE_NMOS:3,
-            CodeType.CODE_OFFSET:4,
-            CodeType.CODE_GAIN_OFFSET:5,
-            CodeType.CODE_I2V_OFFSET:6,
-            CodeType.CODE_COMP_LOWER:7,
-            CodeType.CODE_COMP_LOWER_FS:8,
-            CodeType.CODE_COMP_UPPER:9,
-            CodeType.CODE_COMP_UPPER_FS:10
-        }
-
-    @staticmethod
-    def from_code(value):
-        for code,val in CodeType.codes().items():
-            if val == value:
-                return code
-
-        raise Exception("no code exists")
-
 class BlockType(Enum):
     DAC = 'dac';
     ADC = 'adc';

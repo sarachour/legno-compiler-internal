@@ -2,7 +2,7 @@ import parse as parselib
 import numpy as np
 from lab_bench.lib.chipcmd.data import *
 import lab_bench.lib.cstructs as cstructs
-from lab_bench.lib.base_command import OptionalValue
+from lab_bench.lib.base_command import OptionalValue, ArduinoCommand
 
 def build_circ_ctype(circ_data):
     return {

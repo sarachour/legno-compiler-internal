@@ -3,13 +3,13 @@ from lab_bench.devices.sigilent_osc import Sigilent1020XEOscilloscope
 import lab_bench.devices.sigilent_osc as osclib
 
 from lab_bench.lib.base_command import FlushCommand, ArduinoCommand
-from lab_bench.lib.chipcmd.data import AnalogChipCommand, Priority
+from lab_bench.lib.base_command import AnalogChipCommand
 import lab_bench.lib.util as util
 import time
 import numpy as np
 import math
 
-class State:
+class GrendelEnv:
 
     def __init__(self,osc_ip,osc_port,ard_native,validate=False):
         if not validate:

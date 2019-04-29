@@ -3,6 +3,7 @@ from lab_bench.lib.chipcmd.common import *
 from lab_bench.lib.chipcmd.data import *
 from lab_bench.lib.chipcmd.calib import CalibrateCmd
 from lab_bench.lib.chipcmd.disable import DisableCmd
+from lab_bench.lib.base_command import AnalogChipCommand
 import lab_bench.lib.util as util
 import numpy as np
 from enum import Enum

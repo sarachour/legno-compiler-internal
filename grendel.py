@@ -6,7 +6,7 @@ import util.config as CONFIG
 
 from lab_bench.lib.command_handler import main_stdout, main_script
 from lab_bench.lib.base_command import ArduinoCommand
-from lab_bench.lib.state import State
+from lab_bench.lib.env import GrendelEnv
 
 
 parser = argparse.ArgumentParser()
@@ -34,7 +34,7 @@ if args.ip is None and not args.no_oscilloscope:
 elif args.no_oscilloscope:
     ip = None
 
-state = State(ip,args.port,
+state = GrendelEnv(ip,args.port,
               ard_native=args.native,
               validate=args.validate)
 
