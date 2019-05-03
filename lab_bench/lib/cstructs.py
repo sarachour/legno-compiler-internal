@@ -265,6 +265,22 @@ def dac_state_t():
         "const_val" / cstruct.Float32l
     )
 
+def mult_state_t():
+    return cstruct.Struct(
+        "vga" / cstruct.Int8ul,
+        "enable" / cstruct.Int8ul,
+        "inv" / cstruct.Array(3,cstruct.Int8ul),
+        "range" / cstruct.Array(3,range_t()),
+        # 8
+        "pmos" / cstruct.Int8ul,
+        "nmos" / cstruct.Int8ul,
+        "port_cal" / cstruct.Array(3,cstruct.Int8ul),
+        "gain_cal" / cstruct.Int8ul,
+        "gain_code" / cstruct.Int8ul,
+        cstruct.Padding(1),
+        "gain_val" / cstruct.Float32l
+    )
+
 def lut_state_t():
     return cstruct.Struct(
         "source" / lut_source_t()
@@ -273,8 +289,9 @@ def lut_state_t():
 
 def state_t():
     return cstruct.Union(None,
-                         "lut_code_t" / lut_state_t(),
-                         "dac_code_t"/ dac_state_t()
+                         "lut" / lut_state_t(),
+                         "dac"/ dac_state_t(),
+                         "mult" / mult_state_t()
     )
 
 
