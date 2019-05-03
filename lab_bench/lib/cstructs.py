@@ -267,6 +267,26 @@ def bool_t():
     }
     return cstruct.Enum(cstruct.Int8ul,**kwargs)
 
+def adc_state_t():
+    return cstruct.Struct(
+        "test_en" / bool_t(),
+        "test_adc" / bool_t(),
+        "test_i2v" / bool_t(),
+        "test_rs" / bool_t(),
+        "test_rsinc" / bool_t(),
+        "enable" / bool_t(),
+        "inv" / bool_t(),
+        "pmos" / cstruct.Int8ul,
+        "nmos" / cstruct.Int8ul,
+        "pmos2" / cstruct.Int8ul,
+        "i2v_cal" / cstruct.Int8ul,
+        "upper_fs" / cstruct.Int8ul,
+        "upper" / cstruct.Int8ul,
+        "lower_fs" / cstruct.Int8ul,
+        "lower" / cstruct.Int8ul,
+        "range" / range_t()
+    )
+
 def dac_state_t():
     return cstruct.Struct(
         "enable" / bool_t(),
@@ -337,7 +357,8 @@ def state_t():
                          "dac"/ dac_state_t(),
                          "mult" / mult_state_t(),
                          "integ" / integ_state_t(),
-                         "fanout" / fanout_state_t()
+                         "fanout" / fanout_state_t(),
+                         "adc" / adc_state_t()
     )
 
 

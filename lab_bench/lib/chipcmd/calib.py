@@ -112,7 +112,11 @@ class GetStateCmd(AnalogChipCommand):
             print(obj.mult)
         elif self._blk == enums.BlockType.DAC:
             print(obj.dac)
-
+        elif self._blk == enums.BlockType.ADC:
+            print(obj.adc)
+        else:
+            raise Exception("unimplemented block : <%s>" \
+                            % self._blk.name)
         input()
         return True
 
