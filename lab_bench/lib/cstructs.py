@@ -2,6 +2,46 @@ from lab_bench.lib.enums import BlockType,ExpCmdType,CircCmdType,CmdType
 import lab_bench.lib.chipcmd.data as chipdata
 
 import construct as cstruct
+def lut_source_t():
+    kwargs = {
+        chipdata.LUTSourceType.ADC0.value:0,
+        chipdata.LUTSourceType.ADC1.value:1,
+        chipdata.LUTSourceType.EXTERN.value:2,
+        chipdata.LUTSourceType.CONTROLLER.value:3
+    }
+    return cstruct.Enum(cstruct.Int8ul,**kwargs)
+
+def dac_source_t():
+    kwargs = {
+        chipdata.DACSourceType.MEM.value:0,
+        chipdata.DACSourceType.EXTERN.value:1,
+        chipdata.DACSourceType.LUT0.value:2,
+        chipdata.DACSourceType.LUT1.value:3
+    }
+    return cstruct.Enum(cstruct.Int8ul,**kwargs)
+
+def range_t():
+    kwargs = {
+        chipdata.RangeType.HIGH.value:0,
+        chipdata.RangeType.MED.value:1,
+        chipdata.RangeType.LOW.value:2,
+        chipdata.RangeType.UNKNOWN.value:3
+    }
+    return cstruct.Enum(cstruct.Int8ul,**kwargs)
+
+def sign_t():
+    kwargs = {
+        chipdata.SignType.POS.value:0,
+        chipdata.SignType.NEG.value:1
+    }
+    return cstruct.Enum(cstruct.Int8ul,**kwargs)
+
+def bool_t():
+    kwargs = {
+        chipdata.BoolType.TRUE.value:1,
+        chipdata.BoolType.FALSE.value:0
+    }
+    return cstruct.Enum(cstruct.Int8ul,**kwargs)
 
 def block_type_t():
     kwargs = {
@@ -21,8 +61,8 @@ def block_type_t():
 def experiment_cmd_type_t():
     kwargs = {
         ExpCmdType.RESET.name:0,
-        ExpCmdType.SET_DAC_VALUES.name:1,
-        ExpCmdType.GET_ADC_VALUES.name:2,
+        ExpCmdType.SET_DAC_VALUES.value:1,
+        ExpCmdType.GET_ADC_VALUES.value:2,
         ExpCmdType.USE_ANALOG_CHIP.name:3,
         ExpCmdType.SET_SIM_TIME.name:4,
         ExpCmdType.USE_DAC.name:5,
@@ -226,46 +266,6 @@ def cmd_t():
         "data" / cmd_data_t(),
     )
 
-def lut_source_t():
-    kwargs = {
-        chipdata.LUTSourceType.ADC0.name:0,
-        chipdata.LUTSourceType.ADC1.name:1,
-        chipdata.LUTSourceType.EXTERN.name:2,
-        chipdata.LUTSourceType.CONTROLLER.name:3
-    }
-    return cstruct.Enum(cstruct.Int8ul,**kwargs)
-
-def dac_source_t():
-    kwargs = {
-        chipdata.DACSourceType.MEM.name:0,
-        chipdata.DACSourceType.EXTERN.name:1,
-        chipdata.DACSourceType.LUT0.name:2,
-        chipdata.DACSourceType.LUT1.name:3
-    }
-    return cstruct.Enum(cstruct.Int8ul,**kwargs)
-
-def range_t():
-    kwargs = {
-        chipdata.RangeType.HIGH.name:0,
-        chipdata.RangeType.MED.name:1,
-        chipdata.RangeType.LOW.name:2,
-        chipdata.RangeType.UNKNOWN.name:3
-    }
-    return cstruct.Enum(cstruct.Int8ul,**kwargs)
-
-def sign_t():
-    kwargs = {
-        chipdata.SignType.POS.name:0,
-        chipdata.SignType.NEG.name:1
-    }
-    return cstruct.Enum(cstruct.Int8ul,**kwargs)
-
-def bool_t():
-    kwargs = {
-        chipdata.BoolType.TRUE:1,
-        chipdata.BoolType.FALSE:0
-    }
-    return cstruct.Enum(cstruct.Int8ul,**kwargs)
 
 def adc_state_t():
     return cstruct.Struct(

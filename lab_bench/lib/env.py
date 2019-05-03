@@ -5,6 +5,7 @@ import lab_bench.devices.sigilent_osc as osclib
 from lab_bench.lib.base_command import FlushCommand, ArduinoCommand
 from lab_bench.lib.base_command import AnalogChipCommand
 import lab_bench.lib.util as util
+import lab_bench.lib.chipcmd.state as state
 import time
 import numpy as np
 import math
@@ -24,6 +25,7 @@ class GrendelEnv:
         ## State committed to chip
         self.use_osc = False;
 
+        self.state_db = state.BlockStateDatabase()
         self._use_adc = {};
         self._use_dac = {}
         self.use_analog_chip = None;

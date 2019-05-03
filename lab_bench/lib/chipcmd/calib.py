@@ -3,6 +3,7 @@ import lab_bench.lib.cstructs as cstructs
 from lab_bench.lib.base_command import AnalogChipCommand
 from lab_bench.lib.chipcmd.data import CircLoc
 from lab_bench.lib.chipcmd.common import *
+import lab_bench.lib.chipcmd.state as chipstate
 import json
 
 class MeasureCmd(AnalogChipCommand):
@@ -97,8 +98,8 @@ class GetStateCmd(AnalogChipCommand):
 
         raise Exception("no terminator")
 
-    def execute_command(self,state):
-        resp = ArduinoCommand.execute_command(self,state)
+    def execute_command(self,env):
+        resp = ArduinoCommand.execute_command(self,env)
         datum = self._loc.to_json()
         datum['block_type'] = self._blk.value
         data = bytes(resp.data(0)[1:])
@@ -106,14 +107,21 @@ class GetStateCmd(AnalogChipCommand):
         obj = typ.parse(data)
         if self._blk == enums.BlockType.FANOUT:
             print(obj.fanout)
+            raise NotImplementedError
         elif self._blk == enums.BlockType.INTEG:
             print(obj.integ)
+            raise NotImplementedError
         elif self._blk == enums.BlockType.MULT:
             print(obj.mult)
+            raise NotImplementedError
         elif self._blk == enums.BlockType.DAC:
             print(obj.dac)
+            st = chipstate.DacBlockState(self._loc,obj.dac)
+            env.state_db.put(st)
+            raise NotImplementedError
         elif self._blk == enums.BlockType.ADC:
             print(obj.adc)
+            raise NotImplementedError
         else:
             raise Exception("unimplemented block : <%s>" \
                             % self._blk.name)

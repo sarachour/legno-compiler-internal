@@ -10,7 +10,7 @@ class PortType(Enum):
         else:
             return 1
 
-class BlockType(Enum):
+class BlockType(str,Enum):
     DAC = 'dac';
     ADC = 'adc';
     CHIP_INPUT = 'chip_input';
