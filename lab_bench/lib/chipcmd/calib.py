@@ -101,16 +101,18 @@ class GetStateCmd(AnalogChipCommand):
         resp = ArduinoCommand.execute_command(self,state)
         datum = self._loc.to_json()
         datum['block_type'] = self._blk.value
-        nels = resp.data(0)[0]
         data = bytes(resp.data(0)[1:])
-        print(nels)
-        print(resp.data(0)[1:])
-        print(data)
-        print(len(data))
         typ = cstructs.state_t()
-        print(typ)
         obj = typ.parse(data)
-        print(obj)
+        if self._blk == enums.BlockType.FANOUT:
+            print(obj.fanout)
+        elif self._blk == enums.BlockType.INTEG:
+            print(obj.integ)
+        elif self._blk == enums.BlockType.MULT:
+            print(obj.mult)
+        elif self._blk == enums.BlockType.DAC:
+            print(obj.dac)
+
         input()
         return True
 

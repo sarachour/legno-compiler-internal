@@ -21,7 +21,8 @@ typedef enum {
 typedef enum {
   RANGE_HIGH,
   RANGE_MED,
-  RANGE_LOW
+  RANGE_LOW,
+  RANGE_UNKNOWN
 } range_t;
 
 typedef enum {
@@ -85,7 +86,7 @@ typedef struct {
 
 typedef struct {
   bool cal_enable[3];
-  bool inv[2];
+  bool inv[3];
   bool enable;
   bool exception;
   range_t range[3];

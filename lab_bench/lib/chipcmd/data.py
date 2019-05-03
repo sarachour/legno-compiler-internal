@@ -94,6 +94,7 @@ class RangeType(str,Enum):
     MED = 'medium'
     HIGH = 'high'
     LOW = 'low'
+    UNKNOWN = "unknown"
 
     @staticmethod
     def option_names():
@@ -142,6 +143,10 @@ class RangeType(str,Enum):
             return "l"
         elif self == RangeType.HIGH:
             return "h"
+        elif self == RangeType.UNKNOWN:
+            return "?"
+        else:
+            raise Exception("unknown")
 
     def code(self):
         if self == RangeType.MED:
@@ -150,11 +155,46 @@ class RangeType(str,Enum):
             return 2
         elif self == RangeType.HIGH:
             return 0
+        elif self == RangeType.UNKNOWN:
+            return 3
         else:
             raise Exception("unknown")
 
     def __repr__(self):
         return self.name
+
+class BoolType(str,Enum):
+    TRUE = 'true'
+    FALSE = 'false'
+
+
+class PortType(str,Enum):
+    IN0 = "in0"
+    IN1 = "in1"
+    OUT0 = "out0"
+    OUT1 = "out1"
+    OUT2 = "out2"
+
+    def to_code(self):
+        codes = {
+            PortType.IN0: 0,
+            PortType.IN1: 1,
+            PortType.OUT0: 2,
+            PortType.OUT1: 3,
+            PortType.OUT2: 4
+        }
+        return codes[self]
+
+    @staticmethod
+    def from_code(i):
+        codes = {
+            0: PortType.IN0,
+            1: PortType.IN1,
+            2: PortType.OUT0,
+            3: PortType.OUT1,
+            4: PortType.OUT2
+        }
+        return codes[i]
 
 class SignType(str,Enum):
     POS = 'pos'

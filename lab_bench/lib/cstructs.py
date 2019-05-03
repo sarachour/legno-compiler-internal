@@ -248,14 +248,29 @@ def range_t():
     kwargs = {
         chipdata.RangeType.HIGH.name:0,
         chipdata.RangeType.MED.name:1,
-        chipdata.RangeType.LOW.name:2
+        chipdata.RangeType.LOW.name:2,
+        chipdata.RangeType.UNKNOWN.name:3
+    }
+    return cstruct.Enum(cstruct.Int8ul,**kwargs)
+
+def sign_t():
+    kwargs = {
+        chipdata.SignType.POS.name:0,
+        chipdata.SignType.NEG.name:1
+    }
+    return cstruct.Enum(cstruct.Int8ul,**kwargs)
+
+def bool_t():
+    kwargs = {
+        chipdata.BoolType.TRUE:1,
+        chipdata.BoolType.FALSE:0
     }
     return cstruct.Enum(cstruct.Int8ul,**kwargs)
 
 def dac_state_t():
     return cstruct.Struct(
-        "enable" / cstruct.Int8ul,
-        "inv" / cstruct.Int8ul,
+        "enable" / bool_t(),
+        "inv" / sign_t(),
         "range" / range_t(),
         "source" / dac_source_t(),
         "pmos" / cstruct.Int8ul,
@@ -268,8 +283,8 @@ def dac_state_t():
 def mult_state_t():
     return cstruct.Struct(
         "vga" / cstruct.Int8ul,
-        "enable" / cstruct.Int8ul,
-        "inv" / cstruct.Array(3,cstruct.Int8ul),
+        "enable" / bool_t(),
+        "inv" / cstruct.Array(3,sign_t()),
         "range" / cstruct.Array(3,range_t()),
         # 8
         "pmos" / cstruct.Int8ul,
@@ -281,17 +296,48 @@ def mult_state_t():
         "gain_val" / cstruct.Float32l
     )
 
+def fanout_state_t():
+    return cstruct.Struct(
+        "pmos" / cstruct.Int8ul,
+        "nmos" / cstruct.Int8ul,
+        "range" / cstruct.Array(5,range_t()),
+        "port_cal" / cstruct.Array(5,range_t()),
+        "inv" / cstruct.Array(5,sign_t()),
+        "enable" / bool_t(),
+        "third" / cstruct.Int8ul
+    )
+
 def lut_state_t():
     return cstruct.Struct(
         "source" / lut_source_t()
     )
 
+def integ_state_t():
+    return cstruct.Struct(
+        "cal_enable" / cstruct.Array(3,bool_t()),
+        "inv" / cstruct.Array(3,sign_t()),
+        "enable" / bool_t(),
+        "exception" / bool_t(),
+        # 7 bytes in
+        "range" / cstruct.Array(3,range_t()),
+        # 10 bytes in
+        "pmos" / cstruct.Int8ul,
+        "nmos" / cstruct.Int8ul,
+        "gain_cal" / cstruct.Int8ul,
+        "ic_code" / cstruct.Int8ul,
+        # 14 bytes in
+        "port_cal" / cstruct.Array(3,cstruct.Int8ul),
+        cstruct.Padding(2),
+        "ic_val" / cstruct.Float32l
 
+    )
 def state_t():
     return cstruct.Union(None,
                          "lut" / lut_state_t(),
                          "dac"/ dac_state_t(),
-                         "mult" / mult_state_t()
+                         "mult" / mult_state_t(),
+                         "integ" / integ_state_t(),
+                         "fanout" / fanout_state_t()
     )
 
 

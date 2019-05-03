@@ -88,12 +88,16 @@ Fabric::Chip::Tile::Slice::Integrator::Integrator (
   m_codes.ic_code = 128;
   m_codes.ic_val = 0.0;
   m_codes.inv[in0Id] = false;
+  m_codes.inv[in1Id] = false;
   m_codes.inv[out0Id] = false;
   m_codes.range[in0Id] = RANGE_MED;
+  m_codes.range[in1Id] = RANGE_UNKNOWN;
   m_codes.range[out0Id] = RANGE_MED;
   m_codes.cal_enable[in0Id] = false;
   m_codes.cal_enable[in1Id] = false;
+  m_codes.cal_enable[out0Id] = false;
   m_codes.port_cal[in0Id] = 31;
+  m_codes.port_cal[in1Id] = 0;
   m_codes.port_cal[out0Id] = 31;
   m_codes.exception = false;
   m_codes.gain_cal = 32;

@@ -58,12 +58,17 @@ Fabric::Chip::Tile::Slice::Fanout::Fanout (
 	out2 = new FanoutOut (this, out2Id);
 	tally_dyn_mem <FanoutOut> ("FanoutOut");
   m_codes.range[in0Id] = RANGE_MED;
+  m_codes.range[in1Id] = RANGE_UNKNOWN;
   m_codes.range[out0Id] = RANGE_MED;
   m_codes.range[out1Id] = RANGE_MED;
   m_codes.range[out2Id] = RANGE_MED;
+  m_codes.inv[in0Id] = false;
+  m_codes.inv[in1Id] = false;
   m_codes.inv[out0Id] = false;
   m_codes.inv[out1Id] = false;
   m_codes.inv[out2Id] = false;
+  m_codes.port_cal[in0Id] = 0;
+  m_codes.port_cal[in1Id] = 0;
   m_codes.port_cal[out0Id] = 31;
   m_codes.port_cal[out1Id] = 31;
   m_codes.port_cal[out2Id] = 31;
