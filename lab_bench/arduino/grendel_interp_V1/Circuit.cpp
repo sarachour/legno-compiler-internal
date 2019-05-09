@@ -236,7 +236,14 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     Serial.println("");
     break;
   case cmd_type_t::SET_STATE:
-    comm::response("set state. unimplemented",0);
+    memcpy(state.charbuf,
+           cmd.data.state.data,
+           sizeof(block_code_t));
+    calibrate::set_codes(fab,
+                         cmd.data.state.blk,
+                         cmd.data.state.loc,
+                         state);
+    comm::response("set codes",0);
     break;
 
   default:

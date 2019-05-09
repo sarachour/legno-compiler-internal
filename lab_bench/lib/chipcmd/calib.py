@@ -31,7 +31,7 @@ class SetStateCmd(AnalogChipCommand):
 
 
     def build_ctype(self):
-        statebuf = self._state.build_ctype()
+        statebuf = self._state.to_cstruct()
         len(statebuf)
         padding = bytes([0]*(64-len(statebuf)))
         buf = statebuf+padding
@@ -122,31 +122,11 @@ class GetStateCmd(AnalogChipCommand):
         datum = self._loc.to_json()
         datum['block_type'] = self._blk.value
         data = bytes(resp.data(0)[1:])
-        typ = cstructs.state_t()
-        obj = typ.parse(data)
-        if self._blk == enums.BlockType.FANOUT:
-            st = chipstate.FanoutBlockState(self._loc,obj.fanout)
-            print(obj.fanout)
-            env.state_db.put(st)
-        elif self._blk == enums.BlockType.INTEG:
-            st = chipstate.IntegBlockState(self._loc,obj.integ)
-            print(obj.integ)
-            env.state_db.put(st)
-        elif self._blk == enums.BlockType.MULT:
-            st = chipstate.MultBlockState(self._loc,obj.mult)
-            print(obj.mult)
-            env.state_db.put(st)
-        elif self._blk == enums.BlockType.DAC:
-            st = chipstate.DacBlockState(self._loc,obj.dac)
-            print(obj.dac)
-            env.state_db.put(st)
-        elif self._blk == enums.BlockType.ADC:
-            st = chipstate.AdcBlockState(self._loc,obj.adc)
-            print(obj.adc)
-            env.state_db.put(st)
-        else:
-            raise Exception("unimplemented block : <%s>" \
-                            % self._blk.name)
+        st = chipstate.BlockState \
+                      .toplevel_from_cstruct(self._blk,
+                                             self._loc,
+                                             data)
+        env.state_db.put(st)
         return True
 
 

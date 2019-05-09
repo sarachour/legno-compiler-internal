@@ -60,10 +60,10 @@ namespace calibrate {
 
   }
 
-  void get_codes(Fabric* fab,
+  void set_codes(Fabric* fab,
                  uint16_t blk,
                  circ::circ_loc_idx1_t loc,
-                 uint8_t buf)
+                 block_code_t& state)
   {
     Fabric::Chip::Tile::Slice::Fanout * fanout;
     Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -71,41 +71,16 @@ namespace calibrate {
     Fabric::Chip::Tile::Slice::Dac * dac;
     Fabric::Chip::Tile::Slice::Integrator * integ;
 
-    block_code_t codes;
-    memcpy(codes.charbuf, buf, sizeof(block_code_t));
-    switch(blk){
-    case circ::block_type_t::FANOUT:
-      fanout = common::get_fanout(fab,loc);
-      fanout->update(codes.fanout);
-      break;
-
-    case circ::block_type_t::MULT:
-      // TODO: indicate if input or output.
-      mult = common::get_mult(fab,loc);
-      mult->update(codes.mult);
-      break;
-
-    case circ::block_type_t::TILE_ADC:
-      adc = common::get_slice(fab,loc.loc)->adc;
-      adc->update(codes.adc);
-      break;
-
-    case circ::block_type_t::TILE_DAC:
-      dac = common::get_slice(fab,loc.loc)->dac;
-      dac->update(codes.dac);
-      break;
-
-    case circ::block_type_t::INTEG:
-      integ = common::get_slice(fab,loc.loc)->integrator;
-      integ->update(codes.integ);
-      break;
-
-    default:
-      comm::error("get_offset_code: unexpected block");
-
-    }
+    switch(blk)
+      {
+      case circ::block_type_t::TILE_DAC:
+        dac = common::get_slice(fab,loc.loc)->dac;
+        dac->update(state.dac);
+        break;
+      default:
+        comm::error("set_codes: unimplemented block");
+      }
   }
-
   void get_codes(Fabric* fab,
                  uint16_t blk,
                  circ::circ_loc_idx1_t loc,
@@ -118,36 +93,31 @@ namespace calibrate {
     Fabric::Chip::Tile::Slice::Dac * dac;
     Fabric::Chip::Tile::Slice::Integrator * integ;
 
-    switch(blk){
-    case circ::block_type_t::FANOUT:
-      fanout = common::get_fanout(fab,loc);
-      state.fanout = fanout->m_codes;
-      break;
-
-    case circ::block_type_t::MULT:
-      // TODO: indicate if input or output.
-      mult = common::get_mult(fab,loc);
-      state.mult = mult->m_codes;
-      break;
-
-    case circ::block_type_t::TILE_ADC:
-      adc = common::get_slice(fab,loc.loc)->adc;
-      state.adc = adc->m_codes;
-      break;
-
-    case circ::block_type_t::TILE_DAC:
-      dac = common::get_slice(fab,loc.loc)->dac;
-      state.dac = dac->m_codes;
-      break;
-
-    case circ::block_type_t::INTEG:
-      integ = common::get_slice(fab,loc.loc)->integrator;
-      state.integ = integ->m_codes;
-      break;
-    default:
-      comm::error("get_offset_code: unexpected block");
-
-    }
+    switch(blk)
+      {
+      case circ::block_type_t::FANOUT:
+        fanout = common::get_fanout(fab,loc);
+        state.fanout = fanout->m_codes;
+        break;
+      case circ::block_type_t::MULT:
+        // TODO: indicate if input or output.
+        mult = common::get_mult(fab,loc);
+        state.mult = mult->m_codes;
+        break;
+      case circ::block_type_t::TILE_ADC:
+        adc = common::get_slice(fab,loc.loc)->adc;
+        state.adc = adc->m_codes;
+        break;
+      case circ::block_type_t::TILE_DAC:
+        dac = common::get_slice(fab,loc.loc)->dac;
+        state.dac = dac->m_codes;
+        break;
+      case circ::block_type_t::INTEG:
+        integ = common::get_slice(fab,loc.loc)->integrator;
+        state.integ = integ->m_codes;
+        break;
+      default:
+        comm::error("get_offset_code: unexpected block");
+      }
   }
-
 }

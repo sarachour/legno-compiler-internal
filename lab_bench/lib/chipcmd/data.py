@@ -167,6 +167,18 @@ class BoolType(str,Enum):
     TRUE = 'true'
     FALSE = 'false'
 
+    @staticmethod
+    def from_bool(b):
+        if b:
+            return BoolType.TRUE
+        else:
+            return BoolType.FALSE
+
+    def code(self):
+        if BoolType.TRUE == self:
+            return 1
+        else:
+            return 0
 
 class PortType(str,Enum):
     IN0 = "in0"

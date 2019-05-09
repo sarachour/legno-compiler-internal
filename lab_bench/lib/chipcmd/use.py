@@ -29,6 +29,10 @@ class UseCommand(AnalogChipCommand):
         return self._cached
 
     @property
+    def block_type(self):
+        return self._block
+
+    @property
     def loc(self):
         return self._loc
 
@@ -37,7 +41,9 @@ class UseCommand(AnalogChipCommand):
         if self.cached:
             dbkey = self.to_key()
             assert(isinstance(dbkey, state.BlockState.Key))
-            blockstate = env.state_db.get(dbkey)
+            blockstate = env.state_db.get(self.block_type,
+                                          self.loc,
+                                          dbkey)
             assert(isinstance(blockstate, state.BlockState))
             # set the state
             loc = CircLoc(self._loc.chip,
@@ -51,7 +57,7 @@ class UseCommand(AnalogChipCommand):
             print(cmd)
             resp = cmd.execute_command(env)
             print(resp)
-            raise Exception("load cached")
+            input("load cached")
 
     def priority(self):
         return Priority.EARLY
@@ -547,7 +553,7 @@ class UseMultCmd(UseCommand):
         self._in0_range = in0_range
         self._in1_range = in1_range
         self._out_range = out_range
-
+        assert(inv == SignType.POS)
 
 
     @staticmethod
@@ -568,6 +574,29 @@ class UseMultCmd(UseCommand):
                 }
             }
         })
+
+
+    def to_key(self):
+        loc = CircLoc(self.loc.chip,
+                      self.loc.tile,
+                      self.loc.slice,
+                      self.loc.index
+        )
+        invs = {
+            enums.PortName.IN0: SignType.POS,
+            enums.PortName.IN1: SignType.POS,
+            enums.PortName.OUT0: SignType.POS
+        }
+        rngs = {
+            enums.PortName.IN0: self._in0_range,
+            enums.PortName.IN1: self._in1_range,
+            enums.PortName.OUT0: self._out_range,
+        }
+        return state.MultBlockState.Key(loc=loc,
+                                        vga=BoolType.from_bool(self._use_coeff),
+                                        invs=invs,
+                                        ranges=rngs,
+                                        gain_val=self._coeff)
 
     @staticmethod
     def parse(args):

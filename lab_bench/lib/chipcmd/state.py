@@ -1,5 +1,6 @@
 import lab_bench.lib.enums as enums
 import lab_bench.lib.chipcmd.data as chipdata
+import lab_bench.lib.chipcmd.state as chipstate
 from lab_bench.lib.chipcmd.data import *
 from enum import Enum
 import sqlite3
@@ -34,12 +35,12 @@ class BlockStateDatabase:
   def put(self,blockstate):
     assert(isinstance(blockstate,BlockState))
     key = blockstate.key.to_key()
-    value = blockstate.to_json()
+    value = blockstate.to_cstruct()
     cmd = '''DELETE FROM states WHERE cmdkey="{cmdkey}"''' \
       .format(cmdkey=key)
     self._curs.execute(cmd)
     self._conn.commit()
-    bits = bytes(json.dumps(value),'utf-8').hex()
+    bits = value.hex()
     cmd = '''
     INSERT INTO states (cmdkey,block,state)
     VALUES ("{cmdkey}","{block}","{state}")
@@ -51,20 +52,23 @@ class BlockStateDatabase:
     self._curs.execute(cmd)
     self._conn.commit()
 
-  def get(self,blockkey):
+  def get(self,blktype,loc,blockkey):
     assert(isinstance(blockkey,BlockState.Key))
     keystr = blockkey.to_key()
+    for entry in self.get_all():
+      print(entry['cmdkey'])
     print("==========")
     print(keystr)
     cmd = '''SELECT * FROM states WHERE cmdkey = "{cmdkey}"''' \
                                                 .format(cmdkey=keystr)
     results = list(self._curs.execute(cmd))
     assert(len(results) == 1)
-    data = dict(zip(self.keys,results[0]))
-    state = json.loads(bytes.fromhex(data['state']))
-    blocktype = enums.BlockType(data['block'])
-    return BlockState.from_json(blocktype,state)
-
+    state = dict(zip(self.keys,results[0]))['state']
+    obj = chipstate.BlockState \
+                   .toplevel_from_cstruct(blktype,loc,
+                                          bytes.fromhex(state))
+    print(obj)
+    return obj
 
 class BlockState:
 
@@ -87,7 +91,7 @@ class BlockState:
           ident += "%s=" % key
           if isinstance(value,dict):
             ident += "{%s}" % dict_to_key(value)
-          if isinstance(value,float):
+          elif isinstance(value,float):
             ident += "%.3f" % value
           elif isinstance(value,Enum):
             ident += "%s" % obj[key].name
@@ -101,31 +105,33 @@ class BlockState:
   def __init__(self,block_type,loc,state):
     self.block = block_type
     self.loc = loc
-    self.state = {}
     if state != None:
       self.from_cstruct(state)
 
-  def to_json(self):
-    obj = self.__dict__
-    obj['loc'] = obj['loc'].to_json()
-    return obj
-
   @staticmethod
-  def from_json(blocktype,obj):
-    loc = CircLoc.from_json(obj['loc'])
-    if blocktype == enums.BlockType.DAC:
-      state = DacBlockState(loc,None)
+  def toplevel_from_cstruct(blk,loc,data):
+    pad = bytes([0]*(24-len(data)))
+    typ = cstructs.state_t()
+    obj = typ.parse(data+pad)
+    if blk == enums.BlockType.FANOUT:
+      st = FanoutBlockState(loc,obj.fanout)
+      print(obj.fanout)
+    elif blk == enums.BlockType.INTEG:
+      st = IntegBlockState(loc,obj.integ)
+      print(obj.integ)
+    elif blk == enums.BlockType.MULT:
+      st = MultBlockState(loc,obj.mult)
+      print(obj.mult)
+    elif blk == enums.BlockType.DAC:
+      st = DacBlockState(loc,obj.dac)
+      print(obj.dac)
+    elif blk == enums.BlockType.ADC:
+      st = AdcBlockState(loc,obj.adc)
+      print(obj.adc)
     else:
-      raise Exception("unimplemented")
-
-    del obj['loc']
-    for k,v in obj.items():
-      if k == 'loc':
-        continue
-
-      state.__dict__[k] = v
-
-    return state
+      raise Exception("unimplemented block : <%s>" \
+                      % blk.name)
+    return st
 
   @property
   def key(self):
@@ -137,6 +143,12 @@ class BlockState:
   def to_cstruct(self):
     raise NotImplementedError
 
+
+  def __repr__(self):
+    s = ""
+    for k,v in self.__dict__.items():
+      s += "%s=%s\n" % (k,v)
+    return s
 
 class DacBlockState(BlockState):
 
@@ -162,17 +174,19 @@ class DacBlockState(BlockState):
                              self.const_val)
 
 
-  def build_ctype(self):
-    return cstructs.dac_state_t().build({
-      "enable": True,
-      "inv": chipdata.SignType(self.inv),
-      "range": chipdata.RangeType(self.rng).code(),
-      "source": chipdata.DACSourceType(self.source).code(),
-      "pmos": self.pmos,
-      "nmos": self.nmos,
-      "gain_cal": self.gain_cal,
-      "const_code": self.const_code,
-      "const_val": self.const_val
+  def to_cstruct(self):
+    return cstructs.state_t().build({
+      "dac": {
+        "enable": True,
+        "inv": self.inv.code(),
+        "range": self.rng.code(),
+        "source": self.source.code(),
+        "pmos": self.pmos,
+        "nmos": self.nmos,
+        "gain_cal": self.gain_cal,
+        "const_code": self.const_code,
+        "const_val": self.const_val
+      }
     })
 
   def from_cstruct(self,state):
@@ -186,6 +200,19 @@ class DacBlockState(BlockState):
     self.const_code = state.const_code
     self.const_val = state.const_val
 
+def to_c_list(keymap):
+  intmap = {}
+  for k,v in keymap.items():
+    print("%s=%s" % (k,v))
+    intmap[k.code()] = v.code()
+
+  n = max(intmap.keys())
+  buf = [0]*(n+1)
+  for k,v in intmap.items():
+    buf[k] = v
+  return buf
+
+
 class MultBlockState(BlockState):
 
   class Key(BlockState.Key):
@@ -196,6 +223,7 @@ class MultBlockState(BlockState):
                  ranges,
                  gain_val=None):
       BlockState.Key.__init__(self,enums.BlockType.MULT,loc)
+      assert(isinstance(vga,chipdata.BoolType))
       self.invs = invs
       self.ranges = ranges
       self.gain_val = gain_val
@@ -203,6 +231,22 @@ class MultBlockState(BlockState):
 
   def __init__(self,loc,state):
     BlockState.__init__(self,enums.BlockType.MULT,loc,state)
+
+  def to_cstruct(self):
+    return cstructs.state_t().build({
+      "mult": {
+        "vga": self.vga.code(),
+        "enable": chipdata.BoolType.TRUE.code(),
+        "inv": to_c_list(self.invs),
+        "range": to_c_list(self.ranges),
+        "pmos": self.pmos,
+        "nmos": self.nmos,
+        "port_cal": list(map(lambda c: c.code(), self.port_cals)),
+        "gain_cal": self.gain_cal,
+        "gain_code": self.gain_code,
+        "gain_val": self.gain_val
+      }
+    })
 
   @property
   def key(self):
@@ -217,7 +261,7 @@ class MultBlockState(BlockState):
     in1id = enums.PortName.IN1
     outid = enums.PortName.OUT0
     self.enable = chipdata.BoolType(state.enable)
-    self.vga = state.vga
+    self.vga = chipdata.BoolType(state.vga)
     self.invs = {}
     self.invs[in0id] = chipdata.SignType(state.inv[in0id.code()])
     self.invs[in1id] = chipdata.SignType(state.inv[in1id.code()])

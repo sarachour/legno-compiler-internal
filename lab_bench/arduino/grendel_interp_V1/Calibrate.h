@@ -17,7 +17,7 @@ namespace calibrate {
   void set_codes(Fabric * fab,
                  uint16_t blk,
                  circ::circ_loc_idx1_t loc,
-                 uint8_t* buf);
+                 block_code_t& buf);
 
 }
 
