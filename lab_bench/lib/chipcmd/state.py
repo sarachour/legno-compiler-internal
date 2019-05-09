@@ -1,5 +1,6 @@
 import lab_bench.lib.enums as enums
 import lab_bench.lib.chipcmd.data as chipdata
+from lab_bench.lib.chipcmd.data import *
 from enum import Enum
 import sqlite3
 import util.config as CFG
@@ -23,11 +24,12 @@ class BlockStateDatabase:
     '''
     self._curs.execute(cmd)
     self._conn.commit()
+    self.keys = ['cmdkey','block','state']
 
-  def get(self,blockkey):
-    assert(isinstance(blockkey,BlockState.Key))
-    key = blockkey.to_key()
-    raise NotImplementedError
+  def get_all(self):
+    cmd = "SELECT * from states;"
+    for values in self._curs.execute(cmd):
+      yield dict(zip(self.keys,values))
 
   def put(self,blockstate):
     assert(isinstance(blockstate,BlockState))
@@ -37,24 +39,31 @@ class BlockStateDatabase:
       .format(cmdkey=key)
     self._curs.execute(cmd)
     self._conn.commit()
-
+    bits = bytes(json.dumps(value),'utf-8').hex()
     cmd = '''
     INSERT INTO states (cmdkey,block,state)
     VALUES ("{cmdkey}","{block}","{state}")
     '''.format(
       cmdkey=key,
       block=blockstate.block.value,
-      state=binascii.hexlify(
-        bytes(json.dumps(value),'utf-8')
-      )
+      state=bits
     )
     self._curs.execute(cmd)
     self._conn.commit()
 
   def get(self,blockkey):
-    assert(isinstance(blockstate,BlockState.Key))
-    key = blockstate.to_key()
-    raise NotImplementedError
+    assert(isinstance(blockkey,BlockState.Key))
+    keystr = blockkey.to_key()
+    print("==========")
+    print(keystr)
+    cmd = '''SELECT * FROM states WHERE cmdkey = "{cmdkey}"''' \
+                                                .format(cmdkey=keystr)
+    results = list(self._curs.execute(cmd))
+    assert(len(results) == 1)
+    data = dict(zip(self.keys,results[0]))
+    state = json.loads(bytes.fromhex(data['state']))
+    blocktype = enums.BlockType(data['block'])
+    return BlockState.from_json(blocktype,state)
 
 
 class BlockState:
@@ -93,12 +102,30 @@ class BlockState:
     self.block = block_type
     self.loc = loc
     self.state = {}
-    self.from_cstruct(state)
+    if state != None:
+      self.from_cstruct(state)
 
   def to_json(self):
     obj = self.__dict__
     obj['loc'] = obj['loc'].to_json()
     return obj
+
+  @staticmethod
+  def from_json(blocktype,obj):
+    loc = CircLoc.from_json(obj['loc'])
+    if blocktype == enums.BlockType.DAC:
+      state = DacBlockState(loc,None)
+    else:
+      raise Exception("unimplemented")
+
+    del obj['loc']
+    for k,v in obj.items():
+      if k == 'loc':
+        continue
+
+      state.__dict__[k] = v
+
+    return state
 
   @property
   def key(self):
@@ -115,10 +142,11 @@ class DacBlockState(BlockState):
 
   class Key(BlockState.Key):
 
-    def __init__(self,loc,inv,rng,const_val):
+    def __init__(self,loc,inv,rng,source,const_val):
       BlockState.Key.__init__(self,enums.BlockType.DAC,loc)
       self.inv = inv
       self.rng = rng
+      self.source = source
       self.const_val = const_val
 
 
@@ -130,8 +158,22 @@ class DacBlockState(BlockState):
     return DacBlockState.Key(self.loc,
                              self.inv,
                              self.rng,
+                             self.source,
                              self.const_val)
 
+
+  def build_ctype(self):
+    return cstructs.dac_state_t().build({
+      "enable": True,
+      "inv": chipdata.SignType(self.inv),
+      "range": chipdata.RangeType(self.rng).code(),
+      "source": chipdata.DACSourceType(self.source).code(),
+      "pmos": self.pmos,
+      "nmos": self.nmos,
+      "gain_cal": self.gain_cal,
+      "const_code": self.const_code,
+      "const_val": self.const_val
+    })
 
   def from_cstruct(self,state):
     self.enable = chipdata.BoolType(state.enable)

@@ -18,15 +18,34 @@ class MeasureCmd(AnalogChipCommand):
 
 class SetStateCmd(AnalogChipCommand):
 
-    def __init__(self,blk,loc):
+    def __init__(self,blk,loc,state):
         AnalogChipCommand.__init__(self)
         self._blk = enums.BlockType(blk);
+        assert(isinstance(loc, CircLoc) and loc.index != None)
         self._loc = loc;
-        self.test_loc(self._blk, self._loc.loc)
+        self._state = state
+        self.test_loc(self._blk, self._loc)
         assert(not loc is None and \
-               isinstance(loc,CircPortLoc))
+               isinstance(loc,CircLoc))
 
 
+
+    def build_ctype(self):
+        statebuf = self._state.build_ctype()
+        len(statebuf)
+        padding = bytes([0]*(64-len(statebuf)))
+        buf = statebuf+padding
+        print(self._loc)
+        return build_circ_ctype({
+            'type':enums.CircCmdType.SET_STATE.name,
+            'data':{
+                'state':{
+                    'blk': self._blk.name,
+                    'loc': self._loc.build_ctype(),
+                    'data': buf
+                }
+            }
+        })
     @staticmethod
     def name():
         return 'set_codes'

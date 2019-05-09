@@ -1,7 +1,8 @@
 import lab_bench.lib.enums as enums
 from lab_bench.lib.chipcmd.common import *
 from lab_bench.lib.chipcmd.data import *
-from lab_bench.lib.chipcmd.calib import CalibrateCmd
+import lab_bench.lib.chipcmd.state as state
+from lab_bench.lib.chipcmd.calib import CalibrateCmd, SetStateCmd
 from lab_bench.lib.chipcmd.disable import DisableCmd
 from lab_bench.lib.base_command import AnalogChipCommand
 import lab_bench.lib.util as util
@@ -12,15 +13,45 @@ import math
 
 class UseCommand(AnalogChipCommand):
 
-    def __init__(self,block,loc):
+    def __init__(self,block,loc,cached):
         AnalogChipCommand.__init__(self)
         self.test_loc(block,loc)
         self._loc = loc
         self._block = block
+        self._cached = cached
+
+
+    def to_key(self):
+        raise NotImplementedError
+
+    @property
+    def cached(self):
+        return self._cached
 
     @property
     def loc(self):
         return self._loc
+
+    def execute_command(self,env):
+        ArduinoCommand.execute_command(self,env)
+        if self.cached:
+            dbkey = self.to_key()
+            assert(isinstance(dbkey, state.BlockState.Key))
+            blockstate = env.state_db.get(dbkey)
+            assert(isinstance(blockstate, state.BlockState))
+            # set the state
+            loc = CircLoc(self._loc.chip,
+                          self._loc.tile,
+                          self._loc.slice,
+                          self._loc.index \
+                          if self._loc.index != None \
+                          else 0)
+
+            cmd = SetStateCmd(self._block,loc,blockstate)
+            print(cmd)
+            resp = cmd.execute_command(env)
+            print(resp)
+            raise Exception("load cached")
 
     def priority(self):
         return Priority.EARLY
@@ -50,10 +81,12 @@ class UseCommand(AnalogChipCommand):
 class UseLUTCmd(UseCommand):
 
     def __init__(self,chip,tile,slice,
-                 source=LUTSourceType.EXTERN):
+                 source=LUTSourceType.EXTERN,
+                 cached=False):
         UseCommand.__init__(self,
                             enums.BlockType.LUT,
-                            CircLoc(chip,tile,slice))
+                            CircLoc(chip,tile,slice),
+                            cached=cached)
 
         if not self._loc.index is None:
             self.fail("dac has no index <%d>" % loc.index)
@@ -75,7 +108,7 @@ class UseLUTCmd(UseCommand):
 
     @staticmethod
     def _parse(args,cls):
-        result = parse_pattern_block(args,0,0,0,
+        result = parse_pattern_use_block(args,0,0,0,
                                      cls.name(),
                                      source=LUTSourceType,
                                      expr=False)
@@ -85,7 +118,8 @@ class UseLUTCmd(UseCommand):
                 data['chip'],
                 data['tile'],
                 data['slice'],
-                source=data['source']
+                source=data['source'],
+                cached=data['cached']
             )
         else:
             raise Exception(result.message)
@@ -127,10 +161,12 @@ class UseLUTCmd(UseCommand):
 class UseADCCmd(UseCommand):
 
     def __init__(self,chip,tile,slice,
-                 in_range=RangeType.MED):
+                 in_range=RangeType.MED,
+                 cached=False):
         UseCommand.__init__(self,
                             enums.BlockType.ADC,
-                            CircLoc(chip,tile,slice))
+                            CircLoc(chip,tile,slice),
+                            cached)
 
         if not self._loc.index is None:
             self.fail("adc has no index <%d>" % loc.index)
@@ -152,7 +188,7 @@ class UseADCCmd(UseCommand):
 
     @staticmethod
     def _parse(args,cls):
-        result = parse_pattern_block(args,0,0,1,
+        result = parse_pattern_use_block(args,0,0,1,
                                      cls.name())
         if result.success:
             data = result.value
@@ -160,7 +196,8 @@ class UseADCCmd(UseCommand):
                 data['chip'],
                 data['tile'],
                 data['slice'],
-                in_range=data['range0']
+                in_range=data['range0'],
+                cached=data['cached']
             )
         else:
             raise Exception(result.message)
@@ -196,10 +233,12 @@ class UseDACCmd(UseCommand):
     def __init__(self,chip,tile,slice,value,
                  source=DACSourceType.MEM,
                  out_range=RangeType.MED,
-                 inv=SignType.POS):
+                 inv=SignType.POS,
+                 cached=False):
         UseCommand.__init__(self,
                             enums.BlockType.DAC,
-                            CircLoc(chip,tile,slice))
+                            CircLoc(chip,tile,slice),
+                            cached)
 
         if value < -1.0 or value > 1.0:
             self.fail("value not in [-1,1]: %s" % value)
@@ -225,9 +264,22 @@ class UseDACCmd(UseCommand):
     def parse(args):
         return UseDACCmd._parse(args,UseDACCmd)
 
+    def to_key(self):
+        loc = CircLoc(self.loc.chip,
+                      self.loc.tile,
+                      self.loc.slice,
+                      0
+        )
+        return state.DacBlockState.Key(loc=loc,
+                                       inv=self._inv,
+                                       rng=self._out_range,
+                                       source=self._source,
+                                       const_val=self._value)
+
+
     @staticmethod
     def _parse(args,cls):
-        result = parse_pattern_block(args,1,1,1,
+        result = parse_pattern_use_block(args,1,1,1,
                                      cls.name(),
                                      source=DACSourceType)
         if result.success:
@@ -239,7 +291,8 @@ class UseDACCmd(UseCommand):
                 data['value0'],
                 source=data['source'],
                 inv=data['sign0'],
-                out_range=data['range0']
+                out_range=data['range0'],
+                cached=data['cached']
             )
         else:
             raise Exception(result.message)
@@ -267,14 +320,15 @@ class UseDACCmd(UseCommand):
         return 'use_dac'
 
     def __repr__(self):
-        st = "%s %s %s %s src %s sgn %s val %s rng %s" % \
+        st = "%s %s %s %s src %s sgn %s val %s rng %s cached=%s" % \
               (self.name(),
                self.loc.chip,self.loc.tile, \
                self.loc.slice,
                self._source.abbrev(),
                self._inv.abbrev(),
                self._value,
-               self._out_range.abbrev())
+               self._out_range.abbrev(),
+               self._cached)
         return st
 
 
@@ -284,7 +338,8 @@ class UseFanoutCmd(UseCommand):
 
     def __init__(self,chip,tile,slice,index,
                  in_range,
-                 inv0=False,inv1=False,inv2=False):
+                 inv0=False,inv1=False,inv2=False,
+                 cached=False):
 
         assert(isinstance(inv0, SignType))
         assert(isinstance(inv1,SignType))
@@ -293,7 +348,8 @@ class UseFanoutCmd(UseCommand):
 
         UseCommand.__init__(self,
                             enums.BlockType.FANOUT,
-                            CircLoc(chip,tile,slice,index))
+                            CircLoc(chip,tile,slice,index),
+                            cached)
         if in_range == RangeType.LOW:
             raise Exception("incompatible: low output")
 
@@ -331,7 +387,7 @@ class UseFanoutCmd(UseCommand):
 
     @staticmethod
     def parse(args):
-        result = parse_pattern_block(args,3,0,1,
+        result = parse_pattern_use_block(args,3,0,1,
                                      UseFanoutCmd.name(),
                                      index=True)
         if result.success:
@@ -344,7 +400,8 @@ class UseFanoutCmd(UseCommand):
                 in_range=data['range0'],
                 inv0=data['sign0'],
                 inv1=data['sign1'],
-                inv2=data['sign2']
+                inv2=data['sign2'],
+                cached=data['cached']
             )
         else:
             raise Exception(result.message)
@@ -371,10 +428,12 @@ class UseIntegCmd(UseCommand):
                  inv=SignType.POS, \
                  in_range=RangeType.MED, \
                  out_range=RangeType.MED,
-                 debug=False):
+                 debug=False,
+                 cached=False):
         UseCommand.__init__(self,
                             enums.BlockType.INTEG,
-                            CircLoc(chip,tile,slice))
+                            CircLoc(chip,tile,slice),
+                            cached=cached)
         assert(isinstance(inv,SignType))
         assert(isinstance(in_range,RangeType))
         assert(isinstance(out_range,RangeType))
@@ -406,7 +465,7 @@ class UseIntegCmd(UseCommand):
 
     @staticmethod
     def _parse(args,cls):
-        result = parse_pattern_block(args,1,1,2,
+        result = parse_pattern_use_block(args,1,1,2,
                                      cls.name(),
                                      debug=True)
         if result.success:
@@ -419,7 +478,8 @@ class UseIntegCmd(UseCommand):
                 inv=data['sign0'],
                 in_range=data['range0'],
                 out_range=data['range1'],
-                debug=data['debug']
+                debug=data['debug'],
+                cached=data['cached']
             )
         else:
             raise Exception(result.message)
@@ -467,10 +527,12 @@ class UseMultCmd(UseCommand):
                  in1_range=RangeType.MED,
                  out_range=RangeType.MED,
                  coeff=0,use_coeff=False,
-                 inv=SignType.POS):
+                 inv=SignType.POS,
+                 cached=False):
         UseCommand.__init__(self,
                             enums.BlockType.MULT,
-                            CircLoc(chip,tile,slice,index))
+                            CircLoc(chip,tile,slice,index),
+                            cached)
 
         if coeff < -1.0 or coeff > 1.0:
             self.fail("value not in [-1,1]: %s" % coeff)
@@ -513,31 +575,34 @@ class UseMultCmd(UseCommand):
 
     @staticmethod
     def _parse(args,cls):
-        result1 = parse_pattern_block(args,0,1,2,
+        result1 = parse_pattern_use_block(args,0,1,2,
                                       cls.name(),
                                      index=True)
 
-        result2 = parse_pattern_block(args,0,0,3,
+        result2 = parse_pattern_use_block(args,0,0,3,
                                       cls.name(),
                                       index=True)
 
         if result1.success:
             data = result1.value
             return cls(data['chip'],data['tile'],
-                              data['slice'],data['index'],
-                              in0_range=data['range0'],
-                              in1_range=RangeType.MED,
-                              out_range=data['range1'],
-                              use_coeff=True,
-                              coeff=data['value0'])
+                       data['slice'],data['index'],
+                       in0_range=data['range0'],
+                       in1_range=RangeType.MED,
+                       out_range=data['range1'],
+                       use_coeff=True,
+                       coeff=data['value0'],
+                       cached=data['cached'])
+
         elif result2.success:
             data = result2.value
             return cls(data['chip'],data['tile'],
-                              data['slice'],data['index'],
-                              in0_range=data['range0'],
-                              in1_range=data['range1'],
-                              out_range=data['range2'],
-                              use_coeff=False, coeff=0)
+                       data['slice'],data['index'],
+                       in0_range=data['range0'],
+                       in1_range=data['range1'],
+                       out_range=data['range2'],
+                       use_coeff=False, coeff=0,
+                       cached=data['cached'])
 
         elif not result1.success and not result2.success:
             msg = result1.message
@@ -555,22 +620,22 @@ class UseMultCmd(UseCommand):
             st = "%s %d %d %d %d val %f rng %s %s" % (\
                                                       self.name(),
                                                       self.loc.chip,
-                                                                   self.loc.tile,
-                                                                   self.loc.slice,
-                                                                   self.loc.index,
-                                                                   self._coeff,
-                                                                   self._in0_range.abbrev(),
-                                                                   self._out_range.abbrev()
+                                                      self.loc.tile,
+                                                      self.loc.slice,
+                                                      self.loc.index,
+                                                      self._coeff,
+                                                      self._in0_range.abbrev(),
+                                                      self._out_range.abbrev()
             )
         else:
             st = "%s %d %d %d %d rng %s %s %s" % (self.name(),
                                                   self.loc.chip,
-                                                               self.loc.tile,
-                                                               self.loc.slice,
-                                                               self.loc.index,
-                                                               self._in0_range.abbrev(),
-                                                               self._in1_range.abbrev(),
-                                                               self._out_range.abbrev())
+                                                  self.loc.tile,
+                                                  self.loc.slice,
+                                                  self.loc.index,
+                                                  self._in0_range.abbrev(),
+                                                  self._in1_range.abbrev(),
+                                                  self._out_range.abbrev())
 
         return st
 

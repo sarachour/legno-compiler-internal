@@ -112,7 +112,7 @@ def parse_pattern_block_loc(args,name):
     return OptionalValue.value(result)
 
 
-def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
+def parse_pattern_use_block(args,n_signs,n_consts,n_range_codes, \
                         name,index=False,debug=False,source=None,expr=False):
     line = " ".join(args)
     DEBUG = {'debug':True,'prod':False}
@@ -146,6 +146,8 @@ def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
     if expr:
         cmd += " {vars} {expr}"
 
+    cmd += " {state_mode}"
+
     cmd = cmd.strip()
     result = parselib.parse(cmd,line)
     if result is None:
@@ -178,7 +180,10 @@ def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
                              .split(']')[0].split()
         result['vars'] = args
 
+    assert(result['state_mode'] == 'update' or \
+           result['state_mode'] == 'cached')
 
+    result['cached'] = (result['state_mode'] == 'cached')
     return OptionalValue.value(result)
 
 class ConstVal:

@@ -6,9 +6,9 @@
 
 namespace circ {
 
-  const uint8_t LOW_RANGE = 0;
-  const uint8_t MED_RANGE = 1;
-  const uint8_t HI_RANGE = 2;
+  const uint8_t LOW_RANGE = RANGE_LOW;
+  const uint8_t MED_RANGE = RANGE_MED;
+  const uint8_t HI_RANGE = RANGE_HIGH;
 
   typedef enum block_type {
     //0

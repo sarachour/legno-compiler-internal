@@ -264,6 +264,15 @@ class CircLoc:
         self.slice = slice;
         self.index = index;
 
+    @staticmethod
+    def from_json(obj):
+        return CircLoc(
+            chip=obj['chip'],
+            tile=obj['tile'],
+            slice=obj['slice'],
+            index=obj['index']
+        )
+
     def to_json(self):
         return {
             'chip': self.chip,
