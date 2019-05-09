@@ -10,6 +10,26 @@ class PortType(Enum):
         else:
             return 1
 
+class PortName(str,Enum):
+    IN0 = "in0"
+    IN1 = "in1"
+    OUT0 = "out0"
+    OUT1 = "out1"
+    OUT2 = "out2"
+
+    def code(self):
+        data = {
+            PortName.IN0:0,
+            PortName.IN1:1,
+            PortName.OUT0:2,
+            PortName.OUT1:3,
+            PortName.OUT2:4,
+        }
+        return data[self]
+
+    def __lt__(self,other):
+        return str(self) < str(other)
+
 class BlockType(str,Enum):
     DAC = 'dac';
     ADC = 'adc';

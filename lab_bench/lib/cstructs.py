@@ -275,7 +275,7 @@ def adc_state_t():
         "test_rs" / bool_t(),
         "test_rsinc" / bool_t(),
         "enable" / bool_t(),
-        "inv" / bool_t(),
+        "inv" / sign_t(),
         "pmos" / cstruct.Int8ul,
         "nmos" / cstruct.Int8ul,
         "pmos2" / cstruct.Int8ul,
@@ -324,7 +324,7 @@ def fanout_state_t():
         "port_cal" / cstruct.Array(5,range_t()),
         "inv" / cstruct.Array(5,sign_t()),
         "enable" / bool_t(),
-        "third" / cstruct.Int8ul
+        "third" / bool_t()
     )
 
 def lut_state_t():
@@ -343,7 +343,7 @@ def integ_state_t():
         # 10 bytes in
         "pmos" / cstruct.Int8ul,
         "nmos" / cstruct.Int8ul,
-        "gain_cal" / cstruct.Int8ul,
+        "ic_cal" / cstruct.Int8ul,
         "ic_code" / cstruct.Int8ul,
         # 14 bytes in
         "port_cal" / cstruct.Array(3,cstruct.Int8ul),

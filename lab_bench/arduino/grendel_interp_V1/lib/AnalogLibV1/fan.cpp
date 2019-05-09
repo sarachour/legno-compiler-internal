@@ -20,6 +20,9 @@ void Fabric::Chip::Tile::Slice::Fanout::setRange (
 ) {
   assert(range != RANGE_LOW);
   m_codes.range[in0Id] = range;
+  m_codes.range[out0Id] = range;
+  m_codes.range[out1Id] = range;
+  m_codes.range[out2Id] = range;
 	setParam0();
 	setParam1();
 	setParam2();

@@ -106,26 +106,28 @@ class GetStateCmd(AnalogChipCommand):
         typ = cstructs.state_t()
         obj = typ.parse(data)
         if self._blk == enums.BlockType.FANOUT:
+            st = chipstate.FanoutBlockState(self._loc,obj.fanout)
             print(obj.fanout)
-            raise NotImplementedError
-        elif self._blk == enums.BlockType.INTEG:
-            print(obj.integ)
-            raise NotImplementedError
-        elif self._blk == enums.BlockType.MULT:
-            print(obj.mult)
-            raise NotImplementedError
-        elif self._blk == enums.BlockType.DAC:
-            print(obj.dac)
-            st = chipstate.DacBlockState(self._loc,obj.dac)
             env.state_db.put(st)
-            raise NotImplementedError
+        elif self._blk == enums.BlockType.INTEG:
+            st = chipstate.IntegBlockState(self._loc,obj.integ)
+            print(obj.integ)
+            env.state_db.put(st)
+        elif self._blk == enums.BlockType.MULT:
+            st = chipstate.MultBlockState(self._loc,obj.mult)
+            print(obj.mult)
+            env.state_db.put(st)
+        elif self._blk == enums.BlockType.DAC:
+            st = chipstate.DacBlockState(self._loc,obj.dac)
+            print(obj.dac)
+            env.state_db.put(st)
         elif self._blk == enums.BlockType.ADC:
+            st = chipstate.AdcBlockState(self._loc,obj.adc)
             print(obj.adc)
-            raise NotImplementedError
+            env.state_db.put(st)
         else:
             raise Exception("unimplemented block : <%s>" \
                             % self._blk.name)
-        input()
         return True
 
 
