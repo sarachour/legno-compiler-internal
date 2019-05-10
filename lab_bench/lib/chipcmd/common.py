@@ -113,9 +113,14 @@ def parse_pattern_block_loc(args,name):
 
 
 def parse_pattern_use_block(args,n_signs,n_consts,n_range_codes, \
-                        name,index=False,debug=False,source=None,expr=False):
+                        name,index=False,
+                            debug=False,
+                            source=None,
+                            expr=False,
+                            third=False):
     line = " ".join(args)
     DEBUG = {'debug':True,'prod':False}
+    THIRD = {'three':True,'two':False}
 
     cmd = "%s {chip:d} {tile:d} {slice:d}" % name
     if index:
@@ -139,6 +144,9 @@ def parse_pattern_use_block(args,n_signs,n_consts,n_range_codes, \
         cmd += ' '.join(map(lambda idx: "{range%d:w}" % idx,
                            range(0,n_range_codes)))
 
+
+    if third:
+        cmd += " {third:w}"
 
     if debug:
         cmd += " {debug:w}"
@@ -174,6 +182,8 @@ def parse_pattern_use_block(args,n_signs,n_consts,n_range_codes, \
     if debug:
         result['debug'] = DEBUG[result['debug']]
 
+    if third:
+        result['third'] = THIRD[result['third']]
 
     if expr:
         args = result['vars'].split('[')[1] \

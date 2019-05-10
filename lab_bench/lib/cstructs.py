@@ -148,7 +148,7 @@ def circ_use_dac_t():
 def circ_use_mult_t():
     return cstruct.Struct(
         "loc" / circ_loc_idx1_t(),
-        "use_coeff" / cstruct.Int8ul,
+        "use_coeff" / bool_t(),
         "in0_range" / cstruct.Int8ul,
         "in1_range" / cstruct.Int8ul,
         "out_range" / cstruct.Int8ul,
@@ -302,7 +302,7 @@ def dac_state_t():
 
 def mult_state_t():
     return cstruct.Struct(
-        "vga" / cstruct.Int8ul,
+        "vga" / bool_t(),
         "enable" / bool_t(),
         "inv" / cstruct.Array(3,sign_t()),
         "range" / cstruct.Array(3,range_t()),

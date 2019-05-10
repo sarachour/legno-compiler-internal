@@ -200,11 +200,11 @@ class DacBlockState(BlockState):
     self.const_code = state.const_code
     self.const_val = state.const_val
 
-def to_c_list(keymap):
+def to_c_list(keymap,value_code=True):
   intmap = {}
   for k,v in keymap.items():
     print("%s=%s" % (k,v))
-    intmap[k.code()] = v.code()
+    intmap[k.code()] = v.code() if value_code else v
 
   n = max(intmap.keys())
   buf = [0]*(n+1)
@@ -241,7 +241,7 @@ class MultBlockState(BlockState):
         "range": to_c_list(self.ranges),
         "pmos": self.pmos,
         "nmos": self.nmos,
-        "port_cal": list(map(lambda c: c.code(), self.port_cals)),
+        "port_cal": to_c_list(self.port_cals),
         "gain_cal": self.gain_cal,
         "gain_code": self.gain_code,
         "gain_val": self.gain_val
@@ -291,12 +291,14 @@ class IntegBlockState(BlockState):
 
     def __init__(self,loc,
                  exception,
+                 cal_enables,
                  invs,
                  ranges,
                  ic_val=None):
       BlockState.Key.__init__(self,enums.BlockType.INTEG,loc)
       self.exception = exception
       self.invs = invs
+      self.cal_enables = cal_enables
       self.ranges = ranges
       self.ic_val = ic_val
 
@@ -307,9 +309,27 @@ class IntegBlockState(BlockState):
   def key(self):
     return IntegBlockState.Key(self.loc,
                               self.exception,
-                              self.invs,
-                              self.ranges,
-                              self.ic_val)
+                               self.cal_enable,
+                               self.invs,
+                               self.ranges, \
+                               self.ic_val)
+
+  def to_cstruct(self):
+    return cstructs.state_t().build({
+      "integ": {
+        "cal_enable": to_c_list(self.cal_enable),
+        "inv": to_c_list(self.invs),
+        "enable": chipdata.BoolType.TRUE.code(),
+        "exception": self.exception.code(),
+        "range": to_c_list(self.ranges),
+        "pmos": self.pmos,
+        "nmos": self.nmos,
+        "port_cal": to_c_list(self.port_cals,value_code=False),
+        "ic_cal": self.ic_cal,
+        "ic_code": self.ic_code,
+        "ic_val": self.ic_val
+      }
+    })
 
   def from_cstruct(self,state):
     inid = enums.PortName.IN0
@@ -317,6 +337,12 @@ class IntegBlockState(BlockState):
 
     self.enable = chipdata.BoolType(state.enable)
     self.exception = chipdata.BoolType(state.exception)
+
+    self.cal_enable = {}
+    self.cal_enable[inid] = chipdata \
+        .BoolType(state.cal_enable[inid.code()])
+    self.cal_enable[outid] = chipdata \
+        .BoolType(state.cal_enable[inid.code()])
 
     self.invs = {}
     self.invs[inid] = chipdata.SignType(state.inv[inid.code()])
@@ -345,10 +371,10 @@ class FanoutBlockState(BlockState):
     def __init__(self,loc,
                  third,
                  invs,
-                 rng):
+                 rngs):
       BlockState.Key.__init__(self,enums.BlockType.FANOUT,loc)
       self.invs = invs
-      self.rng = rng
+      self.rngs = rngs
       self.third = third
 
   def __init__(self,loc,state):
@@ -360,7 +386,20 @@ class FanoutBlockState(BlockState):
     return FanoutBlockState.Key(self.loc,
                                 self.third,
                                 self.invs, \
-                                self.rng)
+                                self.rngs)
+
+  def to_cstruct(self):
+    return cstructs.state_t().build({
+      "fanout": {
+        "inv": to_c_list(self.invs),
+        "enable": chipdata.BoolType.TRUE.code(),
+        "third": self.third.code(),
+        "range": to_c_list(self.rngs),
+        "pmos": self.pmos,
+        "nmos": self.nmos,
+        "port_cal": to_c_list(self.port_cals,value_code=False),
+      }
+    })
 
   def from_cstruct(self,state):
     inid = enums.PortName.IN0
@@ -371,7 +410,10 @@ class FanoutBlockState(BlockState):
     self.enable = chipdata.BoolType(state.enable)
     self.third = chipdata.BoolType(state.third)
 
-    self.rng = chipdata.RangeType(state.range[inid.code()])
+    self.rngs = {}
+    for ident in [inid,out0id,out1id,out2id]:
+      self.rngs[ident] = chipdata.RangeType(state.range[inid.code()])
+
     self.invs = {}
     for ident in [out0id,out1id,out2id]:
       self.invs[ident] = chipdata.SignType(state.inv[ident.code()])

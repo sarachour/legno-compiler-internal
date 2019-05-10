@@ -73,9 +73,22 @@ namespace calibrate {
 
     switch(blk)
       {
+      case circ::block_type_t::FANOUT:
+        fanout = common::get_fanout(fab,loc);
+        fanout->update(state.fanout);
+        break;
+
       case circ::block_type_t::TILE_DAC:
         dac = common::get_slice(fab,loc.loc)->dac;
         dac->update(state.dac);
+        break;
+      case circ::block_type_t::MULT:
+        mult = common::get_mult(fab,loc);
+        mult->update(state.mult);
+        break;
+      case circ::block_type_t::INTEG:
+        integ = common::get_slice(fab,loc.loc)->integrator;
+        integ->update(state.integ);
         break;
       default:
         comm::error("set_codes: unimplemented block");

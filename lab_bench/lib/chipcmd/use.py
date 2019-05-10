@@ -345,6 +345,7 @@ class UseFanoutCmd(UseCommand):
     def __init__(self,chip,tile,slice,index,
                  in_range,
                  inv0=False,inv1=False,inv2=False,
+                 third=False,
                  cached=False):
 
         assert(isinstance(inv0, SignType))
@@ -364,6 +365,7 @@ class UseFanoutCmd(UseCommand):
         self._inv1 = inv1
         self._inv2 = inv2
         self._in_range = in_range
+        self._third = third
 
     @staticmethod
     def name():
@@ -390,12 +392,35 @@ class UseFanoutCmd(UseCommand):
             }
         })
 
+    def to_key(self):
+        loc = CircLoc(self.loc.chip,
+                      self.loc.tile,
+                      self.loc.slice,
+                      self.loc.index
+        )
+        invs = {
+            enums.PortName.OUT0: self._inv0,
+            enums.PortName.OUT1: self._inv1,
+            enums.PortName.OUT2: self._inv2
+        }
+        rngs = {}
+        for ident in [enums.PortName.IN0,
+                      enums.PortName.OUT0,
+                      enums.PortName.OUT1,
+                      enums.PortName.OUT2]:
+            rngs[ident] = self._in_range
+
+        return state.FanoutBlockState.Key(loc=loc,
+                                         third=self._third,
+                                         invs=invs,
+                                         rngs=rngs)
 
     @staticmethod
     def parse(args):
         result = parse_pattern_use_block(args,3,0,1,
-                                     UseFanoutCmd.name(),
-                                     index=True)
+                                         UseFanoutCmd.name(),
+                                         index=True,
+                                         third=True)
         if result.success:
             data = result.value
             return UseFanoutCmd(
@@ -407,6 +432,7 @@ class UseFanoutCmd(UseCommand):
                 inv0=data['sign0'],
                 inv1=data['sign1'],
                 inv2=data['sign2'],
+                third=BoolType.from_bool(data['third']),
                 cached=data['cached']
             )
         else:
@@ -434,7 +460,7 @@ class UseIntegCmd(UseCommand):
                  inv=SignType.POS, \
                  in_range=RangeType.MED, \
                  out_range=RangeType.MED,
-                 debug=False,
+                 debug=BoolType.FALSE,
                  cached=False):
         UseCommand.__init__(self,
                             enums.BlockType.INTEG,
@@ -484,7 +510,8 @@ class UseIntegCmd(UseCommand):
                 inv=data['sign0'],
                 in_range=data['range0'],
                 out_range=data['range1'],
-                debug=data['debug'],
+                debug=BoolType.TRUE if data['debug'] \
+                else BoolType.FALSE,
                 cached=data['cached']
             )
         else:
@@ -505,10 +532,37 @@ class UseIntegCmd(UseCommand):
                     'inv':self._inv.code(),
                     'in_range': self._in_range.code(),
                     'out_range': self._out_range.code(),
-                    'debug': 1 if self._debug else 0
+                    'debug': self._debug.code()
                 }
             }
         })
+
+    def to_key(self):
+        loc = CircLoc(self.loc.chip,
+                      self.loc.tile,
+                      self.loc.slice,
+                      0
+        )
+        invs = {
+            enums.PortName.IN0: SignType.POS,
+            enums.PortName.OUT0: self._inv
+        }
+        rngs = {
+            enums.PortName.IN0: self._in_range,
+            enums.PortName.OUT0: self._out_range
+        }
+        cal_en = {
+            enums.PortName.IN0: BoolType.FALSE,
+            enums.PortName.OUT0: BoolType.FALSE
+        }
+
+        return state.IntegBlockState.Key(loc=loc,
+                                         cal_enables=cal_en,
+                                         exception=self._debug,
+                                         invs=invs,
+                                         ranges=rngs,
+                                         ic_val=self._init_cond)
+
 
     def __repr__(self):
         fmtstr = "%s %d %d %d sgn %s val %f rng %s %s %s"
