@@ -1,5 +1,10 @@
 #include "AnalogLib.h"
 
+void Fabric::Chip::Tile::Slice::LookupTable::update(lut_code_t codes){
+  m_codes = codes;
+  setSource(m_codes.source);
+}
+
 void Fabric::Chip::Tile::Slice::LookupTable::setSource (lut_source_t src) {
 	/*check*/
   bool external = (src == LSRC_EXTERN);

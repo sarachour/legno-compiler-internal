@@ -130,6 +130,16 @@ class UseLUTCmd(UseCommand):
         else:
             raise Exception(result.message)
 
+    def to_key(self):
+        loc = CircLoc(self.loc.chip,
+                      self.loc.tile,
+                      self.loc.slice,
+                      0
+        )
+        return state.LutBlockState.Key(loc=loc,
+                                       source=self._source)
+
+
 
     def build_ctype(self):
         # inverting flips the sign for some wacky reason, given the byte

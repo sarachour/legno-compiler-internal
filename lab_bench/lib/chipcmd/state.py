@@ -128,6 +128,10 @@ class BlockState:
     elif blk == enums.BlockType.ADC:
       st = AdcBlockState(loc,obj.adc)
       print(obj.adc)
+    elif blk == enums.BlockType.LUT:
+      st = LutBlockState(loc,obj.lut)
+      print(obj.lut)
+
     else:
       raise Exception("unimplemented block : <%s>" \
                       % blk.name)
@@ -149,6 +153,35 @@ class BlockState:
     for k,v in self.__dict__.items():
       s += "%s=%s\n" % (k,v)
     return s
+
+class LutBlockState(BlockState):
+
+  class Key(BlockState.Key):
+
+    def __init__(self,loc,source):
+      BlockState.Key.__init__(self,enums.BlockType.LUT,loc)
+      self.source = source
+
+
+  def __init__(self,loc,state):
+    BlockState.__init__(self,enums.BlockType.DAC,loc,state)
+
+  @property
+  def key(self):
+    return LutBlockState.Key(self.loc,
+                             self.source)
+
+
+  def to_cstruct(self):
+    return cstructs.state_t().build({
+      "lut": {
+        "source": self.source.code(),
+      }
+    })
+
+
+  def from_cstruct(self,state):
+    self.source = chipdata.LUTSourceType(state.source)
 
 class DacBlockState(BlockState):
 

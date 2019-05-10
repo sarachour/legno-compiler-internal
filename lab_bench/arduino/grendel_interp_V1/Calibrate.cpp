@@ -70,6 +70,7 @@ namespace calibrate {
     Fabric::Chip::Tile::Slice::ChipAdc * adc;
     Fabric::Chip::Tile::Slice::Dac * dac;
     Fabric::Chip::Tile::Slice::Integrator * integ;
+    Fabric::Chip::Tile::Slice::LookupTable * lut;
 
     switch(blk)
       {
@@ -86,6 +87,11 @@ namespace calibrate {
         dac = common::get_slice(fab,loc.loc)->dac;
         dac->update(state.dac);
         break;
+      case circ::block_type_t::LUT:
+        lut = common::get_slice(fab,loc.loc)->lut;
+        lut->update(state.lut);
+        break;
+
       case circ::block_type_t::MULT:
         mult = common::get_mult(fab,loc);
         mult->update(state.mult);
@@ -109,6 +115,7 @@ namespace calibrate {
     Fabric::Chip::Tile::Slice::ChipAdc * adc;
     Fabric::Chip::Tile::Slice::Dac * dac;
     Fabric::Chip::Tile::Slice::Integrator * integ;
+    Fabric::Chip::Tile::Slice::LookupTable * lut;
 
     switch(blk)
       {
@@ -124,6 +131,10 @@ namespace calibrate {
       case circ::block_type_t::TILE_ADC:
         adc = common::get_slice(fab,loc.loc)->adc;
         state.adc = adc->m_codes;
+        break;
+      case circ::block_type_t::LUT:
+        lut = common::get_slice(fab,loc.loc)->lut;
+        state.lut = lut->m_codes;
         break;
       case circ::block_type_t::TILE_DAC:
         dac = common::get_slice(fab,loc.loc)->dac;

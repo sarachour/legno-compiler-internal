@@ -80,6 +80,15 @@ namespace circ {
       break;
     }
   }
+  void print_lut_source(lut_source_t src){
+    switch(src){
+    case LSRC_CONTROLLER: Serial.print("ctrl"); break;
+    case LSRC_EXTERN : Serial.print("extern"); break;
+    case LSRC_ADC0 : Serial.print("lut0"); break;
+    case LSRC_ADC1 : Serial.print("lut1"); break;
+    default: Serial.print("<?>"); break;
+    }
+  }
   void print_dac_source(dac_source_t src){
     switch(src){
     case DSRC_MEM: Serial.print("mem"); break;
@@ -297,6 +306,11 @@ namespace circ {
       Serial.print(" range=");
       Serial.print(range_to_str(state.adc.range));
       break;
+    case block_type_t::LUT:
+      Serial.print("source=");
+      print_lut_source(state.lut.source);
+      break;
+
     default:
       Serial.println("<generic-state>");
       break;
