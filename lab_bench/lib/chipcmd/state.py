@@ -241,7 +241,7 @@ class MultBlockState(BlockState):
         "range": to_c_list(self.ranges),
         "pmos": self.pmos,
         "nmos": self.nmos,
-        "port_cal": to_c_list(self.port_cals),
+        "port_cal": to_c_list(self.port_cals,value_code=False),
         "gain_cal": self.gain_cal,
         "gain_code": self.gain_code,
         "gain_val": self.gain_val
@@ -463,6 +463,27 @@ class AdcBlockState(BlockState):
                              self.inv,
                              self.rng
     )
+  def to_cstruct(self):
+    return cstructs.state_t().build({
+      "adc": {
+        "test_en": self.test_en.code(),
+        "test_adc": self.test_adc.code(),
+        "test_i2v": self.test_i2v.code(),
+        "test_rs": self.test_rs.code(),
+        "test_rsinc": self.test_rsinc.code(),
+        "enable": chipdata.BoolType.TRUE.code(),
+        "inv": self.inv.code(),
+        "pmos": self.pmos,
+        "nmos": self.nmos,
+        "pmos2": self.pmos2,
+        'i2v_cal': self.i2v_cal,
+        'upper_fs': self.upper_fs,
+        'upper': self.upper,
+        'lower_fs': self.lower_fs,
+        "lower": self.lower,
+        "range": self.rng.code(),
+      }
+    })
 
   def from_cstruct(self,state):
     inid = enums.PortName.IN0

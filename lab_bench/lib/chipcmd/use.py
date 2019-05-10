@@ -208,6 +208,23 @@ class UseADCCmd(UseCommand):
         else:
             raise Exception(result.message)
 
+    def to_key(self):
+        loc = CircLoc(self.loc.chip,
+                      self.loc.tile,
+                      self.loc.slice,
+                      0
+        )
+
+        false_val = BoolType.FALSE
+        return state.AdcBlockState.Key(loc=loc,
+                                       test_en=false_val,
+                                       test_adc=false_val,
+                                       test_i2v=false_val,
+                                       test_rs=false_val,
+                                       test_rsinc=false_val,
+                                       inv=SignType.POS,
+                                       rng=self._in_range)
+
     def build_ctype(self):
         # inverting flips the sign for some wacky reason, given the byte
         # representation is signed

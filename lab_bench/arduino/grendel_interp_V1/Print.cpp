@@ -154,8 +154,24 @@ namespace circ {
 
 
 
+#define print3(e1,e2,e3) {                        \
+    Serial.print("(");                          \
+    Serial.print(e1);                           \
+    Serial.print(",");                          \
+    Serial.print(e2);                           \
+    Serial.print(",");                          \
+    Serial.print(e3);                           \
+    Serial.print(")");                          \
+}
+#define print2(e1,e2) { \
+  Serial.print("("); \
+  Serial.print(e1); \
+  Serial.print(","); \
+  Serial.print(e2); \
+  Serial.print(")");                            \
+}
+
   void print_state(block_type_t blk, block_code_t state){
-    memset(FMTBUF,0,64);
     switch(blk){
     case block_type_t::TILE_DAC:
       Serial.print("enable=");
@@ -177,40 +193,32 @@ namespace circ {
       Serial.print(" value=");
       Serial.print(state.dac.const_val);
       break;
+
     case block_type_t::MULT:
       Serial.print("enable=");
       Serial.print(state.mult.enable);
+      Serial.print(" gain_val=");
+      Serial.print(state.mult.gain_val);
       Serial.print(" inv=");
-      sprintf(FMTBUF,"[%d,%d,%d]",
-              state.mult.inv[in0Id],
-              state.mult.inv[in1Id],
-              state.mult.inv[out0Id]
-              );
-      Serial.print(FMTBUF);
+      print3(state.mult.inv[in0Id],
+             state.mult.inv[in1Id],
+             state.mult.inv[out0Id]);
       Serial.print(" range=");
-      sprintf(FMTBUF,"[%s,%s,%s]",
-              range_to_str(state.mult.range[in0Id]),
-              range_to_str(state.mult.range[in1Id]),
-              range_to_str(state.mult.range[out0Id])
-              );
-      Serial.print(FMTBUF);
+      print3(range_to_str(state.mult.range[in0Id]),
+             range_to_str(state.mult.range[in1Id]),
+             range_to_str(state.mult.range[out0Id]));
       Serial.print(" pmos=");
-      Serial.print(state.dac.pmos);
+      Serial.print(state.mult.pmos);
       Serial.print(" nmos=");
-      Serial.print(state.dac.nmos);
+      Serial.print(state.mult.nmos);
       Serial.print(" gain_cal=");
       Serial.print(state.mult.gain_cal);
       Serial.print(" port_cal=");
-      sprintf(FMTBUF,"[%d,%d,%d]",
-              state.mult.port_cal[in0Id],
-              state.mult.port_cal[in1Id],
-              state.mult.port_cal[out0Id]
-              );
-      Serial.print(FMTBUF);
+      print3(state.mult.port_cal[in0Id],
+             state.mult.port_cal[in1Id],
+             state.mult.port_cal[out0Id]);
       Serial.print(" gain_code=");
       Serial.print(state.mult.gain_code);
-      Serial.print(" gain_val=");
-      Serial.print(state.mult.gain_val);
       break;
 
     case block_type_t::INTEG:
@@ -218,38 +226,28 @@ namespace circ {
       Serial.print(state.integ.enable);
       Serial.print(" exception=");
       Serial.print(state.integ.exception);
-      sprintf(FMTBUF," inv=[%d,%d]",
-              state.integ.inv[in0Id],
-              state.integ.inv[out0Id]
-              );
-      Serial.print(FMTBUF);
-      sprintf(" range=[%s,%s]",
-              range_to_str(state.integ.range[in0Id]),
-              range_to_str(state.integ.range[out0Id])
-              );
-      Serial.print(FMTBUF);
+      Serial.print(" ic_val=");
+      Serial.print(state.integ.ic_val);
+      Serial.print(" inv=");
+      print2(state.integ.inv[in0Id],
+             state.integ.inv[out0Id]);
+      Serial.print(" range=");
+      print2(range_to_str(state.integ.range[in0Id]),
+             range_to_str(state.integ.range[out0Id]));
       Serial.print(" pmos=");
-      Serial.print(state.dac.pmos);
+      Serial.print(state.integ.pmos);
       Serial.print(" nmos=");
-      Serial.print(state.dac.nmos);
+      Serial.print(state.integ.nmos);
       Serial.print(" gain_cal=");
       Serial.print(state.integ.gain_cal);
       Serial.print(" cal_enable=");
-      sprintf(FMTBUF,"[%d,%d]",
-              state.integ.cal_enable[in0Id],
-              state.integ.cal_enable[out0Id]
-              );
-      Serial.print(FMTBUF);
+      print2(state.integ.cal_enable[in0Id],
+             state.integ.cal_enable[out0Id]);
       Serial.print(" port_cal=");
-      sprintf(FMTBUF,"[%d,%d]",
-              state.integ.port_cal[in0Id],
-              state.integ.port_cal[out0Id]
-              );
-      Serial.print(FMTBUF);
+      print2(state.integ.port_cal[in0Id],
+             state.integ.port_cal[out0Id]);
       Serial.print(" ic_code=");
       Serial.print(state.integ.ic_code);
-      Serial.print(" ic_val=");
-      Serial.print(state.integ.ic_val);
       break;
 
     case block_type_t::FANOUT:
@@ -265,6 +263,40 @@ namespace circ {
       Serial.print(state.fanout.nmos);
       break;
 
+    case block_type_t::TILE_ADC:
+      Serial.print("test_en=");
+      Serial.print(state.adc.test_en);
+      Serial.print(" test_adc=");
+      Serial.print(state.adc.test_adc);
+      Serial.print(" test_i2v=");
+      Serial.print(state.adc.test_i2v);
+      Serial.print(" test_rs=");
+      Serial.print(state.adc.test_rs);
+      Serial.print(" test_rsinc=");
+      Serial.print(state.adc.test_rsinc);
+      Serial.print(" enable=");
+      Serial.print(state.adc.enable);
+      Serial.print(" inv=");
+      Serial.print(state.adc.inv);
+      Serial.print(" pmos=");
+      Serial.print(state.adc.pmos);
+      Serial.print(" nmos=");
+      Serial.print(state.adc.nmos);
+      Serial.print(" pmos2=");
+      Serial.print(state.adc.pmos2);
+      Serial.print(" i2v_cal=");
+      Serial.print(state.adc.i2v_cal);
+      Serial.print(" upper_fs=");
+      Serial.print(state.adc.upper_fs);
+      Serial.print(" upper=");
+      Serial.print(state.adc.upper);
+      Serial.print(" lower_fs=");
+      Serial.print(state.adc.lower_fs);
+      Serial.print(" lower=");
+      Serial.print(state.adc.lower);
+      Serial.print(" range=");
+      Serial.print(range_to_str(state.adc.range));
+      break;
     default:
       Serial.println("<generic-state>");
       break;

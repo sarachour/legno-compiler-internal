@@ -77,6 +77,10 @@ namespace calibrate {
         fanout = common::get_fanout(fab,loc);
         fanout->update(state.fanout);
         break;
+      case circ::block_type_t::TILE_ADC:
+        adc = common::get_slice(fab,loc.loc)->adc;
+        adc->update(state.adc);
+        break;
 
       case circ::block_type_t::TILE_DAC:
         dac = common::get_slice(fab,loc.loc)->dac;
