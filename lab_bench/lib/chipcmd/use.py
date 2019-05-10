@@ -57,7 +57,6 @@ class UseCommand(AnalogChipCommand):
             print(cmd)
             resp = cmd.execute_command(env)
             print(resp)
-            input("load cached")
 
     def priority(self):
         return Priority.EARLY

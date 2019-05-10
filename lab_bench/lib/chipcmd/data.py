@@ -167,12 +167,25 @@ class BoolType(str,Enum):
     TRUE = 'true'
     FALSE = 'false'
 
+    def boolean(self):
+        if self == BoolType.TRUE:
+            return True
+        else:
+            return False
+
     @staticmethod
     def from_bool(b):
         if b:
             return BoolType.TRUE
         else:
             return BoolType.FALSE
+
+    @staticmethod
+    def from_code(code):
+        if code == 0:
+            return BoolType.FALSE
+        else:
+            return BoolType.TRUE
 
     def code(self):
         if BoolType.TRUE == self:

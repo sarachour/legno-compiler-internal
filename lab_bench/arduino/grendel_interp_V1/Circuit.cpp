@@ -58,6 +58,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   block_code_t state;
   uint8_t byteval;
   char buf[32];
+  bool succ;
   Fabric::Chip::Tile::Slice* slice;
   Fabric::Chip::Tile::Slice::Dac* dac;
   Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -213,10 +214,25 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     comm::response("disconnected",0);
     break;
   case cmd_type_t::CALIBRATE:
-    comm::test(calibrate::calibrate(fab,
-                                    cmd.data.calib.blk,
-                                    cmd.data.calib.loc),
-               "calibration failed");
+    succ = calibrate::calibrate(fab,
+                                cmd.data.calib.blk,
+                                cmd.data.calib.loc);
+    calibrate::get_codes(fab,
+                         cmd.data.state.blk,
+                         cmd.data.state.loc,
+                         state);
+    comm::response("calibration terminated",1);
+    sprintf(FMTBUF,"%d",sizeof(state)+2);
+    comm::data(FMTBUF,"I");
+    comm::payload();
+    Serial.print(sizeof(state));
+    Serial.print(" ");
+    Serial.print(succ ? 1 : 0);
+    for(int i=0; i < sizeof(state); i+=1){
+      Serial.print(" ");
+      Serial.print(state.charbuf[i]);
+    }
+    Serial.println("");
     break;
 
   case cmd_type_t::GET_STATE:

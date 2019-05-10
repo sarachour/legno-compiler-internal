@@ -245,7 +245,7 @@ class PayloadArduinoResponse(GenericArduinoResponse):
 
 
     def __repr__(self):
-        return "payload-resp(%s,n=%d)" % str(self._array,self._n)
+        return "payload-resp(%s,n=%d)" % (str(self._array),self._n)
 
 
 class ArduinoCommand(Command):

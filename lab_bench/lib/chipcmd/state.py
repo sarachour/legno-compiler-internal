@@ -10,6 +10,10 @@ import binascii
 
 class BlockStateDatabase:
 
+  class Status(Enum):
+    SUCCESS = "success"
+    FAILURE = "failure"
+
   def __init__(self):
     path = CFG.STATE_DB
     self._conn = sqlite3.connect(path)
@@ -19,20 +23,21 @@ class BlockStateDatabase:
     CREATE TABLE IF NOT EXISTS states (
     cmdkey text NOT NULL,
     block text NOT NULL,
+    status text NOT NULL,
     state text NOT NULL,
     PRIMARY KEY (cmdkey)
     )
     '''
     self._curs.execute(cmd)
     self._conn.commit()
-    self.keys = ['cmdkey','block','state']
+    self.keys = ['cmdkey','block','status','state']
 
   def get_all(self):
     cmd = "SELECT * from states;"
     for values in self._curs.execute(cmd):
       yield dict(zip(self.keys,values))
 
-  def put(self,blockstate):
+  def put(self,blockstate,success=True):
     assert(isinstance(blockstate,BlockState))
     key = blockstate.key.to_key()
     value = blockstate.to_cstruct()
@@ -41,12 +46,14 @@ class BlockStateDatabase:
     self._curs.execute(cmd)
     self._conn.commit()
     bits = value.hex()
+    status = BlockStateDatabase.Status.SUCCESS if success else BlockStateDatabase.Status.FAILURE
     cmd = '''
-    INSERT INTO states (cmdkey,block,state)
-    VALUES ("{cmdkey}","{block}","{state}")
+    INSERT INTO states (cmdkey,block,status,state)
+    VALUES ("{cmdkey}","{block}","{status}","{state}")
     '''.format(
       cmdkey=key,
       block=blockstate.block.value,
+      status=status.value,
       state=bits
     )
     self._curs.execute(cmd)

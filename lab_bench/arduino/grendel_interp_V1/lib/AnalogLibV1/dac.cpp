@@ -4,8 +4,11 @@
 void Fabric::Chip::Tile::Slice::Dac::update(dac_code_t codes){
   m_codes = codes;
   updateFu();
-  setConstant(m_codes.const_val);
   setSource(m_codes.source);
+  setConstant(m_codes.const_val);
+  setConstantCode(m_codes.const_code);
+  // restore exact state. The gain_val field clobbered a bit by setConstantCode
+  m_codes = codes;
 }
 
 void Fabric::Chip::Tile::Slice::Dac::setEnable (
@@ -262,7 +265,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
                                          MEAS_CHIP_OUTPUT);
     delta = binsearch::get_nmos_delta(m_codes.gain_cal);
   }
-
+  print_debug("terminated");
 	if (hiRange) {
 		conn0.brkConn();
 		if (userConn00.destIfc) userConn00.setConn();
@@ -284,8 +287,11 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
 
   codes_self.nmos = m_codes.nmos;
   codes_self.gain_cal = m_codes.gain_cal;
-  codes_self.const_code = m_codes.const_code;
+  codes_self.const_code = m_codes.const_code+delta;
+  sprintf(FMTBUF,"const code=%d",codes_self.const_code);
+  print_debug(FMTBUF);
   update(codes_self);
+  print_debug("return status");
 	return succ;
 }
 

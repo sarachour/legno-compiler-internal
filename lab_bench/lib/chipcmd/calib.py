@@ -179,6 +179,21 @@ class CalibrateCmd(AnalogChipCommand):
             print(result.message)
             raise Exception("<parse_failure>: %s" % args)
 
+    def execute_command(self,env):
+        resp = ArduinoCommand.execute_command(self,env)
+        datum = self._loc.to_json()
+        datum['block_type'] = self._blk.value
+        success = BoolType.from_code(resp.data(0)[1]).boolean()
+        print("success=%s" % success)
+        data = bytes(resp.data(0)[2:])
+        st = chipstate.BlockState \
+                      .toplevel_from_cstruct(self._blk,
+                                             self._loc,
+                                             data)
+        env.state_db.put(st,success=success)
+        return True
+
+
     def __repr__(self):
         return "calib %s" % self._loc
 
