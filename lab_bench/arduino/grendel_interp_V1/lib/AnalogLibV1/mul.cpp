@@ -421,10 +421,10 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (float max_error) {
       parentSlice->muls[unitId==unitMulL?1:0].update(mult_code_0p1);
       conn0.setConn();
       conn1.setConn();
-      base_target = gain;
+      base_target *= -0.1; // the output is scaled down post-computation
     }
-    else if (loRange) {
-      base_target = -gain*0.1;
+    if (loRange) {
+      base_target *= 0.1; // the input is scaled down pre-computation.
     }
     else{
       base_target = -gain;
@@ -434,8 +434,6 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (float max_error) {
     // Serial.println(gain);
     float coeff = util::range_to_coeff(m_codes.range[out0Id]);
     coeff /= util::range_to_coeff(m_codes.range[in0Id]);
-    // any coefficients in the high range are tamped down
-    coeff = coeff > 1.001 ? 1.0 : coeff;
     float target = base_target*coeff;
     sprintf(FMTBUF, "target=%f*%f",base_target,coeff);
     print_debug(FMTBUF);

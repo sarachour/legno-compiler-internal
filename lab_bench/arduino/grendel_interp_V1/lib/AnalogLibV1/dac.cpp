@@ -257,6 +257,9 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
     // and move in that direction.
     // flip back and forth between negative and positive displacements
     float error = 0.0;
+    if(preamble_failed){
+      break;
+    }
     if(code + delta > 255
        || code + delta < 0){
       break;
@@ -280,11 +283,11 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
       // if the magnitude of the measured value is less than we expected
       if(fabs(target+error) < fabs(target)){
         // increase the magnitude of the value
-        delta += (target < 0 ? -1 : 1);
+        delta += (constant < 0 ? -1 : 1);
       }
       else{
         // decrease the magnitude of the value
-        delta += (target < 0 ? 1 : -1);
+        delta += (constant < 0 ? 1 : -1);
       }
     }
   }

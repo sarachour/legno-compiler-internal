@@ -2,11 +2,13 @@
 #include "assert.h"
 // y = -0.001592x + 3.267596
 // R^2 = 0.999464
-//#define ALPHA -0.001592251629
-//#define BETA 3.267596063219
 #ifdef _DUE
 
+// for differential channels
+#define ALPHA -0.001592251629
+#define BETA 3.267596063219
 
+// for single-ended channels
 #define ADC_RESOLUTION (3300.0/4096.0)
 #define ADC_FULLSCALE (1208.0)
 
@@ -40,23 +42,33 @@ void Fabric::Chip::Tile::Slice::ChipOutput::analogDist (
   error("FIXME: reimplement");
 }
 
+float single_ended(int ardAnaDiffChan, unsigned int samples){
+  unsigned long adcPos = 0;
+  unsigned long adcNeg = 0;
+  for (unsigned int index = 0; index < samples; index++) {
+    // while ((ADC->ADC_ISR & 0x1000000) == 0);
+    adcNeg += ADC->ADC_CDR[ardAnaDiffChan];
+    adcPos += ADC->ADC_CDR[ardAnaDiffChan+1];
+  }
+  float pos_mv = ADC_RESOLUTION * ((float)adcPos/(float)samples);
+  float neg_mv = ADC_RESOLUTION * ((float)adcNeg/(float)samples);
+  float value = (pos_mv-neg_mv)/ADC_FULLSCALE;
+  //sprintf(FMTBUF,"pos=%f neg=%f diff=%f", pos_mv, neg_mv,value);
+  //print_debug(FMTBUF);
+  return value;
+}
+float differential(int ardAnaDiffChan, unsigned int samples){
+  unsigned long adcDiff = 0;
+  for (unsigned int index = 0; index < samples; index++) {
+    // while ((ADC->ADC_ISR & 0x1000000) == 0);
+    adcDiff += ADC->ADC_CDR[ardAnaDiffChan];
+  }
+  float value = ALPHA*((float)adcDiff/(float)samples)+BETA;
+  return value;
+}
 /*Measure the reading of an ADC from multiple samples*/
 float Fabric::Chip::Tile::Slice::ChipOutput::analogAvg (unsigned int samples) const
 {
-
-    unsigned long adcPos = 0;
-    unsigned long adcNeg = 0;
-    for (unsigned int index = 0; index < samples; index++) {
-        // while ((ADC->ADC_ISR & 0x1000000) == 0);
-        adcNeg += ADC->ADC_CDR[ardAnaDiffChan];
-        adcPos += ADC->ADC_CDR[ardAnaDiffChan+1];
-    }
-    float pos_mv = ADC_RESOLUTION * ((float)adcPos/(float)samples);
-    float neg_mv = ADC_RESOLUTION * ((float)adcNeg/(float)samples);
-    float value = (pos_mv-neg_mv)/ADC_FULLSCALE;
-    //sprintf(FMTBUF,"pos=%f neg=%f diff=%f", pos_mv, neg_mv,value);
-    //print_debug(FMTBUF);
-    return value;
-
+  return differential(ardAnaDiffChan, samples);
 }
 #endif
