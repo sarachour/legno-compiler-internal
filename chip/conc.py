@@ -84,6 +84,15 @@ class ConcCirc:
 
         return True
 
+    def get_conns_by_src(self,tblk,tloc,tport):
+        assert(isinstance(tblk,str))
+        assert(isinstance(tloc,str))
+        assert(isinstance(tport,str))
+        if not (tblk,tloc,tport) in self._conns:
+            return []
+        else:
+            return self._conns[(tblk,tloc,tport)]
+
     def get_conns_by_dest(self,tblk,tloc,tport):
         assert(isinstance(tblk,str))
         assert(isinstance(tloc,str))

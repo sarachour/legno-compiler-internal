@@ -61,6 +61,7 @@ def build_vgas(args,row):
   if not in_whitelist(row):
     return
 
+  row['block'] = 'mult'
   for in0range,outrange in \
       itertools.product(*[ranges,ranges]):
     for value in build_values(args):

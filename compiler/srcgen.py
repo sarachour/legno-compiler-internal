@@ -9,9 +9,12 @@ from lang.hwenv import DiffPinMode
 import ops.op as op
 
 class GrendelProg:
-
   def __init__(self):
-    self._stmts = []
+    self._stmts= []
+
+  @property
+  def stmts(self):
+    return self._stmts
 
   def validate(self,cmd):
     cmdstr = str(cmd)
@@ -64,7 +67,7 @@ def gen_use_lut(circ,block,locstr,config,source):
   in_scf,in_ival = config.scf('in'),config.interval('in')
   out_scf,out_ival = config.scf('out'),config.interval('out')
   variables,expr = op.to_python(config.expr('out',inject=True))
-  yield UseLUTCmd(chip,tile,slce,source=source)
+  yield UseLUTCmd(chip,tile,slce,source=source,cached=True)
   yield WriteLUTCmd(chip,tile,slce,variables,expr)
 
 def nearest_value(value):
@@ -80,10 +83,13 @@ def gen_use_adc(circ,block,locstr,config):
   rng = cast_enum([config.scale_mode],\
                   [RangeType])
 
-  yield UseADCCmd(chip,tile,slce,
-                           in_range=rng[0])
+  yield UseADCCmd(chip=chip,
+                  tile=tile,
+                  slice=slce,
+                  in_range=rng[0],
+                  cached=True)
 
-def gen_use_dac(circ,block,locstr,config,source,no_calib=False):
+def gen_use_dac(circ,block,locstr,config,source):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   inv,rng = cast_enum(config.scale_mode,\
                       [SignType,RangeType])
@@ -96,22 +102,14 @@ def gen_use_dac(circ,block,locstr,config,source,no_calib=False):
     value = 0.0
 
   value = nearest_value(value)
-  yield UseDACCmd(chip, \
-                  tile, \
-                  slce, \
+  yield UseDACCmd(chip=chip, \
+                  tile=tile, \
+                  slice=slce, \
                   value=value, \
                   inv=inv, \
                   out_range=rng,
-                  source=source)
-
-  if not no_calib:
-    yield ConfigDACCmd(chip, \
-                       tile, \
-                       slce, \
-                       value=value, \
-                       inv=inv, \
-                       out_range=rng,
-                       source=source)
+                  source=source,
+                  cached=True)
 
 
 def gen_get_adc_status(circ,block,locstr):
@@ -128,7 +126,7 @@ def gen_get_integrator_status(circ,block,locstr):
                                  slce)
 
 
-def gen_use_integrator(circ,block,locstr,config,debug=True,no_calib=False):
+def gen_use_integrator(circ,block,locstr,config,debug=True):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   inv,= cast_enum([config.comp_mode],
                   [SignType])
@@ -149,19 +147,11 @@ def gen_use_integrator(circ,block,locstr,config,debug=True,no_calib=False):
                     inv=inv,
                     in_range=in_rng,
                     out_range=out_rng,
-                    debug=debug)
-  if not no_calib:
-    yield ConfigIntegCmd(chip,
-                         tile,
-                         slce,
-                         init_cond=init_cond,
-                         inv=inv,
-                         in_range=in_rng,
-                         out_range=out_rng,
-                         debug=debug)
+                    debug=debug,
+                    cached=True)
 
 
-def gen_use_multiplier(circ,block,locstr,config,no_calib=False):
+def gen_use_multiplier(circ,block,locstr,config):
   MODE_MAP = {"mul":False,'vga':True}
 
   chip,tile,slce,index =gen_unpack_loc(circ,locstr)
@@ -180,17 +170,8 @@ def gen_use_multiplier(circ,block,locstr,config,no_calib=False):
                      in0_range=in0_rng,
                      out_range=out_rng,
                      coeff=coeff,
-                     use_coeff=True)
-
-    if not no_calib:
-      yield ConfigMultCmd(chip,
-                          tile,
-                          slce,
-                          index,
-                          in0_range=in0_rng,
-                          out_range=out_rng,
-                          coeff=coeff,
-                          use_coeff=True)
+                     use_coeff=True,
+                     cached=True)
 
 
   else:
@@ -200,14 +181,16 @@ def gen_use_multiplier(circ,block,locstr,config,no_calib=False):
                                  RangeType])
 
     yield UseMultCmd(chip,
-                               tile,
-                               slce,
-                               index,
-                               in0_range=in0_rng,
-                               in1_range=in1_rng,
-                               out_range=out_rng)
+                     tile,
+                     slce,
+                     index,
+                     in0_range=in0_rng,
+                     in1_range=in1_rng,
+                     out_range=out_rng,
+                     cached=True)
 
-def gen_use_fanout(circ,block,locstr,config):
+
+def gen_use_fanout(circ,block,locstr,config,third=False):
   chip,tile,slce,index =gen_unpack_loc(circ,locstr)
   inv0,inv1,inv2 = cast_enum(config.comp_mode,
                                     [SignType,
@@ -219,7 +202,8 @@ def gen_use_fanout(circ,block,locstr,config):
                      in_range=in_rng,
                      inv0=inv0,
                      inv1=inv1,
-                     inv2=inv2)
+                     inv2=inv2,
+                     third=third)
 
 
 def is_same_tile(circ,loc1,loc2):
@@ -230,9 +214,9 @@ def is_same_tile(circ,loc1,loc2):
       return False
   return True
 
-def gen_block(gprog,circ,block,locstr,config,no_calib=False):
+def gen_block(gprog,circ,block,locstr,config,connected_ports=[]):
   if block.name == 'multiplier':
-    generator = gen_use_multiplier(circ,block,locstr,config,no_calib=no_calib)
+    generator = gen_use_multiplier(circ,block,locstr,config)
 
   elif block.name == 'tile_dac':
     sources = list(circ.get_conns_by_dest(block.name,locstr,'in'))
@@ -276,12 +260,14 @@ def gen_block(gprog,circ,block,locstr,config,no_calib=False):
 
   elif block.name == 'integrator':
     generator = gen_use_integrator(circ,block,locstr,config, \
-                                   debug=True,no_calib=no_calib)
+                                   debug=True)
     cmd = gen_get_integrator_status(circ,block,locstr)
     gprog.add(cmd)
 
   elif block.name == 'fanout':
-    generator = gen_use_fanout(circ,block,locstr,config)
+    targets = list(circ.get_conns_by_src(block.name,locstr,'out2'))
+    third = len(targets) > 0
+    generator = gen_use_fanout(circ,block,locstr,config,targets)
 
   elif block.name == 'ext_chip_in' or \
        block.name == 'ext_chip_analog_in' or \
@@ -295,11 +281,9 @@ def gen_block(gprog,circ,block,locstr,config,no_calib=False):
   else:
     raise Exception("unimplemented: <%s>" % block.name)
 
-  stmts = []
   for cmd in generator:
-    stmts.append(cmd)
+    gprog.add(cmd)
 
-  return stmts
 
 def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
   TO_BLOCK_TYPE = {
@@ -350,7 +334,7 @@ def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
                     src_loc, \
                     dest_blk,
                     dest_loc)
-  return [cmd]
+  gprog.add(cmd)
 
 def parse(line):
   cmd = toplevel_cmd.parse(line)
@@ -489,10 +473,16 @@ def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,ntrials):
   gren.add(parse('micro_get_status'))
   return gren
 
+def teardown(gren,stmt):
+  if isinstance(stmt, MakeConnCmd):
+    gren.add(stmt.disable())
+
+  elif isinstance(stmt, UseCommand):
+    gren.add(stmt.disable())
+
 def generate(paths,board,conc_circ,menv,hwenv,filename,ntrials):
   gren = GrendelProg()
   preamble(gren,board,conc_circ,menv,hwenv)
-  no_calib = True
   #for block_name,loc,config in conc_circ.instances():
   #  if block_name == 'lut' or block_name == 'tile_adc':
   #    no_calib = True
@@ -500,24 +490,21 @@ def generate(paths,board,conc_circ,menv,hwenv,filename,ntrials):
   stmts = []
   for block_name,loc,config in conc_circ.instances():
     block = conc_circ.board.block(block_name)
-    stmts += gen_block(gren,conc_circ,block,loc,config,no_calib=no_calib)
+    gen_block(gren,conc_circ,block,loc,config)
 
   for sblk,sloc,sport, \
       dblk,dloc,dport in conc_circ.conns():
-    stmts += gen_conn(gren,conc_circ,sblk,sloc,sport, \
+    gen_conn(gren,conc_circ,sblk,sloc,sport, \
                       dblk,dloc,dport)
 
 
   for stmt in stmts:
-    gprog.add(cmd.calibrate())
-
-  for stmt in stmts:
-    gprog.add(cmd)
+    gren.add(stmt)
 
   postconfig(paths,gren,board,conc_circ,menv,hwenv,filename,ntrials)
 
-  for stmt in stmts:
-    gprog.add(cmd.teardown())
+  for stmt in gren.stmts:
+    teardown(gren,stmt)
 
 
   return gren
