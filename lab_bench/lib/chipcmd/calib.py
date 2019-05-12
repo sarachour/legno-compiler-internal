@@ -136,12 +136,13 @@ class GetStateCmd(AnalogChipCommand):
 
 class CalibrateCmd(AnalogChipCommand):
 
-    def __init__(self,blk,chip,tile,slice,index=None):
+    def __init__(self,blk,chip,tile,slice,index=None,max_error=0.01):
         AnalogChipCommand.__init__(self)
         self._loc = CircLoc(chip,tile,slice,index=0 if index is None \
                             else index)
         self._blk = enums.BlockType(blk)
         self.test_loc(self._blk,self._loc)
+        self._max_error = max_error
 
     @staticmethod
     def name():
@@ -159,7 +160,8 @@ class CalibrateCmd(AnalogChipCommand):
             'data':{
                 'calib':{
                     'blk': self._blk.code(),
-                    'loc': loc_type
+                    'loc': loc_type,
+                    'max_error': self._max_error
                 }
             }
         })
@@ -167,14 +169,16 @@ class CalibrateCmd(AnalogChipCommand):
     @staticmethod
     def parse(args):
         result = parse_pattern_block_loc(args,
-                                      CalibrateCmd.name())
+                                         CalibrateCmd.name(),
+                                         max_error=True)
         if result.success:
             data = result.value
             return CalibrateCmd(data["blk"],
                                 data['chip'],
                                 data['tile'],
                                 data['slice'],
-                                data['index'])
+                                data['index'],
+                                data['max_error'])
         else:
             print(result.message)
             raise Exception("<parse_failure>: %s" % args)
@@ -190,7 +194,7 @@ class CalibrateCmd(AnalogChipCommand):
                       .toplevel_from_cstruct(self._blk,
                                              self._loc,
                                              data)
-        env.state_db.put(st,success=success)
+        env.state_db.put(st,success=success,max_error=self._max_error)
         return True
 
 

@@ -247,7 +247,7 @@ void Fabric::Chip::Tile::Slice::ChipAdc::setAnaIrefPmos () const {
 	);
 }
 
-bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate () {
+bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate (const float max_error) {
 
   update(m_codes);
   adc_code_t codes_self= m_codes;
@@ -270,6 +270,7 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate () {
   print_log("-> finding i2v bias");
   bool succ = binsearch::find_bias_and_nmos(this,
                                             128.0,
+                                            max_error,
                                             m_codes.i2v_cal,
                                             m_codes.nmos,
                                             MEAS_ADC);
@@ -345,12 +346,16 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::checkSteady (
 	unsigned char dacCode
 ) const {
   dac_code_t codes_dac = parentSlice->dac->m_codes;
+  // update dac code to specified code.
 	parentSlice->dac->setConstantCode (dacCode);
 	parentSlice->parentTile->parentChip->parentFabric->cfgCommit();
 	bool success=true;
+  // get the adc code at that value
 	unsigned char adcPrev = getData();
-	for (unsigned char rep=0; success&&(rep<16); rep++)
+	for (unsigned char rep=0; success&&(rep<16); rep++){
+    // determine if adc code is the same value as the previous value.
 		success &= adcPrev==getData();
+  }
   parentSlice->dac->update(codes_dac);
 	return success;
 }

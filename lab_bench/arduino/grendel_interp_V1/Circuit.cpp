@@ -216,7 +216,8 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   case cmd_type_t::CALIBRATE:
     succ = calibrate::calibrate(fab,
                                 cmd.data.calib.blk,
-                                cmd.data.calib.loc);
+                                cmd.data.calib.loc,
+                                cmd.data.calib.max_error);
     calibrate::get_codes(fab,
                          cmd.data.state.blk,
                          cmd.data.state.loc,

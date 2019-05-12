@@ -26,8 +26,8 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 
     void update(integ_code_t codes);
     integ_code_t m_codes;
-		bool calibrateTarget ();
-		bool calibrate ();
+		bool calibrateTarget (const float max_error);
+		bool calibrate (const float max_error);
 	private:
 		class IntegratorInterface;
 		class IntegratorIn;

@@ -36,7 +36,7 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 		bool getException() const;
     void update(adc_code_t codes){m_codes = codes; updateFu();}
     adc_code_t m_codes;
-		bool calibrate ();
+		bool calibrate (const float max_error);
 	private:
 		class AdcIn;
 		ChipAdc (Slice * parentSlice);

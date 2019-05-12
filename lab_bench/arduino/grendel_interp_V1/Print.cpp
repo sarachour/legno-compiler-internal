@@ -446,6 +446,8 @@ namespace circ {
       print_block(cmd.data.calib.blk);
       Serial.print(" ");
       print_idx_loc(cmd.data.calib.loc);
+      Serial.print(" max_error=");
+      Serial.print(cmd.data.calib.max_error);
       break;
     case cmd_type_t::GET_STATE:
       Serial.print("get_state ");

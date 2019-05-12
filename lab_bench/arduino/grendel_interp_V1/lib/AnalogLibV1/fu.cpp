@@ -65,14 +65,15 @@ namespace binsearch {
   }
 
   void test_stab(unsigned char code,
-                float error,
-                bool& calib_failed){
-    const float MIN_ERROR = 1e-2;
+                 float error,
+                 const float min_error,
+                 bool& calib_failed){
+    //const float MIN_ERROR = 1e-2;
     sprintf(FMTBUF,
             "result: bias=%d error=%f max-error=%f",
-            code, error, MIN_ERROR);
+            code, error, min_error);
     print_debug(FMTBUF);
-    if(fabs(error) <= MIN_ERROR){
+    if(fabs(error) <= min_error){
       calib_failed = false;
     }
     else{
@@ -81,14 +82,15 @@ namespace binsearch {
   }
 
   void test_stab_and_update_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                                unsigned char code,
-                                float error,
-                                unsigned char& nmos,
-                                bool& new_search,
-                                bool& calib_failed)
+                                 unsigned char code,
+                                 float error,
+                                 const float max_error,
+                                 unsigned char& nmos,
+                                 bool& new_search,
+                                 bool& calib_failed)
   {
     new_search = false;
-    test_stab(code,error,calib_failed);
+    test_stab(code,error,max_error,calib_failed);
     if(not calib_failed){
       return;
     }
@@ -106,15 +108,16 @@ namespace binsearch {
   }
 
   void multi_test_stab(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                                       unsigned char* codes,
-                                       float* errors,
-                                       int n_vals,
-                                       bool& calib_failed)
+                       unsigned char* codes,
+                       float* errors,
+                       const float max_error,
+                       int n_vals,
+                       bool& calib_failed)
   {
     calib_failed = false;
     for(int i = 0; i < n_vals; i+= 1){
       bool this_failed;
-      test_stab(codes[i], errors[i], this_failed);
+      test_stab(codes[i], errors[i], max_error, this_failed);
       calib_failed |= this_failed;
     }
   }
@@ -129,19 +132,20 @@ namespace binsearch {
     return 0;
   }
   void multi_test_stab_and_update_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                                unsigned char* codes,
-                                float* errors,
-                                int n_vals,
-                                unsigned char& nmos,
-                                bool& new_search,
-                                bool& calib_failed)
+                                       unsigned char* codes,
+                                       float* errors,
+                                       const float max_error,
+                                       int n_vals,
+                                       unsigned char& nmos,
+                                       bool& new_search,
+                                       bool& calib_failed)
     {
       new_search = false;
       calib_failed = false;
       float avg_code = 0;
       for(int i = 0; i < n_vals; i+= 1){
         bool this_failed;
-        test_stab(codes[i], errors[i], this_failed);
+        test_stab(codes[i], errors[i], max_error, this_failed);
         calib_failed |= this_failed;
         avg_code += codes[i];
       }
@@ -165,6 +169,7 @@ namespace binsearch {
 
   bool find_bias_and_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                           float target,
+                          const float max_error,
                           unsigned char & code,
                           unsigned char & nmos,
                           meas_method_t method)
@@ -183,7 +188,7 @@ namespace binsearch {
       codes[nmos] = code;
       deltas[nmos] = delta;
 
-      test_stab(codes[nmos],deltas[nmos],calib_failed);
+      test_stab(codes[nmos],deltas[nmos],max_error,calib_failed);
       if(!calib_failed){
         return true;
       }

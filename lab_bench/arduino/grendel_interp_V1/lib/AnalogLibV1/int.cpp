@@ -211,8 +211,7 @@ void Fabric::Chip::Tile::Slice::Integrator::setParamHelper (
 	);
 }
 
-bool Fabric::Chip::Tile::Slice::Integrator::calibrate (
-) {
+bool Fabric::Chip::Tile::Slice::Integrator::calibrate (const float max_error) {
   integ_code_t codes_self = m_codes;
 
 	setEnable(true);
@@ -248,7 +247,9 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrate (
     codes[1] = m_codes.port_cal[in0Id];
     m_codes.cal_enable[in0Id] = false;
     binsearch::multi_test_stab_and_update_nmos(this,
-                                               codes, errors, 2,
+                                               codes, errors,
+                                               max_error,
+                                               2,
                                                m_codes.nmos,
                                                new_search,
                                                calib_failed);
@@ -264,7 +265,7 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrate (
 
 }
 
-bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget () {
+bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (const float max_error) {
   if(!m_codes.enable){
     return true;
   }
@@ -329,7 +330,9 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget () {
                          MEAS_CHIP_OUTPUT);
     codes[2] = m_codes.gain_cal;
     binsearch::multi_test_stab_and_update_nmos(this,
-                                               codes, errors, 3,
+                                               codes, errors,
+                                               max_error,
+                                               3,
                                                m_codes.nmos,
                                                new_search,
                                                calib_failed);

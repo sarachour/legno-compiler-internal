@@ -6,7 +6,8 @@
 namespace calibrate {
   bool calibrate(Fabric * fab,
                  uint16_t blk,
-                 circ::circ_loc_idx1_t loc);
+                 circ::circ_loc_idx1_t loc,
+                 const float max_error);
 
 
   void get_codes(Fabric * fab,

@@ -168,13 +168,12 @@ void Fabric::Chip::Tile::Slice::Dac::setParamHelper (
 	);
 }
 
-bool Fabric::Chip::Tile::Slice::Dac::calibrate (
-)
+bool Fabric::Chip::Tile::Slice::Dac::calibrate (const float max_error)
 {
-	return true;
+  return true;
 }
 
-bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
+bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
 {
   //setConstantCode(round(constant*128.0+128.0));
   if(!m_codes.enable){
@@ -216,7 +215,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
     parentSlice->muls[1].m_codes.range[in0Id] = RANGE_HIGH;
     parentSlice->muls[1].m_codes.range[out0Id] = RANGE_MED;
 		parentSlice->muls[1].setGain(-1.0);
-    if(!parentSlice->muls[1].calibrateTarget()){
+    if(!parentSlice->muls[1].calibrateTarget(0.01)){
       print_log("cannot calibrate DAC/HIGH, failed to calibrate multiplier");
       return false;
     }
@@ -260,6 +259,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget ()
     succ = binsearch::find_bias_and_nmos(
                                          this,
                                          target,
+                                         max_error,
                                          m_codes.gain_cal,
                                          m_codes.nmos,
                                          MEAS_CHIP_OUTPUT);

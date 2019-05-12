@@ -24,20 +24,21 @@ class BlockStateDatabase:
     cmdkey text NOT NULL,
     block text NOT NULL,
     status text NOT NULL,
+    max_error real NOT NULL,
     state text NOT NULL,
     PRIMARY KEY (cmdkey)
     )
     '''
     self._curs.execute(cmd)
     self._conn.commit()
-    self.keys = ['cmdkey','block','status','state']
+    self.keys = ['cmdkey','block','status','max_error','state']
 
   def get_all(self):
     cmd = "SELECT * from states;"
     for values in self._curs.execute(cmd):
       yield dict(zip(self.keys,values))
 
-  def put(self,blockstate,success=True):
+  def put(self,blockstate,success=True,max_error=-1):
     assert(isinstance(blockstate,BlockState))
     key = blockstate.key.to_key()
     value = blockstate.to_cstruct()
@@ -48,12 +49,13 @@ class BlockStateDatabase:
     bits = value.hex()
     status = BlockStateDatabase.Status.SUCCESS if success else BlockStateDatabase.Status.FAILURE
     cmd = '''
-    INSERT INTO states (cmdkey,block,status,state)
-    VALUES ("{cmdkey}","{block}","{status}","{state}")
+    INSERT INTO states (cmdkey,block,status,max_error,state)
+    VALUES ("{cmdkey}","{block}","{status}",{max_error},"{state}")
     '''.format(
       cmdkey=key,
       block=blockstate.block.value,
       status=status.value,
+      max_error=max_error,
       state=bits
     )
     self._curs.execute(cmd)

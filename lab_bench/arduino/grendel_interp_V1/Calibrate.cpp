@@ -7,7 +7,8 @@ namespace calibrate {
 
   bool calibrate(Fabric* fab,
                  uint16_t blk,
-                 circ::circ_loc_idx1_t loc)
+                 circ::circ_loc_idx1_t loc,
+                 const float max_error)
   {
     Fabric::Chip::Tile::Slice::Fanout * fanout;
     Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -18,39 +19,39 @@ namespace calibrate {
     switch(blk){
     case circ::block_type_t::FANOUT:
       fanout = common::get_fanout(fab,loc);
-      fanout->calibrate();
+      fanout->calibrate(max_error);
       break;
 
     case circ::block_type_t::MULT:
       // TODO: indicate if input or output.
       mult = common::get_mult(fab,loc);
       if(mult->m_codes.vga){
-        return mult->calibrateTarget();
+        return mult->calibrateTarget(max_error);
       }
       else{
-        return mult->calibrate();
+        return mult->calibrate(max_error);
       }
       break;
 
     case circ::block_type_t::TILE_ADC:
       adc = common::get_slice(fab,loc.loc)->adc;
-      adc->calibrate();
+      adc->calibrate(max_error);
       break;
 
     case circ::block_type_t::TILE_DAC:
       dac = common::get_slice(fab,loc.loc)->dac;
       if(dac->m_codes.source == dac_source_t::DSRC_MEM){
-        return dac->calibrateTarget();
+        return dac->calibrateTarget(max_error);
       }
       else{
-        return dac->calibrate();
+        return dac->calibrate(max_error);
       }
       break;
 
     case circ::block_type_t::INTEG:
       integ = common::get_slice(fab,loc.loc)->integrator;
-      integ->calibrate();
-      integ->calibrateTarget();
+      integ->calibrate(max_error);
+      integ->calibrateTarget(max_error);
       break;
 
     default:

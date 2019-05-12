@@ -79,16 +79,16 @@ Fabric::Chip::Tile::Slice::~Slice () {
 bool Fabric::Chip::Tile::Slice::calibrateTarget () const {
 	print_log("Calib.TARGET DAC");
   Serial.flush();
-	if (!dac->calibrateTarget()) return false;
+	if (!dac->calibrateTarget(0.01)) return false;
 	print_log("Calib.TARGET Multiplier 0");
   Serial.flush();
-	if (!muls[0].calibrateTarget()) return false;
+	if (!muls[0].calibrateTarget(0.01)) return false;
 	print_log("Calib.TARGET Multiplier 1");
   Serial.flush();
-	if (!muls[1].calibrateTarget()) return false;
+	if (!muls[1].calibrateTarget(0.01)) return false;
 	print_log("Calib.TARGET Integrator");
   Serial.flush();
-	if (!integrator->calibrateTarget()) return false;
+	if (!integrator->calibrateTarget(0.01)) return false;
 	print_log("Done");
   Serial.flush();
 	return true;
@@ -109,7 +109,7 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
 				&& parentTile->parentChip->chipColId==chipCol0
 			) SerialUSB.println("SKIPPING THIS ADC");
 			else
-			if (!adc->calibrate()) return false;
+			if (!adc->calibrate(0.01)) return false;
 		}
 		// if (
 		// 	sliceId==slice2
@@ -145,7 +145,7 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
 				&& parentTile->parentChip->chipColId==chipCol0
                         ) SerialUSB.println("SKIPPING THIS ADC");
 			else
-                        if (!adc->calibrate()) return false;
+                        if (!adc->calibrate(0.01)) return false;
 		}
 		// if (!dac->findBiasAdc (dac->negGainCalCode)) return false;
 
@@ -167,7 +167,7 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
 				&& parentTile->parentChip->chipColId==chipCol0
                         ) SerialUSB.println("SKIPPING THIS ADC");
 			else
-                        if (!adc->calibrate()) return false;
+                        if (!adc->calibrate(0.01)) return false;
 		}
 		// if (!dac->findBiasAdc (dac->negGainCalCode)) return false;
 
@@ -189,7 +189,7 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
 				&& parentTile->parentChip->chipColId==chipCol1
                         ) SerialUSB.println("SKIPPING THIS ADC");
 			else
-                        if (!adc->calibrate()) return false;
+                        if (!adc->calibrate(0.01)) return false;
 		}
 		// if (!dac->findBiasAdc (dac->negGainCalCode)) return false;
 
@@ -202,24 +202,24 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
 
 	} else if (HCDC_DEMO_BOARD==6) {
     if (sliceId == slice0 || sliceId == slice2) {
-      if (!adc->calibrate()) return false;
+      if (!adc->calibrate(0.01)) return false;
     }
   }
   else {
 		error("HCDC_DEMO_BOARD # not recognized. Only 1,2,3,4,5 are valid.");
 	}
 	print_log("Calibrating DAC");
-	if (!dac->calibrate()) return false;
+	if (!dac->calibrate(0.01)) return false;
 	print_log("Calibrating Fanout 0");
-	if (!fans[0].calibrate()) return false;
+	if (!fans[0].calibrate(0.01)) return false;
 	print_log("Calibrating Fanout 1");
-	if (!fans[1].calibrate()) return false;
+	if (!fans[1].calibrate(0.01)) return false;
   print_log("Calibrating Multiplier 0");
-	if (!muls[0].calibrate()) return false;
+	if (!muls[0].calibrate(0.01)) return false;
 	print_log("Calibrating Multiplier 1");
-	if (!muls[1].calibrate()) return false;
+	if (!muls[1].calibrate(0.01)) return false;
 	print_log("Calibrating Integrator");
-	if (!integrator->calibrate()) return false;
+	if (!integrator->calibrate(0.01)) return false;
 	print_log("Done");
 	return true;
 

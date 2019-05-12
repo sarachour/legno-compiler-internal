@@ -140,6 +140,7 @@ namespace binsearch {
   int get_nmos_delta(unsigned char code);
   bool find_bias_and_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                           float target,
+                          const float max_error,
                           unsigned char & code,
                           unsigned char & nmos,
                           meas_method_t method
@@ -160,12 +161,14 @@ namespace binsearch {
   void multi_test_stab(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                        unsigned char* codes,
                        float* errors,
+                       const float max_error,
                        int n_vals,
                        bool& calib_failed);
 
   void multi_test_stab_and_update_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                                        unsigned char* codes,
                                        float* errors,
+                                       const float max_error,
                                        int n_vals,
                                        unsigned char& nmos,
                                        bool& new_search,
@@ -174,11 +177,13 @@ namespace binsearch {
   void test_stab_and_update_nmos( Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                                  unsigned char code,
                                  float error,
+                                  const float max_error,
                                  unsigned char& nmos,
                                  bool& new_search,
                                  bool& calib_failed);
   void test_stab(unsigned char code,
                  float error,
+                 const float max_error,
                  bool& calib_failed);
 
   void test_iref(unsigned char code);

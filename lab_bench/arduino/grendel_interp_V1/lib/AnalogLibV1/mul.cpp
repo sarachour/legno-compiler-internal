@@ -185,10 +185,10 @@ void Fabric::Chip::Tile::Slice::Multiplier::setParamHelper (
 	);
 }
 
-bool Fabric::Chip::Tile::Slice::Multiplier::calibrate () {
+bool Fabric::Chip::Tile::Slice::Multiplier::calibrate (float max_error) {
   mult_code_t codes_self = m_codes;
 	setGain(-1.0);
-  bool succ = calibrateTarget();
+  bool succ = calibrateTarget(max_error);
   codes_self.nmos = m_codes.nmos;
   codes_self.pmos = m_codes.pmos;
   codes_self.port_cal[in0Id] = m_codes.port_cal[in0Id];
@@ -199,10 +199,10 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrate () {
 	return succ;
 }
 
-bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
+bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (float max_error) {
   float gain = m_codes.gain_val;
   bool hiRange = m_codes.range[out0Id] == RANGE_HIGH;
-  bool loRange = m_codes.range[out0Id] == RANGE_LOW;
+  bool loRange = m_codes.range[in0Id] == RANGE_LOW;
 	// preserve dac state because we will clobber it
   // can only calibrate target for vga.
   if(!m_codes.enable){
@@ -270,7 +270,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
   if(hiRange){
     parentSlice->muls[unitId==unitMulL?1:0].setEnable(true);
     parentSlice->muls[unitId==unitMulL?1:0].setGain(-0.1);
-    if(!parentSlice->muls[unitId==unitMulL?1:0].calibrateTarget()){
+    if(!parentSlice->muls[unitId==unitMulL?1:0].calibrateTarget(0.01)){
       print_log("MULT/HI: cannot calibrate GAIN=-0.1");
       config_failed = true;
 
@@ -284,7 +284,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
   parentSlice->dac->setConstant(0);
   parentSlice->dac->setRange(RANGE_MED);
   parentSlice->dac->out0->setInv(true);
-  if(!parentSlice->dac->calibrateTarget()){
+  if(!parentSlice->dac->calibrateTarget(0.01)){
     print_log("MULT: cannot calibrate DAC=0");
     config_failed = true;
   }
@@ -298,7 +298,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     parentSlice->dac->setConstant(-0.1);
     parentSlice->dac->setRange(RANGE_MED);
     parentSlice->dac->out0->setInv(false);
-    if(!parentSlice->dac->calibrateTarget()){
+    if(!parentSlice->dac->calibrateTarget(0.001)){
       print_log("MULT: cannot calibrate DAC=-0.1");
       config_failed = true;
     }
@@ -311,7 +311,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
   parentSlice->dac->setConstant(-1);
   parentSlice->dac->setRange(RANGE_MED);
   parentSlice->dac->out0->setInv(false);
-  if(!parentSlice->dac->calibrateTarget()){
+  if(!parentSlice->dac->calibrateTarget(0.01)){
     print_log("MULT: cannot calibrate DAC=-1");
     config_failed = true;
   }
@@ -448,7 +448,8 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
 
     print_debug("test stability");
     // update nmos code
-    binsearch::test_stab(m_codes.gain_cal,fabs(delta),calib_failed);
+    binsearch::test_stab(m_codes.gain_cal,fabs(delta),
+                         max_error,calib_failed);
     sprintf(FMTBUF,"calib_failed=%s",calib_failed ? "y" : "n");
     print_debug(FMTBUF);
     if(!calib_failed){

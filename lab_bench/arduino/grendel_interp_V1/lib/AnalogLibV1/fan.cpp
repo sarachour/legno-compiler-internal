@@ -162,7 +162,7 @@ void Fabric::Chip::Tile::Slice::Fanout::setParamHelper (
 	);
 }
 
-bool Fabric::Chip::Tile::Slice::Fanout::calibrate () {
+bool Fabric::Chip::Tile::Slice::Fanout::calibrate (float max_error) {
 
   m_codes.nmos = 0;
 	setEnable ( true );
@@ -207,7 +207,10 @@ bool Fabric::Chip::Tile::Slice::Fanout::calibrate () {
     conn2.brkConn();
     // update nmos for multiple stability statements
     binsearch::multi_test_stab_and_update_nmos(this,
-                                               codes, errors, 3,
+                                               codes,
+                                               errors,
+                                               max_error,
+                                               3,
                                                m_codes.nmos,
                                                new_search,
                                                calib_failed);

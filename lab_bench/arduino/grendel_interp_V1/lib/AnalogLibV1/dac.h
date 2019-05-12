@@ -32,8 +32,8 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 		);
     void update(dac_code_t codes);
     dac_code_t m_codes;
-    bool calibrate ();
-		bool calibrateTarget ();
+    bool calibrate (const float max_error);
+		bool calibrateTarget (const float max_error);
 	private:
 		class DacOut;
 		Dac (Slice * parentSlice);

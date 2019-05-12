@@ -167,6 +167,7 @@ namespace circ {
   typedef struct {
     uint16_t blk;
     circ_loc_idx1_t loc;
+    float max_error;
   } cmd_calib_t;
 
   typedef struct {
