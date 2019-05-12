@@ -298,7 +298,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
   parentSlice->dac->out0->setInv(false);
   if(!parentSlice->dac->calibrateTarget()){
     print_log("MULT: cannot calibrate DAC=-1");
-    return false;
+    config_failed = true;
   }
   else{
     print_debug("MULT: CALIBRATED DAC=1");
@@ -307,9 +307,9 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
 
   bool new_search = true;
   bool calib_failed = true;
-  float nmos_errors[8];
   mult_code_t best_code = m_codes;
-
+  bool found_code = false;
+  float best_code_delta = FLT_MAX;
 	m_codes.nmos = 0;
 	setAnaIrefNmos ();
 	do {
@@ -408,7 +408,8 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     // Serial.println(gain);
     float coeff = util::range_to_coeff(m_codes.range[out0Id]);
     coeff /= util::range_to_coeff(m_codes.range[in0Id]);
-
+    // any coefficients in the high range are tamped down
+    coeff = coeff > 1.001 ? 1.0 : coeff;
     float target = (hiRange ? gain : -gain)*coeff;
     sprintf(FMTBUF, "target=%f*%f",gain,coeff);
     print_debug(FMTBUF);
@@ -418,15 +419,23 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
                          delta,
                          MEAS_CHIP_OUTPUT);
 
+    print_debug("test stability");
     // update nmos code
-    nmos_errors[m_codes.nmos] = delta;
     binsearch::test_stab(m_codes.gain_cal,fabs(delta),calib_failed);
-    if(m_codes.nmos == 0 || !calib_failed ||
-       fabs(delta) < fabs(nmos_errors[m_codes.nmos-1])){
-      best_code = m_codes;
+    sprintf(FMTBUF,"calib_failed=%s",calib_failed ? "y" : "n");
+    print_debug(FMTBUF);
+    if(!calib_failed){
+      print_debug("SUCCESS found valid code");
+      if (not found_code ||
+          fabs(delta) < fabs(best_code_delta)){
+        best_code = m_codes;
+        best_code_delta = delta;
+      }
     }
     m_codes.nmos += 1;
-    setAnaIrefNmos ();
+    if(m_codes.nmos <= 7){
+      setAnaIrefNmos ();
+    }
 
 
     //teardown
@@ -442,7 +451,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     parentSlice->dac->setEnable(false);
 
 	} while (m_codes.nmos <= 7 && calib_failed);
-
+  print_debug("finished");
   m_codes = best_code;
   update(m_codes);
 	/*teardown*/
@@ -484,7 +493,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
   parentSlice->muls[unitId==unitMulL?1:0].update(codes_mul);
   update(codes_self);
 
-	return !(calib_failed || config_failed);
+	return !(!found_code || config_failed);
 }
 
 /*

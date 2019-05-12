@@ -72,7 +72,7 @@ namespace binsearch {
             "result: bias=%d error=%f max-error=%f",
             code, error, MIN_ERROR);
     print_debug(FMTBUF);
-    if(fabs(error) < MIN_ERROR){
+    if(fabs(error) <= MIN_ERROR){
       calib_failed = false;
     }
     else{
