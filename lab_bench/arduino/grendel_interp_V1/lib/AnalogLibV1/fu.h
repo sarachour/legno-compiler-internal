@@ -137,12 +137,12 @@ namespace util {
 }
 
 namespace binsearch {
-  int get_nmos_delta(unsigned char code);
   bool find_bias_and_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                           float target,
                           const float max_error,
                           unsigned char & code,
                           unsigned char & nmos,
+                          float & delta,
                           meas_method_t method
      );
 

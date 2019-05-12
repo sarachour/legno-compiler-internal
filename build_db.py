@@ -37,27 +37,6 @@ def range_to_coeff(rangename):
   elif rangename == "h":
     return 10.0
 
-def build_fanouts(args,row):
-  row['block'] = 'fanout'
-  if not in_whitelist(row):
-    return
-
-
-  # fanout component
-  for s0,s1,s2 in itertools.product(*[signs,signs,signs]):
-    for third in ['three','two']:
-      for rangetype in ranges_mh:
-        data = dict(row.items())
-        data['range'] = rangetype
-        data['sign0'] = s0
-        data['sign1'] = s1
-        data['sign2'] = s2
-        data['third'] = third
-        data['cmd'] = 'calibrate' if args.calibrate else 'get_state'
-        cmd = "use_fanout {chip} {tile} {slice} {index} "+ \
-            "sgn {sign0} {sign1} {sign2} rng {range} {third} update"
-        enq(cmd.format(**data))
-        enq("{cmd} fanout {chip} {tile} {slice} {index}".format(**data))
 
 
 def build_values(args):
@@ -95,6 +74,26 @@ def build_vgas(args,row):
       enq("use_mult {chip} {tile} {slice} {index} val {gain} rng {in0rng} {outrng} update".format(**data))
       build_getter(args,data,0.01)
 
+def build_fanouts(args,row):
+  row['block'] = 'fanout'
+  if not in_whitelist(row):
+    return
+
+
+  # fanout component
+  for s0,s1,s2 in itertools.product(*[signs,signs,signs]):
+    for third in ['three','two']:
+      for rangetype in ranges_mh:
+        data = dict(row.items())
+        data['range'] = rangetype
+        data['sign0'] = s0
+        data['sign1'] = s1
+        data['sign2'] = s2
+        data['third'] = third
+        cmd = "use_fanout {chip} {tile} {slice} {index} "+ \
+            "sgn {sign0} {sign1} {sign2} rng {range} {third} update"
+        enq(cmd.format(**data))
+        build_getter(args,data,0.001)
 
 def build_integrators(args,row):
   row['block'] = 'integ'
@@ -193,7 +192,7 @@ def build_adcs(args,row):
     data['cmd'] = 'calibrate' if args.calibrate \
                   else 'get_state'
     enq("use_adc {chip} {tile} {slice} rng {inrng} update".format(**data))
-    enq("{cmd} adc {chip} {tile} {slice} {index}".format(**data))
+    build_getter(args,data,0.01)
 
 def build_testfile(args):
   row = {}
@@ -212,7 +211,7 @@ def build_testfile(args):
           build_integrators(args,row)
           build_adcs(args,row)
           build_dacs_mem(args,row)
-          build_dacs_lut(args,row)
+          #build_dacs_lut(args,row)
 
   with open('test_chip.grendel','w') as fh:
     for st in stmts:

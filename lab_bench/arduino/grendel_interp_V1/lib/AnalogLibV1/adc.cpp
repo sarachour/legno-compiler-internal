@@ -268,11 +268,13 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate (const float max_error) {
 	// once fullscale and spread and posneg settings found
 	// find I2V offset code
   print_log("-> finding i2v bias");
+  float error;
   bool succ = binsearch::find_bias_and_nmos(this,
                                             128.0,
                                             max_error,
                                             m_codes.i2v_cal,
                                             m_codes.nmos,
+                                            error,
                                             MEAS_ADC);
 	setEnable (false);
   parentSlice->dac->update(codes_dac);

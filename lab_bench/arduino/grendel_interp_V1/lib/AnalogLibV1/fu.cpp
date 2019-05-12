@@ -172,6 +172,7 @@ namespace binsearch {
                           const float max_error,
                           unsigned char & code,
                           unsigned char & nmos,
+                          float & delta,
                           meas_method_t method)
   {
     bool calib_failed=true;
@@ -202,6 +203,7 @@ namespace binsearch {
     }
     code = codes[best_nmos];
     nmos = best_nmos;
+    delta = deltas[best_nmos];
     fu->setAnaIrefNmos();
     fu->updateFu();
     fu->getFabric()->cfgCommit();
@@ -238,7 +240,7 @@ namespace binsearch {
       {
       case MEAS_CHIP_OUTPUT:
         value = fu->getChip()->tiles[3].slices[2].chipOutput
-          ->analogAvg(CAL_REPS,1.0);
+          ->analogAvg(CAL_REPS);
         //value /= FULL_SCALE;
         return value;
 

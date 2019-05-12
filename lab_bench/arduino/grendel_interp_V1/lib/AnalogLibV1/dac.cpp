@@ -185,6 +185,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
     return true;
   }
   float constant = m_codes.const_val;
+  bool preamble_failed = false;
   bool hiRange = (m_codes.range == RANGE_HIGH);
   sprintf(FMTBUF,"DAC %f %d", m_codes.const_val,
           m_codes.const_code);
@@ -217,7 +218,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
 		parentSlice->muls[1].setGain(-1.0);
     if(!parentSlice->muls[1].calibrateTarget(0.01)){
       print_log("cannot calibrate DAC/HIGH, failed to calibrate multiplier");
-      return false;
+      preamble_failed=true;
     }
     else{
       print_debug("DAC/HI: CALIBRATED GAIN=-0.1");
@@ -245,27 +246,53 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
           m_codes.range);
   print_log(FMTBUF);
   float target = hiRange ? -constant : constant;
-  int delta = 0;
   bool succ = false;
+  // if we're trying to
+  int code = m_codes.const_code;
+  int delta = 0;
+  // move further away from the selected code
   while(!succ){
-    //adjust code
-    if(m_codes.const_code + delta > 255 || m_codes.const_code + delta < 0){
+    // if we've jumped back and forth a few times,
+    // choose the more fruitful direction to shift constants
+    // and move in that direction.
+    // flip back and forth between negative and positive displacements
+    float error = 0.0;
+    if(code + delta > 255
+       || code + delta < 0){
       break;
     }
-    setConstantCode(m_codes.const_code + delta);
-    sprintf(FMTBUF,"const code=%d",m_codes.const_code+delta);
-    print_debug(FMTBUF);
-
+    setConstantCode(code + delta);
     succ = binsearch::find_bias_and_nmos(
                                          this,
                                          target,
                                          max_error,
                                          m_codes.gain_cal,
                                          m_codes.nmos,
+                                         error,
                                          MEAS_CHIP_OUTPUT);
-    delta = binsearch::get_nmos_delta(m_codes.gain_cal);
+    sprintf(FMTBUF,"const code=%d target=%f meas=%f",
+            code+delta,
+            target,
+            target+error);
+    print_debug(FMTBUF);
+    // if we haven't succeeded, adjust the code.
+    if(!succ){
+      // if the magnitude of the measured value is less than we expected
+      if(fabs(target+error) < fabs(target)){
+        // increase the magnitude of the value
+        delta += (target < 0 ? -1 : 1);
+      }
+      else{
+        // decrease the magnitude of the value
+        delta += (target < 0 ? 1 : -1);
+      }
+    }
   }
-  print_debug("terminated");
+  sprintf(FMTBUF, "dac-done success=%s preamble_failed=%s",
+          succ ? "y" : "n",
+          preamble_failed ? "y" : "n");
+  print_debug(FMTBUF);
+
 	if (hiRange) {
 		conn0.brkConn();
 		if (userConn00.destIfc) userConn00.setConn();
@@ -292,7 +319,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
   print_debug(FMTBUF);
   update(codes_self);
   print_debug("return status");
-	return succ;
+	return succ && (!preamble_failed);
 }
 
 void Fabric::Chip::Tile::Slice::Dac::setAnaIrefNmos () const {

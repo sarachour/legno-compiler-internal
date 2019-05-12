@@ -458,6 +458,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (float max_error) {
           fabs(delta) < fabs(best_code_delta)){
         best_code = m_codes;
         best_code_delta = delta;
+        found_code = true;
       }
     }
     m_codes.nmos += 1;
@@ -479,7 +480,13 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (float max_error) {
     parentSlice->dac->setEnable(false);
 
 	} while (m_codes.nmos <= 7 && calib_failed);
-  print_debug("finished");
+  sprintf(FMTBUF,
+          "mult-done calib_failed=%s preamble_failed=%s found_code=%s",
+          calib_failed ? "y" : "n",
+          config_failed ? "y" : "n",
+          found_code ? "y" : "n"
+          );
+  print_debug(FMTBUF);
   m_codes = best_code;
   update(m_codes);
 	/*teardown*/

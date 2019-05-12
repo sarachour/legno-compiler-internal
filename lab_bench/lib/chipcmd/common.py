@@ -103,7 +103,6 @@ def parse_pattern_block_loc(args,name,max_error=False):
     result = None
     for cmd in cmds:
         final_cmd = "%s %s %s" % (name,cmd,suffix)
-        print(final_cmd)
         if result is None:
             result = parselib.parse(final_cmd,line)
 
