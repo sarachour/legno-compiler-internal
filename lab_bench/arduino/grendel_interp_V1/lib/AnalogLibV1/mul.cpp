@@ -202,6 +202,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrate () {
 bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
   float gain = m_codes.gain_val;
   bool hiRange = m_codes.range[out0Id] == RANGE_HIGH;
+  bool loRange = m_codes.range[out0Id] == RANGE_LOW;
 	// preserve dac state because we will clobber it
   // can only calibrate target for vga.
   if(!m_codes.enable){
@@ -263,6 +264,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
    */
   dac_code_t dac_code_zero;
   dac_code_t dac_code_neg1;
+  dac_code_t dac_code_neg0p1;
   mult_code_t mult_code_0p1;
   bool config_failed = false;
   if(hiRange){
@@ -291,7 +293,20 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
   }
   dac_code_zero = parentSlice->dac->m_codes;
   // done computing preset codes
-
+  if(loRange){
+    parentSlice->dac->setEnable(true);
+    parentSlice->dac->setConstant(-0.1);
+    parentSlice->dac->setRange(RANGE_MED);
+    parentSlice->dac->out0->setInv(false);
+    if(!parentSlice->dac->calibrateTarget()){
+      print_log("MULT: cannot calibrate DAC=-0.1");
+      config_failed = true;
+    }
+    else{
+      print_debug("MULT: CALIBRATED DAC=0.1");
+    }
+    dac_code_neg0p1 = parentSlice->dac->m_codes;
+  }
   parentSlice->dac->setEnable(true);
   parentSlice->dac->setConstant(-1);
   parentSlice->dac->setRange(RANGE_MED);
@@ -317,6 +332,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
       break;
     }
     float delta;
+    //calibrate bias, no external input
     sprintf(FMTBUF, "nmos=%d", m_codes.nmos);
     print_debug(FMTBUF);
     //out0Id
@@ -329,6 +345,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
                          delta,
                          MEAS_CHIP_OUTPUT);
     //in0Id
+    //calibrate bias, no external input
     print_debug("in0 calibrate");
     setGain(1.0);
     setVga(true);
@@ -339,6 +356,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
                          MEAS_CHIP_OUTPUT);
 
     //in1id
+    /* find bias by minimizing error of 0*0 */
     print_debug("in1 calibrate");
     Connection conn_in1 = Connection ( parentSlice->dac->out0, in0);
     setVga(false);
@@ -353,14 +371,12 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     parentSlice->dac->setEnable(false);
 
     print_debug("pmos calibrate");
-    /*
-      connect two dac values of -1 to the multiplier, and try and maximize
-      the output
-     */
     range_t outrng = m_codes.range[out0Id];
     range_t in0rng = m_codes.range[in0Id];
     range_t in1rng = m_codes.range[in1Id];
 
+    /* find the pmos value by minimizing the error
+     of the computation -1*-1 */
     parentSlice->dac->update(dac_code_neg1);
     parentSlice->dac->setEnable(true);
 		conn4.setConn();
@@ -389,20 +405,30 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
       - set the gain to the expected gain.
       - if our multiplier is emitting a high-range signal, introduce a second multiplier.
     */
+    if(loRange){
+      parentSlice->dac->update(dac_code_neg0p1);
+    }
+    else {
+      parentSlice->dac->update(dac_code_neg1);
+    }
     parentSlice->dac->setEnable(true);
-    parentSlice->dac->setConstant(-1);
-    parentSlice->dac->out0->setInv(false);
     setVga(true);
     setGain(codes_self.gain_val);
 		conn4.setConn();
 		conn5.setConn();
+    float base_target=-gain;
     if (hiRange) {
       parentSlice->muls[unitId==unitMulL?1:0].update(mult_code_0p1);
       conn0.setConn();
       conn1.setConn();
-
+      base_target = gain;
     }
-
+    else if (loRange) {
+      base_target = -gain*0.1;
+    }
+    else{
+      base_target = -gain;
+    }
     /*calibrate VGA gain to negative full scale*/
     // Serial.print("\nVGA gain calibration ");
     // Serial.println(gain);
@@ -410,14 +436,15 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget () {
     coeff /= util::range_to_coeff(m_codes.range[in0Id]);
     // any coefficients in the high range are tamped down
     coeff = coeff > 1.001 ? 1.0 : coeff;
-    float target = (hiRange ? gain : -gain)*coeff;
-    sprintf(FMTBUF, "target=%f*%f",gain,coeff);
+    float target = base_target*coeff;
+    sprintf(FMTBUF, "target=%f*%f",base_target,coeff);
     print_debug(FMTBUF);
     binsearch::find_bias(this,
                          target,
                          m_codes.gain_cal,
                          delta,
-                         MEAS_CHIP_OUTPUT);
+                         MEAS_CHIP_OUTPUT
+                         );
 
     print_debug("test stability");
     // update nmos code
