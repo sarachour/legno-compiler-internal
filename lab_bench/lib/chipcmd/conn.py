@@ -99,7 +99,7 @@ class BreakConnCmd(ConnectionCmd):
                                  data['dindex'])
 
 
-            return BrkConnCmd(
+            return BreakConnCmd(
                 data['sblk'],srcloc,
                 data['dblk'],dstloc)
 

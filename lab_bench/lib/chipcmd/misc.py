@@ -45,10 +45,11 @@ class WriteLUTCmd(UseCommand):
 
     @staticmethod
     def _parse(args,cls):
-        result = parse_pattern_block(args,0,0,0,
-                                     cls.name(),
-                                     source=None,
-                                     expr=True)
+        result = parse_pattern_use_block(args,0,0,0,
+                                         cls.name(),
+                                         source=None,
+                                         expr=True,
+                                         db=False)
         if result.success:
             data = result.value
             return cls(
@@ -192,9 +193,10 @@ class GetIntegStatusCmd(AnalogChipCommand):
 
     @staticmethod
     def parse(args):
-        result = parse_pattern_block(args,0,0,0,
-                                     GetIntegStatusCmd.name(),
-                                     debug=False)
+        result = parse_pattern_use_block(args,0,0,0,
+                                         GetIntegStatusCmd.name(),
+                                         debug=False,
+                                         db=False)
         if result.success:
             data = result.value
             return GetIntegStatusCmd(

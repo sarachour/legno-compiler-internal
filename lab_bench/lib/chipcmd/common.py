@@ -117,11 +117,13 @@ def parse_pattern_block_loc(args,name,max_error=False):
 
 
 def parse_pattern_use_block(args,n_signs,n_consts,n_range_codes, \
-                        name,index=False,
+                            name,
+                            index=False,
                             debug=False,
                             source=None,
                             expr=False,
-                            third=False):
+                            third=False,
+                            db=True):
     line = " ".join(args)
     DEBUG = {'debug':True,'prod':False}
     THIRD = {'three':True,'two':False}
@@ -158,7 +160,8 @@ def parse_pattern_use_block(args,n_signs,n_consts,n_range_codes, \
     if expr:
         cmd += " {vars} {expr}"
 
-    cmd += " {state_mode}"
+    if db:
+        cmd += " {state_mode}"
 
     cmd = cmd.strip()
     result = parselib.parse(cmd,line)
@@ -194,10 +197,11 @@ def parse_pattern_use_block(args,n_signs,n_consts,n_range_codes, \
                              .split(']')[0].split()
         result['vars'] = args
 
-    assert(result['state_mode'] == 'update' or \
-           result['state_mode'] == 'cached')
+    if db:
+        assert(result['state_mode'] == 'update' or \
+               result['state_mode'] == 'cached')
 
-    result['cached'] = (result['state_mode'] == 'cached')
+        result['cached'] = (result['state_mode'] == 'cached')
     return OptionalValue.value(result)
 
 class ConstVal:

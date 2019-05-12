@@ -466,7 +466,7 @@ class UseFanoutCmd(UseCommand):
 
 
     def __repr__(self):
-        st = "use_fanout %d %d %d %d sgn %s %s %s rng %s" % (\
+        st = "use_fanout %d %d %d %d sgn %s %s %s rng %s %s %s" % (\
                     self.loc.chip,
                     self.loc.tile,
                     self.loc.slice,
@@ -474,7 +474,9 @@ class UseFanoutCmd(UseCommand):
                     self._inv[0].abbrev(),
                     self._inv[1].abbrev(),
                     self._inv[2].abbrev(),
-                    self._in_range.abbrev())
+                    self._in_range.abbrev(),
+                    "three" if self._third else "two",
+                    "cached" if self._cached else "update")
         return st
 
 
@@ -591,7 +593,7 @@ class UseIntegCmd(UseCommand):
 
 
     def __repr__(self):
-        fmtstr = "%s %d %d %d sgn %s val %f rng %s %s %s"
+        fmtstr = "%s %d %d %d sgn %s val %f rng %s %s %s %s"
         st = fmtstr % (self.name(),
                        self.loc.chip, \
                        self.loc.tile, \
@@ -600,7 +602,8 @@ class UseIntegCmd(UseCommand):
                        self._init_cond,
                        self._in_range.abbrev(),
                        self._out_range.abbrev(),
-                       "debug" if self._debug else "prod")
+                       "debug" if self._debug else "prod",
+                       "cached" if self._cached else "update")
         return st
 
 
@@ -726,7 +729,7 @@ class UseMultCmd(UseCommand):
 
     def __repr__(self):
         if self._use_coeff:
-            st = "%s %d %d %d %d val %f rng %s %s" % (\
+            st = "%s %d %d %d %d val %f rng %s %s %s" % (\
                                                       self.name(),
                                                       self.loc.chip,
                                                       self.loc.tile,
@@ -734,17 +737,20 @@ class UseMultCmd(UseCommand):
                                                       self.loc.index,
                                                       self._coeff,
                                                       self._in0_range.abbrev(),
-                                                      self._out_range.abbrev()
+                                                      self._out_range.abbrev(),
+                                                      "cached" if self._cached else "update"
             )
         else:
-            st = "%s %d %d %d %d rng %s %s %s" % (self.name(),
+            st = "%s %d %d %d %d rng %s %s %s %s %s" % (self.name(),
                                                   self.loc.chip,
                                                   self.loc.tile,
                                                   self.loc.slice,
                                                   self.loc.index,
                                                   self._in0_range.abbrev(),
                                                   self._in1_range.abbrev(),
-                                                  self._out_range.abbrev())
+                                                  self._out_range.abbrev(),
+                                                  "cached" if self._cached else "update"
+            )
 
         return st
 
