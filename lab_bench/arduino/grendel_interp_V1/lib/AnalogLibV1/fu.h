@@ -264,6 +264,9 @@ class Fabric::Chip::Tile::Slice::FunctionUnit::Interface {
 			error("setRange not implemented");
 		};
 		virtual ~Interface () {};
+    FunctionUnit * const parentFu;
+		const ifc ifcId;
+		Interface * userSourceDest = NULL;
 	private:
 		Interface (
 			FunctionUnit * parentFu,
@@ -272,9 +275,6 @@ class Fabric::Chip::Tile::Slice::FunctionUnit::Interface {
 			parentFu(parentFu),
 			ifcId(ifcId)
 		{};
-		FunctionUnit * const parentFu;
-		const ifc ifcId;
-		Interface * userSourceDest = NULL;
     // TODO: incomplete implementation because multiple sources possible
 
 };

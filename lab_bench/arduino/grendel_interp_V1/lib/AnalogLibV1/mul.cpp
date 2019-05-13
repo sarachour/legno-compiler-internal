@@ -1,5 +1,6 @@
 #include "AnalogLib.h"
 #include "fu.h"
+#include "calib_util.h"
 #include <float.h>
 
 void Fabric::Chip::Tile::Slice::Multiplier::update(mult_code_t codes){
@@ -99,6 +100,7 @@ mulRange range_to_mulRange(range_t rng){
   case RANGE_HIGH: return mulHi;
   case RANGE_LOW: return mulLo;
   case RANGE_MED: return mulMid;
+  default: error("unknown range");
   }
   return mulMid;
 }
@@ -204,6 +206,202 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrate (float max_error) {
 	return succ;
 }
 
+bool helper_find_port_cal_out0(Fabric::Chip::Tile::Slice::Dac* dac,
+                               Fabric::Chip::Tile::Slice::Multiplier* mult,
+                               float max_error){
+  float delta;
+  bool calib_failed;
+  //out0Id
+  mult->setGain(0.0);
+  mult->setVga(true);
+  dac->setEnable(false);
+  binsearch::find_bias(mult, 0.0,
+                       mult->m_codes.port_cal[out0Id],
+                       delta,
+                       MEAS_CHIP_OUTPUT);
+  // update nmos code
+  binsearch::test_stab(mult->m_codes.port_cal[out0Id],fabs(delta),
+                       max_error,calib_failed);
+
+
+  return !calib_failed;
+
+}
+
+bool helper_find_port_cal_in0(Fabric::Chip::Tile::Slice::Dac* dac,
+                              Fabric::Chip::Tile::Slice::Multiplier* mult,
+                              float max_error){
+  float delta;
+  bool calib_failed;
+  mult->setGain(1.0);
+  mult->setVga(true);
+  dac->setEnable(false);
+  binsearch::find_bias(mult, 0.0,
+                       mult->m_codes.port_cal[in0Id],
+                       delta,
+                       MEAS_CHIP_OUTPUT);
+  // update nmos code
+  binsearch::test_stab(mult->m_codes.port_cal[in0Id],fabs(delta),
+                       max_error,calib_failed);
+
+  return !calib_failed;
+}
+
+bool helper_find_port_cal_in1(Fabric::Chip::Tile::Slice::Dac* dac,
+                              Fabric::Chip::Tile::Slice::Multiplier* mult,
+                              dac_code_t& dac_code_0,
+                              float max_error){
+  //in1id
+  /* find bias by minimizing error of 0*0 */
+  float delta;
+  bool calib_failed;
+  Fabric::Chip::Connection conn_in1 = Fabric::Chip::Connection (
+                                                                dac->out0, mult->in0);
+  mult->setVga(false);
+  dac->update(dac_code_0);
+  dac->setEnable(true);
+  conn_in1.setConn();
+  binsearch::find_bias(mult, 0.0,
+                       mult->m_codes.port_cal[in1Id],
+                       delta,
+                       MEAS_CHIP_OUTPUT);
+  // update nmos code
+  binsearch::test_stab(mult->m_codes.port_cal[in1Id],fabs(delta),
+                       max_error,calib_failed);
+
+  conn_in1.brkConn();
+  dac->setEnable(false);
+  return !calib_failed;
+
+}
+
+bool helper_find_pmos(Fabric::Chip::Tile::Slice::Dac* dac,
+                      Fabric::Chip::Tile::Slice::Fanout* fan,
+                      Fabric::Chip::Tile::Slice::Multiplier* mult,
+                      dac_code_t& dac_code_1,
+                      float max_error){
+  print_debug("pmos calibrate");
+  range_t outrng = mult->m_codes.range[out0Id];
+  range_t in0rng = mult->m_codes.range[in0Id];
+  range_t in1rng = mult->m_codes.range[in1Id];
+  float delta;
+  bool calib_failed;
+  Fabric::Chip::Connection dac_to_fan = Fabric::Chip::Connection ( dac->out0,
+                                       fan->in0 );
+  Fabric::Chip::Connection fan_to_mult_in0 = Fabric::Chip::Connection ( fan->out0, mult->in0 );
+  //conn6
+  Fabric::Chip::Connection fan_to_mult_in1 = Fabric::Chip::Connection ( fan->out1, mult->in1 );
+
+  /* find the pmos value by minimizing the error
+     of the computation -1*-1 */
+  dac->update(dac_code_1);
+  dac->setEnable(true);
+  // conn4 : dac_to_fan
+  // conn5 : fan_to_mult_in0
+  // conn6: fan_to_mult_in1
+
+  dac_to_fan.setConn();
+  fan_to_mult_in0.setConn();
+  fan_to_mult_in1.setConn();
+
+  mult->out0->setRange(RANGE_MED);
+  mult->in0->setRange(RANGE_MED);
+  mult->in1->setRange(RANGE_MED);
+  mult->setVga(false);
+  // find best effort pmos
+  binsearch::find_pmos(mult,1.0,
+                       mult->m_codes.pmos,
+                       delta,
+                       MEAS_CHIP_OUTPUT);
+  // update nmos code
+  //binsearch::test_stab(mult->m_codes.gain_cal,fabs(delta),
+  //                    max_error,calib_failed);
+
+  mult->out0->setRange(outrng);
+  mult->in0->setRange(in0rng);
+  mult->in1->setRange(in1rng);
+
+  dac_to_fan.brkConn();
+  fan_to_mult_in0.brkConn();
+  fan_to_mult_in1.brkConn();
+  return true;
+}
+
+bool helper_find_gain_cal(float gain,
+                          bool loRange,
+                          bool hiRange,
+                          Fabric::Chip::Tile::Slice::Dac* dac,
+                          Fabric::Chip::Tile::Slice::Fanout* fan,
+                          Fabric::Chip::Tile::Slice::Multiplier* mult,
+                          Fabric::Chip::Tile::Slice::Multiplier* aux,
+                          Fabric::Chip::Tile::Slice::TileInOut* tileout,
+                          mult_code_t& mult_code_0p1,
+                          dac_code_t& dac_code_0p1,
+                          dac_code_t& dac_code_1,
+                          float max_error){
+  Fabric::Chip::Connection mult_to_auxmult = Fabric::Chip::Connection ( mult->out0, aux->in0 );
+	// if (hiRange && userConn11.sourceIfc) userConn11.brkConn();
+  //conn1
+  Fabric::Chip::Connection auxmult_to_tileout = Fabric::Chip::Connection ( aux->out0,
+                                               tileout->in0 );
+
+	Fabric::Chip::Connection mult_to_tileout = Fabric::Chip::Connection ( mult->out0, tileout->in0 );
+  Fabric::Chip::Connection dac_to_fan = Fabric::Chip::Connection ( dac->out0,
+                                       fan->in0 );
+	Fabric::Chip::Connection fan_to_mult_in0 = Fabric::Chip::Connection ( fan->out0, mult->in0 );
+  bool calib_failed;
+  float base_target= loRange || hiRange ? 0.1*gain :gain;
+  float coeff = util::range_to_coeff(mult->m_codes.range[out0Id]);
+  coeff /= util::range_to_coeff(mult->m_codes.range[in0Id]);
+  float target = base_target*coeff;
+  float delta;
+  sprintf(FMTBUF, "gain-calibrate target=%f*%f",base_target,coeff);
+  print_debug(FMTBUF);
+  /*
+    - connect a dac value of (-1) to the multiplier at in0
+    - set the gain to the expected gain.
+    - if our multiplier is emitting a high-range signal, introduce a second multiplier.
+  */
+  dac->setEnable(true);
+  if(loRange){
+    dac->update(dac_code_0p1);
+  }
+  else {
+    dac->update(dac_code_1);
+  }
+  // set multiplier to vga, set routes
+  mult->setVga(true);
+  mult->setGain(gain);
+  dac_to_fan.setConn();
+  fan_to_mult_in0.setConn();
+
+
+  if (hiRange) {
+    aux->update(mult_code_0p1);
+    mult_to_auxmult.setConn();
+    auxmult_to_tileout.setConn();
+  }
+  binsearch::find_bias(mult,
+                       target,
+                       mult->m_codes.gain_cal,
+                       delta,
+                       MEAS_CHIP_OUTPUT
+                       );
+
+  // update nmos code
+  binsearch::test_stab(mult->m_codes.gain_cal,fabs(delta),
+                       max_error,calib_failed);
+
+  //teardown
+  if (hiRange) {
+    mult_to_auxmult.brkConn();
+    auxmult_to_tileout.brkConn();
+    mult_to_tileout.setConn();
+  }
+  dac_to_fan.brkConn();
+  fan_to_mult_in0.brkConn();
+  return !calib_failed;
+}
 bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (float max_error) {
   float gain = m_codes.gain_val;
   bool hiRange = m_codes.range[out0Id] == RANGE_HIGH;
@@ -218,49 +416,53 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (float max_error) {
     print_log("not in vga mode");
     return true;
   }
-  dac_code_t codes_dac = parentSlice->dac->m_codes;
   int cMulId = unitId==unitMulL?1:0;
   int cFanId = unitId==unitMulL?0:1;
-  mult_code_t codes_mul = parentSlice->muls[cMulId].m_codes;
+
+  cutil::calibrate_t calib;
+  cutil::initialize(calib);
+  // backup state of each component that will be clobbered
   mult_code_t codes_self = m_codes;
+  dac_code_t codes_dac = parentSlice->dac->m_codes;
+  mult_code_t codes_mul = parentSlice->muls[cMulId].m_codes;
   fanout_code_t codes_fan = parentSlice->fans[cFanId].m_codes;
 
-
-	Connection userConn40 = Connection ( parentSlice->dac->out0, parentSlice->dac->out0->userSourceDest );
-	Connection userConn41 = Connection ( parentSlice->fans[cFanId].in0->userSourceDest, parentSlice->fans[cFanId].in0 );
-	if (userConn41.sourceIfc) userConn41.brkConn();
-	Connection conn4 = Connection ( parentSlice->dac->out0, parentSlice->fans[cFanId].in0 );
-
-	Connection userConn50 = Connection ( parentSlice->fans[cFanId].out0, parentSlice->fans[cFanId].out0->userSourceDest );
-	Connection userConn51 = Connection ( in0->userSourceDest, in0 );
-	if (userConn51.sourceIfc) userConn51.brkConn();
-	Connection conn5 = Connection ( parentSlice->fans[cFanId].out0, in0 );
-
-	Connection userConn60 = Connection ( parentSlice->fans[cFanId].out1, parentSlice->fans[cFanId].out1->userSourceDest );
-	Connection userConn61 = Connection ( in1->userSourceDest, in1 );
-	if (userConn61.sourceIfc) userConn61.brkConn();
-	Connection conn6 = Connection ( parentSlice->fans[cFanId].out1, in1 );
-
-	// output side
-	Connection userConn00 = Connection ( out0, out0->userSourceDest );
-	Connection userConn01 = Connection ( parentSlice->muls[cMulId].in0->userSourceDest, parentSlice->muls[cMulId].in0 );
-	if (hiRange && userConn01.sourceIfc) userConn01.brkConn();
-	Connection conn0 = Connection ( out0, parentSlice->muls[cMulId].in0 );
-
-	Connection userConn10 = Connection ( parentSlice->muls[cMulId].out0, parentSlice->muls[cMulId].out0->userSourceDest );
-	Connection userConn11 = Connection ( parentSlice->tileOuts[3].in0->userSourceDest, parentSlice->tileOuts[3].in0 );
+  // backup connections
+  cutil::buffer_mult_conns(calib,this);
+  cutil::buffer_fanout_conns(calib,&parentSlice->fans[cFanId]);
+  cutil::buffer_mult_conns(calib,&parentSlice->muls[cMulId]);
+  cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
+  cutil::buffer_dac_conns(calib,parentSlice->dac);
+  cutil::break_conns(calib);
+  // conn4 : dac_to_fan
+  // conn5 : fan_to_mult_in0
+  // conn6: fan_to_mult_in1
+  // conn0: mult_to_auxmult
+  // conn1: auxmult_to_tileout
+  // conn2: mult_to_rileout
+  // conn3: tileout_to_chipout
+	Connection dac_to_fan = Connection ( parentSlice->dac->out0,
+                                       parentSlice->fans[cFanId].in0 );
+  // conn5
+	Connection fan_to_mult_in0 = Connection ( parentSlice->fans[cFanId].out0, in0 );
+  //conn6
+	Connection fan_to_mult_in1 = Connection ( parentSlice->fans[cFanId].out1, in1 );
+  //conn0
+  Connection mult_to_auxmult = Connection ( out0, parentSlice->muls[cMulId].in0 );
 	// if (hiRange && userConn11.sourceIfc) userConn11.brkConn();
-	Connection conn1 = Connection ( parentSlice->muls[cMulId].out0, parentSlice->tileOuts[3].in0 );
+  //conn1
+  Connection auxmult_to_tileout = Connection ( parentSlice->muls[cMulId].out0,
+                                               parentSlice->tileOuts[3].in0 );
+  //conn2
+	Connection mult_to_tileout = Connection ( out0, parentSlice->tileOuts[3].in0 );
 
-	Connection conn2 = Connection ( out0, parentSlice->tileOuts[3].in0 );
-	if (userConn11.sourceIfc) userConn11.brkConn();
-	conn2.setConn();
+  //conn3
+	Connection tileout_to_chipout = Connection ( parentSlice->tileOuts[3].out0,
+                                               parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
-	Connection userConn30 = Connection ( parentSlice->tileOuts[3].out0, parentSlice->tileOuts[3].out0->userSourceDest );
-	Connection userConn31 = Connection ( parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0->userSourceDest, parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
-	if (userConn31.sourceIfc) userConn31.brkConn();
-	Connection conn3 = Connection ( parentSlice->tileOuts[3].out0, parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
-	conn3.setConn();
+
+  mult_to_tileout.setConn();
+	tileout_to_chipout.setConn();
 
 
   /*
@@ -269,260 +471,82 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (float max_error) {
       - dac with value -1.0
       - dac with value 0.0
    */
-  dac_code_t dac_code_zero;
-  dac_code_t dac_code_neg1;
-  dac_code_t dac_code_neg0p1;
+  dac_code_t dac_code_0;
+  dac_code_t dac_code_1;
+  dac_code_t dac_code_0p1;
   mult_code_t mult_code_0p1;
   bool config_failed = false;
   if(hiRange){
-    // scale down.
-    parentSlice->muls[cMulId].setEnable(true);
-    parentSlice->muls[cMulId].m_codes.range[in0Id] = RANGE_HIGH;
-    parentSlice->muls[cMulId].m_codes.range[out0Id] = RANGE_MED;
-		parentSlice->muls[cMulId].setGain(-1.0);
-    if(!parentSlice->muls[cMulId].calibrateTarget(0.01)){
-      print_log("MULT/HI: cannot calibrate GAIN=-0.1");
-      config_failed = true;
-
-    }
-    else{
-      print_debug("MULT: CALIBRATED GAIN=-0.1");
-    }
-    mult_code_0p1 = parentSlice->muls[cMulId].m_codes;
+    mult_code_0p1 = cutil::make_h2m_mult(calib, &parentSlice->muls[cMulId]);
   }
-  parentSlice->dac->setEnable(true);
-  parentSlice->dac->setConstant(0);
-  parentSlice->dac->setRange(RANGE_MED);
-  parentSlice->dac->out0->setInv(true);
-  if(!parentSlice->dac->calibrateTarget(0.01)){
-    print_log("MULT: cannot calibrate DAC=0");
-    config_failed = true;
-  }
-  else{
-    print_debug("MULT: CALIBRATED DAC=0");
-  }
-  dac_code_zero = parentSlice->dac->m_codes;
+  dac_code_0 = cutil::make_zero_dac(calib, parentSlice->dac);
+  dac_code_1 = cutil::make_one_dac(calib, parentSlice->dac);
   // done computing preset codes
   if(loRange){
-    parentSlice->dac->setEnable(true);
-    parentSlice->dac->setConstant(-0.1);
-    parentSlice->dac->setRange(RANGE_MED);
-    parentSlice->dac->out0->setInv(false);
-    if(!parentSlice->dac->calibrateTarget(0.001)){
-      print_log("MULT: cannot calibrate DAC=-0.1");
-      config_failed = true;
-    }
-    else{
-      print_debug("MULT: CALIBRATED DAC=0.1");
-    }
-    dac_code_neg0p1 = parentSlice->dac->m_codes;
+    dac_code_0p1 = cutil::make_low_dac(calib, parentSlice->dac);
   }
-  parentSlice->dac->setEnable(true);
-  parentSlice->dac->setConstant(-1);
-  parentSlice->dac->setRange(RANGE_MED);
-  parentSlice->dac->out0->setInv(false);
-  if(!parentSlice->dac->calibrateTarget(0.01)){
-    print_log("MULT: cannot calibrate DAC=-1");
-    config_failed = true;
-  }
-  else{
-    print_debug("MULT: CALIBRATED DAC=1");
-  }
-  dac_code_neg1 = parentSlice->dac->m_codes;
 
-  bool new_search = true;
-  bool calib_failed = true;
-  mult_code_t best_code = m_codes;
   bool found_code = false;
-  float best_code_delta = FLT_MAX;
+  mult_code_t best_code = m_codes;
 	m_codes.nmos = 0;
 	setAnaIrefNmos ();
 	do {
-    if(config_failed){
+    if(found_code){
       break;
     }
-    float delta;
+    bool succ = true;
     //calibrate bias, no external input
     sprintf(FMTBUF, "nmos=%d", m_codes.nmos);
     print_debug(FMTBUF);
+    succ &= helper_find_port_cal_out0(parentSlice->dac, this,max_error);
+    if(succ)
+      succ &= helper_find_port_cal_in0(parentSlice->dac, this,max_error);
+    if(succ)
+      succ &= helper_find_port_cal_in1(parentSlice->dac, this,dac_code_0,max_error);
+    if(succ)
+      succ &= helper_find_pmos(parentSlice->dac,
+                               &parentSlice->fans[cFanId],
+                               this,
+                               dac_code_1,
+                               max_error);
     //out0Id
-    print_debug("out0 calibrate");
-    setGain(0.0);
-    setVga(true);
-    parentSlice->dac->setEnable(false);
-    binsearch::find_bias(this, 0.0,
-                         m_codes.port_cal[out0Id],
-                         delta,
-                         MEAS_CHIP_OUTPUT);
-    //in0Id
-    //calibrate bias, no external input
-    print_debug("in0 calibrate");
-    setGain(1.0);
-    setVga(true);
-    parentSlice->dac->setEnable(false);
-    binsearch::find_bias(this, 0.0,
-                         m_codes.port_cal[in0Id],
-                         delta,
-                         MEAS_CHIP_OUTPUT);
+    if(succ)
+      succ &= helper_find_gain_cal(gain,
+                                   loRange,
+                                   hiRange,
+                                   parentSlice->dac,
+                                   &parentSlice->fans[cFanId],
+                                   this,
+                                   &parentSlice->muls[cMulId],
+                                   &parentSlice->tileOuts[3],
+                                   mult_code_0p1,
+                                   dac_code_0p1,
+                                   dac_code_1,
+                                   max_error);
 
-    //in1id
-    /* find bias by minimizing error of 0*0 */
-    print_debug("in1 calibrate");
-    Connection conn_in1 = Connection ( parentSlice->dac->out0, in0);
-    setVga(false);
-    parentSlice->dac->update(dac_code_zero);
-    parentSlice->dac->setEnable(true);
-    conn_in1.setConn();
-    binsearch::find_bias(this, 0.0,
-                         m_codes.port_cal[in1Id],
-                         delta,
-                         MEAS_CHIP_OUTPUT);
-    conn_in1.brkConn();
+    if(succ){
+      best_code = m_codes;
+      found_code = true;
+    }
+		parentSlice->fans[cFanId].setEnable(false);
     parentSlice->dac->setEnable(false);
 
-    print_debug("pmos calibrate");
-    range_t outrng = m_codes.range[out0Id];
-    range_t in0rng = m_codes.range[in0Id];
-    range_t in1rng = m_codes.range[in1Id];
-
-    /* find the pmos value by minimizing the error
-     of the computation -1*-1 */
-    parentSlice->dac->update(dac_code_neg1);
-    parentSlice->dac->setEnable(true);
-		conn4.setConn();
-		conn5.setConn();
-		conn6.setConn();
-
-    out0->setRange(RANGE_MED);
-    in0->setRange(RANGE_MED);
-    in0->setRange(RANGE_MED);
-    setVga(false);
-    binsearch::find_pmos(this,1.0,
-                         m_codes.pmos,
-                         delta,
-                         MEAS_CHIP_OUTPUT);
-    out0->setRange(outrng);
-    in0->setRange(in0rng);
-    in1->setRange(in1rng);
-
-		conn4.brkConn();
-		conn5.brkConn();
-		conn6.brkConn();
-
-    print_debug("gain calibrate");
-    /*
-      - connect a dac value of (-1) to the multiplier at in0
-      - set the gain to the expected gain.
-      - if our multiplier is emitting a high-range signal, introduce a second multiplier.
-    */
-    if(loRange){
-      parentSlice->dac->update(dac_code_neg0p1);
-    }
-    else {
-      parentSlice->dac->update(dac_code_neg1);
-    }
-    parentSlice->dac->setEnable(true);
-    setVga(true);
-    setGain(codes_self.gain_val);
-		conn4.setConn();
-		conn5.setConn();
-    float base_target=-gain;
-    if (hiRange) {
-      parentSlice->muls[unitId==unitMulL?1:0].update(mult_code_0p1);
-      conn0.setConn();
-      conn1.setConn();
-      base_target *= -0.1; // the output is scaled down post-computation
-    }
-    if (loRange) {
-      base_target *= 0.1; // the input is scaled down pre-computation.
-    }
-    else{
-      base_target = -gain;
-    }
-    /*calibrate VGA gain to negative full scale*/
-    // Serial.print("\nVGA gain calibration ");
-    // Serial.println(gain);
-    float coeff = util::range_to_coeff(m_codes.range[out0Id]);
-    coeff /= util::range_to_coeff(m_codes.range[in0Id]);
-    float target = base_target*coeff;
-    sprintf(FMTBUF, "target=%f*%f",base_target,coeff);
-    print_debug(FMTBUF);
-    binsearch::find_bias(this,
-                         target,
-                         m_codes.gain_cal,
-                         delta,
-                         MEAS_CHIP_OUTPUT
-                         );
-
-    print_debug("test stability");
-    // update nmos code
-    binsearch::test_stab(m_codes.gain_cal,fabs(delta),
-                         max_error,calib_failed);
-    sprintf(FMTBUF,"calib_failed=%s",calib_failed ? "y" : "n");
-    print_debug(FMTBUF);
-    if(!calib_failed){
-      print_debug("SUCCESS found valid code");
-      if (not found_code ||
-          fabs(delta) < fabs(best_code_delta)){
-        best_code = m_codes;
-        best_code_delta = delta;
-        found_code = true;
-      }
-    }
     m_codes.nmos += 1;
     if(m_codes.nmos <= 7){
       setAnaIrefNmos ();
     }
-
-
-    //teardown
-    if (hiRange) {
-      conn0.brkConn();
-      conn1.brkConn();
-      conn2.setConn();
-    }
-		conn4.brkConn();
-		conn5.brkConn();
-		conn6.brkConn();
-		parentSlice->fans[unitId==unitMulL?0:1].setEnable(false);
-    parentSlice->dac->setEnable(false);
-
-	} while (m_codes.nmos <= 7 && calib_failed);
-  sprintf(FMTBUF,
-          "mult-done calib_failed=%s preamble_failed=%s found_code=%s",
-          calib_failed ? "y" : "n",
-          config_failed ? "y" : "n",
-          found_code ? "y" : "n"
-          );
-  print_debug(FMTBUF);
+	} while (m_codes.nmos <= 7 && !found_code);
   m_codes = best_code;
   update(m_codes);
 	/*teardown*/
 	if (hiRange) {
-		conn0.brkConn();
-		if (userConn00.destIfc) userConn00.setConn();
-		if (userConn01.sourceIfc) userConn01.setConn();
-
-		parentSlice->muls[unitId==unitMulL?1:0].update(codes_mul);
-
-		conn1.brkConn();
-		if (userConn10.destIfc) userConn10.setConn();
-		if (userConn11.sourceIfc) userConn11.setConn();
+		mult_to_auxmult.brkConn();
+		auxmult_to_tileout.brkConn();
+		parentSlice->muls[cMulId].update(codes_mul);
 	}
-
-	conn3.brkConn();
-	if (userConn31.sourceIfc) userConn31.setConn();
-	if (userConn30.destIfc) userConn30.setConn();
-	conn2.brkConn();
-	if (userConn11.sourceIfc) userConn11.setConn();
-	if (userConn00.destIfc) userConn00.setConn();
-
-	if (userConn61.sourceIfc) userConn61.setConn();
-	if (userConn60.destIfc) userConn60.setConn();
-	if (userConn51.sourceIfc) userConn51.setConn();
-	if (userConn50.destIfc) userConn50.setConn();
-	if (userConn41.sourceIfc) userConn41.setConn();
-	if (userConn40.destIfc) userConn40.setConn();
+	tileout_to_chipout.brkConn();
+	mult_to_tileout.brkConn();
+  cutil::restore_conns(calib);
 
   codes_self.nmos = m_codes.nmos;
   codes_self.pmos = m_codes.pmos;
@@ -536,7 +560,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (float max_error) {
   parentSlice->muls[unitId==unitMulL?1:0].update(codes_mul);
   update(codes_self);
 
-	return !(!found_code || config_failed);
+	return found_code && calib.success;
 }
 
 /*

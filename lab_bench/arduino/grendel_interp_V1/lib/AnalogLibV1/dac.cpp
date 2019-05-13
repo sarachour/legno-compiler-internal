@@ -1,12 +1,14 @@
 #include "AnalogLib.h"
 #include <float.h>
 #include "assert.h"
+#include "calib_util.h"
+
 void Fabric::Chip::Tile::Slice::Dac::update(dac_code_t codes){
   m_codes = codes;
   updateFu();
-  setSource(m_codes.source);
   setConstant(m_codes.const_val);
   setConstantCode(m_codes.const_code);
+  setSource(m_codes.source);
   // restore exact state. The gain_val field clobbered a bit by setConstantCode
   m_codes = codes;
 }
@@ -122,7 +124,8 @@ void Fabric::Chip::Tile::Slice::Dac::setParam0 () const {
   bool external = (m_codes.source == DSRC_EXTERN or m_codes.source == DSRC_MEM);
   bool lut0 = (m_codes.source == DSRC_LUT0);
   bool is_hiRange = (m_codes.range == RANGE_HIGH);
-  bool is_inverse = (m_codes.inv);
+  //bool is_inverse = (m_codes.inv);
+  bool is_inverse = !(m_codes.inv);
 	cfgTile += m_codes.enable ? 1<<7 : 0;
 	cfgTile += (is_inverse) ? 1<<6 : 0;
 	cfgTile += (is_hiRange ? dacHi : dacMid) ? 1<<5 : 0;
@@ -186,70 +189,54 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
   }
   if(m_codes.source != DSRC_MEM){
     print_log("DAC must have memory as source.");
-    return true;
+    return false;
   }
   float constant = m_codes.const_val;
-  bool preamble_failed = false;
   bool hiRange = (m_codes.range == RANGE_HIGH);
-  sprintf(FMTBUF,"DAC %f %d", m_codes.const_val,
-          m_codes.const_code);
-  print_debug(FMTBUF);
 
-  mult_code_t user_mul1 = parentSlice->muls[1].m_codes;
+  cutil::calibrate_t calib;
+  cutil::initialize(calib);
+
+  mult_code_t user_aux= parentSlice->muls[1].m_codes;
   dac_code_t codes_self = m_codes;
   update(m_codes);
 
-	Connection userConn00 = Connection ( out0, out0->userSourceDest );
-	Connection userConn01 = Connection ( parentSlice->muls[1].in0->userSourceDest,
-                                       parentSlice->muls[1].in0 );
-	Connection conn0 = Connection ( out0, parentSlice->muls[1].in0 );
+  cutil::buffer_mult_conns(calib,&parentSlice->muls[1]);
+  cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
+  cutil::buffer_dac_conns(calib,this);
+  cutil::buffer_chipout_conns(calib,parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput);
+  cutil::break_conns(calib);
+  // conn0
+	Connection mult_to_aux = Connection ( out0, parentSlice->muls[1].in0 );
+  //conn1
+	Connection aux_to_tile = Connection ( parentSlice->muls[1].out0,
+                                         parentSlice->tileOuts[3].in0 );
 
-	Connection userConn10 = Connection ( parentSlice->muls[1].out0,
-                                       parentSlice->muls[1].out0->userSourceDest );
-	Connection userConn11 = Connection ( parentSlice->tileOuts[3].in0->userSourceDest,
-                                       parentSlice->tileOuts[3].in0 );
-	Connection conn1 = Connection ( parentSlice->muls[1].out0,
-                                  parentSlice->tileOuts[3].in0 );
+  // conn2
+	Connection mult_to_tile = Connection ( out0, parentSlice->tileOuts[3].in0 );
+  // conn3
+	Connection tile_to_chip = Connection ( parentSlice->tileOuts[3].out0,
+                                         parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
-	Connection conn2 = Connection ( out0, parentSlice->tileOuts[3].in0 );
-
+  mult_code_t mult_0p1;
 	if (hiRange) {
-		if (userConn01.sourceIfc) userConn01.brkConn();
     // feed dac output into scaling down multiplier input
-		conn0.setConn();
-    parentSlice->muls[1].m_codes.range[in0Id] = RANGE_HIGH;
-    parentSlice->muls[1].m_codes.range[out0Id] = RANGE_MED;
-		parentSlice->muls[1].setGain(-1.0);
-    if(!parentSlice->muls[1].calibrateTarget(0.01)){
-      print_log("cannot calibrate DAC/HIGH, failed to calibrate multiplier");
-      preamble_failed=true;
-    }
-    else{
-      print_debug("DAC/HI: CALIBRATED GAIN=-0.1");
-    }
-		if (userConn11.sourceIfc) userConn11.brkConn();
+		mult_to_aux.setConn();
+		aux_to_tile.setConn();
+    mult_0p1 = make_h2m_mult(calib, &parentSlice->muls[1]);
     // feed output of scaledown multiplier to tile output.
-		conn1.setConn();
 	} else {
-		if (userConn11.sourceIfc) userConn11.brkConn();
     // feed dac output into tile output
-		conn2.setConn();
+		mult_to_tile.setConn();
 	}
-
-	Connection userConn30 = Connection ( parentSlice->tileOuts[3].out0, parentSlice->tileOuts[3].out0->userSourceDest );
-	Connection userConn31 = Connection ( parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0->userSourceDest, parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
-	if (userConn31.sourceIfc) userConn31.brkConn();
-	Connection conn3 = Connection ( parentSlice->tileOuts[3].out0, parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
-	conn3.setConn();
+	tile_to_chip.setConn();
 
 	// Serial.println("Dac gain calibration");
 	// Serial.flush();
-
   sprintf(FMTBUF, "this gain: %f %d %d", m_codes.const_val,
           m_codes.const_code,
           m_codes.range);
   print_log(FMTBUF);
-  float target = hiRange ? -constant : constant;
   bool succ = false;
   // if we're trying to
   int code = m_codes.const_code;
@@ -261,7 +248,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
     // and move in that direction.
     // flip back and forth between negative and positive displacements
     float error = 0.0;
-    if(preamble_failed){
+    if(!calib.success){
       break;
     }
     if(code + delta > 255
@@ -271,7 +258,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
     setConstantCode(code + delta);
     succ = binsearch::find_bias_and_nmos(
                                          this,
-                                         target,
+                                         constant,
                                          max_error,
                                          m_codes.gain_cal,
                                          m_codes.nmos,
@@ -279,13 +266,13 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
                                          MEAS_CHIP_OUTPUT);
     sprintf(FMTBUF,"const code=%d target=%f meas=%f",
             code+delta,
-            target,
-            target+error);
+            constant,
+            constant+error);
     print_debug(FMTBUF);
     // if we haven't succeeded, adjust the code.
     if(!succ){
       // if the magnitude of the measured value is less than we expected
-      if(fabs(target+error) < fabs(target)){
+      if(fabs(constant+error) < fabs(constant)){
         // increase the magnitude of the value
         delta += (constant < 0 ? -1 : 1);
       }
@@ -295,38 +282,26 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
       }
     }
   }
-  sprintf(FMTBUF, "dac-done success=%s preamble_failed=%s",
-          succ ? "y" : "n",
-          preamble_failed ? "y" : "n");
-  print_debug(FMTBUF);
-
-	if (hiRange) {
-		conn0.brkConn();
-		if (userConn00.destIfc) userConn00.setConn();
-		if (userConn01.sourceIfc) userConn01.setConn();
-
-    parentSlice->muls[1].update(user_mul1);
-		conn1.brkConn();
-		if (userConn10.destIfc) userConn10.setConn();
-		if (userConn11.sourceIfc) userConn11.setConn();
+  if (hiRange) {
+    // feed dac output into scaling down multiplier input
+		mult_to_aux.brkConn();
+		aux_to_tile.brkConn();
+    parentSlice->muls[1].update(user_aux);
+    // feed output of scaledown multiplier to tile output.
 	} else {
-		conn2.brkConn();
-		if (userConn00.destIfc) userConn00.setConn();
-		if (userConn11.sourceIfc) userConn11.setConn();
+    // feed dac output into tile output
+		mult_to_tile.brkConn();
 	}
+	tile_to_chip.brkConn();
 
-	conn3.brkConn();
-	if (userConn30.destIfc) userConn30.setConn();
-	if (userConn31.sourceIfc) userConn31.setConn();
-
+  cutil::restore_conns(calib);
   codes_self.nmos = m_codes.nmos;
   codes_self.gain_cal = m_codes.gain_cal;
-  codes_self.const_code = m_codes.const_code+delta;
+  codes_self.const_code = code+delta;
   sprintf(FMTBUF,"const code=%d",codes_self.const_code);
   print_debug(FMTBUF);
   update(codes_self);
-  print_debug("return status");
-	return succ && (!preamble_failed);
+	return succ && (calib.success);
 }
 
 void Fabric::Chip::Tile::Slice::Dac::setAnaIrefNmos () const {

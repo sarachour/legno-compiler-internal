@@ -6,7 +6,7 @@ import chip.units as units
 
 ALLOW_SCALE = True
 
-DAC_SLACK = 5.0/256
+DAC_SLACK = 1.0/256
 DAC_MIN = util.truncate(-1.0,2)
 DAC_MAX = util.truncate(1.0-DAC_SLACK,2)
 ADC_SAMPLE_US = 3.0
@@ -15,8 +15,8 @@ VI_MIN = -0.055
 VI_MAX = 0.055
 # range for current to voltage
 # previously 1.2
-IV_MIN = -3.3
-IV_MAX = 3.3
+IV_MIN = -1.0
+IV_MAX = 1.0
 # frequency with experimental adjustments
 # leave a tiny bit of padding for rounding issues.
 ANALOG_SLACK = 0.1

@@ -1,3 +1,6 @@
+#ifndef CONNECTION_H
+#define CONNECTION_H
+
 class Fabric::Chip::Connection {
 	friend Vector;
 
@@ -32,3 +35,5 @@ class Fabric::Chip::Connection {
 	private:
 		Chip & chip;
 };
+
+#endif
