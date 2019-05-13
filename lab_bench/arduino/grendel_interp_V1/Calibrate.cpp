@@ -72,7 +72,7 @@ namespace calibrate {
     Fabric::Chip::Tile::Slice::Dac * dac;
     Fabric::Chip::Tile::Slice::Integrator * integ;
     Fabric::Chip::Tile::Slice::LookupTable * lut;
-
+    
     switch(blk)
       {
       case circ::block_type_t::FANOUT:
@@ -99,6 +99,9 @@ namespace calibrate {
         break;
       case circ::block_type_t::INTEG:
         integ = common::get_slice(fab,loc.loc)->integrator;
+        comm::print_header();
+        circ::print_state(blk,state);
+        Serial.println();
         integ->update(state.integ);
         break;
       default:

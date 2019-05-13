@@ -11,6 +11,7 @@
 // for single-ended channels
 #define ADC_RESOLUTION (3300.0/4096.0)
 #define ADC_FULLSCALE (1208.0)
+#define ADC_MIN 50
 
 void Fabric::Chip::Tile::Slice::ChipOutput::analogDist (
                                                         unsigned int n,
@@ -47,14 +48,30 @@ float single_ended(int ardAnaDiffChan, unsigned int samples){
   unsigned long adcNeg = 0;
   for (unsigned int index = 0; index < samples; index++) {
     // while ((ADC->ADC_ISR & 0x1000000) == 0);
-    adcNeg += ADC->ADC_CDR[ardAnaDiffChan];
+
+    // ADC_CDR[7] = A0
+    // ADC_CDR[6] = A1
     adcPos += ADC->ADC_CDR[ardAnaDiffChan+1];
+    adcNeg += ADC->ADC_CDR[ardAnaDiffChan];
   }
   float pos_mv = ADC_RESOLUTION * ((float)adcPos/(float)samples);
   float neg_mv = ADC_RESOLUTION * ((float)adcNeg/(float)samples);
   float value = (pos_mv-neg_mv)/ADC_FULLSCALE;
-  //sprintf(FMTBUF,"pos=%f neg=%f diff=%f", pos_mv, neg_mv,value);
+  //sprintf(FMTBUF,"chan=%d pos=%f neg=%f diff=%f", ardAnaDiffChan,
+  //        pos_mv, neg_mv,value);
   //print_debug(FMTBUF);
+  if(neg_mv < ADC_MIN){
+    sprintf(FMTBUF, "broken negative channel [%d,%d]",
+            ardAnaDiffChan,
+            ardAnaDiffChan+1);
+    error(FMTBUF);
+  }
+  if(pos_mv < ADC_MIN){
+    sprintf(FMTBUF, "broken positive channel [%d,%d]",
+            ardAnaDiffChan,
+            ardAnaDiffChan+1);
+    error(FMTBUF);
+  }
   return value;
 }
 float differential(int ardAnaDiffChan, unsigned int samples){
@@ -69,6 +86,7 @@ float differential(int ardAnaDiffChan, unsigned int samples){
 /*Measure the reading of an ADC from multiple samples*/
 float Fabric::Chip::Tile::Slice::ChipOutput::analogAvg (unsigned int samples) const
 {
-  return differential(ardAnaDiffChan, samples);
+  //return differential(ardAnaDiffChan, samples);
+  return single_ended(ardAnaDiffChan, samples);
 }
 #endif

@@ -201,6 +201,7 @@ namespace circ {
   //void init_calibrations();
   void timeout(Fabric * fab, unsigned int timeout);
   void print_command(cmd_t& cmd);
+  void print_state(block_type_t blk, block_code_t state);
   void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf);
   void debug_command(Fabric * fab, cmd_t& cmd, float* inbuf);
 

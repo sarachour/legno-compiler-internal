@@ -161,6 +161,7 @@ namespace circ {
 
 #define range_to_str(code) (code == HI_RANGE ? "h" : (code == MED_RANGE ? "m" : (code == LOW_RANGE ? "l" : "?")))
 
+#define sign_to_str(code) (code ? "-" : "+")
 
 
 #define print3(e1,e2,e3) {                        \
@@ -238,8 +239,8 @@ namespace circ {
       Serial.print(" ic_val=");
       Serial.print(state.integ.ic_val);
       Serial.print(" inv=");
-      print2(state.integ.inv[in0Id],
-             state.integ.inv[out0Id]);
+      print2(sign_to_str(state.integ.inv[in0Id]),
+             sign_to_str(state.integ.inv[out0Id]));
       Serial.print(" range=");
       print2(range_to_str(state.integ.range[in0Id]),
              range_to_str(state.integ.range[out0Id]));

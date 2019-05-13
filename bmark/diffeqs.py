@@ -49,7 +49,7 @@ BMARKS = [
     #test.model_2_add(),
     #test.model_1_sqrt(),
     #test.model_1_sin(),
-    test.zero(),
+    test.nochange(),
     robot_control.model(),
     sensor_fanout.model(),
     sensor_dynsys.model(),

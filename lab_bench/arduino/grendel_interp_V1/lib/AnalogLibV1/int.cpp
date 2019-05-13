@@ -306,10 +306,12 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (const float max_err
   bool new_search = true;
   bool calib_failed = true;
 
-	m_codes.nmos = 0;
+  bool found_code = false;
+  integ_code_t best_code = m_codes;
+  float best_delta;
+  m_codes.nmos = 0;
 	setAnaIrefNmos ();
-
-  while (new_search) {
+  while (m_codes.nmos <= 7) {
     float errors[3];
     unsigned char codes[3];
     m_codes.cal_enable[out0Id] = true;
@@ -326,21 +328,33 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (const float max_err
                          MEAS_CHIP_OUTPUT);
     codes[1] = m_codes.port_cal[in0Id];
     m_codes.cal_enable[in0Id] = false;
+    float target = hiRange ? -initial : initial;
     binsearch::find_bias(this,
-                         hiRange ? -initial : initial,
+                         target,
                          m_codes.gain_cal,
                          errors[2],
                          MEAS_CHIP_OUTPUT);
+    sprintf(FMTBUF,"init-cond target=%f measured=%f",
+            target, target+errors[2]);
+    print_debug(FMTBUF);
     codes[2] = m_codes.gain_cal;
-    binsearch::multi_test_stab_and_update_nmos(this,
-                                               codes, errors,
-                                               max_error,
-                                               3,
-                                               m_codes.nmos,
-                                               new_search,
-                                               calib_failed);
+    binsearch::multi_test_stab(this,
+                               codes,
+                               errors,
+                               max_error,
+                               3,
+                               calib_failed);
+    if(!calib_failed){
+      if(!found_code || fabs(errors[2]) < fabs(best_delta)){
+        best_delta = errors[2];
+        found_code = true;
+        best_code = m_codes;
+      }
+    }
+    m_codes.nmos += 1;
   }
 
+  update(best_code);
 	if (hiRange) {
 		conn0.brkConn();
 		if (userConn00.destIfc) userConn00.setConn();
@@ -366,7 +380,7 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (const float max_err
   codes_self.port_cal[out0Id] = m_codes.port_cal[out0Id];
   codes_self.port_cal[in0Id] = m_codes.port_cal[in0Id];
   update(codes_self);
-	return calib_failed;
+	return !calib_failed && found_code;
 }
 
 

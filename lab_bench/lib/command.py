@@ -82,11 +82,14 @@ def parse(line):
 
     return None
 
-def calibrate(state,obj):
+# use dac 1:3:0 src=0 inv=no rng=m val=0.10 -> -0.35 mV
+# use_integ 1 3 0 sgn + val 0.000000 rng m m debug cached
+def calibrate(state,obj,recompute=True):
     if isinstance(obj,UseCommand):
         dbkey = obj.to_key()
         if not (state.state_db.has(obj.block_type,obj.loc,dbkey)) or \
-           not state.state_db.get(obj.block_type,obj.loc,dbkey).success:
+           not state.state_db.get(obj.block_type,obj.loc,dbkey).success or \
+           recompute:
             obj.cached = False
             obj.execute(state)
             print(">> resetting defaults")

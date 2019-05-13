@@ -234,7 +234,7 @@ def gen_block(gprog,circ,block,locstr,config,connected_ports=[]):
       else:
         raise Exception("unfamiliar slice: %s" % sliceno)
 
-    generator = gen_use_dac(circ,block,locstr,config,source,no_calib=no_calib)
+    generator = gen_use_dac(circ,block,locstr,config,source)
 
   elif block.name == 'tile_adc':
     sources = list(circ.get_conns_by_dest(block.name,locstr,'in'))

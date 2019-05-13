@@ -198,8 +198,10 @@ def parse_pattern_use_block(args,n_signs,n_consts,n_range_codes, \
         result['vars'] = args
 
     if db:
-        assert(result['state_mode'] == 'update' or \
-               result['state_mode'] == 'cached')
+        if not (result['state_mode'] == 'update' or \
+                result['state_mode'] == 'cached'):
+            raise Exception("[%s] unknown state mode <%s>" % \
+                            (line,result['state_mode']))
 
         result['cached'] = (result['state_mode'] == 'cached')
     return OptionalValue.value(result)

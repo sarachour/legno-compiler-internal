@@ -9,11 +9,16 @@ from ops import op, opparse
 from bmark.bmarks.common import *
 import bmark.menvs as menvs
 
-def zero():
-    prob = MathProg("zero")
-    prob.bind('O', op.Const(0.0))
+def nochange():
+    prob = MathProg("nochange")
+    params = {'Y0': 0.0}
+    Y = parse_diffeq('0.1', 'Y0', ':a', params)
+    prob.bind('Y', Y)
+    prob.bind("O",op.Emit(op.Var('Y',loc='A0')))
+    prob.set_interval("Y",-1.0,1.0)
     prob.compile()
-    menv = menvs.get_math_env('t20')
+    menv = menvs.get_math_env('t2')
+    prob.set_max_sim_time(2)
     return menv,prob
 
 def model_1():

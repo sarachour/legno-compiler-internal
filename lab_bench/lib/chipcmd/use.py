@@ -357,7 +357,7 @@ class UseDACCmd(UseCommand):
         return 'use_dac'
 
     def __repr__(self):
-        st = "%s %s %s %s src %s sgn %s val %s rng %s cached=%s" % \
+        st = "%s %s %s %s src %s sgn %s val %s rng %s %s" % \
               (self.name(),
                self.loc.chip,self.loc.tile, \
                self.loc.slice,
@@ -365,7 +365,7 @@ class UseDACCmd(UseCommand):
                self._inv.abbrev(),
                self._value,
                self._out_range.abbrev(),
-               self._cached)
+               "cached" if self._cached else "update")
         return st
 
 

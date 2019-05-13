@@ -32,10 +32,8 @@ class SetStateCmd(AnalogChipCommand):
 
     def build_ctype(self):
         statebuf = self._state.to_cstruct()
-        len(statebuf)
         padding = bytes([0]*(64-len(statebuf)))
         buf = statebuf+padding
-        print(self._loc)
         return build_circ_ctype({
             'type':enums.CircCmdType.SET_STATE.name,
             'data':{

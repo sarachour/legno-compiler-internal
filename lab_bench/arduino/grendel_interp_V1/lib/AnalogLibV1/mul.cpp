@@ -219,36 +219,38 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (float max_error) {
     return true;
   }
   dac_code_t codes_dac = parentSlice->dac->m_codes;
-  mult_code_t codes_mul = parentSlice->muls[unitId==unitMulL?1:0].m_codes;
+  int cMulId = unitId==unitMulL?1:0;
+  int cFanId = unitId==unitMulL?0:1;
+  mult_code_t codes_mul = parentSlice->muls[cMulId].m_codes;
   mult_code_t codes_self = m_codes;
-  fanout_code_t codes_fan = parentSlice->fans[unitId==unitMulL?0:1].m_codes;
+  fanout_code_t codes_fan = parentSlice->fans[cFanId].m_codes;
 
 
 	Connection userConn40 = Connection ( parentSlice->dac->out0, parentSlice->dac->out0->userSourceDest );
-	Connection userConn41 = Connection ( parentSlice->fans[unitId==unitMulL?0:1].in0->userSourceDest, parentSlice->fans[unitId==unitMulL?0:1].in0 );
+	Connection userConn41 = Connection ( parentSlice->fans[cFanId].in0->userSourceDest, parentSlice->fans[cFanId].in0 );
 	if (userConn41.sourceIfc) userConn41.brkConn();
-	Connection conn4 = Connection ( parentSlice->dac->out0, parentSlice->fans[unitId==unitMulL?0:1].in0 );
+	Connection conn4 = Connection ( parentSlice->dac->out0, parentSlice->fans[cFanId].in0 );
 
-	Connection userConn50 = Connection ( parentSlice->fans[unitId==unitMulL?0:1].out0, parentSlice->fans[unitId==unitMulL?0:1].out0->userSourceDest );
+	Connection userConn50 = Connection ( parentSlice->fans[cFanId].out0, parentSlice->fans[cFanId].out0->userSourceDest );
 	Connection userConn51 = Connection ( in0->userSourceDest, in0 );
 	if (userConn51.sourceIfc) userConn51.brkConn();
-	Connection conn5 = Connection ( parentSlice->fans[unitId==unitMulL?0:1].out0, in0 );
+	Connection conn5 = Connection ( parentSlice->fans[cFanId].out0, in0 );
 
-	Connection userConn60 = Connection ( parentSlice->fans[unitId==unitMulL?0:1].out1, parentSlice->fans[unitId==unitMulL?0:1].out1->userSourceDest );
+	Connection userConn60 = Connection ( parentSlice->fans[cFanId].out1, parentSlice->fans[cFanId].out1->userSourceDest );
 	Connection userConn61 = Connection ( in1->userSourceDest, in1 );
 	if (userConn61.sourceIfc) userConn61.brkConn();
-	Connection conn6 = Connection ( parentSlice->fans[unitId==unitMulL?0:1].out1, in1 );
+	Connection conn6 = Connection ( parentSlice->fans[cFanId].out1, in1 );
 
 	// output side
 	Connection userConn00 = Connection ( out0, out0->userSourceDest );
-	Connection userConn01 = Connection ( parentSlice->muls[unitId==unitMulL?1:0].in0->userSourceDest, parentSlice->muls[unitId==unitMulL?1:0].in0 );
+	Connection userConn01 = Connection ( parentSlice->muls[cMulId].in0->userSourceDest, parentSlice->muls[cMulId].in0 );
 	if (hiRange && userConn01.sourceIfc) userConn01.brkConn();
-	Connection conn0 = Connection ( out0, parentSlice->muls[unitId==unitMulL?1:0].in0 );
+	Connection conn0 = Connection ( out0, parentSlice->muls[cMulId].in0 );
 
-	Connection userConn10 = Connection ( parentSlice->muls[unitId==unitMulL?1:0].out0, parentSlice->muls[unitId==unitMulL?1:0].out0->userSourceDest );
+	Connection userConn10 = Connection ( parentSlice->muls[cMulId].out0, parentSlice->muls[cMulId].out0->userSourceDest );
 	Connection userConn11 = Connection ( parentSlice->tileOuts[3].in0->userSourceDest, parentSlice->tileOuts[3].in0 );
 	// if (hiRange && userConn11.sourceIfc) userConn11.brkConn();
-	Connection conn1 = Connection ( parentSlice->muls[unitId==unitMulL?1:0].out0, parentSlice->tileOuts[3].in0 );
+	Connection conn1 = Connection ( parentSlice->muls[cMulId].out0, parentSlice->tileOuts[3].in0 );
 
 	Connection conn2 = Connection ( out0, parentSlice->tileOuts[3].in0 );
 	if (userConn11.sourceIfc) userConn11.brkConn();
@@ -273,9 +275,12 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (float max_error) {
   mult_code_t mult_code_0p1;
   bool config_failed = false;
   if(hiRange){
-    parentSlice->muls[unitId==unitMulL?1:0].setEnable(true);
-    parentSlice->muls[unitId==unitMulL?1:0].setGain(-0.1);
-    if(!parentSlice->muls[unitId==unitMulL?1:0].calibrateTarget(0.01)){
+    // scale down.
+    parentSlice->muls[cMulId].setEnable(true);
+    parentSlice->muls[cMulId].m_codes.range[in0Id] = RANGE_HIGH;
+    parentSlice->muls[cMulId].m_codes.range[out0Id] = RANGE_MED;
+		parentSlice->muls[cMulId].setGain(-1.0);
+    if(!parentSlice->muls[cMulId].calibrateTarget(0.01)){
       print_log("MULT/HI: cannot calibrate GAIN=-0.1");
       config_failed = true;
 
@@ -283,7 +288,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (float max_error) {
     else{
       print_debug("MULT: CALIBRATED GAIN=-0.1");
     }
-    mult_code_0p1 = parentSlice->muls[unitId==unitMulL?1:0].m_codes;
+    mult_code_0p1 = parentSlice->muls[cMulId].m_codes;
   }
   parentSlice->dac->setEnable(true);
   parentSlice->dac->setConstant(0);

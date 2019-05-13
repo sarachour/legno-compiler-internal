@@ -29,9 +29,6 @@ class MicroGetStatusCmd(ArduinoCommand):
         return self.name()
 
     def execute(self,state):
-        for stmt in state.analyze_chip():
-            stmt.apply(state)
-
         print("==== overflow summary ====")
         for handle,oflow in state.statuses():
             print("%s status=%s" % (handle,oflow))
