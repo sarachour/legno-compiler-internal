@@ -61,22 +61,27 @@ class BlockStateDatabase:
     self._curs.execute(cmd)
     self._conn.commit()
 
-  def get(self,blktype,loc,blockkey):
+  def _get(self,blktype,loc,blockkey):
     assert(isinstance(blockkey,BlockState.Key))
     keystr = blockkey.to_key()
-    for entry in self.get_all():
-      print(entry['cmdkey'])
-    print("==========")
-    print(keystr)
     cmd = '''SELECT * FROM states WHERE cmdkey = "{cmdkey}"''' \
                                                 .format(cmdkey=keystr)
     results = list(self._curs.execute(cmd))
+    return results
+
+  def has(self,blktype,loc,blockkey):
+    return len(self._get(blktype,loc,blockkey)) > 0
+
+  def get(self,blktype,loc,blockkey):
+    results = self._get(blktype,loc,blockkey)
     assert(len(results) == 1)
-    state = dict(zip(self.keys,results[0]))['state']
+    data = dict(zip(self.keys,results[0]))
+    state = data['state']
     obj = chipstate.BlockState \
                    .toplevel_from_cstruct(blktype,loc,
                                           bytes.fromhex(state))
-    print(obj)
+    obj.success = (data['status'] == BlockStateDatabase.Status.SUCCESS.value)
+    obj.tolerance = data['max_error']
     return obj
 
 class BlockState:
@@ -114,6 +119,8 @@ class BlockState:
   def __init__(self,block_type,loc,state):
     self.block = block_type
     self.loc = loc
+    self.success = None
+    self.tolerance = None
     if state != None:
       self.from_cstruct(state)
 

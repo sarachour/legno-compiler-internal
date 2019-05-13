@@ -73,16 +73,7 @@ bool Fabric::Chip::Tile::Slice::Integrator::getException () const {
 	SerialUSB.print (" ");
 	return bitRead (exceptionVector, parentSlice->sliceId);
 }
-
-Fabric::Chip::Tile::Slice::Integrator::Integrator (
-	Chip::Tile::Slice * parentSlice
-) :
-	FunctionUnit(parentSlice, unitInt)
-{
-	in0 = new IntegratorIn (this);
-	tally_dyn_mem <IntegratorIn> ("IntegratorIn");
-	out0 = new IntegratorOut (this);
-	tally_dyn_mem <IntegratorOut> ("IntegratorOut");
+void Fabric::Chip::Tile::Slice::Integrator::defaults (){
   m_codes.pmos = 5;
   m_codes.nmos = 0;
   m_codes.ic_code = 128;
@@ -103,6 +94,18 @@ Fabric::Chip::Tile::Slice::Integrator::Integrator (
   m_codes.gain_cal = 32;
 	setAnaIrefNmos();
 	setAnaIrefPmos();
+}
+
+Fabric::Chip::Tile::Slice::Integrator::Integrator (
+	Chip::Tile::Slice * parentSlice
+) :
+	FunctionUnit(parentSlice, unitInt)
+{
+	in0 = new IntegratorIn (this);
+	tally_dyn_mem <IntegratorIn> ("IntegratorIn");
+	out0 = new IntegratorOut (this);
+	tally_dyn_mem <IntegratorOut> ("IntegratorOut");
+  defaults();
 }
 
 /*Set enable, invert, range*/

@@ -18,6 +18,7 @@ class Fabric {
 		~Fabric();
 		void reset();
 		bool calibrate() const;
+    void defaults();
 		/*Configuration commit*/
 		void cfgStart ();
 		void cfgCommit ();

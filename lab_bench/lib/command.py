@@ -82,3 +82,29 @@ def parse(line):
 
     return None
 
+def calibrate(state,obj):
+    if isinstance(obj,UseCommand):
+        dbkey = obj.to_key()
+        if not (state.state_db.has(obj.block_type,obj.loc,dbkey)) or \
+           not state.state_db.get(obj.block_type,obj.loc,dbkey).success:
+            obj.cached = False
+            obj.execute(state)
+            print(">> resetting defaults")
+            DefaultsCommand().execute(state)
+            print(">> set state")
+            obj.execute(state)
+            print(">> calibrate")
+            CalibrateCmd(obj.block_type,
+                         obj.loc.chip,
+                         obj.loc.tile,
+                         obj.loc.slice,
+                         obj.loc.index).execute(state)
+
+        result = state.state_db.get(obj.block_type,obj.loc,dbkey)
+        if result.success:
+            print("[[SUCCESS!]]")
+            return True
+        else:
+            print("[[FAILURE]]")
+            return False
+    return None

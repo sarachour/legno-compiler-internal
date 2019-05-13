@@ -69,13 +69,7 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::getException () const {
 	return result;
 }
 
-Fabric::Chip::Tile::Slice::ChipAdc::ChipAdc (
-	Slice * parentSlice
-) :
-	FunctionUnit(parentSlice, unitAdc)
-{
-	in0 = new AdcIn (this);
-	tally_dyn_mem <AdcIn> ("AdcIn");
+void Fabric::Chip::Tile::Slice::ChipAdc::defaults(){
   m_codes.upper = 31;
   m_codes.upper_fs = nA100;
   m_codes.lower = 31;
@@ -94,6 +88,15 @@ Fabric::Chip::Tile::Slice::ChipAdc::ChipAdc (
   m_codes.test_rsinc = false;
 	setAnaIrefNmos();
 	setAnaIrefPmos();
+}
+Fabric::Chip::Tile::Slice::ChipAdc::ChipAdc (
+	Slice * parentSlice
+) :
+	FunctionUnit(parentSlice, unitAdc)
+{
+	in0 = new AdcIn (this);
+	tally_dyn_mem <AdcIn> ("AdcIn");
+  defaults();
 }
 
 /*Set enable, range, delay, decRst*/

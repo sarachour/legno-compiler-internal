@@ -13,6 +13,7 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 
     mult_code_t m_codes;
     void update(mult_code_t codes);
+    void defaults();
     bool calibrate (const float max_error);
 		bool calibrateTarget(const float max_error);
 	private:

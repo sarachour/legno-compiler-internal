@@ -78,6 +78,7 @@ class CircCmdType(Enum):
     SET_STATE = "set_state";
     MEASURE = "measure";
     TUNE = "tune";
+    DEFAULTS = "defaults";
 
 class ExpCmdType(Enum):
     RESET = 'reset';

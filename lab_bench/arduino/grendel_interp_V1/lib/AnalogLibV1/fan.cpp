@@ -46,20 +46,7 @@ void Fabric::Chip::Tile::Slice::Fanout::setThird (
 	setParam3();
 }
 
-Fabric::Chip::Tile::Slice::Fanout::Fanout (
-	Chip::Tile::Slice * parentSlice,
-	unit unitId
-) :
-	FunctionUnit(parentSlice, unitId)
-{
-	in0 = new GenericInterface (this, in0Id);
-	tally_dyn_mem <GenericInterface> ("GenericInterface");
-	out0 = new FanoutOut (this, out0Id);
-	tally_dyn_mem <FanoutOut> ("FanoutOut");
-	out1 = new FanoutOut (this, out1Id);
-	tally_dyn_mem <FanoutOut> ("FanoutOut");
-	out2 = new FanoutOut (this, out2Id);
-	tally_dyn_mem <FanoutOut> ("FanoutOut");
+void Fabric::Chip::Tile::Slice::Fanout::defaults (){
   m_codes.range[in0Id] = RANGE_MED;
   m_codes.range[in1Id] = RANGE_UNKNOWN;
   m_codes.range[out0Id] = RANGE_MED;
@@ -79,9 +66,25 @@ Fabric::Chip::Tile::Slice::Fanout::Fanout (
   m_codes.third = false;
   m_codes.nmos = 0;
   m_codes.pmos = 3;
-
 	setAnaIrefNmos();
 	setAnaIrefPmos();
+}
+
+Fabric::Chip::Tile::Slice::Fanout::Fanout (
+	Chip::Tile::Slice * parentSlice,
+	unit unitId
+) :
+	FunctionUnit(parentSlice, unitId)
+{
+	in0 = new GenericInterface (this, in0Id);
+	tally_dyn_mem <GenericInterface> ("GenericInterface");
+	out0 = new FanoutOut (this, out0Id);
+	tally_dyn_mem <FanoutOut> ("FanoutOut");
+	out1 = new FanoutOut (this, out1Id);
+	tally_dyn_mem <FanoutOut> ("FanoutOut");
+	out2 = new FanoutOut (this, out2Id);
+	tally_dyn_mem <FanoutOut> ("FanoutOut");
+  defaults();
 }
 
 /*Set enable, range*/

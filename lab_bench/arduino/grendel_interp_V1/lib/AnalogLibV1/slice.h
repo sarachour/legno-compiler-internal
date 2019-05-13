@@ -28,7 +28,7 @@ class Fabric::Chip::Tile::Slice {
 
     bool calibrate() const;
     bool calibrateTarget() const;
-
+    void defaults();
 	private:
 		Slice (
 			Tile * parentTile,

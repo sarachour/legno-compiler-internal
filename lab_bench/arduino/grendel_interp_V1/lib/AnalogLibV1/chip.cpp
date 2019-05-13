@@ -74,6 +74,11 @@ Fabric::Chip::Chip (
 
 Fabric::Chip::~Chip() { delete[] tiles; };
 
+void Fabric::Chip::defaults(){
+  for(int i=0; i < 4; i+=1){
+    tiles[i].defaults();
+  }
+}
 void Fabric::Chip::reset () {
 
 	for (unsigned char tileRow=0; tileRow<2; tileRow++)

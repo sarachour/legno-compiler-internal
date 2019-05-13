@@ -9,6 +9,35 @@ import construct
 
 
 
+class DefaultsCommand(ArduinoCommand):
+
+    def __init__(self):
+        ArduinoCommand.__init__(self)
+
+    @staticmethod
+    def name():
+        return 'micro_defaults'
+
+    @staticmethod
+    def desc():
+        return "[microcontroller] set configs to default values."
+
+    def build_ctype(self):
+        return build_circ_ctype({
+            'type':enums.CircCmdType.DEFAULTS.name,
+            'data':{
+                'circ_loc':CircLoc(0,0,0).build_ctype()
+            }
+        })
+
+
+    @staticmethod
+    def parse(args):
+        return strict_do_parse("", args, DefaultsCommand)
+
+    def __repr__(self):
+        return self.name()
+
 
 class WriteLUTCmd(UseCommand):
 

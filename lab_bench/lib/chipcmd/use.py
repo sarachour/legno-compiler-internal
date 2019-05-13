@@ -28,6 +28,11 @@ class UseCommand(AnalogChipCommand):
     def cached(self):
         return self._cached
 
+    @cached.setter
+    def cached(self,o):
+        assert(isinstance(o,bool))
+        self._cached = o
+
     @property
     def block_type(self):
         return self._block

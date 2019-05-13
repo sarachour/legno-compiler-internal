@@ -5,6 +5,7 @@ class Fabric::Chip::Tile {
 	public:
 		class Slice;
 		bool calibrate() const;
+    void defaults();
 		void setParallelIn ( bool onOff ) const;
 		/*Read serial digital data and the done bit*/
 		void readSerial (

@@ -466,6 +466,10 @@ namespace circ {
       print_state(cmd.data.state.blk, code);
       break;
 
+    case cmd_type_t::DEFAULTS:
+      Serial.print("defaults");
+      break;
+
     default:
       Serial.print(cmd.type);
       Serial.print(" <unimpl print circuit>");

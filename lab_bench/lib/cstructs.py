@@ -99,7 +99,8 @@ def circ_cmd_type():
         CircCmdType.CALIBRATE.name:17,
         CircCmdType.TUNE.name:18,
         CircCmdType.GET_STATE.name:19,
-        CircCmdType.SET_STATE.name:20
+        CircCmdType.SET_STATE.name:20,
+        CircCmdType.DEFAULTS.name:21
     }
     return cstruct.Enum(cstruct.Int24ul,
                         **kwargs)

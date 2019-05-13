@@ -32,6 +32,15 @@ Fabric::Chip::Tile::Tile (
 
 Fabric::Chip::Tile::~Tile() { delete[] slices; };
 
+void Fabric::Chip::Tile::defaults() {
+	slices[0].defaults();
+	slices[1].defaults();
+	slices[2].defaults();
+	slices[3].defaults();
+	return true;
+};
+
+
 bool Fabric::Chip::Tile::calibrate () const {
 	SerialUSB.println("Calibrating Slice 0");
 	slices[0].calibrate();

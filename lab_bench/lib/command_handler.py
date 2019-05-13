@@ -1,6 +1,7 @@
 import lab_bench.lib.command as cmd
 import sys
 
+
 def execute(state,line):
     if line.startswith("#"):
         print(line)
@@ -36,6 +37,34 @@ def main_stdout(state):
 
         execute(state,line)
 
+
+def main_script_calibrate(state,filename):
+    successes = 0
+    failures = 0
+    with open(filename,'r') as fh:
+        for idx,line in enumerate(fh):
+            if line == "quit":
+                sys.exit(0)
+            elif line.strip() == "":
+                continue
+
+            if line.startswith("#"):
+                print(line)
+                print("<comment, skipping..>")
+
+            command_obj = cmd.parse(line)
+            succ = cmd.calibrate(state,command_obj)
+            if succ is None:
+                continue
+
+            if succ:
+                successes += 1
+            else:
+                failures += 1
+
+
+    print("SUCCESSES: %d" % successes)
+    print("FAILURES: %d" % failures)
 
 def main_script(state,filename):
     with open(filename,'r') as fh:

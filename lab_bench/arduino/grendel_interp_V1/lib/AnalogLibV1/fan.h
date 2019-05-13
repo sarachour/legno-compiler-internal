@@ -12,12 +12,12 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
 			bool third // whether third output is on
 		);
 		bool calibrate (const float max_error);
-
-    fanout_code_t m_codes;
+    void defaults();
     void update(fanout_code_t codes){
       m_codes = codes;
       updateFu();
     }
+    fanout_code_t m_codes;
 	private:
 		class FanoutOut;
 		Fanout (Slice * parentSlice, unit unitId);

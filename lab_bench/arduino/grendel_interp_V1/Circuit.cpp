@@ -263,6 +263,13 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     comm::response("set codes",0);
     break;
 
+  case cmd_type_t::DEFAULTS:
+    comm::print_header();
+    Serial.println("setting to default");
+    fab->defaults();
+    comm::response("set defaults",0);
+    break;
+
   default:
     comm::error("unknown command");
     break;

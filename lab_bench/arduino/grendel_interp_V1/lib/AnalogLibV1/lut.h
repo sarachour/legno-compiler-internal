@@ -39,6 +39,7 @@ class Fabric::Chip::Tile::Slice::LookupTable : public Fabric::Chip::Tile::Slice:
 		/*Remove LUT in writing mode*/
 		// void setStop ();
     void update(lut_code_t codes);
+    void defaults(){};
     lut_code_t m_codes;
 	private:
 		LookupTable (

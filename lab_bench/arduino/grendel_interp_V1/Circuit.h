@@ -58,7 +58,8 @@ namespace circ {
     TUNE,
     /*state 19-20*/
     GET_STATE,
-    SET_STATE
+    SET_STATE,
+    DEFAULTS
   } cmd_type_t;
 
   typedef struct circ_loc {

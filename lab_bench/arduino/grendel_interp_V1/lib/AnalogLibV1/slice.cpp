@@ -94,6 +94,19 @@ bool Fabric::Chip::Tile::Slice::calibrateTarget () const {
 	return true;
 
 }
+void Fabric::Chip::Tile::Slice::defaults () {
+  dac->defaults();
+	fans[0].defaults();
+	fans[1].defaults();
+  muls[0].defaults();
+  muls[1].defaults();
+  integrator->defaults();
+
+  if (sliceId == slice0 || sliceId == slice2) {
+    adc->defaults();
+    lut->defaults();
+  }
+}
 bool Fabric::Chip::Tile::Slice::calibrate () const {
 
   print_log("Calibrating ADC");

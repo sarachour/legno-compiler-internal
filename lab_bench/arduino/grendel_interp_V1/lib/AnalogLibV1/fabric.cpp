@@ -77,6 +77,10 @@ Fabric::~Fabric() {
 	delete[] chips;
 };
 
+void Fabric::defaults() {
+  chips[0].defaults();
+  chips[1].defaults();
+}
 void Fabric::reset () {
 	Serial.begin(115200);
 	digitalWrite(moMiEnPin, LOW); /*scan chain disable*/

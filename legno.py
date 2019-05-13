@@ -85,4 +85,3 @@ elif args.subparser_name == "jaunt":
 
 elif args.subparser_name == "srcgen":
    legno_util.exec_srcgen(hdacv2_board,args)
-

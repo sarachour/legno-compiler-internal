@@ -57,18 +57,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::MultiplierInterface::setRange (range
 	parentFu->setParam5 ();
 }
 
-Fabric::Chip::Tile::Slice::Multiplier::Multiplier (
-	Slice * parentSlice,
-	unit unitId
-) :
-	FunctionUnit(parentSlice, unitId)
-{
-	out0 = new MultiplierInterface (this, out0Id);
-	tally_dyn_mem <MultiplierInterface> ("MultiplierInterface");
-	in0 = new MultiplierInterface (this, in0Id);
-	tally_dyn_mem <MultiplierInterface> ("MultiplierInterface");
-	in1 = new MultiplierInterface (this, in1Id);
-	tally_dyn_mem <MultiplierInterface> ("MultiplierInterface");
+void Fabric::Chip::Tile::Slice::Multiplier::defaults () {
   m_codes.pmos = 3;
   m_codes.nmos = 0;
   m_codes.vga = false;
@@ -87,6 +76,22 @@ Fabric::Chip::Tile::Slice::Multiplier::Multiplier (
   m_codes.enable = false;
   setAnaIrefNmos();
 	setAnaIrefPmos();
+}
+
+
+Fabric::Chip::Tile::Slice::Multiplier::Multiplier (
+	Slice * parentSlice,
+	unit unitId
+) :
+	FunctionUnit(parentSlice, unitId)
+{
+	out0 = new MultiplierInterface (this, out0Id);
+	tally_dyn_mem <MultiplierInterface> ("MultiplierInterface");
+	in0 = new MultiplierInterface (this, in0Id);
+	tally_dyn_mem <MultiplierInterface> ("MultiplierInterface");
+	in1 = new MultiplierInterface (this, in1Id);
+	tally_dyn_mem <MultiplierInterface> ("MultiplierInterface");
+  defaults();
 }
 
 mulRange range_to_mulRange(range_t rng){

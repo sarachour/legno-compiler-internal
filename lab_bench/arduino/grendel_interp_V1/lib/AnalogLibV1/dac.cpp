@@ -94,11 +94,7 @@ bool Fabric::Chip::Tile::Slice::Dac::setConstant(float constant){
   }
 }
 
-Fabric::Chip::Tile::Slice::Dac::Dac (
-	Chip::Tile::Slice * parentSlice
-) :
-	FunctionUnit(parentSlice, unitDac)
-{
+void Fabric::Chip::Tile::Slice::Dac::defaults(){
   m_codes.inv = false;
   m_codes.range = RANGE_MED;
   m_codes.pmos = 0;
@@ -107,9 +103,17 @@ Fabric::Chip::Tile::Slice::Dac::Dac (
   m_codes.const_code = 128;
   m_codes.const_val = 0.0;
   m_codes.enable = false;
+	setAnaIrefNmos ();
+}
+Fabric::Chip::Tile::Slice::Dac::Dac (
+	Chip::Tile::Slice * parentSlice
+) :
+	FunctionUnit(parentSlice, unitDac)
+{
+
 	out0 = new DacOut (this);
 	tally_dyn_mem <DacOut> ("DacOut");
-	setAnaIrefNmos ();
+  defaults();
 }
 
 /*Set enable, invert, range, clock select*/
