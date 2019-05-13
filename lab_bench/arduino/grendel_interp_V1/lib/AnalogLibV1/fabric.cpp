@@ -34,14 +34,14 @@ Fabric::Fabric () {
 	randomSeed(analogRead(0));
 
 	// Set up ADC
-	ADC->ADC_MR |= 0x80; // set free running mode on ADC
-	ADC->ADC_MR &= 0xFFFF00FF; // set prescaler to fastest
+	//ADC->ADC_MR |= 0x80; // set free running mode on ADC
+	//ADC->ADC_MR &= 0xFFFF00FF; // set prescaler to fastest
 	//ADC->ADC_COR = 0x10000;  // enable differential ADC for all channels
-  ADC->ADC_COR = 0x00000; // single ended mode for all channels
-	ADC->ADC_CHER = 0x55; // enable four pairs of differential ADC
-	adc_enable_interrupt(ADC, ADC_IER_DRDY);
-	ADC->ADC_IER |= 0x55; // enable ADC interrupt on pin A0
-	while ((ADC->ADC_ISR & 0x1000000) == 0);
+  //ADC->ADC_COR = 0x00000; // single ended mode for all channels
+	//ADC->ADC_CHER = 0x55; // enable four pairs of differential ADC
+	//adc_enable_interrupt(ADC, ADC_IER_DRDY);
+	//ADC->ADC_IER |= 0x55; // enable ADC interrupt on pin A0
+	//while ((ADC->ADC_ISR & 0x1000000) == 0);
 
 	Serial.println("initialized arduino");
 

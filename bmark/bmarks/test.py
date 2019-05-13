@@ -14,7 +14,7 @@ def nochange():
     params = {'Y0': 0.0}
     Y = parse_diffeq('0.1', 'Y0', ':a', params)
     prob.bind('Y', Y)
-    prob.bind("O",op.Emit(op.Var('Y',loc='A0')))
+    prob.bind("O",op.Emit(op.Var('Y'),loc='A0'))
     prob.set_interval("Y",-1.0,1.0)
     prob.compile()
     menv = menvs.get_math_env('t2')

@@ -25,9 +25,11 @@ def model(name,omega,menv_name='t20'):
     scf = omega
     prob.bind("P", P)
     prob.bind("V", V)
-    prob.bind("Loc", op.Emit(
-      op.Mult(op.Const(0.9999),op.Var("P"))
-    ))
+    prob.bind("Loc", \
+              op.Emit(
+                op.Mult(op.Const(0.9999),op.Var("P")),
+                loc="A0"
+              ))
     # most accurately, 0.1
     #base_bnd = 0.1
     base_bnd = 0.12

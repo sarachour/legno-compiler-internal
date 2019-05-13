@@ -6,7 +6,7 @@ import chip.units as units
 
 ALLOW_SCALE = True
 
-DAC_SLACK = 1.0/256
+DAC_SLACK = 5.0/256
 DAC_MIN = util.truncate(-1.0,2)
 DAC_MAX = util.truncate(1.0-DAC_SLACK,2)
 ADC_SAMPLE_US = 3.0

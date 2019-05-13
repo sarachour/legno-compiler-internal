@@ -39,8 +39,8 @@ def main_stdout(state):
 
 
 def main_script_calibrate(state,filename):
-    successes = 0
-    failures = 0
+    successes = []
+    failures = []
     with open(filename,'r') as fh:
         for idx,line in enumerate(fh):
             if line == "quit":
@@ -58,13 +58,21 @@ def main_script_calibrate(state,filename):
                 continue
 
             if succ:
-                successes += 1
+                successes.append(command_obj)
             else:
-                failures += 1
+                failures.append(command_obj)
 
+    total = len(successes) + len(failures)
+    print("=== Successes [%d/%d] ===" % (len(successes), total))
+    for succ in successes:
+        print(succ)
 
-    print("SUCCESSES: %d" % successes)
-    print("FAILURES: %d" % failures)
+    print("=== Failures [%d/%d] ===" % (len(failures),total))
+    for fail in failures:
+        print(fail)
+
+    if len(failures) > 0:
+        raise Exception("some calibration steps failed")
 
 def main_script(state,filename):
     with open(filename,'r') as fh:

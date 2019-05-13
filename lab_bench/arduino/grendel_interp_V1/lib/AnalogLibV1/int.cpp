@@ -303,17 +303,16 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (const float max_err
     conn0.setConn();
     conn1.setConn();
   }
-  bool new_search = true;
-  bool calib_failed = true;
-
   bool found_code = false;
   integ_code_t best_code = m_codes;
   float best_delta;
   m_codes.nmos = 0;
 	setAnaIrefNmos ();
-  while (m_codes.nmos <= 7) {
+  while (m_codes.nmos <= 7 && !found_code) {
     float errors[3];
     unsigned char codes[3];
+    bool calib_failed;
+    bool succ = true;
     m_codes.cal_enable[out0Id] = true;
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[out0Id],
@@ -322,33 +321,65 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (const float max_err
     codes[0] = m_codes.port_cal[out0Id];
     m_codes.cal_enable[out0Id] = false;
     m_codes.cal_enable[in0Id] = true;
+    binsearch::test_stab(codes[0],
+                         errors[0],
+                         max_error,
+                         calib_failed);
+    succ &= !calib_failed;
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[in0Id],
                          errors[1],
                          MEAS_CHIP_OUTPUT);
+    binsearch::test_stab(codes[1],
+                         errors[1],
+                         max_error,
+                         calib_failed);
+    succ &= !calib_failed;
+
     codes[1] = m_codes.port_cal[in0Id];
     m_codes.cal_enable[in0Id] = false;
+
     float target = hiRange ? -initial : initial;
-    binsearch::find_bias(this,
-                         target,
-                         m_codes.gain_cal,
-                         errors[2],
-                         MEAS_CHIP_OUTPUT);
-    sprintf(FMTBUF,"init-cond target=%f measured=%f",
-            target, target+errors[2]);
-    print_debug(FMTBUF);
-    codes[2] = m_codes.gain_cal;
-    binsearch::multi_test_stab(this,
-                               codes,
-                               errors,
-                               max_error,
-                               3,
-                               calib_failed);
-    if(!calib_failed){
+    unsigned int code = m_codes.ic_code;
+    unsigned int delta = 0;
+    bool initcond_succ = false;
+    // adjust the initial condition code.
+    while(!initcond_succ && succ){
+      if(code + delta > 255
+         || code + delta < 0){
+        break;
+      }
+      setInitialCode(code+delta);
+      binsearch::find_bias(this,
+                           target,
+                           m_codes.gain_cal,
+                           errors[2],
+                           MEAS_CHIP_OUTPUT);
+      codes[2] = m_codes.gain_cal;
+      binsearch::test_stab(codes[2],
+                           errors[2],
+                           max_error,
+                           calib_failed);
+      initcond_succ = !calib_failed;
+      sprintf(FMTBUF,"init-cond code=%d target=%f measured=%f",
+              code+delta, target, target+errors[2]);
+      print_debug(FMTBUF);
+      if(!initcond_succ){
+        if(fabs(target+errors[2]) < fabs(target)){
+          delta += initial < 0 ? -1 : 1;
+        }
+        else{
+          delta += initial < 0 ? 1 : -1;
+        }
+      }
+    }
+    if(succ){
       if(!found_code || fabs(errors[2]) < fabs(best_delta)){
         best_delta = errors[2];
         found_code = true;
+        m_codes.ic_code = code+delta;
         best_code = m_codes;
+        m_codes.ic_code = code;
       }
     }
     m_codes.nmos += 1;
@@ -376,11 +407,12 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (const float max_err
 	if (userConn31.sourceIfc) userConn31.setConn();
 
   codes_self.nmos = m_codes.nmos;
+  codes_self.ic_code = m_codes.ic_code;
   codes_self.gain_cal = m_codes.gain_cal;
   codes_self.port_cal[out0Id] = m_codes.port_cal[out0Id];
   codes_self.port_cal[in0Id] = m_codes.port_cal[in0Id];
   update(codes_self);
-	return !calib_failed && found_code;
+	return found_code;
 }
 
 
