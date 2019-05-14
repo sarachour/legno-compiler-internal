@@ -125,7 +125,7 @@ void Fabric::Chip::Tile::Slice::Dac::setParam0 () const {
   bool lut0 = (m_codes.source == DSRC_LUT0);
   bool is_hiRange = (m_codes.range == RANGE_HIGH);
   //bool is_inverse = (m_codes.inv);
-  bool is_inverse = !(m_codes.inv);
+  bool is_inverse = (m_codes.inv);
 	cfgTile += m_codes.enable ? 1<<7 : 0;
 	cfgTile += (is_inverse) ? 1<<6 : 0;
 	cfgTile += (is_hiRange ? dacHi : dacMid) ? 1<<5 : 0;
@@ -256,9 +256,10 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
       break;
     }
     setConstantCode(code + delta);
+    float target = hiRange? constant*cutil::h2m_coeff() : constant;
     succ = binsearch::find_bias_and_nmos(
                                          this,
-                                         constant,
+                                         target,
                                          max_error,
                                          m_codes.gain_cal,
                                          m_codes.nmos,
@@ -266,19 +267,19 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
                                          MEAS_CHIP_OUTPUT);
     sprintf(FMTBUF,"const code=%d target=%f meas=%f",
             code+delta,
-            constant,
-            constant+error);
+            target,
+            target+error);
     print_debug(FMTBUF);
     // if we haven't succeeded, adjust the code.
     if(!succ){
       // if the magnitude of the measured value is less than we expected
-      if(fabs(constant+error) < fabs(constant)){
+      if(fabs(target+error) < fabs(target)){
         // increase the magnitude of the value
-        delta += (constant < 0 ? -1 : 1);
+        delta += (target < 0 ? -1 : 1);
       }
       else{
         // decrease the magnitude of the value
-        delta += (constant < 0 ? 1 : -1);
+        delta += (target < 0 ? 1 : -1);
       }
     }
   }

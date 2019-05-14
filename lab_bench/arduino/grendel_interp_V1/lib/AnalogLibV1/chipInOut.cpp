@@ -12,7 +12,7 @@
 #define ADC_CONVERSION (3300.0/4096.0)
 //#define ADC_FULLSCALE (1208.0)
 #define ADC_FULLSCALE (1000.0)
-#define ADC_MIN 50
+#define ADC_MIN 0
 
 void Fabric::Chip::Tile::Slice::ChipOutput::analogDist (
                                                         unsigned int n,
@@ -66,8 +66,8 @@ float single_ended(int ardAnaDiffChan, unsigned int samples){
   */
   samples = 10;
   for(unsigned int index = 0; index < samples; index++){
-    adcPos += analogRead(pinmap[ardAnaDiffChan]);
-    adcNeg += analogRead(pinmap[ardAnaDiffChan+1]);
+    adcPos += analogRead(pinmap[ardAnaDiffChan+1]);
+    adcNeg += analogRead(pinmap[ardAnaDiffChan]);
   }
   float pos_mv = ADC_CONVERSION * ((float)adcPos/(float)samples);
   float neg_mv = ADC_CONVERSION * ((float)adcNeg/(float)samples);
@@ -76,15 +76,17 @@ float single_ended(int ardAnaDiffChan, unsigned int samples){
          pos_mv, neg_mv,pos_mv-neg_mv,value);
   //print_debug(FMTBUF);
   if(neg_mv < ADC_MIN){
-    sprintf(FMTBUF, "broken negative channel [%d,%d]",
+    sprintf(FMTBUF, "broken negative channel [%d,%d] %f",
             ardAnaDiffChan,
-            ardAnaDiffChan+1);
+            ardAnaDiffChan+1,
+            neg_mv);
     error(FMTBUF);
   }
   if(pos_mv < ADC_MIN){
-    sprintf(FMTBUF, "broken positive channel [%d,%d]",
+    sprintf(FMTBUF, "broken positive channel [%d,%d] %f",
             ardAnaDiffChan,
-            ardAnaDiffChan+1);
+            ardAnaDiffChan+1,
+            pos_mv);
     error(FMTBUF);
   }
   return value;

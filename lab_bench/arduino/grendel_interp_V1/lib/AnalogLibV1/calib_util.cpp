@@ -17,7 +17,10 @@ namespace cutil {
     dac_code_t backup = dac->m_codes;
     dac_code_t result = dac->m_codes;
     dac->setEnable(true);
-    dac->setConstant(-0.1);
+    if(!dac->setConstant(0.1)){
+      print_log("MULT: cannot set DAC=0.1");
+      calib.success = false;
+    }
     dac->setRange(RANGE_MED);
     dac->out0->setInv(false);
     if(!dac->calibrateTarget(0.001)){
@@ -32,22 +35,63 @@ namespace cutil {
     return result;
 
   }
-  mult_code_t make_h2m_mult(calibrate_t& calib,
+  float h2m_coeff_norec(){
+    return 0.9;
+  }
+  float h2m_coeff(){
+    return h2m_coeff_norec();
+  }
+  mult_code_t make_h2m_mult_norecurse(calibrate_t& calib,
                             Fabric::Chip::Tile::Slice::Multiplier * mult){
     mult_code_t backup = mult->m_codes;
     mult_code_t result = mult->m_codes;
     // scale down.
     mult->setEnable(true);
     mult->m_codes.range[in0Id] = RANGE_HIGH;
+    mult->m_codes.range[in1Id] = RANGE_MED;
     mult->m_codes.range[out0Id] = RANGE_MED;
-		mult->setGain(1.0);
+    mult->setVga(true);
+    mult->setGain(h2m_coeff());
     if(!mult->calibrateTarget(0.01)){
-      print_log("MULT/HI: cannot calibrate GAIN=-0.1");
+      // formerly was 0.1
+      print_log("norecurse: cannot calibrate GAIN=0.1");
       calib.success = false;
 
     }
     else{
-      print_debug("MULT: CALIBRATED GAIN=-0.1");
+      print_debug("norecurse: CALIBRATED GAIN=0.1");
+    }
+    result = mult->m_codes;
+    mult->update(backup);
+    return result;
+  }
+
+  mult_code_t make_h2m_mult(calibrate_t& calib,
+                            Fabric::Chip::Tile::Slice::Multiplier * mult){
+    // the recursive one has issues converging, so we have to use the one
+    // with less dynamic range
+    return make_h2m_mult_norecurse(calib,mult);
+  }
+
+  mult_code_t make_h2m_mult_recurse(calibrate_t& calib,
+                            Fabric::Chip::Tile::Slice::Multiplier * mult){
+    mult_code_t backup = mult->m_codes;
+    mult_code_t result = mult->m_codes;
+    // scale down.
+    mult->setEnable(true);
+    mult->m_codes.range[in0Id] = RANGE_HIGH;
+    mult->m_codes.range[in1Id] = RANGE_MED;
+    mult->m_codes.range[out0Id] = RANGE_HIGH;
+    mult->setVga(true);
+    mult->setGain(0.1);
+    if(!mult->calibrateTarget(0.01)){
+      // formerly was 0.1
+      print_log("recurse: cannot calibrate GAIN=0.1");
+      calib.success = false;
+
+    }
+    else{
+      print_debug("recurse: CALIBRATED GAIN=0.1");
     }
     result = mult->m_codes;
     mult->update(backup);
@@ -62,9 +106,10 @@ namespace cutil {
     dac_code_t backup = dac->m_codes;
     dac_code_t result = dac->m_codes;
     dac->setEnable(true);
-    dac->setConstant(1.0);
-    dac->setSource(DSRC_MEM);
     dac->setRange(RANGE_MED);
+    dac->m_codes.const_val = 1.0;
+    dac->setConstantCode(255);
+    dac->setSource(DSRC_MEM);
     dac->out0->setInv(false);
     if(!dac->calibrateTarget(0.01)){
       print_log("MULT: cannot calibrate DAC=-1");
@@ -165,6 +210,10 @@ namespace cutil {
                              Fabric::Chip::Tile::Slice::TileInOut* fu){
     buffer_conns(calib,fu,1,1);
   }
+  void buffer_integ_conns( calibrate_t& calib,
+                            Fabric::Chip::Tile::Slice::Integrator * fu){
+    buffer_conns(calib,fu,1,1);
+  }
   void buffer_chipin_conns( calibrate_t& calib,
                              Fabric::Chip::Tile::Slice::ChipInput * fu){
     buffer_conns(calib,fu,1,1);
@@ -176,11 +225,10 @@ namespace cutil {
   void break_conns(calibrate_t& calib){
     sprintf(FMTBUF, "nconns %d", calib.nconns);
     for(int i=0; i < calib.nconns; i+=1){
-      sprintf(FMTBUF, "newconn %d", i);
-      print_debug(FMTBUF);
       Fabric::Chip::Connection c = Fabric::Chip::Connection(calib.conn_buf[i][0],
                                                             calib.conn_buf[i][1]);
       sprintf(FMTBUF, "break %d", i);
+      print_debug(FMTBUF);
       c.brkConn();
     }
   }
@@ -188,6 +236,8 @@ namespace cutil {
     for(int i=0; i < calib.nconns; i+=1){
       Fabric::Chip::Connection c = Fabric::Chip::Connection(calib.conn_buf[i][0],
                                                             calib.conn_buf[i][1]);
+      sprintf(FMTBUF, "restore %d", i);
+      print_debug(FMTBUF);
       c.setConn();
     }
   }

@@ -38,6 +38,10 @@ class UseCommand(AnalogChipCommand):
         return self._block
 
     @property
+    def max_error(self):
+        return 0.01
+
+    @property
     def loc(self):
         return self._loc
 

@@ -8,7 +8,7 @@
 
 namespace cutil{
 
-  #define MAX_CONNS 25
+  #define MAX_CONNS 10
 
   typedef struct _CALIBRATE_T {
     Fabric::Chip::Tile::Slice::FunctionUnit::Interface* conn_buf[MAX_CONNS][2];
@@ -17,6 +17,15 @@ namespace cutil{
   } calibrate_t;
 
   void initialize(calibrate_t& cal);
+  float h2m_coeff();
+  float h2m_coeff_norec();
+
+  // this is a special high-to-medium converter specifically for
+  // the multiplier, since we want to be able to scale down signals
+  //
+  mult_code_t make_h2m_mult_norecurse(calibrate_t& calib,
+                            Fabric::Chip::Tile::Slice::Multiplier* mult);
+
   mult_code_t make_h2m_mult(calibrate_t& calib,
                             Fabric::Chip::Tile::Slice::Multiplier* mult);
   mult_code_t make_one_mult(calibrate_t& calib,
@@ -34,6 +43,9 @@ namespace cutil{
                           Fabric::Chip::Tile::Slice::Multiplier* fu);
   void buffer_dac_conns( calibrate_t& calib,
                          Fabric::Chip::Tile::Slice::Dac* fu);
+  void buffer_integ_conns( calibrate_t& calib,
+                         Fabric::Chip::Tile::Slice::Integrator* fu);
+
   void buffer_chipin_conns( calibrate_t& calib,
                              Fabric::Chip::Tile::Slice::ChipInput* fu);
   void buffer_chipout_conns( calibrate_t& calib,

@@ -25,7 +25,7 @@ namespace util{
     case RANGE_MED:
       return 1.0;
     case RANGE_HIGH:
-      return 6.0;
+      return 10.0;
     }
     error("unknown range");
     return -1.0;

@@ -383,7 +383,7 @@ class IntegBlockState(BlockState):
   def from_cstruct(self,state):
     inid = enums.PortName.IN0
     outid = enums.PortName.OUT0
-
+    print(state)
     self.enable = chipdata.BoolType(state.enable)
     self.exception = chipdata.BoolType(state.exception)
 

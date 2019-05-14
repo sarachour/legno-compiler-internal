@@ -84,7 +84,7 @@ def parse(line):
 
 # use dac 1:3:0 src=0 inv=no rng=m val=0.10 -> -0.35 mV
 # use_integ 1 3 0 sgn + val 0.000000 rng m m debug cached
-def calibrate(state,obj,recompute=True):
+def calibrate(state,obj,recompute=False):
     if isinstance(obj,UseCommand):
         dbkey = obj.to_key()
         if not (state.state_db.has(obj.block_type,obj.loc,dbkey)) or \
@@ -101,7 +101,8 @@ def calibrate(state,obj,recompute=True):
                          obj.loc.chip,
                          obj.loc.tile,
                          obj.loc.slice,
-                         obj.loc.index).execute(state)
+                         obj.loc.index,
+                         max_error=0.01).execute(state)
 
         result = state.state_db.get(obj.block_type,obj.loc,dbkey)
         if result.success:

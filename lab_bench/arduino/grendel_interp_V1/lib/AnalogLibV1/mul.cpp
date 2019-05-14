@@ -350,7 +350,12 @@ bool helper_find_gain_cal(float gain,
                                        fan->in0 );
 	Fabric::Chip::Connection fan_to_mult_in0 = Fabric::Chip::Connection ( fan->out0, mult->in0 );
   bool calib_failed;
-  float base_target= loRange || hiRange ? 0.1*gain :gain;
+  float base_target= gain;
+  if(loRange)
+    base_target *= 0.1*gain;
+  if(hiRange)
+    base_target *= 0.1*cutil::h2m_coeff_norec();
+
   float coeff = util::range_to_coeff(mult->m_codes.range[out0Id]);
   coeff /= util::range_to_coeff(mult->m_codes.range[in0Id]);
   float target = base_target*coeff;
@@ -477,10 +482,11 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (float max_error) {
   mult_code_t mult_code_0p1;
   bool config_failed = false;
   if(hiRange){
-    mult_code_0p1 = cutil::make_h2m_mult(calib, &parentSlice->muls[cMulId]);
+    mult_code_0p1 = cutil::make_h2m_mult_norecurse(calib,
+                                                   &parentSlice->muls[cMulId]);
   }
-  dac_code_0 = cutil::make_zero_dac(calib, parentSlice->dac);
   dac_code_1 = cutil::make_one_dac(calib, parentSlice->dac);
+  dac_code_0 = cutil::make_zero_dac(calib, parentSlice->dac);
   // done computing preset codes
   if(loRange){
     dac_code_0p1 = cutil::make_low_dac(calib, parentSlice->dac);

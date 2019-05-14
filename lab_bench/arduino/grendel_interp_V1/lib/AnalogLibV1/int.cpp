@@ -1,6 +1,6 @@
 #include "AnalogLib.h"
 #include <float.h>
-
+#include "calib_util.h"
 void Fabric::Chip::Tile::Slice::Integrator::update(integ_code_t codes){
   m_codes = codes;
   updateFu();
@@ -268,143 +268,168 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrate (const float max_error) {
 
 }
 
+bool helper_find_cal_in0(Fabric::Chip::Tile::Slice::Integrator * integ,
+                         float max_error){
+  float error;
+  bool calib_failed;
+  integ->m_codes.cal_enable[out0Id] = false;
+  integ->m_codes.cal_enable[in0Id] = true;
+  binsearch::find_bias(integ, 0.0,
+                       integ->m_codes.port_cal[in0Id],
+                       error,
+                       MEAS_CHIP_OUTPUT);
+  int code = integ->m_codes.port_cal[in0Id];
+  binsearch::test_stab(code,
+                       error,
+                       max_error,
+                       calib_failed);
+  integ->m_codes.cal_enable[in0Id] = false;
+  return !calib_failed;
+
+}
+bool helper_find_cal_out0(Fabric::Chip::Tile::Slice::Integrator * integ,
+                          float max_error){
+  float error;
+  bool calib_failed;
+  integ->m_codes.cal_enable[in0Id] = false;
+  integ->m_codes.cal_enable[out0Id] = true;
+  binsearch::find_bias(integ, 0.0,
+                       integ->m_codes.port_cal[out0Id],
+                       error,
+                       MEAS_CHIP_OUTPUT);
+
+  int code = integ->m_codes.port_cal[out0Id];
+  binsearch::test_stab(code,
+                       error,
+                       max_error,
+                       calib_failed);
+  integ->m_codes.cal_enable[out0Id] = false;
+  return !calib_failed;
+}
+bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
+                          float max_error,
+                          int code,
+                          bool hiRange){
+
+  float target = hiRange ? integ->m_codes.ic_val*cutil::h2m_coeff(): integ->m_codes.ic_val;
+  unsigned int delta = 0;
+  bool succ = false;
+  float error;
+  // adjust the initial condition code.
+  while(!succ){
+    int gain_code;
+    bool calib_failed;
+    if(code + delta > 255
+       || code + delta < 0){
+      break;
+    }
+    integ->setInitialCode(code+delta);
+    binsearch::find_bias(integ,
+                         target,
+                         integ->m_codes.gain_cal,
+                         error,
+                         MEAS_CHIP_OUTPUT);
+    gain_code = integ->m_codes.gain_cal;
+    binsearch::test_stab(gain_code,
+                         error,
+                         max_error,
+                         calib_failed);
+    succ = !calib_failed;
+    sprintf(FMTBUF,"init-cond code=%d target=%f measured=%f",
+            code+delta, target, target+error);
+    print_debug(FMTBUF);
+    if(!succ){
+      if(fabs(target+error) < fabs(target)){
+        delta += target < 0 ? -1 : 1;
+      }
+      else{
+        delta += target < 0 ? 1 : -1;
+      }
+    }
+  }
+  integ->m_codes.ic_code = code+delta;
+  return succ;
+}
 bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (const float max_error) {
   if(!m_codes.enable){
     return true;
   }
   bool hiRange = (m_codes.range[out0Id] == RANGE_HIGH);
-  float initial = m_codes.ic_val;
+
   integ_code_t codes_self = m_codes;
   mult_code_t user_mul0 = parentSlice->muls[0].m_codes;
-	if (hiRange) parentSlice->muls[0].setGain(-0.1);
+
+
+  cutil::calibrate_t calib;
+  cutil::initialize(calib);
+
+  cutil::buffer_integ_conns(calib,this);
+  cutil::buffer_mult_conns(calib,&parentSlice->muls[0]);
+  cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
+  cutil::buffer_chipout_conns(calib,parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput);
+  cutil::break_conns(calib);
 
 	// output side
-	Connection userConn00 = Connection ( out0, out0->userSourceDest );
-	Connection userConn01 = Connection ( parentSlice->muls[0].in0->userSourceDest, parentSlice->muls[0].in0 );
-	if (hiRange && userConn01.sourceIfc) userConn01.brkConn();
-	Connection conn0 = Connection ( out0, parentSlice->muls[0].in0 );
+  //conn0
+  Connection integ_to_aux = Connection ( out0, parentSlice->muls[0].in0 );
 
-	Connection userConn10 = Connection ( parentSlice->muls[0].out0, parentSlice->muls[0].out0->userSourceDest );
-	Connection userConn11 = Connection ( parentSlice->tileOuts[3].in0->userSourceDest, parentSlice->tileOuts[3].in0 );
-	// if (hiRange && userConn11.sourceIfc) userConn11.brkConn();
-	Connection conn1 = Connection ( parentSlice->muls[0].out0, parentSlice->tileOuts[3].in0 );
+  //conn1
+  Connection aux_to_tile = Connection ( parentSlice->muls[0].out0,
+                                        parentSlice->tileOuts[3].in0 );
+  //conn2
+	Connection mult_to_tile= Connection ( out0, parentSlice->tileOuts[3].in0 );
 
-	Connection conn2 = Connection ( out0, parentSlice->tileOuts[3].in0 );
-	if (userConn11.sourceIfc) userConn11.brkConn();
-	conn2.setConn();
+	Connection tile_to_chip = Connection ( parentSlice->tileOuts[3].out0,
+                                         parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
-	Connection userConn30 = Connection ( parentSlice->tileOuts[3].out0, parentSlice->tileOuts[3].out0->userSourceDest );
-	Connection userConn31 = Connection ( parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0->userSourceDest, parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
-	if (userConn31.sourceIfc) userConn31.brkConn();
-	Connection conn3 = Connection ( parentSlice->tileOuts[3].out0, parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
-	conn3.setConn();
-
+  mult_code_t mult_0p1;
   if (hiRange) {
-    conn0.setConn();
-    conn1.setConn();
+    print_debug("high range! making auxiliary multiplier");
+    mult_0p1 = make_h2m_mult(calib, &parentSlice->muls[0]);
+    parentSlice->muls[0].update(mult_0p1);
+    integ_to_aux.setConn();
+    aux_to_tile.setConn();
   }
+  else{
+    mult_to_tile.setConn();
+  }
+	tile_to_chip.setConn();
+
   bool found_code = false;
   integ_code_t best_code = m_codes;
-  float best_delta;
+
   m_codes.nmos = 0;
 	setAnaIrefNmos ();
-  while (m_codes.nmos <= 7 && !found_code) {
-    float errors[3];
-    unsigned char codes[3];
-    bool calib_failed;
+  unsigned int code = m_codes.ic_code;
+  while (m_codes.nmos <= 7 && !found_code && calib.success) {
     bool succ = true;
-    m_codes.cal_enable[out0Id] = true;
-    binsearch::find_bias(this, 0.0,
-                         m_codes.port_cal[out0Id],
-                         errors[0],
-                         MEAS_CHIP_OUTPUT);
-    codes[0] = m_codes.port_cal[out0Id];
-    m_codes.cal_enable[out0Id] = false;
-    m_codes.cal_enable[in0Id] = true;
-    binsearch::test_stab(codes[0],
-                         errors[0],
-                         max_error,
-                         calib_failed);
-    succ &= !calib_failed;
-    binsearch::find_bias(this, 0.0,
-                         m_codes.port_cal[in0Id],
-                         errors[1],
-                         MEAS_CHIP_OUTPUT);
-    binsearch::test_stab(codes[1],
-                         errors[1],
-                         max_error,
-                         calib_failed);
-    succ &= !calib_failed;
+    succ &= helper_find_cal_out0(this,max_error);
+    if(succ)
+      succ &= helper_find_cal_in0(this,max_error);
+    if(succ)
+      succ &= helper_find_cal_gain(this,max_error,code,hiRange);
 
-    codes[1] = m_codes.port_cal[in0Id];
-    m_codes.cal_enable[in0Id] = false;
-
-    float target = hiRange ? -initial : initial;
-    unsigned int code = m_codes.ic_code;
-    unsigned int delta = 0;
-    bool initcond_succ = false;
-    // adjust the initial condition code.
-    while(!initcond_succ && succ){
-      if(code + delta > 255
-         || code + delta < 0){
-        break;
-      }
-      setInitialCode(code+delta);
-      binsearch::find_bias(this,
-                           target,
-                           m_codes.gain_cal,
-                           errors[2],
-                           MEAS_CHIP_OUTPUT);
-      codes[2] = m_codes.gain_cal;
-      binsearch::test_stab(codes[2],
-                           errors[2],
-                           max_error,
-                           calib_failed);
-      initcond_succ = !calib_failed;
-      sprintf(FMTBUF,"init-cond code=%d target=%f measured=%f",
-              code+delta, target, target+errors[2]);
-      print_debug(FMTBUF);
-      if(!initcond_succ){
-        if(fabs(target+errors[2]) < fabs(target)){
-          delta += initial < 0 ? -1 : 1;
-        }
-        else{
-          delta += initial < 0 ? 1 : -1;
-        }
-      }
-    }
     if(succ){
-      if(!found_code || fabs(errors[2]) < fabs(best_delta)){
-        best_delta = errors[2];
-        found_code = true;
-        m_codes.ic_code = code+delta;
-        best_code = m_codes;
-        m_codes.ic_code = code;
-      }
+      found_code = true;
+      best_code = m_codes;
     }
     m_codes.nmos += 1;
+    if(m_codes.nmos <= 7){
+      setAnaIrefNmos ();
+    }
   }
 
   update(best_code);
 	if (hiRange) {
-		conn0.brkConn();
-		if (userConn00.destIfc) userConn00.setConn();
-		if (userConn01.sourceIfc) userConn01.setConn();
-
+		integ_to_aux.brkConn();
+    aux_to_tile.brkConn();
     parentSlice->muls[0].update(user_mul0);
 
-    conn1.brkConn();
-		if (userConn10.destIfc) userConn10.setConn();
-		if (userConn11.sourceIfc) userConn11.setConn();
 	} else {
-		conn2.brkConn();
-		if (userConn00.destIfc) userConn00.setConn();
-		if (userConn11.sourceIfc) userConn11.setConn();
+		mult_to_tile.brkConn();
 	}
-
-	conn3.brkConn();
-	if (userConn30.destIfc) userConn30.setConn();
-	if (userConn31.sourceIfc) userConn31.setConn();
+	tile_to_chip.brkConn();
+  cutil::restore_conns(calib);
 
   codes_self.nmos = m_codes.nmos;
   codes_self.ic_code = m_codes.ic_code;
@@ -412,7 +437,7 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (const float max_err
   codes_self.port_cal[out0Id] = m_codes.port_cal[out0Id];
   codes_self.port_cal[in0Id] = m_codes.port_cal[in0Id];
   update(codes_self);
-	return found_code;
+	return found_code && calib.success;
 }
 
 
