@@ -46,8 +46,8 @@ void Fabric::Chip::Tile::Slice::Integrator::setInitialCode (
 
 bool Fabric::Chip::Tile::Slice::Integrator::setInitial(float initial)
 {
-  if(-1.0000001 < initial && initial < 127.0/128.0){
-    setInitialCode(initial*128.0+128.0);
+  if(-1.0000001 < initial && initial < 1.000001){
+    setInitialCode(min(initial*128.0+128.0,255));
     m_codes.ic_val = initial;
     return true;
   }

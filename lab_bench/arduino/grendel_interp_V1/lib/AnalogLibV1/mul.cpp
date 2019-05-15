@@ -39,8 +39,8 @@ void Fabric::Chip::Tile::Slice::Multiplier::setGainCode (
 }
 
 bool Fabric::Chip::Tile::Slice::Multiplier::setGain(float gain){
-  if(-1.0000001 < gain && gain < 127.0/128.0){
-    setGainCode(gain*128.0+128.0);
+  if(-1.0000001 < gain && gain < 1.0000001){
+    setGainCode(min(255,gain*128.0+128.0));
     m_codes.gain_val= gain;
     return true;
   }
@@ -194,7 +194,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::setParamHelper (
 
 bool Fabric::Chip::Tile::Slice::Multiplier::calibrate (float max_error) {
   mult_code_t codes_self = m_codes;
-	setGain(-1.0);
+	setGain(1.0);
   bool succ = calibrateTarget(max_error);
   codes_self.nmos = m_codes.nmos;
   codes_self.pmos = m_codes.pmos;
@@ -315,7 +315,10 @@ bool helper_find_pmos(Fabric::Chip::Tile::Slice::Dac* dac,
   // update nmos code
   //binsearch::test_stab(mult->m_codes.gain_cal,fabs(delta),
   //                    max_error,calib_failed);
-  sprintf(FMTBUF, "calibrate pmos target=%f meas=%f",1.0,1.0+error);
+  sprintf(FMTBUF, "calibrate pmos=%d target=%f meas=%f",
+          mult->m_codes.pmos,
+          1.0,
+          1.0+error);
   print_log(FMTBUF);
 
   mult->out0->setRange(outrng);
@@ -455,8 +458,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (float max_error) {
   mult_code_t best_code = m_codes;
 	m_codes.nmos = 0;
 	setAnaIrefNmos ();
-  sprintf(FMTBUF, "=== calibrate multiplier ===", m_codes.nmos);
-  print_info(FMTBUF);
+  print_info("=== calibrate multiplier ===");
 
 	do {
     if(found_code){

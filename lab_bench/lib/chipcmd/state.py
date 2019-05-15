@@ -41,6 +41,7 @@ class BlockStateDatabase:
   def put(self,blockstate,success=True,max_error=-1):
     assert(isinstance(blockstate,BlockState))
     key = blockstate.key.to_key()
+    print("PUT %s" % key)
     value = blockstate.to_cstruct()
     cmd = '''DELETE FROM states WHERE cmdkey="{cmdkey}"''' \
       .format(cmdkey=key)
@@ -64,6 +65,7 @@ class BlockStateDatabase:
   def _get(self,blktype,loc,blockkey):
     assert(isinstance(blockkey,BlockState.Key))
     keystr = blockkey.to_key()
+    print("GET %s" % keystr)
     cmd = '''SELECT * FROM states WHERE cmdkey = "{cmdkey}"''' \
                                                 .format(cmdkey=keystr)
     results = list(self._curs.execute(cmd))
@@ -275,7 +277,7 @@ class MultBlockState(BlockState):
       assert(isinstance(vga,chipdata.BoolType))
       self.invs = invs
       self.ranges = ranges
-      self.gain_val = gain_val
+      self.gain_val = float(gain_val)
       self.vga = vga
 
   def __init__(self,loc,state):

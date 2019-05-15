@@ -1,6 +1,6 @@
 #include "AnalogLib.h"
 #include "assert.h"
-
+#include "calib_util.h"
 void Fabric::Chip::Tile::Slice::Fanout::setEnable (
 	bool enable
 ) {
@@ -167,6 +167,15 @@ void Fabric::Chip::Tile::Slice::Fanout::setParamHelper (
 
 bool Fabric::Chip::Tile::Slice::Fanout::calibrate (float max_error) {
 
+  fanout_code_t codes_self = m_codes;
+  cutil::calibrate_t calib;
+  cutil::initialize(calib);
+  cutil::buffer_fanout_conns(calib,this);
+  cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
+  cutil::buffer_chipout_conns(calib,
+                              parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput);
+  cutil::break_conns(calib);
+
   m_codes.nmos = 0;
 	setEnable ( true );
 	Connection conn = Connection (parentSlice->tileOuts[3].out0,
@@ -220,7 +229,11 @@ bool Fabric::Chip::Tile::Slice::Fanout::calibrate (float max_error) {
 	}
 	conn.brkConn();
 	setEnable ( false );
-
+  cutil::restore_conns(calib);
+  codes_self.port_cal[out0Id] = m_codes.port_cal[out0Id];
+  codes_self.port_cal[out1Id] = m_codes.port_cal[out1Id];
+  codes_self.port_cal[out2Id] = m_codes.port_cal[out2Id];
+  this->update(codes_self);
 	return !calib_failed;
 }
 /*

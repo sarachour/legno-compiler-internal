@@ -180,7 +180,8 @@ def circ_use_fanout_t():
     return cstruct.Struct(
         "loc" / circ_loc_idx1_t(),
         "inv" / cstruct.Array(3,cstruct.Int8ul),
-        "in_range" / cstruct.Int8ul
+        "in_range" / cstruct.Int8ul,
+        "third" / cstruct.Int8ul
     )
 
 def circ_connection_t():

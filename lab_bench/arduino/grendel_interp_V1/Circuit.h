@@ -156,6 +156,7 @@ namespace circ {
     circ_loc_idx1_t loc;
     uint8_t inv[3];
     uint8_t in_range;
+    uint8_t third;
   } cmd_use_fanout_t;
 
   typedef struct connection {

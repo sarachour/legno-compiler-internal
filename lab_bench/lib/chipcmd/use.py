@@ -422,7 +422,8 @@ class UseFanoutCmd(UseCommand):
                         self._inv1.code(),
                         self._inv2.code()
                     ],
-                    'in_range':self._in_range.code()
+                    'in_range':self._in_range.code(),
+                    'third': self._third.code()
                 }
             }
         })

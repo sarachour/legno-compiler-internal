@@ -116,6 +116,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     fanout->out0->setInv(fod.inv[0]);
     fanout->out1->setInv(fod.inv[1]);
     fanout->out2->setInv(fod.inv[2]);
+    fanout->setThird(fod.third);
     comm::response("enabled fanout",0);
     break;
 
