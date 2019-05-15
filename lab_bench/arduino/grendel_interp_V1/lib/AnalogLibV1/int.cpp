@@ -283,6 +283,9 @@ bool helper_find_cal_in0(Fabric::Chip::Tile::Slice::Integrator * integ,
                        error,
                        max_error,
                        calib_failed);
+  sprintf(FMTBUF,"integ in0 target=%f measured=%f max=%f",
+          0.0, error, max_error);
+  print_info(FMTBUF);
   integ->m_codes.cal_enable[in0Id] = false;
   return !calib_failed;
 
@@ -303,6 +306,9 @@ bool helper_find_cal_out0(Fabric::Chip::Tile::Slice::Integrator * integ,
                        error,
                        max_error,
                        calib_failed);
+  sprintf(FMTBUF,"integ out0 target=%f measured=%f max=%f",
+          0.0, error, max_error);
+  print_info(FMTBUF);
   integ->m_codes.cal_enable[out0Id] = false;
   return !calib_failed;
 }
@@ -403,14 +409,18 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (const float max_err
   bool found_code = false;
   integ_code_t best_code = m_codes;
 
+  print_info("=== calibrate integrator ===");
   m_codes.nmos = 0;
 	setAnaIrefNmos ();
   unsigned int code = m_codes.ic_code;
   while (m_codes.nmos <= 7 && !found_code && calib.success) {
     bool succ = true;
+    sprintf(FMTBUF, "nmos=%d", m_codes.nmos);
+    print_info(FMTBUF);
+
     succ &= helper_find_cal_out0(this,max_error);
     if(succ)
-      succ &= helper_find_cal_in0(this,max_error);
+      succ &= helper_find_cal_in0(this,max_error*2.0);
     if(succ)
       succ &= helper_find_cal_gain(this,ref_dac,max_error,code,
                                    hiRange ? 0.0: m_codes.ic_val*ic_sign,

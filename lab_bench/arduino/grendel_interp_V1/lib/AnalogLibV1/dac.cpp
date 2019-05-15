@@ -242,7 +242,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
 
 	// Serial.println("Dac gain calibration");
 	// Serial.flush();
-  sprintf(FMTBUF, "this gain: %f %d %d", m_codes.const_val,
+  sprintf(FMTBUF, "dac-value: %f %d %d", m_codes.const_val,
           m_codes.const_code,
           m_codes.range);
   print_log(FMTBUF);
