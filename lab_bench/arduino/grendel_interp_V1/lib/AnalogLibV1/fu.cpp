@@ -30,6 +30,16 @@ namespace util{
     error("unknown range");
     return -1.0;
   }
+
+
+  float measure_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu){
+    Fabric* fab = fu->getFabric();
+    fu->updateFu();
+    fab->cfgCommit();
+    float value = fu->getChip()->tiles[3].slices[2].chipOutput
+      ->analogAvg(CAL_REPS);
+    return value;
+  }
 }
 namespace binsearch {
   void bin_search(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
@@ -270,6 +280,7 @@ namespace binsearch {
       return false;
     }
   }
+
 
   float bin_search_get_delta(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                            float target,

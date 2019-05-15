@@ -134,6 +134,7 @@ namespace util {
                   int& n,
                   int n_max);
 
+  float measure_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu);
 }
 
 namespace binsearch {

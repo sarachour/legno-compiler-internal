@@ -526,7 +526,7 @@ class UseIntegCmd(UseCommand):
     @property
     def max_error(self):
         if self._out_range == RangeType.HIGH:
-            return 0.02
+            return 0.1
         elif self._out_range == RangeType.MED:
             return 0.01
         elif self._out_range == RangeType.LOW:
