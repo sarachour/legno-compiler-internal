@@ -75,7 +75,14 @@ Fabric::Chip::Tile::Slice::~Slice () {
 	delete[] tileOuts;
 	delete chipOutput;
 };
-
+int slice_to_int(const slice slc){
+  switch(slc){
+  case slice0: return 0; break;
+  case slice1: return 1; break;
+  case slice2: return 2; break;
+  case slice3: return 3; break;
+  }
+}
 bool Fabric::Chip::Tile::Slice::calibrateTarget () const {
 	print_log("Calib.TARGET DAC");
   Serial.flush();

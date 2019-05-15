@@ -12,29 +12,7 @@ namespace cutil {
     cal.nconns = 0;
   }
 
-  dac_code_t make_low_dac(calibrate_t& calib,
-                          Fabric::Chip::Tile::Slice::Dac* dac){
-    dac_code_t backup = dac->m_codes;
-    dac_code_t result = dac->m_codes;
-    dac->setEnable(true);
-    if(!dac->setConstant(0.1)){
-      print_log("MULT: cannot set DAC=0.1");
-      calib.success = false;
-    }
-    dac->setRange(RANGE_MED);
-    dac->out0->setInv(false);
-    if(!dac->calibrateTarget(0.001)){
-      print_log("MULT: cannot calibrate DAC=-0.1");
-      calib.success = false;
-    }
-    else{
-      print_debug("MULT: CALIBRATED DAC=0.1");
-    }
-    result = dac->m_codes;
-    dac->update(backup);
-    return result;
-
-  }
+  
   float h2m_coeff_norec(){
     return 0.9;
   }
@@ -101,46 +79,55 @@ namespace cutil {
                             Fabric::Chip::Tile::Slice::Multiplier * mult){
     error("unimplemented: one mult");
   }
-  dac_code_t make_one_dac(calibrate_t& calib,
-                          Fabric::Chip::Tile::Slice::Dac * dac){
+  dac_code_t make_val_dac(calibrate_t& calib,
+                          Fabric::Chip::Tile::Slice::Dac * dac,
+                          float value){
     dac_code_t backup = dac->m_codes;
     dac_code_t result = dac->m_codes;
     dac->setEnable(true);
-    dac->setRange(RANGE_MED);
-    dac->m_codes.const_val = 1.0;
-    dac->setConstantCode(255);
+    if(fabs(value) > 1.0){
+      dac->setRange(RANGE_HIGH);
+      if(!dac->setConstant(value/10.0)){
+        sprintf(FMTBUF, "could not set constant: %f/10", value);
+        error(FMTBUF);
+      }
+    }
+    else{
+      dac->setRange(RANGE_MED);
+      if(!dac->setConstant(value)){
+        sprintf(FMTBUF, "could not set constant: %f", value);
+        error(FMTBUF);
+      }
+    }
     dac->setSource(DSRC_MEM);
     dac->out0->setInv(false);
+    sprintf(FMTBUF, "dac calibrate %f", value);
+    print_log(FMTBUF);
     if(!dac->calibrateTarget(0.01)){
-      print_log("MULT: cannot calibrate DAC=-1");
+      sprintf(FMTBUF, "dac-aux: cannot set DAC=%f", value);
+      print_log(FMTBUF);
       calib.success = false;
     }
     else{
-      print_debug("MULT: CALIBRATED DAC=1");
+      sprintf(FMTBUF, "dac-aux: set DAC=%f", value);
+      print_log(FMTBUF);
     }
     result = dac->m_codes;
     dac->update(backup);
     return result;
 
   }
+  dac_code_t make_low_dac(calibrate_t& calib,
+                          Fabric::Chip::Tile::Slice::Dac* dac){
+    return make_val_dac(calib,dac,0.1);
+  }
   dac_code_t make_zero_dac(calibrate_t& calib,
                            Fabric::Chip::Tile::Slice::Dac * dac){
-    dac_code_t backup = dac->m_codes;
-    dac_code_t result = dac->m_codes;
-    dac->setEnable(true);
-    dac->setConstant(0);
-    dac->setRange(RANGE_MED);
-    dac->out0->setInv(true);
-    if(!dac->calibrateTarget(0.01)){
-      print_log("MULT: cannot calibrate DAC=0");
-      calib.success = false;
-    }
-    else{
-      print_debug("MULT: CALIBRATED DAC=0");
-    }
-    result = dac->m_codes;
-    dac->update(backup);
-    return result;
+    return make_val_dac(calib,dac,0.0);
+  }
+  dac_code_t make_one_dac(calibrate_t& calib,
+                           Fabric::Chip::Tile::Slice::Dac * dac){
+    return make_val_dac(calib,dac,1.0);
   }
   void buffer_conn(calibrate_t& calib, Fabric::Chip::Connection& conn){
     if(calib.nconns < MAX_CONNS){

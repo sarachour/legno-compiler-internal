@@ -8,7 +8,8 @@ extern size_t dynamic_memory;
 
 #define LEVEL 3
 #define LOG_LEVEL 2
-#define DEBUG_LEVEL 3
+#define DEBUG_LEVEL 4
+#define INFO_LEVEL 3
 
 extern char FMTBUF[64];
 
@@ -25,6 +26,14 @@ void tally_dyn_mem(
 static void print_log (const char * message) {
   // trap for printing error
   if(LEVEL >= LOG_LEVEL){
+    Serial.print("AC:>[msg] ");
+    Serial.println(message);
+    Serial.flush();
+  }
+}
+static void print_info (const char * message) {
+  // trap for printing error
+  if(LEVEL >= INFO_LEVEL){
     Serial.print("AC:>[msg] ");
     Serial.println(message);
     Serial.flush();

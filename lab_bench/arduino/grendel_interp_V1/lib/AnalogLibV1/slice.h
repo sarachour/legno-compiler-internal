@@ -1,3 +1,7 @@
+#ifndef SLICE_H
+#define SLICE_H
+
+int slice_to_int(const slice slc);
 class Fabric::Chip::Tile::Slice {
 	friend Tile;
 	friend Connection;
@@ -41,3 +45,6 @@ class Fabric::Chip::Tile::Slice {
 		/*ANALOG INPUT PINS*/
 		const unsigned char ardAnaDiffChan; /*ANALOG OUTAna*/
 };
+
+
+#endif

@@ -36,6 +36,9 @@ namespace cutil{
                           Fabric::Chip::Tile::Slice::Dac* dac);
   dac_code_t make_one_dac(calibrate_t& calib,
                            Fabric::Chip::Tile::Slice::Dac * dac);
+  dac_code_t make_val_dac(calibrate_t& calib,
+                          Fabric::Chip::Tile::Slice::Dac * dac,
+                          float value);
 
   void buffer_fanout_conns( calibrate_t& calib,
                             Fabric::Chip::Tile::Slice::Fanout* fu);
