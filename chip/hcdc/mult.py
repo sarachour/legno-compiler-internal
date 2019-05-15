@@ -16,7 +16,6 @@ from chip.hcdc.globals import CTX, GLProp
 # 10.0 >= in1 >= 0.1
 # 10.0 >= out >= 0.1
 # out = in0*in1*coeff
-# 
 
 def get_modes():
   opts_def = [
