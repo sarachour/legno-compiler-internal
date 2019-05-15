@@ -19,6 +19,7 @@ parser.add_argument("--script", type=str, help="read data using script.")
 parser.add_argument("--validate", action='store_true', help="validate script")
 parser.add_argument("--debug", action='store_true', help="debug script")
 parser.add_argument("--calibrate", action='store_true', help="calibrate uncalibrated components")
+parser.add_argument("--recompute", action='store_true', help="recompute calibration codes")
 
 
 
@@ -44,7 +45,7 @@ state.initialize()
 
 if args.calibrate:
     assert(args.script != None)
-    main_script_calibrate(state,args.script)
+    main_script_calibrate(state,args.script,recompute=args.recompute)
     sys.exit(0)
 
 try:

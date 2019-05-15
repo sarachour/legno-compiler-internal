@@ -9,6 +9,7 @@ import chip.hcdc.globals as glb
 import ops.op as ops
 import ops.nop as nops
 import itertools
+from chip.hcdc.globals import CTX, GLProp
 
 # 10.0 >= coeff >= 0.1
 # 10.0 >= in0 >= 0.1
@@ -32,12 +33,18 @@ def get_modes():
     (chipcmd.RangeType.LOW,chipcmd.RangeType.HIGH)
   ]
   blacklist_mult = [
-    (chipcmd.RangeType.LOW,chipcmd.RangeType.LOW,chipcmd.RangeType.HIGH),
-    (chipcmd.RangeType.MED,chipcmd.RangeType.LOW,chipcmd.RangeType.HIGH),
-    (chipcmd.RangeType.LOW,chipcmd.RangeType.MED,chipcmd.RangeType.HIGH),
-    (chipcmd.RangeType.HIGH,chipcmd.RangeType.HIGH,chipcmd.RangeType.LOW),
-    (chipcmd.RangeType.HIGH,chipcmd.RangeType.MED,chipcmd.RangeType.LOW),
-    (chipcmd.RangeType.MED,chipcmd.RangeType.HIGH,chipcmd.RangeType.LOW)
+    (chipcmd.RangeType.LOW,chipcmd.RangeType.LOW, \
+     chipcmd.RangeType.HIGH),
+    (chipcmd.RangeType.MED,chipcmd.RangeType.LOW, \
+     chipcmd.RangeType.HIGH),
+    (chipcmd.RangeType.LOW,chipcmd.RangeType.MED, \
+     chipcmd.RangeType.HIGH),
+    (chipcmd.RangeType.HIGH,chipcmd.RangeType.HIGH, \
+     chipcmd.RangeType.LOW),
+    (chipcmd.RangeType.HIGH,chipcmd.RangeType.MED, \
+     chipcmd.RangeType.LOW),
+    (chipcmd.RangeType.MED,chipcmd.RangeType.HIGH, \
+     chipcmd.RangeType.LOW)
 
   ]
   vga_modes = list(util.apply_blacklist(itertools.product(*opts_vga),
@@ -148,50 +155,50 @@ def scale_model(mult):
   mult.set_scale_modes("vga",vga_modes)
   for mode in mul_modes:
       in0rng,in1rng,outrng = mode
+      get_prop = lambda p : CTX.get(p, mult.name,
+                                    'mul',mode,None)
       # ERRATA: virtual scale of 0.5
       scf = 0.5*outrng.coeff()/(in0rng.coeff()*in1rng.coeff())
       dig_props = util.make_dig_props(chipcmd.RangeType.MED, \
-                                        glb.DAC_MIN,
-                                        glb.DAC_MAX,
-                                        glb.ANALOG_DAC_SAMPLES)
+                                      get_prop(GLProp.DIGITAL_INTERVAL),
+                                      get_prop(GLProp.DIGITAL_QUANTIZE))
       dig_props.set_constant()
       mult.set_props("mul",mode,["in0"],
                     util.make_ana_props(in0rng,
-                                        glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX))
+                                        get_prop(GLProp.CURRENT_INTERVAL)))
       mult.set_props("mul",mode,["in1"],
                     util.make_ana_props(in1rng,
-                                        glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX))
+                                        get_prop(GLProp.CURRENT_INTERVAL)))
       mult.set_props("mul",mode,["coeff"], dig_props)
       mult.set_props("mul",mode,["out"],
                     util.make_ana_props(outrng,
-                                        glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX))
+                                        get_prop(GLProp.CURRENT_INTERVAL)))
       mult.set_coeff("mul",mode,'out', scf)
 
   for mode in vga_modes:
       in0rng,outrng = mode
       # ERRATA: virtual scale of 0.5, but coefficient is scaled by two
       scf = outrng.coeff()/in0rng.coeff()
+      get_prop = lambda p : CTX.get(p, mult.name,
+                                    'vga',mode,None)
+
       dig_props = util.make_dig_props(chipcmd.RangeType.MED,\
-                                      glb.DAC_MIN,
-                                      glb.DAC_MAX, \
-                                      glb.ANALOG_DAC_SAMPLES)
+                                      get_prop(GLProp.DIGITAL_INTERVAL), \
+                                      get_prop(GLProp.DIGITAL_QUANTIZE))
       dig_props.set_constant()
       mult.set_props("vga",mode,["in0"],
                     util.make_ana_props(in0rng, \
-                                        glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX))
+                                        get_prop(GLProp.CURRENT_INTERVAL)
+                    ))
       mult.set_props("vga",mode,["in1"],
                     util.make_ana_props(chipcmd.RangeType.MED, \
-                                        glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX))
+                                        get_prop(GLProp.CURRENT_INTERVAL)
+                    ))
       mult.set_props("vga",mode,["coeff"], dig_props)
       mult.set_props("vga",mode,["out"],
                     util.make_ana_props(outrng, \
-                                        glb.ANALOG_MIN,
-                                        glb.ANALOG_MAX))
+                                        get_prop(GLProp.CURRENT_INTERVAL)
+                    ))
       mult.set_coeff("vga",mode,'out', scf)
 
 

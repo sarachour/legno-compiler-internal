@@ -96,13 +96,13 @@ def calibrate(state,obj,recompute=False):
             DefaultsCommand().execute(state)
             print(">> set state")
             obj.execute(state)
-            print(">> calibrate")
+            print(">> calibrate [%f]" % obj.max_error)
             CalibrateCmd(obj.block_type,
                          obj.loc.chip,
                          obj.loc.tile,
                          obj.loc.slice,
                          obj.loc.index,
-                         max_error=0.01).execute(state)
+                         max_error=obj.max_error).execute(state)
 
         result = state.state_db.get(obj.block_type,obj.loc,dbkey)
         if result.success:

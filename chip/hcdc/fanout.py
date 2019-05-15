@@ -9,6 +9,7 @@ import ops.op as ops
 import ops.nop as nops
 import itertools
 import chip.units as units
+from chip.hcdc.globals import CTX, GLProp
 
 def get_comp_modes():
     comp_options = [chipcmd.SignType.options(),
@@ -75,15 +76,18 @@ def scale_model(fanout):
         fanout.set_scale_modes(comp_mode,scale_modes)
         for rng in scale_modes:
             # ERRATA: fanout doesn't scale
+            get_prop = lambda p : CTX.get(p, fanout.name,
+                                    '*',mode,None)
+            ana_props = util.make_ana_props(rng,
+                                            get_prop(GLProp.CURRENT_INTERVAL)
+            )
             fanout\
                 .set_coeff(comp_mode,rng,"out0",1.0) \
                 .set_coeff(comp_mode,rng,"out1",1.0) \
                 .set_coeff(comp_mode,rng,"out2",1.0)
             fanout\
                 .set_props(comp_mode,rng,["out0","out1","out2","in"],
-                        util.make_ana_props(rng,
-                                            glb.ANALOG_MIN, \
-                                            glb.ANALOG_MAX))
+                           ana_props)
 
     fanout.check()
 

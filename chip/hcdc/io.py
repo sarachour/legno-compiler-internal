@@ -5,6 +5,7 @@ import chip.units as units
 import chip.hcdc.util as util
 from chip.cont import *
 import lab_bench.lib.chipcmd.data as chipcmd
+from chip.hcdc.globals import CTX, GLProp
 import chip.hcdc.globals as glb
 import ops.op as ops
 import itertools
@@ -59,21 +60,22 @@ def dac_scale_model(dac):
    modes = dac_get_modes()
    dac.set_scale_modes("*",modes)
    for mode in modes:
+      get_prop = lambda p : CTX.get(p, dac.name,
+                                    '*',mode,None)
+
       sign,rng = mode
       # ERRATA: dac does scale up.
-      coeff = sign.coeff()*rng.coeff()*2.0
+      coeff = sign.coeff()*rng.coeff()*get_prop(GLProp.COEFF)
       digital_props = util.make_dig_props(chipcmd.RangeType.MED,
-                                          glb.DAC_MIN,
-                                          glb.DAC_MAX,
-                                          glb.ANALOG_DAC_SAMPLES
+                                         get_prop(GLProp.DIGITAL_INTERVAL),
+                                         get_prop(GLProp.DIGITAL_QUANTIZE)
       )
-      digital_props.set_continuous(0,glb.MAX_FREQ_DAC,units.khz)
+      ana_props = util.make_ana_props(rng,
+                                      get_prop(GLProp.CURRENT_INTERVAL))
+      digital_props.set_continuous(0,get_prop(GLProp.MAX_FREQ))
       dac.set_coeff("*",mode,'out', coeff)
       dac.set_props("*",mode,["in"], digital_props)
-      dac.set_props("*",mode,["out"],\
-                   util.make_ana_props(rng,
-                                       glb.ANALOG_MIN,
-                                       glb.ANALOG_MAX))
+      dac.set_props("*",mode,["out"], ana_props)
 
 
 dac = Block('tile_dac',type=BlockType.DAC) \
@@ -126,18 +128,19 @@ def adc_scale_model(adc):
    modes = adc_get_modes()
    adc.set_scale_modes("*",modes)
    for mode in modes:
-      coeff = (1.0/mode.coeff())*0.5
+      get_prop = lambda p : CTX.get(p, adc.name,
+                                    '*',mode,None)
+
+      coeff = (1.0/mode.coeff())*get_prop(GLProp.COEFF)
       analog_props = util.make_ana_props(mode,
-                                         glb.ANALOG_MIN,
-                                         glb.ANALOG_MAX)
+                                         get_prop(GLProp.CURRENT_INTERVAL))
       #analog_props.set_bandwidth(0,20,units.khz)
 
       digital_props = util.make_dig_props(chipcmd.RangeType.MED,
-                                          glb.DAC_MIN,
-                                          glb.DAC_MAX,
-                                          glb.ANALOG_DAC_SAMPLES
+                                          get_prop(GLProp.DIGITAL_INTERVAL),
+                                          get_prop(GLProp.DIGITAL_QUANTIZE)
       )
-      digital_props.set_continuous(0,glb.MAX_FREQ_ADC,units.khz)
+      digital_props.set_continuous(0,get_prop(GLProp.MAX_FREQ))
       adc.set_props("*",mode,["in"],analog_props)
       adc.set_props("*",mode,["out"], digital_props)
       adc.set_coeff("*",mode,'out', coeff)

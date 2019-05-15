@@ -38,7 +38,7 @@ def main_stdout(state):
         execute(state,line)
 
 
-def main_script_calibrate(state,filename):
+def main_script_calibrate(state,filename,recompute=False):
     successes = []
     failures = []
     with open(filename,'r') as fh:
@@ -53,7 +53,8 @@ def main_script_calibrate(state,filename):
                 print("<comment, skipping..>")
 
             command_obj = cmd.parse(line)
-            succ = cmd.calibrate(state,command_obj)
+            succ = cmd.calibrate(state,command_obj, \
+                                 recompute=recompute)
             if succ is None:
                 continue
 

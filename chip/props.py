@@ -106,12 +106,12 @@ class DigitalProperties(Properties):
         dig = "Digital(min=%s, max=%s)" % (min(self._values), max(self._values))
         return dig + " " + clk
 
-    def set_continuous(self,lb,ub,unit):
+    def set_continuous(self,lb,ub,unit=1.0):
         self._kind = DigitalProperties.ClockType.CONTINUOUS
         self._bandwidth = (lb,ub,unit)
         return self
 
-    def set_clocked(self,sample_rate,max_samples,unit):
+    def set_clocked(self,sample_rate,max_samples,unit=1.0):
         self._kind = DigitalProperties.ClockType.CLOCKED
         self._sample_rate = (sample_rate,unit)
         self._max_samples = max_samples

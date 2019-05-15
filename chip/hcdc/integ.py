@@ -7,6 +7,7 @@ import chip.cont as cont
 
 import lab_bench.lib.chipcmd.data as chipcmd
 import chip.hcdc.globals as glb
+from chip.hcdc.globals import CTX, GLProp
 import ops.op as ops
 import chip.cont as contlib
 import itertools
@@ -125,37 +126,32 @@ def scale_model(integ):
   for comp_mode in comp_modes:
     integ.set_scale_modes(comp_mode,scale_modes)
     for scale_mode in scale_modes:
+      get_prop = lambda p : CTX.get(p, integ.name,
+                                    comp_mode,scale_mode,None)
       inrng,outrng = scale_mode
-      analog_in = util.make_ana_props(inrng,
-                                      glb.ANALOG_MIN, \
-                                      glb.ANALOG_MAX)
-      analog_in.set_bandwidth(0,glb.MAX_FREQ_INTEG,units.khz)
-      dig_props = util.make_dig_props(chipcmd.RangeType.MED, \
-                                          glb.DAC_MIN, \
-                                          glb.DAC_MAX, \
-                                          glb.ANALOG_DAC_SAMPLES)
+      analog_in = util.make_ana_props(inrng, \
+                                      get_prop(GLProp.CURRENT_INTERVAL))
+      analog_in.set_bandwidth(0,get_prop(GLProp.MAX_FREQ),units.khz)
+
+      analog_out = util.make_ana_props(outrng, \
+                                       get_prop(GLProp.CURRENT_INTERVAL))
+      dig_props = util.make_dig_props(chipcmd.RangeType.MED,
+                                      get_prop(GLProp.DIGITAL_INTERVAL), \
+                                      get_prop(GLProp.DIGITAL_QUANTIZE))
       dig_props.set_constant()
       integ.set_props(comp_mode,scale_mode,['in'],analog_in)
       integ.set_props(comp_mode,scale_mode,["ic"], dig_props)
       integ.set_props(comp_mode,scale_mode,["out"],\
-                      util.make_ana_props(outrng,
-                                          glb.ANALOG_MIN,
-                                          glb.ANALOG_MAX),\
+                      analog_out,
                       handle=":z[0]")
       integ.set_props(comp_mode,scale_mode,["out"],\
-                      util.make_ana_props(outrng,
-                                          glb.ANALOG_MIN,
-                                          glb.ANALOG_MAX),\
+                      analog_out,
                       handle=":z")
       integ.set_props(comp_mode,scale_mode,["out"],
-                      util.make_ana_props(inrng,
-                                          glb.ANALOG_MIN,
-                                          glb.ANALOG_MAX),
+                      analog_out,
                       handle=":z'")
       integ.set_props(comp_mode,scale_mode,["out"],
-                      util.make_ana_props(outrng,
-                                          glb.ANALOG_MIN,
-                                          glb.ANALOG_MAX))
+                      analog_out)
 
       scf_inout = outrng.coeff()/inrng.coeff()
       # alteration: initial condition, is not scaled

@@ -11,6 +11,8 @@
 // for single-ended channels
 #define ADC_CONVERSION (3300.0/4096.0)
 //#define ADC_FULLSCALE (1208.0)
+
+//should be 1208, but it isn't for some reason.
 #define ADC_FULLSCALE (1000.0)
 #define ADC_MIN 0
 
@@ -21,26 +23,6 @@ void Fabric::Chip::Tile::Slice::ChipOutput::analogDist (
                                                         ) const {
 
 
-  unsigned long long neg_sumsq,pos_sumsq = 0;
-  unsigned long neg_sum,pos_sum = 0;
-  unsigned int neg_val,pos_val;
-  for (unsigned int index = 0; index < n; index++) {
-    pos_val = ADC->ADC_CDR[ardAnaDiffChan];
-    neg_val = ADC->ADC_CDR[ardAnaDiffChan+1];
-    pos_sum += pos_val;
-    pos_sumsq += pos_val*pos_val;
-    neg_sum += neg_val;
-    neg_sumsq += neg_val*neg_val;
-  }
-
-  /*
-  float scale = ADC_FULLSCALE;
-  float sum = (ALPHA*lsum + BETA*((float) n))/scale;
-  float sumsq = (ALPHA*ALPHA*lsumsq + 2.0*ALPHA*BETA*lsum + BETA*BETA*((float) n))/(scale*scale);
-  mean = sum/n;
-  variance = (sumsq - 2.0*sum*mean +  mean*mean*n)/(n-1);
-  assert(variance > 0);
-  */
   error("FIXME: reimplement");
 }
 
@@ -74,7 +56,7 @@ float single_ended(int ardAnaDiffChan, unsigned int samples){
   float value = (pos_mv-neg_mv)/ADC_FULLSCALE;
   sprintf(FMTBUF,"chan=%d pos=%f neg=%f diff=%f val=%f", ardAnaDiffChan,
          pos_mv, neg_mv,pos_mv-neg_mv,value);
-  //print_debug(FMTBUF);
+  print_debug(FMTBUF);
   if(neg_mv < ADC_MIN){
     sprintf(FMTBUF, "broken negative channel [%d,%d] %f",
             ardAnaDiffChan,

@@ -4,6 +4,7 @@ import chip.props as props
 import chip.hcdc.util as util
 import lab_bench.lib.chipcmd.data as chipcmd
 import chip.hcdc.globals as glb
+from chip.hcdc.globals import CTX, GLProp
 from chip.cont import *
 import ops.op as ops
 import ops.nop as nops
@@ -36,77 +37,81 @@ def xbar_continuous_model(xbar):
   csm.discrete.add_cstr("*",inp,1.0)
   xbar.set_scale_model("*", csm)
 
+ana_props = util.make_ana_props(chipcmd.RangeType.HIGH,\
+                                CTX.get(GLProp.CURRENT_INTERVAL,
+                                        'tile_out', \
+                                        "*","*",None))
 
 tile_out = Block('tile_out',type=BlockType.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_props("*","*",["out","in"], \
-          util.make_ana_props(chipcmd.RangeType.HIGH,\
-                              glb.ANALOG_MIN,
-                              glb.ANALOG_MAX)) \
+.set_props("*","*",["out","in"], ana_props) \
 .set_coeff("*","*","out",1.0) \
 .check()
 black_box_model_tile(tile_out)
 xbar_continuous_model(tile_out)
 
+ana_props = util.make_ana_props(chipcmd.RangeType.HIGH,\
+                                CTX.get(GLProp.CURRENT_INTERVAL,
+                                        'tile_in', \
+                                        "*","*",None))
+
 tile_in = Block('tile_in',type=BlockType.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_props("*","*",["out","in"], \
-          util.make_ana_props(chipcmd.RangeType.HIGH,\
-                              glb.ANALOG_MIN,
-                              glb.ANALOG_MAX)) \
+.set_props("*","*",["out","in"], ana_props) \
 .set_coeff("*","*","out",1.0) \
 .check()
 black_box_model_tile(tile_in)
 xbar_continuous_model(tile_in)
 
 
+ana_props = util.make_ana_props(chipcmd.RangeType.HIGH,\
+                                CTX.get(GLProp.CURRENT_INTERVAL,
+                                        'conn_inv', \
+                                        "*","*",None))
+
 inv_conn = Block('conn_inv') \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
 .set_props("*","*",["out","in"], \
-          util.make_ana_props(chipcmd.RangeType.HIGH,\
-                              glb.ANALOG_MIN,
-                              glb.ANALOG_MAX)) \
+           ana_props) \
 .set_coeff("*","*","out",-1.0) \
 .check()
 black_box_model_cc(inv_conn)
 xbar_continuous_model(inv_conn)
 
 
+ana_props = util.make_ana_props(chipcmd.RangeType.HIGH,\
+                                CTX.get(GLProp.CURRENT_INTERVAL,
+                                        'chip_out', \
+                                        "*","*",None))
+
 chip_out = Block('chip_out',type=BlockType.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_props("*","*",["out"], \
-          util.make_ana_props(chipcmd.RangeType.MED,\
-                              glb.ANALOG_MIN,
-                              glb.ANALOG_MAX)) \
-.set_props("*","*",["in"], \
-          util.make_ana_props(chipcmd.RangeType.MED,\
-                              glb.ANALOG_MIN,
-                              glb.ANALOG_MAX)) \
+.set_props("*","*",["out"], ana_props) \
+.set_props("*","*",["in"], ana_props) \
 .set_coeff("*","*","out",1.0) \
 .check()
 black_box_model_chip(chip_out)
 xbar_continuous_model(chip_out)
 
+ana_props = util.make_ana_props(chipcmd.RangeType.HIGH,\
+                                CTX.get(GLProp.CURRENT_INTERVAL,
+                                        'chip_in', \
+                                        "*","*",None))
+
 chip_in = Block('chip_in',type=BlockType.BUS) \
 .add_outputs(props.CURRENT,["out"]) \
 .add_inputs(props.CURRENT,["in"]) \
 .set_op("*","out",ops.Var("in")) \
-.set_props("*","*",["in"], \
-          util.make_ana_props(chipcmd.RangeType.MED,\
-                              glb.ANALOG_MIN,
-                              glb.ANALOG_MAX)) \
-.set_props("*","*",["out"], \
-          util.make_ana_props(chipcmd.RangeType.MED,\
-                              glb.ANALOG_MIN,
-                              glb.ANALOG_MAX)) \
+.set_props("*","*",["in"], ana_props) \
+.set_props("*","*",["out"], ana_props) \
 .set_coeff("*","*","out",1.0) \
 .check()
 black_box_model_chip(chip_in)

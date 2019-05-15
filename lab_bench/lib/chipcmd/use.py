@@ -522,6 +522,14 @@ class UseIntegCmd(UseCommand):
         self._out_range = out_range
         self._debug = debug
 
+    @property
+    def max_error(self):
+        if self._out_range == RangeType.HIGH:
+            return 0.1
+        elif self._out_range == RangeType.MED:
+            return 0.01
+        elif self._out_range == RangeType.LOW:
+            return 0.02
 
     @staticmethod
     def desc():
@@ -646,6 +654,16 @@ class UseMultCmd(UseCommand):
         self._in1_range = in1_range
         self._out_range = out_range
         assert(inv == SignType.POS)
+
+    @property
+    def max_error(self):
+        if self._out_range == RangeType.HIGH:
+            return 0.02
+        elif self._out_range == RangeType.MED:
+            return 0.01
+        elif self._out_range == RangeType.LOW:
+            return 0.001
+
 
 
     @staticmethod
