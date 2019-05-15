@@ -307,15 +307,18 @@ bool helper_find_cal_out0(Fabric::Chip::Tile::Slice::Integrator * integ,
   return !calib_failed;
 }
 bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
+                          Fabric::Chip::Tile::Slice::Dac * ref_dac,
                           float max_error,
                           int code,
-                          bool hiRange){
+                          float target,
+                          dac_code_t& ref_codes,
+                          int update_pos_error){
 
-  float target = hiRange ? integ->m_codes.ic_val*cutil::h2m_coeff(): integ->m_codes.ic_val;
   unsigned int delta = 0;
   bool succ = false;
   float error;
   // adjust the initial condition code.
+  ref_dac->update(ref_codes);
   while(!succ){
     int gain_code;
     bool calib_failed;
@@ -337,13 +340,13 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
     succ = !calib_failed;
     sprintf(FMTBUF,"init-cond code=%d target=%f measured=%f",
             code+delta, target, target+error);
-    print_debug(FMTBUF);
+    print_info(FMTBUF);
     if(!succ){
-      if(fabs(target+error) < fabs(target)){
-        delta += target < 0 ? -1 : 1;
+      if(error < 0){
+        delta += update_pos_error*-1;
       }
       else{
-        delta += target < 0 ? 1 : -1;
+        delta += update_pos_error;
       }
     }
   }
@@ -355,45 +358,47 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (const float max_err
     return true;
   }
   bool hiRange = (m_codes.range[out0Id] == RANGE_HIGH);
+  int ic_sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
+  int update_pos = ic_sign*m_codes.ic_val >= 0 ? -1 : 1;
+  Dac * ref_dac = parentSlice->dac;
 
   integ_code_t codes_self = m_codes;
-  mult_code_t user_mul0 = parentSlice->muls[0].m_codes;
+  dac_code_t ref_codes = ref_dac->m_codes;
 
 
   cutil::calibrate_t calib;
   cutil::initialize(calib);
 
   cutil::buffer_integ_conns(calib,this);
-  cutil::buffer_mult_conns(calib,&parentSlice->muls[0]);
+  cutil::buffer_dac_conns(calib,ref_dac);
   cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
   cutil::buffer_chipout_conns(calib,parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
 
 	// output side
-  //conn0
-  Connection integ_to_aux = Connection ( out0, parentSlice->muls[0].in0 );
-
   //conn1
-  Connection aux_to_tile = Connection ( parentSlice->muls[0].out0,
+  Connection ref_to_tile = Connection ( ref_dac->out0,
                                         parentSlice->tileOuts[3].in0 );
   //conn2
-	Connection mult_to_tile= Connection ( out0, parentSlice->tileOuts[3].in0 );
+	Connection integ_to_tile= Connection ( out0, parentSlice->tileOuts[3].in0 );
 
 	Connection tile_to_chip = Connection ( parentSlice->tileOuts[3].out0,
                                          parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
-  mult_code_t mult_0p1;
+  dac_code_t dac_0;
+  dac_code_t dac_ic;
+
+  print_info("making zero dac");
+  dac_0 = make_zero_dac(calib, ref_dac);
   if (hiRange) {
-    print_debug("high range! making auxiliary multiplier");
-    mult_0p1 = make_h2m_mult(calib, &parentSlice->muls[0]);
-    parentSlice->muls[0].update(mult_0p1);
-    integ_to_aux.setConn();
-    aux_to_tile.setConn();
+    print_info("high range! making reference dac");
+    dac_ic = make_val_dac(calib,ref_dac, -10.0*m_codes.ic_val*ic_sign);
+    update_pos = -1;
+    ref_to_tile.setConn();
   }
-  else{
-    mult_to_tile.setConn();
-  }
+  integ_to_tile.setConn();
 	tile_to_chip.setConn();
+  ref_dac->update(dac_0);
 
   bool found_code = false;
   integ_code_t best_code = m_codes;
@@ -407,7 +412,11 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (const float max_err
     if(succ)
       succ &= helper_find_cal_in0(this,max_error);
     if(succ)
-      succ &= helper_find_cal_gain(this,max_error,code,hiRange);
+      succ &= helper_find_cal_gain(this,ref_dac,max_error,code,
+                                   hiRange ? 0.0: m_codes.ic_val*ic_sign,
+                                   hiRange ? dac_ic : dac_0,
+                                   update_pos);
+    ref_dac->update(dac_0);
 
     if(succ){
       found_code = true;
@@ -421,13 +430,11 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (const float max_err
 
   update(best_code);
 	if (hiRange) {
-		integ_to_aux.brkConn();
-    aux_to_tile.brkConn();
-    parentSlice->muls[0].update(user_mul0);
-
+    ref_to_tile.brkConn();
+    ref_dac->update(ref_codes);
 	} else {
-		mult_to_tile.brkConn();
 	}
+  integ_to_tile.brkConn();
 	tile_to_chip.brkConn();
   cutil::restore_conns(calib);
 
