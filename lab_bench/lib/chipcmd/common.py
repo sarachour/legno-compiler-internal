@@ -91,23 +91,24 @@ def parse_pattern_conn(args,name):
 
 
 def parse_pattern_block_loc(args,name,max_error=False):
-    line = " ".join(args)
+    line = " ".join(args).strip()
     cmds = [
         "{blk:w} {chip:d} {tile:d} {slice:d}",
         "{blk:w} {chip:d} {tile:d} {slice:d} {index:d}",
     ]
     suffix = "";
     if max_error:
-        suffix += "{max_error:f}"
+        suffix += " {max_error:f}"
 
     result = None
     for cmd in cmds:
-        final_cmd = "%s %s %s" % (name,cmd,suffix)
+        final_cmd = "%s %s%s" % (name,cmd,suffix)
+
         if result is None:
             result = parselib.parse(final_cmd,line)
 
     if result is None:
-        return OptionalValue.error("usage:<%s>\nline:<%s>" % (cmd, line))
+        return OptionalValue.error("usage:<%s>\nline:<%s>" % (final_cmd, line))
 
     result = dict(result.named.items())
     if not "index" in result:

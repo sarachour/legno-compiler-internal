@@ -35,11 +35,13 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
                           const float max_error);
 		bool calibrate (util::calib_result_t& result,
                     const float max_error);
+		void characterize(util::calib_result_t& result);
     void defaults();
 	private:
 		class IntegratorInterface;
 		class IntegratorIn;
 		class IntegratorOut;
+		void measure(util::calib_result_t& result);
 		Integrator (Slice * parentSlice);
 		~Integrator () override { delete in0; delete out0; };
 		/*Set enable, invert, range*/

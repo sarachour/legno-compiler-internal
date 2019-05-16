@@ -6,6 +6,48 @@
 
 namespace calibrate {
 
+  void characterize(Fabric* fab,
+                 util::calib_result_t& result,
+                 uint16_t blk,
+                 circ::circ_loc_idx1_t loc)
+  {
+    Fabric::Chip::Tile::Slice::Fanout * fanout;
+    Fabric::Chip::Tile::Slice::Multiplier * mult;
+    Fabric::Chip::Tile::Slice::ChipAdc * adc;
+    Fabric::Chip::Tile::Slice::Dac * dac;
+    Fabric::Chip::Tile::Slice::Integrator * integ;
+    switch(blk){
+    case circ::block_type_t::FANOUT:
+      fanout = common::get_fanout(fab,loc);
+      fanout->characterize(result);
+      break;
+
+    case circ::block_type_t::MULT:
+      // TODO: indicate if input or output.
+      mult = common::get_mult(fab,loc);
+      return mult->characterize(result);
+      break;
+
+    case circ::block_type_t::TILE_ADC:
+      adc = common::get_slice(fab,loc.loc)->adc;
+      break;
+
+    case circ::block_type_t::TILE_DAC:
+      dac = common::get_slice(fab,loc.loc)->dac;
+      return dac->characterize(result);
+      break;
+
+    case circ::block_type_t::INTEG:
+      integ = common::get_slice(fab,loc.loc)->integrator;
+      integ->characterize(result);
+      break;
+
+    default:
+      comm::error("get_offset_code: unexpected block");
+    }
+  }
+
+
   bool calibrate(Fabric* fab,
                  util::calib_result_t& result,
                  uint16_t blk,

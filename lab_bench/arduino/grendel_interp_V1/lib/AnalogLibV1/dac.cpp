@@ -178,6 +178,27 @@ void Fabric::Chip::Tile::Slice::Dac::setParamHelper (
 
 
 
+void Fabric::Chip::Tile::Slice::Dac::characterize(util::calib_result_t& result)
+{
+  if(m_codes.source == DSRC_MEM){
+    util::init_result(result);
+    measure(result);
+  }
+  else{
+    dac_code_t backup = m_codes;
+    m_codes.source = DSRC_MEM;
+    // measure how good the dac is at writing certain values.
+    float values[10];
+    util::init_result(result);
+    for(int i=0; i < 10; i+=1){
+      float value = 2.0*(i/10.0) - 1.0;
+      setConstant(value);
+      measure(result);
+    }
+    update(backup);
+  }
+
+}
 bool Fabric::Chip::Tile::Slice::Dac::calibrate (util::calib_result_t& result,
                                                 const float max_error)
 {
@@ -186,12 +207,6 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrate (util::calib_result_t& result,
   setConstant(1.0);
   float succ = calibrateTarget(result,max_error);
   // measure how good the dac is at writing certain values.
-  float values[10];
-  for(int i=0; i < 10; i+=1){
-    float value = 2.0*(i/10.0) - 1.0;
-    setConstant(value);
-    measure(result);
-  }
   m_codes.source = backup_src;
   update(m_codes);
   return succ;
@@ -216,11 +231,11 @@ float make_reference_dac(cutil::calibrate_t& calib,
   return target;
 }
 
-bool Fabric::Chip::Tile::Slice::Dac::measure(util::calib_result_t& result)
+void Fabric::Chip::Tile::Slice::Dac::measure(util::calib_result_t& result)
 {
   if(!m_codes.enable){
     print_log("DAC not enabled");
-    return true;
+    return;
   }
   bool hiRange = (m_codes.range == RANGE_HIGH);
 
@@ -262,7 +277,7 @@ bool Fabric::Chip::Tile::Slice::Dac::measure(util::calib_result_t& result)
 	tile_to_chip.setConn();
 
   float meas = util::measure_chip_out(this);
-  float target = m_codes.const_val*(hiRange ? 10.0 : 1.0);
+  float target = m_codes.const_val*util::range_to_coeff(m_codes.range);
   util::add_prop(result, out0Id, target, meas-target);
 
   if (hiRange) {
@@ -276,8 +291,8 @@ bool Fabric::Chip::Tile::Slice::Dac::measure(util::calib_result_t& result)
 
   cutil::restore_conns(calib);
   update(codes_self);
-	return result.success;
 }
+
 bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& result,
                                                       const float max_error)
 {
@@ -371,7 +386,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& resu
       }
     }
   }
-  util::init_result(result, max_error, succ && calib.success);
+  util::init_result(result);
   if (hiRange) {
     // feed dac output into scaling down multiplier input
 		ref_to_tile.brkConn();
@@ -388,7 +403,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& resu
   sprintf(FMTBUF,"const code=%d",codes_self.const_code);
   print_info(FMTBUF);
   update(codes_self);
-	return result.success;
+	return succ && calib.success;
 }
 
 void Fabric::Chip::Tile::Slice::Dac::setAnaIrefNmos () const {

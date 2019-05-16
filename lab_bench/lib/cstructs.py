@@ -100,7 +100,8 @@ def circ_cmd_type():
         CircCmdType.TUNE.name:18,
         CircCmdType.GET_STATE.name:19,
         CircCmdType.SET_STATE.name:20,
-        CircCmdType.DEFAULTS.name:21
+        CircCmdType.DEFAULTS.name:21,
+        CircCmdType.CHARACTERIZE.name:22
     }
     return cstruct.Enum(cstruct.Int24ul,
                         **kwargs)
@@ -365,7 +366,13 @@ def state_t():
                          "adc" / adc_state_t()
     )
 
-
+def calib_result_t():
+    return cstruct.Struct(
+        "errors" / cstruct.Array(5,cstruct.Float32l),
+        "targets" / cstruct.Array(5,cstruct.Float32l),
+        "size" / cstruct.Int8ul,
+        "props" / cstruct.Array(5,cstruct.Int8ul)
+    )
 
 #def block_code_t():
 #    return cstruct.Union(None,

@@ -16,6 +16,7 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
 		void setThird (
 			bool third // whether third output is on
 		);
+		void characterize(util::calib_result_t& result);
 		bool calibrate (util::calib_result_t& result,
                     const float max_error);
     void defaults();
@@ -25,6 +26,7 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
     }
     fanout_code_t m_codes;
 	private:
+		void measure(util::calib_result_t& result);
 		class FanoutOut;
 		Fanout (Slice * parentSlice, unit unitId);
 		~Fanout () override {

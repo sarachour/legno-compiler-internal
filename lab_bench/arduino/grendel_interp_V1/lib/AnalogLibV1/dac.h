@@ -37,12 +37,15 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 		);
     void update(dac_code_t codes);
     dac_code_t m_codes;
-    bool measure(util::calib_result_t& result);
-    bool calibrate (util::calib_result_t& result, const float max_error);
-		bool calibrateTarget (util::calib_result_t& result, const float max_error);
+    void characterize(util::calib_result_t& result);
+    bool calibrate (util::calib_result_t& result,
+                    const float max_error);
+		bool calibrateTarget (util::calib_result_t& result,
+                          const float max_error);
     void defaults();
 	private:
 		class DacOut;
+    void measure(util::calib_result_t& result);
 		Dac (Slice * parentSlice);
 		~Dac () override { delete out0; };
 		/*Set enable, invert, range, clock select*/

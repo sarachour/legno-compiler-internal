@@ -79,6 +79,7 @@ class CircCmdType(Enum):
     MEASURE = "measure";
     TUNE = "tune";
     DEFAULTS = "defaults";
+    CHARACTERIZE = "profile";
 
 class ExpCmdType(Enum):
     RESET = 'reset';

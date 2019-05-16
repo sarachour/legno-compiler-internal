@@ -4,6 +4,12 @@
 #define CALIBRATE_H
 
 namespace calibrate {
+  bool characterize(Fabric * fab,
+                 util::calib_result_t& result,
+                 uint16_t blk,
+                 circ::circ_loc_idx1_t loc);
+
+
   bool calibrate(Fabric * fab,
                  util::calib_result_t& result,
                  uint16_t blk,

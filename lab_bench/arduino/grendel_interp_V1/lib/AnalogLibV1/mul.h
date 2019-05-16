@@ -19,11 +19,18 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
     mult_code_t m_codes;
     void update(mult_code_t codes);
     void defaults();
+    void characterize(util::calib_result_t& result);
     bool calibrate (util::calib_result_t& result,
                     const float max_error);
 		bool calibrateTarget(util::calib_result_t& result,
                          const float max_error);
 	private:
+    void measure_vga(util::calib_result_t& result,
+                     float in0);
+    void measure_mult(util::calib_result_t& result,
+                      float in0,float in1);
+
+
 		class MultiplierInterface;
 		Multiplier (Slice * parentSlice, unit unitId);
 		~Multiplier () override {

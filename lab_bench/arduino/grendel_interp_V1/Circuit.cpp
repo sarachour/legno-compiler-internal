@@ -57,7 +57,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   cmd_use_adc_t adcd;
   cmd_connection_t connd;
   block_code_t state;
-  util::calib_result_t result;
+  util::ser_calib_result_t result;
   uint8_t byteval;
   char buf[32];
   bool succ;
@@ -216,9 +216,41 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     Fabric::Chip::Connection(src,dst).brkConn();
     comm::response("disconnected",0);
     break;
+
+  case cmd_type_t::CHARACTERIZE:
+    util::init_result(result.result);
+    //calibrate::characterize(fab,
+    //                            result.result,
+    //                           cmd.data.calib.blk,
+    //                          cmd.data.calib.loc);
+    calibrate::get_codes(fab,
+                         cmd.data.state.blk,
+                         cmd.data.state.loc,
+                         state);
+    comm::response("characterization terminated",1);
+    sprintf(FMTBUF,"result=%d state=%d",sizeof(result.result), sizeof(state));
+    print_log(FMTBUF);
+    sprintf(FMTBUF,"%d",sizeof(state)+sizeof(result.result)+2);
+    comm::data(FMTBUF,"I");
+    comm::payload();
+    Serial.print(sizeof(state));
+    Serial.print(" ");
+    Serial.print(sizeof(result.result));
+    for(int i=0; i < sizeof(state); i+=1){
+      Serial.print(" ");
+      Serial.print(state.charbuf[i]);
+    }
+    for(int i=0; i < sizeof(result.result); i+=1){
+      Serial.print(" ");
+      Serial.print(result.charbuf[i]);
+    }
+    Serial.println("");
+    break;
+
+
   case cmd_type_t::CALIBRATE:
     succ = calibrate::calibrate(fab,
-                                result,
+                                result.result,
                                 cmd.data.calib.blk,
                                 cmd.data.calib.loc,
                                 cmd.data.calib.max_error);

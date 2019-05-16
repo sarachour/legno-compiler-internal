@@ -450,6 +450,14 @@ namespace circ {
       Serial.print(" max_error=");
       Serial.print(cmd.data.calib.max_error);
       break;
+
+    case cmd_type_t::CHARACTERIZE:
+      Serial.print("characterize ");
+      print_block(cmd.data.calib.blk);
+      Serial.print(" ");
+      print_idx_loc(cmd.data.calib.loc);
+      break;
+
     case cmd_type_t::GET_STATE:
       Serial.print("get_state ");
       print_block(cmd.data.state.blk);

@@ -6,14 +6,76 @@ from lab_bench.lib.chipcmd.common import *
 import lab_bench.lib.chipcmd.state as chipstate
 import json
 
-class MeasureCmd(AnalogChipCommand):
+class CharacterizeCmd(AnalogChipCommand):
 
-    def __init__(self,loc):
-        pass
+    def __init__(self,blk,chip,tile,slce,index=None):
+        AnalogChipCommand.__init__(self)
+        self._blk = enums.BlockType(blk)
+        self._loc = CircLoc(chip,tile,slce,index=0 if index is None \
+                            else index)
+
+        self.test_loc(self._blk, self._loc)
+
 
     @staticmethod
     def name():
-        return 'measure'
+        return 'profile'
+
+    def build_ctype(self):
+        loc_type = self._loc.build_ctype()
+        print(loc_type)
+        return build_circ_ctype({
+            'type':enums.CircCmdType.CHARACTERIZE.name,
+            'data':{
+                'calib':{
+                    'blk': self._blk.code(),
+                    'loc': loc_type,
+                    'max_error': 0.0
+                }
+            }
+        })
+
+    def execute_command(self,env):
+        resp = ArduinoCommand.execute_command(self,env)
+        datum = self._loc.to_json()
+        datum['block_type'] = self._blk.value
+        state_size = int(resp.data(0)[0])
+        result_size = int(resp.data(0)[1])
+        base = 2
+        state_data = bytes(resp.data(0)[base:(base+state_size)])
+        result_data = bytes(resp.data(0)[(base+state_size):])
+        print(state_size,len(state_data))
+        print(result_size,len(result_data))
+        st = chipstate.BlockState \
+                      .toplevel_from_cstruct(self._blk,
+                                             self._loc,
+                                             state_data)
+        result = cstructs.calib_result_t() \
+                         .parse(result_data);
+        print(result)
+        input("continue")
+        env.state_db.put(st)
+        return True
+
+
+
+    @staticmethod
+    def parse(args):
+        result = parse_pattern_block_loc(args,CharacterizeCmd.name())
+        if result.success:
+            data = result.value
+            return CharacterizeCmd(data['blk'],
+                                       data['chip'],
+                                       data['tile'],
+                                       data['slice'],
+            data['index'])
+
+        else:
+            print(result.message)
+            raise Exception("<parse_failure>: %s" % args)
+
+
+
 
 
 class SetStateCmd(AnalogChipCommand):
@@ -44,6 +106,8 @@ class SetStateCmd(AnalogChipCommand):
                 }
             }
         })
+
+
     @staticmethod
     def name():
         return 'set_codes'

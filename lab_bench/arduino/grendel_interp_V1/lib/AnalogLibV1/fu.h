@@ -132,19 +132,22 @@ namespace util {
 
 #define MAX_KEYS 5
 
-  typedef struct _CALIBRATE_RESULT_T {
-    bool success;
-    unsigned char props[MAX_KEYS];
-    unsigned char size;
-    float max_error;
+  typedef struct {
     float errors[MAX_KEYS];
     float targets[MAX_KEYS];
+    unsigned char size;
+    unsigned char props[MAX_KEYS];
   } calib_result_t;
+
+  typedef union {
+    calib_result_t result;
+    unsigned char charbuf[48];
+  } ser_calib_result_t;
+
 
   void print_result(calib_result_t& result, int level);
 
-  void init_result(calib_result_t& result,
-                   float max_error, bool success);
+  void init_result(calib_result_t& result);
   void add_prop(calib_result_t& result,
                 ifc prop, float target, float bias);
 

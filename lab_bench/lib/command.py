@@ -37,8 +37,7 @@ COMMANDS = [
     CalibrateCmd,
     # offset commands
     GetStateCmd,
-    SetStateCmd,
-    MeasureCmd,
+    CharacterizeCmd,
     # experiment commands dispatched to microcontroller
     MicroResetCmd,
     MicroRunCmd,

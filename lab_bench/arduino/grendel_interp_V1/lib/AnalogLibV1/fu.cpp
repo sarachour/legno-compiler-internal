@@ -19,21 +19,18 @@ void Fabric::Chip::Tile::Slice::FunctionUnit::updateFu(){
 
 namespace util{
 
-  void init_result(util::calib_result_t& result,
-                   float max_error, bool succ){
-    result.success = succ;
+  void init_result(util::calib_result_t& result){
     result.size = 0;
-    result.max_error = max_error;
+    for(int i=0; i < MAX_KEYS; i += 1){
+      result.props[i] = i;
+      result.errors[i] = (float)i;
+      result.targets[i] = (float)i;
+    }
   }
 
   void print_result(util::calib_result_t& result, int level){
-    sprintf(FMTBUF,"success=%s", result.success ? "y" : "n");
-    print_level(FMTBUF, level);
-    sprintf(FMTBUF,"max-err=%f", result.max_error);
-    print_level(FMTBUF, level);
-    print_level("=== props ===", level);
     for(int i=0; i < result.size; i+= 1){
-      sprintf("  port=%s target=%f error=%f", result.props[i],
+      sprintf("port=%s target=%f error=%f", result.props[i],
               result.targets[i],result.errors[i]);
       print_level(FMTBUF,level);
     }
