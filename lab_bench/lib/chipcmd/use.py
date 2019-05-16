@@ -51,9 +51,7 @@ class UseCommand(AnalogChipCommand):
         if self.cached:
             dbkey = self.to_key()
             assert(isinstance(dbkey, state.BlockState.Key))
-            blockstate = env.state_db.get(self.block_type,
-                                          self.loc,
-                                          dbkey)
+            blockstate = env.state_db.get(dbkey)
             assert(isinstance(blockstate, state.BlockState))
             # set the state
             loc = CircLoc(self._loc.chip,

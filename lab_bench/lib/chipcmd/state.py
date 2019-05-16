@@ -8,6 +8,15 @@ import util.config as CFG
 import json
 import binascii
 
+def ordered(dict_):
+  k = list(dict_.keys())
+  k.sort()
+  v = []
+  for key in k:
+    v.append(dict_[key])
+
+  return v
+
 class BlockStateDatabase:
 
   class Status(Enum):
@@ -19,10 +28,15 @@ class BlockStateDatabase:
     self._conn = sqlite3.connect(path)
     self._curs = self._conn.cursor()
 
+    #FIXME make location part of row.
     cmd = '''
     CREATE TABLE IF NOT EXISTS states (
     cmdkey text NOT NULL,
     block text NOT NULL,
+    chip int NOT NULL,
+    tile int NOT NULL,
+    slice int NOT NULL,
+    idx int NOT NULL,
     status text NOT NULL,
     max_error real NOT NULL,
     state text NOT NULL,
@@ -32,12 +46,34 @@ class BlockStateDatabase:
     '''
     self._curs.execute(cmd)
     self._conn.commit()
-    self.keys = ['cmdkey','block','status','max_error','state','profile']
+    self.keys = ['cmdkey','block',
+                 'chip','tile','slice','idx',
+                 'status','max_error',
+                 'state','profile']
 
   def get_all(self):
     cmd = "SELECT * from states;"
     for values in self._curs.execute(cmd):
-      yield dict(zip(self.keys,values))
+      data = dict(zip(self.keys,values))
+      yield self._process(data)
+
+  def get_by_instance(self,blk,chip,tile,slice,index):
+    cmd = '''
+    SELECT * from states WHERE block = "{block}" AND
+                               chip = {chip} AND
+                               tile = {tile} AND
+                               slice = {slice} AND
+                               idx = {index};
+    '''.format(
+      block=blk.value,
+      chip=chip,
+      tile=tile,
+      slice=slice,
+      index=index)
+
+    for values in self._curs.execute(cmd):
+      data = dict(zip(self.keys,values))
+      yield self._process(data)
 
   def put(self,blockstate,success=True,max_error=-1,profile=[]):
     assert(isinstance(blockstate,BlockState))
@@ -53,11 +89,17 @@ class BlockStateDatabase:
     status = BlockStateDatabase.Status.SUCCESS \
              if success else BlockStateDatabase.Status.FAILURE
     cmd = '''
-    INSERT INTO states (cmdkey,block,status,max_error,state,profile)
-    VALUES ("{cmdkey}","{block}","{status}",{max_error},"{state}","{profile}")
+    INSERT INTO states (cmdkey,block,chip,tile,slice,idx,
+                        status,max_error,state,profile)
+    VALUES ("{cmdkey}","{block}",{chip},{tile},{slice},{index},
+            "{status}",{max_error},"{state}","{profile}")
     '''.format(
       cmdkey=key,
       block=blockstate.block.value,
+      chip=blockstate.loc.chip,
+      tile=blockstate.loc.tile,
+      slice=blockstate.loc.slice,
+      index=blockstate.loc.index,
       status=status.value,
       max_error=max_error,
       state=state_bits,
@@ -66,7 +108,7 @@ class BlockStateDatabase:
     self._curs.execute(cmd)
     self._conn.commit()
 
-  def _get(self,blktype,loc,blockkey):
+  def _get(self,blockkey):
     assert(isinstance(blockkey,BlockState.Key))
     keystr = blockkey.to_key()
     cmd = '''SELECT * FROM states WHERE cmdkey = "{cmdkey}"''' \
@@ -74,21 +116,33 @@ class BlockStateDatabase:
     results = list(self._curs.execute(cmd))
     return results
 
-  def has(self,blktype,loc,blockkey):
-    return len(self._get(blktype,loc,blockkey)) > 0
+  def has(self,blockkey):
+    return len(self._get(blockkey)) > 0
 
-  def get(self,blktype,loc,blockkey):
-    results = self._get(blktype,loc,blockkey)
-    assert(len(results) == 1)
-    data = dict(zip(self.keys,results[0]))
+  def _process(self,data):
     state = data['state']
-    obj = chipstate.BlockState \
-                   .toplevel_from_cstruct(blktype,loc,
-                                          bytes.fromhex(state))
-    obj.profile = json.loads(bytes.fromhex(data['profile']).decode('utf-8'))
-    obj.success = (data['status'] == BlockStateDatabase.Status.SUCCESS.value)
+    loc = chipdata.CircLoc(data['chip'],
+                  data['tile'],
+                  data['slice'],
+                  data['idx'])
+
+    blk = enums.BlockType(data['block'])
+    obj = BlockState \
+          .toplevel_from_cstruct(blk,loc,bytes.fromhex(state))
+    obj.profile = json.loads(bytes.fromhex(data['profile']) \
+                             .decode('utf-8'))
+    obj.success = (data['status'] == \
+                   BlockStateDatabase.Status.SUCCESS.value)
     obj.tolerance = data['max_error']
     return obj
+
+
+  def get(self,blockkey):
+    results = self._get(blockkey)
+    assert(len(results) == 1)
+    data = dict(zip(self.keys,results[0]))
+    return self._process(data)
+
 
 class BlockState:
 
@@ -131,19 +185,50 @@ class BlockState:
     if state != None:
       self.from_cstruct(state)
 
+  def get_dataset(self,db):
+    for obj in db.get_by_instance(
+        self.block,
+        self.loc.chip,
+        self.loc.tile,
+        self.loc.slice,
+        self.loc.index):
+      for group,param,value,error in self.to_rows(obj):
+        yield group,param,value,error
+
+  def to_rows(self,obj):
+    raise NotImplementedError
+
+
   @staticmethod
-  def toplevel_from_cstruct(blk,loc,data):
+  def decode_cstruct(blk,data):
     pad = bytes([0]*(24-len(data)))
     typ = cstructs.state_t()
     obj = typ.parse(data+pad)
     if blk == enums.BlockType.FANOUT:
-      st = FanoutBlockState(loc,obj.fanout)
+      return obj.fanout
     elif blk == enums.BlockType.INTEG:
-      st = IntegBlockState(loc,obj.integ)
+      return obj.integ
     elif blk == enums.BlockType.MULT:
-      st = MultBlockState(loc,obj.mult)
+      return obj.mult
     elif blk == enums.BlockType.DAC:
-      st = DacBlockState(loc,obj.dac)
+      return obj.dac
+    elif blk == enums.BlockType.ADC:
+      return obj.adc
+    elif blk == enums.BlockType.LUT:
+      return obj.lut
+    return obj
+
+  @staticmethod
+  def toplevel_from_cstruct(blk,loc,data):
+    obj = BlockState.decode_cstruct(blk,data)
+    if blk == enums.BlockType.FANOUT:
+      st = FanoutBlockState(loc,obj)
+    elif blk == enums.BlockType.INTEG:
+      st = IntegBlockState(loc,obj)
+    elif blk == enums.BlockType.MULT:
+      st = MultBlockState(loc,obj)
+    elif blk == enums.BlockType.DAC:
+      st = DacBlockState(loc,obj)
     elif blk == enums.BlockType.ADC:
       st = AdcBlockState(loc,obj.adc)
     elif blk == enums.BlockType.LUT:
@@ -282,6 +367,18 @@ class MultBlockState(BlockState):
   def __init__(self,loc,state):
     BlockState.__init__(self,enums.BlockType.MULT,loc,state)
 
+  def to_rows(self,obj):
+    G = ordered(obj.invs) \
+        + ordered(obj.ranges) \
+        + [obj.vga.boolean()]
+    Z = [obj.gain_val]
+    for port,target,error in obj.profile:
+      GS = G + [port.value]
+      Y = [error]
+      X = [target]
+      yield GS,Z,X,Y
+
+
   def to_cstruct(self):
     return cstructs.state_t().build({
       "mult": {
@@ -297,6 +394,7 @@ class MultBlockState(BlockState):
         "gain_val": self.gain_val
       }
     })
+
 
   @property
   def key(self):
@@ -354,6 +452,9 @@ class IntegBlockState(BlockState):
 
   def __init__(self,loc,state):
     BlockState.__init__(self,enums.BlockType.INTEG,loc,state)
+
+  def get_dataset(self,state):
+    return []
 
   @property
   def key(self):
@@ -429,6 +530,9 @@ class FanoutBlockState(BlockState):
   def __init__(self,loc,state):
     BlockState.__init__(self,enums.BlockType.FANOUT,loc,state)
 
+
+  def get_dataset(self,state):
+    return []
 
   @property
   def key(self):

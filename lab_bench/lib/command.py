@@ -84,12 +84,11 @@ def parse(line):
 def profile(state,obj):
     if isinstance(obj,UseCommand):
         dbkey = obj.to_key()
-        if (state.state_db.has(obj.block_type,obj.loc,dbkey)):
-            data = state.state_db.get(obj.block_type,obj.loc,dbkey)
+        if (state.state_db.has(dbkey)):
+            data = state.state_db.get(dbkey)
             print(obj)
-            for port,target,error in data.profile:
-                print(" port=%s target=%s error=%s" % (port,target,error))
-
+            for row in data.get_dataset(state.state_db):
+                print(row)
 
 # use dac 1:3:0 src=0 inv=no rng=m val=0.10 -> -0.35 mV
 # use_integ 1 3 0 sgn + val 0.000000 rng m m debug cached
