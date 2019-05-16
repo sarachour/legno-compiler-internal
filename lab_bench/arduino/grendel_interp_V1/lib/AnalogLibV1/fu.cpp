@@ -26,15 +26,32 @@ namespace util{
     result.max_error = max_error;
   }
 
+  void print_result(util::calib_result_t& result, int level){
+    sprintf(FMTBUF,"success=%s", result.success ? "y" : "n");
+    print_level(FMTBUF, level);
+    sprintf(FMTBUF,"max-err=%f", result.max_error);
+    print_level(FMTBUF, level);
+    print_level("=== props ===", level);
+    for(int i=0; i < result.size; i+= 1){
+      sprintf("  port=%s target=%f error=%f", result.props[i],
+              result.targets[i],result.errors[i]);
+      print_level(FMTBUF,level);
+    }
+
+  }
   void add_prop(util::calib_result_t& result,
                 ifc prop, float target, float bias){
     if(!result.size < MAX_KEYS){
       error("cutil::add_prop: no more space left for prop");
     }
     result.props[result.size] = prop;
-    result.biases[result.size] = bias;
+    result.errors[result.size] = bias;
     result.targets[result.size] = target;
     result.size += 1;
+  }
+
+  const char * ifc_to_string(ifc id){
+    return "?";
   }
 
   float range_to_coeff(range_t rng){

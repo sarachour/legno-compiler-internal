@@ -7,20 +7,6 @@
 
 namespace cutil {
 
-  void init_result(util::calib_result_t& result, float max_error, bool succ){
-    result.success = succ;
-    result.size = 0;
-    result.max_error = max_error;
-  }
-
-  void add_prop(util::calib_result_t& result, ifc prop, float target, float bias){
-    if(!result.size < MAX_KEYS){
-      error("cutil::add_prop: no more space left for prop");
-    }
-    result.biases[prop] = bias;
-    result.biases[prop] = target;
-    result.size += 1;
-  }
   void initialize(calibrate_t& cal){
     cal.success = true;
     cal.nconns = 0;

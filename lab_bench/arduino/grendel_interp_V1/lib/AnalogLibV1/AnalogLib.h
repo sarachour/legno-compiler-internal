@@ -48,6 +48,13 @@ static void print_debug (const char * message) {
   }
 }
 
+static void print_level(const char * message, int level){
+  switch(level){
+  case LOG_LEVEL: print_log(message); break;
+  case DEBUG_LEVEL: print_debug(message); break;
+  case INFO_LEVEL: print_info(message); break;
+  }
+}
 static void error (
                    const char * message
                    ) {

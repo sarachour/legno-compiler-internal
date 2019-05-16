@@ -176,26 +176,52 @@ void Fabric::Chip::Tile::Slice::Dac::setParamHelper (
 	);
 }
 
+
+
 bool Fabric::Chip::Tile::Slice::Dac::calibrate (util::calib_result_t& result,
                                                 const float max_error)
 {
-  return true;
+  dac_source_t backup_src = m_codes.source;
+  m_codes.source = DSRC_MEM;
+  setConstant(1.0);
+  float succ = calibrateTarget(result,max_error);
+  // measure how good the dac is at writing certain values.
+  float values[10];
+  for(int i=0; i < 10; i+=1){
+    float value = 2.0*(i/10.0) - 1.0;
+    setConstant(value);
+    measure(result);
+  }
+  m_codes.source = backup_src;
+  update(m_codes);
+  return succ;
+
 }
 
-bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& result,
-                                                      const float max_error)
+float make_reference_dac(cutil::calibrate_t& calib,
+                        util::calib_result_t& result,
+                        dac_code_t& config,
+                        Fabric::Chip::Tile::Slice::Dac* dac,
+                        Fabric::Chip::Tile::Slice::Dac* ref_dac){
+  float base_constant = floor((fabs(dac->m_codes.const_val)-1e-5)*10.0);
+  base_constant *= dac->m_codes.const_val < 0 ? 1.0 : -1.0;
+  float target = dac->m_codes.const_val*10.0 + base_constant;
+  config = cutil::make_val_dac(calib, ref_dac,
+                               base_constant,
+                               result);
+  print_log("== reference dac ==");
+  util::print_result(result, LOG_LEVEL);
+  print_log("====");
+  ref_dac->update(config);
+  return target;
+}
+
+bool Fabric::Chip::Tile::Slice::Dac::measure(util::calib_result_t& result)
 {
-  //setConstantCode(round(constant*128.0+128.0));
   if(!m_codes.enable){
     print_log("DAC not enabled");
     return true;
   }
-  if(m_codes.source != DSRC_MEM){
-    print_log("DAC must have memory as source.");
-    return false;
-  }
-  float constant = m_codes.const_val;
-  float target = constant;
   bool hiRange = (m_codes.range == RANGE_HIGH);
 
   cutil::calibrate_t calib;
@@ -228,39 +254,90 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& resu
 	if (hiRange) {
     // feed dac output into scaling down multiplier input
 		ref_to_tile.setConn();
-    float base_constant = floor((fabs(constant)-1e-5)*10.0);
-    if(constant < 0){
-      base_constant *= 1.0;
-    }
-    else {
-      base_constant *= -1.0;
-    }
-    target = constant*10.0 + base_constant;
-    base_code = cutil::make_val_dac(calib, ref_dac,
-                                    base_constant,
-                                    base_code_result);
-    ref_dac->update(base_code);
-    // feed output of scaledown multiplier to tile output.
+    make_reference_dac(calib,
+                       base_code_result,
+                       base_code, this,ref_dac);
 	}
   dac_to_tile.setConn();
 	tile_to_chip.setConn();
 
-	// Serial.println("Dac gain calibration");
-	// Serial.flush();
+  float meas = util::measure_chip_out(this);
+  float target = m_codes.const_val*(hiRange ? 10.0 : 1.0);
+  util::add_prop(result, out0Id, target, meas-target);
+
+  if (hiRange) {
+    // feed dac output into scaling down multiplier input
+		ref_to_tile.brkConn();
+    ref_dac->update(codes_ref);
+    // feed output of scaledown multiplier to tile output.
+	}
+	tile_to_chip.brkConn();
+  dac_to_tile.brkConn();
+
+  cutil::restore_conns(calib);
+  update(codes_self);
+	return result.success;
+}
+bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& result,
+                                                      const float max_error)
+{
+  //setConstantCode(round(constant*128.0+128.0));
+  if(!m_codes.enable){
+    print_log("DAC not enabled");
+    return true;
+  }
+  if(m_codes.source != DSRC_MEM){
+    print_log("DAC must have memory as source.");
+    return false;
+  }
+  bool hiRange = (m_codes.range == RANGE_HIGH);
+
+  cutil::calibrate_t calib;
+  cutil::initialize(calib);
+
+  int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
+  Dac * ref_dac = parentSlice->parentTile->slices[next_slice].dac;
+  dac_code_t codes_self = m_codes;
+  dac_code_t codes_ref = ref_dac->m_codes;
+
+  update(m_codes);
+
+  cutil::buffer_dac_conns(calib,this);
+  cutil::buffer_dac_conns(calib,ref_dac);
+  cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
+  cutil::buffer_chipout_conns(calib,parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput);
+  cutil::break_conns(calib);
+  // conn0
+	Connection ref_to_tile = Connection ( ref_dac->out0,
+                                        parentSlice->tileOuts[3].in0 );
+
+  // conn2
+	Connection dac_to_tile = Connection ( out0, parentSlice->tileOuts[3].in0 );
+  // conn3
+	Connection tile_to_chip = Connection ( parentSlice->tileOuts[3].out0,
+                                         parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
+
+  dac_code_t base_code;
+  util::calib_result_t base_code_result;
+  float target = m_codes.const_val;
+	if (hiRange) {
+    // feed dac output into scaling down multiplier input
+		ref_to_tile.setConn();
+    target = make_reference_dac(calib,
+                                base_code_result,
+                                base_code, this,ref_dac);
+	}
+  dac_to_tile.setConn();
+	tile_to_chip.setConn();
+
   sprintf(FMTBUF, "dac-value: %f %d %d", m_codes.const_val,
           m_codes.const_code,
           m_codes.range);
   print_log(FMTBUF);
   bool succ = false;
-  // if we're trying to
   int code = m_codes.const_code;
   int delta = 0;
-  // move further away from the selected code
   while(!succ){
-    // if we've jumped back and forth a few times,
-    // choose the more fruitful direction to shift constants
-    // and move in that direction.
-    // flip back and forth between negative and positive displacements
     float error = 0.0;
     if(!calib.success){
       print_info("failed to calibrate dependency");
@@ -285,23 +362,16 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& resu
             target,
             target+error);
     print_info(FMTBUF);
-    // if we haven't succeeded, adjust the code.
     if(!succ){
-      // if the magnitude of the measured value is less than we expected
       if(fabs(target+error) < fabs(target)){
-        // increase the magnitude of the value
         delta += (target < 0 ? -1 : 1);
       }
       else{
-        // decrease the magnitude of the value
         delta += (target < 0 ? 1 : -1);
       }
     }
   }
   util::init_result(result, max_error, succ && calib.success);
-  float error = util::measure_chip_out(this)-target;
-  util::add_prop(result, out0Id, target, error);
-
   if (hiRange) {
     // feed dac output into scaling down multiplier input
 		ref_to_tile.brkConn();
