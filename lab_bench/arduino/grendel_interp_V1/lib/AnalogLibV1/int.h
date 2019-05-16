@@ -1,3 +1,8 @@
+#ifndef INTEG_H
+#define INTEG_H
+
+#include "fu.h"
+
 typedef enum {
 	mGainMRng = 0, /* -2 to 2  uA input, gain = 1,   -2 to 2  uA output*/
 	mGainLRng = 1, /*-.2 to .2 uA input, gain = 1,  -.2 to .2 uA output*/
@@ -26,8 +31,10 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 
     void update(integ_code_t codes);
     integ_code_t m_codes;
-		bool calibrateTarget (const float max_error);
-		bool calibrate (const float max_error);
+		bool calibrateTarget (util::calib_result_t& result,
+                          const float max_error);
+		bool calibrate (util::calib_result_t& result,
+                    const float max_error);
     void defaults();
 	private:
 		class IntegratorInterface;
@@ -84,3 +91,5 @@ class Fabric::Chip::Tile::Slice::Integrator::IntegratorOut : public Fabric::Chip
 	private:
 		IntegratorOut (Integrator * parentFu) : IntegratorInterface(parentFu, out0Id) {};
 };
+
+#endif

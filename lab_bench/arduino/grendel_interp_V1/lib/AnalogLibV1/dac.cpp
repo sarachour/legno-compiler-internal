@@ -176,12 +176,14 @@ void Fabric::Chip::Tile::Slice::Dac::setParamHelper (
 	);
 }
 
-bool Fabric::Chip::Tile::Slice::Dac::calibrate (const float max_error)
+bool Fabric::Chip::Tile::Slice::Dac::calibrate (util::calib_result_t& result,
+                                                const float max_error)
 {
   return true;
 }
 
-bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
+bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& result,
+                                                      const float max_error)
 {
   //setConstantCode(round(constant*128.0+128.0));
   if(!m_codes.enable){
@@ -222,6 +224,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
                                          parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
   dac_code_t base_code;
+  util::calib_result_t base_code_result;
 	if (hiRange) {
     // feed dac output into scaling down multiplier input
 		ref_to_tile.setConn();
@@ -233,7 +236,9 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
       base_constant *= -1.0;
     }
     target = constant*10.0 + base_constant;
-    base_code = cutil::make_val_dac(calib, ref_dac, base_constant);
+    base_code = cutil::make_val_dac(calib, ref_dac,
+                                    base_constant,
+                                    base_code_result);
     ref_dac->update(base_code);
     // feed output of scaledown multiplier to tile output.
 	}
@@ -293,6 +298,10 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
       }
     }
   }
+  util::init_result(result, max_error, succ && calib.success);
+  float error = util::measure_chip_out(this)-target;
+  util::add_prop(result, out0Id, target, error);
+
   if (hiRange) {
     // feed dac output into scaling down multiplier input
 		ref_to_tile.brkConn();
@@ -309,7 +318,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (const float max_error)
   sprintf(FMTBUF,"const code=%d",codes_self.const_code);
   print_info(FMTBUF);
   update(codes_self);
-	return succ && (calib.success);
+	return result.success;
 }
 
 void Fabric::Chip::Tile::Slice::Dac::setAnaIrefNmos () const {

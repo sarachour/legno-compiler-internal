@@ -250,7 +250,8 @@ void Fabric::Chip::Tile::Slice::ChipAdc::setAnaIrefPmos () const {
 	);
 }
 
-bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate (const float max_error) {
+bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate (util::calib_result_t& result,
+                                                    const float max_error) {
 
   update(m_codes);
   adc_code_t codes_self= m_codes;
@@ -365,72 +366,6 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::checkSteady (
 	return success;
 }
 
-/*
-void Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::findBias (
-                                                          unsigned char & offsetCode,
-                                                          bool& new_search,
-                                                          bool& calib_failed
-) {
-	// Serial.print("Adc offset calibration ");
-
-  Fabric::Chip::Tile::Slice::ChipAdc* adc = this->parentFu;
-	while (new_search) {
-		findBiasHelper (offsetCode, adc->m_codes.nmos, new_search, calib_failed);
-	}
-}
-void Fabric::Chip::Tile::Slice::ChipAdc::AdcIn::binarySearch (
-	unsigned char minI2VCode,
-	float minBest,
-	unsigned char maxI2VCode,
-	float maxBest,
-	unsigned char & finalI2VCode,
-  float & finalI2VError
-) const {
-
-	if (binarySearchAvg (minI2VCode, minBest, maxI2VCode, maxBest, finalI2VCode)){
-    return;
-  }
-
-	parentFu->setParam1 ();
-	parentFu->parentSlice->parentTile->parentChip->parentFabric->cfgCommit();
-
-	unsigned char adcRead = parentAdc->getData();
-	float target = 128.0;
-  float error = fabs(adcRead-target);
-	// Serial.print("finalI2VCode = ");
-	// Serial.println(finalI2VCode);
-	Serial.print(adcRead);
-  Serial.print(" nmos=");
-	Serial.print(parentAdc->m_codes.nmos);
-  Serial.print(" target=");
-	Serial.print(target);
-  Serial.print(" curr_code=");
-	Serial.print(finalI2VCode);
-  Serial.print(" min_code=");
-	Serial.print(minI2VCode);
-  Serial.print(" max_code=");
-	Serial.print(maxI2VCode);
-  Serial.print(" min_error=");
-	Serial.print(minBest);
-  Serial.print(" max_error=");
-	Serial.print(maxBest);
-  Serial.print(" error=");
-	Serial.println(error);
-
-  finalI2VError = error;
-  // read value less than target
-	if (adcRead < target) {
-		return binarySearch (minI2VCode, minBest, finalI2VCode, error,
-                         finalI2VCode, finalI2VError);
-	}
-  // measured value more than target
-  else {
-		return binarySearch (finalI2VCode, error, maxI2VCode, maxBest,
-                         finalI2VCode, finalI2VError);
-	}
-
-}
-*/
 void Fabric::Chip::Tile::Slice::ChipAdc::setAnaIrefNmos () const {
 	// anaIrefI2V mapped to anaIrefDacNmos
 	unsigned char selRow=0;

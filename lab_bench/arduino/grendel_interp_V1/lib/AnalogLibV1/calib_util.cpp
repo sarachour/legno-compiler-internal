@@ -7,81 +7,29 @@
 
 namespace cutil {
 
+  void init_result(util::calib_result_t& result, float max_error, bool succ){
+    result.success = succ;
+    result.size = 0;
+    result.max_error = max_error;
+  }
+
+  void add_prop(util::calib_result_t& result, ifc prop, float target, float bias){
+    if(!result.size < MAX_KEYS){
+      error("cutil::add_prop: no more space left for prop");
+    }
+    result.biases[prop] = bias;
+    result.biases[prop] = target;
+    result.size += 1;
+  }
   void initialize(calibrate_t& cal){
     cal.success = true;
     cal.nconns = 0;
   }
 
-  
-  float h2m_coeff_norec(){
-    return 0.9;
-  }
-  float h2m_coeff(){
-    return h2m_coeff_norec();
-  }
-  mult_code_t make_h2m_mult_norecurse(calibrate_t& calib,
-                            Fabric::Chip::Tile::Slice::Multiplier * mult){
-    mult_code_t backup = mult->m_codes;
-    mult_code_t result = mult->m_codes;
-    // scale down.
-    mult->setEnable(true);
-    mult->m_codes.range[in0Id] = RANGE_HIGH;
-    mult->m_codes.range[in1Id] = RANGE_MED;
-    mult->m_codes.range[out0Id] = RANGE_MED;
-    mult->setVga(true);
-    mult->setGain(h2m_coeff());
-    if(!mult->calibrateTarget(0.01)){
-      // formerly was 0.1
-      print_log("norecurse: cannot calibrate GAIN=0.1");
-      calib.success = false;
-
-    }
-    else{
-      print_debug("norecurse: CALIBRATED GAIN=0.1");
-    }
-    result = mult->m_codes;
-    mult->update(backup);
-    return result;
-  }
-
-  mult_code_t make_h2m_mult(calibrate_t& calib,
-                            Fabric::Chip::Tile::Slice::Multiplier * mult){
-    // the recursive one has issues converging, so we have to use the one
-    // with less dynamic range
-    return make_h2m_mult_norecurse(calib,mult);
-  }
-
-  mult_code_t make_h2m_mult_recurse(calibrate_t& calib,
-                            Fabric::Chip::Tile::Slice::Multiplier * mult){
-    mult_code_t backup = mult->m_codes;
-    mult_code_t result = mult->m_codes;
-    // scale down.
-    mult->setEnable(true);
-    mult->m_codes.range[in0Id] = RANGE_HIGH;
-    mult->m_codes.range[in1Id] = RANGE_MED;
-    mult->m_codes.range[out0Id] = RANGE_HIGH;
-    mult->setVga(true);
-    mult->setGain(0.1);
-    if(!mult->calibrateTarget(0.01)){
-      // formerly was 0.1
-      print_log("recurse: cannot calibrate GAIN=0.1");
-      calib.success = false;
-
-    }
-    else{
-      print_debug("recurse: CALIBRATED GAIN=0.1");
-    }
-    result = mult->m_codes;
-    mult->update(backup);
-    return result;
-  }
-  mult_code_t make_one_mult(calibrate_t& calib,
-                            Fabric::Chip::Tile::Slice::Multiplier * mult){
-    error("unimplemented: one mult");
-  }
   dac_code_t make_val_dac(calibrate_t& calib,
                           Fabric::Chip::Tile::Slice::Dac * dac,
-                          float value){
+                          float value,
+                          util::calib_result_t& calib_result){
     dac_code_t backup = dac->m_codes;
     dac_code_t result = dac->m_codes;
     dac->setEnable(true);
@@ -103,7 +51,7 @@ namespace cutil {
     dac->out0->setInv(false);
     sprintf(FMTBUF, "dac calibrate %f", value);
     print_log(FMTBUF);
-    if(!dac->calibrateTarget(0.01)){
+    if(!dac->calibrateTarget(calib_result,0.01)){
       sprintf(FMTBUF, "dac-aux: cannot set DAC=%f", value);
       print_log(FMTBUF);
       calib.success = false;
@@ -117,17 +65,15 @@ namespace cutil {
     return result;
 
   }
-  dac_code_t make_low_dac(calibrate_t& calib,
-                          Fabric::Chip::Tile::Slice::Dac* dac){
-    return make_val_dac(calib,dac,0.1);
-  }
   dac_code_t make_zero_dac(calibrate_t& calib,
-                           Fabric::Chip::Tile::Slice::Dac * dac){
-    return make_val_dac(calib,dac,0.0);
+                           Fabric::Chip::Tile::Slice::Dac * dac,
+                           util::calib_result_t& result){
+    return make_val_dac(calib,dac,0.0,result);
   }
   dac_code_t make_one_dac(calibrate_t& calib,
-                           Fabric::Chip::Tile::Slice::Dac * dac){
-    return make_val_dac(calib,dac,1.0);
+                          Fabric::Chip::Tile::Slice::Dac * dac,
+                          util::calib_result_t& result){
+    return make_val_dac(calib,dac,1.0,result);
   }
   void buffer_conn(calibrate_t& calib, Fabric::Chip::Connection& conn){
     if(calib.nconns < MAX_CONNS){

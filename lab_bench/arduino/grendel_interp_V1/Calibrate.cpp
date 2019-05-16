@@ -2,10 +2,12 @@
 #include "Circuit.h"
 #include "Common.h"
 #include "Comm.h"
+#include "fu.h"
 
 namespace calibrate {
 
   bool calibrate(Fabric* fab,
+                 util::calib_result_t& result,
                  uint16_t blk,
                  circ::circ_loc_idx1_t loc,
                  const float max_error)
@@ -15,50 +17,49 @@ namespace calibrate {
     Fabric::Chip::Tile::Slice::ChipAdc * adc;
     Fabric::Chip::Tile::Slice::Dac * dac;
     Fabric::Chip::Tile::Slice::Integrator * integ;
-
     switch(blk){
     case circ::block_type_t::FANOUT:
       fanout = common::get_fanout(fab,loc);
-      fanout->calibrate(max_error);
+      fanout->calibrate(result,max_error);
       break;
 
     case circ::block_type_t::MULT:
       // TODO: indicate if input or output.
       mult = common::get_mult(fab,loc);
       if(mult->m_codes.vga){
-        return mult->calibrateTarget(max_error);
+        return mult->calibrateTarget(result,max_error);
       }
       else{
-        return mult->calibrate(max_error);
+        return mult->calibrate(result,max_error);
       }
       break;
 
     case circ::block_type_t::TILE_ADC:
       adc = common::get_slice(fab,loc.loc)->adc;
-      adc->calibrate(max_error);
+      adc->calibrate(result,max_error);
       break;
 
     case circ::block_type_t::TILE_DAC:
       dac = common::get_slice(fab,loc.loc)->dac;
       if(dac->m_codes.source == dac_source_t::DSRC_MEM){
-        return dac->calibrateTarget(max_error);
+        return dac->calibrateTarget(result,max_error);
       }
       else{
-        return dac->calibrate(max_error);
+        return dac->calibrate(result,max_error);
       }
       break;
 
     case circ::block_type_t::INTEG:
       integ = common::get_slice(fab,loc.loc)->integrator;
-      integ->calibrate(max_error);
-      integ->calibrateTarget(max_error);
+      integ->calibrate(result,max_error);
+      return integ->calibrateTarget(result,max_error);
       break;
 
     default:
       comm::error("get_offset_code: unexpected block");
 
     }
-
+    return false;
   }
 
   void set_codes(Fabric* fab,

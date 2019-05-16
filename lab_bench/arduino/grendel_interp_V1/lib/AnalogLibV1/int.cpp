@@ -1,6 +1,8 @@
 #include "AnalogLib.h"
 #include <float.h>
 #include "calib_util.h"
+#include "fu.h"
+
 void Fabric::Chip::Tile::Slice::Integrator::update(integ_code_t codes){
   m_codes = codes;
   updateFu();
@@ -214,7 +216,7 @@ void Fabric::Chip::Tile::Slice::Integrator::setParamHelper (
 	);
 }
 
-bool Fabric::Chip::Tile::Slice::Integrator::calibrate (const float max_error) {
+bool Fabric::Chip::Tile::Slice::Integrator::calibrate (util::calib_result_t& result, const float max_error) {
   integ_code_t codes_self = m_codes;
 
 	setEnable(true);
@@ -359,7 +361,8 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
   integ->m_codes.ic_code = code+delta;
   return succ;
 }
-bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (const float max_error) {
+bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (util::calib_result_t& result,
+                                                             const float max_error) {
   if(!m_codes.enable){
     return true;
   }
@@ -393,12 +396,16 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (const float max_err
 
   dac_code_t dac_0;
   dac_code_t dac_ic;
+  util::calib_result_t dac_0_result;
+  util::calib_result_t dac_ic_result;
 
   print_info("making zero dac");
-  dac_0 = make_zero_dac(calib, ref_dac);
+  dac_0 = make_zero_dac(calib, ref_dac,dac_0_result);
   if (hiRange) {
     print_info("high range! making reference dac");
-    dac_ic = make_val_dac(calib,ref_dac, -10.0*m_codes.ic_val*ic_sign);
+    dac_ic = make_val_dac(calib,ref_dac,
+                          -10.0*m_codes.ic_val*ic_sign,
+                          dac_ic_result);
     update_pos = -1;
     ref_to_tile.setConn();
   }

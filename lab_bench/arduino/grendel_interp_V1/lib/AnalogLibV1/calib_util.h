@@ -3,10 +3,11 @@
 #include "AnalogLib.h"
 #include "fu.h"
 #include "connection.h"
+#include "calib_util.h"
 #include <float.h>
 
 
-namespace cutil{
+namespace cutil {
 
   #define MAX_CONNS 10
 
@@ -16,29 +17,21 @@ namespace cutil{
     bool success;
   } calibrate_t;
 
-  void initialize(calibrate_t& cal);
-  float h2m_coeff();
-  float h2m_coeff_norec();
 
+  void initialize(calibrate_t& cal);
   // this is a special high-to-medium converter specifically for
   // the multiplier, since we want to be able to scale down signals
   //
-  mult_code_t make_h2m_mult_norecurse(calibrate_t& calib,
-                            Fabric::Chip::Tile::Slice::Multiplier* mult);
-
-  mult_code_t make_h2m_mult(calibrate_t& calib,
-                            Fabric::Chip::Tile::Slice::Multiplier* mult);
-  mult_code_t make_one_mult(calibrate_t& calib,
-                            Fabric::Chip::Tile::Slice::Multiplier* mult);
   dac_code_t make_zero_dac(calibrate_t& calib,
-                           Fabric::Chip::Tile::Slice::Dac* dac);
-  dac_code_t make_low_dac(calibrate_t& calib,
-                          Fabric::Chip::Tile::Slice::Dac* dac);
+                           Fabric::Chip::Tile::Slice::Dac* dac,
+                           util::calib_result_t& result);
   dac_code_t make_one_dac(calibrate_t& calib,
-                           Fabric::Chip::Tile::Slice::Dac * dac);
+                          Fabric::Chip::Tile::Slice::Dac * dac,
+                          util::calib_result_t& result);
   dac_code_t make_val_dac(calibrate_t& calib,
                           Fabric::Chip::Tile::Slice::Dac * dac,
-                          float value);
+                          float value,
+                          util::calib_result_t& result);
 
   void buffer_fanout_conns( calibrate_t& calib,
                             Fabric::Chip::Tile::Slice::Fanout* fu);

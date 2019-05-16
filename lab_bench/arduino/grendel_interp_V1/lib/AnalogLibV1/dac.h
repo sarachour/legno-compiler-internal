@@ -1,3 +1,8 @@
+#ifndef DAC_H
+#define DAC_H
+
+#include "fu.h"
+
 typedef enum {
 	// dacLo = 0,		/*the DAC block signal range is 2uA*/
 	dacMid = 0,	/*the DAC block signal range is 2uA*/
@@ -32,8 +37,8 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 		);
     void update(dac_code_t codes);
     dac_code_t m_codes;
-    bool calibrate (const float max_error);
-		bool calibrateTarget (const float max_error);
+    bool calibrate (util::calib_result_t& result, const float max_error);
+		bool calibrateTarget (util::calib_result_t& result, const float max_error);
     void defaults();
 	private:
 		class DacOut;
@@ -64,3 +69,6 @@ class Fabric::Chip::Tile::Slice::Dac::DacOut : public Fabric::Chip::Tile::Slice:
  private:
 		DacOut (Dac * parentFu) : Interface(parentFu, out0Id) {};
 };
+
+
+#endif

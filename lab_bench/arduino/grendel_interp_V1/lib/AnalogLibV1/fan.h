@@ -1,3 +1,8 @@
+#ifndef FANOUT_H
+#define FANOUT_H
+
+#include "fu.h"
+
 class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
 
@@ -11,7 +16,8 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
 		void setThird (
 			bool third // whether third output is on
 		);
-		bool calibrate (const float max_error);
+		bool calibrate (util::calib_result_t& result,
+                    const float max_error);
     void defaults();
     void update(fanout_code_t codes){
       m_codes = codes;
@@ -62,3 +68,5 @@ class Fabric::Chip::Tile::Slice::Fanout::FanoutOut : public Fabric::Chip::Tile::
 		{};
 		Fanout * const parentFanout;
 };
+
+#endif

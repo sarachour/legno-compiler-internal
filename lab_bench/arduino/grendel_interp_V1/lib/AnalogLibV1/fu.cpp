@@ -18,6 +18,25 @@ void Fabric::Chip::Tile::Slice::FunctionUnit::updateFu(){
 }
 
 namespace util{
+
+  void init_result(util::calib_result_t& result,
+                   float max_error, bool succ){
+    result.success = succ;
+    result.size = 0;
+    result.max_error = max_error;
+  }
+
+  void add_prop(util::calib_result_t& result,
+                ifc prop, float target, float bias){
+    if(!result.size < MAX_KEYS){
+      error("cutil::add_prop: no more space left for prop");
+    }
+    result.props[result.size] = prop;
+    result.biases[result.size] = bias;
+    result.targets[result.size] = target;
+    result.size += 1;
+  }
+
   float range_to_coeff(range_t rng){
     switch(rng){
     case RANGE_LOW:

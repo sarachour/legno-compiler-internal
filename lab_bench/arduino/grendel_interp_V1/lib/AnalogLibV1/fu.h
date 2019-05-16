@@ -129,6 +129,25 @@ typedef enum {
 } meas_method_t;
 
 namespace util {
+
+#define MAX_KEYS 5
+
+  typedef struct _CALIBRATE_RESULT_T {
+    bool success;
+    unsigned char props[MAX_KEYS];
+    unsigned char size;
+    float max_error;
+    float biases[MAX_KEYS];
+    float targets[MAX_KEYS];
+  } calib_result_t;
+
+ 
+  void init_result(calib_result_t& result,
+                   float max_error, bool success);
+  void add_prop(calib_result_t& result,
+                ifc prop, float target, float bias);
+
+
   float range_to_coeff(range_t range);
   void save_conns(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                   int& n,

@@ -1,3 +1,8 @@
+#ifndef MUL_H
+#define MUL_H
+
+#include "fu.h"
+
 class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
 	public:
@@ -14,8 +19,10 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
     mult_code_t m_codes;
     void update(mult_code_t codes);
     void defaults();
-    bool calibrate (const float max_error);
-		bool calibrateTarget(const float max_error);
+    bool calibrate (util::calib_result_t& result,
+                    const float max_error);
+		bool calibrateTarget(util::calib_result_t& result,
+                         const float max_error);
 	private:
 		class MultiplierInterface;
 		Multiplier (Slice * parentSlice, unit unitId);
@@ -57,3 +64,5 @@ class Fabric::Chip::Tile::Slice::Multiplier::MultiplierInterface : public Fabric
 		MultiplierInterface (Multiplier * parentFu, ifc ifcId) : Interface(parentFu, ifcId), parentMultiplier(parentFu) {};
 		Multiplier * const parentMultiplier;
 };
+
+#endif

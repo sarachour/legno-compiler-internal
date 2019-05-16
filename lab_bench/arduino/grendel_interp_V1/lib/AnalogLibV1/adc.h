@@ -1,3 +1,8 @@
+#ifndef HDAC_ADC_H
+#define HDAC_ADC_H
+
+#include "fu.h"
+
 typedef enum {
 	adcLo = 0,		/*2uA*/
 	adcMid = 0,	/*2uA*/
@@ -36,7 +41,8 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 		bool getException() const;
     void update(adc_code_t codes){m_codes = codes; updateFu();}
     adc_code_t m_codes;
-		bool calibrate (const float max_error);
+		bool calibrate (util::calib_result_t& result,
+                    const float max_error);
     void defaults();
 	private:
 		class AdcIn;
@@ -107,3 +113,4 @@ class Fabric::Chip::Tile::Slice::ChipAdc::AdcIn : public Fabric::Chip::Tile::Sli
 		{};
 		const ChipAdc * const parentAdc;
 };
+#endif

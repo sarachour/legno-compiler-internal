@@ -4,6 +4,7 @@
 #include "Calibrate.h"
 #include "Comm.h"
 #include "Common.h"
+#include "calib_util.h"
 #include <assert.h>
 
 char HCDC_DEMO_BOARD = 6;
@@ -56,6 +57,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   cmd_use_adc_t adcd;
   cmd_connection_t connd;
   block_code_t state;
+  util::calib_result_t result;
   uint8_t byteval;
   char buf[32];
   bool succ;
@@ -216,6 +218,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     break;
   case cmd_type_t::CALIBRATE:
     succ = calibrate::calibrate(fab,
+                                result,
                                 cmd.data.calib.blk,
                                 cmd.data.calib.loc,
                                 cmd.data.calib.max_error);

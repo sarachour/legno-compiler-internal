@@ -165,7 +165,8 @@ void Fabric::Chip::Tile::Slice::Fanout::setParamHelper (
 	);
 }
 
-bool Fabric::Chip::Tile::Slice::Fanout::calibrate (float max_error) {
+bool Fabric::Chip::Tile::Slice::Fanout::calibrate (util::calib_result_t& result,
+                                                   float max_error) {
 
   fanout_code_t codes_self = m_codes;
   cutil::calibrate_t calib;
