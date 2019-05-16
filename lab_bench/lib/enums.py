@@ -27,6 +27,12 @@ class PortName(str,Enum):
         }
         return data[self]
 
+    @staticmethod
+    def from_code(v):
+        data = [PortName.IN0, PortName.IN1, PortName.OUT0,
+                PortName.OUT1, PortName.OUT2]
+        return data[int(v)]
+
     def __lt__(self,other):
         return str(self) < str(other)
 

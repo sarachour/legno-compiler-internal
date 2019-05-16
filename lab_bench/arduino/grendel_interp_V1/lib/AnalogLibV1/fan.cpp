@@ -186,7 +186,6 @@ void Fabric::Chip::Tile::Slice::Fanout::measure(util::calib_result_t& result) {
 	conn.setConn();
 
 	// Serial.print("\nFanout interface calibration");
-
   Connection conn0 = Connection (out0, this->parentSlice->tileOuts[3].in0);
   conn0.setConn();
   float value = util::measure_chip_out(this);

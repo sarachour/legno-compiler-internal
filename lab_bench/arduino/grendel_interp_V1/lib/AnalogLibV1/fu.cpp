@@ -38,12 +38,18 @@ namespace util{
   }
   void add_prop(util::calib_result_t& result,
                 ifc prop, float target, float bias){
-    if(!result.size < MAX_KEYS){
-      error("cutil::add_prop: no more space left for prop");
+    if(result.size >= MAX_KEYS){
+      sprintf(FMTBUF,
+              "cutil::add_prop: no more space left for prop: %d/%d",
+              result.size, MAX_KEYS);
+      error(FMTBUF);
     }
     result.props[result.size] = prop;
     result.errors[result.size] = bias;
     result.targets[result.size] = target;
+    sprintf(FMTBUF, "add-prop prop=%d bias=%f target=%f",
+            prop,bias,target);
+    print_log(FMTBUF);
     result.size += 1;
   }
 

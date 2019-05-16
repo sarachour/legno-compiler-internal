@@ -35,10 +35,7 @@ class CharacterizeCmd(AnalogChipCommand):
             }
         })
 
-    def execute_command(self,env):
-        resp = ArduinoCommand.execute_command(self,env)
-        datum = self._loc.to_json()
-        datum['block_type'] = self._blk.value
+    def insert_result(self,env,resp):
         state_size = int(resp.data(0)[0])
         result_size = int(resp.data(0)[1])
         base = 2
@@ -52,12 +49,27 @@ class CharacterizeCmd(AnalogChipCommand):
                                              state_data)
         result = cstructs.calib_result_t() \
                          .parse(result_data);
-        print(result)
-        input("continue")
-        env.state_db.put(st)
+
+        profile = []
+        print("==== %d TRIALS ====" % result.size)
+        for i in range(0,result.size):
+            err = result.errors[i]
+            targ = result.targets[i]
+            port = enums.PortName.from_code(result.props[i])
+            profile.append((port,targ,err))
+            print("TRIAL %s targ=%f err=%f" % (port,targ,err))
+        #FIXME save cali
+        entry = env.state_db.get(self._blk,self._loc,st.key)
+        env.state_db.put(st,
+                         profile=profile,
+                         success=entry.success,
+                         max_error=entry.tolerance)
         return True
 
 
+    def execute_command(self,env):
+        resp = ArduinoCommand.execute_command(self,env)
+        self.insert_result(env,resp);
 
     @staticmethod
     def parse(args):

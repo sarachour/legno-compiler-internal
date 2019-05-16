@@ -26,38 +26,43 @@ class BlockStateDatabase:
     status text NOT NULL,
     max_error real NOT NULL,
     state text NOT NULL,
+    profile text NOT NULL,
     PRIMARY KEY (cmdkey)
     )
     '''
     self._curs.execute(cmd)
     self._conn.commit()
-    self.keys = ['cmdkey','block','status','max_error','state']
+    self.keys = ['cmdkey','block','status','max_error','state','profile']
 
   def get_all(self):
     cmd = "SELECT * from states;"
     for values in self._curs.execute(cmd):
       yield dict(zip(self.keys,values))
 
-  def put(self,blockstate,success=True,max_error=-1):
+  def put(self,blockstate,success=True,max_error=-1,profile=[]):
     assert(isinstance(blockstate,BlockState))
     key = blockstate.key.to_key()
-    print("PUT %s" % key)
-    value = blockstate.to_cstruct()
     cmd = '''DELETE FROM states WHERE cmdkey="{cmdkey}"''' \
       .format(cmdkey=key)
     self._curs.execute(cmd)
     self._conn.commit()
-    bits = value.hex()
-    status = BlockStateDatabase.Status.SUCCESS if success else BlockStateDatabase.Status.FAILURE
+
+    print("PUT %s" % key)
+    state_bits = blockstate.to_cstruct().hex()
+    profile_bits = bytes(json.dumps(profile), 'utf-8').hex();
+
+    status = BlockStateDatabase.Status.SUCCESS \
+             if success else BlockStateDatabase.Status.FAILURE
     cmd = '''
-    INSERT INTO states (cmdkey,block,status,max_error,state)
-    VALUES ("{cmdkey}","{block}","{status}",{max_error},"{state}")
+    INSERT INTO states (cmdkey,block,status,max_error,state,profile)
+    VALUES ("{cmdkey}","{block}","{status}",{max_error},"{state}","{profile}")
     '''.format(
       cmdkey=key,
       block=blockstate.block.value,
       status=status.value,
       max_error=max_error,
-      state=bits
+      state=state_bits,
+      profile=profile_bits
     )
     self._curs.execute(cmd)
     self._conn.commit()
@@ -82,6 +87,7 @@ class BlockStateDatabase:
     obj = chipstate.BlockState \
                    .toplevel_from_cstruct(blktype,loc,
                                           bytes.fromhex(state))
+    obj.profile = json.loads(bytes.fromhex(data['profile']).decode('utf-8'))
     obj.success = (data['status'] == BlockStateDatabase.Status.SUCCESS.value)
     obj.tolerance = data['max_error']
     return obj
@@ -123,6 +129,7 @@ class BlockState:
     self.loc = loc
     self.success = None
     self.tolerance = None
+    self.profile = []
     if state != None:
       self.from_cstruct(state)
 
@@ -133,22 +140,16 @@ class BlockState:
     obj = typ.parse(data+pad)
     if blk == enums.BlockType.FANOUT:
       st = FanoutBlockState(loc,obj.fanout)
-      print(obj.fanout)
     elif blk == enums.BlockType.INTEG:
       st = IntegBlockState(loc,obj.integ)
-      print(obj.integ)
     elif blk == enums.BlockType.MULT:
       st = MultBlockState(loc,obj.mult)
-      print(obj.mult)
     elif blk == enums.BlockType.DAC:
       st = DacBlockState(loc,obj.dac)
-      print(obj.dac)
     elif blk == enums.BlockType.ADC:
       st = AdcBlockState(loc,obj.adc)
-      print(obj.adc)
     elif blk == enums.BlockType.LUT:
       st = LutBlockState(loc,obj.lut)
-      print(obj.lut)
 
     else:
       raise Exception("unimplemented block : <%s>" \
@@ -385,7 +386,6 @@ class IntegBlockState(BlockState):
   def from_cstruct(self,state):
     inid = enums.PortName.IN0
     outid = enums.PortName.OUT0
-    print(state)
     self.enable = chipdata.BoolType(state.enable)
     self.exception = chipdata.BoolType(state.exception)
 

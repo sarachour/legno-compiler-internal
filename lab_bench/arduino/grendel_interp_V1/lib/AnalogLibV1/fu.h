@@ -130,7 +130,7 @@ typedef enum {
 
 namespace util {
 
-#define MAX_KEYS 5
+#define MAX_KEYS 25
 
   typedef struct {
     float errors[MAX_KEYS];
@@ -141,7 +141,7 @@ namespace util {
 
   typedef union {
     calib_result_t result;
-    unsigned char charbuf[48];
+    unsigned char charbuf[228];
   } ser_calib_result_t;
 
 

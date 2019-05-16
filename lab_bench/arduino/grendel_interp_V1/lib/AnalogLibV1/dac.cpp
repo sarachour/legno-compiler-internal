@@ -266,6 +266,7 @@ void Fabric::Chip::Tile::Slice::Dac::measure(util::calib_result_t& result)
 
   dac_code_t base_code;
   util::calib_result_t base_code_result;
+  util::init_result(base_code_result);
 	if (hiRange) {
     // feed dac output into scaling down multiplier input
 		ref_to_tile.setConn();
@@ -334,6 +335,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& resu
 
   dac_code_t base_code;
   util::calib_result_t base_code_result;
+  util::init_result(base_code_result);
   float target = m_codes.const_val;
 	if (hiRange) {
     // feed dac output into scaling down multiplier input
@@ -400,8 +402,6 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& resu
   codes_self.nmos = m_codes.nmos;
   codes_self.gain_cal = m_codes.gain_cal;
   codes_self.const_code = code+delta;
-  sprintf(FMTBUF,"const code=%d",codes_self.const_code);
-  print_info(FMTBUF);
   update(codes_self);
 	return succ && calib.success;
 }

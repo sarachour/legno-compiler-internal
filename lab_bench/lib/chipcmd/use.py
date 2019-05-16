@@ -46,7 +46,6 @@ class UseCommand(AnalogChipCommand):
         return self._loc
 
     def execute_command(self,env):
-        ArduinoCommand.execute_command(self,env)
         if self.cached:
             dbkey = self.to_key()
             assert(isinstance(dbkey, state.BlockState.Key))
@@ -63,9 +62,9 @@ class UseCommand(AnalogChipCommand):
                           else 0)
 
             cmd = SetStateCmd(self._block,loc,blockstate)
-            print(cmd)
             resp = cmd.execute_command(env)
-            print(resp)
+
+        ArduinoCommand.execute_command(self,env)
 
     def priority(self):
         return Priority.EARLY

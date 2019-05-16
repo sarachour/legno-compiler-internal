@@ -102,6 +102,12 @@ def calibrate(state,obj,recompute=False):
                          obj.loc.slice,
                          obj.loc.index,
                          max_error=obj.max_error).execute(state)
+            print(">> characterize")
+            CharacterizeCmd(obj.block_type,
+                         obj.loc.chip,
+                         obj.loc.tile,
+                         obj.loc.slice,
+                         obj.loc.index).execute(state)
 
         result = state.state_db.get(obj.block_type,obj.loc,dbkey)
         if result.success:

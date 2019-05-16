@@ -398,7 +398,7 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
 
 void Fabric::Chip::Tile::Slice::Integrator::characterize(util::calib_result_t& result){
   util::init_result(result);
-  characterize(result);
+  measure(result);
 }
 void Fabric::Chip::Tile::Slice::Integrator::measure(util::calib_result_t& result)
 {
@@ -434,6 +434,8 @@ void Fabric::Chip::Tile::Slice::Integrator::measure(util::calib_result_t& result
   dac_code_t dac_ic;
   util::calib_result_t dac_0_result;
   util::calib_result_t dac_ic_result;
+  util::init_result(dac_0_result);
+  util::init_result(dac_ic_result);
 
   print_info("making zero dac");
   dac_0 = make_zero_dac(calib, ref_dac,dac_0_result);
@@ -510,6 +512,8 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (util::calib_result_
   dac_code_t dac_ic;
   util::calib_result_t dac_0_result;
   util::calib_result_t dac_ic_result;
+  util::init_result(dac_0_result);
+  util::init_result(dac_ic_result);
 
   print_info("making zero dac");
   dac_0 = make_zero_dac(calib, ref_dac,dac_0_result);
