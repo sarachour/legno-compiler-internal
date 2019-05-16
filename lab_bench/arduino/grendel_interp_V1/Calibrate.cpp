@@ -25,7 +25,7 @@ namespace calibrate {
     case circ::block_type_t::MULT:
       // TODO: indicate if input or output.
       mult = common::get_mult(fab,loc);
-      return mult->characterize(result);
+      mult->characterize(result);
       break;
 
     case circ::block_type_t::TILE_ADC:
@@ -34,7 +34,7 @@ namespace calibrate {
 
     case circ::block_type_t::TILE_DAC:
       dac = common::get_slice(fab,loc.loc)->dac;
-      return dac->characterize(result);
+      dac->characterize(result);
       break;
 
     case circ::block_type_t::INTEG:
@@ -62,7 +62,7 @@ namespace calibrate {
     switch(blk){
     case circ::block_type_t::FANOUT:
       fanout = common::get_fanout(fab,loc);
-      fanout->calibrate(result,max_error);
+      return fanout->calibrate(result,max_error);
       break;
 
     case circ::block_type_t::MULT:
@@ -78,7 +78,7 @@ namespace calibrate {
 
     case circ::block_type_t::TILE_ADC:
       adc = common::get_slice(fab,loc.loc)->adc;
-      adc->calibrate(result,max_error);
+      return adc->calibrate(result,max_error);
       break;
 
     case circ::block_type_t::TILE_DAC:

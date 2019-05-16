@@ -72,8 +72,7 @@ def main_script_calibrate(state,filename,recompute=False):
     for fail in failures:
         print(fail)
 
-    if len(failures) > 0:
-        raise Exception("some calibration steps failed")
+    return len(failures) == 0
 
 def main_script(state,filename):
     with open(filename,'r') as fh:

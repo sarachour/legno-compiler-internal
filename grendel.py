@@ -45,8 +45,10 @@ state.initialize()
 
 if args.calibrate:
     assert(args.script != None)
-    main_script_calibrate(state,args.script,recompute=args.recompute)
-    sys.exit(0)
+    succ = main_script_calibrate(state,args.script,recompute=args.recompute)
+    if not succ:
+        print("[ERROR] some calibration steps failed..")
+        sys.exit(1)
 
 try:
     if args.script == None:

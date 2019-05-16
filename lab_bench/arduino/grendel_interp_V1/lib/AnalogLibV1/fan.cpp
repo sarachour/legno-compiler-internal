@@ -233,7 +233,7 @@ bool Fabric::Chip::Tile::Slice::Fanout::calibrate (util::calib_result_t& result,
 
   bool new_search = true;
   bool calib_failed = true;
-	while (new_search) {
+	while (new_search && calib_failed) {
     float errors[3];
     unsigned char codes[3];
     Connection conn0 = Connection (out0, this->parentSlice->tileOuts[3].in0);
@@ -273,10 +273,11 @@ bool Fabric::Chip::Tile::Slice::Fanout::calibrate (util::calib_result_t& result,
                                                m_codes.nmos,
                                                new_search,
                                                calib_failed);
+    print_info(calib_failed ? "failed" : "succeeded");
 	}
 	conn.brkConn();
-	setEnable ( false );
   cutil::restore_conns(calib);
+	setEnable ( false );
   codes_self.port_cal[out0Id] = m_codes.port_cal[out0Id];
   codes_self.port_cal[out1Id] = m_codes.port_cal[out1Id];
   codes_self.port_cal[out2Id] = m_codes.port_cal[out2Id];

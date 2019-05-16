@@ -219,10 +219,10 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
 
   case cmd_type_t::CHARACTERIZE:
     util::init_result(result.result);
-    //calibrate::characterize(fab,
-    //                            result.result,
-    //                           cmd.data.calib.blk,
-    //                          cmd.data.calib.loc);
+    calibrate::characterize(fab,
+                              result.result,
+                              cmd.data.calib.blk,
+                              cmd.data.calib.loc);
     calibrate::get_codes(fab,
                          cmd.data.state.blk,
                          cmd.data.state.loc,

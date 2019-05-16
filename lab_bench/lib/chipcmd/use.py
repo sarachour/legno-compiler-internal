@@ -46,6 +46,8 @@ class UseCommand(AnalogChipCommand):
         return self._loc
 
     def execute_command(self,env):
+        ArduinoCommand.execute_command(self,env)
+
         if self.cached:
             dbkey = self.to_key()
             assert(isinstance(dbkey, state.BlockState.Key))
@@ -64,7 +66,6 @@ class UseCommand(AnalogChipCommand):
             cmd = SetStateCmd(self._block,loc,blockstate)
             resp = cmd.execute_command(env)
 
-        ArduinoCommand.execute_command(self,env)
 
     def priority(self):
         return Priority.EARLY
@@ -525,7 +526,7 @@ class UseIntegCmd(UseCommand):
     @property
     def max_error(self):
         if self._out_range == RangeType.HIGH:
-            return 0.01
+            return 0.1
         elif self._out_range == RangeType.MED:
             return 0.01
         elif self._out_range == RangeType.LOW:

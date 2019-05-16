@@ -368,10 +368,10 @@ def state_t():
 
 def calib_result_t():
     return cstruct.Struct(
-        "errors" / cstruct.Array(5,cstruct.Float32l),
-        "targets" / cstruct.Array(5,cstruct.Float32l),
+        "errors" / cstruct.Array(25,cstruct.Float32l),
+        "targets" / cstruct.Array(25,cstruct.Float32l),
         "size" / cstruct.Int8ul,
-        "props" / cstruct.Array(5,cstruct.Int8ul)
+        "props" / cstruct.Array(25,cstruct.Int8ul)
     )
 
 #def block_code_t():

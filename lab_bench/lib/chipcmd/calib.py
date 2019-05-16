@@ -261,9 +261,11 @@ class CalibrateCmd(AnalogChipCommand):
         resp = ArduinoCommand.execute_command(self,env)
         datum = self._loc.to_json()
         datum['block_type'] = self._blk.value
+        state_size = int(resp.data(0)[1]);
         success = BoolType.from_code(resp.data(0)[1]).boolean()
         print("success=%s" % success)
-        data = bytes(resp.data(0)[2:])
+        base=2
+        data = bytes(resp.data(0)[base:])
         st = chipstate.BlockState \
                       .toplevel_from_cstruct(self._blk,
                                              self._loc,
