@@ -90,8 +90,6 @@ def profile(state,obj):
             for row in data.get_dataset(state.state_db):
                 print(row)
 
-# use dac 1:3:0 src=0 inv=no rng=m val=0.10 -> -0.35 mV
-# use_integ 1 3 0 sgn + val 0.000000 rng m m debug cached
 def calibrate(state,obj,recompute=False):
     if isinstance(obj,UseCommand):
         dbkey = obj.to_key()
