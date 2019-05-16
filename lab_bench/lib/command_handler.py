@@ -38,6 +38,22 @@ def main_stdout(state):
         execute(state,line)
 
 
+def main_script_profile(state,filename):
+    with open(filename,'r') as fh:
+        for idx,line in enumerate(fh):
+            if line == "quit":
+                sys.exit(0)
+
+            elif line.strip() == "":
+                continue
+
+            if line.startswith("#"):
+                print(line)
+                print("<comment, skipping..>")
+
+            command_obj = cmd.parse(line)
+            cmd.profile(state,command_obj)
+
 def main_script_calibrate(state,filename,recompute=False):
     successes = []
     failures = []

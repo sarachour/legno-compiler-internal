@@ -4,7 +4,10 @@ import os
 import util.config as CONFIG
 #sys.path.insert(0,os.path.abspath("."))
 
-from lab_bench.lib.command_handler import main_stdout, main_script, main_script_calibrate
+from lab_bench.lib.command_handler import main_stdout,  \
+    main_script, \
+    main_script_calibrate, \
+    main_script_profile
 from lab_bench.lib.base_command import ArduinoCommand
 from lab_bench.lib.env import GrendelEnv
 
@@ -20,6 +23,7 @@ parser.add_argument("--validate", action='store_true', help="validate script")
 parser.add_argument("--debug", action='store_true', help="debug script")
 parser.add_argument("--calibrate", action='store_true', help="calibrate uncalibrated components")
 parser.add_argument("--recompute", action='store_true', help="recompute calibration codes")
+parser.add_argument("--profile", action='store_true', help="emit profile data")
 
 
 
@@ -40,6 +44,11 @@ elif args.no_oscilloscope:
 state = GrendelEnv(ip,args.port,
               ard_native=args.native,
               validate=args.validate)
+
+if args.profile:
+    assert(args.script != None)
+    succ = main_script_profile(state,args.script)
+    sys.exit(0)
 
 state.initialize()
 
