@@ -3,6 +3,7 @@ import os
 from enum import Enum
 
 import util.config as config
+import util.util as util
 
 class PathHandler:
     def __init__(self,name,bmark,make_dirs=True):

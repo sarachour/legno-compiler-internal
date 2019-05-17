@@ -22,6 +22,7 @@ class GLProp(Enum):
   CURRENT_INTERVAL = "curr_ival"
   VOLTAGE_INTERVAL = "volt_ival"
   DIGITAL_INTERVAL = "dig_ival"
+  DIGITAL_EXCLUDE = "dig_exclude"
   DIGITAL_QUANTIZE = "dig_quantize"
   MAX_FREQ = "max_freq"
   DIGITAL_SAMPLE = "dig_samp"
@@ -65,6 +66,7 @@ class GlobalCtx:
 
 CTX = GlobalCtx()
 CTX.insert(GLProp.DIGITAL_INTERVAL, (-1.0,1.0-1.0/256))
+CTX.insert(GLProp.DIGITAL_EXCLUDE, (0.0,0.0))
 CTX.insert(GLProp.CURRENT_INTERVAL, (-1.9,1.9))
 CTX.insert(GLProp.VOLTAGE_INTERVAL, (-1.0,1.0))
 CTX.insert(GLProp.DIGITAL_QUANTIZE, 256)
@@ -72,6 +74,9 @@ CTX.insert(GLProp.MAX_FREQ, 200*units.khz)
 CTX.insert(GLProp.DIGITAL_SAMPLE, 3*units.us)
 CTX.insert(GLProp.INBUF_SIZE,1200)
 CTX.insert(GLProp.OUTBUF_SIZE,1e9)
+
+# exclude this range from the digital input.
+CTX.insert(GLProp.DIGITAL_EXCLUDE, (-0.19,0.19), block="multiplier")
 
 CTX.insert(GLProp.MAX_FREQ, 40*units.khz, block='tile_dac')
 CTX.insert(GLProp.COEFF, 2.0, block='tile_dac')

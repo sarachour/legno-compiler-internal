@@ -117,6 +117,9 @@ Fabric::Chip::Tile::Slice::Dac::Dac (
 	out0 = new DacOut (this);
 	tally_dyn_mem <DacOut> ("DacOut");
   defaults();
+  for(int i=0; i < N_CODES; i+=1){
+    is_cached[i] = false;
+  }
 }
 
 /*Set enable, invert, range, clock select*/
@@ -176,8 +179,36 @@ void Fabric::Chip::Tile::Slice::Dac::setParamHelper (
 	);
 }
 
+bool Fabric::Chip::Tile::Slice::Dac::getCached(float val, dac_code_t& code){
+  for(int i = 0; i < N_CODES; i += 1){
+    float this_val = CODE_VALS[i];
+    if(fabs(this_val-val) < 1e-3 && is_cached[i]){
+      sprintf(FMTBUF, "get cache %f in %d", val, i);
+      print_log(FMTBUF);
+      code = code_cache[i];
+      return true;
+    }
+  }
+  sprintf(FMTBUF, "not in cache %f", val);
+  print_log(FMTBUF);
+  return false;
+}
 
+void Fabric::Chip::Tile::Slice::Dac::updateCache(float val, dac_code_t& code){
+  for(int i = 0; i < N_CODES; i += 1){
+    float this_val = CODE_VALS[i];
+    if(fabs(this_val-val) < 1e-3){
+      sprintf(FMTBUF, "upd cache %f in %d", val, i);
+      print_log(FMTBUF);
+      is_cached[i] = true;
+      code_cache[i] = code;
+      return;
+    }
+  }
+  sprintf(FMTBUF, "cannot update %f", val);
+  print_log(FMTBUF);
 
+}
 void Fabric::Chip::Tile::Slice::Dac::characterize(util::calib_result_t& result)
 {
   if(m_codes.source == DSRC_MEM){
@@ -221,12 +252,14 @@ float make_reference_dac(cutil::calibrate_t& calib,
   float base_constant = floor((fabs(dac->m_codes.const_val)-1e-5)*10.0);
   base_constant *= dac->m_codes.const_val < 0 ? 1.0 : -1.0;
   float target = dac->m_codes.const_val*10.0 + base_constant;
+  if(ref_dac->getCached(base_constant,config)){
+    ref_dac->update(config);
+    return target;
+  }
   config = cutil::make_val_dac(calib, ref_dac,
                                base_constant,
                                result);
-  print_log("== reference dac ==");
-  util::print_result(result, LOG_LEVEL);
-  print_log("====");
+  ref_dac->updateCache(base_constant,config);
   ref_dac->update(config);
   return target;
 }

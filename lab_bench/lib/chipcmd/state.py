@@ -189,6 +189,7 @@ class BlockState:
     self.success = None
     self.tolerance = None
     self.profile = []
+    self.state = state
     if state != None:
       self.from_cstruct(state)
 
@@ -349,6 +350,23 @@ class DacBlockState(BlockState):
                              self.const_val)
 
 
+  def header(self):
+    GH = ['inv','rng','source']
+    ZH = ["value"]
+    YH = ["bias","noise"]
+    XH = ["output"]
+    return GH,ZH,XH,YH
+
+  def to_rows(self,obj):
+    G = [obj.inv.value,obj.rng,obj.source]
+    Z = [obj.const_val]
+    for port,target,bias,noise in obj.profile:
+      GS = G + [port]
+      Y = [bias,math.sqrt(noise)]
+      X = [target]
+      yield GS,Z,X,Y
+
+
   def to_cstruct(self):
     return cstructs.state_t().build({
       "dac": {
@@ -414,7 +432,7 @@ class MultBlockState(BlockState):
     ZH = ["gain"]
     YH = ["bias","noise"]
     XH = ["output"]
-    return GH,ZH,YH,ZH
+    return GH,ZH,XH,YH
 
   def to_rows(self,obj):
     G = ordered(obj.invs) \

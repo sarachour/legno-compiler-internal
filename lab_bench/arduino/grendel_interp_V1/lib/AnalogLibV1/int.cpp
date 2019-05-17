@@ -446,18 +446,17 @@ void Fabric::Chip::Tile::Slice::Integrator::measure(util::calib_result_t& result
 
   dac_code_t dac_0;
   dac_code_t dac_ic;
-  util::calib_result_t dac_0_result;
-  util::calib_result_t dac_ic_result;
-  util::init_result(dac_0_result);
-  util::init_result(dac_ic_result);
+  util::calib_result_t interim_result;
 
   print_info("making zero dac");
-  dac_0 = make_zero_dac(calib, ref_dac,dac_0_result);
+  util::init_result(interim_result);
+  dac_0 = make_zero_dac(calib, ref_dac,interim_result);
   if (hiRange) {
     print_info("high range! making reference dac");
+    util::init_result(interim_result);
     dac_ic = make_val_dac(calib,ref_dac,
                           -10.0*m_codes.ic_val*ic_sign,
-                          dac_ic_result);
+                          interim_result);
     ref_to_tile.setConn();
   }
   integ_to_tile.setConn();
@@ -524,18 +523,17 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (util::calib_result_
 
   dac_code_t dac_0;
   dac_code_t dac_ic;
-  util::calib_result_t dac_0_result;
-  util::calib_result_t dac_ic_result;
-  util::init_result(dac_0_result);
-  util::init_result(dac_ic_result);
+  util::calib_result_t interim_result;
 
   print_info("making zero dac");
-  dac_0 = make_zero_dac(calib, ref_dac,dac_0_result);
+  util::init_result(interim_result);
+  dac_0 = make_zero_dac(calib, ref_dac,interim_result);
   if (hiRange) {
     print_info("high range! making reference dac");
+    util::init_result(interim_result);
     dac_ic = make_val_dac(calib,ref_dac,
                           -10.0*m_codes.ic_val*ic_sign,
-                          dac_ic_result);
+                          interim_result);
     update_pos = -1;
     ref_to_tile.setConn();
   }
@@ -557,7 +555,7 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (util::calib_result_
 
     succ &= helper_find_cal_out0(this,max_error);
     if(succ)
-      succ &= helper_find_cal_in0(this,max_error*2.0);
+      succ &= helper_find_cal_in0(this,max_error);
     if(succ)
       succ &= helper_find_cal_gain(this,ref_dac,max_error,code,
                                    hiRange ? 0.0: m_codes.ic_val*ic_sign,

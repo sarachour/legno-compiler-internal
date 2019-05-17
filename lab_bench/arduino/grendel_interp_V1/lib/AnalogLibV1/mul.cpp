@@ -279,56 +279,6 @@ bool helper_find_port_cal_in1(Fabric::Chip::Tile::Slice::Dac* dac,
 
 
 
-float helper_get_pmos(Fabric::Chip::Tile::Slice::Dac* dac,
-                      Fabric::Chip::Tile::Slice::Fanout* fan,
-                      Fabric::Chip::Tile::Slice::Multiplier* mult,
-                      dac_code_t& dac_code_1,
-                      float max_error){
-  range_t outrng = mult->m_codes.range[out0Id];
-  range_t in0rng = mult->m_codes.range[in0Id];
-  range_t in1rng = mult->m_codes.range[in1Id];
-  Fabric::Chip::Connection dac_to_fan = Fabric::Chip::Connection ( dac->out0,
-                                       fan->in0 );
-  Fabric::Chip::Connection fan_to_mult_in0 = Fabric::Chip::Connection ( fan->out0, mult->in0 );
-  //conn6
-  Fabric::Chip::Connection fan_to_mult_in1 = Fabric::Chip::Connection ( fan->out1, mult->in1 );
-
-  /* find the pmos value by minimizing the error
-     of the computation -1*-1 */
-  dac->update(dac_code_1);
-  dac->setEnable(true);
-  // conn4 : dac_to_fan
-  // conn5 : fan_to_mult_in0
-  // conn6: fan_to_mult_in1
-
-  dac_to_fan.setConn();
-  fan_to_mult_in0.setConn();
-  fan_to_mult_in1.setConn();
-
-  mult->out0->setRange(RANGE_MED);
-  mult->in0->setRange(RANGE_MED);
-  mult->in1->setRange(RANGE_MED);
-  mult->setVga(false);
-  // find best effort pmos
-  float value = util::meas_chip_out(mult);
-  // update nmos code
-  //binsearch::test_stab(mult->m_codes.gain_cal,fabs(delta),
-  //                    max_error,calib_failed);
-  sprintf(FMTBUF, "pmos-get pmos=%d value=%f meas=%f",
-          mult->m_codes.pmos,
-          1.0,
-          value);
-  print_log(FMTBUF);
-
-  mult->out0->setRange(outrng);
-  mult->in0->setRange(in0rng);
-  mult->in1->setRange(in1rng);
-
-  dac_to_fan.brkConn();
-  fan_to_mult_in0.brkConn();
-  fan_to_mult_in1.brkConn();
-  return value;
-}
 bool helper_find_gain_cal(float gain,
                           Fabric::Chip::Tile::Slice::Multiplier* mult,
                           Fabric::Chip::Tile::Slice::Dac* val_dac,
@@ -337,8 +287,11 @@ bool helper_find_gain_cal(float gain,
                           bool hiRange,
                           float target,
                           dac_code_t& dac_ref_target,
+                          dac_code_t& dac_ref_target_half,
                           dac_code_t& dac_code_0_1,
+                          dac_code_t& dac_code_0_05,
                           dac_code_t& dac_code_1,
+                          dac_code_t& dac_code_0_5,
                           float max_error){
 
 	Fabric::Chip::Connection ref_to_tileout = Fabric::Chip::Connection ( ref_dac->out0, tileout->in0 );
@@ -360,24 +313,57 @@ bool helper_find_gain_cal(float gain,
   mult->setGain(gain);
   dac_to_mult_in0.setConn();
   float error;
+  bool succ = true;
   binsearch::find_bias(mult,
                        target,
                        mult->m_codes.gain_cal,
                        error,
                        MEAS_CHIP_OUTPUT
                        );
-  sprintf(FMTBUF, "calibrate gain=%f target=%f meas=%f",gain,target,target+error);
-  print_log(FMTBUF);
   // update nmos code
-  binsearch::test_stab(mult->m_codes.gain_cal,fabs(error),
-                       max_error,calib_failed);
+  binsearch::test_stab(mult->m_codes.gain_cal,
+                       fabs(error),
+                       max_error,
+                       calib_failed);
+  succ &= !calib_failed;
+  sprintf(FMTBUF, "calibrate full gain=%f target=%f meas=%f succ=%s",
+          gain,
+          target,
+          target+error,
+          calib_failed ? "no" : "yes");
+  print_log(FMTBUF);
 
+  // compute fidelity at midpoint. If this is truly an appropriate gain,
+  // it should be able to compute the gain at another value.
+  if(mult->m_codes.range[in0Id] == RANGE_LOW){
+    val_dac->update(dac_code_0_05);
+  }
+  else{
+    val_dac->update(dac_code_0_5);
+  }
+  if(hiRange){
+    ref_dac->update(dac_ref_target_half);
+  }
+  error = util::meas_chip_out(mult) - target*0.5;
+  binsearch::test_stab(mult->m_codes.gain_cal,
+                       fabs(error),
+                       max_error,
+                       calib_failed);
+  succ &= !calib_failed;
+  sprintf(FMTBUF, "calibrate half gain=%f target=%f meas=%f succ=%s",
+          gain,
+          target*0.5,
+          target*0.5+error,
+          calib_failed ? "no" : "yes");
+
+  print_log(FMTBUF);
+  print_log("---");
   //teardown
   if (hiRange) {
     ref_to_tileout.brkConn();
   }
   dac_to_mult_in0.brkConn();
-  return !calib_failed;
+  return succ;
 }
 
 
@@ -449,27 +435,25 @@ void Fabric::Chip::Tile::Slice::Multiplier::measure_vga(util::calib_result_t& re
   dac_code_t dac_code_in0;
   dac_code_t dac_code_0;
 
-  util::calib_result_t dac_code_in0_result;
-  util::calib_result_t dac_code_ref_result;
-  util::calib_result_t dac_code_0_result;
-  util::init_result(dac_code_in0_result);
-  util::init_result(dac_code_ref_result);
-  util::init_result(dac_code_0_result);
+  util::calib_result_t interim_result;
+  util::init_result(interim_result);
   dac_code_0 = cutil::make_zero_dac(calib, ref_dac,
-                                    dac_code_0_result);
+                                    interim_result);
   if(hiRange){
     if(fabs(target_vga) > 10.0){
       sprintf(FMTBUF, "can't fit %f", target_vga);
       error(FMTBUF);
     }
+    util::init_result(interim_result);
     dac_code_ref = cutil::make_val_dac(calib, ref_dac,
                                        -target_vga,
-                                       dac_code_ref_result);
+                                       interim_result);
     ref_to_tileout.setConn();
   }
+  util::init_result(interim_result);
   dac_code_in0 = cutil::make_val_dac(calib, val1_dac,
                                      in0scf*in0val,
-                                     dac_code_in0_result);
+                                     interim_result);
 
   ref_dac->update(dac_code_ref);
   val1_dac->update(dac_code_in0);
@@ -547,32 +531,29 @@ void Fabric::Chip::Tile::Slice::Multiplier::measure_mult(util::calib_result_t& r
   dac_code_t dac_code_in1;
   dac_code_t dac_code_0;
 
-  util::calib_result_t dac_code_in0_result;
-  util::calib_result_t dac_code_in1_result;
-  util::calib_result_t dac_code_ref_result;
-  util::calib_result_t dac_code_0_result;
-  util::init_result(dac_code_in0_result);
-  util::init_result(dac_code_in1_result);
-  util::init_result(dac_code_ref_result);
-  util::init_result(dac_code_0_result);
+  util::calib_result_t interim_result;
+  util::init_result(interim_result);
   dac_code_0 = cutil::make_zero_dac(calib, ref_dac,
-                                    dac_code_0_result);
+                                    interim_result);
   if(hiRange){
     if(fabs(target_mult) > 10.0){
       sprintf(FMTBUF, "can't fit %f", target_mult);
       error(FMTBUF);
     }
+    util::init_result(interim_result);
     dac_code_ref = cutil::make_val_dac(calib, ref_dac,
                                        -target_mult,
-                                       dac_code_ref_result);
+                                       interim_result);
     ref_to_tileout.setConn();
   }
+  util::init_result(interim_result);
   dac_code_in0 = cutil::make_val_dac(calib, val1_dac,
                                      in0scf*in0val,
-                                     dac_code_in0_result);
+                                     interim_result);
+  util::init_result(interim_result);
   dac_code_in1 = cutil::make_val_dac(calib, val2_dac,
                                      in1scf*in1val,
-                                     dac_code_in1_result);
+                                     interim_result);
 
   ref_dac->update(dac_code_ref);
   val1_dac->update(dac_code_in0);
@@ -629,11 +610,9 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (util::calib_result_
   mult_code_t codes_self = m_codes;
   dac_code_t codes_dac = val_dac->m_codes;
   dac_code_t codes_ref = ref_dac->m_codes;
-  fanout_code_t codes_fan = parentSlice->fans[cFanId].m_codes;
 
   // backup connections
   cutil::buffer_mult_conns(calib,this);
-  cutil::buffer_fanout_conns(calib,&parentSlice->fans[cFanId]);
   cutil::buffer_dac_conns(calib,ref_dac);
   cutil::buffer_dac_conns(calib,val_dac);
   cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
@@ -645,43 +624,55 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (util::calib_result_
                                                parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
 
-  util::calib_result_t fan_result;
   mult_to_tileout.setConn();
 	tileout_to_chipout.setConn();
-  parentSlice->fans[cFanId].calibrate(fan_result, 0.01);
 
   dac_code_t dac_code_0;
-  dac_code_t dac_code_1;
-  dac_code_t dac_code_0_1;
-  dac_code_t dac_ref_targ_vga;
-  dac_code_t dac_ref_targ_mult;
+  dac_code_t dac_code_1; // the entire range
+  dac_code_t dac_code_0_1; // half the entire range, for the hiRange signal
+  dac_code_t dac_code_0_5; // half the range
+  dac_code_t dac_code_0_05; // half the range, for loRange signal
+  dac_code_t dac_ref_targ_vga; // reference signal, for full range
+  dac_code_t dac_ref_targ_vga_half; // reference signal, for half range
 
-  util::calib_result_t dac_code_0_result;
-  util::calib_result_t dac_code_1_result;
-  util::calib_result_t dac_code_0_1_result;
-  util::calib_result_t dac_ref_targ_vga_result;
+  util::calib_result_t interim_result;
 
-  util::init_result(dac_code_0_result);
-  util::init_result(dac_code_1_result);
-  util::init_result(dac_code_0_1_result);
-  util::init_result(dac_ref_targ_vga_result);
 
-  dac_code_1 = cutil::make_one_dac(calib,val_dac,
-                                   dac_code_1_result);
-  dac_code_0 = cutil::make_zero_dac(calib, val_dac,
-                                    dac_code_0_result);
   if(hiRange){
+    util::init_result(interim_result);
     dac_ref_targ_vga = cutil::make_val_dac(calib,
                                        ref_dac,
                                            -target_vga,
-                                           dac_ref_targ_vga_result);
+                                           interim_result);
+    util::init_result(interim_result);
+    dac_ref_targ_vga_half = cutil::make_val_dac(calib,
+                                           ref_dac,
+                                           -target_vga*0.5,
+                                           interim_result);
+
   }
+
   // done computing preset codes
   if(loRange){
+    util::init_result(interim_result);
     dac_code_0_1 = cutil::make_val_dac(calib,
                                        val_dac,0.1,
-                                       dac_code_0_1_result);
+                                       interim_result);
+    util::init_result(interim_result);
+    dac_code_0_05 = cutil::make_val_dac(calib,
+                                        val_dac,0.05,
+                                        interim_result);
+
   }
+  util::init_result(interim_result);
+  dac_code_1 = cutil::make_one_dac(calib,val_dac,
+                                   interim_result);
+  util::init_result(interim_result);
+  dac_code_0_5 = cutil::make_val_dac(calib,val_dac,0.5,
+                                     interim_result);
+  util::init_result(interim_result);
+  dac_code_0 = cutil::make_zero_dac(calib, val_dac,
+                                    interim_result);
 
   bool found_code = false;
   mult_code_t best_code = m_codes;
@@ -707,22 +698,20 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (util::calib_result_
       for(int pmos=0; pmos<=7; pmos+=1){
         m_codes.pmos = pmos;
         setAnaIrefPmos();
-        float pmos_gain = helper_get_pmos(val_dac,
-                                          &parentSlice->fans[cFanId],
-                                          this,
-                                          dac_code_1,
-                                          max_error);
         pmos_succ = helper_find_gain_cal(gain,
-                                     this,
-                                     val_dac,
-                                     ref_dac,
-                                     &parentSlice->tileOuts[3],
-                                     hiRange,
-                                     hiRange ? 0.0 : target_vga,
-                                     dac_ref_targ_vga,
-                                     dac_code_0_1,
-                                     dac_code_1,
-                                     max_error);
+                                         this,
+                                         val_dac,
+                                         ref_dac,
+                                         &parentSlice->tileOuts[3],
+                                         hiRange,
+                                         hiRange ? 0.0 : target_vga,
+                                         dac_ref_targ_vga,
+                                         dac_ref_targ_vga_half,
+                                         dac_code_0_1,
+                                         dac_code_0_05,
+                                         dac_code_1,
+                                         dac_code_0_5,
+                                         max_error);
         if(pmos_succ){
           break;
         }
@@ -733,7 +722,6 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (util::calib_result_
       best_code = m_codes;
       found_code = true;
     }
-		parentSlice->fans[cFanId].setEnable(false);
     parentSlice->dac->setEnable(false);
 
     m_codes.nmos += 1;
@@ -758,7 +746,6 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (util::calib_result_
 
   val_dac->update(codes_dac);
   ref_dac->update(codes_ref);
-  parentSlice->fans[unitId==unitMulL?0:1].update(codes_fan);
   update(codes_self);
 
 	return found_code && calib.success;

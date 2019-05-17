@@ -272,7 +272,7 @@ class CalibrateCmd(AnalogChipCommand):
                                              self._loc,
                                              data)
         env.state_db.put(st,success=success,max_error=self._max_error)
-        return True
+        return success
 
 
     def __repr__(self):

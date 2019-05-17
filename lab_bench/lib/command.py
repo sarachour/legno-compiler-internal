@@ -87,13 +87,14 @@ def profile(state,obj):
         if (state.state_db.has(dbkey)):
             data = state.state_db.get(dbkey)
             print(obj)
+            print(data.state)
             data.write_dataset(state.state_db)
 
 def calibrate(state,obj,recompute=False):
     if isinstance(obj,UseCommand):
         dbkey = obj.to_key()
-        if not (state.state_db.has(obj.block_type,obj.loc,dbkey)) or \
-           not state.state_db.get(obj.block_type,obj.loc,dbkey).success or \
+        if not (state.state_db.has(dbkey)) or \
+           not state.state_db.get(dbkey).success or \
            recompute:
             obj.cached = False
             obj.execute(state)
@@ -102,20 +103,24 @@ def calibrate(state,obj,recompute=False):
             print(">> set state")
             obj.execute(state)
             print(">> calibrate [%f]" % obj.max_error)
-            CalibrateCmd(obj.block_type,
-                         obj.loc.chip,
-                         obj.loc.tile,
-                         obj.loc.slice,
-                         obj.loc.index,
-                         max_error=obj.max_error).execute(state)
-            print(">> characterize")
-            CharacterizeCmd(obj.block_type,
-                         obj.loc.chip,
-                         obj.loc.tile,
-                         obj.loc.slice,
-                         obj.loc.index).execute(state)
+            succ = CalibrateCmd(obj.block_type,
+                                obj.loc.chip,
+                                obj.loc.tile,
+                                obj.loc.slice,
+                                obj.loc.index,
+                                max_error=obj.max_error).execute(state)
+            if succ:
+                print(">> characterize")
+                CharacterizeCmd(obj.block_type,
+                            obj.loc.chip,
+                            obj.loc.tile,
+                            obj.loc.slice,
+                            obj.loc.index).execute(state)
 
-        result = state.state_db.get(obj.block_type,obj.loc,dbkey)
+            else:
+                print("CALIBRATE FAILED")
+
+        result = state.state_db.get(dbkey)
         if result.success:
             print("[[SUCCESS!]]")
             return True

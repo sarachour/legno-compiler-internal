@@ -17,6 +17,9 @@ typedef enum {
 } dacSel;
 
 
+#define N_CODES 5
+const float CODE_VALS[] = {1.0,3.0,5.0,7.0,9.0};
+
 class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
 
@@ -43,6 +46,8 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 		bool calibrateTarget (util::calib_result_t& result,
                           const float max_error);
     void defaults();
+    bool getCached(float value,dac_code_t& this_code);
+    void updateCache(float value,dac_code_t& new_code);
 	private:
 		class DacOut;
     void measure(util::calib_result_t& result);
@@ -63,6 +68,8 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 		void setAnaIrefNmos () const override;
 		void setAnaIrefPmos () const override {};
 
+    dac_code_t code_cache[N_CODES];
+    bool is_cached[N_CODES];
 };
 
 class Fabric::Chip::Tile::Slice::Dac::DacOut : public Fabric::Chip::Tile::Slice::FunctionUnit::Interface  {

@@ -11,13 +11,17 @@ import chip.hcdc.globals as glb
 
 def model():
     prob = MathProg("aud-lpf")
+    prob.set_digital_snr(0.0)
+    prob.set_analog_snr(0.0)
 
+    tc = 0.2
     params = {
-        'fill': 0.08,
-        'leak': 0.08,
+        'fill': tc,
+        'leak': tc,
         'IC':0
     }
 
+    print("cutoff: %f" % (params['fill']*1/(2*3.14159)*200*1000))
     # cutoff = 1/(2*pi*RC) = tau*1/(2*pi)
     # tau = 1/RC
     # diffeq: dZ/dt = tau*X - tau*Z

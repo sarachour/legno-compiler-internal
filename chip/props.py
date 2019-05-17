@@ -99,6 +99,7 @@ class DigitalProperties(Properties):
         self._sample_rate = (None,units.unknown)
         # for continuous
         self._bandwidth = (None,None,units.unknown)
+        self._exclude = (0,0)
 
     def __repr__(self):
         clk = "Synch(kind=%s, rate=%s, samps=%s, bw=%s)" % \
@@ -116,6 +117,14 @@ class DigitalProperties(Properties):
         self._sample_rate = (sample_rate,unit)
         self._max_samples = max_samples
         return self
+
+    def set_exclude(self,ival):
+        lb,ub = ival
+        self._exclude = (lb,ub)
+
+    def exclude(self):
+        lb,ub = self._exclude
+        return IRange(lb,ub)
 
     def interval(self):
         lb = min(self.values())

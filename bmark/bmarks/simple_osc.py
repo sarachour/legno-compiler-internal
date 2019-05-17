@@ -18,7 +18,8 @@ def model(name,omega,menv_name='t20'):
     }
     # t20
     prob = MathProg("micro-osc-%s" % name)
-    prob.set_digital_snr(10.0)
+    prob.set_digital_snr(0.0)
+    prob.set_analog_snr(0.0)
     P = parse_diffeq("V", "P0", ":a", params)
     V = parse_diffeq("{omega}*P", "V0", ":b", params)
 
