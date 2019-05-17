@@ -368,20 +368,9 @@ def state_t():
 
 def calib_result_t():
     return cstruct.Struct(
-        "errors" / cstruct.Array(25,cstruct.Float32l),
-        "targets" / cstruct.Array(25,cstruct.Float32l),
+        "bias" / cstruct.Array(25,cstruct.Float32l),
+        "noise" / cstruct.Array(25,cstruct.Float32l),
+        "target" / cstruct.Array(25,cstruct.Float32l),
         "size" / cstruct.Int8ul,
-        "props" / cstruct.Array(25,cstruct.Int8ul)
+        "port" / cstruct.Array(25,cstruct.Int8ul)
     )
-
-#def block_code_t():
-#    return cstruct.Union(None,
-#                         "lut"/ lut_code_t(),
-#                         "fanout" / fanout_code_t(),
-#                         "dac" / dac_code_t(),
-#                         "adc" / adc_code_t(),
-#                         "mult" / mult_code_t(),
-#                         "integ" / integ_code_t()
-#    )
-
-

@@ -225,48 +225,58 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrate (util::calib_result_t& res
 	conn2.setConn();
 	conn3.setConn();
 
-  bool new_search = true;
-  bool calib_failed = true;
-
+  bool found_code = false;
+  integ_code_t best_code = m_codes;
 	m_codes.nmos = 0;
 	setAnaIrefNmos ();
 
-  while (new_search) {
-    float errors[2];
-    unsigned char codes[2];
+  while (m_codes.nmos <= 7 && ! found_code) {
+    bool calib_failed;
+    bool succ = true;
+    float error;
+
     sprintf(FMTBUF, "nmos=%d", m_codes.nmos);
     print_debug(FMTBUF);
-    Serial.println(m_codes.nmos);
+
     m_codes.cal_enable[out0Id] = true;
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[out0Id],
-                         errors[0],
+                         error,
                          MEAS_CHIP_OUTPUT);
-    codes[0] = m_codes.port_cal[out0Id];
+    binsearch::test_stab(m_codes.port_cal[out0Id],
+                         error, max_error,
+                         calib_failed);
+    succ &= !calib_failed;
     m_codes.cal_enable[out0Id] = false;
+
+
     m_codes.cal_enable[in0Id] = true;
     binsearch::find_bias(this, 0.0,
                          m_codes.port_cal[in0Id],
-                         errors[1],
+                         error,
                          MEAS_CHIP_OUTPUT);
-    codes[1] = m_codes.port_cal[in0Id];
+    binsearch::test_stab(m_codes.port_cal[in0Id],
+                         error, max_error,
+                         calib_failed);
+    succ &= !calib_failed;
     m_codes.cal_enable[in0Id] = false;
-    binsearch::multi_test_stab_and_update_nmos(this,
-                                               codes, errors,
-                                               max_error,
-                                               2,
-                                               m_codes.nmos,
-                                               new_search,
-                                               calib_failed);
+    if(succ){
+      found_code = true;
+      best_code = m_codes;
+    }
+    m_codes.nmos += 1;
+    if(m_codes.nmos <= 7){
+      setAnaIrefNmos();
+    }
   }
   conn2.brkConn();
 	conn3.brkConn();
 	setEnable(false);
-  codes_self.nmos = m_codes.nmos;
-  codes_self.port_cal[out0Id] = m_codes.port_cal[out0Id];
-  codes_self.port_cal[in0Id] = m_codes.port_cal[in0Id];
+  codes_self.nmos = best_code.nmos;
+  codes_self.port_cal[out0Id] = best_code.port_cal[out0Id];
+  codes_self.port_cal[in0Id] = best_code.port_cal[in0Id];
   update(codes_self);
-  return !calib_failed;
+  return found_code;
 
 }
 void helper_get_cal_in0(Fabric::Chip::Tile::Slice::Integrator * integ,
@@ -274,9 +284,10 @@ void helper_get_cal_in0(Fabric::Chip::Tile::Slice::Integrator * integ,
   integ->m_codes.cal_enable[out0Id] = false;
   integ->m_codes.cal_enable[in0Id] = true;
   integ->update(integ->m_codes);
-  float value = util::measure_chip_out(integ);
+  float mean,variance;
+  util::meas_dist_chip_out(integ,mean,variance);
   integ->m_codes.cal_enable[in0Id] = false;
-  util::add_prop(result,in0Id, 0.0, value);
+  util::add_prop(result,in0Id, 0.0, mean,variance);
 }
 bool helper_find_cal_in0(Fabric::Chip::Tile::Slice::Integrator * integ,
                          float max_error){
@@ -305,9 +316,10 @@ void helper_get_cal_out0(Fabric::Chip::Tile::Slice::Integrator * integ,
   integ->m_codes.cal_enable[in0Id] = false;
   integ->m_codes.cal_enable[out0Id] = true;
   integ->update(integ->m_codes);
-  float value = util::measure_chip_out(integ);
+  float mean,variance;
+  util::meas_dist_chip_out(integ,mean,variance);
   integ->m_codes.cal_enable[out0Id] = false;
-  util::add_prop(result,out0Id, 0.0, value);
+  util::add_prop(result,out0Id, 0.0, mean,variance);
 }
 bool helper_find_cal_out0(Fabric::Chip::Tile::Slice::Integrator * integ,
                           float max_error){
@@ -341,11 +353,13 @@ bool helper_get_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
   bool hiRange = (integ->m_codes.range[out0Id] == RANGE_HIGH);
   ref_dac->update(ref_codes);
   integ->update(integ->m_codes);
-  float value = util::measure_chip_out(integ);
+  float mean,variance;
+  util::meas_dist_chip_out(integ,mean,variance);
   util::add_prop(result,
                  out0Id,
                  integ->m_codes.ic_val*ic_range*ic_sign,
-                 value-target);
+                 mean-target,
+                 variance);
 }
 bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
                           Fabric::Chip::Tile::Slice::Dac * ref_dac,

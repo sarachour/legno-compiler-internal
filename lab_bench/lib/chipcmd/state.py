@@ -372,9 +372,9 @@ class MultBlockState(BlockState):
         + ordered(obj.ranges) \
         + [obj.vga.boolean()]
     Z = [obj.gain_val]
-    for port,target,error in obj.profile:
-      GS = G + [port.value]
-      Y = [error]
+    for port,target,bias,noise in obj.profile:
+      GS = G + [port]
+      Y = [bias,noise]
       X = [target]
       yield GS,Z,X,Y
 

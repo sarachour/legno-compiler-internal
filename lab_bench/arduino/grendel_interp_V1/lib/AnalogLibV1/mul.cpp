@@ -275,61 +275,6 @@ bool helper_find_port_cal_in1(Fabric::Chip::Tile::Slice::Dac* dac,
 
 }
 
-bool helper_find_pmos(Fabric::Chip::Tile::Slice::Dac* dac,
-                      Fabric::Chip::Tile::Slice::Fanout* fan,
-                      Fabric::Chip::Tile::Slice::Multiplier* mult,
-                      dac_code_t& dac_code_1,
-                      float max_error){
-  print_debug("pmos calibrate");
-  range_t outrng = mult->m_codes.range[out0Id];
-  range_t in0rng = mult->m_codes.range[in0Id];
-  range_t in1rng = mult->m_codes.range[in1Id];
-  Fabric::Chip::Connection dac_to_fan = Fabric::Chip::Connection ( dac->out0,
-                                       fan->in0 );
-  Fabric::Chip::Connection fan_to_mult_in0 = Fabric::Chip::Connection ( fan->out0, mult->in0 );
-  //conn6
-  Fabric::Chip::Connection fan_to_mult_in1 = Fabric::Chip::Connection ( fan->out1, mult->in1 );
-
-  /* find the pmos value by minimizing the error
-     of the computation -1*-1 */
-  dac->update(dac_code_1);
-  dac->setEnable(true);
-  // conn4 : dac_to_fan
-  // conn5 : fan_to_mult_in0
-  // conn6: fan_to_mult_in1
-
-  dac_to_fan.setConn();
-  fan_to_mult_in0.setConn();
-  fan_to_mult_in1.setConn();
-
-  mult->out0->setRange(RANGE_MED);
-  mult->in0->setRange(RANGE_MED);
-  mult->in1->setRange(RANGE_MED);
-  mult->setVga(false);
-  // find best effort pmos
-  float error;
-  binsearch::find_pmos(mult,1.0,
-                       mult->m_codes.pmos,
-                       error,
-                       MEAS_CHIP_OUTPUT);
-  // update nmos code
-  //binsearch::test_stab(mult->m_codes.gain_cal,fabs(delta),
-  //                    max_error,calib_failed);
-  sprintf(FMTBUF, "calibrate pmos=%d target=%f meas=%f",
-          mult->m_codes.pmos,
-          1.0,
-          1.0+error);
-  print_log(FMTBUF);
-
-  mult->out0->setRange(outrng);
-  mult->in0->setRange(in0rng);
-  mult->in1->setRange(in1rng);
-
-  dac_to_fan.brkConn();
-  fan_to_mult_in0.brkConn();
-  fan_to_mult_in1.brkConn();
-  return true;
-}
 
 
 
@@ -365,7 +310,7 @@ float helper_get_pmos(Fabric::Chip::Tile::Slice::Dac* dac,
   mult->in1->setRange(RANGE_MED);
   mult->setVga(false);
   // find best effort pmos
-  float value = util::measure_chip_out(mult);
+  float value = util::meas_chip_out(mult);
   // update nmos code
   //binsearch::test_stab(mult->m_codes.gain_cal,fabs(delta),
   //                    max_error,calib_failed);
@@ -528,9 +473,12 @@ void Fabric::Chip::Tile::Slice::Multiplier::measure_vga(util::calib_result_t& re
 
   ref_dac->update(dac_code_ref);
   val1_dac->update(dac_code_in0);
-  float value = util::measure_chip_out(this);
-  float target = hiRange ? 0 : target_vga;
-  util::add_prop(result,out0Id,target_vga,value-target);
+  float mean=0.0,variance=0.0;
+  util::meas_dist_chip_out(this,mean,variance);
+  float target = hiRange ? 0.0 : target_vga;
+  util::add_prop(result,out0Id,target_vga,
+                 mean-target,
+                 variance);
 
   dac_to_in0.brkConn();
   mult_to_tileout.brkConn();
@@ -629,10 +577,11 @@ void Fabric::Chip::Tile::Slice::Multiplier::measure_mult(util::calib_result_t& r
   ref_dac->update(dac_code_ref);
   val1_dac->update(dac_code_in0);
   val2_dac->update(dac_code_in1);
-  float value = util::measure_chip_out(this);
+  float mean,variance;
+  util::meas_dist_chip_out(this,mean,variance);
   float target = hiRange ? 0 : target_mult;
   util::add_prop(result,out0Id,target_mult,
-                 value-target);
+                 mean-target,variance);
 
   dac_to_in0.brkConn();
   dac_to_in1.brkConn();

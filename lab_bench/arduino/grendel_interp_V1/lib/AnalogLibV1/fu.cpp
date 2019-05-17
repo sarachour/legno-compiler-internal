@@ -22,33 +22,35 @@ namespace util{
   void init_result(util::calib_result_t& result){
     result.size = 0;
     for(int i=0; i < MAX_KEYS; i += 1){
-      result.props[i] = i;
-      result.errors[i] = (float)i;
-      result.targets[i] = (float)i;
+      result.port[i] = 0;
+      result.noise[i] = 0.0;
+      result.bias[i] = 0.0;
+      result.target[i] = 0.0;
     }
   }
 
   void print_result(util::calib_result_t& result, int level){
     for(int i=0; i < result.size; i+= 1){
-      sprintf("port=%s target=%f error=%f", result.props[i],
-              result.targets[i],result.errors[i]);
+      sprintf("port=%s target=%f bias=%f noise=%f", result.port[i],
+              result.target[i],result.bias[i],result.noise[i]);
       print_level(FMTBUF,level);
     }
 
   }
   void add_prop(util::calib_result_t& result,
-                ifc prop, float target, float bias){
+                ifc prop, float target, float bias, float noise){
     if(result.size >= MAX_KEYS){
       sprintf(FMTBUF,
               "cutil::add_prop: no more space left for prop: %d/%d",
               result.size, MAX_KEYS);
       error(FMTBUF);
     }
-    result.props[result.size] = prop;
-    result.errors[result.size] = bias;
-    result.targets[result.size] = target;
-    sprintf(FMTBUF, "add-prop prop=%d bias=%f target=%f",
-            prop,bias,target);
+    result.port[result.size] = prop;
+    result.bias[result.size] = bias;
+    result.noise[result.size] = noise;
+    result.target[result.size] = target;
+    sprintf(FMTBUF, "add-prop prop=%d bias=%f noise=%f target=%f",
+            prop,bias,noise,target);
     print_log(FMTBUF);
     result.size += 1;
   }
@@ -71,14 +73,25 @@ namespace util{
   }
 
 
-  float measure_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu){
+  float meas_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu){
     Fabric* fab = fu->getFabric();
     fu->updateFu();
     fab->cfgCommit();
     float value = fu->getChip()->tiles[3].slices[2].chipOutput
-      ->analogAvg(CAL_REPS);
+      ->analogAvg();
     return value;
   }
+
+
+  void meas_dist_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                     float& mean, float& variance){
+    Fabric* fab = fu->getFabric();
+    fu->updateFu();
+    fab->cfgCommit();
+    fu->getChip()->tiles[3].slices[2].chipOutput
+      ->analogDist(mean,variance);
+  }
+
 }
 namespace binsearch {
   void bin_search(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
@@ -130,91 +143,6 @@ namespace binsearch {
     }
   }
 
-  void test_stab_and_update_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                                 unsigned char code,
-                                 float error,
-                                 const float max_error,
-                                 unsigned char& nmos,
-                                 bool& new_search,
-                                 bool& calib_failed)
-  {
-    new_search = false;
-    test_stab(code,error,max_error,calib_failed);
-    if(not calib_failed){
-      return;
-    }
-    if (code==0 || code==1) {
-      if(decrement_iref(nmos)) new_search=true;
-      else calib_failed = true;
-    } else if (code==63 || code==62) {
-      if(increment_iref(nmos)) new_search=true;
-      else calib_failed = true;
-    }
-    if(!new_search){
-      calib_failed = true;
-      }
-    fu->setAnaIrefNmos();
-  }
-
-  void multi_test_stab(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                       unsigned char* codes,
-                       float* errors,
-                       const float max_error,
-                       int n_vals,
-                       bool& calib_failed)
-  {
-    calib_failed = false;
-    for(int i = 0; i < n_vals; i+= 1){
-      bool this_failed;
-      test_stab(codes[i], errors[i], max_error, this_failed);
-      calib_failed |= this_failed;
-    }
-  }
-
-  int get_nmos_delta(unsigned char code){
-    if(code == 0 || code == 1){
-      return -1;
-    }
-    else if(code == 63 || code == 62){
-      return 1;
-    }
-    return 0;
-  }
-  void multi_test_stab_and_update_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                                       unsigned char* codes,
-                                       float* errors,
-                                       const float max_error,
-                                       int n_vals,
-                                       unsigned char& nmos,
-                                       bool& new_search,
-                                       bool& calib_failed)
-    {
-      new_search = false;
-      calib_failed = false;
-      float avg_code = 0;
-      for(int i = 0; i < n_vals; i+= 1){
-        bool this_failed;
-        test_stab(codes[i], errors[i], max_error, this_failed);
-        calib_failed |= this_failed;
-        avg_code += codes[i];
-      }
-      if(not calib_failed){
-        return;
-      }
-      char code = avg_code/n_vals;
-      if (code==0 || code==1) {
-        if(decrement_iref(nmos)) new_search=true;
-        else calib_failed = true;
-      }
-      else if (code==63 || code==62) {
-        if(increment_iref(nmos)) new_search=true;
-        else calib_failed = true;
-      }
-      if(!new_search){
-        calib_failed = true;
-      }
-      fu->setAnaIrefNmos();
-  }
 
   bool find_bias_and_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                           float target,
@@ -289,8 +217,7 @@ namespace binsearch {
       {
       case MEAS_CHIP_OUTPUT:
         value = fu->getChip()->tiles[3].slices[2].chipOutput
-          ->analogAvg(CAL_REPS);
-        //value /= FULL_SCALE;
+          ->analogAvg();
         return value;
 
       case MEAS_ADC:

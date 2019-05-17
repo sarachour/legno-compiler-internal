@@ -181,6 +181,7 @@ void Fabric::Chip::Tile::Slice::Fanout::measure(util::calib_result_t& result) {
                               parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
 
+  float mean,variance;
 	Connection conn = Connection (parentSlice->tileOuts[3].out0,
                                 parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0);
 	conn.setConn();
@@ -188,23 +189,23 @@ void Fabric::Chip::Tile::Slice::Fanout::measure(util::calib_result_t& result) {
 	// Serial.print("\nFanout interface calibration");
   Connection conn0 = Connection (out0, this->parentSlice->tileOuts[3].in0);
   conn0.setConn();
-  float value = util::measure_chip_out(this);
+  util::meas_dist_chip_out(this,mean,variance);
   conn0.brkConn();
-  util::add_prop(result,out0Id, 0.0, value);
+  util::add_prop(result,out0Id, 0.0, mean,variance);
 
   Connection conn1 = Connection (out1, this->parentSlice->tileOuts[3].in0);
   conn1.setConn();
-  value = util::measure_chip_out(this);
+  util::meas_dist_chip_out(this,mean,variance);
   conn1.brkConn();
-  util::add_prop(result,out1Id,0.0,value);
+  util::add_prop(result,out1Id,0.0,mean,variance);
 
   Connection conn2 = Connection (out2, this->parentSlice->tileOuts[3].in0);
   conn1.setConn();
   setThird(true);
-  value = util::measure_chip_out(this);
+  util::meas_dist_chip_out(this,mean,variance);
   setThird(false);
   conn2.brkConn();
-  util::add_prop(result,out2Id,0.0,value);
+  util::add_prop(result,out2Id,0.0,mean,variance);
 
 	conn.brkConn();
 	setEnable ( false );
@@ -231,27 +232,38 @@ bool Fabric::Chip::Tile::Slice::Fanout::calibrate (util::calib_result_t& result,
 
 	// Serial.print("\nFanout interface calibration");
 
-  bool new_search = true;
-  bool calib_failed = true;
-	while (new_search && calib_failed) {
-    float errors[3];
-    unsigned char codes[3];
-    Connection conn0 = Connection (out0, this->parentSlice->tileOuts[3].in0);
+  bool found_code = false;
+  m_codes.nmos = 0;
+  setAnaIrefNmos();
+  fanout_code_t best_code = m_codes;
+	while (m_codes.nmos <=7 && !found_code) {
+    bool calib_failed = true;
+    float error;
+    bool succ = true;
+    Connection conn0 = Connection (out0,
+                                   this->parentSlice->tileOuts[3].in0);
     conn0.setConn();
     binsearch::find_bias(this,0.0,
                          m_codes.port_cal[out0Id],
-                         errors[0],
+                         error,
                          MEAS_CHIP_OUTPUT);
-    codes[0] = m_codes.port_cal[out0Id];
+    binsearch::test_stab(m_codes.port_cal[out0Id],
+                        error, max_error,
+                        calib_failed);
+    succ &= !calib_failed;
     conn0.brkConn();
 
-    Connection conn1 = Connection (out1, this->parentSlice->tileOuts[3].in0);
+    Connection conn1 = Connection (out1,
+                                   this->parentSlice->tileOuts[3].in0);
     conn1.setConn();
     binsearch::find_bias(this,0.0,
                          m_codes.port_cal[out1Id],
-                         errors[1],
+                         error,
                          MEAS_CHIP_OUTPUT);
-    codes[1] = m_codes.port_cal[out1Id];
+    binsearch::test_stab(m_codes.port_cal[out1Id],
+                         error, max_error,
+                         calib_failed);
+    succ &= !calib_failed;
     conn1.brkConn();
 
     Connection conn2 = Connection (out2, this->parentSlice->tileOuts[3].in0);
@@ -259,48 +271,35 @@ bool Fabric::Chip::Tile::Slice::Fanout::calibrate (util::calib_result_t& result,
     setThird(true);
     binsearch::find_bias(this,0.0,
                          m_codes.port_cal[out2Id],
-                         errors[2],
+                         error,
                          MEAS_CHIP_OUTPUT);
-    codes[2] = m_codes.port_cal[out2Id];
+    binsearch::test_stab(m_codes.port_cal[out2Id],
+                         error, max_error,
+                         calib_failed);
+    succ &= !calib_failed;
     setThird(false);
     conn2.brkConn();
     // update nmos for multiple stability statements
-    binsearch::multi_test_stab_and_update_nmos(this,
-                                               codes,
-                                               errors,
-                                               max_error,
-                                               3,
-                                               m_codes.nmos,
-                                               new_search,
-                                               calib_failed);
-    print_info(calib_failed ? "failed" : "succeeded");
+    if(succ){
+      found_code = true;
+      best_code = m_codes;
+    }
+    m_codes.nmos += 1;
+    if(m_codes.nmos <= 7){
+      setAnaIrefNmos();
+    }
 	}
 	conn.brkConn();
   cutil::restore_conns(calib);
 	setEnable ( false );
-  codes_self.port_cal[out0Id] = m_codes.port_cal[out0Id];
-  codes_self.port_cal[out1Id] = m_codes.port_cal[out1Id];
-  codes_self.port_cal[out2Id] = m_codes.port_cal[out2Id];
+  codes_self.nmos = best_code.nmos;
+  codes_self.port_cal[out0Id] = best_code.port_cal[out0Id];
+  codes_self.port_cal[out1Id] = best_code.port_cal[out1Id];
+  codes_self.port_cal[out2Id] = best_code.port_cal[out2Id];
   this->update(codes_self);
-	return !calib_failed;
+	return found_code && calib.success;
 }
-/*
-void Fabric::Chip::Tile::Slice::Fanout::FanoutOut::findBias (
-                                                             unsigned char & offsetCode,
-                                                             bool& new_search,
-                                                             bool& calib_failed
-) {
-	if (ifcId==out2Id) parentFanout->setThird(true);
-	Connection conn = Connection ( this, parentFu->parentSlice->tileOuts[3].in0 );
-	conn.setConn();
 
-	findBiasHelper (offsetCode,parentFanout->m_codes.nmos,new_search,calib_failed);
-
-	conn.brkConn();
-	if (ifcId==out2Id) parentFanout->setThird(false);
-
-}
-*/
 
 void Fabric::Chip::Tile::Slice::Fanout::setAnaIrefNmos () const {
 	unsigned char selRow=0;

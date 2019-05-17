@@ -53,13 +53,14 @@ class CharacterizeCmd(AnalogChipCommand):
         profile = []
         print("==== %d TRIALS ====" % result.size)
         for i in range(0,result.size):
-            err = result.errors[i]
-            targ = result.targets[i]
-            port = enums.PortName.from_code(result.props[i])
-            profile.append((port,targ,err))
-            print("TRIAL %s targ=%f err=%f" % (port,targ,err))
+            bias = result.bias[i]
+            noise = result.noise[i]
+            targ = result.target[i]
+            port = enums.PortName.from_code(result.port[i])
+            profile.append((port,targ,bias,noise))
+            print("TRIAL %s targ=%f bias=%f noise=%f (var)" % (port,targ,bias,noise))
         #FIXME save cali
-        entry = env.state_db.get(self._blk,self._loc,st.key)
+        entry = env.state_db.get(st.key)
         env.state_db.put(st,
                          profile=profile,
                          success=entry.success,

@@ -45,8 +45,8 @@ class Fabric::Chip::Tile::Slice::ChipOutput : public Fabric::Chip::Tile::Slice::
 	public:
 	/*Measure the reading of an ADC from multiple samples*/
 	/*Measure the differential voltage from a pair of ADC from multiple samples*/
-	float analogAvg ( unsigned int samples) const;
-	void analogDist ( unsigned int samples, float& mean, float& variance) const;
+	float analogAvg () const;
+	void analogDist (float& mean, float& variance) const;
 
 
 	private:

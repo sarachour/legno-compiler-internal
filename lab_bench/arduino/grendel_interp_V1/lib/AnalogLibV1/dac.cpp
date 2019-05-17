@@ -238,7 +238,7 @@ void Fabric::Chip::Tile::Slice::Dac::measure(util::calib_result_t& result)
     return;
   }
   bool hiRange = (m_codes.range == RANGE_HIGH);
-
+  float scf = util::range_to_coeff(m_codes.range);
   cutil::calibrate_t calib;
   cutil::initialize(calib);
 
@@ -266,20 +266,24 @@ void Fabric::Chip::Tile::Slice::Dac::measure(util::calib_result_t& result)
 
   dac_code_t base_code;
   util::calib_result_t base_code_result;
+  float target = m_codes.const_val*scf;
   util::init_result(base_code_result);
 	if (hiRange) {
     // feed dac output into scaling down multiplier input
 		ref_to_tile.setConn();
-    make_reference_dac(calib,
+    target = make_reference_dac(calib,
                        base_code_result,
                        base_code, this,ref_dac);
 	}
   dac_to_tile.setConn();
 	tile_to_chip.setConn();
 
-  float meas = util::measure_chip_out(this);
-  float target = m_codes.const_val*util::range_to_coeff(m_codes.range);
-  util::add_prop(result, out0Id, target, meas-target);
+  float mean=0.0,variance=0.0;
+  util::meas_dist_chip_out(this,mean,variance);
+  util::add_prop(result, out0Id,
+                 m_codes.const_val*scf,
+                 mean-target,
+                 variance);
 
   if (hiRange) {
     // feed dac output into scaling down multiplier input

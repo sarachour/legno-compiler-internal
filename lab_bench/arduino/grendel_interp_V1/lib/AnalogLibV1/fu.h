@@ -133,15 +133,16 @@ namespace util {
 #define MAX_KEYS 25
 
   typedef struct {
-    float errors[MAX_KEYS];
-    float targets[MAX_KEYS];
+    float bias[MAX_KEYS];
+    float noise[MAX_KEYS];
+    float target[MAX_KEYS];
     unsigned char size;
-    unsigned char props[MAX_KEYS];
+    unsigned char port[MAX_KEYS];
   } calib_result_t;
 
   typedef union {
     calib_result_t result;
-    unsigned char charbuf[228];
+    unsigned char charbuf[328];
   } ser_calib_result_t;
 
 
@@ -149,7 +150,7 @@ namespace util {
 
   void init_result(calib_result_t& result);
   void add_prop(calib_result_t& result,
-                ifc prop, float target, float bias);
+                ifc prop, float target, float bias, float noise);
 
 
   const char * ifc_to_string(ifc id);
@@ -159,7 +160,8 @@ namespace util {
                   int& n,
                   int n_max);
 
-  float measure_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu);
+  float meas_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu);
+  void meas_dist_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu, float& mean, float& variance);
 }
 
 namespace binsearch {
@@ -172,46 +174,16 @@ namespace binsearch {
                           meas_method_t method
      );
 
-  void find_pmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                 float target,
-                 unsigned char & code,
-                 float & error,
-                 meas_method_t method);
-
   void find_bias(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                  float target,
                  unsigned char & code,
                  float & error,
                  meas_method_t method);
 
-  void multi_test_stab(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                       unsigned char* codes,
-                       float* errors,
-                       const float max_error,
-                       int n_vals,
-                       bool& calib_failed);
-
-  void multi_test_stab_and_update_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                                       unsigned char* codes,
-                                       float* errors,
-                                       const float max_error,
-                                       int n_vals,
-                                       unsigned char& nmos,
-                                       bool& new_search,
-                                       bool& calib_failed);
-
-  void test_stab_and_update_nmos( Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                                 unsigned char code,
-                                 float error,
-                                  const float max_error,
-                                 unsigned char& nmos,
-                                 bool& new_search,
-                                 bool& calib_failed);
   void test_stab(unsigned char code,
                  float error,
                  const float max_error,
                  bool& calib_failed);
-
   void test_iref(unsigned char code);
   bool is_valid_iref(unsigned char code);
 

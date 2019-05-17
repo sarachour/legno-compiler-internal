@@ -4,10 +4,6 @@
 // R^2 = 0.999464
 #ifdef _DUE
 
-// for differential channels
-#define ALPHA -0.001592251629
-#define BETA 3.267596063219
-
 // for single-ended channels
 #define ADC_CONVERSION (3300.0/4096.0)
 //#define ADC_FULLSCALE (1208.0)
@@ -15,18 +11,45 @@
 //should be 1208, but it isn't for some reason.
 #define ADC_FULLSCALE (1000.0)
 #define ADC_MIN 0
+#define SAMPLES 10
 
-void Fabric::Chip::Tile::Slice::ChipOutput::analogDist (
-                                                        unsigned int n,
-                                                        float& mean,
-                                                        float& variance
-                                                        ) const {
+float measure_dist(int ardAnaDiffChan, float& variance){
+  unsigned int pos[SAMPLES];
+  unsigned int neg[SAMPLES];
+  const unsigned int samples = SAMPLES;
+  unsigned int pinmap[] = {7,6,5,4,3,2,1,0};
+  for(unsigned int index = 0; index < samples; index++){
+    pos[index] = analogRead(pinmap[ardAnaDiffChan+1]);
+    neg[index] = analogRead(pinmap[ardAnaDiffChan]);
+  }
 
+  float values[SAMPLES];
+  for(unsigned int index = 0; index < samples; index++){
+    int diff = pos[index] - neg[index];
+    float value = ADC_CONVERSION*((float)(diff));
+    value /= ADC_FULLSCALE;
+    values[index] = value;
+  }
 
-  error("FIXME: reimplement");
+  float mean = 0.0;
+  for(unsigned int index = 0; index < samples; index++){
+    mean += values[index];
+  }
+  mean /= (float) samples;
+  variance = 0.0;
+  for(unsigned int index=0; index < samples; index++){
+    variance += pow((values[index] - mean),2.0);
+  }
+  variance /= (float) (samples-1);
+
+  sprintf(FMTBUF,"chan=%d mean=%f var=%f", ardAnaDiffChan,
+          mean,variance);
+  print_debug(FMTBUF);
+  return mean;
 }
 
-float single_ended(int ardAnaDiffChan, unsigned int samples){
+
+float measure(int ardAnaDiffChan){
   unsigned long adcPos = 0;
   unsigned long adcNeg = 0;
   unsigned int pinmap[] = {7,6,5,4,3,2,1,0};
@@ -35,18 +58,8 @@ float single_ended(int ardAnaDiffChan, unsigned int samples){
     A0 A1 A2 A3 A4 A5 A6 A7
     N  P  N  P  N  P  N  P
     7  6  5  4  3  2  1  0
-   */
-  /*
-  for (unsigned int index = 0; index < samples; index++) {
-    while ((ADC->ADC_ISR & 0x1000000) == 0);
-
-    // ADC_CDR[7] = A0
-    // ADC_CDR[6] = A1
-    adcPos += ADC->ADC_CDR[ardAnaDiffChan+1];
-    adcNeg += ADC->ADC_CDR[ardAnaDiffChan];
-  }
   */
-  samples = 10;
+  const unsigned int samples = SAMPLES;
   for(unsigned int index = 0; index < samples; index++){
     adcPos += analogRead(pinmap[ardAnaDiffChan+1]);
     adcNeg += analogRead(pinmap[ardAnaDiffChan]);
@@ -55,37 +68,23 @@ float single_ended(int ardAnaDiffChan, unsigned int samples){
   float neg_mv = ADC_CONVERSION * ((float)adcNeg/(float)samples);
   float value = (pos_mv-neg_mv)/ADC_FULLSCALE;
   sprintf(FMTBUF,"chan=%d pos=%f neg=%f diff=%f val=%f", ardAnaDiffChan,
-         pos_mv, neg_mv,pos_mv-neg_mv,value);
+          pos_mv, neg_mv,pos_mv-neg_mv,value);
   print_debug(FMTBUF);
-  if(neg_mv < ADC_MIN){
-    sprintf(FMTBUF, "broken negative channel [%d,%d] %f",
-            ardAnaDiffChan,
-            ardAnaDiffChan+1,
-            neg_mv);
-    error(FMTBUF);
-  }
-  if(pos_mv < ADC_MIN){
-    sprintf(FMTBUF, "broken positive channel [%d,%d] %f",
-            ardAnaDiffChan,
-            ardAnaDiffChan+1,
-            pos_mv);
-    error(FMTBUF);
-  }
   return value;
 }
-float differential(int ardAnaDiffChan, unsigned int samples){
-  unsigned long adcDiff = 0;
-  for (unsigned int index = 0; index < samples; index++) {
-    // while ((ADC->ADC_ISR & 0x1000000) == 0);
-    adcDiff += ADC->ADC_CDR[ardAnaDiffChan];
-  }
-  float value = ALPHA*((float)adcDiff/(float)samples)+BETA;
-  return value;
+void Fabric::Chip::Tile::Slice::ChipOutput::analogDist (
+                                                        float& mean,
+                                                        float& variance
+                                                        ) const {
+
+
+  mean = measure_dist(ardAnaDiffChan,variance);
 }
+
+
 /*Measure the reading of an ADC from multiple samples*/
-float Fabric::Chip::Tile::Slice::ChipOutput::analogAvg (unsigned int samples) const
+float Fabric::Chip::Tile::Slice::ChipOutput::analogAvg () const
 {
-  //return differential(ardAnaDiffChan, samples);
-  return single_ended(ardAnaDiffChan, samples);
+  return measure(ardAnaDiffChan);
 }
 #endif
