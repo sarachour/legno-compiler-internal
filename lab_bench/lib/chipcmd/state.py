@@ -5,17 +5,24 @@ from lab_bench.lib.chipcmd.data import *
 from enum import Enum
 import sqlite3
 import util.config as CFG
+import util.util as util
 import json
 import binascii
+import math
 
-def ordered(dict_):
+def keys(dict_):
   k = list(dict_.keys())
   k.sort()
+  return k
+
+def ordered(dict_):
+  k = keys(dict_)
   v = []
   for key in k:
     v.append(dict_[key])
 
   return v
+
 
 class BlockStateDatabase:
 
@@ -195,6 +202,39 @@ class BlockState:
       for group,param,value,error in self.to_rows(obj):
         yield group,param,value,error
 
+  def write_dataset(self,db):
+    filename = "%s/%s_%d_%d_%d_%d.json" % (CFG.DATASET_DIR,
+                                           self.block.value,
+                                           self.loc.chip,
+                                           self.loc.tile,
+                                           self.loc.slice,
+                                           self.loc.index)
+    dataset = {"groups":[], "params":[],
+               "expected":[],"observed":[]}
+    G,P,E,O = [],[],[],[]
+    for g,p,e,o in self.get_dataset(db):
+      G.append(g)
+      P.append(p)
+      E.append(e)
+      O.append(o)
+
+    GH,PH,EH,OH = self.header()
+    dataset = {}
+    dataset['groups'] = {'fields': GH, 'values': G}
+    dataset['params'] = {'fields':PH, 'values': P}
+    dataset['expected'] = {'fields':EH, 'values': E}
+    dataset['observed'] = {'fields':OH, 'values': O}
+    objstr = json.dumps(dataset)
+    util.mkdir_if_dne(CFG.DATASET_DIR)
+    with open(filename,'w') as fh:
+      fh.write(objstr)
+
+
+  def header(self,obj):
+    raise NotImplementedError
+
+
+
   def to_rows(self,obj):
     raise NotImplementedError
 
@@ -367,6 +407,15 @@ class MultBlockState(BlockState):
   def __init__(self,loc,state):
     BlockState.__init__(self,enums.BlockType.MULT,loc,state)
 
+  def header(self):
+    GH = keys(self.invs) + \
+         keys(self.ranges) + \
+         ["vga"]
+    ZH = ["gain"]
+    YH = ["bias","noise"]
+    XH = ["output"]
+    return GH,ZH,YH,ZH
+
   def to_rows(self,obj):
     G = ordered(obj.invs) \
         + ordered(obj.ranges) \
@@ -374,7 +423,7 @@ class MultBlockState(BlockState):
     Z = [obj.gain_val]
     for port,target,bias,noise in obj.profile:
       GS = G + [port]
-      Y = [bias,noise]
+      Y = [bias,math.sqrt(noise)]
       X = [target]
       yield GS,Z,X,Y
 

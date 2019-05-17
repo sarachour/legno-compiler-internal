@@ -4,6 +4,12 @@ import zlib
 import numpy as np
 import binascii
 import time
+import util.config as CONFIG
+import os
+
+def mkdir_if_dne(dirname):
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
 
 class Timer:
 
@@ -28,7 +34,9 @@ class Timer:
         return "%s mean=%s std=%s" % (self._name,mean,std)
 
     def save(self):
-        with open("time_%s.txt" % self._name,'w') as fh:
+        mkdir_if_dne(CONFIG.TIME_DIR)
+        filename = "%s/time_%s.txt" % (CONFIG.TIME_DIR,self._name)
+        with open(filename,'w') as fh:
             fh.write("%s\n" % self._name)
             for run in self._runs:
                 fh.write("%f\n" % run)

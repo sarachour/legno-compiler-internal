@@ -21,8 +21,8 @@ class PathHandler:
             self.GRENDEL_FILE_DIR,
             self.PLOT_DIR
         ]:
-          if make_dirs and not os.path.exists(path):
-            os.makedirs(path)
+          if make_dirs:
+              util.mkdir_if_dne(path)
 
         self._name = name
         self._bmark = bmark

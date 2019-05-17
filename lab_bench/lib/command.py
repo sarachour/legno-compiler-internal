@@ -87,8 +87,7 @@ def profile(state,obj):
         if (state.state_db.has(dbkey)):
             data = state.state_db.get(dbkey)
             print(obj)
-            for row in data.get_dataset(state.state_db):
-                print(row)
+            data.write_dataset(state.state_db)
 
 def calibrate(state,obj,recompute=False):
     if isinstance(obj,UseCommand):
