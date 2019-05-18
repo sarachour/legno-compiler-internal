@@ -128,14 +128,14 @@ namespace binsearch {
 
   void test_stab(unsigned char code,
                  float error,
-                 const float min_error,
+                 const float max_error,
                  bool& calib_failed){
     //const float MIN_ERROR = 1e-2;
     sprintf(FMTBUF,
             "result: bias=%d error=%f max-error=%f",
-            code, error, min_error);
+            code, error, max_error);
     print_debug(FMTBUF);
-    if(fabs(error) <= min_error){
+    if(fabs(error) <= max_error){
       calib_failed = false;
     }
     else{

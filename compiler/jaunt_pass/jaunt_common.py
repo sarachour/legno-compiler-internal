@@ -51,10 +51,10 @@ def decl_scale_variables(jenv,circ):
                 jenv.eq(jop.JVar(orig_scf),jop.JVar(copy_scf),'jc-copy')
 
     # set scaling factors connected by a wire equal
-    for sblk,sloc,sport,dblk,dloc,dport in circ.conns():
-        s_scf = jenv.get_scvar(sblk,sloc,sport)
-        d_scf = jenv.get_scvar(dblk,dloc,dport)
-        jenv.eq(jop.JVar(s_scf),jop.JVar(d_scf),'jc-conn')
+    #for sblk,sloc,sport,dblk,dloc,dport in circ.conns():
+    #    s_scf = jenv.get_scvar(sblk,sloc,sport)
+    #    d_scf = jenv.get_scvar(dblk,dloc,dport)
+    #    jenv.eq(jop.JVar(s_scf),jop.JVar(d_scf),'jc-conn')
 
 def _to_phys_time(circ,time):
     return time/circ.board.time_constant
@@ -99,36 +99,38 @@ def digital_op_range_constraint(jenv,phys,prop,mscale,hscale,mrng,hwrng,hwexc,an
                                                 jop.expo(hscale,-1.0)),
                                       mrng.upper, hwrng.upper,
                                       'jcom-digital-oprange-%s' % annot)
-    if mrng.upper >= 0:
-        jaunt_util.lower_bound_constraint(jenv,
-                                          jop.JMult(mscale,
-                                                  jop.expo(hscale,-1.0)),
-                                          mrng.upper, hwexc.upper,
-                                          'jcom-digital-u-opexc-%s' % annot)
-    else:
-        jaunt_util.upper_bound_constraint(jenv,
-                                          jop.JMult(mscale,
-                                                jop.expo(hscale,-1.0)),
-                                          mrng.upper, hwexc.upper,
-                                          'jcom-digital-u-opexc-%s' % annot)
+    if abs(mrng.upper) > 0:
+        if mrng.upper >= 0:
+            jaunt_util.lower_bound_constraint(jenv,
+                                            jop.JMult(mscale,
+                                                    jop.expo(hscale,-1.0)),
+                                            mrng.upper, hwexc.upper,
+                                            'jcom-digital-upos-opexc-%s' % annot)
+        else:
+            jaunt_util.upper_bound_constraint(jenv,
+                                            jop.JMult(mscale,
+                                                    jop.expo(hscale,-1.0)),
+                                            mrng.upper, hwexc.upper,
+                                            'jcom-digital-uneg-opexc-%s' % annot)
 
     jaunt_util.lower_bound_constraint(jenv,
                                       jop.JMult(mscale,
                                                 jop.expo(hscale,-1.0)),
                                       mrng.lower, hwrng.lower,
                                       'jcom-digital-oprange-%s' % annot)
-    if mrng.lower >= 0:
-        jaunt_util.lower_bound_constraint(jenv,
-                                          jop.JMult(mscale,
-                                                    jop.expo(hscale,-1.0)),
-                                          mrng.lower, hwexc.lower,
-                                          'jcom-digital-l-opexc-%s' % annot)
-    else:
-        jaunt_util.upper_bound_constraint(jenv,
-                                          jop.JMult(mscale,
-                                                    jop.expo(hscale,-1.0)),
-                                          mrng.lower, hwexc.lower,
-                                          'jcom-digital-l-opexc-%s' % annot)
+    if abs(mrng.lower) > 0:
+        if mrng.lower >= 0:
+            jaunt_util.lower_bound_constraint(jenv,
+                                            jop.JMult(mscale,
+                                                        jop.expo(hscale,-1.0)),
+                                            mrng.lower, hwexc.lower,
+                                            'jcom-digital-lpos-opexc-%s' % annot)
+        else:
+            jaunt_util.upper_bound_constraint(jenv,
+                                            jop.JMult(mscale,
+                                                        jop.expo(hscale,-1.0)),
+                                            mrng.lower, hwexc.lower,
+                                            'jcom-digital-lneg-opexc-%s' % annot)
 
 def noise_model_to_noise_expr(jenv,circ,phys):
     def to_magnitude(blk,loc,port):

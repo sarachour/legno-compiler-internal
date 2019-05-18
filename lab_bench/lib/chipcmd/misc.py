@@ -39,12 +39,13 @@ class DefaultsCommand(ArduinoCommand):
         return self.name()
 
 
-class WriteLUTCmd(UseCommand):
+class WriteLUTCmd(ArduinoCommand):
 
     def __init__(self,chip,tile,slice,variables,expr):
-        UseCommand.__init__(self,
-                            enums.BlockType.LUT,
-                            CircLoc(chip,tile,slice))
+        ArduinoCommand.__init__(self)
+        self._loc = CircLoc(chip,tile,slice)
+        self._block = enums.BlockType.LUT
+
 
         if not self._loc.index is None:
             self.fail("lut has no index <%d>" % loc.index)
@@ -55,9 +56,9 @@ class WriteLUTCmd(UseCommand):
             raise Exception('unexpected number of variables: %s' % variables)
 
 
-    def priority(self):
-        return Priority.FIRST
-
+    @property
+    def loc(self):
+        return self._loc
 
     @property
     def expr(self):
@@ -161,9 +162,10 @@ class GetADCStatusCmd(AnalogChipCommand):
 
     @staticmethod
     def parse(args):
-        result = parse_pattern_block(args,0,0,0,
-                                     GetADCStatusCmd.name(),
-                                     debug=False)
+        result = parse_pattern_use_block(args,0,0,0,
+                                         GetADCStatusCmd.name(),
+                                         debug=False,
+                                         db=False)
         if result.success:
             data = result.value
             return GetADCStatusCmd(

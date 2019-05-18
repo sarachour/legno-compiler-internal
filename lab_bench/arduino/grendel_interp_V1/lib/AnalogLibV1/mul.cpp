@@ -223,7 +223,12 @@ bool helper_find_port_cal_out0(Fabric::Chip::Tile::Slice::Dac* dac,
   binsearch::test_stab(mult->m_codes.port_cal[out0Id],fabs(delta),
                        max_error,calib_failed);
 
-
+  sprintf(FMTBUF, "calibrate out0 target=%f meas=%f max=%f succ=%s",
+          0.0,
+          delta,
+          max_error,
+          calib_failed ? "no" : "yes");
+  print_log(FMTBUF);
   return !calib_failed;
 
 }
@@ -240,9 +245,17 @@ bool helper_find_port_cal_in0(Fabric::Chip::Tile::Slice::Dac* dac,
                        mult->m_codes.port_cal[in0Id],
                        delta,
                        MEAS_CHIP_OUTPUT);
+
   // update nmos code
   binsearch::test_stab(mult->m_codes.port_cal[in0Id],fabs(delta),
                        max_error,calib_failed);
+
+  sprintf(FMTBUF, "calibrate in0 target=%f meas=%f max=%f succ=%s",
+          0.0,
+          delta,
+          max_error,
+          calib_failed ? "no" : "yes");
+  print_log(FMTBUF);
 
   return !calib_failed;
 }
@@ -268,7 +281,12 @@ bool helper_find_port_cal_in1(Fabric::Chip::Tile::Slice::Dac* dac,
   // update nmos code
   binsearch::test_stab(mult->m_codes.port_cal[in1Id],fabs(delta),
                        max_error,calib_failed);
-
+  sprintf(FMTBUF, "calibrate in1 target=%f meas=%f max=%f succ=%s",
+          0.0,
+          delta,
+          max_error,
+          calib_failed ? "no" : "yes");
+  print_log(FMTBUF);
   conn_in1.brkConn();
   dac->setEnable(false);
   return !calib_failed;
@@ -326,10 +344,11 @@ bool helper_find_gain_cal(float gain,
                        max_error,
                        calib_failed);
   succ &= !calib_failed;
-  sprintf(FMTBUF, "calibrate full gain=%f target=%f meas=%f succ=%s",
+  sprintf(FMTBUF, "calibrate full gain=%f target=%f meas=%f max=%f succ=%s",
           gain,
           target,
           target+error,
+          max_error,
           calib_failed ? "no" : "yes");
   print_log(FMTBUF);
 
@@ -350,10 +369,11 @@ bool helper_find_gain_cal(float gain,
                        max_error,
                        calib_failed);
   succ &= !calib_failed;
-  sprintf(FMTBUF, "calibrate half gain=%f target=%f meas=%f succ=%s",
+  sprintf(FMTBUF, "calibrate half gain=%f target=%f meas=%f max=%f succ=%s",
           gain,
           target*0.5,
           target*0.5+error,
+          max_error,
           calib_failed ? "no" : "yes");
 
   print_log(FMTBUF);
@@ -448,6 +468,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::measure_vga(util::calib_result_t& re
     dac_code_ref = cutil::make_val_dac(calib, ref_dac,
                                        -target_vga,
                                        interim_result);
+    ref_dac->update(dac_code_ref);
     ref_to_tileout.setConn();
   }
   util::init_result(interim_result);
@@ -455,7 +476,6 @@ void Fabric::Chip::Tile::Slice::Multiplier::measure_vga(util::calib_result_t& re
                                      in0scf*in0val,
                                      interim_result);
 
-  ref_dac->update(dac_code_ref);
   val1_dac->update(dac_code_in0);
   float mean=0.0,variance=0.0;
   util::meas_dist_chip_out(this,mean,variance);
@@ -544,6 +564,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::measure_mult(util::calib_result_t& r
     dac_code_ref = cutil::make_val_dac(calib, ref_dac,
                                        -target_mult,
                                        interim_result);
+    ref_dac->update(dac_code_ref);
     ref_to_tileout.setConn();
   }
   util::init_result(interim_result);
@@ -555,7 +576,6 @@ void Fabric::Chip::Tile::Slice::Multiplier::measure_mult(util::calib_result_t& r
                                      in1scf*in1val,
                                      interim_result);
 
-  ref_dac->update(dac_code_ref);
   val1_dac->update(dac_code_in0);
   val2_dac->update(dac_code_in1);
   float mean,variance;
@@ -685,7 +705,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (util::calib_result_
     }
     bool succ = true;
     //calibrate bias, no external input
-    sprintf(FMTBUF, "target=%f nmos=%d", target_vga,m_codes.nmos);
+    sprintf(FMTBUF, "target=%f max_error=%f nmos=%d", target_vga,max_error,m_codes.nmos);
     print_info(FMTBUF);
     succ &= helper_find_port_cal_out0(val_dac, this,max_error);
     if(succ)

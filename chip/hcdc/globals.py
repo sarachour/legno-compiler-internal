@@ -1,5 +1,6 @@
 import util.util as util
 import chip.units as units
+from lab_bench.lib.chipcmd.data import RangeType
 from enum import Enum
 #NOMINAL_NOISE = 1e-9
 #NOMINAL_DELAY = 1e-10
@@ -65,26 +66,34 @@ class GlobalCtx:
     self.__insert(prop,block,cm,sm,port,value)
 
 CTX = GlobalCtx()
-CTX.insert(GLProp.DIGITAL_INTERVAL, (-1.0,1.0-1.0/256))
+CTX.insert(GLProp.DIGITAL_INTERVAL, (-1.0,1.0))
 CTX.insert(GLProp.DIGITAL_EXCLUDE, (0.0,0.0))
 CTX.insert(GLProp.CURRENT_INTERVAL, (-1.9,1.9))
 CTX.insert(GLProp.VOLTAGE_INTERVAL, (-1.0,1.0))
 CTX.insert(GLProp.DIGITAL_QUANTIZE, 256)
 CTX.insert(GLProp.MAX_FREQ, 200*units.khz)
-CTX.insert(GLProp.DIGITAL_SAMPLE, 3*units.us)
+CTX.insert(GLProp.DIGITAL_SAMPLE, 3.0*units.us)
 CTX.insert(GLProp.INBUF_SIZE,1200)
 CTX.insert(GLProp.OUTBUF_SIZE,1e9)
 
-# exclude this range from the digital input.
-CTX.insert(GLProp.DIGITAL_EXCLUDE, (-0.19,0.19), block="multiplier")
+CTX.insert(GLProp.DIGITAL_EXCLUDE, (-0.19,0.19), block="integrator")
 
-CTX.insert(GLProp.MAX_FREQ, 40*units.khz, block='tile_dac')
+# exclude these constant ranges, because the system is unable to calibrate.
+# the 0.19 is a tight bound, the 0.4 is a guess.
+CTX.insert(GLProp.DIGITAL_EXCLUDE, (-0.19,0.19), block="multiplier")
+for mode in [(RangeType.HIGH, RangeType.MED), \
+             (RangeType.MED, RangeType.LOW)]:
+  CTX.insert(GLProp.DIGITAL_EXCLUDE, (-0.4,0.4), block="multiplier",cm="vga", \
+             sm=mode)
+
+freq_khz = 40
+CTX.insert(GLProp.MAX_FREQ, freq_khz*units.khz, block='tile_dac')
 CTX.insert(GLProp.COEFF, 2.0, block='tile_dac')
 
-CTX.insert(GLProp.MAX_FREQ, 40*units.khz, block='tile_adc')
+CTX.insert(GLProp.MAX_FREQ, freq_khz*units.khz, block='tile_adc')
 CTX.insert(GLProp.COEFF, 0.5, block='tile_adc')
 
-CTX.insert(GLProp.MAX_FREQ, 40*units.khz, block='tile_lut')
+CTX.insert(GLProp.MAX_FREQ, freq_khz*units.khz, block='tile_lut')
 
 # specialized ext_chip_in
 CTX.insert(GLProp.COEFF, 2.0, block='ext_chip_analog_in')

@@ -163,12 +163,12 @@ class OscSetSimTimeCmd(Command):
         return 'osc_set_sim_time'
 
     def __repr__(self):
-        return "%s %f" % (self.name(),self._sim_time)
+        return "%s %.3e" % (self.name(),self._sim_time)
 
 
     @staticmethod
     def parse(args):
-        return strict_do_parse("{sim_time:f}", args, \
+        return strict_do_parse("{sim_time:g}", args, \
                                OscSetSimTimeCmd)
 
 

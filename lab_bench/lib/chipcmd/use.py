@@ -165,11 +165,12 @@ class UseLUTCmd(UseCommand):
         return 'use_lut'
 
     def __repr__(self):
-        st = "%s %s %s %s src %s" % \
+        st = "%s %s %s %s src %s %s" % \
               (self.name(),
                self.loc.chip,self.loc.tile, \
                self.loc.slice,
-               self._source.abbrev())
+               self._source.abbrev(),
+               "cached" if self._cached else "update")
         return st
 
 
@@ -259,11 +260,12 @@ class UseADCCmd(UseCommand):
         return 'use_adc'
 
     def __repr__(self):
-        st = "%s %s %s %s rng %s" % \
+        st = "%s %s %s %s rng %s %s" % \
               (self.name(),
                self.loc.chip,self.loc.tile, \
                self.loc.slice,
-               self._in_range.abbrev())
+               self._in_range.abbrev(),
+               "cached" if self._cached else "update")
         return st
 
 
@@ -656,7 +658,7 @@ class UseMultCmd(UseCommand):
         if(self._use_coeff):
             val *= self._coeff
 
-        return 0.01*val
+        return abs(0.02*val)
 
 
     @staticmethod

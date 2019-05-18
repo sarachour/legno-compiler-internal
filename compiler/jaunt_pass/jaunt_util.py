@@ -120,7 +120,7 @@ def upper_bound_constraint(jenv,expr,math_upper,hw_upper,annot):
 
     elif same_sign(math_upper,hw_upper) and \
          math_upper < 0 and hw_upper < 0:
-        jenv.lte(jop.JMult(expr,jop.JConst(-math_upper)),
+        jenv.gte(jop.JMult(expr,jop.JConst(-math_upper)),
                  jop.JConst(-hw_upper),annot)
 
     elif not same_sign(math_upper,hw_upper) and \

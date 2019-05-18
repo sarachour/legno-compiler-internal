@@ -387,12 +387,12 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
     for chan,lb,ub in hwenv.oscilloscope.chan_ranges():
        cmd = "osc_set_volt_range %d %f %f" % (chan,lb,ub)
        gren.add(parse(cmd))
-       cmd = "osc_set_sim_time %f" % \
+       cmd = "osc_set_sim_time %.3e" % \
              (scaled_sim_time)
        gren.add(parse(cmd))
 
   # initialize microcontroller
-  cmd = "micro_set_sim_time %f %f" % \
+  cmd = "micro_set_sim_time %.3e %.3e" % \
              (scaled_sim_time,scaled_input_time)
   gren.add(parse(cmd))
 

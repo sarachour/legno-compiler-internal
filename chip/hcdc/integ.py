@@ -138,6 +138,7 @@ def scale_model(integ):
       dig_props = util.make_dig_props(chipcmd.RangeType.MED,
                                       get_prop(GLProp.DIGITAL_INTERVAL), \
                                       get_prop(GLProp.DIGITAL_QUANTIZE))
+      dig_props.set_exclude(get_prop(GLProp.DIGITAL_EXCLUDE))
       dig_props.set_constant()
       integ.set_props(comp_mode,scale_mode,['in'],analog_in)
       integ.set_props(comp_mode,scale_mode,["ic"], dig_props)

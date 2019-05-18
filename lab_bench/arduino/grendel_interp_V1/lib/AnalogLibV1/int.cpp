@@ -372,6 +372,7 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
   unsigned int delta = 0;
   bool succ = false;
   float error;
+  float sign = target >= 0 ? 1.0 : -1.0;
   // adjust the initial condition code.
   ref_dac->update(ref_codes);
   while(!succ){
@@ -397,7 +398,7 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
             code+delta, target, target+error);
     print_info(FMTBUF);
     if(!succ){
-      if(error < 0){
+      if(error*sign < 0){
         delta += update_pos_error*-1;
       }
       else{
@@ -494,7 +495,7 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (util::calib_result_
     return true;
   }
   int ic_sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
-  int update_pos = ic_sign*m_codes.ic_val >= 0 ? -1 : 1;
+  int update_pos = ic_sign*m_codes.ic_val >= 0 ? 1.0 : -1.0;
   bool hiRange = (m_codes.range[out0Id] == RANGE_HIGH);
 
   Dac * ref_dac = parentSlice->dac;

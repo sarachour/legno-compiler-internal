@@ -18,7 +18,7 @@ typedef enum {
 
 
 #define N_CODES 5
-const float CODE_VALS[] = {1.0,3.0,5.0,7.0,9.0};
+const float CODE_VALS[] = {-1.0,-4.0,-5.0,-6.0,-9.0};
 
 class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;

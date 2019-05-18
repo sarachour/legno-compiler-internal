@@ -14,7 +14,7 @@ def model():
     prob.set_digital_snr(0.0)
     prob.set_analog_snr(0.0)
 
-    tc = 0.2
+    tc = 0.08
     params = {
         'fill': tc,
         'leak': tc,
