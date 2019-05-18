@@ -184,6 +184,8 @@ class JauntInferEnv(JauntEnv):
       JauntEnv.__init__(self)
       self._exactly_one = []
       self._implies = {}
+      self._lts = []
+
 
     def decl_op_range_var(self,block_name,loc,port,handle=None):
       return self.decl_jaunt_var((block_name,loc,port,handle),
@@ -226,6 +228,10 @@ class JauntInferEnv(JauntEnv):
         assert(v in self._from_jaunt_var)
       self._exactly_one.append(exclusive)
 
+    def get_lts(self):
+      for lhs,rhs,annot in self._lts:
+        yield lhs,rhs,annot
+
     def get_implies(self):
       for condvar in self._implies:
         for var2,value in self._implies[condvar]:
@@ -234,3 +240,13 @@ class JauntInferEnv(JauntEnv):
     def get_exactly_one(self):
       for exclusive in self._exactly_one:
         yield exclusive
+
+
+    def lt(self,v1,v2,annot):
+      jaunt_util.log_debug("%s < %s {%s}" % (v1,v2,annot))
+      self._lts.append((v1,v2,annot))
+
+    def gt(self,v1,v2,annot):
+      # TODO: equality
+      self.lt(v2,v1,annot)
+

@@ -46,7 +46,7 @@ class UseCommand(AnalogChipCommand):
         return self._loc
 
     def execute_command(self,env):
-        ArduinoCommand.execute_command(self,env)
+        AnalogChipCommand.execute_command(self,env)
 
         if self.cached:
             dbkey = self.to_key()
@@ -65,17 +65,6 @@ class UseCommand(AnalogChipCommand):
             resp = cmd.execute_command(env)
 
 
-    def priority(self):
-        return Priority.EARLY
-
-    def configure(self):
-        return self
-
-    def calibrate(self):
-        return CalibrateCmd(
-            self._loc.chip,
-            self._loc.tile,
-            self._loc.slice)
 
     def disable(self):
          return DisableCmd(
@@ -112,7 +101,6 @@ class UseLUTCmd(UseCommand):
     @staticmethod
     def desc():
         return "use a lut block on the hdacv2 board"
-
 
     @staticmethod
     def parse(args):

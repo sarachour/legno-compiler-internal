@@ -155,7 +155,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     wrlutd = cmd.data.write_lut;
     lut = common::get_slice(fab,wrlutd.loc)->lut;
     for(int data_idx=0; data_idx < wrlutd.n; data_idx+=1){
-      byteval = round(inbuf[data_idx]*128.0 + 128.0);
+      byteval = min(round(inbuf[data_idx]*128.0 + 128.0),255);
       comm::print_header();
       Serial.print(data_idx+wrlutd.offset);
       Serial.print("=");

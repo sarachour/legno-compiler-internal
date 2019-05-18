@@ -118,6 +118,7 @@ class BlockStateDatabase:
   def _get(self,blockkey):
     assert(isinstance(blockkey,BlockState.Key))
     keystr = blockkey.to_key()
+    print(keystr)
     cmd = '''SELECT * FROM states WHERE cmdkey = "{cmdkey}"''' \
                                                 .format(cmdkey=keystr)
     results = list(self._curs.execute(cmd))
@@ -271,9 +272,9 @@ class BlockState:
     elif blk == enums.BlockType.DAC:
       st = DacBlockState(loc,obj)
     elif blk == enums.BlockType.ADC:
-      st = AdcBlockState(loc,obj.adc)
+      st = AdcBlockState(loc,obj)
     elif blk == enums.BlockType.LUT:
-      st = LutBlockState(loc,obj.lut)
+      st = LutBlockState(loc,obj)
 
     else:
       raise Exception("unimplemented block : <%s>" \

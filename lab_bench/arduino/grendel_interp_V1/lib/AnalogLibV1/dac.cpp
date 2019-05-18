@@ -3,6 +3,7 @@
 #include "assert.h"
 #include "calib_util.h"
 #include "slice.h"
+#include "dac.h"
 
 void Fabric::Chip::Tile::Slice::Dac::update(dac_code_t codes){
   m_codes = codes;
@@ -117,9 +118,7 @@ Fabric::Chip::Tile::Slice::Dac::Dac (
 	out0 = new DacOut (this);
 	tally_dyn_mem <DacOut> ("DacOut");
   defaults();
-  for(int i=0; i < N_CODES; i+=1){
-    is_cached[i] = false;
-  }
+  dac_cache::initialize();
 }
 
 /*Set enable, invert, range, clock select*/
@@ -179,36 +178,6 @@ void Fabric::Chip::Tile::Slice::Dac::setParamHelper (
 	);
 }
 
-bool Fabric::Chip::Tile::Slice::Dac::getCached(float val, dac_code_t& code){
-  for(int i = 0; i < N_CODES; i += 1){
-    float this_val = CODE_VALS[i];
-    if(fabs(this_val-val) < 1e-3 && is_cached[i]){
-      sprintf(FMTBUF, "get cache %f in %d", val, i);
-      print_log(FMTBUF);
-      code = code_cache[i];
-      return true;
-    }
-  }
-  sprintf(FMTBUF, "not in cache %f", val);
-  print_log(FMTBUF);
-  return false;
-}
-
-void Fabric::Chip::Tile::Slice::Dac::updateCache(float val, dac_code_t& code){
-  for(int i = 0; i < N_CODES; i += 1){
-    float this_val = CODE_VALS[i];
-    if(fabs(this_val-val) < 1e-3){
-      sprintf(FMTBUF, "upd cache %f in %d", val, i);
-      print_log(FMTBUF);
-      is_cached[i] = true;
-      code_cache[i] = code;
-      return;
-    }
-  }
-  sprintf(FMTBUF, "cannot update %f", val);
-  print_log(FMTBUF);
-
-}
 void Fabric::Chip::Tile::Slice::Dac::characterize(util::calib_result_t& result)
 {
   if(m_codes.source == DSRC_MEM){
@@ -233,12 +202,13 @@ void Fabric::Chip::Tile::Slice::Dac::characterize(util::calib_result_t& result)
 bool Fabric::Chip::Tile::Slice::Dac::calibrate (util::calib_result_t& result,
                                                 const float max_error)
 {
-  dac_source_t backup_src = m_codes.source;
+  dac_code_t backup = m_codes;
   m_codes.source = DSRC_MEM;
   setConstant(1.0);
   float succ = calibrateTarget(result,max_error);
-  // measure how good the dac is at writing certain values.
-  m_codes.source = backup_src;
+  m_codes.source = backup.source;
+  m_codes.const_val = backup.const_val;
+  m_codes.const_code = backup.const_code;
   update(m_codes);
   return succ;
 
@@ -252,14 +222,14 @@ float make_reference_dac(cutil::calibrate_t& calib,
   float base_constant = floor((fabs(dac->m_codes.const_val)-1e-5)*10.0);
   base_constant *= dac->m_codes.const_val < 0 ? 1.0 : -1.0;
   float target = dac->m_codes.const_val*10.0 + base_constant;
-  if(ref_dac->getCached(base_constant,config)){
+  if(dac_cache::get_cached(ref_dac,base_constant,config)){
     ref_dac->update(config);
     return target;
   }
   config = cutil::make_val_dac(calib, ref_dac,
                                base_constant,
                                result);
-  ref_dac->updateCache(base_constant,config);
+  dac_cache::cache(ref_dac,base_constant,config);
   ref_dac->update(config);
   return target;
 }
@@ -434,7 +404,6 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& resu
 	}
 	tile_to_chip.brkConn();
   dac_to_tile.brkConn();
-
   cutil::restore_conns(calib);
   codes_self.nmos = m_codes.nmos;
   codes_self.gain_cal = m_codes.gain_cal;

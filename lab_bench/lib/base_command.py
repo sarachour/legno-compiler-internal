@@ -403,7 +403,7 @@ class ArduinoCommand(Command):
                 header_type= self.build_ctype(offset=offset,n=n)
                 header_data = self._c_type.build(header_type)
                 # pad to fill up rest of struct before tacking on data.
-                pad_size=24
+                pad_size= 80
                 n_pad = util.compute_pad_bytes(len(header_data),pad_size)
                 pad_data = bytearray([0]*n_pad)
                 # data

@@ -17,9 +17,32 @@ typedef enum {
 } dacSel;
 
 
-#define N_CODES 5
-const float CODE_VALS[] = {-1.0,-4.0,-5.0,-6.0,-9.0};
 
+
+#define NCACHE_ELS 10
+#define NCACHE_SLOTS 4
+
+
+typedef struct {
+dac_code_t cache[NCACHE_SLOTS][NCACHE_ELS];
+bool is_cached[NCACHE_SLOTS][NCACHE_ELS];
+Fabric::Chip::Tile::Slice::Dac* owners[NCACHE_SLOTS];
+int lru[NCACHE_SLOTS];
+} dac_cache_t;
+
+extern dac_cache_t DAC_CACHE;
+
+namespace dac_cache {
+
+  void initialize();
+  bool get_cached(Fabric::Chip::Tile::Slice::Dac* dac,
+                    float value,
+                    dac_code_t& this_code);
+  void cache(Fabric::Chip::Tile::Slice::Dac* dac,
+              float value,
+              dac_code_t& this_code);
+
+}
 class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
 
@@ -46,8 +69,6 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 		bool calibrateTarget (util::calib_result_t& result,
                           const float max_error);
     void defaults();
-    bool getCached(float value,dac_code_t& this_code);
-    void updateCache(float value,dac_code_t& new_code);
 	private:
 		class DacOut;
     void measure(util::calib_result_t& result);
@@ -68,8 +89,6 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 		void setAnaIrefNmos () const override;
 		void setAnaIrefPmos () const override {};
 
-    dac_code_t code_cache[N_CODES];
-    bool is_cached[N_CODES];
 };
 
 class Fabric::Chip::Tile::Slice::Dac::DacOut : public Fabric::Chip::Tile::Slice::FunctionUnit::Interface  {

@@ -46,6 +46,8 @@ void loop() {
       case cmd_type_t::CIRC_CMD:
         assert(this_fabric != NULL);
         inbuf = (float*) comm::get_data_ptr(nbytes);
+        sprintf(FMTBUF, "inbuf-offset-by: %d", nbytes);
+        print_log(FMTBUF);
         if(!debug){
           circ::print_command(cmd.data.circ_cmd);
           circ::exec_command(this_fabric,cmd.data.circ_cmd,inbuf);

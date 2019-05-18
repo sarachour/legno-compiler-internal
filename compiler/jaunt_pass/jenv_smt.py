@@ -62,6 +62,13 @@ def build_smt_prob(circ,jenv,blacklist=[]):
     if not annot in blacklist:
       smtenv.lte(smt_lhs,smt_rhs)
 
+  if hasattr(jenv,'get_lts'):
+    for lhs,rhs,annot in jenv.get_lts():
+      smt_lhs = smt_expr(smtenv,lhs)
+      smt_rhs = smt_expr(smtenv,rhs)
+      if not annot in blacklist:
+        smtenv.lt(smt_lhs,smt_rhs)
+
   if hasattr(jenv,'get_implies'):
     for boolvar,var,value in jenv.get_implies():
       smtboolvar = smtenv.get_smtvar(boolvar)

@@ -39,6 +39,9 @@ namespace cutil {
                           Fabric::Chip::Tile::Slice::Multiplier* fu);
   void buffer_dac_conns( calibrate_t& calib,
                          Fabric::Chip::Tile::Slice::Dac* fu);
+  void buffer_adc_conns( calibrate_t& calib,
+                         Fabric::Chip::Tile::Slice::ChipAdc* fu);
+
   void buffer_integ_conns( calibrate_t& calib,
                          Fabric::Chip::Tile::Slice::Integrator* fu);
 

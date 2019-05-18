@@ -140,8 +140,15 @@ def sc_build_jaunt_env(prog,circ):
     # build continuous model constraints
     sc_decl_scale_model_variables(jenv,circ)
     sc_generate_scale_model_constraints(jenv,circ)
-
     sc_generate_problem(jenv,prog,circ)
+
+    for block_name,loc,config in circ.instances():
+        block = circ.board.block(block_name)
+        for port in block.outputs + block.inputs:
+            v = jenv.get_scvar(block_name,loc,port)
+            jenv.lt(jop.JConst(1e-12), jop.JVar(v), "ensure nonzero");
+            jenv.gt(jop.JConst(1e12), jop.JVar(v), "ensure nonzero");
+
     return jenv
 
 # traverse dynamics, also including coefficient variable

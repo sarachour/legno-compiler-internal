@@ -126,24 +126,22 @@ class WriteLUTCmd(ArduinoCommand):
 
 
 
-    def apply(self,state):
+    def execute_command(self,state):
         if state.dummy:
             return
 
-        values = [-256.0]*256
+        values = [0.0]*256
         for idx,v in enumerate(np.linspace(-1.0,1.0,256)):
             assigns = dict(zip(self._variables,[v]))
             value = util.eval_func(self.expr,assigns)
-            clamp_value = min(max(value,-1.0),0.99)
+            clamp_value = min(max(value,-1.0),1.0)
             values[idx] = float(clamp_value)
+            print("%s = %s [%s]" % (idx,value, clamp_value))
 
-
-        resp = ArduinoCommand.execute(self,state,
-                                        {
-                                            'raw_data':list(values),
-                                            'n_data_bytes':128,
-                                            'elem_size':4
-                                        })
+        resp = ArduinoCommand.execute_command(self,state,
+                                              raw_data=list(values),
+                                              n_data_bytes=256,
+                                              elem_size=4)
         return resp
 
 
@@ -190,11 +188,11 @@ class GetADCStatusCmd(AnalogChipCommand):
             }
         })
 
-    def apply(self,state):
+    def execute_command(self,state):
         if state.dummy:
             return
 
-        resp = AnalogChipCommand.apply(self,state)
+        resp = AnalogChipCommand.execute_command(self,state)
         handle = "adc.%s" % self.loc
         code = resp.data(0)
         print("status_val: %s" % code)

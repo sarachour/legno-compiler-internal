@@ -129,6 +129,10 @@ namespace cutil {
                              Fabric::Chip::Tile::Slice::TileInOut* fu){
     buffer_conns(calib,fu,1,1);
   }
+  void buffer_adc_conns( calibrate_t& calib,
+                             Fabric::Chip::Tile::Slice::ChipAdc * fu){
+    buffer_conns(calib,fu,1,0);
+  }
   void buffer_integ_conns( calibrate_t& calib,
                             Fabric::Chip::Tile::Slice::Integrator * fu){
     buffer_conns(calib,fu,1,1);

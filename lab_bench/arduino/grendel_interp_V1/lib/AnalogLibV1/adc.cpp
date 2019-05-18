@@ -1,6 +1,7 @@
 #include "AnalogLib.h"
 #include "assert.h"
 #include "fu.h"
+#include "calib_util.h"
 
 void Fabric::Chip::Tile::Slice::ChipAdc::setEnable (
 	bool enable
@@ -254,15 +255,36 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate (util::calib_result_t& result
                                                     const float max_error) {
 
   update(m_codes);
+
+  Fabric::Chip::Tile::Slice::Dac * val_dac = parentSlice->dac;
   adc_code_t codes_self= m_codes;
-  dac_code_t codes_dac = parentSlice->dac->m_codes;
+  dac_code_t codes_dac = val_dac->m_codes;
+
+  cutil::calibrate_t calib;
+  cutil::initialize(calib);
+  cutil::buffer_dac_conns(calib,val_dac);
+  cutil::buffer_adc_conns(calib,this);
+  cutil::break_conns(calib);
+  print_log("backed up connections");
+
+  val_dac->setEnable(true);
+  val_dac->defaults();
+
+  dac_code_t dac_code_0;
+  util::calib_result_t interim_result;
+  util::init_result(interim_result);
+  dac_code_0 = cutil::make_val_dac(calib, val_dac,
+                                   0.0,
+                                   interim_result);
+
+
 	Connection conn0 = Connection ( parentSlice->dac->out0, in0 );
 	conn0.setConn();
 	setEnable (true);
 
   print_log("-> finding posneg/fullscale settings");
   Serial.flush();
-	if (!findCalCompFs()) return false;
+	if (!findCalCompFs(val_dac)) return false;
   sprintf(FMTBUF, "lower=%d upper=%d", m_codes.lower, m_codes.upper);
   print_debug(FMTBUF);
 
@@ -272,6 +294,7 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate (util::calib_result_t& result
 	// once fullscale and spread and posneg settings found
 	// find I2V offset code
   print_log("-> finding i2v bias");
+  val_dac->update(dac_code_0);
   float error;
   bool succ = binsearch::find_bias_and_nmos(this,
                                             128.0,
@@ -281,7 +304,10 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate (util::calib_result_t& result
                                             error,
                                             MEAS_ADC);
 	setEnable (false);
-  parentSlice->dac->update(codes_dac);
+
+  cutil::restore_conns(calib);
+  val_dac->update(codes_dac);
+
   codes_self.i2v_cal = m_codes.i2v_cal;
   codes_self.nmos = m_codes.nmos;
   codes_self.lower = m_codes.lower;
@@ -294,43 +320,44 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate (util::calib_result_t& result
 	return succ;
 }
 
-bool Fabric::Chip::Tile::Slice::ChipAdc::findCalCompFs () {
+bool Fabric::Chip::Tile::Slice::ChipAdc::findCalCompFs (Fabric::Chip::Tile::Slice::Dac * dac) {
 
 	// Serial.println("nA100");
 	m_codes.lower_fs = nA100;
 	m_codes.upper_fs = nA100;
-	if (checkScale()) return true;
+	if (checkScale(dac)) return true;
 	// Serial.println("nA200");
 	m_codes.lower_fs = nA200;
 	m_codes.upper_fs = nA200;
-	if (checkScale()) return true;
+	if (checkScale(dac)) return true;
 	// Serial.println("nA300");
 	m_codes.lower_fs = nA300;
 	m_codes.upper_fs = nA300;
-	if (checkScale()) return true;
+	if (checkScale(dac)) return true;
 	// Serial.println("nA400");
 	m_codes.lower_fs = nA400;
 	m_codes.upper_fs = nA400;
-	if (checkScale()) return true;
+	if (checkScale(dac)) return true;
 
 	return false;
 }
 
-bool Fabric::Chip::Tile::Slice::ChipAdc::checkScale () {
+bool Fabric::Chip::Tile::Slice::ChipAdc::checkScale(Fabric::Chip::Tile::Slice::Dac* dac) {
 	for (unsigned char spread=0; spread<32; spread++) {
 		// Serial.print("spread = "); Serial.println(spread);
-		if ( checkSpread(spread,false,false) ) return true;
-		if ( checkSpread(spread,false,true) ) return true;
-		if ( checkSpread(spread,true,false) ) return true;
-		if ( checkSpread(spread,true,true) ) return true;
+		if ( checkSpread(dac,spread,false,false) ) return true;
+		if ( checkSpread(dac,spread,false,true) ) return true;
+		if ( checkSpread(dac,spread,true,false) ) return true;
+		if ( checkSpread(dac,spread,true,true) ) return true;
 	}
 	return false;
 }
 
 bool Fabric::Chip::Tile::Slice::ChipAdc::checkSpread (
-	unsigned char spread,
-	bool lowerPos,
-	bool upperPos
+                                                      Fabric::Chip::Tile::Slice::Dac* dac,
+                                                      unsigned char spread,
+                                                      bool lowerPos,
+                                                      bool upperPos
 ) {
 	m_codes.lower = lowerPos ? 31+spread : 31-spread;
 	setParam2();
@@ -339,21 +366,22 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::checkSpread (
 
 	bool success=true;
 	// see if adc code is steady at dac=128
-	success &= checkSteady(128);
+	success &= checkSteady(dac,128);
 	// see if adc code is steady at dac=4
-	if (success) success &= checkSteady(2);
+	if (success) success &= checkSteady(dac,2);
 	// see if adc code is steady at dac=251
-	if (success) success &= checkSteady(253);
+	if (success) success &= checkSteady(dac,253);
 
 	return success;
 }
 
 bool Fabric::Chip::Tile::Slice::ChipAdc::checkSteady (
-	unsigned char dacCode
+                                                      Fabric::Chip::Tile::Slice::Dac* dac,
+                                                      unsigned char dacCode
 ) const {
-  dac_code_t codes_dac = parentSlice->dac->m_codes;
+  dac_code_t codes_dac = dac->m_codes;
   // update dac code to specified code.
-	parentSlice->dac->setConstantCode (dacCode);
+	dac->setConstantCode (dacCode);
 	parentSlice->parentTile->parentChip->parentFabric->cfgCommit();
 	bool success=true;
   // get the adc code at that value
@@ -362,7 +390,7 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::checkSteady (
     // determine if adc code is the same value as the previous value.
 		success &= adcPrev==getData();
   }
-  parentSlice->dac->update(codes_dac);
+  dac->update(codes_dac);
 	return success;
 }
 

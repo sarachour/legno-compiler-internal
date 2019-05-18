@@ -51,7 +51,7 @@ def model():
   prob.set_interval("VA",-2,2)
   prob.set_interval("VB",-2,2)
   prob.set_max_sim_time(20)
-  prob.bind('PosA', op.Emit(op.Var('PA')))
+  prob.bind('PosA', op.Emit(op.Var('PA'),loc="A0"))
   prob.compile()
 
   menv = menvs.get_math_env('t20')

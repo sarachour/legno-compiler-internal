@@ -71,16 +71,18 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 			unsigned char selLine,
 			unsigned char cfgTile
 		) const;
-		bool findCalCompFs ();
-		bool checkScale ();
+		bool findCalCompFs (Fabric::Chip::Tile::Slice::Dac * dac);
+		bool checkScale (Fabric::Chip::Tile::Slice::Dac * dac);
 		bool checkSpread (
-			unsigned char spread,
-			bool lowerPos,
-			bool upperPos
-		);
+                      Fabric::Chip::Tile::Slice::Dac * dac,
+                      unsigned char spread,
+                      bool lowerPos,
+                      bool upperPos
+                      );
 		bool checkSteady (
-			unsigned char dacCode
-		) const;
+                      Fabric::Chip::Tile::Slice::Dac * dac,
+                      unsigned char dacCode
+                      ) const;
 		void setAnaIrefNmos () const override;
 		void setAnaIrefPmos () const override;
 

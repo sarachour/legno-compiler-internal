@@ -372,7 +372,10 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
   unsigned int delta = 0;
   bool succ = false;
   float error;
-  float sign = target >= 0 ? 1.0 : -1.0;
+  //how to identify the magnitude of the signal needs to be increased.
+  //if error is negative + number is positive
+  // if error is positive + number is negative
+  float pos_direction= target >= 0 ? -1.0 : 1.0;
   // adjust the initial condition code.
   ref_dac->update(ref_codes);
   while(!succ){
@@ -398,11 +401,11 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
             code+delta, target, target+error);
     print_info(FMTBUF);
     if(!succ){
-      if(error*sign < 0){
-        delta += update_pos_error*-1;
+      if(error*pos_direction >= 0){
+        delta += update_pos_error;
       }
       else{
-        delta += update_pos_error;
+        delta += update_pos_error*-1;
       }
     }
   }

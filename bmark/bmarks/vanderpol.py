@@ -33,7 +33,7 @@ def model():
 
     prob.bind("X",X)
     prob.bind("Y",Y)
-    prob.bind("y",op.Emit(op.Var("Y")))
+    prob.bind("y",op.Emit(op.Var("Y"), loc="A0"))
     prob.set_interval("X",-2.0,2.0)
     prob.set_interval("Y",-2.0,2.0)
     prob.set_interval("y",-2.0,2.0)

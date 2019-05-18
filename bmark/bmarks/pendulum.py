@@ -12,8 +12,10 @@ import bmark.menvs as menvs
 
 def model():
   prob = MathProg('pend')
-  prob.set_digital_snr(10.0)
-  prob.set_analog_snr(5.0)
+  #prob.set_digital_snr(10.0)
+  prob.set_digital_snr(0.0)
+  #prob.set_analog_snr(5.0)
+  prob.set_analog_snr(0.0)
 
   params = {
     'angvel0': -1.0,
@@ -33,12 +35,7 @@ def model():
 
   prob.bind('sinAngle', \
             op.Call([op.Var('angle')], sin_fun))
-  prob.bind('ANGLE', op.Emit(
-    op.Mult(
-      op.Const(0.999),
-      op.Var('angle')
-    )
-  ))
+  prob.bind('ANGLE', op.Emit(op.Var('angle'), loc="A0"))
 
   prob.set_interval('angle', -1.8,1.8)
   prob.set_interval('angvel',-1.8,1.8)
