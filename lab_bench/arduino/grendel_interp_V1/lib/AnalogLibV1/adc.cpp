@@ -274,8 +274,8 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate (util::calib_result_t& result
   util::calib_result_t interim_result;
   util::init_result(interim_result);
   dac_code_0 = cutil::make_val_dac(calib, val_dac,
-                                   0.0,
-                                   interim_result);
+                                     0.0,
+                                     interim_result);
 
 
 	Connection conn0 = Connection ( parentSlice->dac->out0, in0 );

@@ -1,7 +1,15 @@
 # TODO
 # TODO List
 
+0. micro-osc-quarter, micro-osc-quad, vanderpol all work
+
 1. the LUT flips signs (see the writeLut function for correction). How exactly is it flipping the signs? Is it the input? the output? try different tests.
+
+2. test spring and pend (until they're working again).
+
+3. try heat1d
+
+4. try repri, gentoggle.
 
 # Enumeration of Contributions:
 

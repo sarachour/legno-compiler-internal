@@ -38,6 +38,7 @@ BMARKS = [
     compinh.model(),
     repri.model(),
     vanderpol.model(),
+    heat.model(2,1),
     heat.model(4,2),
     heat.model(6,2),
     heat.model(8,2),

@@ -232,7 +232,7 @@ class BlockState:
       fh.write(objstr)
 
 
-  def header(self,obj):
+  def header(self):
     raise NotImplementedError
 
 
@@ -521,8 +521,24 @@ class IntegBlockState(BlockState):
   def __init__(self,loc,state):
     BlockState.__init__(self,enums.BlockType.INTEG,loc,state)
 
-  def get_dataset(self,state):
-    return []
+  def header(self):
+    gh = keys(self.invs) + \
+         keys(self.ranges)
+    zh = ['icl_val']
+    yh = ["bias","noise"]
+    xh = ["output"]
+    return gh,zh,xh,yh
+
+  def to_rows(self,obj):
+    g = ordered(obj.invs) \
+        + ordered(obj.ranges)
+    z = [obj.ic_val]
+    for port,target,bias,noise in obj.profile:
+      gs = g + [port]
+      y = [bias,math.sqrt(noise)]
+      x = [target]
+      yield gs,z,x,y
+
 
   @property
   def key(self):
@@ -532,6 +548,7 @@ class IntegBlockState(BlockState):
                                self.invs,
                                self.ranges, \
                                self.ic_val)
+
 
   def to_cstruct(self):
     return cstructs.state_t().build({
@@ -599,15 +616,35 @@ class FanoutBlockState(BlockState):
     BlockState.__init__(self,enums.BlockType.FANOUT,loc,state)
 
 
-  def get_dataset(self,state):
-    return []
-
   @property
   def key(self):
     return FanoutBlockState.Key(self.loc,
                                 self.third,
                                 self.invs, \
                                 self.rngs)
+
+
+  def header(self):
+    gh = keys(self.invs) + \
+         keys(self.rngs) + \
+         ["third"]
+    zh = []
+    yh = ["bias","noise"]
+    xh = ["output"]
+    return gh,zh,xh,yh
+
+  def to_rows(self,obj):
+    g = ordered(obj.invs) \
+        + ordered(obj.rngs) \
+        + [obj.third.boolean()]
+    z = []
+    for port,target,bias,noise in obj.profile:
+      gs = g + [port]
+      y = [bias,math.sqrt(noise)]
+      x = [target]
+      yield gs,z,x,y
+
+
 
   def to_cstruct(self):
     return cstructs.state_t().build({

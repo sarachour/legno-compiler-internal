@@ -314,7 +314,8 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& resu
     return false;
   }
   bool hiRange = (m_codes.range == RANGE_HIGH);
-
+  int ic_sign = m_codes.inv ? -1.0 : 1.0;
+  float const_val = m_codes.const_val*util::range_to_coeff(m_codes.range)*ic_sign;
   cutil::calibrate_t calib;
   cutil::initialize(calib);
 
@@ -360,6 +361,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& resu
   print_log(FMTBUF);
   bool succ = false;
   int code = m_codes.const_code;
+  float target_sign = target >= 0 ? 1.0 : -1.0;
   int delta = 0;
   while(!succ){
     float error = 0.0;
@@ -387,11 +389,11 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& resu
             target+error);
     print_info(FMTBUF);
     if(!succ){
-      if(fabs(target+error) < fabs(target)){
-        delta += (target < 0 ? -1 : 1);
+      if(error*target_sign <= 0){
+        delta += target_sign;
       }
       else{
-        delta += (target < 0 ? 1 : -1);
+        delta += target_sign*(-1.0);
       }
     }
   }

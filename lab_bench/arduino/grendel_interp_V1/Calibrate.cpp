@@ -92,7 +92,7 @@ namespace calibrate {
         return dac->calibrateTarget(result,max_error);
       }
       else{
-        //return dac->calibrate(result,max_error);
+        return dac->calibrate(result,max_error);
         return true;
       }
       break;

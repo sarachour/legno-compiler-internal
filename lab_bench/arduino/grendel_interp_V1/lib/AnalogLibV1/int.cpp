@@ -366,8 +366,7 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
                           float max_error,
                           int code,
                           float target,
-                          dac_code_t& ref_codes,
-                          int update_pos_error){
+                          dac_code_t& ref_codes){
 
   unsigned int delta = 0;
   bool succ = false;
@@ -375,7 +374,7 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
   //how to identify the magnitude of the signal needs to be increased.
   //if error is negative + number is positive
   // if error is positive + number is negative
-  float pos_direction= target >= 0 ? -1.0 : 1.0;
+  float target_sign = target >= 0 ? 1.0 : -1.0;
   // adjust the initial condition code.
   ref_dac->update(ref_codes);
   while(!succ){
@@ -401,11 +400,11 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
             code+delta, target, target+error);
     print_info(FMTBUF);
     if(!succ){
-      if(error*pos_direction >= 0){
-        delta += update_pos_error;
+      if(error*target_sign <= 0){
+        delta += target_sign;
       }
       else{
-        delta += update_pos_error*-1;
+        delta += target_sign*-1;
       }
     }
   }
@@ -426,6 +425,7 @@ void Fabric::Chip::Tile::Slice::Integrator::measure(util::calib_result_t& result
   integ_code_t codes_self = m_codes;
   dac_code_t ref_codes = ref_dac->m_codes;
   int ic_sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
+  float ic_val = m_codes.ic_val*ic_sign*util::range_to_coeff(m_codes.range[out0Id]);
 
 
 
@@ -459,7 +459,7 @@ void Fabric::Chip::Tile::Slice::Integrator::measure(util::calib_result_t& result
     print_info("high range! making reference dac");
     util::init_result(interim_result);
     dac_ic = make_val_dac(calib,ref_dac,
-                          -10.0*m_codes.ic_val*ic_sign,
+                          -ic_sign,
                           interim_result);
     ref_to_tile.setConn();
   }
@@ -472,7 +472,7 @@ void Fabric::Chip::Tile::Slice::Integrator::measure(util::calib_result_t& result
   helper_get_cal_in0(this,result);
   helper_get_cal_gain(this,result,
                       ref_dac,
-                      hiRange ? 0.0: m_codes.ic_val*ic_sign,
+                      hiRange ? 0.0: ic_sign,
                       hiRange ? dac_ic : dac_0);
 
 	if (hiRange) {
@@ -498,8 +498,8 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (util::calib_result_
     return true;
   }
   int ic_sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
-  int update_pos = ic_sign*m_codes.ic_val >= 0 ? 1.0 : -1.0;
   bool hiRange = (m_codes.range[out0Id] == RANGE_HIGH);
+  float ic_val = m_codes.ic_val*ic_sign*util::range_to_coeff(m_codes.range[out0Id]);
 
   Dac * ref_dac = parentSlice->dac;
   integ_code_t codes_self = m_codes;
@@ -536,9 +536,8 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (util::calib_result_
     print_info("high range! making reference dac");
     util::init_result(interim_result);
     dac_ic = make_val_dac(calib,ref_dac,
-                          -10.0*m_codes.ic_val*ic_sign,
+                          -ic_val,
                           interim_result);
-    update_pos = -1;
     ref_to_tile.setConn();
   }
   integ_to_tile.setConn();
@@ -563,8 +562,7 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (util::calib_result_
     if(succ)
       succ &= helper_find_cal_gain(this,ref_dac,max_error,code,
                                    hiRange ? 0.0: m_codes.ic_val*ic_sign,
-                                   hiRange ? dac_ic : dac_0,
-                                   update_pos);
+                                   hiRange ? dac_ic : dac_0);
     ref_dac->update(dac_0);
 
     if(succ){
