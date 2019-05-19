@@ -23,12 +23,12 @@ def nochange():
 
 def lut():
     prob = MathProg("testlut")
-    # 0.7*[1.0] + 0.25 = -0.15
-    #expr = op.Add(op.Mult(op.Const(0.7),op.Var('T')), op.Const(0.25))
-    expr = op.Mult(op.Const(0.0),op.Var('T'))
+    # 0.7*[1.0] + 0.25 = 0.95 [the input is 1]
+    # 0.7*[0.3] + 0.25 = 0.479
+    expr = op.Add(op.Mult(op.Const(0.7),op.Var('T')), op.Const(0.25))
     half_fun = op.Func(['T'], expr)
 
-    prob.bind("A", op.Call([op.Const(1.0)], half_fun))
+    prob.bind("A", op.Call([op.Const(0.3)], half_fun))
     prob.bind("OUTPUT", op.Emit(op.Var('A'),loc="A0"))
     prob.set_bandwidth('OUTPUT', 0)
     prob.set_bandwidth('A', 0)

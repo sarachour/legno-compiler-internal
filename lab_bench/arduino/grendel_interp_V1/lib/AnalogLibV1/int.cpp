@@ -368,7 +368,7 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
                           float target,
                           dac_code_t& ref_codes){
 
-  unsigned int delta = 0;
+  int delta = 0;
   bool succ = false;
   float error;
   //how to identify the magnitude of the signal needs to be increased.
@@ -382,6 +382,7 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
     bool calib_failed;
     if(code + delta > 255
        || code + delta < 0){
+      delta = 0;
       break;
     }
     integ->setInitialCode(code+delta);
@@ -404,7 +405,7 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
         delta += target_sign;
       }
       else{
-        delta += target_sign*-1;
+        delta += target_sign*-1.0;
       }
     }
   }

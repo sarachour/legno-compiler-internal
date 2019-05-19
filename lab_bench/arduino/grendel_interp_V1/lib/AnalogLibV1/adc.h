@@ -44,6 +44,7 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 		bool calibrate (util::calib_result_t& result,
                     const float max_error);
     void defaults();
+		void setAnaIrefNmos () const override;
 	private:
 		class AdcIn;
 		ChipAdc (Slice * parentSlice);
@@ -71,19 +72,6 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 			unsigned char selLine,
 			unsigned char cfgTile
 		) const;
-		bool findCalCompFs (Fabric::Chip::Tile::Slice::Dac * dac);
-		bool checkScale (Fabric::Chip::Tile::Slice::Dac * dac);
-		bool checkSpread (
-                      Fabric::Chip::Tile::Slice::Dac * dac,
-                      unsigned char spread,
-                      bool lowerPos,
-                      bool upperPos
-                      );
-		bool checkSteady (
-                      Fabric::Chip::Tile::Slice::Dac * dac,
-                      unsigned char dacCode
-                      ) const;
-		void setAnaIrefNmos () const override;
 		void setAnaIrefPmos () const override;
 
     /*

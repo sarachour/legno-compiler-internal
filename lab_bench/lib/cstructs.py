@@ -280,7 +280,6 @@ def adc_state_t():
         "test_rs" / bool_t(),
         "test_rsinc" / bool_t(),
         "enable" / bool_t(),
-        "inv" / sign_t(),
         "pmos" / cstruct.Int8ul,
         "nmos" / cstruct.Int8ul,
         "pmos2" / cstruct.Int8ul,
@@ -289,7 +288,8 @@ def adc_state_t():
         "upper" / cstruct.Int8ul,
         "lower_fs" / cstruct.Int8ul,
         "lower" / cstruct.Int8ul,
-        "range" / range_t()
+        "range" / range_t(),
+        "padding" / cstruct.Int8ul
     )
 
 def dac_state_t():

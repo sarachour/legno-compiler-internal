@@ -483,9 +483,6 @@ def teardown(gren,stmt):
 def generate(paths,board,conc_circ,menv,hwenv,filename,ntrials):
   gren = GrendelProg()
   preamble(gren,board,conc_circ,menv,hwenv)
-  #for block_name,loc,config in conc_circ.instances():
-  #  if block_name == 'lut' or block_name == 'tile_adc':
-  #    no_calib = True
 
   stmts = []
   for block_name,loc,config in conc_circ.instances():

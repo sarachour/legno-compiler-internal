@@ -130,13 +130,24 @@ class WriteLUTCmd(ArduinoCommand):
         if state.dummy:
             return
 
+        # ADCs are centered at 128, from [20,235]
+
         values = [0.0]*256
-        for idx,v in enumerate(np.linspace(-1.0,1.0,256)):
+        pad = 20
+        for idx,v in enumerate(np.linspace(-1.0,1.0,256-pad*2)):
             assigns = dict(zip(self._variables,[v]))
             value = util.eval_func(self.expr,assigns)
             clamp_value = min(max(value,-1.0),1.0)
-            values[idx] = float(clamp_value)
-            print("%s = %s [%s]" % (idx,value, clamp_value))
+            values[idx+pad] = float(clamp_value)
+
+        for idx in range(0,pad):
+            values[idx] = values[pad]
+
+        for idx in range(0,pad):
+            values[255-idx] = values[255-pad]
+
+        for idx,val in enumerate(values):
+            print("%s = %f" % (idx,val))
 
         resp = ArduinoCommand.execute_command(self,state,
                                               raw_data=list(values),

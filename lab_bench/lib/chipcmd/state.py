@@ -696,7 +696,6 @@ class AdcBlockState(BlockState):
                  test_i2v,
                  test_rs,
                  test_rsinc,
-                 inv,
                  rng):
       BlockState.Key.__init__(self,enums.BlockType.ADC,loc)
       self.test_en = test_en
@@ -704,7 +703,6 @@ class AdcBlockState(BlockState):
       self.test_i2v = test_i2v
       self.test_rs = test_rs
       self.test_rsinc = test_rsinc
-      self.inv = inv
       self.rng = rng
 
   def __init__(self,loc,state):
@@ -718,7 +716,6 @@ class AdcBlockState(BlockState):
                              self.test_i2v,
                              self.test_rs,
                              self.test_rsinc,
-                             self.inv,
                              self.rng
     )
   def to_cstruct(self):
@@ -730,7 +727,6 @@ class AdcBlockState(BlockState):
         "test_rs": self.test_rs.code(),
         "test_rsinc": self.test_rsinc.code(),
         "enable": chipdata.BoolType.TRUE.code(),
-        "inv": self.inv.code(),
         "pmos": self.pmos,
         "nmos": self.nmos,
         "pmos2": self.pmos2,
@@ -740,6 +736,7 @@ class AdcBlockState(BlockState):
         'lower_fs': self.lower_fs,
         "lower": self.lower,
         "range": self.rng.code(),
+        "padding": 20
       }
     })
 
@@ -753,9 +750,9 @@ class AdcBlockState(BlockState):
     self.test_rs = chipdata.BoolType(state.test_rs)
     self.test_rsinc = chipdata.BoolType(state.test_rsinc)
     self.enable = chipdata.BoolType(state.enable)
-    self.inv = chipdata.SignType(state.inv)
 
 
+    self.padding = state.padding
     self.pmos = state.pmos
     self.nmos = state.nmos
     self.pmos2 = state.pmos2

@@ -227,7 +227,6 @@ class UseADCCmd(UseCommand):
                                        test_i2v=false_val,
                                        test_rs=false_val,
                                        test_rsinc=false_val,
-                                       inv=SignType.POS,
                                        rng=self._in_range)
 
     def build_ctype(self):

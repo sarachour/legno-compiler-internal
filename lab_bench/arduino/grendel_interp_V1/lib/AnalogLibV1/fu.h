@@ -46,7 +46,6 @@ typedef struct {
   bool test_rs;
   bool test_rsinc;
   bool enable;
-  bool inv;
   uint8_t pmos;
   uint8_t nmos;
   uint8_t pmos2;
@@ -56,6 +55,7 @@ typedef struct {
   uint8_t lower_fs;
   uint8_t lower;
   range_t range;
+  uint8_t padding;
 } adc_code_t;
 
 typedef struct {
@@ -173,13 +173,15 @@ namespace binsearch {
                           float & delta,
                           meas_method_t method
      );
-
   void find_bias(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                  float target,
                  unsigned char & code,
                  float & error,
                  meas_method_t method);
 
+  float get_bias(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                float target,
+                meas_method_t method);
   void test_stab(unsigned char code,
                  float error,
                  const float max_error,

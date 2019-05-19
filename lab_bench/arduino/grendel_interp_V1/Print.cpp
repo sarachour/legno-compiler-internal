@@ -286,8 +286,8 @@ namespace circ {
       Serial.print(state.adc.test_rsinc);
       Serial.print(" enable=");
       Serial.print(state.adc.enable);
-      Serial.print(" inv=");
-      Serial.print(state.adc.inv);
+      Serial.print(" padding=");
+      Serial.print(state.adc.padding);
       Serial.print(" pmos=");
       Serial.print(state.adc.pmos);
       Serial.print(" nmos=");

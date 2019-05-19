@@ -73,6 +73,14 @@ namespace util{
   }
 
 
+  float meas_adc(Fabric::Chip::Tile::Slice::ChipAdc* fu){
+    Fabric* fab = fu->getFabric();
+    fu->updateFu();
+    fab->cfgCommit();
+    return fu->getData();
+  }
+
+
   float meas_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu){
     Fabric* fab = fu->getFabric();
     fu->updateFu();
@@ -187,16 +195,26 @@ namespace binsearch {
     return !calib_failed;
 
   }
-  void find_pmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                 float target,
-                 unsigned char & code,
-                 float & error,
-                 meas_method_t method)
+
+
+  float bin_search_meas(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                        meas_method_t method)
   {
-    // find code.
-    error = FLT_MAX;
-    bin_search(fu, target,0,7,code,error,method);
+    switch(method)
+      {
+      case MEAS_CHIP_OUTPUT:
+        return util::meas_chip_out(fu);
+
+      case MEAS_ADC:
+        return util::meas_adc(fu);
+
+      default:
+        error("unknown measurement method");
+      }
+    return FLT_MAX;
   }
+
+
   void find_bias(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                  float target,
                  unsigned char & code,
@@ -208,57 +226,14 @@ namespace binsearch {
     bin_search(fu,target,0,63,code,error,method);
   }
 
-  float bin_search_meas(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                        meas_method_t method)
+  float get_bias(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                 float target,
+                 meas_method_t method)
   {
-    Fabric::Chip::Tile::Slice::ChipAdc* adc;
-    float value;
-    switch(method)
-      {
-      case MEAS_CHIP_OUTPUT:
-        value = fu->getChip()->tiles[3].slices[2].chipOutput
-          ->analogAvg();
-        return value;
-
-      case MEAS_ADC:
-        adc = fu;
-        return adc->getData();
-
-      default:
-        error("unknown measurement method");
-      }
-    return FLT_MAX;
+    // find code.
+    return bin_search_meas(fu,method)-target;
   }
 
-  bool bin_search_next_code (
-                             unsigned char lo_code,
-                             float lo_error,
-                             unsigned char hi_code,
-                             float hi_error,
-                             unsigned char & curr_code
-                             ) {
-    if (lo_code+1==hi_code) {
-      if (lo_error<hi_error) curr_code=lo_code;
-      else curr_code=hi_code;
-      return true;
-    } else {
-      curr_code = (lo_code + hi_code) / 2;
-      return false;
-    }
-  }
-
-
-  float bin_search_get_delta(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                           float target,
-                           meas_method_t method,
-                           float& delta)
-  {
-    Fabric* fab = fu->getFabric();
-    fu->updateFu();
-    fab->cfgCommit();
-    float meas = bin_search_meas(fu,method);
-    delta = meas-target;
-  }
 
   void bin_search(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                    float target,
@@ -271,8 +246,7 @@ namespace binsearch {
     for(unsigned char code=min_code; code <= max_code; code+=1){
       float delta;
       curr_code = code;
-      bin_search_get_delta(fu,target,method,delta);
-      deltas[code-min_code] = delta;
+      deltas[code-min_code] = bin_search_meas(fu,method)-target;
 
     }
 
