@@ -133,6 +133,7 @@ class WriteLUTCmd(ArduinoCommand):
         # ADCs are centered at 128, from [20,235]
 
         values = [0.0]*256
+        # FIXME: hack. get the values from the cached dac
         pad = 20
         for idx,v in enumerate(np.linspace(-1.0,1.0,256-pad*2)):
             assigns = dict(zip(self._variables,[v]))

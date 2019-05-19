@@ -55,7 +55,8 @@ typedef struct {
   uint8_t lower_fs;
   uint8_t lower;
   range_t range;
-  uint8_t padding;
+  uint8_t pad_left;
+  uint8_t pad_right;
 } adc_code_t;
 
 typedef struct {

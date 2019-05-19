@@ -36,6 +36,7 @@ def lut():
     prob.set_max_sim_time(2)
     return menv,prob
 
+
 def execute(menv,prob):
   T,Y = run_fxn(menv,prob)
   plot_fxn(menv,prob,T,Y)

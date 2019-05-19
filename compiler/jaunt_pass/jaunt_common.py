@@ -237,8 +237,9 @@ def digital_quantize_constraint(jenv,phys,prop,mscale,hscale,math_rng,snr):
 
 
 def max_sim_time_constraint(jenv,prob,circ):
-    max_time = 3.0
     max_sim_time = _to_phys_time(circ,prob.max_sim_time)
+    # 100 ms.
+    max_time = 0.1
     tau_inv = jop.JVar(jenv.tau(),exponent=-1.0)
     hw_time = jop.JMult(
         jop.JConst(max_sim_time), tau_inv

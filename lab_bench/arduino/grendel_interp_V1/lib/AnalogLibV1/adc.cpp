@@ -77,7 +77,8 @@ void Fabric::Chip::Tile::Slice::ChipAdc::defaults(){
   m_codes.lower_fs = nA100;
   m_codes.pmos = 4;
   m_codes.pmos2 = 4;
-  m_codes.padding=20;
+  m_codes.pad_left =0;
+  m_codes.pad_right =0;
   m_codes.nmos = 0;
   m_codes.i2v_cal = 31;
   m_codes.enable = false;
@@ -284,7 +285,6 @@ bool helper_find_bias_and_nmos(Fabric * fab,
   adc->setAnaIrefNmos();
   bool found_code = false;
   float max_error = 0.5;
-  int padding = adc->m_codes.padding;
   while(adc->m_codes.nmos <= 7 && !found_code){
     bool succ = true;
     float error;
@@ -306,28 +306,16 @@ bool helper_find_bias_and_nmos(Fabric * fab,
 
     if(succ){
       dac->update(dac_code_1);
-      target = 255.0-padding;
+      target = 255.0;
       error = binsearch::get_bias(adc, target, MEAS_ADC);
-      binsearch::test_stab(adc->m_codes.i2v_cal, error,
-                           max_error, calib_failed);
-      succ &= !calib_failed;
-      sprintf(FMTBUF,"nmos=%d i2v_cal=%d target=%f meas=%f succ=%s",
-              adc->m_codes.nmos, adc->m_codes.i2v_cal,target,target+error,
-              calib_failed ? "false" : "true");
-      print_log(FMTBUF);
+      adc->m_codes.pad_right = error;
 
     }
     if(succ){
       dac->update(dac_code_neg_1);
-      target = 0.0+padding;
+      target = 0.0;
       error = binsearch::get_bias(adc, target, MEAS_ADC);
-      binsearch::test_stab(adc->m_codes.i2v_cal, error,
-                           max_error, calib_failed);
-      succ &= !calib_failed;
-      sprintf(FMTBUF,"nmos=%d i2v_cal=%d target=%f meas=%f succ=%s",
-              adc->m_codes.nmos, adc->m_codes.i2v_cal, target, target+error,
-              calib_failed ? "false" : "true");
-      print_log(FMTBUF);
+      adc->m_codes.pad_left = error;
     }
     if(succ){
       found_code = true;

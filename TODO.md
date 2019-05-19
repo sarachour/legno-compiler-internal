@@ -1,13 +1,13 @@
 # TODO
 # TODO List
 
-0. micro-osc-quarter, micro-osc-quad, vanderpol all work
 
-1. the LUT flips signs (see the writeLut function for correction). How exactly is it flipping the signs? Is it the input? the output? try different tests.
+1. address FIXME in WriteLut (pull actual padding values.)
 
+2. Todo: make sure compiler does not use the 
 2. test spring and pend (until they're working again).
 
-3. try heat1d
+3. heat1d/2:
 
 4. try repri, gentoggle.
 

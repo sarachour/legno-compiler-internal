@@ -98,6 +98,7 @@ void Fabric::Chip::Tile::Slice::LookupTable::setLut (
 
 	/*edit addr endianness*/
 	unsigned char endianAddr = endian(255-addr);
+	//unsigned char endianAddr = endian(addr);
 
 	unsigned char selRow;
 	switch (parentSlice->sliceId) {
