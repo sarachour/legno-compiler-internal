@@ -37,6 +37,7 @@ def model():
   prob.bind('sinAngle', \
             op.Call([op.Var('angle')], sin_fun))
   prob.bind('ANGLE', op.Emit(op.Var('angle'), loc="A0"))
+  #prob.bind('ANGLE', op.Emit(op.Var('sinAngle'), loc="A0"))
 
   bound = 1.8
   prob.set_interval('angle', -bound,bound)

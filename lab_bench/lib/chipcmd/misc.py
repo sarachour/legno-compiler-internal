@@ -134,7 +134,7 @@ class WriteLUTCmd(ArduinoCommand):
 
         values = [0.0]*256
         # FIXME: hack. get the values from the cached dac
-        pad = 20
+        pad = 0
         for idx,v in enumerate(np.linspace(-1.0,1.0,256-pad*2)):
             assigns = dict(zip(self._variables,[v]))
             value = util.eval_func(self.expr,assigns)

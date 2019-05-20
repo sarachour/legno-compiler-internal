@@ -34,6 +34,7 @@ def lut():
     prob.set_bandwidth('A', 0)
     menv = menvs.get_math_env('t2')
     prob.set_max_sim_time(2)
+    prob.compile()
     return menv,prob
 
 
