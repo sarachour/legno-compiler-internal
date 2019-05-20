@@ -165,6 +165,9 @@ class Board(Layer):
         self._handles[handle] = (block_name,loc)
 
     def handle(self,handle):
+        if not handle in self._handles:
+            print(self._handles.keys())
+            raise Exception("not in handles: <%s>" % handle)
         return self._handles[handle]
 
     def handles(self):

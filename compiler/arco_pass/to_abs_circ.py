@@ -116,9 +116,8 @@ def to_abs_circ(board,ast):
         yield stub,"out"
 
     elif ast.op == aop.AOpType.EXTVAR:
-        if ast.has_loc:
+        if ast.has_loc():
             name,loc = board.handle(ast.loc)
-            print(name)
             assert(name == 'ext_chip_in' or name == 'ext_chip_analog_in')
         else:
             loc = None

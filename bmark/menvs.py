@@ -33,25 +33,6 @@ def long_time():
   exp.set_input_time(2000)
   return exp
 
-def long_sin0():
-  exp = MathEnv('t2ksin0')
-  expr = op.Sin(op.Mult(op.Const(1e-2), op.Var('t')))
-  exp.set_sim_time(2000)
-  exp.set_input_time(2000)
-  exp.set_input('I',expr)
-  return exp
-
-
-
-def long_sin1():
-  expr = op.Mult(op.Const(5.0), \
-                 op.Sin(op.Mult(op.Const(0.01), op.Var('t'))))
-  exp = MathEnv('t2ksin1')
-  exp.set_sim_time(2000)
-  exp.set_input_time(2000)
-  exp.set_input('I',expr)
-  return exp
-
 
 def gentoggle_env():
   K = 0.000029618
@@ -88,32 +69,13 @@ def sensor_env_steady():
   return exp
 
 
-def long_sin2():
-  expr1 = op.Mult(op.Const(1.0), \
-                 op.Sin(op.Mult(op.Const(0.1), op.Var('t'))))
-  expr2 = op.Add(
-    op.Mult(op.Const(0.5), \
-            op.Sin(op.Mult(op.Const(0.037), op.Var('t')))),
-    op.Mult(op.Const(0.5), \
-            op.Sin(op.Mult(op.Const(0.01), op.Var('t'))))
-  )
-
-  exp = MathEnv('t2ksin2')
-  exp.set_sim_time(200)
-  exp.set_input_time(200)
-  exp.set_input('I2',expr1)
-  exp.set_input('I1',expr2)
-  return exp
-
 MATH_ENVS = [
   short_time(),
   med_time(),
   audio(),
   long_time(),
   medlong_time(),
-  long_sin0(),
-  long_sin1(),
-  long_sin2(),
+  long_time(),
   gentoggle_env(),
 ]
 
