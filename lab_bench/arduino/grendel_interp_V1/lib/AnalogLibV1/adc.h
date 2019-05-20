@@ -43,6 +43,9 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
     adc_code_t m_codes;
 		bool calibrate (util::calib_result_t& result,
                     const float max_error);
+
+		void characterize(util::calib_result_t& result);
+		void measure(util::calib_result_t& result, float input);
     void defaults();
 		void setAnaIrefNmos () const override;
 	private:

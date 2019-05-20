@@ -11,7 +11,6 @@
 //should be 1208, but it isn't for some reason.
 #define ADC_FULLSCALE (1000.0)
 #define ADC_MIN 0
-#define SAMPLES 10
 
 float measure_dist(int ardAnaDiffChan, float& variance){
   unsigned int pos[SAMPLES];
@@ -30,17 +29,8 @@ float measure_dist(int ardAnaDiffChan, float& variance){
     value /= ADC_FULLSCALE;
     values[index] = value;
   }
-
-  float mean = 0.0;
-  for(unsigned int index = 0; index < samples; index++){
-    mean += values[index];
-  }
-  mean /= (float) samples;
-  variance = 0.0;
-  for(unsigned int index=0; index < samples; index++){
-    variance += pow((values[index] - mean),2.0);
-  }
-  variance /= (float) (samples-1);
+  float mean;
+  util::distribution(values, samples, mean, variance);
 
   sprintf(FMTBUF,"chan=%d mean=%f var=%f", ardAnaDiffChan,
           mean,variance);
@@ -56,7 +46,7 @@ float measure(int ardAnaDiffChan){
   //                      {n,p,n,p,n,p,n,p}
   /*
     A0 A1 A2 A3 A4 A5 A6 A7
-    N  P  N  P  N  P  N  P
+    P  N  P  N  P  N  P  N
     7  6  5  4  3  2  1  0
   */
   const unsigned int samples = SAMPLES;

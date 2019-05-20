@@ -32,6 +32,7 @@ namespace calibrate {
 
     case circ::block_type_t::TILE_ADC:
       adc = common::get_slice(fab,loc.loc)->adc;
+      adc->characterize(result);
       break;
 
     case circ::block_type_t::TILE_DAC:

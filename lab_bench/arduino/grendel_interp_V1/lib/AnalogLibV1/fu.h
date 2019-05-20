@@ -157,12 +157,23 @@ namespace util {
   const char * ifc_to_string(ifc id);
 
   float range_to_coeff(range_t range);
+
+  void distribution(float * values, int size, float& mean, float& variance);
   void save_conns(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                   int& n,
                   int n_max);
 
+  void meas_dist_adc(Fabric::Chip::Tile::Slice::ChipAdc* fu,
+                          float& mean, float& variance);
+
+  float meas_adc(Fabric::Chip::Tile::Slice::ChipAdc* fu);
   float meas_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu);
-  void meas_dist_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu, float& mean, float& variance);
+  void meas_dist_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                          float& mean, float& variance);
+
+  void test_iref(unsigned char code);
+  bool is_valid_iref(unsigned char code);
+
 }
 
 namespace binsearch {
@@ -187,10 +198,9 @@ namespace binsearch {
                  float error,
                  const float max_error,
                  bool& calib_failed);
-  void test_iref(unsigned char code);
-  bool is_valid_iref(unsigned char code);
-
 }
+
+
 class Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
 	friend Connection;

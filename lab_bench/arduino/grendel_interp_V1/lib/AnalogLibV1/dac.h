@@ -2,6 +2,7 @@
 #define DAC_H
 
 #include "fu.h"
+#include "calib_util.h"
 
 typedef enum {
 	// dacLo = 0,		/*the DAC block signal range is 2uA*/
@@ -31,6 +32,12 @@ int lru[NCACHE_SLOTS];
 } dac_cache_t;
 
 extern dac_cache_t DAC_CACHE;
+
+float make_reference_dac(cutil::calibrate_t& calib,
+                         util::calib_result_t& result,
+                         dac_code_t& config,
+                         Fabric::Chip::Tile::Slice::Dac* dac,
+                         Fabric::Chip::Tile::Slice::Dac* ref_dac);
 
 namespace dac_cache {
 
