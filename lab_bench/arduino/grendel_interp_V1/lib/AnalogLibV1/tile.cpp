@@ -53,23 +53,6 @@ bool Fabric::Chip::Tile::calibrate () const {
 	return true;
 };
 
-/*Internal function*/
-void Fabric::Chip::Tile::controllerHelperTile (
-	unsigned char selLine,
-	unsigned char cfgTile
-) const {
-	if (selLine<7||11<selLine) error ("selLine out of bounds");
-	if (cfgTile<0||255<cfgTile) error ("cfgTile out of bounds");
-	/*if arduino form, check that sram vector fields are within bounds*/
-	// should only be used by controller and lut param writes
-	// Serial.print("vec.tileRowId = "); Serial.println(vec.tileRowId);
-	// Serial.print("vec.tileColId = "); Serial.println(vec.tileColId);
-	// Serial.print("vec.selRow = "); Serial.println(vec.selRow);
-	// Serial.print("vec.selCol = "); Serial.println(vec.selCol);
-	// Serial.print("vec.cfgTile = "); Serial.println(vec.cfgTile);
-	spiDriveTile ( 8, 0, selLine, cfgTile );
-	spiDriveTile (noOp);
-}
 
 void Fabric::Chip::Tile::spiDriveTile (
 	unsigned char selRow,

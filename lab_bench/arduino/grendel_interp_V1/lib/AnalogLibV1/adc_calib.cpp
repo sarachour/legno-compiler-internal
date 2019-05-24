@@ -60,14 +60,12 @@ bool helper_find_bias_and_nmos(Fabric * fab,
       dac->update(dac_code_1);
       target = 255.0;
       error = binsearch::get_bias(adc, target, MEAS_ADC);
-      adc->m_codes.pad_right = error;
 
     }
     if(succ){
       dac->update(dac_code_neg_1);
       target = 0.0;
       error = binsearch::get_bias(adc, target, MEAS_ADC);
-      adc->m_codes.pad_left = error;
     }
     if(succ){
       found_code = true;

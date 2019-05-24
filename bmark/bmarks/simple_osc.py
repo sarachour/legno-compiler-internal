@@ -9,8 +9,23 @@ from ops import op, opparse
 from bmark.bmarks.common import *
 import bmark.menvs as menvs
 
+def make_output(prob,out,var,adc=False):
+  if adc == False:
+    prob.bind(out, \
+              op.Emit(
+                op.Mult(op.Const(0.9999),op.Var(var)),
+                loc="A0"
+              ))
+
+  else:
+    ident_fun = op.Func(['T'], op.Var('T'))
+    prob.bind(out,
+              op.Emit(op.Call([op.Var(var)], \
+                              ident_fun), loc="A0"))
+
+
 # from wikipedia
-def model(name,omega,menv_name='t20'):
+def model(name,omega,menv_name='t20', adc=False):
     params = {
         'P0': 0.1,
         'V0' :0.0,
@@ -26,11 +41,7 @@ def model(name,omega,menv_name='t20'):
     scf = omega
     prob.bind("P", P)
     prob.bind("V", V)
-    prob.bind("Loc", \
-              op.Emit(
-                op.Mult(op.Const(0.9999),op.Var("P")),
-                loc="A0"
-              ))
+    make_output(prob,"Loc", "P", adc)
     # most accurately, 0.1
     #base_bnd = 0.1
     base_bnd = 0.12

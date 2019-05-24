@@ -735,9 +735,7 @@ class AdcBlockState(BlockState):
         'upper': self.upper,
         'lower_fs': self.lower_fs,
         "lower": self.lower,
-        "range": self.rng.code(),
-        "pad_left": self.pad_left,
-        "pad_right": self.pad_right
+        "range": self.rng.code()
       }
     })
 
@@ -753,8 +751,6 @@ class AdcBlockState(BlockState):
     self.enable = chipdata.BoolType(state.enable)
 
 
-    self.pad_left = state.pad_left
-    self.pad_right = state.pad_right
     self.pmos = state.pmos
     self.nmos = state.nmos
     self.pmos2 = state.pmos2

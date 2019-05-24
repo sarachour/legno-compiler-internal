@@ -29,9 +29,9 @@ float make_reference_dac(cutil::calibrate_t& calib,
 void Fabric::Chip::Tile::Slice::Dac::update(dac_code_t codes){
   m_codes = codes;
   updateFu();
-  setConstant(m_codes.const_val);
-  setConstantCode(m_codes.const_code);
-  setSource(m_codes.source);
+  setConstant(codes.const_val);
+  setConstantCode(codes.const_code);
+  setSource(codes.source);
   // restore exact state. The gain_val field clobbered a bit by setConstantCode
   m_codes = codes;
 }

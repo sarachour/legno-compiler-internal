@@ -173,8 +173,11 @@ def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
         jaunt_common.analog_op_range_constraint(jenv,circ,phys,prop,
                                                 mathscvar,hwscvar, \
                                                 mrng,hwrng,snr,\
-                                                '%s-%s' % (block.name,port))
-        jaunt_common.analog_bandwidth_constraint(jenv,circ,prop,mbw,hwbw)
+                                                '%s-%s-%s' % \
+                                                (block.name,loc,port))
+        jaunt_common.analog_bandwidth_constraint(jenv,circ,prop,mbw,hwbw,
+                                                 '%s-%s-%s' % \
+                                                 (block.name,loc,port))
 
     elif isinstance(prop, props.DigitalProperties):
         hwexc = prop.exclude()
@@ -182,10 +185,13 @@ def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
                                                  mathscvar,hwscvar, \
                                                  mrng,hwrng, \
                                                  hwexc,
-                                                '%s-%s' % (block.name,port))
+                                                '%s-%s-%s' % \
+                                                 (block.name,loc,port))
         jaunt_common.digital_quantize_constraint(jenv,phys,prop,
                                                  mathscvar,hwscvar,mrng,snr)
-        jaunt_common.digital_bandwidth_constraint(jenv,prob,circ,mbw,prop)
+        jaunt_common.digital_bandwidth_constraint(jenv,prob,circ,mbw,prop,
+                                                  '%s-%s-%s' % \
+                                                  (block.name,loc,port))
     else:
         raise Exception("unknown")
 
@@ -214,7 +220,7 @@ def sc_generate_problem(jenv,prob,circ):
 
 
 
-    if not jenv.uses_tau():
+    if not jenv.uses_tau() or not jenv.time_scaling:
         jenv.eq(jop.JVar(jenv.tau()), jop.JConst(1.0),'tau-fixed')
     else:
         jenv.lte(jop.JVar(jenv.tau()), jop.JConst(1e10),'tau-min')

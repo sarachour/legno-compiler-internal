@@ -63,10 +63,11 @@ def _to_phys_time(circ,time):
 def _to_phys_bandwidth(circ,bw):
     return bw*circ.board.time_constant
 
-def analog_bandwidth_constraint(jenv,circ,prop,mbw,hwbw):
+def analog_bandwidth_constraint(jenv,circ,prop,mbw,hwbw,annot):
     tau = jop.JVar(jenv.tau())
     if isinstance(prop,props.AnalogProperties) and prop.is_physical:
         jenv.eq(tau,jop.JConst(1.0),'jcom-physical-bw')
+        jenv.set_time_scaling(False)
 
     if mbw.is_infinite():
         return
@@ -81,7 +82,7 @@ def analog_bandwidth_constraint(jenv,circ,prop,mbw,hwbw):
     if hwbw.upper > 0:
         jenv.lte(jop.JMult(tau,jop.JConst(physbw)), \
                  jop.JConst(hwbw.upper),
-                 'jcom-analog-bw'
+                 'jcom-analog-bw-%s' % annot
         )
     else:
         jenv.fail()
@@ -89,7 +90,7 @@ def analog_bandwidth_constraint(jenv,circ,prop,mbw,hwbw):
     if hwbw.lower > 0:
         jenv.gte(jop.JMult(tau,jop.JConst(physbw)), \
                  jop.JConst(hwbw.lower),
-                 'jcom-analog-bw'
+                 'jcom-analog-bw-%s' % annot
         )
 
 def digital_op_range_constraint(jenv,phys,prop,mscale,hscale,mrng,hwrng,hwexc,annot=""):
@@ -247,7 +248,7 @@ def max_sim_time_constraint(jenv,prob,circ):
     jenv.lte(hw_time, jop.JConst(max_time), 'max-time')
 
 
-def digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):
+def digital_bandwidth_constraint(jenv,prob,circ,mbw,prop,annot):
     tau = jop.JVar(jenv.tau())
     tau_inv = jop.JVar(jenv.tau(),exponent=-1.0)
     if mbw.is_infinite():
@@ -266,7 +267,7 @@ def digital_bandwidth_constraint(jenv,prob,circ,mbw,prop):
         sim_sample_freq = 2.0*physbw
         jenv.lte(jop.JMult(tau, jop.JConst(sim_sample_freq)), \
                  jop.JConst(hw_sample_freq),
-                 'jcom-digital-bw'
+                 'jcom-digital-bw-%s' % annot
         )
         if not prop.max_samples is None:
             # (max_sim_time/tau)*(sim_sample_freq*tau)

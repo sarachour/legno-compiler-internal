@@ -152,9 +152,6 @@ namespace calibrate {
         break;
       case circ::block_type_t::INTEG:
         integ = common::get_slice(fab,loc.loc)->integrator;
-        comm::print_header();
-        circ::print_state(blk,state);
-        Serial.println();
         integ->update(state.integ);
         break;
       default:

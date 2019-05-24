@@ -99,14 +99,27 @@ class MaxSignalObjFunc(optlib.JauntObjectiveFunction):
     return "maxsig"
 
   @staticmethod
-  def make(circ,jobj,varmap):
+  def make_mult(jenv,varmap):
     rngobj = 0.0
-    jenv = jobj.jenv
+    for scvar in jenv.variables(in_use=True):
+      tag = jenv.get_tag(scvar)
+      if tag == jenvlib.JauntVarType.SCALE_VAR:
+        rngobj *= 1/varmap[scvar]
+
+  @staticmethod
+  def make_add(jenv,varmap):
+    rngobj = 0.0
     for scvar in jenv.variables(in_use=True):
       tag = jenv.get_tag(scvar)
       if tag == jenvlib.JauntVarType.SCALE_VAR:
         rngobj += 1/varmap[scvar]
-    yield MaxSignalObjFunc(rngobj)
+
+  @staticmethod
+  def make(circ,jobj,varmap):
+    jenv = jobj.jenv
+    yield MaxSignalObjFunc(MaxSignalObjFunc.make_add(jenv,varmap))
+    if not jenv.solved():
+      yield MaxSignalObjFunc(MaxSignalObjFunc.make_mult(jenv,varmap))
 
 class MaxSignalAndSpeedObjFunc(optlib.JauntObjectiveFunction):
 
@@ -120,9 +133,13 @@ class MaxSignalAndSpeedObjFunc(optlib.JauntObjectiveFunction):
 
   @staticmethod
   def make(circ,jobj,varmap):
-    ot = list(FastObjFunc.make(circ,jobj,varmap))[0]
-    oi = list(MaxSignalObjFunc.make(circ,jobj,varmap))[0]
-    yield MaxSignalAndSpeedObjFunc(ot.objective()*oi.objective())
+    if jobj.time_scaling:
+      ot = list(FastObjFunc.make(circ,jobj,varmap))[0]
+      for oi in MaxSignalObjFunc.make(circ,jobj,varmap):
+        yield MaxSignalAndSpeedObjFunc(ot.objective()*oi.objective())
+    else:
+      for obj in MaxSignalObjFunc.make(circ,jobj,varmap):
+        yield obj
 
 class MaxSignalAndStabilityObjFunc(optlib.JauntObjectiveFunction):
 
@@ -136,6 +153,10 @@ class MaxSignalAndStabilityObjFunc(optlib.JauntObjectiveFunction):
 
   @staticmethod
   def make(circ,jobj,varmap):
-    ot = list(SlowObjFunc.make(circ,jobj,varmap))[0]
-    oi = list(MaxSignalObjFunc.make(circ,jobj,varmap))[0]
-    yield MaxSignalAndStabilityObjFunc(ot.objective()*oi.objective())
+    if jobj.time_scaling:
+      ot = list(SlowObjFunc.make(circ,jobj,varmap))[0]
+      for oi in MaxSignalObjFunc.make(circ,jobj,varmap):
+        yield MaxSignalAndStabilityObjFunc(ot.objective()*oi.objective())
+    else:
+      for obj in MaxSignalObjFunc.make(circ,jobj,varmap):
+        yield obj

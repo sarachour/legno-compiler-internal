@@ -75,9 +75,13 @@ void Fabric::setTimeout (unsigned int timeout) const {
 	controllerHelperFabric (6, timeoutReg3);
 }
 
-void Fabric::controllerHelperFabric (unsigned char selLine, unsigned char cfgTile) const {
+void Fabric::controllerHelperFabric (unsigned char selLine,
+                                     unsigned char cfgTile) const {
 	if (selLine<0||6<selLine) error ("selLine out of bounds");
 	if (cfgTile<0||255<cfgTile) error ("cfgTile out of bounds");
+
+  sprintf(FMTBUF,"CTRLFAB %d %d", selLine,cfgTile);
+  print_debug(FMTBUF);
 	/*if arduino form, check that sram vector fields are within bounds*/
 	// should only be used by controller and lut param writes
 	digitalWriteDirect (chips[0].tiles[0].spiSSPin, LOW);
@@ -105,9 +109,32 @@ void Fabric::controllerHelperFabric (unsigned char selLine, unsigned char cfgTil
 void Fabric::Chip::controllerHelperChip (unsigned char selLine, unsigned char cfgTile) const {
 	if (selLine<0||6<selLine) error ("selLine out of bounds");
 	if (cfgTile<0||255<cfgTile) error ("cfgTile out of bounds");
+  sprintf(FMTBUF,"CTRLCHIP %d %d", selLine,cfgTile);
+  print_debug(FMTBUF);
 	/*if arduino form, check that sram vector fields are within bounds*/
 	// should only be used by controller and lut param writes
 	spiDriveChip ( 8, 0, selLine, cfgTile );
 	// this is necessary
 	spiDriveChip (noOp);
+}
+
+
+/*Internal function*/
+void Fabric::Chip::Tile::controllerHelperTile (
+                                               unsigned char selLine,
+                                               unsigned char cfgTile
+                                               ) const {
+	if (selLine<7||11<selLine) error ("selLine out of bounds");
+	if (cfgTile<0||255<cfgTile) error ("cfgTile out of bounds");
+  sprintf(FMTBUF,"CTRLTILE %d %d", selLine,cfgTile);
+  print_debug(FMTBUF);
+	/*if arduino form, check that sram vector fields are within bounds*/
+	// should only be used by controller and lut param writes
+	// Serial.print("vec.tileRowId = "); Serial.println(vec.tileRowId);
+	// Serial.print("vec.tileColId = "); Serial.println(vec.tileColId);
+	// Serial.print("vec.selRow = "); Serial.println(vec.selRow);
+	// Serial.print("vec.selCol = "); Serial.println(vec.selCol);
+	// Serial.print("vec.cfgTile = "); Serial.println(vec.cfgTile);
+	spiDriveTile ( 8, 0, selLine, cfgTile );
+	spiDriveTile (noOp);
 }

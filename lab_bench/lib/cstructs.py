@@ -288,9 +288,7 @@ def adc_state_t():
         "upper" / cstruct.Int8ul,
         "lower_fs" / cstruct.Int8ul,
         "lower" / cstruct.Int8ul,
-        "range" / range_t(),
-        "pad_left" / cstruct.Int8ul,
-        "pad_right" / cstruct.Int8ul
+        "range" / range_t()
     )
 
 def dac_state_t():

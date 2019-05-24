@@ -8,7 +8,7 @@ void Fabric::Chip::Tile::Slice::ChipAdc::characterize(util::calib_result_t& resu
   util::init_result(result);
   int n = 20;
   for(int i=0; i < n; i += 1){
-    float in0 = (i/n)*1.0;
+    float in0 = (i/((float) n))*2.0-1.0;
     sprintf(FMTBUF, "COMPUTE %f", in0);
     measure(result,in0);
   }
@@ -42,9 +42,7 @@ void Fabric::Chip::Tile::Slice::ChipAdc::measure(util::calib_result_t& result, f
 	conn0.setConn();
 	setEnable (true);
 
-  float spread = 255 - (m_codes.pad_left + m_codes.pad_right);
-  float offset = m_codes.pad_left;
-  float target = input*spread + offset;
+  float target = (input+1.0)*0.5*255;
 
   float mean,variance;
   util::meas_dist_adc(this,mean,variance);
@@ -53,7 +51,9 @@ void Fabric::Chip::Tile::Slice::ChipAdc::measure(util::calib_result_t& result, f
                  mean-target,
                  variance);
 
-
+  sprintf(FMTBUF, "MEAS target=%f input=%f / mean=%f var=%f",
+          target, input, mean, variance);
+  print_log(FMTBUF);
 	conn0.brkConn();
 	val_dac->setEnable(false);
 

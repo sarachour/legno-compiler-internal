@@ -34,6 +34,10 @@ class JauntEnv:
     self.decl_jaunt_var((),JauntVarType.TAU)
 
     self.no_quality = False
+    self.time_scaling = True
+
+  def set_time_scaling(self,v):
+    self.time_scaling = v
 
   def tau(self):
     return self.to_jaunt_var(JauntVarType.TAU,())
@@ -185,7 +189,6 @@ class JauntInferEnv(JauntEnv):
       self._exactly_one = []
       self._implies = {}
       self._lts = []
-
 
     def decl_op_range_var(self,block_name,loc,port,handle=None):
       return self.decl_jaunt_var((block_name,loc,port,handle),

@@ -190,6 +190,9 @@ class SMTOp:
   def __init__(self):
     pass
 
+  def __repr__(self):
+    return self.to_smtlib2()
+
 class SMTVar(SMTOp):
 
   def __init__(self,name):

@@ -58,6 +58,11 @@ class JauntObjectiveFunctionManager():
         self.jenv = jenv
         self._results = {}
 
+
+    @property
+    def time_scaling(self):
+        return self.jenv.time_scaling
+
     def result(self,objective):
         return self._results[objective]
 

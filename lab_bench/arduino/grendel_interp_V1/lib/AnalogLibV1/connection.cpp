@@ -28,32 +28,45 @@ void Fabric::Chip::Connection::setConn () const {
 		}
 	}
 	switch (sourceIfc->parentFu->unitId) {
-		case chipInp: sourceIfc->parentFu->parentSlice->chipInput->setEnable(true); break;
-		case unitDac: sourceIfc->parentFu->parentSlice->dac->setEnable(true); break;
-		case unitMulL: sourceIfc->parentFu->parentSlice->muls[0].setEnable(true); break;
-		case unitMulR: sourceIfc->parentFu->parentSlice->muls[1].setEnable(true); break;
-		case unitInt: 
+		case chipInp:
+      sourceIfc->parentFu->parentSlice->chipInput->setEnable(true); break;
+		case unitDac:
+      sourceIfc->parentFu->parentSlice->dac->setEnable(true); break;
+		case unitMulL:
+      sourceIfc->parentFu->parentSlice->muls[0].setEnable(true); break;
+		case unitMulR:
+      sourceIfc->parentFu->parentSlice->muls[1].setEnable(true); break;
+		case unitInt:
 			sourceIfc->parentFu->parentSlice->integrator->setEnable(true);
 			sourceIfc->parentFu->parentSlice->integrator->setException(true);
 		break;
-		case unitFanL: sourceIfc->parentFu->parentSlice->fans[0].setEnable(true);
-			if (sourceIfc->ifcId==out2Id) sourceIfc->parentFu->parentSlice->fans[0].setThird(true);
-		break;
-		case unitFanR: sourceIfc->parentFu->parentSlice->fans[1].setEnable(true);
-			if (sourceIfc->ifcId==out2Id) sourceIfc->parentFu->parentSlice->fans[1].setThird(true);
+		case unitFanL:
+      sourceIfc->parentFu->parentSlice->fans[0].setEnable(true);
+			if (sourceIfc->ifcId==out2Id)
+        sourceIfc->parentFu->parentSlice->fans[0].setThird(true);
+      break;
+		case unitFanR:
+      sourceIfc->parentFu->parentSlice->fans[1].setEnable(true);
+			if (sourceIfc->ifcId==out2Id)
+        sourceIfc->parentFu->parentSlice->fans[1].setThird(true);
 		break;
 		default: break;
 	}
 	switch (destIfc->parentFu->unitId) {
-		case unitMulL: destIfc->parentFu->parentSlice->muls[0].setEnable(true); break;
-		case unitMulR: destIfc->parentFu->parentSlice->muls[1].setEnable(true); break;
+		case unitMulL:
+      destIfc->parentFu->parentSlice->muls[0].setEnable(true); break;
+		case unitMulR:
+      destIfc->parentFu->parentSlice->muls[1].setEnable(true); break;
 		case unitInt: 
 			destIfc->parentFu->parentSlice->integrator->setEnable(true);
 			destIfc->parentFu->parentSlice->integrator->setException(true);
 		break;
-		case unitFanL: destIfc->parentFu->parentSlice->fans[0].setEnable(true); break;
-		case unitFanR: destIfc->parentFu->parentSlice->fans[1].setEnable(true); break;
-		case unitAdc: destIfc->parentFu->parentSlice->adc->setEnable(true); break;
+		case unitFanL:
+      destIfc->parentFu->parentSlice->fans[0].setEnable(true); break;
+		case unitFanR:
+      destIfc->parentFu->parentSlice->fans[1].setEnable(true); break;
+		case unitAdc:
+      destIfc->parentFu->parentSlice->adc->setEnable(true); break;
 		default: break;
 	}
 
@@ -74,11 +87,15 @@ void Fabric::Chip::Connection::brkConn () const {
 	Vector vec = Vector (this);
 
 	switch (sourceIfc->parentFu->unitId) {
-		case chipInp: sourceIfc->parentFu->parentSlice->chipInput->setEnable(false); break;
-		case unitDac: sourceIfc->parentFu->parentSlice->dac->setEnable(false); break;
-		case unitMulL: sourceIfc->parentFu->parentSlice->muls[0].setEnable(false); break;
-		case unitMulR: sourceIfc->parentFu->parentSlice->muls[1].setEnable(false); break;
-		case unitInt: 
+		case chipInp:
+      sourceIfc->parentFu->parentSlice->chipInput->setEnable(false); break;
+		case unitDac:
+      sourceIfc->parentFu->parentSlice->dac->setEnable(false); break;
+		case unitMulL:
+      sourceIfc->parentFu->parentSlice->muls[0].setEnable(false); break;
+		case unitMulR:
+      sourceIfc->parentFu->parentSlice->muls[1].setEnable(false); break;
+		case unitInt:
 			sourceIfc->parentFu->parentSlice->integrator->setEnable(false);
 			sourceIfc->parentFu->parentSlice->integrator->setException(false);
 		break;

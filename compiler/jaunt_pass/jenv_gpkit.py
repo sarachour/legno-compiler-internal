@@ -81,14 +81,17 @@ def build_gpkit_cstrs(circ,jenv):
 def build_gpkit_problem(circ,jenv,jopt):
   variables,gpkit_cstrs = build_gpkit_cstrs(circ,jenv)
   if gpkit_cstrs is None:
+    print("could not build constraints")
+    input()
     return
 
+
   for obj in jopt.objective(circ,variables):
-    cstrs = list(gpkit_cstrs) + list(obj.constraints())
-    ofun = obj.objective()
-    jaunt_util.log_info(ofun)
-    model = gpkit.Model(ofun, cstrs)
-    yield model,obj
+      cstrs = list(gpkit_cstrs) + list(obj.constraints())
+      ofun = obj.objective()
+      jaunt_util.log_info(ofun)
+      model = gpkit.Model(ofun, cstrs)
+      yield model,obj
 
 def solve_gpkit_problem_cvxopt(gpmodel,timeout=10):
     def handle_timeout(signum,frame):

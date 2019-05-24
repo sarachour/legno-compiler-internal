@@ -106,6 +106,11 @@ void Fabric::Chip::reset () {
 
 /*Cache the vectors according to format choice*/
 void Fabric::Chip::cacheVec (Vector vec) {
+  sprintf(FMTBUF,
+          "CFGTILE pos=(%d,%d,%d) data=%d",
+          vec.selRow, vec.selCol, vec.selLine,
+          vec.cfgTile);
+  print_debug(FMTBUF);
 	/*if arduino form, check that sram vector fields are within bounds*/
 	if (vec.selRow<0||10<vec.selRow) error ("vec.selRow out of bounds");
 	if (vec.selCol<0||15<vec.selCol) error ("vec.selCol out of bounds");

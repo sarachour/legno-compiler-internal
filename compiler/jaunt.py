@@ -32,23 +32,27 @@ def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
     prop = block.props(config.comp_mode,config.scale_mode,port,handle=handle)
     phys = jaunt_common.noise_model(circ,block,loc,port)
     hwrng,hwbw,snr= prop.interval(), prop.bandwidth(), config.snr(port)
+    annot = "%s.%s.%s" % (block.name,loc,port)
     if isinstance(prop, props.AnalogProperties):
         jaunt_common.analog_op_range_constraint(jenv,circ,phys,prop,
                                                 scfvar,jop.JConst(1.0),
                                                 mrng,hwrng, \
-                                                snr,annot=block.name)
-        jaunt_common.analog_bandwidth_constraint(jenv,circ,prop,mbw,hwbw)
+                                                snr,
+                                                annot=annot)
+        jaunt_common.analog_bandwidth_constraint(jenv,circ,prop,mbw,hwbw,
+                                                 annot)
 
     elif isinstance(prop, props.DigitalProperties):
         hwexc = prop.exclude()
         jaunt_common.digital_op_range_constraint(jenv,phys,prop,scfvar, \
                                                  jop.JConst(1.0),mrng,hwrng, \
                                                  hwexc,
-                                                 block.name)
+                                                 annot)
         jaunt_common.digital_quantize_constraint(jenv,phys,prop,scfvar,
                                                  jop.JConst(1.0),mrng,snr)
         jaunt_common.digital_bandwidth_constraint(jenv,prob,circ, \
-                                                  mbw, prop)
+                                                  mbw, prop,
+                                                  annot)
     else:
         raise Exception("unknown")
 
@@ -81,7 +85,7 @@ def sc_generate_problem(jenv,prob,circ):
                                            loc,port,handle=handle)
 
 
-    if not jenv.uses_tau():
+    if not jenv.uses_tau() or jenv.time_scaling:
         jenv.eq(jop.JVar(jenv.tau()), jop.JConst(1.0),'tau_fixed')
     else:
         jenv.lte(jop.JVar(jenv.tau()), jop.JConst(1e6),'tau_min')
@@ -128,15 +132,18 @@ def compute_scale(jenv,prog,circ,objfun):
     if len(results) == 0:
         raise Exception("no solution exists")
 
+    print("objective: %s" % objfun.name())
     for gpprob,thisobj in \
         jgpkit.build_gpkit_problem(circ,jenv,jopt):
         if gpprob is None:
+            print("<< could not build geometric problem>>")
             continue
 
         sln = jgpkit.solve_gpkit_problem(gpprob)
         if sln == None:
             print("<< solution is none >>")
             jgpkit.debug_gpkit_problem(gpprob)
+            input()
             continue
 
         jopt.add_result(thisobj.tag(),sln)

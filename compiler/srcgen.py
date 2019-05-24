@@ -428,6 +428,7 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
 def execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trialno):
   if hwenv.use_oscilloscope and len(hwenv.oscilloscope.outputs()) > 0:
     gren.add(parse('osc_setup_trigger'))
+
   if hwenv.manual:
     gren.add(parse('wait_for_key'))
 

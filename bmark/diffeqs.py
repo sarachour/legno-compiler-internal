@@ -17,7 +17,9 @@ import bmark.bmarks.bbsys as bbsys
 
 import bmark.bmarks.audio.test as audio_test
 import bmark.bmarks.audio.lpf as audio_lpf
+import bmark.bmarks.audio.passthru as audio_passthru
 import bmark.bmarks.audio.mixer as audio_mixer
+import bmark.bmarks.audio.kalman as audio_kalman
 
 # commented out any benchmarks that don't work.
 BMARKS = [
@@ -29,6 +31,7 @@ BMARKS = [
 
     simple_osc.model("one",1.0),
     simple_osc.model("quad",4.0),
+    simple_osc.model("adc",0.9,adc=True),
     simple_osc.model("quarter",0.25, \
                      menv_name='t200'),
     spring.model(),
@@ -49,9 +52,11 @@ BMARKS = [
     robot_control.model(),
     sensor_fanout.model(),
     sensor_dynsys.model(),
+    # audio benchmarks
     audio_test.model(),
     audio_lpf.model(),
-    audio_mixer.model()
+    audio_kalman.model(),
+    audio_passthru.model()
 ]
 
 # energy model: page 26 of thesis, chapter 2

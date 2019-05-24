@@ -71,7 +71,9 @@ CTX.insert(GLProp.DIGITAL_EXCLUDE, (0.0,0.0))
 CTX.insert(GLProp.CURRENT_INTERVAL, (-1.9,1.9))
 CTX.insert(GLProp.VOLTAGE_INTERVAL, (-1.0,1.0))
 CTX.insert(GLProp.DIGITAL_QUANTIZE, 256)
-CTX.insert(GLProp.MAX_FREQ, 200*units.khz)
+
+#CTX.insert(GLProp.MAX_FREQ, 200*units.khz)
+CTX.insert(GLProp.MAX_FREQ, 1000*units.khz)
 CTX.insert(GLProp.DIGITAL_SAMPLE, 3.0*units.us)
 CTX.insert(GLProp.INBUF_SIZE,1200)
 CTX.insert(GLProp.OUTBUF_SIZE,1e9)
@@ -96,6 +98,7 @@ CTX.insert(GLProp.COEFF, 0.5, block='tile_adc')
 CTX.insert(GLProp.MAX_FREQ, freq_khz*units.khz, block='tile_lut')
 
 # specialized ext_chip_in
+CTX.insert(GLProp.COEFF, 2.0, block='ext_chip_analog_in')
 CTX.insert(GLProp.COEFF, 2.0, block='ext_chip_analog_in')
 
 # specialized ext_chip_in
