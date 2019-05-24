@@ -24,3 +24,4 @@ def math_env(prob):
     prob.set_max_sim_time(time*hwfreq)
     menv.set_sim_time(time*hwfreq)
     menv.set_input_time(time*hwfreq)
+    return menv
