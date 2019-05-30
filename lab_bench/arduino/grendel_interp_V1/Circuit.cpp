@@ -13,33 +13,6 @@ char HCDC_DEMO_BOARD = 6;
 
 namespace circ {
 
-bool caltbl[2][4][4];
-
-
-void init_calibrations(){
-  for(int chipno=0; chipno < 2; chipno ++){
-    for(int tileno = 0; tileno < 4; tileno ++){
-      for(int sliceno = 0; sliceno < 4; sliceno ++){
-        caltbl[chipno][tileno][sliceno] = false;
-      }
-    }
-  }
-}
-
-bool do_calibrate(int chipno, int tileno, int sliceno){
-  if(not caltbl[chipno][tileno][sliceno]){
-    caltbl[chipno][tileno][sliceno] = true;
-    return true;
-  }
-  else{
-    comm::print_header();
-    Serial.println("-> skipping calibration");
-    return false;
-  }
-}
-
-
-
 
 Fabric* setup_board(){
   Fabric* fabric = new Fabric();

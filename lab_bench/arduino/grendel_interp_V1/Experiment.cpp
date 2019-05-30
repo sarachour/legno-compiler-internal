@@ -18,9 +18,6 @@ volatile int SDA_VAL = LOW;
 experiment_t* EXPERIMENT;
 Fabric* FABRIC;
 
-short BITMASK_ONE[] = {0x0000,0xffff};
-short BITMASK_ZERO[] = {0xffff, 0x0000};
-
 inline void store_value(experiment_t * expr,uint32_t offset, int16_t value){
   expr->databuf[offset] = value;
 }
@@ -141,19 +138,12 @@ void compute_offsets(experiment_t * expr){
   float time_between_samps = expr->time_between_samps_us;
   // if we're in over our head in terms of number of samples, readjust
   if(samples_required > max_n_samples){
-    float time_scf = float(samples_required)/max_n_samples;
-    dac_samples = floor(expr->dac_samples*(1.0/time_scf));
-    adc_samples = floor(expr->adc_samples*(1.0/time_scf));
-    total_samples = floor(expr->adc_samples*(1.0/time_scf));
-    samples_required = n_dac_segs*dac_samples + n_adc_segs*adc_samples;
-    time_between_samps = time_between_samps*time_scf;
-    assert(samples_required <= max_n_samples);
+    error("too many samples required");
   }
   expr->adc_samples = adc_samples;
   expr->dac_samples = dac_samples;
-  expr->total_samples = dac_samples;
+  expr->total_samples = total_samples;
   expr->time_between_samps_us = time_between_samps;
-  
   int offset = 0;
   for(int i=0; i < MAX_ADCS; i += 1){
     assert(offset < max_n_samples);
@@ -191,6 +181,32 @@ void reset_experiment(experiment_t * expr){
   expr->use_osc = false;
   memset(expr->databuf,0,MAX_N_BYTES);
 }
+
+
+
+  void helper_print_adc_values(Fabric* fab){
+    Fabric::Chip::Tile::Slice::ChipAdc * adc;
+    float mean;
+    float variance;
+    for(int chipno=0; chipno < 2; chipno+=1){
+      for(int tileno=0; tileno < 4; tileno += 1){
+        for(int sliceno=0; sliceno < 4; sliceno += 2){
+          adc = fab->chips[chipno].tiles[tileno].slices[sliceno].adc;
+          if(adc->m_codes.enable){
+            util::meas_dist_adc(adc, mean, variance);
+            sprintf(FMTBUF, "adc.%d.%d.%d mean=%f var=%f",
+                    chipno,
+                    tileno,
+                    sliceno,
+                    mean,
+                    variance);
+            print_info(FMTBUF);
+          }
+        }
+      }
+    }
+    return;
+  }
 void run_experiment(experiment_t * expr, Fabric * fab){
   if(not expr->compute_offsets){
       comm::error("must compute offsets beforehand");
@@ -214,6 +230,10 @@ void run_experiment(experiment_t * expr, Fabric * fab){
     // this actually calls start and stop.
     fab->cfgCommit();
   }
+  print_info("---- ADC VALUES ----");
+  // this is a stopgap measure to debug the ADC.
+  helper_print_adc_values(fab);
+  print_info("--------");
   //attach the interrupt for the wave
   Timer3.attachInterrupt(_update_wave);
   // compute the sim time used for the delay

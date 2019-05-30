@@ -19,16 +19,15 @@ void Fabric::cfgStart () {
 
 /*Configuration commit*/
 void Fabric::cfgCommit () {
+  print_debug("start configure (cfgStart)");
 	cfgStart();
-  print_info("writing vects to chip 0");
+  print_debug("writing vects to chip 0");
 	chips[0].writeVecs();
-  print_info("writing vects to chip 1");
+  print_debug("writing vects to chip 1");
 	chips[1].writeVecs();
-  print_info("cfgStop");
-  Serial.flush();
+  print_debug("stop configure (cfgStop)");
 	cfgStop();
-  print_info("done");
-  Serial.flush();
+  print_debug("done");
 }
 
 /*Configuration stop*/
