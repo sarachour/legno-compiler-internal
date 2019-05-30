@@ -46,7 +46,6 @@ def main_dump_db(state):
             keys[key] = data
 
     for key,obj in keys.items():
-        print(key)
         obj.write_dataset(state.state_db)
 
 

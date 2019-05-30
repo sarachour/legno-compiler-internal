@@ -198,29 +198,6 @@ bool helper_find_gain_cal(float gain,
 }
 
 
-void Fabric::Chip::Tile::Slice::Multiplier::characterize(util::calib_result_t& result){
-  if(m_codes.vga){
-    util::init_result(result);
-    for(int i=0; i < 10; i += 1){
-      float in0 = (i/10.0)*1.0;
-      sprintf(FMTBUF, "COMPUTE %f*%f", in0, m_codes.gain_val);
-      print_log(FMTBUF);
-      measure_vga(result,in0);
-    }
-  }
-  else{
-    util::init_result(result);
-    for(int i=0; i < 5; i += 1){
-      float in0 = (i/5.0)*1.0;
-      for(int j=0; j < 5; j += 1){
-        float in1 = (i/5.0)*1.0;
-        measure_mult(result,in0,in1);
-      }
-    }
-  }
-}
-
-
 bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (util::calib_result_t& result, float max_error) {
   float gain = m_codes.gain_val;
   int sign = m_codes.inv[out0Id] ? -1.0 : 1.0;

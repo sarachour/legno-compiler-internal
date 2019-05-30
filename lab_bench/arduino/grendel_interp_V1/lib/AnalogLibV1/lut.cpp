@@ -24,7 +24,6 @@ void Fabric::Chip::Tile::Slice::LookupTable::setSource (lut_source_t src) {
   	 parentSlice->parentTile->setParallelIn ( external );
      error("TODO: don't implicitly setParallelIn");
 	}
-	/*set*/
 	setParam0 (
 		ns_6, /*Trigger output delay*/
 		ns2_5, /*pins for programming the delay lines for read operation*/
@@ -109,9 +108,8 @@ void Fabric::Chip::Tile::Slice::LookupTable::setLut (
 ) const {
 
 	/*edit addr endianness*/
-	unsigned char endianAddr = endian(255-addr);
-	//unsigned char endianAddr = endian(addr);
-
+	//unsigned char endianAddr = endian(255-addr);
+	unsigned char endianAddr = endian(addr);
 	unsigned char selRow;
 	switch (parentSlice->sliceId) {
 		case slice0 : selRow = 0b1001; break;

@@ -188,6 +188,7 @@ void reset_experiment(experiment_t * expr){
     Fabric::Chip::Tile::Slice::ChipAdc * adc;
     float mean;
     float variance;
+    print_info("---- ADC VALUES ----");
     for(int chipno=0; chipno < 2; chipno+=1){
       for(int tileno=0; tileno < 4; tileno += 1){
         for(int sliceno=0; sliceno < 4; sliceno += 2){
@@ -205,8 +206,9 @@ void reset_experiment(experiment_t * expr){
         }
       }
     }
-    return;
+    print_info("--------");
   }
+
 void run_experiment(experiment_t * expr, Fabric * fab){
   if(not expr->compute_offsets){
       comm::error("must compute offsets beforehand");
@@ -230,10 +232,8 @@ void run_experiment(experiment_t * expr, Fabric * fab){
     // this actually calls start and stop.
     fab->cfgCommit();
   }
-  print_info("---- ADC VALUES ----");
   // this is a stopgap measure to debug the ADC.
   helper_print_adc_values(fab);
-  print_info("--------");
   //attach the interrupt for the wave
   Timer3.attachInterrupt(_update_wave);
   // compute the sim time used for the delay

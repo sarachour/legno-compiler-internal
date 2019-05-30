@@ -63,8 +63,7 @@ class BlockStateDatabase:
     for values in self._curs.execute(cmd):
       data = dict(zip(self.keys,values))
       result = self._process(data)
-      if not result is None:
-        yield result
+      yield result
 
   def get_by_instance(self,blk,chip,tile,slice,index):
     cmd = '''
@@ -83,8 +82,7 @@ class BlockStateDatabase:
     for values in self._curs.execute(cmd):
       data = dict(zip(self.keys,values))
       result = self._process(data)
-      if not result is None:
-        yield result
+      yield result
 
   def put(self,blockstate,success=True,max_error=-1,profile=[]):
     assert(isinstance(blockstate,BlockState))
@@ -154,11 +152,12 @@ class BlockStateDatabase:
 
 
   def get(self,blockkey):
+    print(blockkey.to_key())
     results = self._get(blockkey)
     assert(len(results) == 1)
     data = dict(zip(self.keys,results[0]))
-    return self._process(data)
-
+    result = self._process(data)
+    return result
 
 class BlockState:
 
@@ -317,7 +316,7 @@ class LutBlockState(BlockState):
 
 
   def __init__(self,loc,state):
-    BlockState.__init__(self,enums.BlockType.DAC,loc,state)
+    BlockState.__init__(self,enums.BlockType.LUT,loc,state)
 
   @property
   def key(self):
