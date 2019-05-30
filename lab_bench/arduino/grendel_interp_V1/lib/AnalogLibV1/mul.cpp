@@ -50,12 +50,16 @@ bool Fabric::Chip::Tile::Slice::Multiplier::setGain(float gain){
 }
 
 
-void Fabric::Chip::Tile::Slice::Multiplier::MultiplierInterface::setRange (range_t range) {
-  parentMultiplier->m_codes.range[ifcId] = range;
-	parentFu->setParam0 ();
-	parentFu->setParam3 ();
-	parentFu->setParam4 ();
-	parentFu->setParam5 ();
+void Fabric::Chip::Tile::Slice::Multiplier::setRange (ifc port,
+                                                                           range_t range) {
+  if(!(port == in0Id || port == in1Id || port == out0Id)){
+    error("unsupported range");
+  }
+  m_codes.range[port] = range;
+	setParam0 ();
+	setParam3 ();
+	setParam4 ();
+	setParam5 ();
 }
 
 void Fabric::Chip::Tile::Slice::Multiplier::defaults () {
@@ -86,12 +90,12 @@ Fabric::Chip::Tile::Slice::Multiplier::Multiplier (
 ) :
 	FunctionUnit(parentSlice, unitId)
 {
-	out0 = new MultiplierInterface (this, out0Id);
-	tally_dyn_mem <MultiplierInterface> ("MultiplierInterface");
-	in0 = new MultiplierInterface (this, in0Id);
-	tally_dyn_mem <MultiplierInterface> ("MultiplierInterface");
-	in1 = new MultiplierInterface (this, in1Id);
-	tally_dyn_mem <MultiplierInterface> ("MultiplierInterface");
+	out0 = new Interface(this, out0Id);
+	tally_dyn_mem <Interface> ("MultiplierInterface");
+	in0 = new Interface (this, in0Id);
+	tally_dyn_mem <Interface> ("MultiplierInterface");
+	in1 = new Interface (this, in1Id);
+	tally_dyn_mem <Interface> ("MultiplierInterface");
   defaults();
 }
 

@@ -94,8 +94,8 @@ Fabric::Chip::Tile::Slice::ChipAdc::ChipAdc (
 ) :
 	FunctionUnit(parentSlice, unitAdc)
 {
-	in0 = new AdcIn (this);
-	tally_dyn_mem <AdcIn> ("AdcIn");
+	in0 = new Interface(this, in0Id);
+	tally_dyn_mem <Interface> ("AdcIn");
   defaults();
 }
 
@@ -104,9 +104,11 @@ void Fabric::Chip::Tile::Slice::ChipAdc::setParam0 () const {
 	unsigned char cfgTile = 0;
 	cfgTile += m_codes.enable ? 1<<7 : 0;
   bool is_hi = (m_codes.range == RANGE_HIGH);
+  // adc_hi == true (1), adc_mid == 0 (false)
 	cfgTile += is_hi ? 1<<5 : 0;
 	cfgTile += ns11_5<<3;
 	cfgTile += false ? 1<<2 : 0;
+  // this is always false
 	cfgTile += (ns3==ns6) ? 1 : 0;
 	setParamHelper (0, cfgTile);
 }
@@ -126,6 +128,9 @@ void Fabric::Chip::Tile::Slice::ChipAdc::setParam1 () const {
 void Fabric::Chip::Tile::Slice::ChipAdc::setParam2 () const {
 	if (m_codes.lower<0||63<m_codes.lower)
     error ("m_codes.lower out of bounds");
+  if (m_codes.lower_fs<0||3<m_codes.lower_fs)
+    error ("m_codes.lower_fs out of bounds");
+
 	unsigned char cfgTile = 0;
 	cfgTile += m_codes.lower <<2;
 	cfgTile += m_codes.lower_fs <<0;
@@ -134,7 +139,11 @@ void Fabric::Chip::Tile::Slice::ChipAdc::setParam2 () const {
 
 /*Set m_codes.upper, m_codes.upper_fs*/
 void Fabric::Chip::Tile::Slice::ChipAdc::setParam3 () const {
-	if (m_codes.upper<0||63<m_codes.upper) error ("m_codes.upper out of bounds");
+	if (m_codes.upper<0||63<m_codes.upper)
+    error ("m_codes.upper out of bounds");
+  if (m_codes.upper_fs<0||3<m_codes.upper_fs)
+    error ("m_codes.upper_fs out of bounds");
+
 	unsigned char cfgTile = 0;
 	cfgTile += m_codes.upper <<2;
 	cfgTile += m_codes.upper_fs<<0;

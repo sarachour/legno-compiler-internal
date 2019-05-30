@@ -82,7 +82,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     dacd = cmd.data.dac;
     dac = common::get_slice(fab,dacd.loc)->dac;
     dac->setEnable(true);
-    dac->out0->setInv(dacd.inv);
+    dac->setInv(dacd.inv);
     dac->setRange((range_t) dacd.out_range);
     dac->setSource((dac_source_t) dacd.source);
     if(dacd.source == DSRC_MEM){
@@ -99,10 +99,10 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     mult = common::get_mult(fab,multd.loc);
     mult->setEnable(true);
     mult->setVga(multd.use_coeff);
-    mult->in0->setRange((range_t) multd.in0_range);
-    mult->out0->setRange((range_t) multd.out_range);
+    mult->setRange(in0Id,(range_t) multd.in0_range);
+    mult->setRange(out0Id,(range_t) multd.out_range);
     if(not multd.use_coeff){
-      mult->in1->setRange((range_t) multd.in1_range);
+      mult->setRange(in1Id,(range_t) multd.in1_range);
     }
     else{
       comm::test(mult->setGain(multd.coeff),
@@ -115,9 +115,9 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     fanout = common::get_fanout(fab,fod.loc);
     fanout->setEnable(true);
     fanout->setRange((range_t) fod.in_range);
-    fanout->out0->setInv(fod.inv[0]);
-    fanout->out1->setInv(fod.inv[1]);
-    fanout->out2->setInv(fod.inv[2]);
+    fanout->setInv(out0Id,fod.inv[0]);
+    fanout->setInv(out1Id,fod.inv[1]);
+    fanout->setInv(out2Id,fod.inv[2]);
     fanout->setThird(fod.third);
     comm::response("enabled fanout",0);
     break;
@@ -127,9 +127,9 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     integ = common::get_slice(fab,integd.loc)->integrator;
     integ->setEnable(true);
     integ->setException( integd.debug == 1 ? true : false);
-    integ->out0->setInv(integd.inv);
-    integ->in0->setRange((range_t) integd.in_range);
-    integ->out0->setRange((range_t) integd.out_range);
+    integ->setInv(out0Id,integd.inv);
+    integ->setRange(in0Id,(range_t) integd.in_range);
+    integ->setRange(out0Id,(range_t) integd.out_range);
     comm::test(integ->setInitial(integd.value),
                "failed to set integ value");
     comm::response("enabled integ",0);
@@ -156,12 +156,6 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     lut = common::get_slice(fab,wrlutd.loc)->lut;
     for(int data_idx=0; data_idx < wrlutd.n; data_idx+=1){
       byteval = min(round(inbuf[data_idx]*128.0 + 128.0),255);
-      comm::print_header();
-      Serial.print(data_idx+wrlutd.offset);
-      Serial.print("=");
-      Serial.print(inbuf[data_idx]);
-      Serial.print("; ");
-      Serial.println(byteval);
       if(inbuf[data_idx] < -1.0 || inbuf[data_idx] > 1.0){
         comm::error("lut value not in <-1,1>");
       }

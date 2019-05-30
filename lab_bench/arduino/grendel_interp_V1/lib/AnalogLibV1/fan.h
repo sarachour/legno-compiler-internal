@@ -13,6 +13,7 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
 			// 20uA mode results in more ideal behavior in terms of phase shift but consumes more power
 			// this setting should match the unit that gives the input to the fanout
 		);
+		void setInv ( ifc port, bool inverse );
 		void setThird (
 			bool third // whether third output is on
 		);
@@ -62,7 +63,7 @@ class Fabric::Chip::Tile::Slice::Fanout::FanoutOut : public Fabric::Chip::Tile::
 	friend Fanout;
 
 	public:
-		void setInv ( bool inverse ) override;
+		void setInv ( bool inverse );
 	private:
 		FanoutOut (Fanout * parentFu, ifc ifcId) :
 			Interface(parentFu, ifcId),

@@ -227,6 +227,9 @@ class Fabric::Chip::Tile::Slice::FunctionUnit {
     Fabric::Chip* getChip(){
       return parentSlice->parentTile->parentChip;
     }
+    Fabric::Chip::Tile* getTile(){
+      return parentSlice->parentTile;
+    }
     void updateFu();
 
 	private:
@@ -264,44 +267,29 @@ class Fabric::Chip::Tile::Slice::FunctionUnit::Interface {
 	friend Vector;
 
 	public:
-		virtual void setInv (
-			bool inverse
-		) {
-			error("setInv not implemented");
-		}; // whether output is negated
-		virtual void setRange (range_t range) {
-			error("setRange not implemented");
-		};
+  //virtual void setInv (
+  //	bool inverse
+  //) {
+  //	error("setInv not implemented");
+  //}; // whether output is negated
+  //virtual void setRange (range_t range) {
+  //	error("setRange not implemented");
+  //};
 		virtual ~Interface () {};
     FunctionUnit * const parentFu;
 		const ifc ifcId;
 		Interface * userSourceDest = NULL;
-	private:
 		Interface (
-			FunctionUnit * parentFu,
-			ifc ifcId
-		) :
-			parentFu(parentFu),
+               FunctionUnit * parentFu,
+               ifc ifcId
+               ) :
+    parentFu(parentFu),
 			ifcId(ifcId)
-		{};
+      {};
+	private:
+
     // TODO: incomplete implementation because multiple sources possible
 
-};
-
-class Fabric::Chip::Tile::Slice::FunctionUnit::GenericInterface : public Fabric::Chip::Tile::Slice::FunctionUnit::Interface {
-	friend ChipInput;
-	friend ChipOutput;
-	friend TileInOut;
-	friend Fanout;
-	friend Integrator;
-
-	private:
-		GenericInterface (
-			FunctionUnit * parentFu_,
-			ifc ifcId_
-		) :
-			Interface (parentFu_, ifcId_)
-		{};
 };
 
 #endif

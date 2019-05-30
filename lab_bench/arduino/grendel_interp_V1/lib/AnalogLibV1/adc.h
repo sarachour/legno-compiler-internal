@@ -49,7 +49,6 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
     void defaults();
 		void setAnaIrefNmos () const override;
 	private:
-		class AdcIn;
 		ChipAdc (Slice * parentSlice);
 		~ChipAdc () override { delete in0; };
     void setTestParams (
@@ -91,19 +90,4 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
     */
 };
 
-class Fabric::Chip::Tile::Slice::ChipAdc::AdcIn : public Fabric::Chip::Tile::Slice::FunctionUnit::Interface {
-	friend ChipAdc;
-
-	public:
-		void setRange (
-			bool hiRange // 20uA mode
-			// 20uA mode results in more ideal behavior in terms of phase shift but consumes more power // this setting should match the unit that gives the input to the fanout
-		);
-	private:
-			AdcIn (ChipAdc * parentFu) :
-			Interface(parentFu, in0Id),
-			parentAdc(parentFu)
-		{};
-		const ChipAdc * const parentAdc;
-};
 #endif

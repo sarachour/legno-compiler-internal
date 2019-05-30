@@ -29,8 +29,10 @@ float make_reference_dac(cutil::calibrate_t& calib,
 void Fabric::Chip::Tile::Slice::Dac::update(dac_code_t codes){
   m_codes = codes;
   updateFu();
-  setConstant(codes.const_val);
-  setConstantCode(codes.const_code);
+  if(codes.source == DSRC_MEM){
+    setConstant(codes.const_val);
+    setConstantCode(codes.const_code);
+  }
   setSource(codes.source);
   // restore exact state. The gain_val field clobbered a bit by setConstantCode
   m_codes = codes;
@@ -45,12 +47,11 @@ void Fabric::Chip::Tile::Slice::Dac::setEnable (
 	setParam1 ();
 }
 
-void Fabric::Chip::Tile::Slice::Dac::DacOut::setInv (
-	bool inverse // whether output is negated
+void Fabric::Chip::Tile::Slice::Dac::setInv (
+                                             bool inverse // whether output is negated
 ) {
-	Fabric::Chip::Tile::Slice::Dac* dac = (Fabric::Chip::Tile::Slice::Dac*) this->parentFu;
-  dac->m_codes.inv = inverse;
-	parentFu->setParam0();
+  m_codes.inv = inverse;
+	setParam0();
 }
 
 void Fabric::Chip::Tile::Slice::Dac::setRange (
@@ -136,8 +137,8 @@ Fabric::Chip::Tile::Slice::Dac::Dac (
 	FunctionUnit(parentSlice, unitDac)
 {
 
-	out0 = new DacOut (this);
-	tally_dyn_mem <DacOut> ("DacOut");
+	out0 = new Interface(this, out0Id);
+	tally_dyn_mem <Interface> ("DacOut");
   defaults();
   dac_cache::initialize();
 }

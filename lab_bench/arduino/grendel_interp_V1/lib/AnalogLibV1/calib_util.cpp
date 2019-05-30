@@ -34,7 +34,7 @@ namespace cutil {
       }
     }
     dac->setSource(DSRC_MEM);
-    dac->out0->setInv(false);
+    dac->setInv(false);
     sprintf(FMTBUF, "dac calibrate %f", value);
     print_log(FMTBUF);
     if(!dac->calibrateTarget(calib_result,0.01)){

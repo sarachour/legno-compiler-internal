@@ -70,6 +70,7 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 		);
     void update(dac_code_t codes);
     dac_code_t m_codes;
+		void setInv (bool inverse ); // whether output is negated
     void characterize(util::calib_result_t& result);
     bool calibrate (util::calib_result_t& result,
                     const float max_error);
@@ -77,7 +78,6 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
                           const float max_error);
     void defaults();
 	private:
-		class DacOut;
     void measure(util::calib_result_t& result);
 		Dac (Slice * parentSlice);
 		~Dac () override { delete out0; };
@@ -96,15 +96,6 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 		void setAnaIrefNmos () const override;
 		void setAnaIrefPmos () const override {};
 
-};
-
-class Fabric::Chip::Tile::Slice::Dac::DacOut : public Fabric::Chip::Tile::Slice::FunctionUnit::Interface  {
-	friend Dac;
-
-	public:
-		void setInv ( bool inverse ) override; // whether output is negated
- private:
-		DacOut (Dac * parentFu) : Interface(parentFu, out0Id) {};
 };
 
 

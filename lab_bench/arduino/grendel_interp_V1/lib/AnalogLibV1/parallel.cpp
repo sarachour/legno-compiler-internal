@@ -4,20 +4,58 @@
 void Fabric::Chip::Tile::Slice::FunctionUnit::setParallelOut (
 	bool onOff
 ) const {
-	parentSlice->parentTile->parentChip->parallelOutTileRow = parentSlice->parentTile->tileRowId;
-	parentSlice->parentTile->parentChip->parallelOutTileCol = parentSlice->parentTile->tileColId;
+  Fabric::Chip* chip = parentSlice->parentTile->parentChip;
+	chip->parallelOutTileRow = parentSlice->parentTile->tileRowId;
+	chip->parallelOutTileCol = parentSlice->parentTile->tileColId;
 	switch (parentSlice->sliceId) {
-		case slice0: parentSlice->parentTile->parentChip->parallelOutSlice = slice0; break;
-		case slice2: parentSlice->parentTile->parentChip->parallelOutSlice = slice2; break;
+		case slice0: chip->parallelOutSlice = slice0; break;
+		case slice2: chip->parallelOutSlice = slice2; break;
 		default: error ("setParallelOut invalid slice. Only even slices");
 	}
 	switch (unitId) {
-		case unitAdc: parentSlice->parentTile->parentChip->parallelOutUnit = unitAdc; break;
-		case unitLut: parentSlice->parentTile->parentChip->parallelOutUnit = unitLut; break;
+		case unitAdc: chip->parallelOutUnit = unitAdc; break;
+		case unitLut: chip->parallelOutUnit = unitLut; break;
 		default: error ("invalid unit. Only adc, lut to parallel output");
 	}
-	parentSlice->parentTile->parentChip->parallelOutState = onOff;
-	parentSlice->parentTile->parentChip->parallelHelper ();
+	chip->parallelOutState = onOff;
+	chip->parallelHelper ();
+}
+
+/*Set parallel digital data input on off*/
+void Fabric::Chip::Tile::setParallelIn (
+                                        bool onOff
+                                        ) const {
+  Fabric::Chip* chip = parentChip;
+	chip->parallelOutTileRow = tileRowId;
+	chip->parallelOutTileCol = tileColId;
+	chip->parallelInState = onOff;
+	chip->parallelHelper ();
+}
+
+
+void Fabric::Chip::parallelHelper() const {
+	// macro01 pin25=LOW tdRow:=pin25
+	digitalWrite(tpSel0RowSelPin, parallelOutTileRow==tileRow1?HIGH:LOW);
+	// macro01 pin24=HIGH tdCol:=pin24
+	digitalWrite(tpSel1ColSelPin, parallelOutTileCol==tileCol1?HIGH:LOW);
+	unsigned char cfgTile = 0b00000000;
+	// Serial.print("parallelInState = "); Serial.println(parallelInState);
+	cfgTile += parallelInState ? 1<<7 : 0;
+	cfgTile += parallelOutState ? 1<<6 : 0;
+	switch (parallelOutUnit) {
+		case unitAdc:
+			if (parallelOutSlice==slice0) {cfgTile += 0b00<<4;}
+			else if (parallelOutSlice==slice2) {cfgTile += 0b01<<4;}
+			else error ("setParallelIn invalid slice. Only even slices have ADCs");
+		break;
+		case unitLut:
+			if (parallelOutSlice==slice0) {cfgTile += 0b10<<4;}
+			else if (parallelOutSlice==slice2) {cfgTile += 0b11<<4;}
+			else error ("setParallelIn invalid slice. Only even slices have LUTs");
+		break;
+		default: error ("invalid unit. Only adcL, adcR, lutL, lutR to parallel output"); break;
+	}
+	controllerHelperChip ( 2, cfgTile );
 }
 
 /*Read parallel digtal data*/
@@ -47,15 +85,6 @@ unsigned char Fabric::Chip::readParallel() const {
 	return readParallelData;
 }
 
-/*Set parallel digital data input on off*/
-void Fabric::Chip::Tile::setParallelIn (
-	bool onOff
-) const {
-	parentChip->parallelOutTileRow = tileRowId;
-	parentChip->parallelOutTileCol = tileColId;
-	parentChip->parallelInState = onOff;
-	parentChip->parallelHelper ();
-}
 
 /*Write parallel digital data*/
 void Fabric::Chip::writeParallel(unsigned char data) const {
@@ -85,29 +114,4 @@ void Fabric::Chip::writeParallel(unsigned char data) const {
 	/*pulse the trigger*/
 	digitalWrite(tdiClkPin, LOW);
 	return;
-}
-
-void Fabric::Chip::parallelHelper() const {
-	// macro01 pin25=LOW tdRow:=pin25
-	digitalWrite(tpSel0RowSelPin, parallelOutTileRow==tileRow1?HIGH:LOW);
-	// macro01 pin24=HIGH tdCol:=pin24
-	digitalWrite(tpSel1ColSelPin, parallelOutTileCol==tileCol1?HIGH:LOW);
-	unsigned char cfgTile = 0b00000000;
-	// Serial.print("parallelInState = "); Serial.println(parallelInState);
-	cfgTile += parallelInState ? 1<<7 : 0;
-	cfgTile += parallelOutState ? 1<<6 : 0;
-	switch (parallelOutUnit) {
-		case unitAdc:
-			if (parallelOutSlice==slice0) {cfgTile += 0b00<<4;}
-			else if (parallelOutSlice==slice2) {cfgTile += 0b01<<4;}
-			else error ("setParallelIn invalid slice. Only even slices have ADCs");
-		break;
-		case unitLut:
-			if (parallelOutSlice==slice0) {cfgTile += 0b10<<4;}
-			else if (parallelOutSlice==slice2) {cfgTile += 0b11<<4;}
-			else error ("setParallelIn invalid slice. Only even slices have LUTs");
-		break;
-		default: error ("invalid unit. Only adcL, adcR, lutL, lutR to parallel output"); break;
-	}
-	controllerHelperChip ( 2, cfgTile );
 }

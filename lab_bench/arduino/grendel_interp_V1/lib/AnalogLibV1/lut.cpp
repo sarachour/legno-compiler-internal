@@ -5,12 +5,24 @@ void Fabric::Chip::Tile::Slice::LookupTable::update(lut_code_t codes){
   setSource(m_codes.source);
 }
 
+void Fabric::Chip::Tile::Slice::LookupTable::defaults(){
+  m_codes.source = LSRC_ADC0;
+}
+Fabric::Chip::Tile::Slice::LookupTable::LookupTable (Slice * parentSlice) :
+  FunctionUnit(parentSlice, unitLut),
+  parentSlice(parentSlice)
+{
+  defaults();
+}
+
+// TODO: if we want to use external parallel input, must externally set parallel in for tile.
 void Fabric::Chip::Tile::Slice::LookupTable::setSource (lut_source_t src) {
 	/*check*/
   bool external = (src == LSRC_EXTERN);
   bool adc0 = (src == LSRC_ADC0);
 	if (external) {
-		parentSlice->parentTile->setParallelIn ( external );
+  	 parentSlice->parentTile->setParallelIn ( external );
+     error("TODO: don't implicitly setParallelIn");
 	}
 	/*set*/
 	setParam0 (
@@ -24,7 +36,7 @@ void Fabric::Chip::Tile::Slice::LookupTable::setSource (lut_source_t src) {
   m_codes.source = src;
 }
 
-/*Put LUT in writing mode*/
+/*Put LUT in writing mode. never invoke this directly.*/
 void Fabric::Chip::Tile::Slice::LookupTable::setStart (
 ) const {
 	unsigned char cfgTile = 0;

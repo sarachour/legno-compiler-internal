@@ -17,26 +17,30 @@ void Fabric::Chip::Tile::Slice::Integrator::setEnable (
 	setParam4 ();
 }
 
-void Fabric::Chip::Tile::Slice::Integrator::IntegratorOut::setInv (
-	bool inverse // whether output is negated
-) {
-	parentIntegrator->m_codes.inv[ifcId] = inverse;
-	parentFu->setEnable (
-		parentIntegrator->m_codes.enable
+void Fabric::Chip::Tile::Slice::Integrator::setInv (
+                                                    ifc port,
+                                                    bool inverse // whether output is negated
+                                                    )
+{
+  if(!(port == out0Id)){
+      error("cannot set inverse. invalid port");
+  }
+	m_codes.inv[port] = inverse;
+	setEnable (
+		m_codes.enable
 	);
 }
 
-void Fabric::Chip::Tile::Slice::Integrator::IntegratorOut::setRange (range_t range) {
+void Fabric::Chip::Tile::Slice::Integrator::setRange (ifc port,
+                                                      range_t range) {
 	/*check*/
-  parentIntegrator->m_codes.range[ifcId] = range;
-	parentFu->setEnable (parentIntegrator->m_codes.enable);
+  if(!(port == out0Id || port == in0Id)){
+    error("cannot set range. invalid port");
+  }
+  m_codes.range[port] = range;
+	setEnable (m_codes.enable);
 }
 
-void Fabric::Chip::Tile::Slice::Integrator::IntegratorIn::setRange (range_t range) {
-	/*check*/
-  parentIntegrator->m_codes.range[ifcId] = range;
-	parentFu->setEnable (parentIntegrator->m_codes.enable);
-}
 
 void Fabric::Chip::Tile::Slice::Integrator::setInitialCode (
 	unsigned char initialCode // fixed point representation of initial condition
@@ -103,10 +107,10 @@ Fabric::Chip::Tile::Slice::Integrator::Integrator (
 ) :
 	FunctionUnit(parentSlice, unitInt)
 {
-	in0 = new IntegratorIn (this);
-	tally_dyn_mem <IntegratorIn> ("IntegratorIn");
-	out0 = new IntegratorOut (this);
-	tally_dyn_mem <IntegratorOut> ("IntegratorOut");
+	in0 = new Interface(this, in0Id);
+	tally_dyn_mem <Interface> ("IntegratorIn");
+	out0 = new Interface(this, out0Id);
+	tally_dyn_mem <Interface> ("IntegratorOut");
   defaults();
 }
 

@@ -29,14 +29,17 @@ void Fabric::Chip::Tile::Slice::Fanout::setRange (
 	setParam3();
 }
 
-void Fabric::Chip::Tile::Slice::Fanout::FanoutOut::setInv (
-	bool inverse // whether output is negated
+void Fabric::Chip::Tile::Slice::Fanout::setInv (
+                                                           ifc port,
+                                                           bool inverse // whether output is negated
 ) {
-  Fabric::Chip::Tile::Slice::Fanout* fan = this->parentFu;
-	fan->m_codes.inv[ifcId] = inverse;
-	parentFu->setParam1 ();
-	parentFu->setParam2 ();
-	parentFu->setParam3 ();
+  if(!(port == out0Id || port == out1Id || port == out2Id)){
+    error("unexpected range");
+  }
+  m_codes.inv[port] = inverse;
+	setParam1 ();
+	setParam2 ();
+	setParam3 ();
 }
 
 void Fabric::Chip::Tile::Slice::Fanout::setThird (
@@ -76,14 +79,14 @@ Fabric::Chip::Tile::Slice::Fanout::Fanout (
 ) :
 	FunctionUnit(parentSlice, unitId)
 {
-	in0 = new GenericInterface (this, in0Id);
-	tally_dyn_mem <GenericInterface> ("GenericInterface");
-	out0 = new FanoutOut (this, out0Id);
-	tally_dyn_mem <FanoutOut> ("FanoutOut");
-	out1 = new FanoutOut (this, out1Id);
-	tally_dyn_mem <FanoutOut> ("FanoutOut");
-	out2 = new FanoutOut (this, out2Id);
-	tally_dyn_mem <FanoutOut> ("FanoutOut");
+	in0 = new Interface (this, in0Id);
+	tally_dyn_mem <Interface> ("GenericInterface");
+	out0 = new Interface (this, out0Id);
+	tally_dyn_mem <Interface> ("FanoutOut");
+	out1 = new Interface (this, out1Id);
+	tally_dyn_mem <Interface> ("FanoutOut");
+	out2 = new Interface (this, out2Id);
+	tally_dyn_mem <Interface> ("FanoutOut");
   defaults();
 }
 

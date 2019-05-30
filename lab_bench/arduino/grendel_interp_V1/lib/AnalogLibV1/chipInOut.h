@@ -29,8 +29,8 @@ class Fabric::Chip::Tile::Slice::ChipInput : public Fabric::Chip::Tile::Slice::F
 		) :
 			FunctionUnit(parentSlice, chipInp)
 		{
-			out0 = new GenericInterface (this, out0Id);
-			tally_dyn_mem <GenericInterface> ("GenericInterface");
+			out0 = new Interface (this, out0Id);
+			tally_dyn_mem <Interface> ("Interface");
 			/*ANALOG INPUT CHANNEL ENABLE PINS*/
 		};
 		~ChipInput () override { delete out0; };
@@ -57,8 +57,8 @@ class Fabric::Chip::Tile::Slice::ChipOutput : public Fabric::Chip::Tile::Slice::
 			FunctionUnit(parentSlice, chipOut),
 			ardAnaDiffChan (ardAnaDiffChan)
 		{
-			in0 = new GenericInterface (this, in0Id);
-			tally_dyn_mem <GenericInterface> ("GenericInterface");
+			in0 = new Interface (this, in0Id);
+			tally_dyn_mem <Interface> ("Interface");
 		};
 		~ChipOutput () override { delete in0; };
 

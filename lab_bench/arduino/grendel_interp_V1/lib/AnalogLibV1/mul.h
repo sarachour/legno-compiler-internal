@@ -16,6 +16,7 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 			bool vga // constant coefficient multiplier mode
 		);
 
+		void setRange (ifc port, range_t range);
     mult_code_t m_codes;
     void update(mult_code_t codes);
     void defaults();
@@ -31,7 +32,6 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
                       float in0,float in1);
 
 
-		class MultiplierInterface;
 		Multiplier (Slice * parentSlice, unit unitId);
 		~Multiplier () override {
 			delete out0;
@@ -63,13 +63,5 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 		//unsigned char anaIrefPmos = 3;
 };
 
-class Fabric::Chip::Tile::Slice::Multiplier::MultiplierInterface : public Fabric::Chip::Tile::Slice::FunctionUnit::Interface  {
-	friend Multiplier;
-	public:
-		void setRange (range_t range) override;
-	private:
-		MultiplierInterface (Multiplier * parentFu, ifc ifcId) : Interface(parentFu, ifcId), parentMultiplier(parentFu) {};
-		Multiplier * const parentMultiplier;
-};
 
 #endif

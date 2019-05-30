@@ -28,7 +28,8 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 			// turning false overflow detection saves power if it is known to be unnecessary
 		);
 		bool getException() const;
-
+    void setInv (ifc port, bool inverse ); // whether output is negated
+		void setRange (ifc port, range_t range);
     void update(integ_code_t codes);
     integ_code_t m_codes;
 		bool calibrateTarget (util::calib_result_t& result,
@@ -38,9 +39,6 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 		void characterize(util::calib_result_t& result);
     void defaults();
 	private:
-		class IntegratorInterface;
-		class IntegratorIn;
-		class IntegratorOut;
 		void measure(util::calib_result_t& result);
 		Integrator (Slice * parentSlice);
 		~Integrator () override { delete in0; delete out0; };
@@ -65,33 +63,6 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 		//const unsigned char anaIrefPmos = 5; /*5*/
 		//unsigned char initialCode = 0; // fixed point representation of initial condition
 		//bool exception = false; // turn on overflow detection
-};
-
-class Fabric::Chip::Tile::Slice::Integrator::IntegratorInterface : public Fabric::Chip::Tile::Slice::FunctionUnit::Interface {
-	friend Integrator;
-
-	private:
-		IntegratorInterface (Integrator * parentFu, ifc ifcId) : Interface(parentFu, ifcId), parentIntegrator(parentFu) {};
-		Integrator * parentIntegrator;
-};
-
-class Fabric::Chip::Tile::Slice::Integrator::IntegratorIn : public Fabric::Chip::Tile::Slice::Integrator::IntegratorInterface {
-	friend Integrator;
-
-	public:
-		void setRange (range_t range) override;
-	private:
-		IntegratorIn (Integrator * parentFu) : IntegratorInterface(parentFu, in0Id) {};
-};
-
-class Fabric::Chip::Tile::Slice::Integrator::IntegratorOut : public Fabric::Chip::Tile::Slice::Integrator::IntegratorInterface {
-	friend Integrator;
-
-	public:
-		void setInv ( bool inverse ) override; // whether output is negated
-		void setRange (range_t range) override;
-	private:
-		IntegratorOut (Integrator * parentFu) : IntegratorInterface(parentFu, out0Id) {};
 };
 
 #endif
