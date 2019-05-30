@@ -7,7 +7,8 @@ import util.config as CONFIG
 from lab_bench.lib.command_handler import main_stdout,  \
     main_script, \
     main_script_calibrate, \
-    main_script_profile
+    main_script_profile, \
+    main_dump_db
 from lab_bench.lib.base_command import ArduinoCommand
 from lab_bench.lib.env import GrendelEnv
 
@@ -24,11 +25,18 @@ parser.add_argument("--debug", action='store_true', help="debug script")
 parser.add_argument("--calibrate", action='store_true', help="calibrate uncalibrated components")
 parser.add_argument("--recompute", action='store_true', help="recompute calibration codes")
 parser.add_argument("--profile", action='store_true', help="emit profile data")
-
+parser.add_argument("--dump-db", action='store_true',help="dump the database contents to files")
 
 
 args = parser.parse_args()
 
+if args.dump_db:
+    state = GrendelEnv(None,None,
+                       ard_native=args.native,
+                       validate=args.validate)
+
+    main_dump_db(state)
+    sys.exit(0)
 
 if args.debug:
     ArduinoCommand.set_debug(True)
