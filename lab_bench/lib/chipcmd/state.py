@@ -324,6 +324,12 @@ class LutBlockState(BlockState):
                              self.source)
 
 
+  def to_rows(self,obj):
+    return map(lambda i: (), [])
+
+  def header(self):
+    return [],[],[],[]
+
   def to_cstruct(self):
     return cstructs.state_t().build({
       "lut": {
@@ -532,7 +538,7 @@ class IntegBlockState(BlockState):
   def header(self):
     gh = keys(self.invs) + \
          keys(self.ranges)
-    zh = ['icl_val']
+    zh = ['ic_val']
     yh = ["bias","noise"]
     xh = ["output"]
     return gh,zh,xh,yh
@@ -543,6 +549,7 @@ class IntegBlockState(BlockState):
     z = [obj.ic_val]
     for port,target,bias,noise in obj.profile:
       gs = g + [port]
+      print(bias,noise)
       y = [bias,math.sqrt(noise)]
       x = [target]
       yield gs,z,x,y

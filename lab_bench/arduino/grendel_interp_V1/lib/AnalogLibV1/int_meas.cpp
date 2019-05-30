@@ -60,7 +60,8 @@ void Fabric::Chip::Tile::Slice::Integrator::measure(util::calib_result_t& result
   integ_code_t codes_self = m_codes;
   dac_code_t ref_codes = ref_dac->m_codes;
   int ic_sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
-  float ic_val = m_codes.ic_val*ic_sign*util::range_to_coeff(m_codes.range[out0Id]);
+  float coeff = util::range_to_coeff(m_codes.range[out0Id]);
+  float ic_val = m_codes.ic_val*ic_sign*coeff;
 
 
 
@@ -107,7 +108,7 @@ void Fabric::Chip::Tile::Slice::Integrator::measure(util::calib_result_t& result
   helper_get_cal_in0(this,result);
   helper_get_cal_gain(this,result,
                       ref_dac,
-                      hiRange ? 0.0: ic_sign,
+                      hiRange ? 0.0: ic_val,
                       hiRange ? dac_ic : dac_0);
 
 	if (hiRange) {
