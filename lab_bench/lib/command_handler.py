@@ -38,6 +38,18 @@ def main_stdout(state):
         execute(state,line)
 
 
+def main_dump_db(state):
+    keys = {}
+    for data in state.state_db.get_all():
+        key = (data.block,data.loc)
+        if not key in keys:
+            keys[key] = data
+
+    for key,obj in keys.items():
+        print(key)
+        obj.write_dataset(state.state_db)
+
+
 def main_script_profile(state,filename):
     with open(filename,'r') as fh:
         for idx,line in enumerate(fh):
