@@ -211,8 +211,8 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   delay(10);
   // commit the configuration once.
   if(expr->use_analog_chip){
+    // this actually calls start and stop.
     fab->cfgCommit();
-    fab->cfgStop();
   }
   //attach the interrupt for the wave
   Timer3.attachInterrupt(_update_wave);
