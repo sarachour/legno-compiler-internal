@@ -62,7 +62,9 @@ class BlockStateDatabase:
     cmd = "SELECT * from states;"
     for values in self._curs.execute(cmd):
       data = dict(zip(self.keys,values))
-      yield self._process(data)
+      result = self._process(data)
+      if not result is None:
+        yield result
 
   def get_by_instance(self,blk,chip,tile,slice,index):
     cmd = '''
@@ -80,7 +82,9 @@ class BlockStateDatabase:
 
     for values in self._curs.execute(cmd):
       data = dict(zip(self.keys,values))
-      yield self._process(data)
+      result = self._process(data)
+      if not result is None:
+        yield result
 
   def put(self,blockstate,success=True,max_error=-1,profile=[]):
     assert(isinstance(blockstate,BlockState))
@@ -135,8 +139,12 @@ class BlockStateDatabase:
                   data['idx'])
 
     blk = enums.BlockType(data['block'])
-    obj = BlockState \
-          .toplevel_from_cstruct(blk,loc,bytes.fromhex(state))
+    try:
+      obj = BlockState \
+            .toplevel_from_cstruct(blk,loc,bytes.fromhex(state))
+    except ValueError:
+      return None
+
     obj.profile = json.loads(bytes.fromhex(data['profile']) \
                              .decode('utf-8'))
     obj.success = (data['status'] == \
@@ -238,6 +246,7 @@ class BlockState:
 
 
   def to_rows(self,obj):
+    print(self.__class__.__name__)
     raise NotImplementedError
 
 
@@ -707,6 +716,34 @@ class AdcBlockState(BlockState):
 
   def __init__(self,loc,state):
     BlockState.__init__(self,enums.BlockType.ADC,loc,state)
+
+  def to_rows(self,obj):
+    g = [
+      obj.rng,
+      obj.test_en,
+      obj.test_adc,
+      obj.test_i2v,
+      obj.test_rs,
+      obj.test_rsinc,
+    ]
+
+    z = []
+    for port,target,bias,noise in obj.profile:
+      gs = g + [port]
+      y = [bias,math.sqrt(noise)]
+      x = [target]
+      yield gs,z,x,y
+
+  def header(self):
+    gh = ['rng',
+          'test_en',
+          'test_adc',
+          'test_i2v',
+          'test_rs',
+          'test_rsinc']
+    yh = ["bias","noise"]
+    xh = ["output"]
+    return gh,[],xh,yh
 
   @property
   def key(self):
