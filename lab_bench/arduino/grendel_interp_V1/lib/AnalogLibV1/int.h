@@ -2,6 +2,7 @@
 #define INTEG_H
 
 #include "fu.h"
+#include "profile.h"
 
 typedef enum {
 	mGainMRng = 0, /* -2 to 2  uA input, gain = 1,   -2 to 2  uA output*/
@@ -32,14 +33,15 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 		void setRange (ifc port, range_t range);
     void update(integ_code_t codes);
     integ_code_t m_codes;
-		bool calibrateTarget (util::calib_result_t& result,
+		bool calibrateTarget (profile_t& result,
                           const float max_error);
-		bool calibrate (util::calib_result_t& result,
+		bool calibrate (profile_t& result,
                     const float max_error);
-		void characterize(util::calib_result_t& result);
+		void characterize(profile_t& result);
+		void characterizeTarget(profile_t& result);
     void defaults();
 	private:
-		void measure(util::calib_result_t& result);
+		void measure(profile_t& result);
 		Integrator (Slice * parentSlice);
 		~Integrator () override { delete in0; delete out0; };
 		/*Set enable, invert, range*/

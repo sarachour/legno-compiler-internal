@@ -2,6 +2,7 @@
 #include "assert.h"
 #include "fu.h"
 #include "calib_util.h"
+#include "profile.h"
 
 
 bool helper_check_steady(Fabric * fab,
@@ -80,7 +81,7 @@ bool helper_find_bias_and_nmos(Fabric * fab,
 }
 
 
-bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate (util::calib_result_t& result,
+bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate (profile_t& result,
                                                     const float max_error) {
 
   float coeff = util::range_to_coeff(m_codes.range);
@@ -103,21 +104,20 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate (util::calib_result_t& result
   dac_code_t dac_code_0;
   dac_code_t dac_code_1;
   dac_code_t dac_code_neg1;
-  util::calib_result_t interim_result;
-  util::init_result(interim_result);
+  prof::init_profile(prof::TEMP);
   dac_code_0 = cutil::make_val_dac(calib, val_dac,
-                                     0.0,
-                                     interim_result);
+                                   0.0,
+                                   prof::TEMP);
 
-  util::init_result(interim_result);
+  prof::init_profile(prof::TEMP);
   dac_code_1 = cutil::make_val_dac(calib, val_dac,
                                    1.0*coeff,
-                                   interim_result);
+                                   prof::TEMP);
 
-  util::init_result(interim_result);
+  prof::init_profile(prof::TEMP);
   dac_code_neg1 = cutil::make_val_dac(calib, val_dac,
                                       -1.0*coeff,
-                                      interim_result);
+                                      prof::TEMP);
 
 
 	Connection conn0 = Connection ( val_dac->out0, in0 );

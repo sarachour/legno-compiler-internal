@@ -2,7 +2,7 @@
 #include "assert.h"
 #include "calib_util.h"
 
-bool Fabric::Chip::Tile::Slice::Fanout::calibrate (util::calib_result_t& result,
+bool Fabric::Chip::Tile::Slice::Fanout::calibrate (profile_t& result,
                                                    float max_error) {
 
   fanout_code_t codes_self = m_codes;

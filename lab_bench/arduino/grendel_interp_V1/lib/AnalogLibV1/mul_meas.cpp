@@ -1,26 +1,52 @@
 #include "AnalogLib.h"
 #include "fu.h"
 #include "calib_util.h"
+#include "profile.h"
 #include <float.h>
 
 
-
-void Fabric::Chip::Tile::Slice::Multiplier::characterize(util::calib_result_t& result){
+void Fabric::Chip::Tile::Slice::Multiplier::characterize(profile_t& result){
   if(m_codes.vga){
-    util::init_result(result);
+    mult_code_t backup = m_codes;
+    prof::init_profile(result);
+    float vals[SIZE2D];
+    int n = prof::data_2d(vals,SIZE2D);
+    for(int i=0; i < n; i += 1){
+      float gain = vals[i];
+      for(int j=0; j < n; j += 1){
+        float in0 = vals[j];
+        setGain(gain);
+        sprintf(FMTBUF, "VGA %f*%f", gain, in0);
+        print_log(FMTBUF);
+        measure_vga(result,in0);
+      }
+    }
+    update(backup);
+  }
+  else{
+    characterizeTarget(result);
+  }
+
+}
+void Fabric::Chip::Tile::Slice::Multiplier::characterizeTarget(profile_t& result){
+  if(m_codes.vga){
+    prof::init_profile(result);
     for(int i=0; i < 25; i += 1){
-      float in0 = (i/25.0)*2.0-1.0;
-      sprintf(FMTBUF, "COMPUTE %f*%f", in0, m_codes.gain_val);
+      float in0 = (i/24.0)*2.0-1.0;
+      sprintf(FMTBUF, "VGA %f*%f", in0, m_codes.gain_val);
       print_log(FMTBUF);
       measure_vga(result,in0);
     }
   }
   else{
-    util::init_result(result);
-    for(int i=0; i < 5; i += 1){
-      float in0 = (i/5.0)*1.0;
-      for(int j=0; j < 5; j += 1){
-        float in1 = (j/5.0)*1.0;
+    prof::init_profile(result);
+    float vals[SIZE2D];
+    int n = prof::data_2d(vals,SIZE2D);
+    for(int i=0; i < n; i += 1){
+      float in0 = vals[i];
+      for(int j=0; j < n; j += 1){
+        float in1 = vals[j];
+        sprintf(FMTBUF, "MUL %f*%f", in0, in1);
         measure_mult(result,in0,in1);
       }
     }
@@ -29,7 +55,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::characterize(util::calib_result_t& r
 
 
 
-void Fabric::Chip::Tile::Slice::Multiplier::measure_vga(util::calib_result_t& result, float in0val) {
+void Fabric::Chip::Tile::Slice::Multiplier::measure_vga(profile_t& result, float in0val) {
   int sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
   float gain = m_codes.gain_val;
   bool hiRange = m_codes.range[out0Id] == RANGE_HIGH;
@@ -76,32 +102,31 @@ void Fabric::Chip::Tile::Slice::Multiplier::measure_vga(util::calib_result_t& re
   dac_code_t dac_code_in0;
   dac_code_t dac_code_0;
 
-  util::calib_result_t interim_result;
-  util::init_result(interim_result);
+  prof::init_profile(prof::TEMP);
   dac_code_0 = cutil::make_zero_dac(calib, ref_dac,
-                                    interim_result);
+                                    prof::TEMP);
   if(hiRange){
     if(fabs(target_vga) > 10.0){
       sprintf(FMTBUF, "can't fit %f", target_vga);
       error(FMTBUF);
     }
-    util::init_result(interim_result);
+    prof::init_profile(prof::TEMP);
     dac_code_ref = cutil::make_val_dac(calib, ref_dac,
                                        -target_vga,
-                                       interim_result);
+                                       prof::TEMP);
     ref_dac->update(dac_code_ref);
     ref_to_tileout.setConn();
   }
-  util::init_result(interim_result);
+  prof::init_profile(prof::TEMP);
   dac_code_in0 = cutil::make_val_dac(calib, val1_dac,
                                      in0scf*in0val,
-                                     interim_result);
+                                     prof::TEMP);
 
   val1_dac->update(dac_code_in0);
   float mean=0.0,variance=0.0;
   util::meas_dist_chip_out(this,mean,variance);
   float target = hiRange ? 0.0 : target_vga;
-  util::add_prop(result,out0Id,target_vga,
+  prof::add_prop(result,out0Id,target_vga,
                  mean-target,
                  variance);
 
@@ -119,7 +144,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::measure_vga(util::calib_result_t& re
 }
 
 
-void Fabric::Chip::Tile::Slice::Multiplier::measure_mult(util::calib_result_t& result, float in0val, float in1val) {
+void Fabric::Chip::Tile::Slice::Multiplier::measure_mult(profile_t& result, float in0val, float in1val) {
   int sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
   bool hiRange = m_codes.range[out0Id] == RANGE_HIGH;
   bool loRange = m_codes.range[in0Id] == RANGE_LOW;
@@ -174,37 +199,36 @@ void Fabric::Chip::Tile::Slice::Multiplier::measure_mult(util::calib_result_t& r
   dac_code_t dac_code_in1;
   dac_code_t dac_code_0;
 
-  util::calib_result_t interim_result;
-  util::init_result(interim_result);
+  prof::init_profile(prof::TEMP);
   dac_code_0 = cutil::make_zero_dac(calib, ref_dac,
-                                    interim_result);
+                                    prof::TEMP);
   if(hiRange){
     if(fabs(target_mult) > 10.0){
       sprintf(FMTBUF, "can't fit %f", target_mult);
       error(FMTBUF);
     }
-    util::init_result(interim_result);
+    prof::init_profile(prof::TEMP);
     dac_code_ref = cutil::make_val_dac(calib, ref_dac,
                                        -target_mult,
-                                       interim_result);
+                                       prof::TEMP);
     ref_dac->update(dac_code_ref);
     ref_to_tileout.setConn();
   }
-  util::init_result(interim_result);
+  prof::init_profile(prof::TEMP);
   dac_code_in0 = cutil::make_val_dac(calib, val1_dac,
                                      in0scf*in0val,
-                                     interim_result);
-  util::init_result(interim_result);
+                                     prof::TEMP);
+  prof::init_profile(prof::TEMP);
   dac_code_in1 = cutil::make_val_dac(calib, val2_dac,
                                      in1scf*in1val,
-                                     interim_result);
+                                     prof::TEMP);
 
   val1_dac->update(dac_code_in0);
   val2_dac->update(dac_code_in1);
   float mean,variance;
   util::meas_dist_chip_out(this,mean,variance);
   float target = hiRange ? 0 : target_mult;
-  util::add_prop(result,out0Id,target_mult,
+  prof::add_prop(result,out0Id,target_mult,
                  mean-target,variance);
 
   dac_to_in0.brkConn();

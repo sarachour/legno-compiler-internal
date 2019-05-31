@@ -4,36 +4,49 @@
 #include "fu.h"
 
 
-void Fabric::Chip::Tile::Slice::Integrator::characterize(util::calib_result_t& result){
-  util::init_result(result);
+void Fabric::Chip::Tile::Slice::Integrator::characterize(profile_t& result){
+  integ_code_t backup = m_codes;
+  prof::init_profile(result);
+  float vals[SIZE1D];
+  int n = prof::data_1d(vals,SIZE1D);
+  for(int i=0; i < n; i += 1){
+    setInitial(vals[i]);
+    measure(result);
+  }
+  update(backup);
+}
+
+
+void Fabric::Chip::Tile::Slice::Integrator::characterizeTarget(profile_t& result){
+  prof::init_profile(result);
   measure(result);
 }
 
 
 void helper_get_cal_in0(Fabric::Chip::Tile::Slice::Integrator * integ,
-                        util::calib_result_t& result){
+                        profile_t& result){
   integ->m_codes.cal_enable[out0Id] = false;
   integ->m_codes.cal_enable[in0Id] = true;
   integ->update(integ->m_codes);
   float mean,variance;
   util::meas_dist_chip_out(integ,mean,variance);
   integ->m_codes.cal_enable[in0Id] = false;
-  util::add_prop(result,in0Id, 0.0, mean,variance);
+  prof::add_prop(result,in0Id, 0.0, mean,variance);
 }
 
 void helper_get_cal_out0(Fabric::Chip::Tile::Slice::Integrator * integ,
-                         util::calib_result_t& result){
+                         profile_t& result){
   integ->m_codes.cal_enable[in0Id] = false;
   integ->m_codes.cal_enable[out0Id] = true;
   integ->update(integ->m_codes);
   float mean,variance;
   util::meas_dist_chip_out(integ,mean,variance);
   integ->m_codes.cal_enable[out0Id] = false;
-  util::add_prop(result,out0Id, 0.0, mean,variance);
+  prof::add_prop(result,out0Id, 0.0, mean,variance);
 }
 
 bool helper_get_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
-                         util::calib_result_t& result,
+                         profile_t& result,
                          Fabric::Chip::Tile::Slice::Dac * ref_dac,
                          float target,
                          dac_code_t& ref_codes){
@@ -44,7 +57,7 @@ bool helper_get_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
   integ->update(integ->m_codes);
   float mean,variance;
   util::meas_dist_chip_out(integ,mean,variance);
-  util::add_prop(result,
+  prof::add_prop(result,
                  out0Id,
                  integ->m_codes.ic_val*ic_range*ic_sign,
                  mean-target,
@@ -52,7 +65,7 @@ bool helper_get_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
 }
 
 
-void Fabric::Chip::Tile::Slice::Integrator::measure(util::calib_result_t& result)
+void Fabric::Chip::Tile::Slice::Integrator::measure(profile_t& result)
 {
   bool hiRange = (m_codes.range[out0Id] == RANGE_HIGH);
 
@@ -86,17 +99,16 @@ void Fabric::Chip::Tile::Slice::Integrator::measure(util::calib_result_t& result
 
   dac_code_t dac_0;
   dac_code_t dac_ic;
-  util::calib_result_t interim_result;
 
   print_info("making zero dac");
-  util::init_result(interim_result);
-  dac_0 = make_zero_dac(calib, ref_dac,interim_result);
+  prof::init_profile(prof::TEMP);
+  dac_0 = make_zero_dac(calib, ref_dac,prof::TEMP);
   if (hiRange) {
     print_info("high range! making reference dac");
-    util::init_result(interim_result);
+    prof::init_profile(prof::TEMP);
     dac_ic = make_val_dac(calib,ref_dac,
                           -ic_sign,
-                          interim_result);
+                          prof::TEMP);
     ref_to_tile.setConn();
   }
   integ_to_tile.setConn();

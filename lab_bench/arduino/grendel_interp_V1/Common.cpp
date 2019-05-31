@@ -6,6 +6,13 @@
 namespace common {
 
   Fabric::Chip::Tile::Slice* get_slice(Fabric * fab, circ::circ_loc_t& loc){
+    if(loc.chip < 0 || loc.chip > 1
+         || loc.tile < 0 || loc.tile > 3
+         || loc.slice < 0 || loc.slice > 3)
+      {
+        sprintf(FMTBUF, "unknown loc %d.%d.%d", loc.chip,loc.tile,loc.slice);
+        error(FMTBUF);
+      }
     return &fab->chips[loc.chip].tiles[loc.tile].slices[loc.slice];
   }
 

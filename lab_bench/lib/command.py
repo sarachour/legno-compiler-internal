@@ -90,7 +90,9 @@ def profile(state,obj):
             print(data.state)
             data.write_dataset(state.state_db)
 
-def calibrate(state,obj,recompute=False):
+def calibrate(state,obj,recompute=False, \
+              targeted_calibrate=False, \
+              targeted_measure=False):
     if isinstance(obj,UseCommand):
         dbkey = obj.to_key()
         if not (state.state_db.has(dbkey)) or \
@@ -108,14 +110,18 @@ def calibrate(state,obj,recompute=False):
                                 obj.loc.tile,
                                 obj.loc.slice,
                                 obj.loc.index,
-                                max_error=obj.max_error).execute(state)
+                                max_error=obj.max_error,
+                                targeted=targeted_calibrate) \
+                                .execute(state)
             if succ:
                 print(">> characterize")
                 CharacterizeCmd(obj.block_type,
-                            obj.loc.chip,
-                            obj.loc.tile,
-                            obj.loc.slice,
-                            obj.loc.index).execute(state)
+                                obj.loc.chip,
+                                obj.loc.tile,
+                                obj.loc.slice,
+                                obj.loc.index,
+                                targeted=targeted_measure) \
+                                .execute(state)
 
             else:
                 print("CALIBRATE FAILED")

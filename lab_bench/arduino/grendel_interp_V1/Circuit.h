@@ -168,6 +168,7 @@ namespace circ {
   } cmd_connection_t;
 
   typedef struct {
+    uint8_t targeted;
     uint16_t blk;
     circ_loc_idx1_t loc;
     float max_error;

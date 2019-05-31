@@ -2,6 +2,7 @@
 #include "fu.h"
 #include "connection.h"
 #include "calib_util.h"
+#include "profile.h"
 #include <float.h>
 
 
@@ -15,7 +16,7 @@ namespace cutil {
   dac_code_t make_val_dac(calibrate_t& calib,
                           Fabric::Chip::Tile::Slice::Dac * dac,
                           float value,
-                          util::calib_result_t& calib_result){
+                          profile_t& calib_result){
     dac_code_t backup = dac->m_codes;
     dac_code_t result = dac->m_codes;
     dac->setEnable(true);
@@ -53,12 +54,12 @@ namespace cutil {
   }
   dac_code_t make_zero_dac(calibrate_t& calib,
                            Fabric::Chip::Tile::Slice::Dac * dac,
-                           util::calib_result_t& result){
+                           profile_t& result){
     return make_val_dac(calib,dac,0.0,result);
   }
   dac_code_t make_one_dac(calibrate_t& calib,
                           Fabric::Chip::Tile::Slice::Dac * dac,
-                          util::calib_result_t& result){
+                          profile_t& result){
     return make_val_dac(calib,dac,1.0,result);
   }
   void buffer_conn(calibrate_t& calib, Fabric::Chip::Connection& conn){

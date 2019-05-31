@@ -34,7 +34,7 @@ int lru[NCACHE_SLOTS];
 extern dac_cache_t DAC_CACHE;
 
 float make_reference_dac(cutil::calibrate_t& calib,
-                         util::calib_result_t& result,
+                         profile_t& result,
                          dac_code_t& config,
                          Fabric::Chip::Tile::Slice::Dac* dac,
                          Fabric::Chip::Tile::Slice::Dac* ref_dac);
@@ -71,14 +71,15 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
     void update(dac_code_t codes);
     dac_code_t m_codes;
 		void setInv (bool inverse ); // whether output is negated
-    void characterize(util::calib_result_t& result);
-    bool calibrate (util::calib_result_t& result,
+    void characterize(profile_t& result);
+    void characterizeTarget(profile_t& result);
+    bool calibrate (profile_t& result,
                     const float max_error);
-		bool calibrateTarget (util::calib_result_t& result,
+		bool calibrateTarget (profile_t& result,
                           const float max_error);
     void defaults();
 	private:
-    void measure(util::calib_result_t& result);
+    void measure(profile_t& result);
 		Dac (Slice * parentSlice);
 		~Dac () override { delete out0; };
 		/*Set enable, invert, range, clock select*/

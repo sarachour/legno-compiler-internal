@@ -1,20 +1,23 @@
 #include "AnalogLib.h"
 #include "calib_util.h"
+#include "profile.h"
 #ifndef CALIBRATE_H
 #define CALIBRATE_H
 
 namespace calibrate {
   bool characterize(Fabric * fab,
-                 util::calib_result_t& result,
-                 uint16_t blk,
-                 circ::circ_loc_idx1_t loc);
+                    profile_t& result,
+                    uint16_t blk,
+                    circ::circ_loc_idx1_t loc,
+                    bool targeted);
 
 
   bool calibrate(Fabric * fab,
-                 util::calib_result_t& result,
+                 profile_t& result,
                  uint16_t blk,
                  circ::circ_loc_idx1_t loc,
-                 const float max_error);
+                 const float max_error,
+                 bool targeted);
 
 
   void get_codes(Fabric * fab,

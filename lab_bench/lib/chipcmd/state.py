@@ -92,6 +92,7 @@ class BlockStateDatabase:
     self._curs.execute(cmd)
     self._conn.commit()
 
+    print("PUT %s" % key)
     state_bits = blockstate.to_cstruct().hex()
     profile_bits = bytes(json.dumps(profile), 'utf-8').hex();
 
@@ -120,7 +121,7 @@ class BlockStateDatabase:
   def _get(self,blockkey):
     assert(isinstance(blockkey,BlockState.Key))
     keystr = blockkey.to_key()
-    print(keystr)
+    print("GET %s" % keystr)
     cmd = '''SELECT * FROM states WHERE cmdkey = "{cmdkey}"''' \
                                                 .format(cmdkey=keystr)
     results = list(self._curs.execute(cmd))
@@ -154,7 +155,9 @@ class BlockStateDatabase:
   def get(self,blockkey):
     print(blockkey.to_key())
     results = self._get(blockkey)
-    assert(len(results) == 1)
+    if not (len(results) == 1):
+      raise Exception("cannot get <%s> : no results found" \
+                      % blockkey.to_key())
     data = dict(zip(self.keys,results[0]))
     result = self._process(data)
     return result

@@ -4,6 +4,7 @@
 #include "fu.h"
 #include "connection.h"
 #include "calib_util.h"
+#include "profile.h"
 #include <float.h>
 
 
@@ -24,14 +25,14 @@ namespace cutil {
   //
   dac_code_t make_zero_dac(calibrate_t& calib,
                            Fabric::Chip::Tile::Slice::Dac* dac,
-                           util::calib_result_t& result);
+                           profile_t& result);
   dac_code_t make_one_dac(calibrate_t& calib,
                           Fabric::Chip::Tile::Slice::Dac * dac,
-                          util::calib_result_t& result);
+                          profile_t& result);
   dac_code_t make_val_dac(calibrate_t& calib,
                           Fabric::Chip::Tile::Slice::Dac * dac,
                           float value,
-                          util::calib_result_t& result);
+                          profile_t& result);
 
   void buffer_fanout_conns( calibrate_t& calib,
                             Fabric::Chip::Tile::Slice::Fanout* fu);

@@ -2,6 +2,7 @@
 #define MUL_H
 
 #include "fu.h"
+#include "profile.h"
 
 class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
@@ -20,15 +21,16 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
     mult_code_t m_codes;
     void update(mult_code_t codes);
     void defaults();
-    void characterize(util::calib_result_t& result);
-    bool calibrate (util::calib_result_t& result,
+    void characterize(profile_t& result);
+    void characterizeTarget(profile_t& result);
+    bool calibrate (profile_t& result,
                     const float max_error);
-		bool calibrateTarget(util::calib_result_t& result,
+		bool calibrateTarget(profile_t& result,
                          const float max_error);
 	private:
-    void measure_vga(util::calib_result_t& result,
+    void measure_vga(profile_t& result,
                      float in0);
-    void measure_mult(util::calib_result_t& result,
+    void measure_mult(profile_t& result,
                       float in0,float in1);
 
 

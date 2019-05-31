@@ -5,6 +5,7 @@
 #include "Comm.h"
 #include "Common.h"
 #include "calib_util.h"
+#include "profile.h"
 #include <assert.h>
 
 char HCDC_DEMO_BOARD = 6;
@@ -30,7 +31,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   cmd_use_adc_t adcd;
   cmd_connection_t connd;
   block_code_t state;
-  util::ser_calib_result_t result;
+  serializable_profile_t result;
   uint8_t byteval;
   char buf[32];
   bool succ;
@@ -185,15 +186,19 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     break;
 
   case cmd_type_t::CHARACTERIZE:
-    util::init_result(result.result);
+    prof::init_profile(result.result);
+    print_log("characterizing...");
     calibrate::characterize(fab,
-                              result.result,
-                              cmd.data.calib.blk,
-                              cmd.data.calib.loc);
+                            result.result,
+                            cmd.data.calib.blk,
+                            cmd.data.calib.loc,
+                            cmd.data.calib.targeted);
+    print_log("getting codes...");
     calibrate::get_codes(fab,
-                         cmd.data.state.blk,
-                         cmd.data.state.loc,
+                         cmd.data.calib.blk,
+                         cmd.data.calib.loc,
                          state);
+    print_log("done");
     comm::response("characterization terminated",1);
     sprintf(FMTBUF,"result=%d state=%d",sizeof(result.result), sizeof(state));
     print_log(FMTBUF);
@@ -216,15 +221,19 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
 
 
   case cmd_type_t::CALIBRATE:
+    print_log("calibrating...");
     succ = calibrate::calibrate(fab,
                                 result.result,
                                 cmd.data.calib.blk,
                                 cmd.data.calib.loc,
-                                cmd.data.calib.max_error);
+                                cmd.data.calib.max_error,
+                                cmd.data.calib.targeted);
+    print_log("getting codes...");
     calibrate::get_codes(fab,
-                         cmd.data.state.blk,
-                         cmd.data.state.loc,
+                         cmd.data.calib.blk,
+                         cmd.data.calib.loc,
                          state);
+    print_log("done");
     comm::response("calibration terminated",1);
     sprintf(FMTBUF,"%d",sizeof(state)+2);
     comm::data(FMTBUF,"I");

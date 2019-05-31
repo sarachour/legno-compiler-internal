@@ -8,14 +8,14 @@ import json
 
 class CharacterizeCmd(AnalogChipCommand):
 
-    def __init__(self,blk,chip,tile,slce,index=None):
+    def __init__(self,blk,chip,tile,slce,index=None,targeted=BoolType.TRUE):
         AnalogChipCommand.__init__(self)
         self._blk = enums.BlockType(blk)
         self._loc = CircLoc(chip,tile,slce,index=0 if index is None \
                             else index)
 
+        self._targeted = targeted
         self.test_loc(self._blk, self._loc)
-
 
     @staticmethod
     def name():
@@ -30,7 +30,8 @@ class CharacterizeCmd(AnalogChipCommand):
                 'calib':{
                     'blk': self._blk.code(),
                     'loc': loc_type,
-                    'max_error': 0.0
+                    'max_error': 0.0,
+                    'targeted': BoolType.from_bool(self._targeted).code()
                 }
             }
         })
@@ -74,14 +75,16 @@ class CharacterizeCmd(AnalogChipCommand):
 
     @staticmethod
     def parse(args):
-        result = parse_pattern_block_loc(args,CharacterizeCmd.name())
+        result = parse_pattern_block_loc(args,CharacterizeCmd.name(),
+                                         targeted=True)
         if result.success:
             data = result.value
             return CharacterizeCmd(data['blk'],
-                                       data['chip'],
-                                       data['tile'],
-                                       data['slice'],
-            data['index'])
+                                   data['chip'],
+                                   data['tile'],
+                                   data['slice'],
+                                   data['index'],
+                                   targeted=data['targeted'])
 
         else:
             print(result.message)
@@ -211,13 +214,15 @@ class GetStateCmd(AnalogChipCommand):
 
 class CalibrateCmd(AnalogChipCommand):
 
-    def __init__(self,blk,chip,tile,slice,index=None,max_error=0.01):
+    def __init__(self,blk,chip,tile,slice,index=None,max_error=0.01,
+                 targeted=True):
         AnalogChipCommand.__init__(self)
         self._loc = CircLoc(chip,tile,slice,index=0 if index is None \
                             else index)
         self._blk = enums.BlockType(blk)
         self.test_loc(self._blk,self._loc)
         self._max_error = max_error
+        self._targeted = targeted
 
     @staticmethod
     def name():
@@ -229,14 +234,14 @@ class CalibrateCmd(AnalogChipCommand):
 
     def build_ctype(self):
         loc_type = self._loc.build_ctype()
-        print(loc_type)
         return build_circ_ctype({
             'type':enums.CircCmdType.CALIBRATE.name,
             'data':{
                 'calib':{
                     'blk': self._blk.code(),
                     'loc': loc_type,
-                    'max_error': self._max_error
+                    'max_error': self._max_error,
+                    'targeted': BoolType.from_bool(self._targeted).code()
                 }
             }
         })
@@ -245,7 +250,8 @@ class CalibrateCmd(AnalogChipCommand):
     def parse(args):
         result = parse_pattern_block_loc(args,
                                          CalibrateCmd.name(),
-                                         max_error=True)
+                                         max_error=True,
+                                         targeted=True)
         if result.success:
             data = result.value
             return CalibrateCmd(data["blk"],
@@ -253,7 +259,8 @@ class CalibrateCmd(AnalogChipCommand):
                                 data['tile'],
                                 data['slice'],
                                 data['index'],
-                                data['max_error'])
+                                data['max_error'],
+                                data['targeted'])
         else:
             print(result.message)
             raise Exception("<parse_failure>: %s" % args)

@@ -41,11 +41,11 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 		bool getException() const;
     void update(adc_code_t codes){m_codes = codes; updateFu();}
     adc_code_t m_codes;
-		bool calibrate (util::calib_result_t& result,
+		bool calibrate (profile_t& result,
                     const float max_error);
 
-		void characterize(util::calib_result_t& result);
-		void measure(util::calib_result_t& result, float input);
+		void characterize(profile_t& result);
+		void measure(profile_t& result, float input);
     void defaults();
 		void setAnaIrefNmos () const override;
 	private:

@@ -129,29 +129,6 @@ typedef enum {
 
 namespace util {
 
-#define MAX_KEYS 25
-
-  typedef struct {
-    float bias[MAX_KEYS];
-    float noise[MAX_KEYS];
-    float target[MAX_KEYS];
-    unsigned char size;
-    unsigned char port[MAX_KEYS];
-  } calib_result_t;
-
-  typedef union {
-    calib_result_t result;
-    unsigned char charbuf[328];
-  } ser_calib_result_t;
-
-
-  void print_result(calib_result_t& result, int level);
-
-  void init_result(calib_result_t& result);
-  void add_prop(calib_result_t& result,
-                ifc prop, float target, float bias, float noise);
-
-
   const char * ifc_to_string(ifc id);
 
   float range_to_coeff(range_t range);

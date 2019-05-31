@@ -86,8 +86,8 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
                          max_error,
                          calib_failed);
     succ = !calib_failed;
-    sprintf(FMTBUF,"init-cond code=%d target=%f measured=%f",
-            code+delta, target, target+error);
+    sprintf(FMTBUF,"init-cond code=%d target=%f measured=%f succ=%s",
+            code+delta, target, target+error, succ ? "yes" : "no");
     print_info(FMTBUF);
     if(!succ){
       if(error*target_sign <= 0){
@@ -105,7 +105,7 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
 
 
 
-bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (util::calib_result_t& result,
+bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (profile_t& result,
                                                              const float max_error) {
   if(!m_codes.enable){
     return true;
@@ -140,17 +140,16 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (util::calib_result_
 
   dac_code_t dac_0;
   dac_code_t dac_ic;
-  util::calib_result_t interim_result;
 
   print_info("making zero dac");
-  util::init_result(interim_result);
-  dac_0 = make_zero_dac(calib, ref_dac,interim_result);
+  prof::init_profile(prof::TEMP);
+  dac_0 = make_zero_dac(calib, ref_dac,prof::TEMP);
   if (hiRange) {
     print_info("high range! making reference dac");
-    util::init_result(interim_result);
+    prof::init_profile(prof::TEMP);
     dac_ic = make_val_dac(calib,ref_dac,
                           -ic_val,
-                          interim_result);
+                          prof::TEMP);
     ref_to_tile.setConn();
   }
   integ_to_tile.setConn();
@@ -210,15 +209,14 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (util::calib_result_
 
 
 
-bool Fabric::Chip::Tile::Slice::Integrator::calibrate (util::calib_result_t& result, const float max_error) {
-  integ_code_t codes_self = m_codes;
-
-	setEnable(true);
+bool Fabric::Chip::Tile::Slice::Integrator::calibrate (profile_t& result, const float max_error) {
+	//setEnable(true);
 	Connection conn2 = Connection ( out0, parentSlice->tileOuts[3].in0 );
 	Connection conn3 = Connection ( parentSlice->tileOuts[3].out0, parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 	conn2.setConn();
 	conn3.setConn();
 
+  integ_code_t codes_self = m_codes;
   bool found_code = false;
   integ_code_t best_code = m_codes;
 	m_codes.nmos = 0;
@@ -230,7 +228,7 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrate (util::calib_result_t& res
     float error;
 
     sprintf(FMTBUF, "nmos=%d", m_codes.nmos);
-    print_debug(FMTBUF);
+    print_info(FMTBUF);
 
     m_codes.cal_enable[out0Id] = true;
     binsearch::find_bias(this, 0.0,

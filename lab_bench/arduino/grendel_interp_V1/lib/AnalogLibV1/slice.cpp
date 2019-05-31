@@ -86,17 +86,16 @@ int slice_to_int(const slice slc){
 bool Fabric::Chip::Tile::Slice::calibrateTarget () const {
 	print_log("Calib.TARGET DAC");
   Serial.flush();
-  util::calib_result_t result;
-	if (!dac->calibrateTarget(result,0.01)) return false;
+	if (!dac->calibrateTarget(prof::TEMP,0.01)) return false;
 	print_log("Calib.TARGET Multiplier 0");
   Serial.flush();
-	if (!muls[0].calibrateTarget(result,0.01)) return false;
+	if (!muls[0].calibrateTarget(prof::TEMP,0.01)) return false;
 	print_log("Calib.TARGET Multiplier 1");
   Serial.flush();
-	if (!muls[1].calibrateTarget(result,0.01)) return false;
+	if (!muls[1].calibrateTarget(prof::TEMP,0.01)) return false;
 	print_log("Calib.TARGET Integrator");
   Serial.flush();
-	if (!integrator->calibrateTarget(result,0.01)) return false;
+	if (!integrator->calibrateTarget(prof::TEMP,0.01)) return false;
 	print_log("Done");
   Serial.flush();
 	return true;
@@ -119,7 +118,6 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
 
   print_log("Calibrating ADC");
   Serial.flush();
-  util::calib_result_t result;
 	if (HCDC_DEMO_BOARD==1) {
 
 		if (sliceId==slice0 || sliceId==slice2) {
@@ -131,7 +129,7 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
 				&& parentTile->parentChip->chipColId==chipCol0
 			) SerialUSB.println("SKIPPING THIS ADC");
 			else
-			if (!adc->calibrate(result,0.01)) return false;
+			if (!adc->calibrate(prof::TEMP,0.01)) return false;
 		}
 		// if (
 		// 	sliceId==slice2
@@ -167,7 +165,7 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
 				&& parentTile->parentChip->chipColId==chipCol0
                         ) SerialUSB.println("SKIPPING THIS ADC");
 			else
-                        if (!adc->calibrate(result,0.01)) return false;
+                        if (!adc->calibrate(prof::TEMP,0.01)) return false;
 		}
 		// if (!dac->findBiasAdc (dac->negGainCalCode)) return false;
 
@@ -189,7 +187,7 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
 				&& parentTile->parentChip->chipColId==chipCol0
                         ) SerialUSB.println("SKIPPING THIS ADC");
 			else
-                        if (!adc->calibrate(result,0.01)) return false;
+                        if (!adc->calibrate(prof::TEMP,0.01)) return false;
 		}
 		// if (!dac->findBiasAdc (dac->negGainCalCode)) return false;
 
@@ -211,37 +209,37 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
 				&& parentTile->parentChip->chipColId==chipCol1
                         ) SerialUSB.println("SKIPPING THIS ADC");
 			else
-                        if (!adc->calibrate(result,0.01)) return false;
+                        if (!adc->calibrate(prof::TEMP,0.01)) return false;
 		}
 		// if (!dac->findBiasAdc (dac->negGainCalCode)) return false;
 
 	} else if (HCDC_DEMO_BOARD==5) {
 
 		//if (sliceId==slice0 || sliceId==slice2) {
-        //               if (!adc->calibrate(result,)) return false;
+        //               if (!adc->calibrate(prof::TEMP,)) return false;
 		//}
 		// if (!dac->findBiasAdc (dac->negGainCalCode)) return false;
 
 	} else if (HCDC_DEMO_BOARD==6) {
     if (sliceId == slice0 || sliceId == slice2) {
-      if (!adc->calibrate(result,0.01)) return false;
+      if (!adc->calibrate(prof::TEMP,0.01)) return false;
     }
   }
   else {
 		error("HCDC_DEMO_BOARD # not recognized. Only 1,2,3,4,5 are valid.");
 	}
 	print_log("Calibrating DAC");
-	if (!dac->calibrate(result,0.01)) return false;
+	if (!dac->calibrate(prof::TEMP,0.01)) return false;
 	print_log("Calibrating Fanout 0");
-	if (!fans[0].calibrate(result,0.01)) return false;
+	if (!fans[0].calibrate(prof::TEMP,0.01)) return false;
 	print_log("Calibrating Fanout 1");
-	if (!fans[1].calibrate(result,0.01)) return false;
+	if (!fans[1].calibrate(prof::TEMP,0.01)) return false;
   print_log("Calibrating Multiplier 0");
-	if (!muls[0].calibrate(result,0.01)) return false;
+	if (!muls[0].calibrate(prof::TEMP,0.01)) return false;
 	print_log("Calibrating Multiplier 1");
-	if (!muls[1].calibrate(result,0.01)) return false;
+	if (!muls[1].calibrate(prof::TEMP,0.01)) return false;
 	print_log("Calibrating Integrator");
-	if (!integrator->calibrate(result,0.01)) return false;
+	if (!integrator->calibrate(prof::TEMP,0.01)) return false;
 	print_log("Done");
 	return true;
 

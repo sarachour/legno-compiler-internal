@@ -3,13 +3,15 @@
 #include "Common.h"
 #include "Comm.h"
 #include "fu.h"
+#include "profile.h"
 
 namespace calibrate {
 
   void characterize(Fabric* fab,
-                 util::calib_result_t& result,
-                 uint16_t blk,
-                 circ::circ_loc_idx1_t loc)
+                    profile_t& result,
+                    uint16_t blk,
+                    circ::circ_loc_idx1_t loc,
+                    bool targeted)
   {
     Fabric::Chip::Tile::Slice::Fanout * fanout;
     Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -27,7 +29,10 @@ namespace calibrate {
     case circ::block_type_t::MULT:
       // TODO: indicate if input or output.
       mult = common::get_mult(fab,loc);
-      mult->characterize(result);
+      if(targeted)
+        mult->characterizeTarget(result);
+      else
+        mult->characterize(result);
       break;
 
     case circ::block_type_t::TILE_ADC:
@@ -37,12 +42,18 @@ namespace calibrate {
 
     case circ::block_type_t::TILE_DAC:
       dac = common::get_slice(fab,loc.loc)->dac;
-      dac->characterize(result);
+      if(targeted)
+        dac->characterizeTarget(result);
+      else
+        dac->characterize(result);
       break;
 
     case circ::block_type_t::INTEG:
       integ = common::get_slice(fab,loc.loc)->integrator;
-      integ->characterize(result);
+      if(targeted)
+        integ->characterizeTarget(result);
+      else
+        integ->characterize(result);
       break;
 
     case circ::block_type_t::LUT:
@@ -54,10 +65,11 @@ namespace calibrate {
 
 
   bool calibrate(Fabric* fab,
-                 util::calib_result_t& result,
+                 profile_t& result,
                  uint16_t blk,
                  circ::circ_loc_idx1_t loc,
-                 const float max_error)
+                 const float max_error,
+                 bool targeted)
   {
     Fabric::Chip::Tile::Slice::Fanout * fanout;
     Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -74,7 +86,7 @@ namespace calibrate {
     case circ::block_type_t::MULT:
       // TODO: indicate if input or output.
       mult = common::get_mult(fab,loc);
-      if(mult->m_codes.vga){
+      if(mult->m_codes.vga and targeted){
         return mult->calibrateTarget(result,max_error);
       }
       else{
@@ -89,7 +101,7 @@ namespace calibrate {
 
     case circ::block_type_t::TILE_DAC:
       dac = common::get_slice(fab,loc.loc)->dac;
-      if(dac->m_codes.source == dac_source_t::DSRC_MEM){
+      if(dac->m_codes.source == dac_source_t::DSRC_MEM and targeted){
         return dac->calibrateTarget(result,max_error);
       }
       else{
@@ -104,7 +116,9 @@ namespace calibrate {
     case circ::block_type_t::INTEG:
       integ = common::get_slice(fab,loc.loc)->integrator;
       integ->calibrate(result,max_error);
-      return integ->calibrateTarget(result,max_error);
+      if(targeted){
+        return integ->calibrateTarget(result,max_error);
+      }
       break;
 
     default:

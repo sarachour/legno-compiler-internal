@@ -6,7 +6,7 @@
 #include "dac.h"
 
 
-bool Fabric::Chip::Tile::Slice::Dac::calibrate (util::calib_result_t& result,
+bool Fabric::Chip::Tile::Slice::Dac::calibrate (profile_t& result,
                                                 const float max_error)
 {
   dac_code_t backup = m_codes;
@@ -24,7 +24,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrate (util::calib_result_t& result,
 
 
 
-bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& result,
+bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (profile_t& result,
                                                       const float max_error)
 {
   //setConstantCode(round(constant*128.0+128.0));
@@ -65,8 +65,8 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& resu
                                          parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
   dac_code_t base_code;
-  util::calib_result_t base_code_result;
-  util::init_result(base_code_result);
+  profile_t base_code_result;
+  prof::init_profile(base_code_result);
   float target = m_codes.const_val;
 	if (hiRange) {
     // feed dac output into scaling down multiplier input
@@ -121,7 +121,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (util::calib_result_t& resu
       }
     }
   }
-  util::init_result(result);
+  prof::init_profile(result);
   if (hiRange) {
     // feed dac output into scaling down multiplier input
 		ref_to_tile.brkConn();

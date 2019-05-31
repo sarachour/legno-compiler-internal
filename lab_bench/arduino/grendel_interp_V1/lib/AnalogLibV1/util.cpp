@@ -13,42 +13,6 @@ namespace util {
     assert(is_valid_iref(code));
   }
 
-  void init_result(util::calib_result_t& result){
-    result.size = 0;
-    for(int i=0; i < MAX_KEYS; i += 1){
-      result.port[i] = 0;
-      result.noise[i] = 0.0;
-      result.bias[i] = 0.0;
-      result.target[i] = 0.0;
-    }
-  }
-
-  void print_result(util::calib_result_t& result, int level){
-    for(int i=0; i < result.size; i+= 1){
-      sprintf("port=%s target=%f bias=%f noise=%f", result.port[i],
-              result.target[i],result.bias[i],result.noise[i]);
-      print_level(FMTBUF,level);
-    }
-
-  }
-  void add_prop(util::calib_result_t& result,
-                ifc prop, float target, float bias, float noise){
-    if(result.size >= MAX_KEYS){
-      sprintf(FMTBUF,
-              "cutil::add_prop: no more space left for prop: %d/%d",
-              result.size, MAX_KEYS);
-      error(FMTBUF);
-    }
-    result.port[result.size] = prop;
-    result.bias[result.size] = bias;
-    result.noise[result.size] = noise;
-    result.target[result.size] = target;
-    sprintf(FMTBUF, "add-prop prop=%d bias=%f noise=%f target=%f",
-            prop,bias,noise,target);
-    print_log(FMTBUF);
-    result.size += 1;
-  }
-
   const char * ifc_to_string(ifc id){
     return "?";
   }

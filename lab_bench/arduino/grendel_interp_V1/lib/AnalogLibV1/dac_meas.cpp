@@ -5,22 +5,34 @@
 #include "slice.h"
 #include "dac.h"
 
+void Fabric::Chip::Tile::Slice::Dac::characterize(profile_t& result){
+  if(m_codes.source == DSRC_MEM){
+    dac_code_t backup = m_codes;
+    // spoof source.
+    m_codes.source = DSRC_LUT0;
+    characterizeTarget(result);
+    update(backup);
+  }
+  else{
+    characterizeTarget(result);
+  }
+}
 
-void Fabric::Chip::Tile::Slice::Dac::characterize(util::calib_result_t& result)
+void Fabric::Chip::Tile::Slice::Dac::characterizeTarget(profile_t& result)
 {
   if(m_codes.source == DSRC_MEM){
-    util::init_result(result);
+    prof::init_profile(result);
     measure(result);
   }
   else{
     dac_code_t backup = m_codes;
     m_codes.source = DSRC_MEM;
+    float vals[SIZE1D];
+    int n = prof::data_1d(vals,SIZE1D);
     // measure how good the dac is at writing certain values.
-    float values[10];
-    util::init_result(result);
-    for(int i=0; i < 10; i+=1){
-      float value = 2.0*(i/10.0) - 1.0;
-      setConstant(value);
+    prof::init_profile(result);
+    for(int i=0; i < n; i+=1){
+      setConstant(vals[i]);
       measure(result);
     }
     update(backup);
@@ -29,7 +41,7 @@ void Fabric::Chip::Tile::Slice::Dac::characterize(util::calib_result_t& result)
 }
 
 
-void Fabric::Chip::Tile::Slice::Dac::measure(util::calib_result_t& result)
+void Fabric::Chip::Tile::Slice::Dac::measure(profile_t& result)
 {
   if(!m_codes.enable){
     print_log("DAC not enabled");
@@ -63,9 +75,9 @@ void Fabric::Chip::Tile::Slice::Dac::measure(util::calib_result_t& result)
                                          parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
   dac_code_t base_code;
-  util::calib_result_t base_code_result;
+  profile_t base_code_result;
   float target = m_codes.const_val*scf;
-  util::init_result(base_code_result);
+  prof::init_profile(base_code_result);
 	if (hiRange) {
     // feed dac output into scaling down multiplier input
 		ref_to_tile.setConn();
@@ -78,7 +90,7 @@ void Fabric::Chip::Tile::Slice::Dac::measure(util::calib_result_t& result)
 
   float mean=0.0,variance=0.0;
   util::meas_dist_chip_out(this,mean,variance);
-  util::add_prop(result, out0Id,
+  prof::add_prop(result, out0Id,
                  m_codes.const_val*scf,
                  mean-target,
                  variance);

@@ -2,13 +2,13 @@
 #include "assert.h"
 #include "calib_util.h"
 
-void Fabric::Chip::Tile::Slice::Fanout::characterize(util::calib_result_t& result) {
-  util::init_result(result);
+void Fabric::Chip::Tile::Slice::Fanout::characterize(profile_t& result) {
+  prof::init_profile(result);
   measure(result);
 }
 
 
-void Fabric::Chip::Tile::Slice::Fanout::measure(util::calib_result_t& result) {
+void Fabric::Chip::Tile::Slice::Fanout::measure(profile_t& result) {
 
   fanout_code_t codes_self = m_codes;
   cutil::calibrate_t calib;
@@ -29,13 +29,13 @@ void Fabric::Chip::Tile::Slice::Fanout::measure(util::calib_result_t& result) {
   conn0.setConn();
   util::meas_dist_chip_out(this,mean,variance);
   conn0.brkConn();
-  util::add_prop(result,out0Id, 0.0, mean,variance);
+  prof::add_prop(result,out0Id, 0.0, mean,variance);
 
   Connection conn1 = Connection (out1, this->parentSlice->tileOuts[3].in0);
   conn1.setConn();
   util::meas_dist_chip_out(this,mean,variance);
   conn1.brkConn();
-  util::add_prop(result,out1Id,0.0,mean,variance);
+  prof::add_prop(result,out1Id,0.0,mean,variance);
 
   Connection conn2 = Connection (out2, this->parentSlice->tileOuts[3].in0);
   conn1.setConn();
@@ -43,7 +43,7 @@ void Fabric::Chip::Tile::Slice::Fanout::measure(util::calib_result_t& result) {
   util::meas_dist_chip_out(this,mean,variance);
   setThird(false);
   conn2.brkConn();
-  util::add_prop(result,out2Id,0.0,mean,variance);
+  prof::add_prop(result,out2Id,0.0,mean,variance);
 
 	conn.brkConn();
 	setEnable ( false );

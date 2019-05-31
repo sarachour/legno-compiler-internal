@@ -4,8 +4,8 @@
 #include "calib_util.h"
 
 
-void Fabric::Chip::Tile::Slice::ChipAdc::characterize(util::calib_result_t& result){
-  util::init_result(result);
+void Fabric::Chip::Tile::Slice::ChipAdc::characterize(profile_t& result){
+  prof::init_profile(result);
   int n = 20;
   for(int i=0; i < n; i += 1){
     float in0 = (i/((float) n))*2.0-1.0;
@@ -15,7 +15,7 @@ void Fabric::Chip::Tile::Slice::ChipAdc::characterize(util::calib_result_t& resu
 }
 
 
-void Fabric::Chip::Tile::Slice::ChipAdc::measure(util::calib_result_t& result, float input){
+void Fabric::Chip::Tile::Slice::ChipAdc::measure(profile_t& result, float input){
   float coeff = util::range_to_coeff(m_codes.range);
   update(m_codes);
 
@@ -32,7 +32,7 @@ void Fabric::Chip::Tile::Slice::ChipAdc::measure(util::calib_result_t& result, f
 
   val_dac->setEnable(true);
   dac_code_t dac_code_value;
-  util::calib_result_t interim_result;
+  profile_t interim_result;
   dac_code_value = cutil::make_val_dac(calib,val_dac,
                                        coeff*input,
                                        interim_result);
@@ -46,7 +46,7 @@ void Fabric::Chip::Tile::Slice::ChipAdc::measure(util::calib_result_t& result, f
 
   float mean,variance;
   util::meas_dist_adc(this,mean,variance);
-  util::add_prop(result,out0Id,
+  prof::add_prop(result,out0Id,
                  target,
                  mean-target,
                  variance);
