@@ -52,40 +52,6 @@ def get_modes():
                                    blacklist_mult))
   return vga_modes,mul_modes
 
-def black_box_model(mult):
-  def config_phys(phys,rng,scf,vga=False):
-    base = "mult" if not vga else "vga"
-    if rng == chipcmd.RangeType.MED:
-      base += "-m"
-    elif rng == chipcmd.RangeType.LOW:
-      base += "-l"
-    elif rng == chipcmd.RangeType.HIGH:
-      base += "-h"
-
-    if util.equals(scf, 1.0):
-      new_phys = PhysicalModel.read(util.datapath('%s1x.bb' % base))
-    elif util.equals(scf, 10.0) or util.equals(scf, 100.0):
-      new_phys = PhysicalModel.read(util.datapath('%s10x.bb' % base))
-    elif util.equals(scf, 0.1) or util.equals(scf, 0.01):
-      new_phys = PhysicalModel.read(util.datapath('%s01x.bb' % base))
-    else:
-      raise Exception("unknown scf: %s" % scf)
-
-    phys.set_to(new_phys)
-
-  vga_modes,mul_modes = get_modes()
-  for mode in vga_modes:
-    in0rng,outrng = mode
-    scf = outrng.coeff()/in0rng.coeff()
-    phys = mult.physical('vga',mode,'out')
-    config_phys(phys,outrng,scf,vga=True)
-
-  for mode in mul_modes:
-    in0rng,in1rng,outrng = mode
-    scf = outrng.coeff()/(in0rng.coeff()*in1rng.coeff())
-    phys = mult.physical('mul',mode,'out')
-    config_phys(phys,outrng,scf)
-
 
 
 def continuous_scale_model_vga(mult):
@@ -214,7 +180,6 @@ block = Block('multiplier') \
 
 scale_model(block)
 continuous_scale_model(block)
-black_box_model(block)
 
 block.check()
 

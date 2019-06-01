@@ -28,35 +28,6 @@ def get_scale_modes():
                                     blacklist))
   return modes
 
-def black_box_model(blk):
-  def cfg_phys_model(phys,rng,scf):
-    base = "integ"
-    if rng == chipcmd.RangeType.MED:
-      base += "-m"
-    elif rng == chipcmd.RangeType.LOW:
-      base += "-l"
-    elif rng == chipcmd.RangeType.HIGH:
-      base += "-h"
-
-    if util.equals(scf, 1.0):
-      new_phys = PhysicalModel.read(util.datapath('%s1x.bb' % base))
-    elif util.equals(scf, 10.0):
-      new_phys = PhysicalModel.read(util.datapath('%s10x.bb' % base))
-    elif util.equals(scf, 0.1):
-      new_phys = PhysicalModel.read(util.datapath('%s01x.bb' % base))
-    else:
-      raise Exception("unknown model: %s" % scf)
-    phys.set_to(new_phys)
-
-  comp_modes = get_comp_modes()
-  scale_modes = get_scale_modes()
-  for comp_mode in comp_modes:
-    for scale_mode in scale_modes:
-      inrng,outrng = scale_mode
-      scf = outrng.coeff()/inrng.coeff()
-      ph = blk.physical(comp_mode,scale_mode,"out")
-      cfg_phys_model(ph,outrng,scf)
-
 
 def continuous_scale_model(integ):
   m = chipcmd.RangeType.MED
@@ -178,6 +149,5 @@ block = Block('integrator') \
 )
 scale_model(block)
 continuous_scale_model(block)
-black_box_model(block)
 block.check()
 

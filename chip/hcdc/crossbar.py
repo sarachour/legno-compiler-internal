@@ -10,18 +10,6 @@ import ops.op as ops
 import ops.nop as nops
 import chip.units as units
 
-def black_box_model_tile(blk):
-  phys = blk.physical("*","*","out")
-  phys.set_to(PhysicalModel.read(util.datapath('tile_xbar.bb')))
-
-def black_box_model_chip(blk):
-  phys = blk.physical("*","*","out")
-  phys.set_to(PhysicalModel.read(util.datapath('global_xbar.bb')))
-
-
-def black_box_model_cc(blk):
-  black_box_model_tile(blk)
-
 
 def xbar_continuous_model(xbar):
   csm = ContinuousScaleModel()
@@ -49,7 +37,6 @@ tile_out = Block('tile_out',type=BlockType.BUS) \
 .set_props("*","*",["out","in"], ana_props) \
 .set_coeff("*","*","out",1.0) \
 .check()
-black_box_model_tile(tile_out)
 xbar_continuous_model(tile_out)
 
 ana_props = util.make_ana_props(chipcmd.RangeType.HIGH,\
@@ -64,7 +51,6 @@ tile_in = Block('tile_in',type=BlockType.BUS) \
 .set_props("*","*",["out","in"], ana_props) \
 .set_coeff("*","*","out",1.0) \
 .check()
-black_box_model_tile(tile_in)
 xbar_continuous_model(tile_in)
 
 
@@ -81,7 +67,6 @@ inv_conn = Block('conn_inv') \
            ana_props) \
 .set_coeff("*","*","out",-1.0) \
 .check()
-black_box_model_cc(inv_conn)
 xbar_continuous_model(inv_conn)
 
 
@@ -98,7 +83,6 @@ chip_out = Block('chip_out',type=BlockType.BUS) \
 .set_props("*","*",["in"], ana_props) \
 .set_coeff("*","*","out",1.0) \
 .check()
-black_box_model_chip(chip_out)
 xbar_continuous_model(chip_out)
 
 ana_props = util.make_ana_props(chipcmd.RangeType.HIGH,\
@@ -114,5 +98,4 @@ chip_in = Block('chip_in',type=BlockType.BUS) \
 .set_props("*","*",["out"], ana_props) \
 .set_coeff("*","*","out",1.0) \
 .check()
-black_box_model_chip(chip_in)
 xbar_continuous_model(chip_in)

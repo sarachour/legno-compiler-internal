@@ -25,7 +25,6 @@ class Block:
 
         self._coeffs = {}
         self._props = {} # operating ranges and values
-        self._physical = {} # physical characteristics
 
         # scale factors
         self._scale_models = {}
@@ -107,16 +106,6 @@ class Block:
 
         expr = op_data[output]
         return expr
-
-    def physical(self,comp_mode,scale_mode,output):
-        assert(output in self._outputs)
-        ddict = self._make_scale_dict(comp_mode,scale_mode, \
-                                    self._physical)
-        if not output in ddict:
-            ddict[output] = phys.PhysicalModel(output)
-
-        return ddict[output]
-
 
     def dynamics(self,comp_mode):
         for output in self._outputs:

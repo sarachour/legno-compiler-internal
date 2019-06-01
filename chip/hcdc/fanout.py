@@ -27,24 +27,7 @@ def get_scale_modes():
     return list(util.apply_blacklist(chipcmd.RangeType.options(), \
                                      blacklist))
 
-def blackbox_model(fanout):
-    def config_phys_model(phys,rng):
-        if rng == chipcmd.RangeType.MED:
-            new_phys =  PhysicalModel.read(util.datapath('fanout-m.bb'))
-        elif rng == chipcmd.RangeType.HIGH:
-            new_phys = PhysicalModel.read(util.datapath('fanout-h.bb'))
-        else:
-            raise Exception("unknown physical model: %s" % rng)
 
-        phys.set_to(new_phys)
-
-    comp_modes = get_comp_modes()
-    scale_modes = get_scale_modes()
-    for c_mode in comp_modes:
-        for rng in scale_modes:
-            config_phys_model(fanout.physical(c_mode,rng,"out0"),rng)
-            config_phys_model(fanout.physical(c_mode,rng,"out1"),rng)
-            config_phys_model(fanout.physical(c_mode,rng,"out2"),rng)
 
 def continuous_scale_model(fanout):
     comp_modes = get_comp_modes()
@@ -107,6 +90,5 @@ for mode in get_comp_modes():
     block.set_op(mode,"out1",do_sign(sign1))
     block.set_op(mode,"out2",do_sign(sign2))
 
-blackbox_model(block)
 scale_model(block)
 continuous_scale_model(block)
