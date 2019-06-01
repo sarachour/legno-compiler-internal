@@ -366,11 +366,12 @@ def state_t():
                          "adc" / adc_state_t()
     )
 
-def calib_result_t():
+def profile_t():
+    nels = 81
     return cstruct.Struct(
-        "bias" / cstruct.Array(25,cstruct.Float32l),
-        "noise" / cstruct.Array(25,cstruct.Float32l),
-        "target" / cstruct.Array(25,cstruct.Float32l),
+        "bias" / cstruct.Array(nels,cstruct.Float32l),
+        "noise" / cstruct.Array(nels,cstruct.Float32l),
+        "target" / cstruct.Array(nels,cstruct.Float32l),
         "size" / cstruct.Int8ul,
-        "port" / cstruct.Array(25,cstruct.Int8ul)
+        "port" / cstruct.Array(nels,cstruct.Int8ul)
     )

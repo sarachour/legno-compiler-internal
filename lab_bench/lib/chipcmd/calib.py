@@ -48,7 +48,7 @@ class CharacterizeCmd(AnalogChipCommand):
                       .toplevel_from_cstruct(self._blk,
                                              self._loc,
                                              state_data)
-        result = cstructs.calib_result_t() \
+        result = cstructs.profile_t() \
                          .parse(result_data);
 
         profile = []

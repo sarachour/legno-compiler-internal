@@ -55,7 +55,8 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
                           float max_error,
                           int code,
                           float target,
-                          dac_code_t& ref_codes){
+                          dac_code_t& ref_codes,
+                          bool change_code){
 
   int delta = 0;
   bool succ = false;
@@ -90,6 +91,9 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
             code+delta, target, target+error, succ ? "yes" : "no");
     print_info(FMTBUF);
     if(!succ){
+      if(!change_code){
+        return false;
+      }
       if(error*target_sign <= 0){
         delta += target_sign;
       }
@@ -105,8 +109,9 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
 
 
 
-bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (profile_t& result,
-                                                             const float max_error) {
+bool Fabric::Chip::Tile::Slice::Integrator::calibrateTargetHelper (profile_t& result,
+                                                                   const float max_error,
+                                                                   bool change_code) {
   if(!m_codes.enable){
     return true;
   }
@@ -174,7 +179,8 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (profile_t& result,
     if(succ)
       succ &= helper_find_cal_gain(this,ref_dac,max_error,code,
                                    hiRange ? 0.0: m_codes.ic_val*ic_sign,
-                                   hiRange ? dac_ic : dac_0);
+                                   hiRange ? dac_ic : dac_0,
+                                   change_code);
     ref_dac->update(dac_0);
 
     if(succ){
@@ -186,7 +192,6 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (profile_t& result,
       setAnaIrefNmos ();
     }
   }
-
   update(best_code);
 	if (hiRange) {
     ref_to_tile.brkConn();
@@ -209,65 +214,22 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (profile_t& result,
 
 
 
+bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (profile_t& result, const float max_error) {
+  //calibrate at given initial condition, where we allow twiddling
+  //the code
+  return calibrateTargetHelper(result,max_error,true);
+}
 bool Fabric::Chip::Tile::Slice::Integrator::calibrate (profile_t& result, const float max_error) {
 	//setEnable(true);
-	Connection conn2 = Connection ( out0, parentSlice->tileOuts[3].in0 );
-	Connection conn3 = Connection ( parentSlice->tileOuts[3].out0, parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
-	conn2.setConn();
-	conn3.setConn();
-
   integ_code_t codes_self = m_codes;
-  bool found_code = false;
-  integ_code_t best_code = m_codes;
-	m_codes.nmos = 0;
-	setAnaIrefNmos ();
-
-  while (m_codes.nmos <= 7 && ! found_code) {
-    bool calib_failed;
-    bool succ = true;
-    float error;
-
-    sprintf(FMTBUF, "nmos=%d", m_codes.nmos);
-    print_info(FMTBUF);
-
-    m_codes.cal_enable[out0Id] = true;
-    binsearch::find_bias(this, 0.0,
-                         m_codes.port_cal[out0Id],
-                         error,
-                         MEAS_CHIP_OUTPUT);
-    binsearch::test_stab(m_codes.port_cal[out0Id],
-                         error, max_error,
-                         calib_failed);
-    succ &= !calib_failed;
-    m_codes.cal_enable[out0Id] = false;
-
-
-    m_codes.cal_enable[in0Id] = true;
-    binsearch::find_bias(this, 0.0,
-                         m_codes.port_cal[in0Id],
-                         error,
-                         MEAS_CHIP_OUTPUT);
-    binsearch::test_stab(m_codes.port_cal[in0Id],
-                         error, max_error,
-                         calib_failed);
-    succ &= !calib_failed;
-    m_codes.cal_enable[in0Id] = false;
-    if(succ){
-      found_code = true;
-      best_code = m_codes;
-    }
-    m_codes.nmos += 1;
-    if(m_codes.nmos <= 7){
-      setAnaIrefNmos();
-    }
-  }
-  conn2.brkConn();
-	conn3.brkConn();
-	setEnable(false);
-  codes_self.nmos = best_code.nmos;
-  codes_self.port_cal[out0Id] = best_code.port_cal[out0Id];
-  codes_self.port_cal[in0Id] = best_code.port_cal[in0Id];
+  setInitial(1.0);
+  //calibrate at initial condition=1.0, where we don't change the
+  //initial condition code
+  bool success = calibrateTargetHelper(result,max_error,false);
+  codes_self.nmos = m_codes.nmos;
+  codes_self.gain_cal = m_codes.gain_cal;
+  codes_self.port_cal[out0Id] = m_codes.port_cal[out0Id];
+  codes_self.port_cal[in0Id] = m_codes.port_cal[in0Id];
   update(codes_self);
-  return found_code;
-
+  return success;
 }

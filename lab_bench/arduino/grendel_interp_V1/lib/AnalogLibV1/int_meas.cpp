@@ -9,7 +9,7 @@ void Fabric::Chip::Tile::Slice::Integrator::characterize(profile_t& result){
   prof::init_profile(result);
   float vals[SIZE1D];
   int n = prof::data_1d(vals,SIZE1D);
-  for(int i=0; i < n; i += 1){
+  for(int i=0; i < n; i += 3){
     setInitial(vals[i]);
     measure(result);
   }

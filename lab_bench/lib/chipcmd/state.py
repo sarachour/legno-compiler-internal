@@ -414,7 +414,6 @@ class DacBlockState(BlockState):
 def to_c_list(keymap,value_code=True):
   intmap = {}
   for k,v in keymap.items():
-    print("%s=%s" % (k,v))
     intmap[k.code()] = v.code() if value_code else v
 
   n = max(intmap.keys())
@@ -552,7 +551,6 @@ class IntegBlockState(BlockState):
     z = [obj.ic_val]
     for port,target,bias,noise in obj.profile:
       gs = g + [port]
-      print(bias,noise)
       y = [bias,math.sqrt(noise)]
       x = [target]
       yield gs,z,x,y
