@@ -133,7 +133,7 @@ class UseLUTCmd(UseCommand):
         else:
             raise Exception(result.message)
 
-    def to_key(self):
+    def to_key(self,targeted=False):
         loc = CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
@@ -222,7 +222,7 @@ class UseADCCmd(UseCommand):
         else:
             raise Exception(result.message)
 
-    def to_key(self):
+    def to_key(self,targeted=False):
         loc = CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
@@ -314,6 +314,9 @@ class UseDACCmd(UseCommand):
                                        const_val=self._value,
                                        targeted=targeted)
 
+
+    def update_state(self,state):
+        state.update_value(self._value)
 
     @staticmethod
     def _parse(args,cls):
