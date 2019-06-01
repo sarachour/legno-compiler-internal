@@ -47,7 +47,8 @@ class CharacterizeCmd(AnalogChipCommand):
         st = chipstate.BlockState \
                       .toplevel_from_cstruct(self._blk,
                                              self._loc,
-                                             state_data)
+                                             state_data,
+                                             self._targeted)
         result = cstructs.profile_t() \
                          .parse(result_data);
 
@@ -59,10 +60,11 @@ class CharacterizeCmd(AnalogChipCommand):
             targ = result.target[i]
             port = enums.PortName.from_code(result.port[i])
             profile.append((port,targ,bias,noise))
-            print("TRIAL %s targ=%f bias=%f noise=%f (var)" % (port,targ,bias,noise))
+            print("TRIAL %s targ=%f bias=%f noise=%f (var)" % (port,targ,
+                                                               bias,noise))
         #FIXME save cali
         entry = env.state_db.get(st.key)
-        env.state_db.put(st,
+        env.state_db.put(st,entry.targeted,
                          profile=profile,
                          success=entry.success,
                          max_error=entry.tolerance)
@@ -132,13 +134,14 @@ class SetStateCmd(AnalogChipCommand):
 class GetStateCmd(AnalogChipCommand):
 
 
-    def __init__(self,blk,chip,tile,slce,index=None):
+    def __init__(self,blk,chip,tile,slce,index=None,targeted=True):
         AnalogChipCommand.__init__(self)
         self._blk = enums.BlockType(blk)
         self._loc = CircLoc(chip,tile,slce,index=0 if index is None \
                             else index)
 
         self.test_loc(self._blk, self._loc)
+        self._targeted = targeted
 
     @staticmethod
     def name():
@@ -203,7 +206,8 @@ class GetStateCmd(AnalogChipCommand):
         st = chipstate.BlockState \
                       .toplevel_from_cstruct(self._blk,
                                              self._loc,
-                                             data)
+                                             data,
+                                             targeted=self._targeted)
         env.state_db.put(st)
         return True
 
@@ -251,7 +255,7 @@ class CalibrateCmd(AnalogChipCommand):
         result = parse_pattern_block_loc(args,
                                          CalibrateCmd.name(),
                                          max_error=True,
-                                         targeted=True)
+                                         targeted=self._targeted)
         if result.success:
             data = result.value
             return CalibrateCmd(data["blk"],
@@ -277,8 +281,10 @@ class CalibrateCmd(AnalogChipCommand):
         st = chipstate.BlockState \
                       .toplevel_from_cstruct(self._blk,
                                              self._loc,
-                                             data)
-        env.state_db.put(st,success=success,max_error=self._max_error)
+                                             data,
+                                             targeted=self._targeted)
+        env.state_db.put(st,self._targeted,
+                         success=success,max_error=self._max_error)
         return success
 
 

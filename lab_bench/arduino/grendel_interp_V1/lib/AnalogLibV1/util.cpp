@@ -42,7 +42,7 @@ namespace util {
     for(unsigned int index=0; index < samples; index++){
       variance += pow((values[index] - mean),2.0);
     }
-    variance /= (float) (samples-1);
+    variance /= (float) (samples);
   }
 
   void meas_dist_adc(Fabric::Chip::Tile::Slice::ChipAdc* fu,

@@ -7,6 +7,7 @@
 extern size_t dynamic_memory;
 
 #define LEVEL 3
+
 #define LOG_LEVEL 2
 #define INFO_LEVEL 3
 #define DEBUG_LEVEL 4

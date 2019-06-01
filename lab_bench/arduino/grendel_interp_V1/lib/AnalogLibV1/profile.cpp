@@ -18,7 +18,7 @@ namespace prof {
     }
     int idx = 0;
     for(int i=0; i < 256; i += stride){
-      data[idx] = ((float) i)/255.0 - 1.0;
+      data[idx] = ((float) i)/128.0 - 1.0;
       idx += 1;
     }
     return idx;
@@ -27,7 +27,7 @@ namespace prof {
     static int codes[] = {0,32,64,96,128,
                           160,191,224,255};
     for(int i=0; i < 9; i += 1){
-      data[i] = codes[i]/255.0 - 1.0;
+      data[i] = codes[i]/128.0 - 1.0;
     }
     return 9;
   }

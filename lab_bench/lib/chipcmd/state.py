@@ -1,6 +1,7 @@
 import lab_bench.lib.enums as enums
 import lab_bench.lib.chipcmd.data as chipdata
 import lab_bench.lib.chipcmd.state as chipstate
+from lab_bench.lib.chipcmd.common import *
 from lab_bench.lib.chipcmd.data import *
 from enum import Enum
 import sqlite3
@@ -45,6 +46,7 @@ class BlockStateDatabase:
     slice int NOT NULL,
     idx int NOT NULL,
     status text NOT NULL,
+    targeted int NOT NULL,
     max_error real NOT NULL,
     state text NOT NULL,
     profile text NOT NULL,
@@ -55,7 +57,8 @@ class BlockStateDatabase:
     self._conn.commit()
     self.keys = ['cmdkey','block',
                  'chip','tile','slice','idx',
-                 'status','max_error',
+                 'status','targeted',
+                 'max_error',
                  'state','profile']
 
   def get_all(self):
@@ -84,7 +87,7 @@ class BlockStateDatabase:
       result = self._process(data)
       yield result
 
-  def put(self,blockstate,success=True,max_error=-1,profile=[]):
+  def put(self,blockstate,targeted,success=True,max_error=-1,profile=[]):
     assert(isinstance(blockstate,BlockState))
     key = blockstate.key.to_key()
     cmd = '''DELETE FROM states WHERE cmdkey="{cmdkey}"''' \
@@ -98,11 +101,13 @@ class BlockStateDatabase:
 
     status = BlockStateDatabase.Status.SUCCESS \
              if success else BlockStateDatabase.Status.FAILURE
+    targeted = BoolType.TRUE \
+               if targeted else BoolType.FALSE
     cmd = '''
     INSERT INTO states (cmdkey,block,chip,tile,slice,idx,
-                        status,max_error,state,profile)
+                        status,targeted,max_error,state,profile)
     VALUES ("{cmdkey}","{block}",{chip},{tile},{slice},{index},
-            "{status}",{max_error},"{state}","{profile}")
+            "{status}",{targeted},{max_error},"{state}","{profile}")
     '''.format(
       cmdkey=key,
       block=blockstate.block.value,
@@ -111,6 +116,7 @@ class BlockStateDatabase:
       slice=blockstate.loc.slice,
       index=blockstate.loc.index,
       status=status.value,
+      targeted=targeted.code(),
       max_error=max_error,
       state=state_bits,
       profile=profile_bits
@@ -140,7 +146,8 @@ class BlockStateDatabase:
     blk = enums.BlockType(data['block'])
     try:
       obj = BlockState \
-            .toplevel_from_cstruct(blk,loc,bytes.fromhex(state))
+            .toplevel_from_cstruct(blk,loc,bytes.fromhex(state), \
+                                   data['targeted'])
     except ValueError:
       return None
 
@@ -165,9 +172,15 @@ class BlockStateDatabase:
 class BlockState:
 
   class Key:
-    def __init__(self,blk,loc):
+    def __init__(self,blk,loc,targeted=False):
       self.block = blk
       self.loc = loc
+      self.targeted = targeted
+
+    @property
+    def targeted_keys(self):
+      print(self.block)
+      raise NotImplementedError
 
     def to_json(self):
       return self.__dict__
@@ -180,6 +193,9 @@ class BlockState:
         ident = ""
         for key in keys:
           value = obj[key]
+          if key in self.targeted_keys and not self.targeted:
+            continue
+
           ident += "%s=" % key
           if isinstance(value,dict):
             ident += "{%s}" % dict_to_key(value)
@@ -194,11 +210,12 @@ class BlockState:
 
       return dict_to_key(obj)
 
-  def __init__(self,block_type,loc,state):
+  def __init__(self,block_type,loc,state,targeted=False):
     self.block = block_type
     self.loc = loc
     self.success = None
     self.tolerance = None
+    self.targeted = targeted
     self.profile = []
     self.state = state
     if state != None:
@@ -232,6 +249,7 @@ class BlockState:
 
     GH,PH,EH,OH = self.header()
     dataset = {}
+    dataset['metadata'] = self.metadata()
     dataset['groups'] = {'fields': GH, 'values': G}
     dataset['params'] = {'fields':PH, 'values': P}
     dataset['expected'] = {'fields':EH, 'values': E}
@@ -241,11 +259,14 @@ class BlockState:
     with open(filename,'w') as fh:
       fh.write(objstr)
 
+  def metadata(self):
+    return {
+      "loc": self.loc.to_json(),
+      "block": self.block
+    }
 
   def header(self):
     raise NotImplementedError
-
-
 
   def to_rows(self,obj):
     print(self.__class__.__name__)
@@ -272,16 +293,16 @@ class BlockState:
     return obj
 
   @staticmethod
-  def toplevel_from_cstruct(blk,loc,data):
+  def toplevel_from_cstruct(blk,loc,data,targeted):
     obj = BlockState.decode_cstruct(blk,data)
     if blk == enums.BlockType.FANOUT:
       st = FanoutBlockState(loc,obj)
     elif blk == enums.BlockType.INTEG:
-      st = IntegBlockState(loc,obj)
+      st = IntegBlockState(loc,obj,targeted)
     elif blk == enums.BlockType.MULT:
-      st = MultBlockState(loc,obj)
+      st = MultBlockState(loc,obj,targeted)
     elif blk == enums.BlockType.DAC:
-      st = DacBlockState(loc,obj)
+      st = DacBlockState(loc,obj,targeted)
     elif blk == enums.BlockType.ADC:
       st = AdcBlockState(loc,obj)
     elif blk == enums.BlockType.LUT:
@@ -318,8 +339,8 @@ class LutBlockState(BlockState):
       self.source = source
 
 
-  def __init__(self,loc,state):
-    BlockState.__init__(self,enums.BlockType.LUT,loc,state)
+  def __init__(self,loc,state,targeted):
+    BlockState.__init__(self,enums.BlockType.LUT,loc,state,targeted)
 
   @property
   def key(self):
@@ -348,16 +369,22 @@ class DacBlockState(BlockState):
 
   class Key(BlockState.Key):
 
-    def __init__(self,loc,inv,rng,source,const_val):
-      BlockState.Key.__init__(self,enums.BlockType.DAC,loc)
+    def __init__(self,loc,inv,rng,source,const_val,targeted):
+      BlockState.Key.__init__(self,enums.BlockType.DAC,loc,targeted)
       self.inv = inv
       self.rng = rng
       self.source = source
       self.const_val = const_val
 
 
-  def __init__(self,loc,state):
-    BlockState.__init__(self,enums.BlockType.DAC,loc,state)
+    @property
+    def targeted_keys(self):
+      return ["const_val"]
+
+  def __init__(self,loc,state,targeted):
+    BlockState.__init__(self,enums.BlockType.DAC,loc, \
+                        state,targeted)
+    self.targeted = targeted
 
   @property
   def key(self):
@@ -365,8 +392,11 @@ class DacBlockState(BlockState):
                              self.inv,
                              self.rng,
                              self.source,
-                             self.const_val)
+                             self.const_val,
+                             self.targeted)
 
+
+ 
 
   def header(self):
     GH = ['inv','rng','source']
@@ -383,6 +413,11 @@ class DacBlockState(BlockState):
       Y = [bias,math.sqrt(noise)]
       X = [target]
       yield GS,Z,X,Y
+
+  def update_value(self,value):
+    self.const_val = value
+    self.const_code = signed_float_to_byte(value)
+
 
 
   def to_cstruct(self):
@@ -431,16 +466,22 @@ class MultBlockState(BlockState):
                  vga,
                  invs,
                  ranges,
-                 gain_val=None):
-      BlockState.Key.__init__(self,enums.BlockType.MULT,loc)
+                 gain_val=None,
+                 targeted=False):
+      BlockState.Key.__init__(self,enums.BlockType.MULT,loc,targeted)
       assert(isinstance(vga,chipdata.BoolType))
       self.invs = invs
       self.ranges = ranges
-      self.gain_val = float(gain_val)
+      self.gain_val = float(gain_val) \
+                      if not gain_val is None else None
       self.vga = vga
 
-  def __init__(self,loc,state):
-    BlockState.__init__(self,enums.BlockType.MULT,loc,state)
+    @property
+    def targeted_keys(self):
+      return ['gain_val']
+
+  def __init__(self,loc,state,targeted):
+    BlockState.__init__(self,enums.BlockType.MULT,loc,state,targeted)
 
   def header(self):
     GH = keys(self.invs) + \
@@ -461,6 +502,11 @@ class MultBlockState(BlockState):
       Y = [bias,math.sqrt(noise)]
       X = [target]
       yield GS,Z,X,Y
+
+  def update_gain(self,value):
+    self.gain_val = value
+    self.gain_code = signed_float_to_byte(value)
+
 
 
   def to_cstruct(self):
@@ -486,7 +532,10 @@ class MultBlockState(BlockState):
                               self.vga,
                               self.invs,
                               self.ranges,
-                              self.gain_val)
+                              self.gain_val,
+                              self.targeted)
+
+
 
   def from_cstruct(self,state):
     in0id = enums.PortName.IN0
@@ -505,7 +554,7 @@ class MultBlockState(BlockState):
     self.ranges[outid] = chipdata.RangeType(state.range[outid.code()])
 
     self.gain_val = state.gain_val
-
+    self.gain_code = state.gain_code
     self.pmos = state.pmos
     self.nmos = state.nmos
     self.port_cals = {}
@@ -513,7 +562,6 @@ class MultBlockState(BlockState):
     self.port_cals[in1id] = state.port_cal[in1id.code()]
     self.port_cals[outid] = state.port_cal[outid.code()]
     self.gain_cal = state.gain_cal
-    self.gain_code = state.gain_code
 
 
 
@@ -526,16 +574,21 @@ class IntegBlockState(BlockState):
                  cal_enables,
                  invs,
                  ranges,
-                 ic_val=None):
-      BlockState.Key.__init__(self,enums.BlockType.INTEG,loc)
+                 ic_val=None,
+                 targeted=False):
+      BlockState.Key.__init__(self,enums.BlockType.INTEG,loc,targeted)
       self.exception = exception
       self.invs = invs
       self.cal_enables = cal_enables
       self.ranges = ranges
       self.ic_val = ic_val
 
-  def __init__(self,loc,state):
-    BlockState.__init__(self,enums.BlockType.INTEG,loc,state)
+    @property
+    def targeted_keys(self):
+      return ['ic_val']
+
+  def __init__(self,loc,state,targeted):
+    BlockState.__init__(self,enums.BlockType.INTEG,loc,state,targeted)
 
   def header(self):
     gh = keys(self.invs) + \
@@ -563,7 +616,8 @@ class IntegBlockState(BlockState):
                                self.cal_enable,
                                self.invs,
                                self.ranges, \
-                               self.ic_val)
+                               self.ic_val,
+                               self.targeted)
 
 
   def to_cstruct(self):
@@ -582,6 +636,10 @@ class IntegBlockState(BlockState):
         "ic_val": self.ic_val
       }
     })
+
+  def update_init_cond(self,value):
+    self.ic_val = value
+    self.ic_code = signed_float_to_byte(value)
 
   def from_cstruct(self,state):
     inid = enums.PortName.IN0
@@ -627,6 +685,10 @@ class FanoutBlockState(BlockState):
       self.invs = invs
       self.rngs = rngs
       self.third = third
+
+    @property
+    def targeted_keys(self):
+      return []
 
   def __init__(self,loc,state):
     BlockState.__init__(self,enums.BlockType.FANOUT,loc,state)
@@ -720,6 +782,11 @@ class AdcBlockState(BlockState):
       self.test_rs = test_rs
       self.test_rsinc = test_rsinc
       self.rng = rng
+
+    @property
+    def targeted_keys(self):
+      return []
+
 
   def __init__(self,loc,state):
     BlockState.__init__(self,enums.BlockType.ADC,loc,state)

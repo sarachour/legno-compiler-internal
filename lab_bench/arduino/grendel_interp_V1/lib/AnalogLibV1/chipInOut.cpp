@@ -17,20 +17,20 @@ float measure_dist(int ardAnaDiffChan, float& variance){
   unsigned int neg[SAMPLES];
   const unsigned int samples = SAMPLES;
   unsigned int pinmap[] = {7,6,5,4,3,2,1,0};
-  for(unsigned int index = 0; index < samples; index++){
+  for(unsigned int index = 0; index < SAMPLES; index++){
     pos[index] = analogRead(pinmap[ardAnaDiffChan+1]);
     neg[index] = analogRead(pinmap[ardAnaDiffChan]);
   }
 
   float values[SAMPLES];
-  for(unsigned int index = 0; index < samples; index++){
+  for(unsigned int index = 0; index < SAMPLES; index++){
     int diff = pos[index] - neg[index];
     float value = ADC_CONVERSION*((float)(diff));
     value /= ADC_FULLSCALE;
     values[index] = value;
   }
   float mean;
-  util::distribution(values, samples, mean, variance);
+  util::distribution(values, SAMPLES, mean, variance);
 
   sprintf(FMTBUF,"chan=%d mean=%f var=%f", ardAnaDiffChan,
           mean,variance);

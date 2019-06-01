@@ -6,7 +6,8 @@
 
 bool Fabric::Chip::Tile::Slice::Multiplier::calibrate (profile_t& result, float max_error) {
   mult_code_t codes_self = m_codes;
-	setGain(1.0);
+  if(m_codes.vga)
+    setGain(1.0);
   bool succ = calibrateTarget(result,max_error);
   codes_self.nmos = m_codes.nmos;
   codes_self.pmos = m_codes.pmos;
@@ -135,14 +136,16 @@ bool helper_find_max_val(Fabric::Chip::Tile::Slice::Multiplier* mult,
   conn_in1.setConn();
   mult->setVga(false);
   float measurement = util::meas_chip_out(mult);
-  sprintf(FMTBUF, "calibrate-pmos target=%f meas=%f",
+  float error = fabs(1.0-measurement);
+  sprintf(FMTBUF, "calibrate-pmos target=%f meas=%f error=%f",
           1.0,
-          measurement);
+          measurement,
+          error);
   print_log(FMTBUF);
   conn_fo.brkConn();
   conn_in0.brkConn();
   conn_in1.brkConn();
-  return false;
+  return error <= max_error;
 }
 
 bool helper_find_gain_cal(float gain,
@@ -241,7 +244,6 @@ bool helper_find_pmos_mult(Fabric::Chip::Tile::Slice::Multiplier* mult,
                            Fabric::Chip::Tile::Slice::TileInOut* tileout,
                            dac_code_t& dac_code_1,
                            float max_error){
-  bool pmos_succ = false;
   fanout->setRange(RANGE_MED);
   fanout->m_codes.inv[0] = false;
   fanout->m_codes.inv[1] = false;
@@ -250,15 +252,13 @@ bool helper_find_pmos_mult(Fabric::Chip::Tile::Slice::Multiplier* mult,
   for(int pmos=0; pmos<=7; pmos+=1){
     mult->m_codes.pmos = pmos;
     mult->update(mult->m_codes);
-    if(pmos_succ){
-      bool succ = helper_find_max_val(mult,
-                                   val_dac,
-                                   fanout,
-                                   dac_code_1,
-                                   max_error);
-
+    bool succ = helper_find_max_val(mult,
+                                    val_dac,
+                                    fanout,
+                                    dac_code_1,
+                                    0.04);
+    if(succ)
       return true;
-    }
   }
   return false;
 }
@@ -358,10 +358,6 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (profile_t& result, 
   // can only calibrate target for vga.
   if(!m_codes.enable){
     print_log("not enabled");
-    return true;
-  }
-  if(!m_codes.vga){
-    print_log("not in vga mode");
     return true;
   }
   int cFanId = unitId==unitMulL?0:1;

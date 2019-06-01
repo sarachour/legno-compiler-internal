@@ -66,13 +66,13 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (profile_t& result,
 
   dac_code_t base_code;
   profile_t base_code_result;
-  prof::init_profile(base_code_result);
+  prof::init_profile(prof::TEMP);
   float target = m_codes.const_val;
 	if (hiRange) {
     // feed dac output into scaling down multiplier input
 		ref_to_tile.setConn();
     target = make_reference_dac(calib,
-                                base_code_result,
+                                prof::TEMP,
                                 base_code, this,ref_dac);
 	}
   dac_to_tile.setConn();

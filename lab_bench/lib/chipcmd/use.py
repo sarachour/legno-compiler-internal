@@ -11,6 +11,7 @@ from enum import Enum
 import construct
 import math
 
+
 class UseCommand(AnalogChipCommand):
 
     def __init__(self,block,loc,cached):
@@ -21,7 +22,7 @@ class UseCommand(AnalogChipCommand):
         self._cached = cached
 
 
-    def to_key(self):
+    def to_key(self,targeted=False):
         raise NotImplementedError
 
     @property
@@ -45,13 +46,21 @@ class UseCommand(AnalogChipCommand):
     def loc(self):
         return self._loc
 
+    def update_state(self,stateobj):
+        raise Exception("override me with keyword dict of targeted args")
+
     def execute_command(self,env):
         AnalogChipCommand.execute_command(self,env)
 
         if self.cached:
-            dbkey = self.to_key()
+            dbkey = self.to_key(targeted=True)
             assert(isinstance(dbkey, state.BlockState.Key))
-            blockstate = env.state_db.get(dbkey)
+            if env.state_db.has(dbkey):
+                blockstate = env.state_db.get(dbkey)
+            else:
+                dbkey = self.to_key(targeted=False)
+                blockstate = env.state_db.get(dbkey)
+                self.update_state(blockstate)
             assert(isinstance(blockstate, state.BlockState))
             # set the state
             loc = CircLoc(self._loc.chip,
@@ -292,7 +301,7 @@ class UseDACCmd(UseCommand):
     def parse(args):
         return UseDACCmd._parse(args,UseDACCmd)
 
-    def to_key(self):
+    def to_key(self,targeted=False):
         loc = CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
@@ -302,7 +311,8 @@ class UseDACCmd(UseCommand):
                                        inv=self._inv,
                                        rng=self._out_range,
                                        source=self._source,
-                                       const_val=self._value)
+                                       const_val=self._value,
+                                       targeted=targeted)
 
 
     @staticmethod
@@ -415,7 +425,7 @@ class UseFanoutCmd(UseCommand):
             }
         })
 
-    def to_key(self):
+    def to_key(self,targeted=False):
         loc = CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
@@ -566,7 +576,10 @@ class UseIntegCmd(UseCommand):
             }
         })
 
-    def to_key(self):
+    def update_state(self,state):
+        state.update_init_cond(self._init_cond)
+
+    def to_key(self,targeted=False):
         loc = CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
@@ -590,7 +603,8 @@ class UseIntegCmd(UseCommand):
                                          exception=self._debug,
                                          invs=invs,
                                          ranges=rngs,
-                                         ic_val=self._init_cond)
+                                         ic_val=self._init_cond,
+                                         targeted=targeted)
 
 
     def __repr__(self):
@@ -647,6 +661,8 @@ class UseMultCmd(UseCommand):
 
         return abs(0.02*val)
 
+    def update_state(self,state):
+        state.update_gain(self._coeff)
 
     @staticmethod
     def desc():
@@ -668,7 +684,7 @@ class UseMultCmd(UseCommand):
         })
 
 
-    def to_key(self):
+    def to_key(self,targeted=False):
         loc = CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
@@ -688,7 +704,8 @@ class UseMultCmd(UseCommand):
                                         vga=BoolType.from_bool(self._use_coeff),
                                         invs=invs,
                                         ranges=rngs,
-                                        gain_val=self._coeff)
+                                        gain_val=self._coeff,
+                                        targeted=targeted)
 
     @staticmethod
     def parse(args):
