@@ -84,7 +84,8 @@ void Fabric::Chip::Tile::Slice::Integrator::measure(profile_t& result)
   cutil::buffer_integ_conns(calib,this);
   cutil::buffer_dac_conns(calib,ref_dac);
   cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
-  cutil::buffer_chipout_conns(calib,parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput);
+  cutil::buffer_chipout_conns(calib,parentSlice->parentTile
+                              ->parentChip->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
 
 	// output side
@@ -131,12 +132,6 @@ void Fabric::Chip::Tile::Slice::Integrator::measure(profile_t& result)
   integ_to_tile.brkConn();
 	tile_to_chip.brkConn();
   cutil::restore_conns(calib);
-
-  codes_self.nmos = m_codes.nmos;
-  codes_self.ic_code = m_codes.ic_code;
-  codes_self.gain_cal = m_codes.gain_cal;
-  codes_self.port_cal[out0Id] = m_codes.port_cal[out0Id];
-  codes_self.port_cal[in0Id] = m_codes.port_cal[in0Id];
   update(codes_self);
 
 }

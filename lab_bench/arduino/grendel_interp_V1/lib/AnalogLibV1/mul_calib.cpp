@@ -163,8 +163,10 @@ bool helper_find_gain_cal(float gain,
                           dac_code_t& dac_code_0_5,
                           float max_error){
 
-	Fabric::Chip::Connection ref_to_tileout = Fabric::Chip::Connection ( ref_dac->out0, tileout->in0 );
-  Fabric::Chip::Connection dac_to_mult_in0 = Fabric::Chip::Connection ( val_dac->out0, mult->in0 );
+	Fabric::Chip::Connection ref_to_tileout =
+    Fabric::Chip::Connection ( ref_dac->out0, tileout->in0 );
+  Fabric::Chip::Connection dac_to_mult_in0 =
+    Fabric::Chip::Connection ( val_dac->out0, mult->in0 );
   bool calib_failed;
   val_dac->setEnable(true);
   if(mult->m_codes.range[in0Id] == RANGE_LOW){

@@ -117,7 +117,8 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTargetHelper (profile_t& re
   }
   int ic_sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
   bool hiRange = (m_codes.range[out0Id] == RANGE_HIGH);
-  float ic_val = m_codes.ic_val*ic_sign*util::range_to_coeff(m_codes.range[out0Id]);
+  float coeff = util::range_to_coeff(m_codes.range[out0Id]);
+  float ic_val = m_codes.ic_val*ic_sign*coeff;
 
   Dac * ref_dac = parentSlice->dac;
   integ_code_t codes_self = m_codes;
