@@ -37,14 +37,13 @@ arco_subp.add_argument('--conc-circuits', type=int,default=3,
 
 
 jaunt_subp = subparsers.add_parser('jaunt', help='scale circuit parameters.')
-jaunt_subp.add_argument('--physical', action='store_true',help='perform noise analysis.')
+jaunt_subp.add_argument('--physical', action='store_true',help='use physical models to inform constraints.')
 jaunt_subp.add_argument('--sweep', action='store_true',help='do performance sweep.')
-jaunt_subp.add_argument('--no-quality', action='store_true',help='dont put in quality constraints.')
 jaunt_subp.add_argument('--scale-circuits', type=int,default=15,
                        help='number of scaled circuits to generate.')
 
 
-skelt_subp = subparsers.add_parser('skelter', help='perform noise analysis')
+skelt_subp = subparsers.add_parser('skelter', help='perform any bias correction from physical model')
 skelt_subp.add_argument('--recompute', action='store_true',
                        help='recompute skelter.')
 
