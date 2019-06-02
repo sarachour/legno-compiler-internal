@@ -51,7 +51,8 @@ def group_dataset(data):
         grouped_dataset[key]['params'][k] = []
       grouped_dataset[key]['params'][k].append(v)
 
-  return block,(chip,tile,slce,inst),grouped_dataset
+  loc = "(HDACv2,%d,%d,%d,%d)" % (chip,tile,slce,inst)
+  return block,loc,grouped_dataset
 
 def apply_model(xdata,a,b):
     x = xdata
@@ -103,15 +104,15 @@ def build_adc_model(data):
     model.gain = gain
     yield model
 
-    model = PortModel(block,loc,'out',
+    model = PortModel(block,loc,'in',
                            comp_mode=comp_mode,
                            scale_mode=scale_mode)
     yield model
 
 def build_fanout_model(data):
-  comp_options = [chipcmd.SignType.options(),
-                  chipcmd.SignType.options(),
-                  chipcmd.SignType.options()]
+  comp_options = [list(chipcmd.SignType.options()),
+                  list(chipcmd.SignType.options()),
+                  list(chipcmd.SignType.options())]
 
   block,loc,grouped_dataset = group_dataset(data)
 
@@ -119,8 +120,9 @@ def build_fanout_model(data):
     group = group_data['group']
     gain,bias,bias_unc,noise = infer_model(group_data)
 
-    scale_modes = [to_range(group["range-in0"])]
+    scale_modes = [to_range(group["range-%s" % group['port']])]
     comp_modes = list(itertools.product(*comp_options))
+    print(scale_modes,comp_modes)
     for comp_mode in comp_modes:
       for scale_mode in scale_modes:
         model = OutputModel(block,loc,group['port'],
@@ -145,23 +147,22 @@ def build_integ_model(data):
   for group_data in grouped_dataset.values():
     group = group_data['group']
     gain,bias,bias_unc,noise = infer_model(group_data)
-    scale_modes = [to_range(group["range-in0"]), \
-                   to_range(group["range-out0"])]
+    scale_mode = (to_range(group["range-in0"]), \
+                   to_range(group["range-out0"]))
     for comp_mode in comp_options:
-      for scale_mode in scale_modes:
-        if group["port"]== "out0":
-          model = OutputModel(block,loc,'out', \
-                              comp_mode=comp_mode,
-                              scale_mode=scale_mode)
-          model.bias = bias
-          model.bias_uncertainty = bias_unc
-          model.noise = noise
-          model.gain = gain
-        else:
-          model = PortModel(block,loc,'in', \
+      if group["port"]== "out0":
+        model = OutputModel(block,loc,'out', \
                             comp_mode=comp_mode,
                             scale_mode=scale_mode)
-        yield model
+        model.bias = bias
+        model.bias_uncertainty = bias_unc
+        model.noise = noise
+        model.gain = gain
+      else:
+        model = PortModel(block,loc,'in', \
+                          comp_mode=comp_mode,
+                          scale_mode=scale_mode)
+      yield model
 
 def build_dac_model(data):
   block,loc,grouped_dataset = group_dataset(data)
@@ -173,14 +174,18 @@ def build_dac_model(data):
     scale_mode = to_range(group['rng'])
     model = OutputModel(block,loc,'out', \
                         comp_mode=comp_mode, \
-                        scale_mode=scale_mode)
+                        scale_mode=scale_mode,
+                        tag=group['source'])
     model.bias = bias
     model.bias_uncertainty = bias_unc
     model.noise = noise
     model.gain = gain
+    yield model
+
     model = PortModel(block,loc,'in', \
-                         comp_mode=comp_mode,
-                         scale_mode=scale_mode)
+                      comp_mode=comp_mode,
+                      scale_mode=scale_mode,
+                      tag=group['source'])
     yield model
 
 def build_mult_model(data):
@@ -205,6 +210,19 @@ def build_mult_model(data):
     model.bias_uncertainty = bias_unc
     model.noise = noise
     model.gain = gain
+    yield model
+
+    model = PortModel(block,loc,'in0', \
+                         comp_mode=comp_mode,
+                         scale_mode=scale_mode)
+    yield model
+    model = PortModel(block,loc,'in1', \
+                         comp_mode=comp_mode,
+                         scale_mode=scale_mode)
+    yield model
+    model = PortModel(block,loc,'coeff', \
+                         comp_mode=comp_mode,
+                         scale_mode=scale_mode)
     yield model
 
 def build_model(data):

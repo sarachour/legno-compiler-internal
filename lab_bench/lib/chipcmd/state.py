@@ -37,7 +37,6 @@ class BlockStateDatabase:
     self._conn = sqlite3.connect(path)
     self._curs = self._conn.cursor()
 
-    #FIXME make location part of row.
     cmd = '''
     CREATE TABLE IF NOT EXISTS states (
     cmdkey text NOT NULL,
