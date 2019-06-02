@@ -11,10 +11,11 @@ import json
 import binascii
 import math
 
-def keys(dict_):
+def keys(dict_,prefix=""):
   k = list(dict_.keys())
   k.sort()
-  return k
+  return list(map(lambda i: prefix+i, k))
+
 
 def ordered(dict_):
   k = keys(dict_)
@@ -339,8 +340,12 @@ class LutBlockState(BlockState):
       self.source = source
 
 
-  def __init__(self,loc,state,targeted):
-    BlockState.__init__(self,enums.BlockType.LUT,loc,state,targeted)
+    @property
+    def targeted_keys(self):
+      return []
+
+  def __init__(self,loc,state):
+    BlockState.__init__(self,enums.BlockType.LUT,loc,state)
 
   @property
   def key(self):
@@ -399,7 +404,7 @@ class DacBlockState(BlockState):
  
 
   def header(self):
-    GH = ['inv','rng','source']
+    GH = ['inv','rng','source','port']
     ZH = ["value"]
     YH = ["bias","noise"]
     XH = ["output"]
@@ -484,9 +489,9 @@ class MultBlockState(BlockState):
     BlockState.__init__(self,enums.BlockType.MULT,loc,state,targeted)
 
   def header(self):
-    GH = keys(self.invs) + \
-         keys(self.ranges) + \
-         ["vga"]
+    GH = keys(self.invs,prefix='inv-') + \
+         keys(self.ranges,prefix='range-') + \
+         ["vga","port"]
     ZH = ["gain"]
     YH = ["bias","noise"]
     XH = ["output"]
@@ -591,8 +596,9 @@ class IntegBlockState(BlockState):
     BlockState.__init__(self,enums.BlockType.INTEG,loc,state,targeted)
 
   def header(self):
-    gh = keys(self.invs) + \
-         keys(self.ranges)
+    gh = keys(self.invs,prefix='inv-') + \
+         keys(self.ranges,prefix='range-') + \
+         ["port"]
     zh = ['ic_val']
     yh = ["bias","noise"]
     xh = ["output"]
@@ -703,9 +709,9 @@ class FanoutBlockState(BlockState):
 
 
   def header(self):
-    gh = keys(self.invs) + \
-         keys(self.rngs) + \
-         ["third"]
+    gh = keys(self.invs,prefix='inv-') + \
+         keys(self.rngs,prefix='range-') + \
+         ["third", "port"]
     zh = []
     yh = ["bias","noise"]
     xh = ["output"]
@@ -814,7 +820,8 @@ class AdcBlockState(BlockState):
           'test_adc',
           'test_i2v',
           'test_rs',
-          'test_rsinc']
+          'test_rsinc',
+          'port']
     yh = ["bias","noise"]
     xh = ["output"]
     return gh,[],xh,yh

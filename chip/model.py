@@ -1,6 +1,6 @@
 
 
-class GenericModel():
+class PortModel():
 
   def __init__(self,block,loc,port,comp_mode,scale_mode):
     self._port = port
@@ -35,28 +35,45 @@ class GenericModel():
   def bias(self):
     return self._bias
 
+  @bias.setter
+  def bias(self,v):
+    self._bias = v
+
   @property
   def bias_uncertainty(self):
     return self._unc_bias
+
+  @bias_uncertainty.setter
+  def bias_uncertainty(self,v):
+    assert(v >= 0.0)
+    self._unc_bias = v
 
   @property
   def noise(self):
     return self._noise
 
 
-class GOutputModel(GModel):
+  @noise.setter
+  def noise(self,v):
+    assert(v >= 0.0)
+    self._noise = v
+
+
+class OutputModel(PortModel):
 
 
   def __init__(self,
                block,
+               loc,
                port,
                comp_mode,
                scale_mode):
-    GModel.__init__(self,block,port,comp_mode,scale_mode)
+    PortModel.__init__(self,block,loc,port, \
+                       comp_mode,scale_mode)
     self._gain = 1.0
 
 
-class GModelDB:
+class ModelDB:
 
   def __init__(self):
     pass
@@ -65,6 +82,6 @@ class GModelDB:
     raise Exception("error: cannot get")
 
   def put(self,model):
-    raise Exception("error: cannot put")
+    print("error: cannot put")
 
 

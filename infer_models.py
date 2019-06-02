@@ -8,6 +8,11 @@ import itertools
 import numpy as np
 import scipy.optimize
 import math
+from chip.model import OutputModel, PortModel, ModelDB
+
+def to_sign(name):
+  return chipcmd.SignType(name)
+
 
 def to_range(name):
   return chipcmd.RangeType(name)
@@ -20,7 +25,8 @@ def group_dataset(data):
 
   grouped_dataset = {}
   for i,grpdata in enumerate(data['groups']['values']):
-    group = dict(zip(data['groups']['fields'],grpdata))
+    grpfields = data['groups']['fields']
+    group = dict(zip(grpfields,grpdata))
     key = str(grpdata)
     if not key in grouped_dataset:
       grouped_dataset[key] = {'group':group,
@@ -36,6 +42,7 @@ def group_dataset(data):
     params = dict(zip(data['params']['fields'], \
                       data['params']['values'][i]))
 
+    assert(len(grpdata) == len(grpfields))
     grouped_dataset[key]['target'].append(expected['output'])
     grouped_dataset[key]['bias'].append(observed['bias'])
     grouped_dataset[key]['noise'].append(observed['noise'])
@@ -84,8 +91,22 @@ def build_adc_model(data):
   for group_data in grouped_dataset.values():
     group = group_data['group']
     gain,bias,bias_unc,noise = infer_model(group_data,adc=True)
+    comp_mode = "*"
+    scale_mode = to_range(group['rng'])
+    model = OutputModel(block,loc,'out',
+                        comp_mode=comp_mode,
+                        scale_mode=scale_mode)
 
+    model.bias = bias
+    model.bias_uncertainty = bias_unc
+    model.noise = noise
+    model.gain = gain
+    yield model
 
+    model = PortModel(block,loc,'out',
+                           comp_mode=comp_mode,
+                           scale_mode=scale_mode)
+    yield model
 
 def build_fanout_model(data):
   comp_options = [chipcmd.SignType.options(),
@@ -98,11 +119,23 @@ def build_fanout_model(data):
     group = group_data['group']
     gain,bias,bias_unc,noise = infer_model(group_data)
 
-    scale_modes = [to_range(group["in0"])]
+    scale_modes = [to_range(group["range-in0"])]
     comp_modes = list(itertools.product(*comp_options))
     for comp_mode in comp_modes:
       for scale_mode in scale_modes:
-        pass
+        model = OutputModel(block,loc,group['port'],
+                            comp_mode=comp_mode,
+                            scale_mode=scale_mode)
+        model.bias = bias
+        model.bias_uncertainty = bias_unc
+        model.noise = noise
+        model.gain = gain
+        yield model
+
+        model = PortModel(block,loc,"in",
+                               comp_mode=comp_mode,
+                               scale_mode=scale_mode)
+        yield model
 
 def build_integ_model(data):
   comp_options = chipcmd.SignType.options()
@@ -112,11 +145,23 @@ def build_integ_model(data):
   for group_data in grouped_dataset.values():
     group = group_data['group']
     gain,bias,bias_unc,noise = infer_model(group_data)
-    scale_modes = [to_range(group["in0"]),to_range(group["out0"])]
-    comp_modes = list(itertools.product(*comp_options))
-    for comp_mode in comp_modes:
+    scale_modes = [to_range(group["range-in0"]), \
+                   to_range(group["range-out0"])]
+    for comp_mode in comp_options:
       for scale_mode in scale_modes:
-        pass
+        if group["port"]== "out0":
+          model = OutputModel(block,loc,'out', \
+                              comp_mode=comp_mode,
+                              scale_mode=scale_mode)
+          model.bias = bias
+          model.bias_uncertainty = bias_unc
+          model.noise = noise
+          model.gain = gain
+        else:
+          model = PortModel(block,loc,'in', \
+                            comp_mode=comp_mode,
+                            scale_mode=scale_mode)
+        yield model
 
 def build_dac_model(data):
   block,loc,grouped_dataset = group_dataset(data)
@@ -124,7 +169,19 @@ def build_dac_model(data):
   for group_data in grouped_dataset.values():
     group = group_data['group']
     gain,bias,bias_unc,noise = infer_model(group_data)
-
+    comp_mode = to_sign(group['inv'])
+    scale_mode = to_range(group['rng'])
+    model = OutputModel(block,loc,'out', \
+                        comp_mode=comp_mode, \
+                        scale_mode=scale_mode)
+    model.bias = bias
+    model.bias_uncertainty = bias_unc
+    model.noise = noise
+    model.gain = gain
+    model = PortModel(block,loc,'in', \
+                         comp_mode=comp_mode,
+                         scale_mode=scale_mode)
+    yield model
 
 def build_mult_model(data):
   block,loc,grouped_dataset = group_dataset(data)
@@ -132,26 +189,46 @@ def build_mult_model(data):
   for group_data in grouped_dataset.values():
     group = group_data['group']
     gain,bias,bias_unc,noise = infer_model(group_data)
+    if group['vga']:
+      scale_mode = (to_range(group["range-in0"]), \
+                    to_range(group["range-out0"]))
+    else:
+      scale_mode = (to_range(group["range-in0"]), \
+                    to_range(group["range-in1"]), \
+                    to_range(group["range-out0"]))
 
-
+    comp_mode = "vga" if group['vga'] else "mult"
+    model = OutputModel(block,loc,'out', \
+                        comp_mode=comp_mode,
+                        scale_mode=scale_mode)
+    model.bias = bias
+    model.bias_uncertainty = bias_unc
+    model.noise = noise
+    model.gain = gain
+    yield model
 
 def build_model(data):
   meta = data['metadata']
   print("=== BLOCK %s ===" % meta['block'])
   if meta['block'] == 'adc':
-    return build_adc_model(data)
+    gen = build_adc_model(data)
   elif meta['block'] == 'fanout':
-    return build_fanout_model(data)
+    gen = build_fanout_model(data)
   elif meta['block'] == 'integ':
-    return build_integ_model(data)
+    gen = build_integ_model(data)
   elif meta['block'] == 'dac':
-    return build_dac_model(data)
+    gen = build_dac_model(data)
   elif meta['block'] == 'mult':
-    return build_mult_model(data)
-
+    gen = build_mult_model(data)
+  elif meta['block'] == 'lut':
+    gen = map(lambda i : i, [])
   else:
     raise Exception("unhandled: %s" % meta["block"])
 
+
+  db = ModelDB()
+  for model in gen:
+    db.put(model)
 
 parser = argparse.ArgumentParser()
 for dirname, subdirlist, filelist in os.walk(CONFIG.DATASET_DIR):
