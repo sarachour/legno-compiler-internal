@@ -30,7 +30,6 @@ class PortModel():
                                    self.comp_mode,
                                    self.scale_mode,
                                    self.handle)
-    print(ident)
     return hash(ident)
 
   def to_json(self):

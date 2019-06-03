@@ -136,7 +136,8 @@ bool helper_find_max_val(Fabric::Chip::Tile::Slice::Multiplier* mult,
   conn_in1.setConn();
   mult->setVga(false);
   float measurement = util::meas_chip_out(mult);
-  float error = fabs(1.0-measurement);
+  float target = 1.0;
+  float error = fabs(target-measurement);
   sprintf(FMTBUF, "calibrate-pmos target=%f meas=%f error=%f",
           1.0,
           measurement,

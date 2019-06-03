@@ -63,7 +63,6 @@ def apply_model(xdata,a,b):
 
 def infer_model(data,adc=False):
   n = len(data['bias'])
-  print("n=%f group=%s"%(n,data['group']))
   bias = np.array(list(map(lambda i: data['bias'][i], range(n))))
   target= np.array(list(map(lambda i: data['target'][i], range(n))))
   noise = np.array(list(map(lambda i: data['noise'][i], range(n))))
@@ -124,7 +123,6 @@ def build_fanout_model(data):
 
     scale_modes = [to_range(group["range-%s" % group['port']])]
     comp_modes = list(itertools.product(*comp_options))
-    print(scale_modes,comp_modes)
     for comp_mode in comp_modes:
       for scale_mode in scale_modes:
         model = OutputModel(block,loc,group['port'],

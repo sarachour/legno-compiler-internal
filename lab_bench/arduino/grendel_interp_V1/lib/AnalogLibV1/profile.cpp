@@ -62,8 +62,8 @@ namespace prof {
     result.bias[result.size] = bias;
     result.noise[result.size] = noise;
     result.target[result.size] = target;
-    sprintf(FMTBUF, "add-prop prop=%d bias=%f noise=%f target=%f",
-            prop,bias,noise,target);
+    sprintf(FMTBUF, "add-prop idx=%d prop=%d bias=%f noise=%f target=%f",
+            result.size,prop,bias,noise,target);
     print_log(FMTBUF);
     result.size += 1;
   }
