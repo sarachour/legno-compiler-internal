@@ -1,3 +1,5 @@
+*.db
+.ipynb_checkpoints
 .#*
 build-*
 *.pyc
