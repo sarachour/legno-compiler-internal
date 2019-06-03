@@ -153,7 +153,8 @@ def build_integ_model(data):
                    to_range(group["range-out0"]))
     for comp_mode in comp_options:
       if group["port"]== "out0":
-        model = OutputModel("integrator",loc,'ic', \
+        model = OutputModel("integrator",loc,'out', \
+                            handle=':z[0]', \
                             comp_mode=comp_mode,
                             scale_mode=scale_mode)
         model.bias = bias
@@ -192,8 +193,7 @@ def build_dac_model(data):
 
     model = PortModel(block,loc,'in', \
                       comp_mode=comp_mode,
-                      scale_mode=scale_mode,
-                      tag=group['source'])
+                      scale_mode=scale_mode)
     yield model
 
 def build_mult_model(data):
