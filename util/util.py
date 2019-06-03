@@ -6,6 +6,7 @@ import binascii
 import time
 import util.config as CONFIG
 import os
+from enum import Enum
 
 def mkdir_if_dne(dirname):
     if not os.path.exists(dirname):
@@ -111,3 +112,14 @@ def profile(fn):
 
 def is_inf(v):
   return v == float('inf')
+
+def normalize_mode(m):
+    if isinstance(m,list):
+        m = tuple(m)
+
+    if isinstance(m,tuple):
+        return tuple(map(lambda mi: normalize_mode(mi), m))
+    if isinstance(m,Enum):
+        return m.value
+    else:
+        return str(m)

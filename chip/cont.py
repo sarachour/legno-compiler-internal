@@ -1,6 +1,7 @@
 import ops.interval as interval
 import ops.op as ops
 from enum import Enum
+import util.util as gutil
 
 def equals(csm,variables):
   for idx in range(len(variables)-1):
@@ -152,20 +153,23 @@ class DiscreteScaleModel:
     self._modes = []
     self._cstrs = {}
 
-  def add_mode(self,mode):
+  def add_mode(self,_mode):
+    mode = gutil.normalize_mode(_mode)
     assert(not mode in self._modes)
     self._modes.append(mode)
     self._cstrs[mode] = []
 
 
-  def add_cstr(self,mode,contvar,value):
+  def add_cstr(self,_mode,contvar,value):
+    mode = gutil.normalize_mode(_mode)
     assert(mode in self._modes)
     self._cstrs[mode].append((contvar,value))
 
   def modes(self):
     return self._modes
 
-  def cstrs(self,mode):
+  def cstrs(self,_mode):
+    mode = gutil.normalize_mode(_mode)
     for cvar, value in self._cstrs[mode]:
       yield cvar,value
 

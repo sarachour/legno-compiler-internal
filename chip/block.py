@@ -1,5 +1,6 @@
 import ops.op as ops
 from enum import Enum
+import util.util as util
 
 class BlockType(Enum):
     ADC = "adc"
@@ -32,36 +33,41 @@ class Block:
         self.set_scale_modes("*",['*'])
 
     def _make_comp_dict(self,comp_mode,d):
-        if not comp_mode in d:
-            d[comp_mode] = {}
+        comp_mode_key = util.normalize_mode(comp_mode)
+        if not comp_mode_key in d:
+            d[comp_mode_key] = {}
 
-        return d[comp_mode]
+        return d[comp_mode_key]
 
     def _make_scale_dict(self,comp_mode,scale_mode,d):
-        if not (comp_mode in self._comp_modes):
+        comp_mode_key = util.normalize_mode(comp_mode)
+        if not (comp_mode_key in self._comp_modes):
             raise Exception("%s not in <%s>" % \
-                            (comp_mode,self._comp_modes))
-        data = self._make_comp_dict(comp_mode,d)
+                            (comp_mode_key,self._comp_modes))
+        data = self._make_comp_dict(comp_mode_key,d)
 
-        if not scale_mode in data:
-            data[scale_mode] = {}
+        scale_mode_key = util.normalize_mode(scale_mode)
+        if not scale_mode_key in data:
+            data[scale_mode_key] = {}
 
-        return data[scale_mode]
+        return data[scale_mode_key]
 
     def _get_comp_dict(self,comp_mode,d):
-        if not comp_mode in d:
+        comp_mode_key = util.normalize_mode(comp_mode)
+        if not comp_mode_key in d:
             return None
 
-        return d[comp_mode]
+        return d[comp_mode_key]
 
     def _get_scale_dict(self,comp_mode,scale_mode,d):
+        scale_mode_key = util.normalize_mode(scale_mode)
         data = self._get_comp_dict(comp_mode,d)
         if data is None:
             return None
-        if not scale_mode in data:
+        if not scale_mode_key in data:
             return None
 
-        return data[scale_mode]
+        return data[scale_mode_key]
 
     def coeff(self,comp_mode,scale_mode,out,handle=None):
         data = self._get_scale_dict(comp_mode,scale_mode, \
@@ -191,7 +197,10 @@ class Block:
         return self._scale_modes[comp_mode]
 
     def set_comp_modes(self,modes):
-        self._comp_modes = list(modes)
+        self._comp_modes = list(map(lambda m: \
+                                    util.normalize_mode(m), \
+                                    modes))
+
         for mode in self._comp_modes:
             self._ops[mode] = {}
             self._signals[mode] = {}
@@ -202,14 +211,17 @@ class Block:
         return self
 
     def set_scale_modes(self,comp_mode,modes):
-        if not comp_mode in self._props:
+        comp_mode_key = util.normalize_mode(comp_mode)
+        if not comp_mode_key in self._props:
             raise Exception("not in comps <%s> : <%s>" % \
-                            (comp_mode,self._scale_modes))
+                            (comp_mode_key,self._scale_modes))
 
-        self._scale_modes[comp_mode] = list(modes)
-        for scale_mode in self._scale_modes[comp_mode]:
-            self._props[comp_mode][scale_mode] = {}
-            self._coeffs[comp_mode][scale_mode] = {}
+        self._scale_modes[comp_mode_key] = list(map(lambda m: \
+                                                    util.normalize_mode(m),
+                                                    modes))
+        for scale_mode in self._scale_modes[comp_mode_key]:
+            self._props[comp_mode_key][scale_mode] = {}
+            self._coeffs[comp_mode_key][scale_mode] = {}
 
         return self
 

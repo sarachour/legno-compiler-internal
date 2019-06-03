@@ -1,13 +1,14 @@
+from enum import Enum
+import numpy as np
 import ops.jop as jop
 import ops.nop as nop
 import ops.op as ops
 import chip.props as props
-from enum import Enum
-import compiler.jaunt_pass.jaunt_util as jaunt_util
+from chip.model import ModelDB
 import chip.hcdc.globals as glb
 import util.util as util
 import util.config as CONFIG
-import numpy as np
+import compiler.jaunt_pass.jaunt_util as jaunt_util
 import compiler.jaunt_pass.jenv as jenvlib
 
 '''
@@ -29,6 +30,8 @@ def noise_model(circ,block,loc,port):
 
 '''
 
+db = ModelDB()
+
 def get_parameters(jenv,circ,block,loc,port,handle=None):
     config = circ.config(block.name,loc)
     scale_model = block.scale_model(config.comp_mode)
@@ -36,9 +39,20 @@ def get_parameters(jenv,circ,block,loc,port,handle=None):
     if isinstance(jenv, jenvlib.JauntInferEnv):
         scale_mode = baseline
         hwscvar = jop.JVar(jenv.get_op_range_var(block.name,loc,port,handle))
+        physgain = jop.JVar(1.0)
+        physunc = jop.JVar(0.0)
     else:
         scale_mode = config.scale_mode
         hwscvar = jop.JConst(1.0)
+        if handle is None:
+            if db.has(block.name,loc,port,config.comp_mode,scale_mode):
+                model = db.get(block.name,loc,port,config.comp_mode,scale_mode)
+                print(model)
+                input("TODO: build parameters from database entry")
+            else:
+                print("DB ENTRY NOT FOUND")
+                input("TODO make idealized model")
+
 
     mrng = config.interval(port)
     mbw = config.bandwidth(port)

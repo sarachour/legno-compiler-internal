@@ -13,6 +13,8 @@ from chip.model import OutputModel, PortModel, ModelDB
 def to_sign(name):
   return chipcmd.SignType(name)
 
+def sign_options():
+  return list(chipcmd.SignType.options())
 
 def to_range(name):
   return chipcmd.RangeType(name)
@@ -110,9 +112,9 @@ def build_adc_model(data):
     yield model
 
 def build_fanout_model(data):
-  comp_options = [list(chipcmd.SignType.options()),
-                  list(chipcmd.SignType.options()),
-                  list(chipcmd.SignType.options())]
+  comp_options = [sign_options(), \
+                  sign_options(), \
+                  sign_options()]
 
   block,loc,grouped_dataset = group_dataset(data)
 
@@ -151,18 +153,24 @@ def build_integ_model(data):
                    to_range(group["range-out0"]))
     for comp_mode in comp_options:
       if group["port"]== "out0":
-        model = OutputModel(block,loc,'out', \
+        model = OutputModel("integrator",loc,'ic', \
                             comp_mode=comp_mode,
                             scale_mode=scale_mode)
         model.bias = bias
         model.bias_uncertainty = bias_unc
         model.noise = noise
         model.gain = gain
+        yield model
       else:
-        model = PortModel(block,loc,'in', \
+        model = PortModel('integrator',loc,'in', \
                           comp_mode=comp_mode,
                           scale_mode=scale_mode)
-      yield model
+        yield model
+        model = PortModel('integrator',loc,'out', \
+                          comp_mode=comp_mode,
+                          scale_mode=scale_mode)
+
+        yield model
 
 def build_dac_model(data):
   block,loc,grouped_dataset = group_dataset(data)
@@ -172,10 +180,10 @@ def build_dac_model(data):
     gain,bias,bias_unc,noise = infer_model(group_data)
     comp_mode = to_sign(group['inv'])
     scale_mode = to_range(group['rng'])
+    # ignore source
     model = OutputModel(block,loc,'out', \
                         comp_mode=comp_mode, \
-                        scale_mode=scale_mode,
-                        tag=group['source'])
+                        scale_mode=scale_mode)
     model.bias = bias
     model.bias_uncertainty = bias_unc
     model.noise = noise
@@ -203,7 +211,7 @@ def build_mult_model(data):
                     to_range(group["range-out0"]))
 
     comp_mode = "vga" if group['vga'] else "mult"
-    model = OutputModel(block,loc,'out', \
+    model = OutputModel("multiplier",loc,'out', \
                         comp_mode=comp_mode,
                         scale_mode=scale_mode)
     model.bias = bias
@@ -212,15 +220,15 @@ def build_mult_model(data):
     model.gain = gain
     yield model
 
-    model = PortModel(block,loc,'in0', \
+    model = PortModel("multiplier",loc,'in0', \
                          comp_mode=comp_mode,
                          scale_mode=scale_mode)
     yield model
-    model = PortModel(block,loc,'in1', \
+    model = PortModel("multiplier",loc,'in1', \
                          comp_mode=comp_mode,
                          scale_mode=scale_mode)
     yield model
-    model = PortModel(block,loc,'coeff', \
+    model = PortModel("multiplier",loc,'coeff', \
                          comp_mode=comp_mode,
                          scale_mode=scale_mode)
     yield model

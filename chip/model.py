@@ -1,4 +1,5 @@
 import util.config as CFG
+import util.util as util
 import sqlite3
 import json
 import binascii
@@ -10,17 +11,32 @@ class PortModel():
     self._port = port
     self._block = block
     self._loc = loc
-    self._comp_mode = comp_mode
-    self._scale_mode = scale_mode
+    self._comp_mode = util.normalize_mode(comp_mode)
+    self._scale_mode = util.normalize_mode(scale_mode)
     self._tag = tag
     self._noise = 0.0
     self._bias = 0.0
     self._unc_bias = 0.0
 
+  @staticmethod
+  def from_json(obj):
+    m = PortModel(None,None,None,None,None,None)
+    m.__dict__ = obj
+    return m
+
   @property
   def identifier(self):
+    def fold_tuple(d):
+      if isinstance(d,tuple):
+        print("tuple %s" % str(d))
+      else:
+        print("scalar %s" % str(d))
+      return str(d)
+
     ident = "%s-%s-%s-%s-%s-t%s" % (self.block,self.loc,self.port,
-                                self.comp_mode,self.scale_mode,self.tag)
+                                    self.comp_mode,
+                                    self.scale_mode,
+                                    self.tag)
     print(ident)
     return hash(ident)
 
@@ -78,6 +94,11 @@ class PortModel():
     assert(v >= 0.0)
     self._noise = v
 
+  def __repr__(self):
+    r = "=== model ==="
+    for k,v in self.__dict__.items():
+      r += ("%s=%s\n" % (k,v))
+    return r
 
 class OutputModel(PortModel):
 
@@ -93,6 +114,21 @@ class OutputModel(PortModel):
                        comp_mode,scale_mode,tag)
     self._gain = 1.0
 
+  @property
+  def gain(self):
+    return self._gain
+
+  @gain.setter
+  def gain(self,v):
+    assert(v > 0.0)
+    self._gain = v
+
+  @staticmethod
+  def from_json(obj):
+    m = OutputModel(None,None,None,None,None,None)
+    m.__dict__ = obj
+    return m
+
 
 class ModelDB:
 
@@ -103,9 +139,10 @@ class ModelDB:
 
     cmd = '''
     CREATE TABLE IF NOT EXISTS models (
-    id text NOT NULL,
+    id int NOT NULL,
     block text NOT NULL,
     loc text NOT NULL,
+    port text NOT NULL,
     comp_mode text NOT NULL,
     scale_mode text NOT NULL,
     tag text NOT NULL,
@@ -115,26 +152,67 @@ class ModelDB:
     '''
     self._curs.execute(cmd)
     self._conn.commit()
-    self._keys = ['id',
-                  'block',
-                  'loc',
-                  'comp_mode',
-                  'scale_mode',
-                  'tag',
-                  'model']
-  def get(self,block,loc,port,comp_mode,scale_mode,tag=""):
-    model = PortModel(block,loc,port,comp_mode,scale_mode,tag)
-    id = model.identifier
+    self.keys = ['id',
+                 'block',
+                 'loc',
+                 'port',
+                 'comp_mode',
+                 'scale_mode',
+                 'tag',
+                 'model']
+
+
+  def get_all(self):
     cmd = '''
-    SELECT * from models WHERE id="{id}")
-    '''.format(id=id)
+    SELECT * from models
+    '''
+    for values in self._curs.execute(cmd):
+      data = dict(zip(self.keys,values))
+      yield self._process(data)
+
+  def _process(self,data):
+    obj = json.loads(bytes.fromhex(data['model']) \
+                             .decode('utf-8'))
+
+    if "_gain" in obj:
+      model = OutputModel.from_json(obj)
+
+    else:
+      model = PortModel.from_json(obj)
+
+    model.bias = obj['_bias']
+    return model
+
+
+  def _get(self,block,loc,port,comp_mode,scale_mode,tag=""):
+    model = PortModel(block,loc,port,comp_mode,scale_mode,tag)
+    cmd = '''
+    SELECT * from models WHERE block = "{block}"
+    AND loc = "{loc}"
+    AND port = "{port}"
+    AND comp_mode = "{comp_mode}"
+    AND scale_mode = "{scale_mode}"
+    AND tag = "{tag}";
+    '''.format(
+      block=model.block,
+      loc=model.loc,
+      port=model.port,
+      comp_mode=model.comp_mode,
+      scale_mode=model.scale_mode,
+      tag=model.tag
+    )
 
     for values in self._curs.execute(cmd):
       data = dict(zip(self.keys,values))
-      self._process(data)
+      return self._process(data)
 
-    raise Exception("doesn't exist")
+    return None
 
+  def get(self,block,loc,port,comp_mode,scale_mode,tag=""):
+    return self._get(block,loc,port,comp_mode,scale_mode)
+
+  def has(self,block,loc,port,comp_mode,scale_mode,tag=""):
+    return not self._get(block,loc,port,comp_mode,scale_mode) is None
 
   def remove(self,block,loc,port,comp_mode,scale_mode,tag=""):
     model = PortModel(block,loc,port,comp_mode,scale_mode,tag)
@@ -149,12 +227,14 @@ class ModelDB:
   def put(self,model):
     model_bits = bytes(json.dumps(model.to_json()),'utf-8').hex()
     cmd =  '''
-    INSERT INTO models (id,block,loc,comp_mode,scale_mode,tag,model)
-    VALUES ("{id}","{block}","{loc}","{comp_mode}","{scale_mode}","{tag}","{model}")
+    INSERT INTO models (id,block,loc,port,comp_mode,scale_mode,tag,model)
+    VALUES ({id},"{block}","{loc}","{port}","{comp_mode}",
+            "{scale_mode}","{tag}","{model}")
     '''.format(
       id=model.identifier,
       block=model.block,
       loc=str(model.loc),
+      port=str(model.port),
       comp_mode=str(model.comp_mode),
       scale_mode=str(model.scale_mode),
       tag=model.tag,
