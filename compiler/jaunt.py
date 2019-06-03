@@ -73,8 +73,11 @@ def sc_generate_problem(jenv,prob,circ):
                                            loc,port,handle=handle)
 
 
-    if not jenv.uses_tau() or jenv.time_scaling:
+    if not jenv.uses_tau() or not jenv.time_scaling:
+        print("uses tau: %s" % jenv.uses_tau())
+        print("time scale: %s" % jenv.time_scaling)
         jenv.eq(jop.JVar(jenv.tau()), jop.JConst(1.0),'tau_fixed')
+        input()
     else:
         jenv.lte(jop.JVar(jenv.tau()), jop.JConst(1e6),'tau_min')
         jenv.gte(jop.JVar(jenv.tau()), jop.JConst(1e-6),'tau_max')
@@ -116,7 +119,7 @@ def compute_scale(jenv,prog,circ,objfun):
     jopt.method = objfun.name()
     blacklist = []
     smtenv = jsmt.build_smt_prob(circ,jenv,blacklist=blacklist)
-    results = list(jsmt.solve_smt_prob(smtenv,nslns=1))
+    results = list(jsmt.solve_smt_prob(smtenv,nslns=10))
     if len(results) == 0:
         raise Exception("no solution exists")
 

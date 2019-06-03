@@ -96,7 +96,7 @@ def build_adc_model(data):
     gain,bias,bias_unc,noise = infer_model(group_data,adc=True)
     comp_mode = "*"
     scale_mode = to_range(group['rng'])
-    model = OutputModel(block,loc,'out',
+    model = OutputModel('tile_adc',loc,'out',
                         comp_mode=comp_mode,
                         scale_mode=scale_mode)
 
@@ -106,7 +106,7 @@ def build_adc_model(data):
     model.gain = gain
     yield model
 
-    model = PortModel(block,loc,'in',
+    model = PortModel('tile_adc',loc,'in',
                            comp_mode=comp_mode,
                            scale_mode=scale_mode)
     yield model
@@ -182,7 +182,7 @@ def build_dac_model(data):
     comp_mode = to_sign(group['inv'])
     scale_mode = to_range(group['rng'])
     # ignore source
-    model = OutputModel(block,loc,'out', \
+    model = OutputModel('tile_dac',loc,'out', \
                         comp_mode=comp_mode, \
                         scale_mode=scale_mode)
     model.bias = bias
@@ -191,7 +191,7 @@ def build_dac_model(data):
     model.gain = gain
     yield model
 
-    model = PortModel(block,loc,'in', \
+    model = PortModel('tile_dac',loc,'in', \
                       comp_mode=comp_mode,
                       scale_mode=scale_mode)
     yield model

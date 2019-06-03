@@ -112,20 +112,15 @@ def rank(circ):
   return rank_model(circ)
 
 def clear(circ):
-  for _,_,config in circ.instances():
-    config.clear_physical_model()
-
-def clear_noise_model(circ):
-  for _,_,config in circ.instances():
-    config.clear_noise_model()
+  pass
 
 def execute(circ):
   clear(circ)
-  print("<< compute noise >>")
-  prop_noise.compute(circ)
-  print("<< compute bias >>")
-  prop_bias.compute(circ)
-  print("<< compute delay >>")
-  prop_delay.compute(circ)
-  score = rank(circ)
-  print("score: %s" % score)
+  #print("<< compute noise >>")
+  #prop_noise.compute(circ)
+  #print("<< compute bias >>")
+  #prop_bias.compute(circ)
+  #print("<< compute delay >>")
+  #prop_delay.compute(circ)
+  #score = rank(circ)
+  #print("score: %s" % score)

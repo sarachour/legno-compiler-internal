@@ -68,7 +68,8 @@ class GlobalCtx:
 CTX = GlobalCtx()
 CTX.insert(GLProp.DIGITAL_INTERVAL, (-1.0,1.0))
 CTX.insert(GLProp.DIGITAL_EXCLUDE, (0.0,0.0))
-CTX.insert(GLProp.CURRENT_INTERVAL, (-1.9,1.9))
+#CTX.insert(GLProp.CURRENT_INTERVAL, (-1.9,1.9))
+CTX.insert(GLProp.CURRENT_INTERVAL, (-2.0,2.0))
 CTX.insert(GLProp.VOLTAGE_INTERVAL, (-1.0,1.0))
 CTX.insert(GLProp.DIGITAL_QUANTIZE, 256)
 
@@ -78,11 +79,11 @@ CTX.insert(GLProp.DIGITAL_SAMPLE, 3.0*units.us)
 CTX.insert(GLProp.INBUF_SIZE,1200)
 CTX.insert(GLProp.OUTBUF_SIZE,1e9)
 
-CTX.insert(GLProp.DIGITAL_EXCLUDE, (-0.19,0.19), block="integrator")
+#CTX.insert(GLProp.DIGITAL_EXCLUDE, (-0.19,0.19), block="integrator")
 
 # exclude these constant ranges, because the system is unable to calibrate.
 # the 0.19 is a tight bound, the 0.4 is a guess.
-CTX.insert(GLProp.DIGITAL_EXCLUDE, (-0.19,0.19), block="multiplier")
+#CTX.insert(GLProp.DIGITAL_EXCLUDE, (-0.19,0.19), block="multiplier")
 for mode in [(RangeType.HIGH, RangeType.MED), \
              (RangeType.MED, RangeType.LOW)]:
   CTX.insert(GLProp.DIGITAL_EXCLUDE, (-0.4,0.4), block="multiplier",cm="vga", \

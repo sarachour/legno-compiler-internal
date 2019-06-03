@@ -28,7 +28,7 @@ def get_parameters(jenv,circ,block,loc,port,handle=None):
         scale_mode = config.scale_mode
         hwscvar = jop.JConst(1.0)
         model = PortModel(block.name,loc,port, \
-                                  config.comp_mode,scale_mode)
+                          config.comp_mode,scale_mode)
         if db.has(block.name,loc,port,config.comp_mode,scale_mode,handle):
             model = db.get(block.name,loc,port,config.comp_mode,scale_mode,handle)
 
@@ -90,6 +90,10 @@ def decl_scale_variables(jenv,circ):
                 orig_scf = jenv.get_scvar(block_name,loc,orig)
                 jenv.eq(jop.JVar(orig_scf),jop.JVar(copy_scf),'jc-copy')
 
+    for sblk,sloc,sport,dblk,dloc,dport in circ.conns():
+        s_scf = jenv.get_scvar(sblk,sloc,sport)
+        d_scf = jenv.get_scvar(dblk,dloc,dport)
+        jenv.eq(jop.JVar(s_scf),jop.JVar(d_scf),'jc-conn')
 
 def _to_phys_time(circ,time):
     return time/circ.board.time_constant
@@ -140,8 +144,8 @@ def digital_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
     prop = pars['prop']
     mscale = pars['math_scale']
     hscale = pars['hw_scale']
-    for k,v in pars.items():
-        print("%s=%s" % (k,v))
+    #for k,v in pars.items():
+    #    print("%s=%s" % (k,v))
     assert(isinstance(prop, props.DigitalProperties))
     jaunt_util.upper_bound_constraint(jenv,
                                       jop.JMult(mscale,
@@ -281,7 +285,7 @@ def digital_bandwidth_constraint(jenv,prob,circ,block,loc,port,handle,annot):
 
     elif prop.kind == props.DigitalProperties.ClockType.CONTINUOUS:
         hwbw = prop.bandwidth()
-        analog_bandwidth_constraint(jenv,circ,prop, \
-                                    mbw,hwbw)
+        analog_bandwidth_constraint(jenv,circ,block,loc,port,handle,
+                                    "digcont-bw-%s[%s].%s" % (block,loc,port))
     else:
         raise Exception("unknown not permitted")

@@ -1,6 +1,7 @@
 import ops.jop as jop
 import ops.op as ops
 import ops.interval as interval
+from chip.model import ModelDB
 
 
 class ExprVisitor:
@@ -11,6 +12,7 @@ class ExprVisitor:
     self.block = block
     self.loc = loc
     self.port = port
+    self.db = ModelDB()
 
   def visit(self):
     raise NotImplementedError
@@ -84,11 +86,23 @@ class SCFPropExprVisitor(ExprVisitor):
     ExprVisitor.__init__(self,jenv,circ,block,loc,port)
 
   def coeff(self,handle):
-    block,loc = self.block,self.loc
+    block,loc,port = self.block,self.loc,self.port
     config = self.circ.config(block.name,loc)
-    coeff = block.coeff(config.comp_mode,config.scale_mode, \
-                        self.port,handle)
-    return jop.JConst(coeff)
+    coeff = block.coeff(config.comp_mode, \
+                        config.scale_mode, \
+                        port,handle)
+    if self.db.has(block.name,loc,port, \
+              config.comp_mode,
+              config.scale_mode,handle):
+      model = self.db.get(block.name,loc,port, \
+                          config.comp_mode, \
+                          config.scale_mode, \
+                          handle)
+      phys_coeff = model.gain
+      print("%s[%s].%s (%s) = %s" % (block.name,loc,port,handle,phys_coeff))
+    else:
+      phys_coeff = 1.0
+    return jop.JConst(coeff*phys_coeff)
 
   def visit_const(self,expr):
     return jop.JConst(1.0)
