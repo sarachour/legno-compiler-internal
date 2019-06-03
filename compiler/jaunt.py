@@ -24,34 +24,22 @@ import ops.interval as interval
 
 def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
     config = circ.config(block.name,loc)
-    mrng = config.interval(port)
-    mbw = config.bandwidth(port)
-    # expression for scaling math range
-    scfvar = jop.JVar(jenv.get_scvar(block.name,loc,port,handle))
-
     prop = block.props(config.comp_mode,config.scale_mode,port,handle=handle)
-    phys = jaunt_common.noise_model(circ,block,loc,port)
-    hwrng,hwbw,snr= prop.interval(), prop.bandwidth(), config.snr(port)
     annot = "%s.%s.%s" % (block.name,loc,port)
     if isinstance(prop, props.AnalogProperties):
-        jaunt_common.analog_op_range_constraint(jenv,circ,phys,prop,
-                                                scfvar,jop.JConst(1.0),
-                                                mrng,hwrng, \
-                                                snr,
+        jaunt_common.analog_op_range_constraint(jenv,circ,block,loc,port, handle,\
                                                 annot=annot)
-        jaunt_common.analog_bandwidth_constraint(jenv,circ,prop,mbw,hwbw,
+        jaunt_common.analog_bandwidth_constraint(jenv,circ,block,loc,port,handle,\
                                                  annot)
 
     elif isinstance(prop, props.DigitalProperties):
         hwexc = prop.exclude()
-        jaunt_common.digital_op_range_constraint(jenv,phys,prop,scfvar, \
-                                                 jop.JConst(1.0),mrng,hwrng, \
-                                                 hwexc,
+        jaunt_common.digital_op_range_constraint(jenv,circ,block,loc,port,handle, \
                                                  annot)
-        jaunt_common.digital_quantize_constraint(jenv,phys,prop,scfvar,
-                                                 jop.JConst(1.0),mrng,snr)
-        jaunt_common.digital_bandwidth_constraint(jenv,prob,circ, \
-                                                  mbw, prop,
+        # phys,prop,scfvar,jop.JConst(1.0),mrng
+        jaunt_common.digital_quantize_constraint(jenv,circ,block,loc,port,handle, \
+                                                 "")
+        jaunt_common.digital_bandwidth_constraint(jenv,prob,circ,block,loc,port,handle,
                                                   annot)
     else:
         raise Exception("unknown")

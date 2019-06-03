@@ -8,7 +8,9 @@ import chip.hcdc.globals as glb
 import util.util as util
 import util.config as CONFIG
 import numpy as np
+import compiler.jaunt_pass.jenv as jenvlib
 
+'''
 def noise_model(circ,block,loc,port):
     config = circ.config(block.name,loc)
     baseline = block.scale_model(config.comp_mode).baseline
@@ -24,6 +26,40 @@ def noise_model(circ,block,loc,port):
             phys.append(noise_model(circ,circ.board.block(sb),sl,sp)[0])
 
     return phys
+
+'''
+
+def get_parameters(jenv,circ,block,loc,port,handle=None):
+    config = circ.config(block.name,loc)
+    scale_model = block.scale_model(config.comp_mode)
+    baseline = scale_model.baseline
+    if isinstance(jenv, jenvlib.JauntInferEnv):
+        scale_mode = baseline
+        hwscvar = jop.JVar(jenv.get_op_range_var(block.name,loc,port,handle))
+    else:
+        scale_mode = config.scale_mode
+        hwscvar = jop.JConst(1.0)
+
+    mrng = config.interval(port)
+    mbw = config.bandwidth(port)
+    mathscvar = jop.JVar(jenv.get_scvar(block.name,loc,port,handle))
+    prop = block.props(config.comp_mode,scale_mode,port,handle=handle)
+    hwrng,hwbw,snr = prop.interval(), prop.bandwidth(), config.snr(port)
+    exclude = None
+    if isinstance(prop,props.DigitalProperties):
+        exclude = prop.exclude()
+
+    return {
+        'math_range':mrng,
+        'math_bandwidth':mbw,
+        'math_scale':mathscvar,
+        'hw_scale':hwscvar,
+        'prop':prop,
+        'hw_range':hwrng,
+        'hw_bandwidth':hwbw,
+        'hw_snr':snr,
+        'hw_exclude':exclude
+    }
 
 def decl_scale_variables(jenv,circ):
     # define scaling factors
@@ -63,8 +99,13 @@ def _to_phys_time(circ,time):
 def _to_phys_bandwidth(circ,bw):
     return bw*circ.board.time_constant
 
-def analog_bandwidth_constraint(jenv,circ,prop,mbw,hwbw,annot):
+def analog_bandwidth_constraint(jenv,circ,block,loc,port,handle,annot):
     tau = jop.JVar(jenv.tau())
+    pars = get_parameters(jenv,circ,block,loc,port,handle)
+    mbw = pars['math_bandwidth']
+    hwbw = pars['hw_bandwidth']
+    prop = pars['prop']
+
     if isinstance(prop,props.AnalogProperties) and prop.is_physical:
         jenv.eq(tau,jop.JConst(1.0),'jcom-physical-bw')
         jenv.set_time_scaling(False)
@@ -93,7 +134,16 @@ def analog_bandwidth_constraint(jenv,circ,prop,mbw,hwbw,annot):
                  'jcom-analog-bw-%s' % annot
         )
 
-def digital_op_range_constraint(jenv,phys,prop,mscale,hscale,mrng,hwrng,hwexc,annot=""):
+def digital_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
+    pars = get_parameters(jenv,circ,block,loc,port,handle)
+    mrng = pars['math_range']
+    hwrng = pars['hw_range']
+    hwexc = pars['hw_exclude']
+    prop = pars['prop']
+    mscale = pars['math_scale']
+    hscale = pars['hw_scale']
+    for k,v in pars.items():
+        print("%s=%s" % (k,v))
     assert(isinstance(prop, props.DigitalProperties))
     jaunt_util.upper_bound_constraint(jenv,
                                       jop.JMult(mscale,
@@ -133,6 +183,7 @@ def digital_op_range_constraint(jenv,phys,prop,mscale,hscale,mrng,hwrng,hwexc,an
                                             mrng.lower, hwexc.lower,
                                             'jcom-digital-lneg-opexc-%s' % annot)
 
+'''
 def noise_model_to_noise_expr(jenv,circ,phys):
     def to_magnitude(blk,loc,port):
         cfg = circ.config(blk,loc)
@@ -169,6 +220,7 @@ def noise_model_to_noise_expr(jenv,circ,phys):
     model = nop.mkadd(phys)
     noise_expr = to_jop(model)
     return noise_expr
+'''
 
 def compute_nsr(noise_expr,mscale,mrng):
     if mrng.spread == 0:
@@ -191,41 +243,52 @@ def compute_max_nsr(min_snr):
     max_nsr = 1.0/min_snr
     return max_nsr
 
-def analog_op_range_constraint(jenv,circ,phys,prop, \
-                               mscale,hscale,mrng,hwrng,snr,annot=""):
+def analog_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
+    pars = get_parameters(jenv,circ,block,loc,port,handle)
+    mrng = pars['math_range']
+    hwrng = pars['hw_range']
+    prop = pars['prop']
     assert(isinstance(prop, props.AnalogProperties))
     jaunt_util.upper_bound_constraint(jenv,
-                                      jop.JMult(mscale,
-                                                jop.expo(hscale,-1.0)),
+                                      jop.JMult(pars['math_scale'],
+                                                jop.expo(pars['hw_scale'],-1.0)),
                                       mrng.upper, hwrng.upper,
                                       'jcom-analog-oprange-%s' % annot)
     jaunt_util.lower_bound_constraint(jenv,
-                                      jop.JMult(mscale,
-                                                jop.expo(hscale,-1.0)),
+                                      jop.JMult(pars['math_scale'],
+                                                jop.expo(pars['hw_scale'],-1.0)),
                                       mrng.lower, hwrng.lower,
                                       'jcom-analog-oprange-%s' % annot)
     if jenv.no_quality:
         return
 
+    # if this makes the system a system that processes a physical signal.
     if prop.is_physical:
         jenv.eq(mscale, jop.JConst(1.0),'jcom-analog-physical-rng')
 
+    '''
     nz_expr = noise_model_to_noise_expr(jenv,circ,phys)
     nsr_expr = compute_nsr(nz_expr,mscale,mrng)
     max_nsr = compute_max_nsr(snr)
     if max_nsr is None:
         return
+    '''
 
+    '''
     if not nsr_expr is None:
         jenv.lte(nsr_expr,jop.JConst(max_nsr), \
                  annot='jcom-analog-minsig')
+    '''
 
 
 
-def digital_quantize_constraint(jenv,phys,prop,mscale,hscale,math_rng,snr):
+def digital_quantize_constraint(jenv,circ,block,loc,port,handle,annot=""):
     if jenv.no_quality:
         return
+    pars = get_parameters(jenv,circ,block,loc,port,handle)
+    prop = pars['prop']
 
+    '''
     delta_h = np.mean(np.diff(prop.values()))
     nsr_expr = compute_nsr(jop.JConst(delta_h), mscale, math_rng)
     max_nsr = compute_max_nsr(snr)
@@ -235,6 +298,8 @@ def digital_quantize_constraint(jenv,phys,prop,mscale,hscale,math_rng,snr):
     if not nsr_expr is None:
         jenv.lte(nsr_expr,jop.JConst(max_nsr), \
                  annot='jcom-digital-minsig')
+    '''
+    return
 
 
 def max_sim_time_constraint(jenv,prob,circ):
@@ -248,9 +313,13 @@ def max_sim_time_constraint(jenv,prob,circ):
     jenv.lte(hw_time, jop.JConst(max_time), 'max-time')
 
 
-def digital_bandwidth_constraint(jenv,prob,circ,mbw,prop,annot):
+def digital_bandwidth_constraint(jenv,prob,circ,block,loc,port,handle,annot):
     tau = jop.JVar(jenv.tau())
     tau_inv = jop.JVar(jenv.tau(),exponent=-1.0)
+    pars = get_parameters(jenv,circ,block,loc,port,handle)
+    mbw = pars['math_bandwidth']
+    prop = pars['prop']
+
     if mbw.is_infinite():
         return
 

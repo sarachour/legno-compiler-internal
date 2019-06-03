@@ -102,8 +102,8 @@ class DigitalProperties(Properties):
         self._exclude = (0,0)
 
     def __repr__(self):
-        clk = "Synch(kind=%s, rate=%s, samps=%s, bw=%s)" % \
-              (self._kind,self._sample_rate, self._max_samples,self._bandwidth)
+        clk = "Synch(kind=%s, rate=%s, bw=%s)" % \
+              (self._kind,self._sample_rate, self._bandwidth)
         dig = "Digital(min=%s, max=%s)" % (min(self._values), max(self._values))
         return dig + " " + clk
 

@@ -157,39 +157,26 @@ def sc_traverse_dynamics(jenv,circ,block,loc,out):
     visitor.visit()
 
 def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
-    config = circ.config(block.name,loc)
-    mrng = config.interval(port)
-    mbw = config.bandwidth(port)
-    # expression for scaling math range
-    mathscvar = jop.JVar(jenv.get_scvar(block.name,loc,port,handle))
-    hwscvar = jop.JVar(jenv.get_op_range_var(block.name,loc,port,handle))
     print("%s[%s].%s" % (block.name,loc,port))
-    scale_model = block.scale_model(config.comp_mode)
-    baseline = scale_model.baseline
+    config = circ.config(block.name,loc)
+    baseline = block.scale_model(config.comp_mode).baseline
     prop = block.props(config.comp_mode,baseline,port,handle=handle)
-    phys = jaunt_common.noise_model(circ,block,loc,port)
-    hwrng,hwbw,snr = prop.interval(), prop.bandwidth(), config.snr(port)
     if isinstance(prop, props.AnalogProperties):
-        jaunt_common.analog_op_range_constraint(jenv,circ,phys,prop,
-                                                mathscvar,hwscvar, \
-                                                mrng,hwrng,snr,\
+        jaunt_common.analog_op_range_constraint(jenv,circ,block,loc,port,handle,
                                                 '%s-%s-%s' % \
                                                 (block.name,loc,port))
-        jaunt_common.analog_bandwidth_constraint(jenv,circ,prop,mbw,hwbw,
+        jaunt_common.analog_bandwidth_constraint(jenv,circ,block,loc,port,handle,
                                                  '%s-%s-%s' % \
                                                  (block.name,loc,port))
 
     elif isinstance(prop, props.DigitalProperties):
-        hwexc = prop.exclude()
-        jaunt_common.digital_op_range_constraint(jenv,phys,prop, \
-                                                 mathscvar,hwscvar, \
-                                                 mrng,hwrng, \
-                                                 hwexc,
+        jaunt_common.digital_op_range_constraint(jenv,circ,block,loc,port,handle,
                                                 '%s-%s-%s' % \
                                                  (block.name,loc,port))
-        jaunt_common.digital_quantize_constraint(jenv,phys,prop,
-                                                 mathscvar,hwscvar,mrng,snr)
-        jaunt_common.digital_bandwidth_constraint(jenv,prob,circ,mbw,prop,
+        jaunt_common.digital_quantize_constraint(jenv,circ,block,loc,port,handle,
+                                                 'quantize')
+        jaunt_common.digital_bandwidth_constraint(jenv,prob,circ, \
+                                                  block,loc,port,handle,
                                                   '%s-%s-%s' % \
                                                   (block.name,loc,port))
     else:

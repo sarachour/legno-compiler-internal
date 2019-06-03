@@ -1,6 +1,5 @@
 import ops.op as ops
 from enum import Enum
-import chip.phys as phys
 
 class BlockType(Enum):
     ADC = "adc"

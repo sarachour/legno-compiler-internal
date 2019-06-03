@@ -1,6 +1,5 @@
 from chip.block import Block, BlockType
 import chip.props as props
-from chip.phys import PhysicalModel
 import chip.units as units
 import chip.hcdc.util as util
 from chip.cont import *

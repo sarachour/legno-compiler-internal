@@ -105,6 +105,7 @@ class MaxSignalObjFunc(optlib.JauntObjectiveFunction):
       tag = jenv.get_tag(scvar)
       if tag == jenvlib.JauntVarType.SCALE_VAR:
         rngobj *= 1/varmap[scvar]
+    return rngobj
 
   @staticmethod
   def make_add(jenv,varmap):
@@ -113,6 +114,7 @@ class MaxSignalObjFunc(optlib.JauntObjectiveFunction):
       tag = jenv.get_tag(scvar)
       if tag == jenvlib.JauntVarType.SCALE_VAR:
         rngobj += 1/varmap[scvar]
+    return rngobj
 
   @staticmethod
   def make(circ,jobj,varmap):
@@ -156,6 +158,10 @@ class MaxSignalAndStabilityObjFunc(optlib.JauntObjectiveFunction):
     if jobj.time_scaling:
       ot = list(SlowObjFunc.make(circ,jobj,varmap))[0]
       for oi in MaxSignalObjFunc.make(circ,jobj,varmap):
+        print(ot.__class__.__name__, \
+              oi.__class__.__name__)
+        print(ot.objective(),
+              oi.objective())
         yield MaxSignalAndStabilityObjFunc(ot.objective()*oi.objective())
     else:
       for obj in MaxSignalObjFunc.make(circ,jobj,varmap):

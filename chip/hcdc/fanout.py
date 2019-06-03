@@ -1,5 +1,4 @@
 from chip.block import Block, BlockType
-from chip.phys import PhysicalModel
 import chip.props as props
 import chip.hcdc.util as util
 import lab_bench.lib.chipcmd.data as chipcmd

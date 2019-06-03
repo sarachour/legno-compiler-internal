@@ -1,4 +1,3 @@
-from chip.phys import PhysicalModel
 from chip.block import Block,BlockType
 import chip.props as props
 import chip.hcdc.util as util
