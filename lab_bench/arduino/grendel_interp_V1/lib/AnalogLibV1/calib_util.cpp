@@ -13,6 +13,21 @@ namespace cutil {
     cal.nconns = 0;
   }
 
+  dac_code_t make_ref_dac(calibrate_t& calib,
+                        Fabric::Chip::Tile::Slice::Dac * dac,
+                          float value,
+                          float& ref){
+    prof::init_profile(prof::TEMP);
+    if(fabs(value) > 1.0){
+      ref = value;
+      return make_val_dac(calib,dac,value,prof::TEMP);
+    }
+    else {
+      ref = 0.0;
+      return make_zero_dac(calib,dac,prof::TEMP);
+    }
+  }
+
   dac_code_t make_val_dac(calibrate_t& calib,
                           Fabric::Chip::Tile::Slice::Dac * dac,
                           float value,

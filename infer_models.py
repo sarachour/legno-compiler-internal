@@ -146,9 +146,10 @@ def build_integ_model(data):
 
   for group_data in grouped_dataset.values():
     group = group_data['group']
-    gain,bias,bias_unc,noise = infer_model(group_data)
     scale_mode = (to_range(group["range-in0"]), \
                    to_range(group["range-out0"]))
+    print("scale-mode=%s port=%s" % (str(scale_mode),group['port']))
+    gain,bias,bias_unc,noise = infer_model(group_data)
     for comp_mode in comp_options:
       if group["port"]== "out0":
         model = OutputModel("integrator",loc,'out', \
@@ -199,7 +200,6 @@ def build_mult_model(data):
 
   for group_data in grouped_dataset.values():
     group = group_data['group']
-    gain,bias,bias_unc,noise = infer_model(group_data)
     if group['vga']:
       scale_mode = (to_range(group["range-in0"]), \
                     to_range(group["range-out0"]))
@@ -208,6 +208,8 @@ def build_mult_model(data):
                     to_range(group["range-in1"]), \
                     to_range(group["range-out0"]))
 
+    print("scale-mode=%s" % str(scale_mode))
+    gain,bias,bias_unc,noise = infer_model(group_data)
     comp_mode = "vga" if group['vga'] else "mult"
     model = OutputModel("multiplier",loc,'out', \
                         comp_mode=comp_mode,

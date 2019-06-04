@@ -23,6 +23,11 @@ namespace cutil {
   // this is a special high-to-medium converter specifically for
   // the multiplier, since we want to be able to scale down signals
   //
+  dac_code_t make_ref_dac(calibrate_t& calib,
+                           Fabric::Chip::Tile::Slice::Dac* dac,
+                          float value,
+                          float& ref);
+
   dac_code_t make_zero_dac(calibrate_t& calib,
                            Fabric::Chip::Tile::Slice::Dac* dac,
                            profile_t& result);

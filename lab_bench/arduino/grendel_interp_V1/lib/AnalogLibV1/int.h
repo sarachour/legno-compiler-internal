@@ -45,7 +45,7 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
                                const float max_error,
                                bool change_code);
 
-		void measure(profile_t& result);
+		void measure(profile_t& result,float input, bool test_initial_cond);
 		Integrator (Slice * parentSlice);
 		~Integrator () override { delete in0; delete out0; };
 		/*Set enable, invert, range*/

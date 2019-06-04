@@ -3,7 +3,22 @@
 #include "calib_util.h"
 #include <float.h>
 
+float compute_out_mult(mult_code_t& m_codes, float in0, float in1){
+  int sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
+  float rng = util::range_to_coeff(m_codes.range[out0Id]);
 
+  //float target_mult =  sign*coeff_vga*in0*in1;
+
+}
+
+float compute_out_vga(mult_code_t& m_codes, float in0){
+  float gain = m_codes.gain_val;
+  int sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
+  //float target_vga =  sign*gain*coeff_vga*in0val;
+  float rng = util::range_to_coeff(m_codes.range[out0Id]);
+
+
+}
 bool Fabric::Chip::Tile::Slice::Multiplier::calibrate (profile_t& result, float max_error) {
   mult_code_t codes_self = m_codes;
   if(m_codes.vga)
@@ -122,15 +137,7 @@ bool helper_find_max_val(Fabric::Chip::Tile::Slice::Multiplier* mult,
     Fabric::Chip::Connection(fo->out1, mult->in1);
 
   val_dac->setEnable(true);
-  if(mult->m_codes.range[in0Id] == RANGE_LOW){
-    error("unimplemented: low*low multiplier");
-  }
-  else if(mult->m_codes.range[in0Id] == RANGE_HIGH){
-    error("unimplemented: low*low multiplier");
-  }
-  else{
-    val_dac->update(dac_code_1);
-  }
+  val_dac->update(dac_code_1);
   conn_fo.setConn();
   conn_in0.setConn();
   conn_in1.setConn();
@@ -383,12 +390,14 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (profile_t& result, 
   cutil::buffer_dac_conns(calib,val_dac);
   cutil::buffer_fanout_conns(calib, fanout);
   cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
-  cutil::buffer_chipout_conns(calib,parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput);
+  cutil::buffer_chipout_conns(calib,parentSlice->parentTile
+                              ->parentChip->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
 
   Connection mult_to_tileout = Connection ( out0, parentSlice->tileOuts[3].in0 );
 	Connection tileout_to_chipout = Connection ( parentSlice->tileOuts[3].out0,
-                                               parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
+                                               parentSlice->parentTile
+                                               ->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
 
   mult_to_tileout.setConn();
