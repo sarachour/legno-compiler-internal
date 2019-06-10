@@ -154,14 +154,10 @@ def scale_again(prog,circ,do_physical, do_sweep, physical=False):
         objs += JauntObjectiveFunctionManager.sweep_methods()
 
     jenv = jenvlib.JauntEnv(physical=physical)
-    jenv.no_quality = no_quality
 
     for obj in objs:
         for objf,new_circ in compute_scale(jenv,prog,circ,obj):
-            if no_quality:
-                yield "noq-%s" % objf.tag(),new_circ
-            else:
-                yield objf.tag(),new_circ
+            yield objf.tag(),new_circ
 
 def scale(prog,circ,nslns,physical=False):
     infer.clear(circ)

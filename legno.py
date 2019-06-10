@@ -74,8 +74,10 @@ from chip.hcdc.hcdcv2_4 import make_board
 from chip.hcdc.globals import HCDCSubset
 if args.standard:
     hdacv2_board = make_board(HCDCSubset.STANDARD)
+    args.bmark_dir = HCDCSubset.STANDARD.value
 else:
     hdacv2_board = make_board(HCDCSubset.UNRESTRICTED)
+    args.bmark_dir = HCDCSubset.UNRESTRICTED.value
 
 
 if args.subparser_name == "arco":

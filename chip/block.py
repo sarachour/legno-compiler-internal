@@ -38,6 +38,25 @@ class Block:
         self._scale_modes = {}
         self._subset = None
 
+    def whitelist(self,comp_mode,scale_mode=None):
+        comp_mode_key = util.normalize_mode(comp_mode)
+        subs = self._comp_mode_subsets[comp_mode]
+        if self._subset is None:
+            return True
+
+        if not self._subset in self._comp_mode_subsets[comp_mode_key]:
+            return False
+
+        if scale_mode is None:
+            return True
+
+        scale_mode_key = util.normalize_mode(scale_mode)
+        if not self._subset in self._scale_mode_subsets[(comp_mode_key, \
+                                                         scale_mode_key)]:
+            return False
+
+        return True
+
     def subset(self,subs):
         self._subset = subs
         return self
@@ -82,6 +101,9 @@ class Block:
     def coeff(self,comp_mode,scale_mode,out,handle=None):
         data = self._get_scale_dict(comp_mode,scale_mode, \
                                     self._coeffs)
+        if not self.whitelist(comp_mode,scale_mode):
+            raise Exception("coeff: not whitelisted : %s.%s" %  \
+                            (comp_mode,scale_mode))
         if data is None or \
            not out in data or \
            not handle in data[out]:
@@ -116,6 +138,10 @@ class Block:
     def get_dynamics(self,comp_mode,output):
         copy_data = self._get_comp_dict(comp_mode,self._copies)
         op_data = self._get_comp_dict(comp_mode,self._ops)
+        if not self.whitelist(comp_mode):
+            raise Exception("get_dynamics: not whitelisted : %s" %  \
+                            str(comp_mode))
+
         if output in copy_data:
             output = copy_data[output]
 
@@ -123,12 +149,18 @@ class Block:
         return expr
 
     def dynamics(self,comp_mode):
+        if not self.whitelist(comp_mode):
+            return
+
         for output in self._outputs:
             expr = self.get_dynamics(comp_mode,output)
             yield output,expr
 
     def all_dynamics(self):
         for comp_mode in self._ops:
+            if not self.whitelist(comp_mode):
+                continue
+
             for output,expr in self._ops[comp_mode].items():
                 yield comp_mode,output,expr
 
@@ -138,6 +170,11 @@ class Block:
     def props(self,comp_mode,scale_mode,port,handle=None):
         data = self._get_scale_dict(comp_mode,scale_mode, \
                                     self._props)
+
+        if not self.whitelist(comp_mode,scale_mode):
+            raise Exception("props: not whitelisted : %s.%s" %  \
+                            (comp_mode,scale_mode))
+
         if data is None:
             for k1,v1 in self._props.items():
                 for k2,v2 in v1.items():
@@ -155,6 +192,11 @@ class Block:
     def handles(self,comp_mode,port):
         if self.is_input(port):
             return []
+
+        if not self.whitelist(comp_mode):
+            raise Exception("handles: not whitelisted : %s.%s" %  \
+                            (comp_mode))
+
         return self.get_dynamics(comp_mode,port).handles()
 
     @property
@@ -176,6 +218,9 @@ class Block:
 
     def copies(self,comp_mode,port):
         data = self._get_comp_dict(comp_mode,self._copies)
+        if not self.whitelist(comp_mode):
+            return
+
         for this_port, copy_port in data.items():
             if this_port == port:
                 yield copy_port
@@ -270,6 +315,10 @@ class Block:
         if not comp_mode in self._scale_models:
             raise Exception("block <%s> does not contain scale model for <%s>" % \
                             (self.name,comp_mode))
+
+        if not self.whitelist(comp_mode):
+            return
+
         return self._scale_models[comp_mode]
 
     def set_scale_model(self,comp_mode,model):

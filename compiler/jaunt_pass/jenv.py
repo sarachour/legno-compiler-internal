@@ -16,7 +16,7 @@ class JauntVarType(Enum):
   TAU = "TAU"
 
 class JauntEnv:
-  def __init__(self):
+  def __init__(self,physical=False):
     # scaling factor name to port
     self._to_jaunt_var = {}
     self._from_jaunt_var ={}
@@ -31,10 +31,15 @@ class JauntEnv:
     self._use_tau = False
     self._solved = False
     self._interactive = False
+    self._physical = physical
     self.decl_jaunt_var((),JauntVarType.TAU)
 
     self.no_quality = False
     self.time_scaling = True
+
+  @property
+  def physical(self):
+    return self._physical
 
   def set_time_scaling(self,v):
     self.time_scaling = v
