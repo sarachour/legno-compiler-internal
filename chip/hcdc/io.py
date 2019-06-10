@@ -2,6 +2,7 @@ from chip.block import Block, BlockType
 import chip.props as props
 import chip.units as units
 import chip.hcdc.util as util
+import util.util as gutil
 from chip.cont import *
 import lab_bench.lib.chipcmd.data as chipcmd
 from chip.hcdc.globals import CTX, GLProp
@@ -21,6 +22,10 @@ def dac_get_modes():
                                      blacklist))
    return modes
 
+
+def dac_is_standard(mode):
+   sign,rng = mode
+   return rng == chipcmd.RangeType.MED
 
 def dac_continuous_scale_model(dac):
   modes = dac_get_modes()
@@ -42,7 +47,9 @@ def dac_continuous_scale_model(dac):
 
 def dac_scale_model(dac):
    modes = dac_get_modes()
-   dac.set_scale_modes("*",modes)
+   std,nonstd = gutil.partition(dac_is_standard,modes)
+   dac.set_scale_modes("*",std,glb.HCDCSubset.all_subsets())
+   dac.set_scale_modes("*",nonstd,[glb.HCDCSubset.UNRESTRICTED])
    for mode in modes:
       get_prop = lambda p : CTX.get(p, dac.name,
                                     '*',mode,None)
@@ -63,9 +70,11 @@ def dac_scale_model(dac):
 
 
 dac = Block('tile_dac',type=BlockType.DAC) \
-.add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.DIGITAL,["in"]) \
-.set_op("*","out",ops.Var("in"))
+                             .set_comp_modes(["*"], \
+                                             glb.HCDCSubset.all_subsets()) \
+                             .add_outputs(props.CURRENT,["out"]) \
+                             .add_inputs(props.DIGITAL,["in"]) \
+                             .set_op("*","out",ops.Var("in"))
 dac_scale_model(dac)
 dac_continuous_scale_model(dac)
 dac.check()
@@ -73,21 +82,9 @@ dac.check()
 def adc_get_modes():
    return [chipcmd.RangeType.HIGH, chipcmd.RangeType.MED]
 
-def adc_black_box_model(adc):
-   def config_phys_model(phys,rng):
-        if rng == chipcmd.RangeType.MED:
-            new_phys =  PhysicalModel.read(util.datapath('adc-m.bb'))
-        elif rng == chipcmd.RangeType.HIGH:
-            new_phys = PhysicalModel.read(util.datapath('adc-h.bb'))
-        else:
-            raise Exception("unknown physical model: %s" % str(rng))
 
-        phys.set_to(new_phys)
-
-   scale_modes = dac_get_modes()
-   for sc in scale_modes:
-      _,rng = sc
-      config_phys_model(adc.physical('*',sc,"out"),rng)
+def adc_is_standard(mode):
+   return mode == chipcmd.RangeType.MED
 
 
 def adc_continuous_scale_model(adc):
@@ -109,7 +106,9 @@ def adc_continuous_scale_model(adc):
 
 def adc_scale_model(adc):
    modes = adc_get_modes()
-   adc.set_scale_modes("*",modes)
+   std,nonstd = gutil.partition(adc_is_standard,modes)
+   adc.set_scale_modes("*",std,glb.HCDCSubset.all_subsets())
+   adc.set_scale_modes("*",nonstd,[glb.HCDCSubset.UNRESTRICTED])
    for mode in modes:
       get_prop = lambda p : CTX.get(p, adc.name,
                                     '*',mode,None)
@@ -131,12 +130,14 @@ def adc_scale_model(adc):
 
 
 adc = Block('tile_adc',type=BlockType.ADC) \
-.add_outputs(props.DIGITAL,["out"]) \
-.add_inputs(props.CURRENT,["in"]) \
-.set_op("*","out",ops.Var("in")) \
-.set_props("*","*",["out"],None) \
-.set_props("*","*",["in"],None) \
-.set_coeff("*","*","out",0.5)
+                             .set_comp_modes(["*"], \
+                                             glb.HCDCSubset.all_subsets()) \
+                             .add_outputs(props.DIGITAL,["out"]) \
+                             .add_inputs(props.CURRENT,["in"]) \
+                             .set_op("*","out",ops.Var("in")) \
+                             .set_props("*","*",["out"],None) \
+                             .set_props("*","*",["in"],None) \
+                             .set_coeff("*","*","out",0.5)
 adc_scale_model(adc)
 adc_continuous_scale_model(adc)
 adc.check()

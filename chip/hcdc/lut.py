@@ -24,7 +24,12 @@ def lut_continuous_model(xbar):
 
 block = Block("lut") \
            .add_inputs(props.DIGITAL,["in"]) \
-           .add_outputs(props.DIGITAL,["out"])
+           .add_outputs(props.DIGITAL,["out"]) \
+           .set_comp_modes(["*"], \
+                           glb.HCDCSubset.all_subsets()) \
+           .set_scale_modes("*",["*"], \
+                            glb.HCDCSubset.all_subsets()) \
+
 
 
 digital_props = util.make_dig_props(chipcmd.RangeType.MED,\
@@ -36,7 +41,7 @@ digital_props = util.make_dig_props(chipcmd.RangeType.MED,\
 
 digital_props.set_continuous(0,CTX.get(GLProp.MAX_FREQ, \
                                        "lut","*","*",None))
-block.set_scale_modes("*",["*"])
+
 block.set_props("*","*",["in","out"],  digital_props)
 
 block.set_op("*","out",ops.Func(["in"],None)) \

@@ -14,18 +14,29 @@ from lab_bench.lib.env import GrendelEnv
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--native", action='store_true',help="use native mode for arduino DUE.")
-parser.add_argument("--no-oscilloscope", action='store_true',help="use native mode for arduino DUE.")
+parser.add_argument("--native", action='store_true', \
+                    help="use native mode for arduino DUE.")
+parser.add_argument("--no-oscilloscope", action='store_true', \
+                    help="use native mode for arduino DUE.")
 parser.add_argument("--ip", type=str, help="ip address of oscilloscope.")
-parser.add_argument("--port", type=int, default=5024, help="port number of oscilloscope.")
-parser.add_argument("--output", type=str, default="noise_output", help="output directory for data files.")
-parser.add_argument("--script", type=str, help="read data using script.")
-parser.add_argument("--validate", action='store_true', help="validate script")
-parser.add_argument("--debug", action='store_true', help="debug script")
-parser.add_argument("--calibrate", action='store_true', help="calibrate uncalibrated components")
-parser.add_argument("--recompute", action='store_true', help="recompute calibration codes")
-parser.add_argument("--profile", action='store_true', help="emit profile data")
-parser.add_argument("--dump-db", action='store_true',help="dump the database contents to files")
+parser.add_argument("--port", type=int, default=5024, \
+                    help="port number of oscilloscope.")
+parser.add_argument("--output", type=str, default="noise_output", \
+                    help="output directory for data files.")
+parser.add_argument("--script", type=str, \
+                    help="read data using script.")
+parser.add_argument("--validate", action='store_true', \
+                    help="validate script")
+parser.add_argument("--debug", action='store_true', \
+                    help="debug script")
+parser.add_argument("--calibrate", action='store_true', \
+                    help="calibrate uncalibrated components")
+parser.add_argument("--recompute", action='store_true', \
+                    help="recompute calibration codes")
+parser.add_argument("--profile", action='store_true', \
+                    help="emit profile data")
+parser.add_argument("--dump-db", action='store_true', \
+                    help="dump the database contents to files")
 
 
 args = parser.parse_args()

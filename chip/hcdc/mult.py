@@ -51,7 +51,17 @@ def get_modes():
                                    blacklist_mult))
   return vga_modes,mul_modes
 
+def is_standard_vga(mode):
+  i,o = mode
+  return i == chipcmd.RangeType.MED and \
+    o == chipcmd.RangeType.MED
 
+
+def is_standard_mul(mode):
+  i0,i1,o = mode
+  return i0 == chipcmd.RangeType.MED and \
+    i1 == chipcmd.RangeType.MED and \
+    o == chipcmd.RangeType.MED
 
 def continuous_scale_model_vga(mult):
   vga_modes,_= get_modes()
@@ -115,8 +125,14 @@ def continuous_scale_model(mult):
 
 def scale_model(mult):
   vga_modes,mul_modes = get_modes()
-  mult.set_scale_modes("mul",mul_modes)
-  mult.set_scale_modes("vga",vga_modes)
+  std,nonstd = gutil.partition(is_standard_mul,mul_modes)
+  mult.set_scale_modes("mul",std,glb.HCDCSubset.all_subsets())
+  mult.set_scale_modes("mul",nonstd,[glb.HCDCSubset.UNRESTRICTED])
+
+  std,nonstd = gutil.partition(is_standard_vga,vga_modes)
+  mult.set_scale_modes("vga",std,glb.HCDCSubset.all_subsets())
+  mult.set_scale_modes("vga",nonstd,[glb.HCDCSubset.UNRESTRICTED])
+
   for mode in mul_modes:
       in0rng,in1rng,outrng = mode
       get_prop = lambda p : CTX.get(p, mult.name,
@@ -170,7 +186,7 @@ def scale_model(mult):
 
 
 block = Block('multiplier') \
-.set_comp_modes(["mul","vga"]) \
+.set_comp_modes(["mul","vga"], glb.HCDCSubset.all_subsets()) \
 .add_inputs(props.CURRENT,["in0","in1"]) \
 .add_inputs(props.DIGITAL,["coeff"]) \
 .add_outputs(props.CURRENT,["out"]) \

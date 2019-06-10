@@ -11,7 +11,7 @@ class BlockType(Enum):
 
 class Block:
 
-    def __init__(self,name,type=None):
+    def __init__(self,name,type=None,subset=None):
         self._name = name
         self._type = type
         # port info
@@ -29,8 +29,18 @@ class Block:
         # scale factors
         self._scale_models = {}
         self._scale_modes = {}
-        self.set_comp_modes(['*'])
-        self.set_scale_modes("*",['*'])
+
+        #self.set_comp_modes(['*'])
+        #self.set_scale_modes("*",['*'])
+        self._comp_mode_subsets = {}
+        self._scale_mode_subsets = {}
+        self._comp_modes = []
+        self._scale_modes = {}
+        self._subset = None
+
+    def subset(self,subs):
+        self._subset = subs
+        return self
 
     def _make_comp_dict(self,comp_mode,d):
         comp_mode_key = util.normalize_mode(comp_mode)
@@ -196,32 +206,52 @@ class Block:
     def scale_modes(self,comp_mode):
         return self._scale_modes[comp_mode]
 
-    def set_comp_modes(self,modes):
-        self._comp_modes = list(map(lambda m: \
+    def set_comp_modes(self,modes,subsets):
+        comp_modes = list(map(lambda m: \
                                     util.normalize_mode(m), \
                                     modes))
 
-        for mode in self._comp_modes:
+        for mode in comp_modes:
             self._ops[mode] = {}
             self._signals[mode] = {}
             self._copies[mode] = {}
             self._props[mode] = {}
             self._coeffs[mode] = {}
 
+        for mode in comp_modes:
+            self._comp_mode_subsets[mode] = []
+            for subs in subsets:
+                self._comp_mode_subsets[mode].append(subs)
+
+        for mode in comp_modes:
+            self._comp_modes.append(mode)
+
         return self
 
-    def set_scale_modes(self,comp_mode,modes):
+    def set_scale_modes(self,comp_mode,scale_modes,subsets):
         comp_mode_key = util.normalize_mode(comp_mode)
         if not comp_mode_key in self._props:
             raise Exception("not in comps <%s> : <%s>" % \
                             (comp_mode_key,self._scale_modes))
 
-        self._scale_modes[comp_mode_key] = list(map(lambda m: \
-                                                    util.normalize_mode(m),
-                                                    modes))
-        for scale_mode in self._scale_modes[comp_mode_key]:
-            self._props[comp_mode_key][scale_mode] = {}
-            self._coeffs[comp_mode_key][scale_mode] = {}
+        scale_modes = list(map(lambda m: \
+                               util.normalize_mode(m),
+                               scale_modes))
+        for mode in scale_modes:
+            assert(not comp_mode_key in self._scale_modes or\
+                   not mode in self._scale_modes[comp_mode_key])
+            self._props[comp_mode_key][mode] = {}
+            self._coeffs[comp_mode_key][mode] = {}
+
+        for mode in scale_modes:
+            self._scale_mode_subsets[(comp_mode_key,mode)]= []
+            for subs in subsets:
+                self._scale_mode_subsets[(comp_mode_key,mode)].append(subs)
+
+        for mode in scale_modes:
+            if not comp_mode_key in self._scale_modes:
+                self._scale_modes[comp_mode_key] = []
+            self._scale_modes[comp_mode_key].append(mode)
 
         return self
 

@@ -22,14 +22,14 @@ def get_parameters(jenv,circ,block,loc,port,handle=None):
     if isinstance(jenv, jenvlib.JauntInferEnv):
         scale_mode = baseline
         hwscvar = jop.JVar(jenv.get_op_range_var(block.name,loc,port,handle))
-        physgain = 1.0
-        physunc = 0.0
+        physgain,physunc = 1.0,0.0
     else:
         scale_mode = config.scale_mode
         hwscvar = jop.JConst(1.0)
         model = PortModel(block.name,loc,port, \
                           config.comp_mode,scale_mode)
-        if db.has(block.name,loc,port,config.comp_mode,scale_mode,handle):
+        if jenv.physical and \
+           db.has(block.name,loc,port,config.comp_mode,scale_mode,handle):
             model = db.get(block.name,loc,port,config.comp_mode,scale_mode,handle)
 
         if isinstance(model,OutputModel):

@@ -27,6 +27,8 @@ def get_scale_modes():
                                      blacklist))
 
 
+def is_standard(mode):
+    return mode == chipcmd.RangeType.MED
 
 def continuous_scale_model(fanout):
     comp_modes = get_comp_modes()
@@ -55,7 +57,12 @@ def scale_model(fanout):
     comp_modes = get_comp_modes()
     scale_modes = get_scale_modes()
     for comp_mode in comp_modes:
-        fanout.set_scale_modes(comp_mode,scale_modes)
+        std,nonstd = gutil.partition(is_standard,scale_modes)
+        fanout.set_scale_modes(comp_mode,std, \
+                               glb.HCDCSubset.all_subsets())
+        fanout.set_scale_modes(comp_mode,nonstd, \
+                               [glb.HCDCSubset.UNRESTRICTED])
+
         for rng in scale_modes:
             # ERRATA: fanout doesn't scale
             get_prop = lambda p : CTX.get(p, fanout.name,
@@ -75,7 +82,7 @@ def scale_model(fanout):
 
 
 block = Block('fanout',type=BlockType.COPIER) \
-.set_comp_modes(get_comp_modes()) \
+.set_comp_modes(get_comp_modes(), glb.HCDCSubset.all_subsets()) \
 .add_outputs(props.CURRENT,["out1","out2","out0"]) \
 .add_inputs(props.CURRENT,["in"])
 

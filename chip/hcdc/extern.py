@@ -39,13 +39,17 @@ coeff = CTX.get(GLProp.COEFF,"ext_chip_analog_in",
                     "*","*","out")
 
 block_analog_in = Block('ext_chip_analog_in') \
-.add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.CURRENT,["in"]) \
-.set_op("*","out",ops.Var("in")) \
-.set_props("*","*",["in"],props_in) \
-.set_props("*","*",["out"], props_out) \
-.set_coeff("*","*","out",coeff) \
-.check()
+                  .set_comp_modes(["*"], \
+                                  glb.HCDCSubset.all_subsets()) \
+                  .set_scale_modes("*",["*"], \
+                                   glb.HCDCSubset.all_subsets()) \
+                  .add_outputs(props.CURRENT,["out"]) \
+                  .add_inputs(props.CURRENT,["in"]) \
+                  .set_op("*","out",ops.Var("in")) \
+                  .set_props("*","*",["in"],props_in) \
+                  .set_props("*","*",["out"], props_out) \
+                  .set_coeff("*","*","out",coeff) \
+                  .check()
 extern_analog_in_cont_model(block_analog_in)
 
 
@@ -90,13 +94,17 @@ props_out = util.make_ana_props(chipcmd.RangeType.HIGH,\
                                         'ext_chip_in', \
                                         "*","*",'out'))
 block_in = Block('ext_chip_in',type=BlockType.DAC) \
-.add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.DIGITAL,["in"]) \
-.set_op("*","out",ops.Var("in")) \
-.set_props("*","*",["in"],props_in) \
-.set_props("*","*",["out"], props_out) \
-.set_coeff("*","*","out",coeff) \
-.check()
+                                     .set_comp_modes(["*"], \
+                                                     glb.HCDCSubset.all_subsets()) \
+                                     .set_scale_modes("*",["*"], \
+                                                      glb.HCDCSubset.all_subsets()) \
+                                     .add_outputs(props.CURRENT,["out"]) \
+                                     .add_inputs(props.DIGITAL,["in"]) \
+                                     .set_op("*","out",ops.Var("in")) \
+                                     .set_props("*","*",["in"],props_in) \
+                                     .set_props("*","*",["out"], props_out) \
+                                     .set_coeff("*","*","out",coeff) \
+                                     .check()
 extern_in_cont_model(block_in)
 
 def extern_out_cont_model(xbar):
@@ -142,11 +150,15 @@ props_in = util.make_ana_props(chipcmd.RangeType.MED,\
                                         'ext_chip_out', \
                                         "*","*",'in'))
 block_out = Block('ext_chip_out',type=BlockType.ADC) \
-.add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.CURRENT,["in"]) \
-.set_op("*","out",ops.Var("in")) \
-.set_props("*","*",["out"],props_out) \
-.set_props("*","*",["in"], props_in) \
-.set_coeff("*","*","out",coeff) \
-.check()
+                                       .set_comp_modes(["*"], \
+                                                       glb.HCDCSubset.all_subsets()) \
+                                       .set_scale_modes("*",["*"], \
+                                                        glb.HCDCSubset.all_subsets()) \
+                                       .add_outputs(props.CURRENT,["out"]) \
+                                       .add_inputs(props.CURRENT,["in"]) \
+                                       .set_op("*","out",ops.Var("in")) \
+                                       .set_props("*","*",["out"],props_out) \
+                                       .set_props("*","*",["in"], props_in) \
+                                       .set_coeff("*","*","out",coeff) \
+                                       .check()
 extern_out_cont_model(block_out)

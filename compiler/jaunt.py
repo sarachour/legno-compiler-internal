@@ -141,7 +141,7 @@ def compute_scale(jenv,prog,circ,objfun):
         new_circ = apply_result(jenv,circ,sln)
         yield thisobj,new_circ
 
-def scale_again(prog,circ,do_physical, do_sweep, no_quality=False):
+def scale_again(prog,circ,do_physical, do_sweep, physical=False):
     objs = []
     infer.clear(circ)
     infer.infer_intervals(prog,circ)
@@ -153,7 +153,7 @@ def scale_again(prog,circ,do_physical, do_sweep, no_quality=False):
     if do_sweep:
         objs += JauntObjectiveFunctionManager.sweep_methods()
 
-    jenv = jenvlib.JauntEnv()
+    jenv = jenvlib.JauntEnv(physical=physical)
     jenv.no_quality = no_quality
 
     for obj in objs:
@@ -163,7 +163,7 @@ def scale_again(prog,circ,do_physical, do_sweep, no_quality=False):
             else:
                 yield objf.tag(),new_circ
 
-def scale(prog,circ,nslns):
+def scale(prog,circ,nslns,physical=False):
     infer.clear(circ)
     infer.infer_intervals(prog,circ)
     infer.infer_bandwidths(prog,circ)
@@ -171,6 +171,6 @@ def scale(prog,circ,nslns):
     objs = JauntObjectiveFunctionManager.basic_methods()
     for idx,infer_circ in enumerate(jaunt_infer.infer_scale_config(prog,circ,nslns)):
         for obj in objs:
-            jenv = jenvlib.JauntEnv()
+            jenv = jenvlib.JauntEnv(physical=physical)
             for final_obj,final_circ in compute_scale(jenv,prog,infer_circ,obj):
                 yield idx,final_obj.tag(), final_circ

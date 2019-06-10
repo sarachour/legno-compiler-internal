@@ -3,7 +3,7 @@ import chip.props as props
 import chip.hcdc.util as util
 import lab_bench.lib.chipcmd.data as chipcmd
 import chip.hcdc.globals as glb
-from chip.hcdc.globals import CTX, GLProp
+from chip.hcdc.globals import CTX, GLProp,HCDCSubset
 from chip.cont import *
 import ops.op as ops
 import ops.nop as nops
@@ -30,12 +30,16 @@ ana_props = util.make_ana_props(chipcmd.RangeType.HIGH,\
                                         "*","*",None))
 
 tile_out = Block('tile_out',type=BlockType.BUS) \
-.add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.CURRENT,["in"]) \
-.set_op("*","out",ops.Var("in")) \
-.set_props("*","*",["out","in"], ana_props) \
-.set_coeff("*","*","out",1.0) \
-.check()
+                                  .set_comp_modes(["*"], \
+                                                  HCDCSubset.all_subsets()) \
+                                  .set_scale_modes("*",["*"], \
+                                                   HCDCSubset.all_subsets()) \
+                                  .add_outputs(props.CURRENT,["out"]) \
+                                  .add_inputs(props.CURRENT,["in"]) \
+                                  .set_op("*","out",ops.Var("in")) \
+                                  .set_props("*","*",["out","in"], ana_props) \
+                                  .set_coeff("*","*","out",1.0) \
+                                  .check()
 xbar_continuous_model(tile_out)
 
 ana_props = util.make_ana_props(chipcmd.RangeType.HIGH,\
@@ -44,12 +48,16 @@ ana_props = util.make_ana_props(chipcmd.RangeType.HIGH,\
                                         "*","*",None))
 
 tile_in = Block('tile_in',type=BlockType.BUS) \
-.add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.CURRENT,["in"]) \
-.set_op("*","out",ops.Var("in")) \
-.set_props("*","*",["out","in"], ana_props) \
-.set_coeff("*","*","out",1.0) \
-.check()
+                                .set_comp_modes(["*"], \
+                                                HCDCSubset.all_subsets()) \
+                                  .set_scale_modes("*",["*"], \
+                                                   HCDCSubset.all_subsets()) \
+                                  .add_outputs(props.CURRENT,["out"]) \
+                                  .add_inputs(props.CURRENT,["in"]) \
+                                  .set_op("*","out",ops.Var("in")) \
+                                  .set_props("*","*",["out","in"], ana_props) \
+                                  .set_coeff("*","*","out",1.0) \
+                                  .check()
 xbar_continuous_model(tile_in)
 
 
@@ -59,13 +67,17 @@ ana_props = util.make_ana_props(chipcmd.RangeType.HIGH,\
                                         "*","*",None))
 
 inv_conn = Block('conn_inv') \
-.add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.CURRENT,["in"]) \
-.set_op("*","out",ops.Var("in")) \
-.set_props("*","*",["out","in"], \
-           ana_props) \
-.set_coeff("*","*","out",-1.0) \
-.check()
+           .set_comp_modes(["*"], \
+                           HCDCSubset.all_subsets()) \
+           .set_scale_modes("*",["*"], \
+                            HCDCSubset.all_subsets()) \
+           .add_outputs(props.CURRENT,["out"]) \
+           .add_inputs(props.CURRENT,["in"]) \
+           .set_op("*","out",ops.Var("in")) \
+           .set_props("*","*",["out","in"], \
+                      ana_props) \
+           .set_coeff("*","*","out",-1.0) \
+           .check()
 xbar_continuous_model(inv_conn)
 
 
@@ -75,13 +87,17 @@ ana_props = util.make_ana_props(chipcmd.RangeType.HIGH,\
                                         "*","*",None))
 
 chip_out = Block('chip_out',type=BlockType.BUS) \
-.add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.CURRENT,["in"]) \
-.set_op("*","out",ops.Var("in")) \
-.set_props("*","*",["out"], ana_props) \
-.set_props("*","*",["in"], ana_props) \
-.set_coeff("*","*","out",1.0) \
-.check()
+                                  .set_comp_modes(["*"], \
+                                                  HCDCSubset.all_subsets()) \
+                                  .set_scale_modes("*",["*"], \
+                                                   HCDCSubset.all_subsets()) \
+                                  .add_outputs(props.CURRENT,["out"]) \
+                                  .add_inputs(props.CURRENT,["in"]) \
+                                  .set_op("*","out",ops.Var("in")) \
+                                  .set_props("*","*",["out"], ana_props) \
+                                  .set_props("*","*",["in"], ana_props) \
+                                  .set_coeff("*","*","out",1.0) \
+                                  .check()
 xbar_continuous_model(chip_out)
 
 ana_props = util.make_ana_props(chipcmd.RangeType.HIGH,\
@@ -90,11 +106,15 @@ ana_props = util.make_ana_props(chipcmd.RangeType.HIGH,\
                                         "*","*",None))
 
 chip_in = Block('chip_in',type=BlockType.BUS) \
-.add_outputs(props.CURRENT,["out"]) \
-.add_inputs(props.CURRENT,["in"]) \
-.set_op("*","out",ops.Var("in")) \
-.set_props("*","*",["in"], ana_props) \
-.set_props("*","*",["out"], ana_props) \
-.set_coeff("*","*","out",1.0) \
-.check()
+                                 .set_comp_modes(["*"], \
+                                                  HCDCSubset.all_subsets()) \
+                                  .set_scale_modes("*",["*"], \
+                                                   HCDCSubset.all_subsets()) \
+                                  .add_outputs(props.CURRENT,["out"]) \
+                                  .add_inputs(props.CURRENT,["in"]) \
+                                  .set_op("*","out",ops.Var("in")) \
+                                  .set_props("*","*",["in"], ana_props) \
+                                  .set_props("*","*",["out"], ana_props) \
+                                  .set_coeff("*","*","out",1.0) \
+                                  .check()
 xbar_continuous_model(chip_in)

@@ -14,6 +14,7 @@ from chip.hcdc.lut import block as lut
 import chip.hcdc.globals as glb
 from chip.board import Board
 
+
 def test_board(board):
     mult = board.block('multiplier')
     assert(board.route_exists(mult.name,board.position_string([0,0,0,1]),'out',
@@ -74,7 +75,7 @@ def connect_adj_list(hw,block1,block2,adjlist):
                                  inport)
 
 
-def make_board():
+def make_board(subset=glb.HCDCSubset.UNRESTRICTED):
     n_chips = 2
     n_tiles = 4
     n_slices = 4
@@ -82,9 +83,10 @@ def make_board():
                     and (slice_no == 2 or slice_no == 3)
 
     hw = Board("HDACv2",Board.CURRENT_MODE)
-    hw.add([lut,integ,tile_dac,tile_adc,mult,fanout] + \
+    blocks = [lut,integ,tile_dac,tile_adc,mult,fanout] + \
            [tile_in,tile_out,chip_in,chip_out,inv_conn] + \
-           [ext_chip_in,ext_chip_out,ext_chip_analog_in])
+           [ext_chip_in,ext_chip_out,ext_chip_analog_in]
+    hw.add(list(map(lambda b: b.subset(subset), blocks)))
 
     hw.set_time_constant(glb.TIME_FREQUENCY)
 
@@ -243,10 +245,10 @@ def make_board():
                     #FIXME: connect all to all
                     connect(hw,tile_layer,block1,tile_layer,block2)
 
+    test_board(hw)
     return hw
 
-board = make_board()
-test_board(board)
+#board = make_board()
 #for blk in board.blocks:
 #    n = board.num_blocks(blk.name)
 #    print("%s = %d" % (blk.name,n))

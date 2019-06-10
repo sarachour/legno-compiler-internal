@@ -31,6 +31,15 @@ class GLProp(Enum):
   OUTBUF_SIZE = "out_buf"
   COEFF = "coeff"
 
+class HCDCSubset(Enum):
+    STANDARD = "standard"
+    UNRESTRICTED = "unrestricted"
+
+    @staticmethod
+    def all_subsets():
+      return [HCDCSubset.STANDARD,
+              HCDCSubset.UNRESTRICTED]
+
 class GlobalCtx:
 
   def __init__(self):

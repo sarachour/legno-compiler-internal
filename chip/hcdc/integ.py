@@ -2,6 +2,7 @@ from chip.block import Block
 import chip.props as props
 import chip.units as units
 import chip.hcdc.util as util
+import util.util as gutil
 import chip.cont as cont
 
 import lab_bench.lib.chipcmd.data as chipcmd
@@ -27,6 +28,10 @@ def get_scale_modes():
                                     blacklist))
   return modes
 
+def is_standard(scale_mode):
+  i,o = scale_mode
+  return i == chipcmd.RangeType.MED and \
+    o == chipcmd.RangeType.MED
 
 def continuous_scale_model(integ):
   m = chipcmd.RangeType.MED
@@ -93,8 +98,11 @@ def continuous_scale_model(integ):
 def scale_model(integ):
   comp_modes = get_comp_modes()
   scale_modes = get_scale_modes()
+  
   for comp_mode in comp_modes:
-    integ.set_scale_modes(comp_mode,scale_modes)
+    standard,nonstandard = gutil.partition(is_standard,scale_modes)
+    integ.set_scale_modes(comp_mode,standard,glb.HCDCSubset.all_subsets())
+    integ.set_scale_modes(comp_mode,nonstandard,[glb.HCDCSubset.UNRESTRICTED])
     for scale_mode in scale_modes:
       get_prop = lambda p : CTX.get(p, integ.name,
                                     comp_mode,scale_mode,None)
@@ -132,8 +140,8 @@ def scale_model(integ):
       integ.set_coeff(comp_mode,scale_mode,"out",1.0,handle=':z')
       integ.set_coeff(comp_mode,scale_mode,"out",1.0)
 
-block = Block('integrator') \
-.set_comp_modes(get_comp_modes()) \
+block = Block('integrator',) \
+.set_comp_modes(get_comp_modes(),glb.HCDCSubset.all_subsets()) \
 .add_inputs(props.CURRENT,["in","ic"]) \
 .add_outputs(props.CURRENT,["out"]) \
 .set_op(chipcmd.SignType.POS,"out",

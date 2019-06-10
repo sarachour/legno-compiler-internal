@@ -148,7 +148,9 @@ def build_integ_model(data):
     group = group_data['group']
     scale_mode = (to_range(group["range-in0"]), \
                    to_range(group["range-out0"]))
-    print("scale-mode=%s port=%s" % (str(scale_mode),group['port']))
+    print("%s scale-mode=%s port=%s" % (loc, \
+                                        str(scale_mode), \
+                                        group['port']))
     gain,bias,bias_unc,noise = infer_model(group_data)
     for comp_mode in comp_options:
       if group["port"]== "out0":

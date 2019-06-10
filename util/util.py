@@ -41,7 +41,7 @@ class Timer:
             fh.write("%s\n" % self._name)
             for run in self._runs:
                 fh.write("%f\n" % run)
- 
+
 def flatten(dictionary, level = []):
     tmp_dict = {}
     for key, val in dictionary.items():
@@ -63,6 +63,16 @@ def unflatten(dictionary):
         d[parts[-1]] = value
     return resultDict
 
+
+def partition(boolfn,lst):
+    yes = []
+    no = []
+    for el in lst:
+        if boolfn(el):
+            yes.append(el)
+        else:
+            no.append(el)
+    return yes,no
 
 def values_in_list(vals,lst):
   for val in vals:

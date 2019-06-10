@@ -13,8 +13,16 @@ float compute_in1(mult_code_t& m_codes, float in1){
 float compute_out_mult(mult_code_t& m_codes, float in0, float in1){
   float sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
   float rng = util::range_to_coeff(m_codes.range[out0Id]);
-  rng = 1.0/util::range_to_coeff(m_codes.range[in0Id]);
-  rng = 1.0/util::range_to_coeff(m_codes.range[in1Id]);
+  rng *= 1.0/util::range_to_coeff(m_codes.range[in0Id]);
+  rng *= 1.0/util::range_to_coeff(m_codes.range[in1Id]);
+  sprintf(FMTBUF,"range=%f (%f,%f,out=%f)",rng,
+          util::range_to_coeff(m_codes.range[in0Id]),
+          util::range_to_coeff(m_codes.range[in1Id]),
+          util::range_to_coeff(m_codes.range[out0Id])
+          ); print_info(FMTBUF);
+  sprintf(FMTBUF,"sign=%f",sign); print_info(FMTBUF);
+  sprintf(FMTBUF,"in0=%f",compute_in0(m_codes,in0)); print_info(FMTBUF);
+  sprintf(FMTBUF,"in1=%f",compute_in1(m_codes,in1)); print_info(FMTBUF);
   return rng*sign*compute_in0(m_codes,in0)*compute_in1(m_codes,in1);
 }
 
@@ -22,7 +30,7 @@ float compute_out_vga(mult_code_t& m_codes, float in0){
   float gain = m_codes.gain_val;
   float sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
   float rng = util::range_to_coeff(m_codes.range[out0Id]);
-  rng /= util::range_to_coeff(m_codes.range[in0Id]);
+  rng *= 1.0/util::range_to_coeff(m_codes.range[in0Id]);
   return gain*rng*sign*compute_in0(m_codes,in0);
 }
 
