@@ -48,6 +48,8 @@ void Fabric::Chip::Tile::Slice::ChipAdc::measure(profile_t& result, float input)
   util::meas_dist_adc(this,mean,variance);
   prof::add_prop(result,out0Id,
                  target,
+                 input,
+                 0.0,
                  mean-target,
                  variance);
 

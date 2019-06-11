@@ -92,6 +92,8 @@ void Fabric::Chip::Tile::Slice::Dac::measure(profile_t& result)
   util::meas_dist_chip_out(this,mean,variance);
   prof::add_prop(result, out0Id,
                  m_codes.const_val*scf,
+                 m_codes.const_val,
+                 0.0,
                  mean-target,
                  variance);
 

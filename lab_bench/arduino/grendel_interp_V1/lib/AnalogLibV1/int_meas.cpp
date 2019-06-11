@@ -57,8 +57,12 @@ void helper_get_cal_in0(Fabric::Chip::Tile::Slice::Integrator * integ,
 
   float mean,variance;
   util::meas_dist_chip_out(integ,mean,variance);
-  prof::add_prop(result,in0Id, input,
-                 mean-(ref + input),variance);
+  prof::add_prop(result,in0Id,
+                 input,
+                 input,
+                 0.0,
+                 mean-(ref + input),
+                 variance);
   integ->m_codes.cal_enable[in0Id] = false;
 }
 
@@ -81,6 +85,8 @@ void helper_get_cal_out0(Fabric::Chip::Tile::Slice::Integrator * integ,
   prof::add_prop(result,
                  out0Id,
                  target,
+                 input,
+                 0.0,
                  (mean-(ref+target)),
                  variance);
 
@@ -108,6 +114,8 @@ bool helper_get_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
   prof::add_prop(result,
                  out0Id,
                  target,
+                 0.0,
+                 integ->m_codes.ic_val,
                  mean-(target+ref),
                  variance);
 }

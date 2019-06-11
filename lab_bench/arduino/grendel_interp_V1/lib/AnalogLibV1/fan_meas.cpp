@@ -29,13 +29,13 @@ void Fabric::Chip::Tile::Slice::Fanout::measure(profile_t& result) {
   conn0.setConn();
   util::meas_dist_chip_out(this,mean,variance);
   conn0.brkConn();
-  prof::add_prop(result,out0Id, 0.0, mean,variance);
+  prof::add_prop(result,out0Id, 0.0,0.0,0.0,mean,variance);
 
   Connection conn1 = Connection (out1, this->parentSlice->tileOuts[3].in0);
   conn1.setConn();
   util::meas_dist_chip_out(this,mean,variance);
   conn1.brkConn();
-  prof::add_prop(result,out1Id,0.0,mean,variance);
+  prof::add_prop(result,out1Id,0.0,0.0,0.0,mean,variance);
 
   Connection conn2 = Connection (out2, this->parentSlice->tileOuts[3].in0);
   conn1.setConn();
@@ -43,7 +43,7 @@ void Fabric::Chip::Tile::Slice::Fanout::measure(profile_t& result) {
   util::meas_dist_chip_out(this,mean,variance);
   setThird(false);
   conn2.brkConn();
-  prof::add_prop(result,out2Id,0.0,mean,variance);
+  prof::add_prop(result,out2Id,0.0,0.0,0.0,mean,variance);
 
 	conn.brkConn();
 	setEnable ( false );

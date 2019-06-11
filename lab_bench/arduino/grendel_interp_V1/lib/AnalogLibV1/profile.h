@@ -5,12 +5,16 @@
 #define SIZE1D (SIZE2D*SIZE2D)
 #define MAX_KEYS SIZE1D
 
-#define size(n) (n*13+1+2)
+#include "float16.h"
+
+#define size(n) (n*11+1+2)
 
 typedef struct {
-  float bias[MAX_KEYS];
-  float noise[MAX_KEYS];
-  float target[MAX_KEYS];
+  uint16_t bias[MAX_KEYS];
+  uint16_t noise[MAX_KEYS];
+  uint16_t target[MAX_KEYS];
+  uint16_t input0[MAX_KEYS];
+  uint16_t input1[MAX_KEYS];
   unsigned char size;
   unsigned char port[MAX_KEYS];
 } profile_t;
@@ -32,7 +36,11 @@ namespace prof {
 
   void init_profile(profile_t& result);
   void add_prop(profile_t& profile,
-                unsigned char prop, float target,
-                float bias, float noise);
+                unsigned char prop,
+                float target,
+                float input0,
+                float input1,
+                float bias,
+                float noise);
 }
 #endif

@@ -5,6 +5,24 @@ from lab_bench.lib.chipcmd.data import CircLoc
 from lab_bench.lib.chipcmd.common import *
 import lab_bench.lib.chipcmd.state as chipstate
 import json
+import struct
+
+def from_float16(val):
+    nbits_exp = 6
+    if val == 0:
+        return 0.0
+
+    ff = val&0x8000;
+    oldexp = ((val&0x7FFF)>>(15-nbits_exp))
+    bias = (1<<(nbits_exp-1))-1
+    ff |= ((oldexp-bias+127)<<23);
+    mantissa_mask=(0xFFFF>>(nbits_exp+1))
+    ff |= ((val&mantissa_mask)<<(23-(15-nbits_exp)));
+
+    ffstr = struct.pack('>l', ff)
+    ff_float = struct.unpack('>f', ffstr)[0]
+    print("val=%x hex=%x float=%x" % (val, ff, ff_float))
+    return ff_float
 
 class CharacterizeCmd(AnalogChipCommand):
 
@@ -55,13 +73,15 @@ class CharacterizeCmd(AnalogChipCommand):
         profile = []
         print("==== %d TRIALS ====" % result.size)
         for i in range(0,result.size):
-            bias = result.bias[i]
-            noise = result.noise[i]
-            targ = result.target[i]
+            bias = from_float16(result.bias[i])
+            noise = from_float16(result.noise[i])
+            out = from_float16(result.output[i])
+            in0 = from_float16(result.input0[i])
+            in1 = from_float16(result.input1[i])
             port = enums.PortName.from_code(result.port[i])
-            profile.append((port,targ,bias,noise))
-            print("TRIAL %s targ=%f bias=%f noise=%f (var)" % (port,targ,
-                                                               bias,noise))
+            profile.append((port,out,in0,in1,bias,noise))
+            print("TRIAL %s out=%f in0=%f in1=%f bias=%f noise=%f (var)" \
+                  % (port,out,in0,in1,bias,noise))
         #FIXME save cali
         entry = env.state_db.get(st.key)
         env.state_db.put(st,entry.targeted,

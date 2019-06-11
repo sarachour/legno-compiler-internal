@@ -126,7 +126,10 @@ void Fabric::Chip::Tile::Slice::Multiplier::measure_vga(profile_t& result, float
   float mean=0.0,variance=0.0;
   util::meas_dist_chip_out(this,mean,variance);
   float target = hiRange ? 0.0 : target_vga;
-  prof::add_prop(result,out0Id,target_vga,
+  prof::add_prop(result,out0Id,
+                 target_vga,
+                 in0val,
+                 gain,
                  mean-target,
                  variance);
 
@@ -228,7 +231,10 @@ void Fabric::Chip::Tile::Slice::Multiplier::measure_mult(profile_t& result, floa
   float mean,variance;
   util::meas_dist_chip_out(this,mean,variance);
   float target = hiRange ? 0 : target_mult;
-  prof::add_prop(result,out0Id,target_mult,
+  prof::add_prop(result,out0Id,
+                 target_mult,
+                 in0val,
+                 in1val,
                  mean-target,variance);
 
   dac_to_in0.brkConn();
