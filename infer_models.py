@@ -84,7 +84,7 @@ def infer_model(data,adc=False):
     nz_var = sum(noise)/n
     nz_std = math.sqrt(nz_var)
 
-  print("gain=%f bias=%f bias_unc=%f noise=%f" % (gain,bias,unc_std,nz_std))
+  print("gain=%f bias=%f unc-std=%f noise-std=%f" % (gain,bias,unc_std,nz_std))
   return gain,bias,unc_std,nz_std
 
 def build_adc_model(data):
