@@ -252,8 +252,23 @@ class MathProg:
                         self._bandwidths[variable] = bwcoll.bandwidth
                         progress = True
 
-        assert(util.keys_in_dict(self._bindings.keys(), self._bandwidths))
-        assert(util.keys_in_dict(self._bindings.keys(), self._intervals))
+        if not (util.keys_in_dict(self._bindings.keys(), self._bandwidths)):
+            for k in self._bindings.keys():
+                if not k in self._bandwidths:
+                    print("  :no bw %s" % k)
+                else:
+                    print("  :bw %s" % k)
+            raise Exception("can't compile %s: missing bandwidths" % self.name)
+
+        if not (util.keys_in_dict(self._bindings.keys(), self._intervals)):
+            for k in self._bindings.keys():
+                if not k in self._intervals:
+                    print("  :no ival %s" % k)
+                else:
+                    print("  :ival %s" % k)
+            raise Exception("can't compile %s: missing intervals" % self.name)
+
+
         self._compute_order()
 
     @property

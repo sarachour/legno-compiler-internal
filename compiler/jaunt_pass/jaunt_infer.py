@@ -79,15 +79,19 @@ class ScaleModelExprVisitor(exprvisitor.ExprVisitor):
 class SCFInferExprVisitor(exprvisitor.SCFPropExprVisitor):
 
     def __init__(self,jenv,circ,block,loc,port):
-        exprvisitor.SCFPropExprVisitor.__init__(self,jenv,circ,block,loc,port)
+        exprvisitor.SCFPropExprVisitor.__init__(self,\
+                                                jenv,circ, \
+                                                block,loc,port)
 
     def coeff(self,handle):
       block,loc = self.block,self.loc
       config = self.circ.config(block.name,loc)
       model = block.scale_model(config.comp_mode)
       scale_mode = model.baseline
-      coeff_const = block.coeff(config.comp_mode,scale_mode,self.port)
-      coeff_var = self.jenv.get_coeff_var(self.block.name,self.loc, \
+      coeff_const = block.coeff(config.comp_mode, \
+                                scale_mode,self.port)
+      coeff_var = self.jenv.get_coeff_var(self.block.name, \
+                                          self.loc, \
                                           self.port,handle=handle)
       return jop.JMult(jop.JConst(coeff_const), \
                        jop.JVar(coeff_var))
@@ -99,9 +103,13 @@ def sc_decl_scale_model_variables(jenv,circ):
         scale_model = block.scale_model(config.comp_mode)
         for v in scale_model.variables():
             if v.type == cont.CSMVar.Type.OPVAR:
-                jvar = jenv.decl_op_range_var(block_name,loc,v.port,v.handle)
+                jvar = jenv.decl_op_range_var(block_name, \
+                                              loc,v.port, \
+                                              v.handle)
             elif v.type == cont.CSMVar.Type.COEFFVAR:
-                jvar = jenv.decl_coeff_var(block_name,loc,v.port,v.handle)
+                jvar = jenv.decl_coeff_var(block_name, \
+                                           loc, \
+                                           v.port,v.handle)
             else:
                 raise Exception("unknown")
 
@@ -117,6 +125,8 @@ def sc_generate_scale_model_constraints(jenv,circ):
 
         modevars = []
         for mode in scale_model.discrete.modes():
+            if not block.whitelist(config.comp_mode, mode):
+                continue
             modevar = jenv.decl_mode_var(block_name,loc,mode)
             for contvar,value in scale_model.discrete.cstrs(mode):
                 jvar = sc_get_scm_var(jenv,block_name,loc,contvar)
@@ -146,8 +156,10 @@ def sc_build_jaunt_env(prog,circ):
         block = circ.board.block(block_name)
         for port in block.outputs + block.inputs:
             v = jenv.get_scvar(block_name,loc,port)
-            jenv.lt(jop.JConst(1e-12), jop.JVar(v), "ensure nonzero");
-            jenv.gt(jop.JConst(1e12), jop.JVar(v), "ensure nonzero");
+            jenv.lt(jop.JConst(1e-12), jop.JVar(v), \
+                    "ensure nonzero");
+            jenv.gt(jop.JConst(1e12), jop.JVar(v), \
+                    "ensure nonzero");
 
     return jenv
 
@@ -230,6 +242,9 @@ def concretize_result(jenv,circ,nslns):
             block = circ.board.block(block_name)
             scale_mode = None
             for scm in block.scale_modes(config.comp_mode):
+                if not block.whitelist(config.comp_mode,scm):
+                    continue
+
                 mode = jenv.get_mode_var(block_name,loc,scm)
                 if result[mode]:
                     assert(scale_mode is None)

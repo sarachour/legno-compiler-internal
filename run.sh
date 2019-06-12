@@ -1,8 +1,8 @@
 
 BMARK=$1
 HWENV=$2
-#STANDARD="--standard"
-STANDARD=""
+STANDARD="--standard"
+#STANDARD=""
 if [ -z "$HWENV" ]
 then
 	  HWENV="default"

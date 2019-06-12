@@ -10,39 +10,28 @@ import chip.units as units
 import chip.hcdc.globals as glb
 import numpy as np
 import bmark.bmarks.audio.audio_util as autil
+from enum import Enum
 
-def model():
-    prob = MathProg("aud-lpf")
+'''
+   y is filter, x is input
+   tau is the filter time constant
+   k is the gain
+
+   y' = k/tau * x - 1/tau * y
+'''
+
+def model(degree,method="basic"):
+    prob = MathProg("lpf-%d-%s" % (degree,method))
     prob.set_digital_snr(0.0)
     prob.set_analog_snr(0.0)
 
-    cutoff = 2000
-    tc = cutoff/(200*1000.0)*2.0*np.pi
-    tc = 0.08
-    params = {
-        'fill': tc,
-        'leak': tc,
-        'IC':0
-    }
+    lb,ub = autil.set_microphone(prob,"I","Z")
+    cutoff_freq = 2000
+    out,model = autil.lpf("Z","X",method, \
+                          cutoff_freq,degree)
 
-    print("cutoff: %f" % (params['fill']*1/(2*3.14159)*200*1000))
-    # cutoff = 1/(2*pi*RC) = tau*1/(2*pi)
-    # tau = 1/RC
-    # diffeq: dZ/dt = tau*X - tau*Z
-    # we multiply cutoff by capacitor time constant
-    # cutoff is 1592 hz (15920 hz?)
-    lb,ub = autil.set_microphone(prob,"I","X0")
-    stages = 8
-    for i in range(1,stages):
-        E = parse_diffeq('{fill}*X%d + {leak}*(-X%d)' % (i-1,i), \
-                         'IC', \
-                         ':v%d' % i, \
-                         params)
-
-        prob.bind('X%d' % i, E)
-        prob.set_interval("X%d" % i,lb,ub)
-
-    autil.measure_var(prob,"X%d" % (stages-1), "OUT")
+    autil.model_to_diffeqs(prob,model,1.0)
+    autil.measure_var(prob,out,"OUT")
     menv = autil.math_env(prob)
 
     prob.compile()

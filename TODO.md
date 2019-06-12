@@ -4,6 +4,14 @@
 
 # TODO List
 
+can't calibrate:
+
+use_integ 0 0 0 sgn + val 0.900000 rng m l debug update
+use_integ 0 0 0 sgn + val 0.900000 rng l l debug update
+use_integ 0 0 0 sgn + val 0.900000 rng l m debug update
+use_adc 0 0 0 rng m update
+
+
 
 1. ADC Issues Update: the ADC does not update with time. Use Simple-Osc with an ADC to test it with time varying signals.
    - 1.0*in = ic*2
