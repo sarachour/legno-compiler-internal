@@ -91,11 +91,7 @@ elif args.subparser_name == "skelter":
 
 
 elif args.subparser_name == "jaunt":
-    if args.physical or args.sweep:
-        legno_util.exec_jaunt_phys(hdacv2_board,args)
-
-    if not args.physical and not args.sweep:
-        legno_util.exec_jaunt(hdacv2_board,args)
+    legno_util.exec_jaunt(hdacv2_board,args)
 
 elif args.subparser_name == "srcgen":
    legno_util.exec_srcgen(hdacv2_board,args)

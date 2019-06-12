@@ -9,6 +9,7 @@ import bmark.bmarks.compinh as compinh
 import bmark.bmarks.test as test
 import bmark.bmarks.rxn as rxn
 import bmark.bmarks.vanderpol as vanderpol
+import bmark.bmarks.lotka_volterra as lotka
 import bmark.bmarks.heat as heat
 import bmark.bmarks.pendulum as pendulum
 import bmark.bmarks.sensor_dynsys as sensor_dynsys
@@ -27,28 +28,27 @@ BMARKS = [
     rxn.model_dimer_mult(),
     #rxn.model_dimer_lut(),
     rxn.model_bidir(),
-
-    simple_osc.model("one",1.0),
     simple_osc.model("quad",4.0),
     #simple_osc.model("adc",0.9,adc=True),
     simple_osc.model("quarter",0.25, \
                      menv_name='t200'),
+    vanderpol.model(),
+    lotka.model(),
     spring.model(),
     oscillator.model(),
     pendulum.model(),
     bmmrxn.model(),
-    compinh.model(),
-    repri.model(),
-    vanderpol.model(),
+    #robot_control.model(),
+    #compinh.model(),
+    #repri.model(),
     heat.model(2,1),
     heat.model(4,2),
-    heat.model(6,2),
-    heat.model(8,2),
-    heat.model(16,2),
+    #heat.model(6,2),
+    #heat.model(8,2),
+    #heat.model(16,2),
     # external inputs
     test.nochange(),
     test.lut(),
-    robot_control.model(),
     # audio benchmarks
     audio_lpf.model(1,"basic"),
     audio_lpf.model(3,"chebychev"),
