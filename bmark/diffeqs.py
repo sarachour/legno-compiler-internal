@@ -9,7 +9,7 @@ import bmark.bmarks.compinh as compinh
 import bmark.bmarks.test as test
 import bmark.bmarks.rxn as rxn
 import bmark.bmarks.vanderpol as vanderpol
-import bmark.bmarks.lotka_volterra as lotka
+import bmark.bmarks.volterra_lotka as lotka
 import bmark.bmarks.heat as heat
 import bmark.bmarks.pendulum as pendulum
 import bmark.bmarks.sensor_dynsys as sensor_dynsys
