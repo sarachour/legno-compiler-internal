@@ -34,24 +34,6 @@ def long_time():
   return exp
 
 
-def gentoggle_env():
-  K = 0.0029618
-  expr1 = op.Add(
-    op.Const(0.5*K),
-    op.Mult(
-      op.Const(0.5*K), \
-      op.Sin(op.Mult(
-        op.Const(1.0),op.Var('t')
-      ))
-    )
-  )
-
-  exp = MathEnv('gentoggle')
-  exp.set_sim_time(20)
-  exp.set_input_time(20)
-  exp.set_input('PROT',expr1)
-  return exp
-
 def sensor_env_steady():
   exp = MathEnv('sensteady')
   sense = op.Mult(op.Const(0.1), \
