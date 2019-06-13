@@ -2,6 +2,17 @@
 
 1. I connected a mic with a dynamic range of 2.0 V (-1.0V to 1.0V) to the input pins, then directly routed the pins using interconnects to the external output ADC. The dynamic range of the corresponding differential signal is 3.3 V (-1.6-1.6 V). This is different from what is reported in the documentation (-1.3-1.3 V). Why? 
 
+
+BENCHMARKS
+
+bont / failed with jaunt-standard
+epor / success
+smmrxn / success
+smmrxnbig / failed with jaunt-standard
+repri / failed with arco
+gentoggle / not implemented
+bioosc / not implemented
+
 # TODO List
 
 can't calibrate:

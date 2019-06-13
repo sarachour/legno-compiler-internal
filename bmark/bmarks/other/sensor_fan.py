@@ -7,7 +7,7 @@ if __name__ == "__main__":
 from lang.prog import MathProg
 from ops import op, opparse
 from bmark.bmarks.common import *
-from bmark.bmarks.bbsys import build_bb_sys
+from bmark.bmarks.other.bbsys import build_bb_sys
 import math
 import bmark.menvs as menvs
 

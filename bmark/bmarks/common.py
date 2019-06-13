@@ -6,6 +6,12 @@ import math
 import os
 import tqdm
 
+def measure_var(prob,invar,outvar):
+  prob.bind(outvar,
+            op.Emit(op.Mult(op.Const(0.999999), op.Var(invar)), \
+                    loc='A0'))
+
+
 def parse_fn(expr,params):
     expr_conc = expr.format(**params)
     return opparse.parse(expr_conc)
