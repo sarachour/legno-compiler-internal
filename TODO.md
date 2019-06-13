@@ -3,7 +3,7 @@
 1. I connected a mic with a dynamic range of 2.0 V (-1.0V to 1.0V) to the input pins, then directly routed the pins using interconnects to the external output ADC. The dynamic range of the corresponding differential signal is 3.3 V (-1.6-1.6 V). This is different from what is reported in the documentation (-1.3-1.3 V). Why? 
 
 
-BENCHMARKS
+# Benchmark Status
 standard = only the medium components
 ideal = no minimum value constraints
 physical = minimum value constraints + quantization constraints
@@ -16,9 +16,15 @@ repri / failed [jaunt]
 gentoggle / failed [jaunt]
 bioosc / not implemented
 
-# TODO List
 
-can't calibrate:
+# TODO list
+
+- wrapper script for setting standard/unrestricted, ideal/physical
+- quantization constraints for physical
+- error model for physical
+- parameter for percent signal uncertain.
+
+# Calibration Failures
 
 use_integ 0 0 0 sgn + val 0.900000 rng m l debug update
 use_integ 0 0 0 sgn + val 0.900000 rng l l debug update
@@ -35,11 +41,7 @@ use_adc 0 0 0 rng m update
      - moved other components to different slice. no effect.
      - moved other components to different tile. no effect.
      - todo: move components to different chip? look at reference code?
-   
-3. heat1d/2:
-
-4. try repri, gentoggle.
-
+  
 # Enumeration of Contributions:
 
 ## Calibration
