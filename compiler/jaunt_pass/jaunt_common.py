@@ -231,8 +231,8 @@ def digital_quantize_constraint(jenv,circ,block,loc,port,handle,annot=""):
         noise_expr = jop.JConst(1.0/delta_h)
         signal_expr = jop.JMult(pars['math_scale'],jop.JConst(mrng.bound))
         snr_expr = jop.JMult(signal_expr,noise_expr)
-        jenv.gte(snr_expr,jop.JConst(min_snr), \
-                 annot='jcom-digital-minsig')
+        #jenv.gte(snr_expr,jop.JConst(min_snr), \
+        #         annot='jcom-digital-minsig')
 
 def max_sim_time_constraint(jenv,prob,circ):
     max_sim_time = _to_phys_time(circ,prob.max_sim_time)

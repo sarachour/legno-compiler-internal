@@ -35,11 +35,11 @@ def long_time():
 
 
 def gentoggle_env():
-  K = 0.000029618
+  K = 0.0029618
   expr1 = op.Add(
-    op.Const(0.0*K),
+    op.Const(0.5*K),
     op.Mult(
-      op.Const(0), \
+      op.Const(0.5*K), \
       op.Sin(op.Mult(
         op.Const(1.0),op.Var('t')
       ))

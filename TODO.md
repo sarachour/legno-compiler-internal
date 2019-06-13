@@ -4,13 +4,16 @@
 
 
 BENCHMARKS
+standard = only the medium components
+ideal = no minimum value constraints
+physical = minimum value constraints + quantization constraints
 
-bont / failed with jaunt-standard
-epor / success
-smmrxn / success
-smmrxnbig / failed with jaunt-standard
-repri / failed with arco
-gentoggle / not implemented
+bont / success [standard/ideal]
+epor / success [standard/ideal]
+smmrxn / success [standard/ideal]
+smmrxnbig / success [standard/ideal]
+repri / failed [jaunt]
+gentoggle / failed [jaunt]
 bioosc / not implemented
 
 # TODO List

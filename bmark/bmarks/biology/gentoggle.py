@@ -1,73 +1,12 @@
-'''
-type M
-type kmol
-type s
-
-time t : s
-
-%param a2 : M/s = 15.6
-%param a1 : M/s = 156.25
-%param K : kmol = 0.000029618
-
-param a1 : M/s = 15.6
-param a2 : M/s = 13.32
-
-
-param K : kmol = 0.0029618
-
-
-param nu : unit = 2.0015
-param beta : unit = 2.5
-param gamma : unit = 1.0
-
-
-param Cv : unit = 1
-param Cu : 1/M  = 1
-param kdeg : (M/s) = 1
-
-%
-output U : unit 
-output V : unit 
-local UTF : unit
-local VTF : unit
-local umodif : unit 
-%
-
-input IPTG : kmol
-def IPTG mag = [0,0.60] kmol
-
-
-param K2 : unit = 1.0
-
-rel umodif = (U)*(1/((1+(IPTG/K) )^nu))
-def umodif mag = [0,15.6] unit
-
-rel UTF = (Cu*a1)*((K2^beta)/((K2^beta) +(V^beta)))
-rel VTF = (Cv*a2)*((K2^gamma)/((K2^gamma) + (umodif^gamma)))
-%def UTF mag = [0,15.6] unit
-%def VTF mag = [0,13.32] unit
-
-%
-rel ddt U =  (UTF)/Cu - (kdeg*U) init 0.0
-def U mag = [0,15.6] unit
-%def ddt U sample 1000 s
-%def ddt U speed 1000 ms 
-
-%
-rel ddt V = (VTF)/Cv - (kdeg*V) init 0.0
-def V mag = [0,13.32] unit 
-
-%def ddt V sample 1000 s
-%def ddt V speed 1000 ms 
-'''
 if __name__ == "__main__":
   import sys
   import os
-  sys.path.insert(0,os.path.abspath("../../"))
+  sys.path.insert(0,os.path.abspath("../../../"))
 
 from lang.prog import MathProg
 from ops import op, opparse
 from bmark.bmarks.common import *
+import bmark.bmarks.other.bbsys as bbsys
 import bmark.menvs as menvs
 
 
@@ -76,7 +15,7 @@ def model():
   params = {
     'a2': 15.6,
     'a1': 156.25,
-    'K' : 0.000029618,
+    'K' : 0.000029618*10.0,
     'nu': 2.0015,
     'beta': 2.5,
     'gamma': 1.0,
@@ -91,10 +30,7 @@ def model():
     'utf_kd':1.0/K
   }
   prob = MathProg("gentoggle")
-  prob.bind("IPTG",op.ExtVar('PROT'))
-  prob.set_interval("PROT",0.0,0.30)
-  prob.set_bandwidth("PROT",10)
-
+  pos,vel = bbsys.build_bb_sys(prob,params['K'],1.0,0)
   umodif_fun = op.Func(['X'],
                        op.Div(
                          op.Const(1.0),
@@ -127,7 +63,8 @@ def model():
                       )
                     )
   )
-  prob.bind("umodif",op.Call([op.Var('IPTG')], umodif_fun))
+  prob.bind("IPTG",op.Var(pos))
+  prob.bind("umodif",op.Call([op.Var('P0')], umodif_fun))
   prob.set_interval("umodif",0.0,1.0)
 
   #to_beta = op.Func(['P'], op.Pow(op.Var('P'),op.Const(params['beta'])))
@@ -156,7 +93,7 @@ def model():
   prob.set_interval("U",0,15.6)
   prob.bind("U_OUT",op.Emit(op.Var('U')))
   prob.compile()
-  menv = menvs.get_math_env('gentoggle')
+  menv = menvs.get_math_env('t20')
   return menv,prob
 
 
