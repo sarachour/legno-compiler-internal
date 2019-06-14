@@ -132,7 +132,8 @@ def normalize_mode(m):
 
     if isinstance(m,tuple):
         return tuple(map(lambda mi: normalize_mode(mi), m))
-    if isinstance(m,Enum):
+
+    elif isinstance(m,Enum):
         return m.value
     else:
         return str(m)

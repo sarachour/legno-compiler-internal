@@ -433,7 +433,7 @@ def execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trialno):
     gren.add(parse('wait_for_key'))
 
   gren.add(parse('micro_run'))
-  circ_bmark,circ_indices,circ_scale_index,circ_opt,_,_ = \
+  circ_bmark,circ_indices,circ_scale_index,circ_method,circ_opt,_,_ = \
                     path_handler.grendel_file_to_args(filename)
 
 
@@ -444,7 +444,8 @@ def execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trialno):
     filename = path_handler.measured_waveform_file(circ_bmark, \
                                                    circ_indices, \
                                                    circ_scale_index, \
-                                                   circ_opt,
+                                                   circ_method, \
+                                                   circ_opt, \
                                                    menv.name, \
                                                    hwenv.name, \
                                                    info['label'],

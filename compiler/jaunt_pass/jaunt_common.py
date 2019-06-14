@@ -45,12 +45,13 @@ def get_parameters(jenv,circ,block,loc,port,handle=None):
                                config.comp_mode,scale_mode,handle)
                 physgain,physunc = physical_model(model)
             else:
+                msg = "NO model: %s[%s].%s [%s] %s %s error" % \
+                                (block.name,loc,port,handle, \
+                                 config.comp_mode,scale_mode)
                 jaunt_physlog.log(circ,block,loc, \
                             config,
                             scale_mode)
-                jenv.fail("no model: %s[%s].%s %s %s" % \
-                                (block.name,loc,port, \
-                                 config.comp_mode,scale_mode))
+                jenv.fail(msg)
                 physgain,physunc = ideal_model()
         else:
             physgain,physunc = ideal_model()

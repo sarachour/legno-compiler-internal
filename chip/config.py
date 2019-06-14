@@ -3,6 +3,7 @@ from ops.interval import Interval
 from ops.bandwidth import Bandwidth
 from compiler.common.data_symbolic import SymbolicModel
 import ops.op as ops
+import util.util as util
 
 class Labels(Enum):
     CONST_INPUT = 'const-inp';
@@ -95,11 +96,11 @@ class Config:
     @staticmethod
     def from_json(obj):
         cfg = Config()
-        cfg._comp_mode = obj['compute-mode']
+        cfg._comp_mode = util.normalize_mode(obj['compute-mode'])
         if isinstance(cfg._comp_mode, list):
             cfg._comp_mode = tuple(cfg._comp_mode)
 
-        cfg._scale_mode = obj['scale-mode']
+        cfg._scale_mode = util.normalize_mode(obj['scale-mode'])
         if isinstance(cfg._scale_mode, list):
             cfg._scale_mode = tuple(cfg._scale_mode)
 
@@ -137,18 +138,6 @@ class Config:
                              lambda v: Bandwidth.from_json(v))
         get_port_dict(cfg._exprs, obj, 'exprs', \
                       lambda v: ops.Op.from_json(v))
-        get_port_dict(cfg._gen_noise, obj, 'gen-noise', \
-                      lambda v: SymbolicModel.from_json(v))
-        get_port_dict(cfg._prop_noise, obj, 'prop-noise', \
-                      lambda v: SymbolicModel.from_json(v))
-        get_port_dict(cfg._gen_biases, obj,'gen-bias', \
-                      lambda v: SymbolicModel.from_json(v))
-        get_port_dict(cfg._prop_biases, obj,'prop-bias', \
-                      lambda v: SymbolicModel.from_json(v))
-        get_port_dict(cfg._gen_delays, obj,'gen-delay', \
-                      lambda v: SymbolicModel.from_json(v))
-        get_port_dict(cfg._prop_delays, obj,'prop-delay', \
-                      lambda v: SymbolicModel.from_json(v))
         #get_port_dict(cfg._mismatch_delays, obj,'mismatch-delay')
         return cfg
 
@@ -185,19 +174,6 @@ class Config:
 
         set_port_dict('exprs',self._exprs,
                       lambda value: value.to_json())
-        set_port_dict('gen-noise',self._gen_noise,
-                      lambda value: value.to_json())
-        set_port_dict('prop-noise',self._prop_noise,
-                      lambda value: value.to_json())
-        set_port_dict('gen-bias',self._gen_biases,
-                      lambda value: value.to_json())
-        set_port_dict('prop-bias',self._prop_biases,
-                      lambda value: value.to_json())
-        set_port_dict('gen-delay',self._gen_delays,
-                      lambda value: value.to_json())
-        set_port_dict('prop-delay',self._prop_delays,
-                      lambda value: value.to_json())
-        set_port_dict('mismatch-delay',self._mismatch_delays)
 
         return cfg
 

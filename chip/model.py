@@ -23,6 +23,8 @@ class PortModel():
   def from_json(obj):
     m = PortModel(None,None,None,None,None,None)
     m.__dict__ = obj
+    m._comp_mode = util.normalize_mode(m._comp_mode)
+    m._scale_mode = util.normalize_mode(m._scale_mode)
     return m
 
   @property
@@ -99,7 +101,7 @@ class PortModel():
     self._noise = v
 
   def __repr__(self):
-    r = "=== model ==="
+    r = "=== model ===\n"
     for k,v in self.__dict__.items():
       r += ("%s=%s\n" % (k,v))
     return r
@@ -149,12 +151,7 @@ class ModelDB:
     obj = json.loads(bytes.fromhex(data['model']) \
                              .decode('utf-8'))
 
-    if "_gain" in obj:
-      model = OutputModel.from_json(obj)
-
-    else:
-      model = PortModel.from_json(obj)
-
+    model = PortModel.from_json(obj)
     return model
 
 
@@ -183,11 +180,11 @@ class ModelDB:
 
     return None
 
-  def get(self,block,loc,port,comp_mode,scale_mode,handle=None):
+  def get(self,block,loc,port,comp_mode,scale_mode,handle):
     return self._get(block,loc,port, \
                      comp_mode,scale_mode,handle)
 
-  def has(self,block,loc,port,comp_mode,scale_mode,handle=None):
+  def has(self,block,loc,port,comp_mode,scale_mode,handle):
     return not self._get(block,loc,port, \
                          comp_mode,scale_mode,handle) is None
 
@@ -214,7 +211,7 @@ class ModelDB:
       port=str(model.port),
       comp_mode=str(model.comp_mode),
       scale_mode=str(model.scale_mode),
-      handle=model.handle,
+      handle=str(model.handle),
       model=model_bits
 
     )

@@ -111,14 +111,15 @@ def exec_srcgen(hdacv2_board,args):
     for fname in filelist:
       if fname.endswith('.circ'):
         print('<<<< %s >>>>' % fname)
-        circ_bmark,circ_indices,circ_scale_index,circ_opt = \
+        circ_bmark,circ_indices,circ_scale_index,circ_method,circ_opt = \
             path_handler.conc_circ_to_args(fname)
         filename = path_handler.grendel_file(circ_bmark, \
-                                            circ_indices, \
-                                            circ_scale_index, \
-                                            circ_opt,
-                                            menv.name,
-                                            hwenv.name)
+                                             circ_indices, \
+                                             circ_scale_index, \
+                                             circ_method, \
+                                             circ_opt,
+                                             menv.name,
+                                             hwenv.name)
 
         if path_handler.has_file(filename) and not recompute:
             continue

@@ -46,7 +46,7 @@ namespace prof {
     for(int i=0; i < result.size; i+= 1){
       sprintf(FMTBUF,
               "port=%s out=%f in0=%f in1=%f bias=%f noise=%f",
-              float16::to_float32(result.port[i]),
+              result.port[i],
               float16::to_float32(result.target[i]),
               float16::to_float32(result.input0[i]),
               float16::to_float32(result.input1[i]),
@@ -67,7 +67,7 @@ namespace prof {
               result.size, MAX_KEYS);
       error(FMTBUF);
     }
-    result.port[result.size] = float16::from_float32(prop);
+    result.port[result.size] = prop;
     result.bias[result.size] = float16::from_float32(bias);
     result.noise[result.size] = float16::from_float32(noise);
     result.target[result.size] = float16::from_float32(target);

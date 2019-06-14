@@ -1,7 +1,7 @@
 #ifndef CALIB_RESULT_H
 #define CALIB_RESULT_H
 
-#define SIZE2D 9
+#define SIZE2D 10
 #define SIZE1D (SIZE2D*SIZE2D)
 #define MAX_KEYS SIZE1D
 
@@ -15,8 +15,8 @@ typedef struct {
   uint16_t target[MAX_KEYS];
   uint16_t input0[MAX_KEYS];
   uint16_t input1[MAX_KEYS];
-  unsigned char size;
-  unsigned char port[MAX_KEYS];
+  uint8_t size;
+  uint8_t port[MAX_KEYS];
 } profile_t;
 
 typedef union {

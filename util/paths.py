@@ -134,6 +134,7 @@ class PathHandler:
       basename = name.split(".circ")[0]
       args = basename.split("_")
       bmark = args[0]
+      print(args)
       indices = list(map(lambda token: int(token), args[1:-3]))
       scale_index = int(args[-3].split('s')[1])
       model = args[-2]

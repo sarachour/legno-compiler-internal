@@ -140,8 +140,9 @@ def build_fanout_model(data):
                                scale_mode=scale_mode)
         yield model
 
+
 def build_integ_model(data):
-  comp_options = chipcmd.SignType.options()
+  comp_options = list(chipcmd.SignType.options())
 
   block,loc,grouped_dataset = group_dataset(data)
 
@@ -154,7 +155,8 @@ def build_integ_model(data):
                                         group['port']))
     gain,bias,bias_unc,noise = infer_model(group_data)
     for comp_mode in comp_options:
-      if group["port"]== "out0":
+      # the initial condition
+      if group["port"]== "in1":
         model = PortModel("integrator",loc,'out', \
                             handle=':z[0]', \
                             comp_mode=comp_mode,
@@ -164,15 +166,40 @@ def build_integ_model(data):
         model.noise = noise
         model.gain = gain
         yield model
-      else:
-        model = PortModel('integrator',loc,'in', \
+
+        model = PortModel('integrator',loc,'ic', \
                           comp_mode=comp_mode,
                           scale_mode=scale_mode)
         yield model
+
+      if group["port"]== "out0":
         model = PortModel('integrator',loc,'out', \
                           comp_mode=comp_mode,
                           scale_mode=scale_mode)
+        model.bias = bias
+        model.bias_uncertainty = bias_unc
+        model.noise = noise
+        yield model
 
+        model = PortModel('integrator',loc,'out', \
+                          handle=":z",
+                          comp_mode=comp_mode,
+                          scale_mode=scale_mode)
+        yield model
+
+      # the input port
+      elif group["port"] == "in0":
+        model = PortModel('integrator',loc,'in', \
+                          comp_mode=comp_mode,
+                          scale_mode=scale_mode)
+        model.bias = bias
+        model.bias_uncertainty = bias_unc
+        model.noise = noise
+        yield model
+        model = PortModel('integrator',loc,'out', \
+                          handle=":z'",
+                          comp_mode=comp_mode,
+                          scale_mode=scale_mode)
         yield model
 
 def build_dac_model(data):

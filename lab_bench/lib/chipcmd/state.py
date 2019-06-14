@@ -720,7 +720,7 @@ class FanoutBlockState(BlockState):
         + ordered(obj.rngs) \
         + [obj.third.boolean()]
     z = []
-    for port,target,bias,noise in obj.profile:
+    for port,target,in0,in1,bias,noise in obj.profile:
       gs = g + [port]
       y = [bias,math.sqrt(noise)]
       x = [target]

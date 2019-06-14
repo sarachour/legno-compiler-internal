@@ -112,7 +112,7 @@ bool helper_get_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
           mean,variance,target,ref);
   print_info(FMTBUF);
   prof::add_prop(result,
-                 out0Id,
+                 in1Id,
                  target,
                  0.0,
                  integ->m_codes.ic_val,
@@ -122,7 +122,8 @@ bool helper_get_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
 
 
 
-void Fabric::Chip::Tile::Slice::Integrator::measure(profile_t& result, float input, bool test_init_cond)
+void Fabric::Chip::Tile::Slice::Integrator::measure(profile_t& result, float input, \
+                                                    bool test_init_cond)
 {
   Dac * ref_dac = parentSlice->dac;
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;

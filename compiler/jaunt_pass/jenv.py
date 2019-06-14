@@ -56,10 +56,10 @@ class JauntEnvParams:
     if self.experimental_model:
       tag += "x"
     if self.quality_minimum:
-      tag += "q%f" % self._percent_analog_error
-    if self._quantize_minimum:
-      tag += "d%f" % self._percent_digital_error
-    if self._bandwidth_maximum:
+      tag += "q%d" % (self.percent_analog_error*100.0)
+    if self.quantize_minimum:
+      tag += "d%d" % (self.percent_digital_error*100.0)
+    if self.bandwidth_maximum:
       tag += "b"
     return tag
 

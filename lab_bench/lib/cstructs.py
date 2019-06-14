@@ -367,7 +367,7 @@ def state_t():
     )
 
 def profile_t():
-    nels = 81
+    nels = 100
     return cstruct.Struct(
         "bias" / cstruct.Array(nels,cstruct.Int16ul),
         "noise" / cstruct.Array(nels,cstruct.Int16ul),
