@@ -12,17 +12,28 @@ class PortModel():
     self._block = block
     self._loc = loc
     self._handle = handle
-    self._comp_mode = util.normalize_mode(comp_mode)
-    self._scale_mode = util.normalize_mode(scale_mode)
+    self._gain = 1.0
     self._noise = 0.0
     self._bias = 0.0
     self._unc_bias = 0.0
+    self._comp_mode = util.normalize_mode(comp_mode)
+    self._scale_mode = util.normalize_mode(scale_mode)
 
   @staticmethod
   def from_json(obj):
     m = PortModel(None,None,None,None,None,None)
     m.__dict__ = obj
     return m
+
+  @property
+  def gain(self):
+    return self._gain
+
+  @gain.setter
+  def gain(self,v):
+    assert(v > 0.0)
+    self._gain = v
+
 
   @property
   def identifier(self):
@@ -92,35 +103,6 @@ class PortModel():
     for k,v in self.__dict__.items():
       r += ("%s=%s\n" % (k,v))
     return r
-
-class OutputModel(PortModel):
-
-
-  def __init__(self,
-               block,
-               loc,
-               port,
-               comp_mode,
-               scale_mode,
-               handle=None):
-    PortModel.__init__(self,block,loc,port, \
-                       comp_mode,scale_mode,handle=handle)
-    self._gain = 1.0
-
-  @property
-  def gain(self):
-    return self._gain
-
-  @gain.setter
-  def gain(self,v):
-    assert(v > 0.0)
-    self._gain = v
-
-  @staticmethod
-  def from_json(obj):
-    m = OutputModel(None,None,None,None,None,None)
-    m.__dict__ = obj
-    return m
 
 
 class ModelDB:

@@ -160,7 +160,6 @@ class BlockStateDatabase:
 
 
   def get(self,blockkey):
-    print(blockkey.to_key())
     results = self._get(blockkey)
     if not (len(results) == 1):
       raise Exception("cannot get <%s> : no results found" \
@@ -412,7 +411,7 @@ class DacBlockState(BlockState):
   def to_rows(self,obj):
     G = [obj.inv.value,obj.rng,obj.source]
     Z = [obj.const_val]
-    for port,target,bias,noise in obj.profile:
+    for port,target,in0,in1,bias,noise in obj.profile:
       GS = G + [port]
       Y = [bias,math.sqrt(noise)]
       X = [target]
@@ -493,7 +492,7 @@ class MultBlockState(BlockState):
          ["vga","port"]
     ZH = ["gain"]
     YH = ["bias","noise"]
-    XH = ["output"]
+    XH = ["output","in0","in1/gain"]
     return GH,ZH,XH,YH
 
   def to_rows(self,obj):
@@ -501,10 +500,10 @@ class MultBlockState(BlockState):
         + ordered(obj.ranges) \
         + [obj.vga.boolean()]
     Z = [obj.gain_val]
-    for port,target,bias,noise in obj.profile:
+    for port,target,in0,in1,bias,noise in obj.profile:
       GS = G + [port]
       Y = [bias,math.sqrt(noise)]
-      X = [target]
+      X = [target,in0,in1]
       yield GS,Z,X,Y
 
   def update_gain(self,value):
@@ -607,7 +606,7 @@ class IntegBlockState(BlockState):
     g = ordered(obj.invs) \
         + ordered(obj.ranges)
     z = [obj.ic_val]
-    for port,target,bias,noise in obj.profile:
+    for port,target,in0,in1,bias,noise in obj.profile:
       gs = g + [port]
       y = [bias,math.sqrt(noise)]
       x = [target]

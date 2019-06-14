@@ -369,11 +369,11 @@ def state_t():
 def profile_t():
     nels = 81
     return cstruct.Struct(
-        "bias" / cstruct.Array(nels,cstruct.Int16l),
-        "noise" / cstruct.Array(nels,cstruct.Int16l),
-        "output" / cstruct.Array(nels,cstruct.Int16l),
-        "input0" / cstruct.Array(nels,cstruct.Int16l),
-        "input1" / cstruct.Array(nels,cstruct.Int16l),
+        "bias" / cstruct.Array(nels,cstruct.Int16ul),
+        "noise" / cstruct.Array(nels,cstruct.Int16ul),
+        "output" / cstruct.Array(nels,cstruct.Int16ul),
+        "input0" / cstruct.Array(nels,cstruct.Int16ul),
+        "input1" / cstruct.Array(nels,cstruct.Int16ul),
         "size" / cstruct.Int8ul,
         "port" / cstruct.Array(nels,cstruct.Int8ul)
     )

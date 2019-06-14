@@ -37,6 +37,9 @@ parser.add_argument("--profile", action='store_true', \
                     help="emit profile data")
 parser.add_argument("--dump-db", action='store_true', \
                     help="dump the database contents to files")
+parser.add_argument("--dry-run", action='store_true', \
+                    help="dump the database contents to files")
+
 
 
 args = parser.parse_args()
@@ -77,6 +80,9 @@ if args.calibrate:
     if not succ:
         print("[ERROR] some calibration steps failed..")
         sys.exit(1)
+
+if args.dry_run:
+    sys.exit(0)
 
 try:
     if args.script == None:

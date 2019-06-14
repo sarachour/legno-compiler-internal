@@ -4,7 +4,7 @@ import ops.jop as jop
 import ops.nop as nop
 import ops.op as ops
 import chip.props as props
-from chip.model import ModelDB, PortModel, OutputModel
+from chip.model import ModelDB, PortModel
 import chip.hcdc.globals as glb
 import util.util as util
 import util.config as CONFIG
@@ -19,11 +19,7 @@ def ideal_model():
     return 1.0,0.0
 
 def physical_model(model):
-    if isinstance(model,OutputModel):
-        physgain = model.gain
-    else:
-        physgain = 1.0
-
+    physgain = model.gain
     unc = math.sqrt(model.noise**2.0 + model.bias_uncertainty**2.0)
     physunc = unc+abs(model.bias)
     return physgain, physunc

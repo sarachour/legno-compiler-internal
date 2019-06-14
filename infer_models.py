@@ -1,6 +1,7 @@
 import argparse
 import sys
 import os
+import shutil
 import util.config as CONFIG
 import lab_bench.lib.chipcmd.data as chipcmd
 import json
@@ -8,7 +9,7 @@ import itertools
 import numpy as np
 import scipy.optimize
 import math
-from chip.model import OutputModel, PortModel, ModelDB
+from chip.model import PortModel, ModelDB
 
 def to_sign(name):
   return chipcmd.SignType(name)
@@ -95,7 +96,7 @@ def build_adc_model(data):
     gain,bias,bias_unc,noise = infer_model(group_data,adc=True)
     comp_mode = "*"
     scale_mode = to_range(group['rng'])
-    model = OutputModel('tile_adc',loc,'out',
+    model = PortModel('tile_adc',loc,'out',
                         comp_mode=comp_mode,
                         scale_mode=scale_mode)
 
@@ -125,7 +126,7 @@ def build_fanout_model(data):
     comp_modes = list(itertools.product(*comp_options))
     for comp_mode in comp_modes:
       for scale_mode in scale_modes:
-        model = OutputModel(block,loc,group['port'],
+        model = PortModel(block,loc,group['port'],
                             comp_mode=comp_mode,
                             scale_mode=scale_mode)
         model.bias = bias
@@ -154,7 +155,7 @@ def build_integ_model(data):
     gain,bias,bias_unc,noise = infer_model(group_data)
     for comp_mode in comp_options:
       if group["port"]== "out0":
-        model = OutputModel("integrator",loc,'out', \
+        model = PortModel("integrator",loc,'out', \
                             handle=':z[0]', \
                             comp_mode=comp_mode,
                             scale_mode=scale_mode)
@@ -183,7 +184,7 @@ def build_dac_model(data):
     comp_mode = to_sign(group['inv'])
     scale_mode = to_range(group['rng'])
     # ignore source
-    model = OutputModel('tile_dac',loc,'out', \
+    model = PortModel('tile_dac',loc,'out', \
                         comp_mode=comp_mode, \
                         scale_mode=scale_mode)
     model.bias = bias
@@ -213,7 +214,7 @@ def build_mult_model(data):
     print("scale-mode=%s" % str(scale_mode))
     gain,bias,bias_unc,noise = infer_model(group_data)
     comp_mode = "vga" if group['vga'] else "mult"
-    model = OutputModel("multiplier",loc,'out', \
+    model = PortModel("multiplier",loc,'out', \
                         comp_mode=comp_mode,
                         scale_mode=scale_mode)
     model.bias = bias
@@ -259,6 +260,13 @@ def build_model(data):
     db.put(model)
 
 parser = argparse.ArgumentParser()
+shutil.rmtree(CONFIG.DATASET_DIR)
+
+print("python3 grendel.py --dump-db")
+retcode = os.system("python3 grendel.py --dump-db")
+if retcode != 0:
+  raise Exception("could not dump database: retcode=%d" % retcode)
+
 for dirname, subdirlist, filelist in os.walk(CONFIG.DATASET_DIR):
   for fname in filelist:
     if fname.endswith('.json'):

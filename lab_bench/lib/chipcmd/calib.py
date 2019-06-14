@@ -21,7 +21,7 @@ def from_float16(val):
 
     ffstr = struct.pack('>l', ff)
     ff_float = struct.unpack('>f', ffstr)[0]
-    print("val=%x hex=%x float=%x" % (val, ff, ff_float))
+    #print("val=%d hex=%x float=%f" % (val, ff, ff_float))
     return ff_float
 
 class CharacterizeCmd(AnalogChipCommand):
