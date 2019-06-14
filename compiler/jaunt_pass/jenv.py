@@ -9,20 +9,73 @@ import sys
 class JauntVarType(Enum):
   SCALE_VAR= "SCV"
   COEFF_VAR = "COV"
+  #NZ_VAR = "NZ"
+  #PHYSCOEFF_VAR = "PHCOV"
+
   OP_RANGE_VAR = "OPV"
   INJECT_VAR = "IJV"
   VAR = "VAR"
   MODE_VAR = "MODV"
   TAU = "TAU"
 
+class JauntEnvParams:
+  class Type(Enum):
+    PHYSICAL = "physical"
+    IDEAL = "ideal"
+
+  def __init__(self,digital_error=0.05, \
+               analog_error=0.05):
+    self.percent_digital_error = digital_error
+    self.percent_analog_error = analog_error
+    self.ideal()
+
+  def ideal(self):
+    self.experimental_model = False
+    self.quantize_minimum = False
+    self.quality_minimum = False
+    self.bandwidth_maximum = True
+    self.model = JauntEnvParams.Type.IDEAL
+
+  def physical(self):
+    self.experimental_model = True
+    self.quantize_minimum = True
+    self.quality_minimum = True
+    self.bandwidth_maximum = True
+    self.model = JauntEnvParams.Type.PHYSICAL
+
+  def set_model(self,model):
+    if model == JauntEnvParams.Type.PHYSICAL:
+      self.physical()
+    elif model == JauntEnvParams.Type.IDEAL:
+      self.ideal()
+    else:
+      raise Exception("unknown jenv model: <%s>" % model);
+
+  def tag(self):
+    tag = ""
+    if self.experimental_model:
+      tag += "x"
+    if self.quality_minimum:
+      tag += "q%f" % self._percent_analog_error
+    if self._quantize_minimum:
+      tag += "d%f" % self._percent_digital_error
+    if self._bandwidth_maximum:
+      tag += "b"
+    return tag
+
 class JauntEnv:
-  def __init__(self,physical=False):
+  def __init__(self,model="physical", \
+               digital_error=0.05, \
+               analog_error=0.05):
     # scaling factor name to port
     self._to_jaunt_var = {}
     self._from_jaunt_var ={}
 
     self._in_use = {}
 
+    self.params = JauntEnvParams(digital_error=digital_error, \
+                                 analog_error=analog_error)
+    self.params.set_model(JauntEnvParams.Type(model))
     self._eqs = []
     self._ltes = []
     self._failed = False
@@ -31,15 +84,10 @@ class JauntEnv:
     self._use_tau = False
     self._solved = False
     self._interactive = False
-    self._physical = physical
     self.decl_jaunt_var((),JauntVarType.TAU)
 
     self.no_quality = False
     self.time_scaling = True
-
-  @property
-  def physical(self):
-    return self._physical
 
   def set_time_scaling(self,v):
     self.time_scaling = v

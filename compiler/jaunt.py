@@ -13,6 +13,7 @@ import compiler.jaunt_pass.expr_visitor as exprvisitor
 import compiler.jaunt_pass.jaunt_util as jaunt_util
 import compiler.jaunt_pass.jaunt_common as jaunt_common
 import compiler.jaunt_pass.jaunt_infer as jaunt_infer
+import compiler.jaunt_pass.jaunt_physlog as jaunt_physlog
 
 
 import ops.jop as jop
@@ -119,6 +120,10 @@ def compute_scale(jenv,prog,circ,objfun):
     jopt.method = objfun.name()
     blacklist = []
     smtenv = jsmt.build_smt_prob(circ,jenv,blacklist=blacklist)
+    if smtenv is None:
+        print("failed to build inference problem")
+        return
+
     results = list(jsmt.solve_smt_prob(smtenv,nslns=10))
     if len(results) == 0:
         raise Exception("no solution exists")
@@ -141,25 +146,11 @@ def compute_scale(jenv,prog,circ,objfun):
         new_circ = apply_result(jenv,circ,sln)
         yield thisobj,new_circ
 
-def scale_again(prog,circ,do_physical, do_sweep, physical=False):
-    objs = []
-    infer.clear(circ)
-    infer.infer_intervals(prog,circ)
-    infer.infer_bandwidths(prog,circ)
-    infer.infer_snrs(prog,circ)
 
-    if do_physical:
-        objs += JauntObjectiveFunctionManager.physical_methods()
-    if do_sweep:
-        objs += JauntObjectiveFunctionManager.sweep_methods()
-
-    jenv = jenvlib.JauntEnv(physical=physical)
-
-    for obj in objs:
-        for objf,new_circ in compute_scale(jenv,prog,circ,obj):
-            yield objf.tag(),new_circ
-
-def scale(prog,circ,nslns,physical=False):
+def scale(prog,circ,nslns, \
+          model='physical', \
+          digital_error=0.05, \
+          analog_error=0.05):
     infer.clear(circ)
     infer.infer_intervals(prog,circ)
     infer.infer_bandwidths(prog,circ)
@@ -167,6 +158,10 @@ def scale(prog,circ,nslns,physical=False):
     objs = JauntObjectiveFunctionManager.basic_methods()
     for idx,infer_circ in enumerate(jaunt_infer.infer_scale_config(prog,circ,nslns)):
         for obj in objs:
-            jenv = jenvlib.JauntEnv(physical=physical)
+            jenv = jenvlib.JauntEnv(model=model, \
+                                    digital_error=digital_error, \
+                                    analog_error=analog_error)
             for final_obj,final_circ in compute_scale(jenv,prog,infer_circ,obj):
-                yield idx,final_obj.tag(), final_circ
+                yield idx,final_obj.tag(),jenv.params.tag(),final_circ
+
+    jaunt_physlog.save()

@@ -214,7 +214,7 @@ def is_same_tile(circ,loc1,loc2):
       return False
   return True
 
-def gen_block(gprog,circ,block,locstr,config,connected_ports=[]):
+def gen_block(gprog,circ,block,locstr,config):
   if block.name == 'multiplier':
     generator = gen_use_multiplier(circ,block,locstr,config)
 

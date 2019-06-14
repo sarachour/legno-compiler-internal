@@ -81,8 +81,8 @@ for k,v in params.items():
   print("%s=%s" % (k,v))
 
 arco_args = \
-  "--subset {subset} {bmark} arco --xforms 1 --abs-circuits {n_abs}" + \
-  "--conc-circuits {n_conc} --recompute"
+  "--subset {subset} {bmark} arco --xforms 1 --abs-circuits {n_abs} " + \
+  "--conc-circuits {n_conc}"
 succ = True
 if args.arco:
   succ = execute(arco_args,params,'arco.log')

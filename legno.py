@@ -46,6 +46,10 @@ jaunt_subp.add_argument('--sweep', action='store_true', \
                         help='do performance sweep.')
 jaunt_subp.add_argument('--scale-circuits', type=int,default=15, \
                        help='number of scaled circuits to generate.')
+jaunt_subp.add_argument('--digital-error', type=float, default=0.04, \
+                        help='do performance sweep.')
+jaunt_subp.add_argument('--analog-error',type=float,default=0.04, \
+                        help='do performance sweep.')
 
 
 '''
@@ -70,7 +74,7 @@ from chip.hcdc.hcdcv2_4 import make_board
 from chip.hcdc.globals import HCDCSubset
 subset = HCDCSubset(args.subset)
 hdacv2_board = make_board(subset)
-args.bmark_dir = subset
+args.bmark_dir = subset.value
 
 if args.subparser_name == "arco":
     legno_util.exec_arco(hdacv2_board, args)
