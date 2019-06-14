@@ -57,8 +57,7 @@ MATH_ENVS = [
   audio(),
   long_time(),
   medlong_time(),
-  long_time(),
-  gentoggle_env(),
+  long_time()
 ]
 
 def get_math_env(name):

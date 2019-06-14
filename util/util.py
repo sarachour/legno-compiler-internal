@@ -30,6 +30,9 @@ class Timer:
         self._start = None
 
     def __repr__(self):
+        if len(self._runs) == 0:
+            return "%s mean=n/a std=n/a"
+
         mean = np.mean(self._runs)
         std = np.std(self._runs)
         return "%s mean=%s std=%s" % (self._name,mean,std)
