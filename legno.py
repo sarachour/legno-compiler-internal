@@ -79,15 +79,6 @@ args.bmark_dir = subset.value
 if args.subparser_name == "arco":
     legno_util.exec_arco(hdacv2_board, args)
 
-    '''
-elif args.subparser_name == "graph":
-    legno_util.exec_graph(hdacv2_board,args)
-
-elif args.subparser_name == "skelter":
-    legno_util.exec_skelter(hdacv2_board,args)
-    '''
-
-
 elif args.subparser_name == "jaunt":
     legno_util.exec_jaunt(hdacv2_board,args)
 

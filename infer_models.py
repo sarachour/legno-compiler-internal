@@ -10,6 +10,8 @@ import numpy as np
 import scipy.optimize
 import math
 from chip.model import PortModel, ModelDB
+from chip.hcdc.globals import HCDCSubset
+import matplotlib.pyplot as plt
 
 def to_sign(name):
   return chipcmd.SignType(name)
@@ -34,6 +36,8 @@ def group_dataset(data):
     if not key in grouped_dataset:
       grouped_dataset[key] = {'group':group,
                               'target':[],
+                              'in0':[],
+                              'in1':[],
                               'bias':[],
                               'noise':[],
                               'params':{}}
@@ -45,8 +49,19 @@ def group_dataset(data):
     params = dict(zip(data['params']['fields'], \
                       data['params']['values'][i]))
 
+    key0,key1 = None,None
+    for it in filter(lambda k: 'in0' in k, expected.keys()):
+      key0 = it
+    for it in filter(lambda k: 'in1' in k, expected.keys()):
+      key1 = it
+
     assert(len(grpdata) == len(grpfields))
     grouped_dataset[key]['target'].append(expected['output'])
+    if not key0 is None:
+      grouped_dataset[key]['in0'].append(expected[key0])
+    if not key1 is None:
+      grouped_dataset[key]['in1'].append(expected[key1])
+
     grouped_dataset[key]['bias'].append(observed['bias'])
     grouped_dataset[key]['noise'].append(observed['noise'])
     for k,v in params.items():
@@ -67,6 +82,8 @@ def infer_model(data,adc=False):
   bias = np.array(list(map(lambda i: data['bias'][i], range(n))))
   target= np.array(list(map(lambda i: data['target'][i], range(n))))
   noise = np.array(list(map(lambda i: data['noise'][i], range(n))))
+  in0 = np.array(list(map(lambda i: data['in0'][i], range(n))))
+  in1 = np.array(list(map(lambda i: data['in1'][i], range(n))))
   if adc:
     bias = np.array(list(map(lambda i: bias[i]/128.0, range(n))))
     target = np.array(list(map(lambda i: (target[i]-128.0)/128.0, range(n))))
@@ -77,10 +94,28 @@ def infer_model(data,adc=False):
 
   elif n > 1:
     meas = np.array(list(map(lambda i: bias[i]+target[i], range(n))))
+    #plt.scatter(target,meas,s=1.0)
+    if len(in0) + len(in1) > 0:
+      error = meas-target
+      assert(len(in0) == len(error))
+      plt.scatter(in0,in1,s=6.0,c=error)
+      plt.savefig("iorel.png")
+      plt.clf()
+
     (gain,bias),corrs= scipy.optimize.curve_fit(apply_model, target, meas)
     pred = np.array(list(map(lambda i: apply_model(target[i],gain,bias), \
                              range(n))))
-    unc_var = sum(map(lambda i: (meas[i]-pred[i])**2.0, range(n)))/n
+    errors = list(map(lambda i: (meas[i]-pred[i])**2.0, range(n)))
+    plt.scatter(target,meas,label='data',c='black')
+    plt.plot(target,pred,label='pred',c='red')
+    plt.legend()
+    plt.savefig("model.png")
+    plt.clf()
+    plt.scatter(target,errors)
+    plt.savefig("errors.png")
+    plt.clf()
+    input("continue?")
+    unc_var = sum(errors)/n
     unc_std = math.sqrt(unc_var)
     nz_var = sum(noise)/n
     nz_std = math.sqrt(nz_var)
@@ -240,7 +275,7 @@ def build_mult_model(data):
 
     print("scale-mode=%s" % str(scale_mode))
     gain,bias,bias_unc,noise = infer_model(group_data)
-    comp_mode = "vga" if group['vga'] else "mult"
+    comp_mode = "vga" if group['vga'] else "mul"
     model = PortModel("multiplier",loc,'out', \
                         comp_mode=comp_mode,
                         scale_mode=scale_mode)
@@ -265,7 +300,12 @@ def build_mult_model(data):
 
 def build_model(data):
   meta = data['metadata']
-  print("=== BLOCK %s ===" % meta['block'])
+  print("=== BLOCK %s %s ===" % (meta['block'], \
+                                 ".".join(
+                                   map(lambda v: str(v), \
+                                       meta['loc'].values()) \
+                                 ))
+  )
   if meta['block'] == 'adc':
     gen = build_adc_model(data)
   elif meta['block'] == 'fanout':
@@ -286,7 +326,28 @@ def build_model(data):
   for model in gen:
     db.put(model)
 
-parser = argparse.ArgumentParser()
+def populate_default_models(board):
+  print("==== Populate Default Models ===")
+  db = ModelDB()
+  for blkname in ['tile_in','tile_out', \
+                  'chip_in','chip_out', \
+                  'ext_chip_in','ext_chip_out']:
+    block = board.block(blkname)
+    for inst in board.instances_of_block(blkname):
+      for port in block.inputs + block.outputs:
+        model = PortModel(blkname,inst,port, \
+                          comp_mode='*', \
+                          scale_mode='*')
+        db.put(model)
+
+parser = argparse.ArgumentParser(description="Model inference engine")
+parser.add_argument('--subset',default='standard',
+                    help='component subset to use for compilation')
+parser.add_argument('--populate-defaults',action='store_true',
+                    help='insert default models for connection blocks')
+
+args = parser.parse_args()
+
 shutil.rmtree(CONFIG.DATASET_DIR)
 
 print("python3 grendel.py --dump-db")
@@ -301,3 +362,9 @@ for dirname, subdirlist, filelist in os.walk(CONFIG.DATASET_DIR):
       with open(fpath,'r') as fh:
         obj = json.loads(fh.read())
         build_model(obj)
+
+if args.populate_defaults:
+  from chip.hcdc.hcdcv2_4 import make_board
+  subset = HCDCSubset(args.subset)
+  hdacv2_board = make_board(subset)
+  populate_default_models(hdacv2_board)

@@ -67,6 +67,10 @@ parser.add_argument('--hwenv',default='default',
                     help='default hardware environment')
 parser.add_argument('--arco',action='store_true',
                    help='use arco to generate circuits.')
+parser.add_argument("--digital-error",default=0.05,type=float, \
+                   help="digital percent error")
+parser.add_argument("--analog-error",default=0.05,type=float, \
+                   help="analog percent error")
 parser.add_argument('bmark',
                    help='benchmark to run.')
 
@@ -76,6 +80,8 @@ args = parser.parse_args()
 params = read_config(args.config)
 params['bmark'] = args.bmark
 params['hwenv'] = args.hwenv
+params['digital_error'] = args.digital_error
+params['analog_error'] = args.analog_error
 
 for k,v in params.items():
   print("%s=%s" % (k,v))
@@ -88,7 +94,8 @@ if args.arco:
   succ = execute(arco_args,params,'arco.log')
 
 jaunt_args = \
-  "--subset {subset} {bmark} jaunt --model {model} --scale-circuits {n_scale} {sweep}"
+  "--subset {subset} {bmark} jaunt --model {model} --scale-circuits {n_scale} {sweep} " + \
+  "--digital-error {digital_error} --analog-error {analog_error}"
 if succ:
   execute(jaunt_args,params,'jaunt.log')
 

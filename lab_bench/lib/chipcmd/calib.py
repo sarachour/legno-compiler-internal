@@ -12,16 +12,17 @@ def from_float16(val):
     if val == 0:
         return 0.0
 
-    ff = val&0x8000;
+    # sign bit
+    ff = (val&0x8000) << 16;
     oldexp = ((val&0x7FFF)>>(15-nbits_exp))
     bias = (1<<(nbits_exp-1))-1
     ff |= ((oldexp-bias+127)<<23);
     mantissa_mask=(0xFFFF>>(nbits_exp+1))
     ff |= ((val&mantissa_mask)<<(23-(15-nbits_exp)));
 
-    ffstr = struct.pack('>l', ff)
+    ffstr = struct.pack('>L', ff)
     ff_float = struct.unpack('>f', ffstr)[0]
-    #print("val=%d hex=%x float=%f" % (val, ff, ff_float))
+    #print("val=%d hex=%x bytes=%s float=%f" % (val, ff, ffstr,ff_float))
     return ff_float
 
 class CharacterizeCmd(AnalogChipCommand):
