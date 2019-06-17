@@ -55,7 +55,7 @@ class PropSNRVisitor(Visitor):
     else:
       snr = self._prog.analog_snr()
 
-    print("snr in %s[%s].%s => %s" % (block_name,loc,port,snr))
+    #print("snr in %s[%s].%s => %s" % (block_name,loc,port,snr))
     config.set_snr(port,snr)
 
 
@@ -74,7 +74,7 @@ class PropSNRVisitor(Visitor):
     if block_name == 'integrator':
       return
 
-    print("snr out %s[%s].%s => %s" % (block_name,loc,port,snr))
+    #print("snr out %s[%s].%s => %s" % (block_name,loc,port,snr))
     config.set_snr(port,snr)
 
 

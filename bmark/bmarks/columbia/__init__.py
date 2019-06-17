@@ -12,7 +12,7 @@ def get_benchmarks():
     vanderpol.model(),
     pendulum.model(),
     spring.model(),
-    #robot_control.model(),
+    robot_control.model(),
     heat.model(2,1),
     heat.model(4,2),
   ]

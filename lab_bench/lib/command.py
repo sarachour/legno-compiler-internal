@@ -92,7 +92,8 @@ def profile(state,obj):
 
 def calibrate(state,obj,recompute=False, \
               targeted_calibrate=False, \
-              targeted_measure=False):
+              targeted_measure=False,
+              error_scale=1.0):
     if isinstance(obj,UseCommand):
         dbkey = obj.to_key()
         if not (state.state_db.has(dbkey)) or \
@@ -110,7 +111,7 @@ def calibrate(state,obj,recompute=False, \
                                 obj.loc.tile,
                                 obj.loc.slice,
                                 obj.loc.index,
-                                max_error=obj.max_error,
+                                max_error=obj.max_error*error_scale,
                                 targeted=targeted_calibrate) \
                                 .execute(state)
             if succ:

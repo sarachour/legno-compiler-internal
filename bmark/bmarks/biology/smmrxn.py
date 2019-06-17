@@ -12,8 +12,6 @@ import bmark.menvs as menvs
 
 def model(big=False):
   prob = MathProg("smmrxn%s" % ("big" if big else ""))
-  #prob.set_analog_snr(5.0)
-  #prob.set_digital_snr(10.0)
   params = {
     'E0' : 6800 if big else 0.15,
     'S0' : 4400 if big else 0.11,
@@ -23,8 +21,10 @@ def model(big=False):
     'one': 0.9999
   }
   ES = parse_diffeq("(({kf}*E)*S) + {kr}*(-ES)", "ES0", ":z", params)
-  E = parse_diffeq("(({kf}*(-E))*S) + {kr}*(ES)", "E0", ":y", params)
-  S = parse_diffeq("(({kf}*(-E))*S) + {kr}*(ES)", "S0", ":x", params)
+  #E = parse_diffeq("(({kf}*(-E))*S) + {kr}*(ES)", "E0", ":y", params)
+  #S = parse_diffeq("(({kf}*(-E))*S) + {kr}*(ES)", "S0", ":x", params)
+  E = parse_fn("{E0} - {one}*ES",params)
+  S = parse_fn("{S0} - {one}*ES",params)
   prob.bind("E",E)
   prob.bind("S",S)
   prob.bind("ES",ES)
@@ -32,9 +32,10 @@ def model(big=False):
   prob.set_interval("S",0,params['S0'])
   max_ES = min(params['E0'],params['S0'])
   prob.set_interval("ES",0,max_ES)
-  prob.bind("COMPLEX", op.Emit(
-    op.Mult(op.Const(params['one']),op.Var("ES"))
-  ))
+  #prob.bind("COMPLEX", op.Emit(
+  #  op.Mult(op.Const(params['one']),op.Var("ES"))
+  #))
+  prob.bind("COMPLEX", op.Emit(op.Var("ES")))
   prob.set_max_sim_time(20)
   prob.compile()
   menv = menvs.get_math_env('t20')

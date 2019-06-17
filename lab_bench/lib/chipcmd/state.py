@@ -399,7 +399,6 @@ class DacBlockState(BlockState):
                              self.targeted)
 
 
- 
 
   def header(self):
     GH = ['inv','rng','source','port']
@@ -420,7 +419,6 @@ class DacBlockState(BlockState):
   def update_value(self,value):
     self.const_val = value
     self.const_code = signed_float_to_byte(value)
-
 
 
   def to_cstruct(self):
@@ -806,7 +804,7 @@ class AdcBlockState(BlockState):
     ]
 
     z = []
-    for port,target,bias,noise in obj.profile:
+    for port,target,in0,in1,bias,noise in obj.profile:
       gs = g + [port]
       y = [bias,math.sqrt(noise)]
       x = [target]

@@ -83,6 +83,16 @@ def main_script_calibrate(state,filename,recompute=False):
             succ = cmd.calibrate(state,command_obj, \
                                  recompute=recompute)
             if succ is None:
+                succ = cmd.calibrate(state,command_obj, \
+                                     recompute=recompute,
+                                     error_scale=2.0)
+
+            if succ is None:
+                succ = cmd.calibrate(state,command_obj, \
+                                     recompute=recompute,
+                                     error_scale=4.0)
+
+            if succ is None:
                 continue
 
             if succ:

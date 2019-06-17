@@ -126,7 +126,7 @@ def compute_scale(jenv,prog,circ,objfun):
 
     results = list(jsmt.solve_smt_prob(smtenv,nslns=10))
     if len(results) == 0:
-        raise Exception("no solution exists")
+        return
 
     print("objective: %s" % objfun.name())
     for gpprob,thisobj in \
@@ -156,7 +156,12 @@ def scale(prog,circ,nslns, \
     infer.infer_bandwidths(prog,circ)
     infer.infer_snrs(prog,circ)
     objs = JauntObjectiveFunctionManager.basic_methods()
-    for idx,infer_circ in enumerate(jaunt_infer.infer_scale_config(prog,circ,nslns)):
+    for idx,infer_circ in enumerate(jaunt_infer.infer_scale_config(prog, \
+                                                                   circ, \
+                                                                   nslns, \
+                                                                   model=model,
+                                                                   digital_error=digital_error,
+                                                                   analog_error=analog_error)):
         for obj in objs:
             jenv = jenvlib.JauntEnv(model=model, \
                                     digital_error=digital_error, \
@@ -165,3 +170,5 @@ def scale(prog,circ,nslns, \
                 yield idx,final_obj.tag(),jenv.params.tag(),final_circ
 
     jaunt_physlog.save()
+    if not jaunt_physlog.is_empty():
+        raise Exception("must calibrate components")

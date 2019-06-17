@@ -34,28 +34,32 @@ def read_config(cfgfile):
 
 def execute(args,params,logfile):
   argstr = args.format(**params).split(" ")
-  cmd = ['python3', 'legno.py']+ argstr
-  print(" ".join(cmd))
+  cmd = list(filter(lambda q: q != "", \
+                    ['python3', 'legno.py']+ argstr))
+
+  cmdstr = " ".join(cmd)
+  print(cmdstr)
   try:
     # stdout = subprocess.PIPE lets you redirect the output
-    res = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    returncode = os.system(cmdstr)
   except OSError:
     print(cmd)
     print("error: popen")
     sys.exit(-1) # if the subprocess call failed, there's not much point in continuing
 
-  res.wait()
-  # access the output from stdout
-  result = res.stdout.read()
-  with open(logfile,'w') as fh:
-    for line in result.strip().decode().splitlines():
-      fh.write("%s\n" % line)
-
-  if res.returncode != 0:
+  if returncode != 0:
     print("error: exit code is nonzero")
     return False
   else:
     return True
+
+def exec_jaunt(params):
+
+  jaunt_args = \
+               "--subset {subset} {bmark} jaunt --model {model} " + \
+               "--scale-circuits {n_scale} {sweep} " + \
+               "--digital-error {digital_error} --analog-error {analog_error}"
+  succ = execute(jaunt_args,params,'jaunt.log')
 
 
 
@@ -73,6 +77,10 @@ parser.add_argument("--analog-error",default=0.05,type=float, \
                    help="analog percent error")
 parser.add_argument('bmark',
                    help='benchmark to run.')
+parser.add_argument("--search",action="store_true", \
+                    help="search for minimum percent error")
+parser.add_argument("--srcgen",action="store_true", \
+                    help="only generate source")
 
 
 args = parser.parse_args()
@@ -82,6 +90,7 @@ params['bmark'] = args.bmark
 params['hwenv'] = args.hwenv
 params['digital_error'] = args.digital_error
 params['analog_error'] = args.analog_error
+params['search'] = "--search" if args.search else ""
 
 for k,v in params.items():
   print("%s=%s" % (k,v))
@@ -94,15 +103,15 @@ if args.arco:
   succ = execute(arco_args,params,'arco.log')
 
 jaunt_args = \
-  "--subset {subset} {bmark} jaunt --model {model} --scale-circuits {n_scale} {sweep} " + \
-  "--digital-error {digital_error} --analog-error {analog_error}"
-if succ:
-  execute(jaunt_args,params,'jaunt.log')
+             "--subset {subset} {bmark} jaunt {search} --model {model}  " + \
+             "--scale-circuits {n_scale} {sweep} " + \
+             "--digital-error {digital_error} --analog-error {analog_error}"
+if succ and not args.srcgen:
+  succ = execute(jaunt_args,params,'jaunt.log')
 
 srcgen_args = \
   "--subset {subset} {bmark} srcgen {hwenv} --recompute"
-if succ:
-  execute(srcgen_args,params,'srcgen.log')
+succ = execute(srcgen_args,params,'srcgen.log')
 
 
 

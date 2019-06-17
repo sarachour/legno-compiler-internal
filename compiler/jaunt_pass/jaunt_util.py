@@ -6,10 +6,10 @@ import logging
 import networkx as nx
 
 logger = logging.getLogger('jaunt')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.ERROR)
 # create file handler which logs even debug messages
 fh = logging.FileHandler('jaunt.log')
-fh.setLevel(logging.DEBUG)
+fh.setLevel(logging.ERROR)
 # create console handler with a higher log level
 ch = logging.StreamHandler()
 ch.setLevel(logging.ERROR)

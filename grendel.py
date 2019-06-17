@@ -23,7 +23,7 @@ parser.add_argument("--port", type=int, default=5024, \
                     help="port number of oscilloscope.")
 parser.add_argument("--output", type=str, default="noise_output", \
                     help="output directory for data files.")
-parser.add_argument("--script", type=str, \
+parser.add_argument("script", type=str, \
                     help="read data using script.")
 parser.add_argument("--validate", action='store_true', \
                     help="validate script")
@@ -76,10 +76,14 @@ state.initialize()
 
 if args.calibrate:
     assert(args.script != None)
-    succ = main_script_calibrate(state,args.script,recompute=args.recompute)
+    succ = main_script_calibrate(state,args.script, \
+                                 recompute=args.recompute)
     if not succ:
         print("[ERROR] some calibration steps failed..")
         sys.exit(1)
+
+    print("<< inferring models for compiler >>")
+    retcode = os.system("python3 infer_models.py")
 
 if args.dry_run:
     sys.exit(0)

@@ -50,12 +50,8 @@ jaunt_subp.add_argument('--digital-error', type=float, default=0.04, \
                         help='do performance sweep.')
 jaunt_subp.add_argument('--analog-error',type=float,default=0.04, \
                         help='do performance sweep.')
+jaunt_subp.add_argument('--search',action="store_true")
 
-
-'''
-graph_subp = subparsers.add_parser('graph', help='generate graphs for noise analysis')
-graph_subp.add_argument('--circ', help='circuit.')
-'''
 
 gren_subp = subparsers.add_parser('srcgen', help='generate grendel.')
 gren_subp.add_argument('hw_env', type=str, \

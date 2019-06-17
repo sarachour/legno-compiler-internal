@@ -6,10 +6,14 @@ PROG = srcgen.GrendelProg()
 
 def log(circ,block,loc,config,scale_mode):
   backup_scm = config.scale_mode
+  if block.name == 'lut':
+    return
   config.set_scale_mode(scale_mode)
   srcgen.gen_block(PROG,circ,block,loc,config)
   config.set_scale_mode(backup_scm)
 
+def is_empty():
+  return len(PROG.stmts) == 0
 def save():
   minprog = srcgen.GrendelProg()
 

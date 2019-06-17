@@ -143,8 +143,13 @@ def sc_generate_scale_model_constraints(jenv,circ):
         jenv.eq(jop.JVar(s_opr),jop.JVar(d_opr),'scale-model-conn')
 
 
-def sc_build_jaunt_env(prog,circ):
-    jenv = jenvlib.JauntInferEnv()
+def sc_build_jaunt_env(prog,circ, \
+                       model="ideal", \
+                       digital_error=0.05, \
+                       analog_error=0.05):
+    jenv = jenvlib.JauntInferEnv(model, \
+                                 digital_error=digital_error,
+                                 analog_error=analog_error)
     # declare scaling factors
     jaunt_common.decl_scale_variables(jenv,circ)
     # build continuous model constraints
@@ -169,7 +174,7 @@ def sc_traverse_dynamics(jenv,circ,block,loc,out):
     visitor.visit()
 
 def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
-    print("%s[%s].%s" % (block.name,loc,port))
+    jaunt_util.log_info("%s[%s].%s" % (block.name,loc,port))
     config = circ.config(block.name,loc)
     baseline = block.scale_model(config.comp_mode).baseline
     prop = block.props(config.comp_mode,baseline,port,handle=handle)
@@ -236,7 +241,7 @@ def concretize_result(jenv,circ,nslns):
             if isinstance(value,bool):
                 continue
 
-            print("%s=%s" % (key,value))
+            jaunt_util.log_info("%s=%s" % (key,value))
 
         for block_name,loc,config in new_circ.instances():
             block = circ.board.block(block_name)
@@ -251,14 +256,14 @@ def concretize_result(jenv,circ,nslns):
                     scale_mode = scm
             assert(not scale_mode is None)
             config.set_scale_mode(scale_mode)
-            print("%s[%s] = %s" % (block_name,loc,scale_mode))
+            jaunt_util.log_info("%s[%s] = %s" % (block_name,loc,scale_mode))
         yield new_circ
 
 def solve_convex_first(prob,circ,jenv):
     jopt = JauntObjectiveFunctionManager(jenv)
     jaunt_util.log_debug("===== %s =====" % jopt.method)
     for joptfun in jopt.inference_methods():
-        print("===> %s <===" % joptfun.name())
+        jaunt_util.log_info("===> %s <===" % joptfun.name())
         jopt.method = joptfun.name()
         for idx,(gpprob,obj) in \
             enumerate(jgpkit.build_gpkit_problem(circ,jenv,jopt)):
@@ -278,9 +283,15 @@ def solve_convex_first(prob,circ,jenv):
                 jenv.set_solved(True)
 
 
-def infer_scale_config(prog,circ,nslns):
+def infer_scale_config(prog,circ,nslns, \
+                       model="ideal", \
+                       analog_error=0.05,
+                       digital_error=0.05):
     assert(isinstance(circ,ConcCirc))
-    jenv = sc_build_jaunt_env(prog,circ)
+    jenv = sc_build_jaunt_env(prog,circ,
+                              model=model, \
+                              analog_error=analog_error, \
+                              digital_error=digital_error)
     #solve_convex_first(prog,circ,jenv)
     for new_circ in concretize_result(jenv,circ,nslns):
         yield new_circ

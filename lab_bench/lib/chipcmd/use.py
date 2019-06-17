@@ -662,7 +662,7 @@ class UseMultCmd(UseCommand):
         if(self._use_coeff):
             val *= self._coeff
 
-        return abs(0.02*val)
+        return max(abs(0.02*val),0.02)
 
     def update_state(self,state):
         state.update_gain(self._coeff)

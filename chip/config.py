@@ -67,7 +67,7 @@ class Config:
             repl[inj_port] = ops.Mult(ops.Const(value), \
                                   ops.Var(inj_port))
 
-        inj_out = self._injs[port]
+        inj_out = self._injs['out']
         return ops.Mult(
             ops.Const(inj_out),
             naked_expr.substitute(repl)

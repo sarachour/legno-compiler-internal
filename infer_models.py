@@ -82,8 +82,6 @@ def infer_model(data,adc=False):
   bias = np.array(list(map(lambda i: data['bias'][i], range(n))))
   target= np.array(list(map(lambda i: data['target'][i], range(n))))
   noise = np.array(list(map(lambda i: data['noise'][i], range(n))))
-  in0 = np.array(list(map(lambda i: data['in0'][i], range(n))))
-  in1 = np.array(list(map(lambda i: data['in1'][i], range(n))))
   if adc:
     bias = np.array(list(map(lambda i: bias[i]/128.0, range(n))))
     target = np.array(list(map(lambda i: (target[i]-128.0)/128.0, range(n))))
@@ -94,28 +92,14 @@ def infer_model(data,adc=False):
 
   elif n > 1:
     meas = np.array(list(map(lambda i: bias[i]+target[i], range(n))))
-    #plt.scatter(target,meas,s=1.0)
-    if len(in0) + len(in1) > 0:
-      error = meas-target
-      assert(len(in0) == len(error))
-      plt.scatter(in0,in1,s=6.0,c=error)
-      plt.savefig("iorel.png")
-      plt.clf()
 
     (gain,bias),corrs= scipy.optimize.curve_fit(apply_model, target, meas)
     pred = np.array(list(map(lambda i: apply_model(target[i],gain,bias), \
                              range(n))))
-    errors = list(map(lambda i: (meas[i]-pred[i])**2.0, range(n)))
-    plt.scatter(target,meas,label='data',c='black')
-    plt.plot(target,pred,label='pred',c='red')
-    plt.legend()
-    plt.savefig("model.png")
-    plt.clf()
-    plt.scatter(target,errors)
-    plt.savefig("errors.png")
-    plt.clf()
-    input("continue?")
-    unc_var = sum(errors)/n
+
+    valid_inds = list(filter(lambda i : abs(pred[i]) <= 1.0, range(n)))
+    errors = list(map(lambda i: (meas[i]-pred[i])**2.0, valid_inds))
+    unc_var = sum(errors)/len(valid_inds)
     unc_std = math.sqrt(unc_var)
     nz_var = sum(noise)/n
     nz_std = math.sqrt(nz_var)
@@ -242,9 +226,13 @@ def build_dac_model(data):
 
   for group_data in grouped_dataset.values():
     group = group_data['group']
+    comp_mode = "*"
+    scale_mode = ( \
+                   to_sign(group['inv']), \
+                   to_range(group['rng']) \
+    )
+    print("comp_mode=%s scale_mode=%s" % (comp_mode,scale_mode))
     gain,bias,bias_unc,noise = infer_model(group_data)
-    comp_mode = to_sign(group['inv'])
-    scale_mode = to_range(group['rng'])
     # ignore source
     model = PortModel('tile_dac',loc,'out', \
                         comp_mode=comp_mode, \
@@ -331,7 +319,8 @@ def populate_default_models(board):
   db = ModelDB()
   for blkname in ['tile_in','tile_out', \
                   'chip_in','chip_out', \
-                  'ext_chip_in','ext_chip_out']:
+                  'ext_chip_in','ext_chip_out',
+                  'lut']:
     block = board.block(blkname)
     for inst in board.instances_of_block(blkname):
       for port in block.inputs + block.outputs:
@@ -350,8 +339,9 @@ args = parser.parse_args()
 
 shutil.rmtree(CONFIG.DATASET_DIR)
 
-print("python3 grendel.py --dump-db")
-retcode = os.system("python3 grendel.py --dump-db")
+cmd = "python3 grendel.py --dump-db calibrate.grendel"
+print(cmd)
+retcode = os.system(cmd)
 if retcode != 0:
   raise Exception("could not dump database: retcode=%d" % retcode)
 

@@ -237,8 +237,12 @@ class JauntEnv:
 
 class JauntInferEnv(JauntEnv):
 
-    def __init__(self):
-      JauntEnv.__init__(self)
+    def __init__(self,model="ideal", \
+                 digital_error=0.05, \
+                 analog_error=0.05):
+      JauntEnv.__init__(self,model, \
+                        digital_error=digital_error,
+                        analog_error=analog_error)
       self._exactly_one = []
       self._implies = {}
       self._lts = []

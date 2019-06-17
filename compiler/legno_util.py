@@ -9,6 +9,7 @@ import json
 import shutil
 import numpy as np
 from util.util import Timer
+import itertools
 
 # TODO: in concrete specification, connection is made to same dest.
 def compile(board,problem):
@@ -58,6 +59,87 @@ def exec_arco(hdacv2_board, args):
   print(timer)
   timer.save()
 
+def exec_jaunt_normal(prog,conc_circ,args):
+    for idx,opt,model,scale_circ in jaunt.scale(prog, \
+                                                conc_circ,
+                                                args.scale_circuits,
+                                                model=args.model,
+                                                digital_error=args.digital_error,
+                                                analog_error=args.analog_error):
+        yield idx,opt,model,scale_circ
+
+
+def exec_jaunt_search(prog,conc_circ,args):
+    def test_valid(digital_error,analog_error):
+        print("dig_error=%f an_error=%f" % (digital_error,analog_error))
+        for idx,opt,model,scale_circ in jaunt.scale(prog, \
+                                                    conc_circ,
+                                                    args.scale_circuits,
+                                                    model=args.model,
+                                                    digital_error=digital_error,
+                                                    analog_error=analog_error):
+            return True
+        return False
+
+
+
+    def recursive_grid_search(rng,analog=True,n=2):
+        vals = np.linspace(rng[0], \
+                               rng[1], n)
+        if abs(rng[0]-rng[1]) < 0.01:
+            return None
+
+        succs,fails = [],[]
+        for error in vals:
+            is_valid = test_valid(1.0,error) if analog \
+                       else test_valid(error,1.0)
+            if is_valid:
+                succs.append(error)
+            else:
+                fails.append(error)
+
+
+        if len(succs) > 0:
+            best = min(succs)
+            worst = max(fails)
+            if best < rng[1] or worst > rng[0]:
+                best = recursive_grid_search( \
+                                              [worst,best], \
+                                              analog=analog, \
+                                              n=n)
+                best = min(succs) if best is None else best
+            return best
+        else:
+            return None
+
+
+    def joint_search(dig_error,alog_error):
+        if test_valid(dig_error,alog_error):
+            return dig_error,alog_error
+
+        dig,alog = joint_search(dig_error+0.01,alog_error+0.01)
+        return dig,alog
+
+    max_pct = 1.0
+    succ = test_valid(max_pct,max_pct)
+    while not succ and max_pct <= 100.0:
+        max_pct *= 2
+        succ = test_valid(max_pct,max_pct)
+
+    dig_error= recursive_grid_search([0.01,max_pct],analog=False,n=3)
+    analog_error= recursive_grid_search([0.01,max_pct],analog=True,n=3)
+    dig_error,analog_error = joint_search(dig_error,analog_error)
+    print("dig_error=%f an_error=%f" % (dig_error,analog_error))
+    for idx,opt,model,scale_circ in jaunt.scale(prog, \
+                                                conc_circ,
+                                                args.scale_circuits,
+                                                model=args.model,
+                                                digital_error=dig_error,
+                                                analog_error=analog_error):
+        yield idx,opt,model,scale_circ
+
+
+
 def exec_jaunt(hdacv2_board, args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
   prog = bmark.get_prog(args.benchmark)
@@ -73,12 +155,10 @@ def exec_jaunt(hdacv2_board, args):
         conc_circ = ConcCirc.read(hdacv2_board, filename)
 
         timer.start()
-        for idx,opt,model,scale_circ in jaunt.scale(prog, \
-                                                    conc_circ,args. \
-                                                    scale_circuits,
-                                                    model=args.model,
-                                                    digital_error=args.digital_error,
-                                                    analog_error=args.analog_error):
+        gen = exec_jaunt_normal(prog,conc_circ,args) if not args.search \
+              else exec_jaunt_search(prog,conc_circ,args)
+
+        for idx,opt,model,scale_circ in gen:
             filename = path_handler.conc_circ_file(circ_bmark,
                                                    circ_indices,
                                                    idx,

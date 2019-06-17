@@ -268,8 +268,8 @@ def digital_bandwidth_constraint(jenv,prob,circ,block,loc,port,handle,annot):
             sim_max_samples = max_sim_time*sim_sample_freq
             hw_max_samples = prop.max_samples
 
-            print("max_samples=%s n_samples=%s" % \
-                  (hw_max_samples, sim_max_samples))
+            #print("max_samples=%s n_samples=%s" % \
+            #      (hw_max_samples, sim_max_samples))
 
             if sim_max_samples > hw_max_samples:
                 raise Exception("[error] not enough storage in arduino to record data")
