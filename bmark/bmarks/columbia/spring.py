@@ -25,16 +25,16 @@ def model():
   params['k2_k3'] = params['k3'] + params['k2']
 
   prob = MathProg("spring")
-  prob.set_digital_snr(15.0)
+  #prob.set_digital_snr(15.0)
   spec_fun = op.Func(['V'], op.Mult(op.Sgn(op.Var('V')),\
                                     op.Sqrt(op.Abs(op.Var('V')))))
   PA = parse_diffeq('{one}*VA', 'PA0', ':a', params)
 
-  VA = parse_diffeq('{k2}*FPB+(-{k1_k2}*FPA)+(-{cf}*VA)', 'VA0', ':b', params)
+  VA = parse_diffeq('{k2}*FPB+{k1_k2}*(-FPA)+{cf}*(-VA)', 'VA0', ':b', params)
 
   PB = parse_diffeq('{one}*VB', 'PB0', ':c', params)
 
-  VB = parse_diffeq('{k2}*FPA+(-{k2_k3}*FPB)+(-{cf}*VB)', 'VB0', ':d', params)
+  VB = parse_diffeq('{k2}*FPA+{k2_k3}*(-FPB)+{cf}*(-VB)', 'VB0', ':d', params)
 
   FPA = op.Call([op.Var('PA')],spec_fun)
   FPB = op.Call([op.Var('PB')],spec_fun)

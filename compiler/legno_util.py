@@ -83,7 +83,7 @@ def exec_jaunt_search(prog,conc_circ,args):
 
 
 
-    def recursive_grid_search(rng,analog=True,n=2):
+    def recursive_grid_search(rng,analog=True,n=2,max_value=1.0):
         vals = np.linspace(rng[0], \
                                rng[1], n)
         if abs(rng[0]-rng[1]) < 0.01:
@@ -91,8 +91,8 @@ def exec_jaunt_search(prog,conc_circ,args):
 
         succs,fails = [],[]
         for error in vals:
-            is_valid = test_valid(1.0,error) if analog \
-                       else test_valid(error,1.0)
+            is_valid = test_valid(max_value,error) if analog \
+                       else test_valid(error,max_value)
             if is_valid:
                 succs.append(error)
             else:
@@ -106,6 +106,7 @@ def exec_jaunt_search(prog,conc_circ,args):
                 best = recursive_grid_search( \
                                               [worst,best], \
                                               analog=analog, \
+                                              max_value=max_value, \
                                               n=n)
                 best = min(succs) if best is None else best
             return best
@@ -122,14 +123,20 @@ def exec_jaunt_search(prog,conc_circ,args):
 
     max_pct = 1.0
     succ = test_valid(max_pct,max_pct)
-    while not succ and max_pct <= 100.0:
+    while not succ and max_pct <= 1e6:
         max_pct *= 2
         succ = test_valid(max_pct,max_pct)
 
-    dig_error= recursive_grid_search([0.01,max_pct],analog=False,n=3)
-    analog_error= recursive_grid_search([0.01,max_pct],analog=True,n=3)
+    dig_error= recursive_grid_search([0.01,max_pct], \
+                                     max_value=max_pct,
+                                     analog=False,n=3)
+    analog_error= recursive_grid_search([0.01,max_pct], \
+                                        max_value=max_pct, \
+                                        analog=True,n=3)
+
+    print("INDEP dig_error=%s an_error=%s" % (dig_error,analog_error))
     dig_error,analog_error = joint_search(dig_error,analog_error)
-    print("dig_error=%f an_error=%f" % (dig_error,analog_error))
+    print("DEP dig_error=%s an_error=%s" % (dig_error,analog_error))
     for idx,opt,model,scale_circ in jaunt.scale(prog, \
                                                 conc_circ,
                                                 args.scale_circuits,

@@ -192,7 +192,7 @@ def analog_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
                                       'jcom-analog-oprange-%s' % annot)
     # if this makes the system a system that processes a physical signal.
     if prop.is_physical:
-        jenv.eq(mscale, jop.JConst(1.0),'jcom-analog-physical-rng')
+        jenv.eq(pars['math_scale'], jop.JConst(1.0),'jcom-analog-physical-rng')
 
     phys_unc = pars['phys_unc']
     if phys_unc > 0.0  \

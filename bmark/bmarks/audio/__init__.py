@@ -7,9 +7,9 @@ import bmark.bmarks.audio.kalman as audio_kalman
 def get_benchmarks():
   return [
     audio_lpf.model(1,"basic"),
+    audio_lpf.model(2,"basic"),
     audio_lpf.model(3,"chebychev"),
     audio_lpf.model(3,"butter"),
-    audio_bpf.model(3,"chebychev"),
     audio_kalman.model(),
     audio_passthru.model()
 

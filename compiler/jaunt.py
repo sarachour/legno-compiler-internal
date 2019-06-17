@@ -78,7 +78,6 @@ def sc_generate_problem(jenv,prob,circ):
         print("uses tau: %s" % jenv.uses_tau())
         print("time scale: %s" % jenv.time_scaling)
         jenv.eq(jop.JVar(jenv.tau()), jop.JConst(1.0),'tau_fixed')
-        input()
     else:
         jenv.lte(jop.JVar(jenv.tau()), jop.JConst(1e6),'tau_min')
         jenv.gte(jop.JVar(jenv.tau()), jop.JConst(1e-6),'tau_max')

@@ -82,9 +82,9 @@ class Z3Ctx:
       'sat': True
     }
     result = self._solver.check()
-    print("result: %s" % result)
+    #print("result: %s" % result)
     self._sat = rmap[str(result)]
-    print("sat: %s" % self._sat)
+    #print("sat: %s" % self._sat)
     if self.sat():
       m = self._solver.model()
       self._model = m

@@ -13,11 +13,11 @@ def model():
     prob = MathProg("lotka")
     params = {
       'a': 1.5,
-      'b': 1.0,
+      'b': 0.99999,
       'd': 3.0,
-      'g': 1.0,
-      "X0": 1.0,
-      "Y0": 1.0
+      'g': 0.99999,
+      "X0": 0.99999,
+      "Y0": 0.99999
     }
     X = parse_diffeq('{a}*X - {b}*X*Y',"X0",":a",params)
     Y = parse_diffeq('{g}*X*Y - {d}*Y',"Y0",":b",params)

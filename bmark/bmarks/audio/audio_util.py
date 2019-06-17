@@ -52,6 +52,7 @@ def xfer_fun_to_model(extvar,name,COEFF,POLY):
   stvars = list(map(lambda i : sym(i), range(n)))
   diffeqs = {}
   diffeqs[sym(0)] = [(COEFF,extvar)]
+  #print(POLY)
   for i in range(0,n):
     c = -coeffs[i+1]/coeffs[0]
     diffeqs[sym(0)].append((c,sym(i)))
@@ -61,14 +62,16 @@ def xfer_fun_to_model(extvar,name,COEFF,POLY):
 
   return sym(n-1),diffeqs
 
-def model_to_diffeqs(prob,model,ampl):
+def model_to_diffeqs(prob,model,ampl,threshold=1e-3):
 
   for dv,terms in model.items():
     expr = []
     for c,v in terms:
       var = ("(-%s)" if c < 0 else "(%s)") % v
-      expr.append("%f*%s" % (abs(c),var))
-
+      if abs(c) >= threshold:
+        expr.append("%f*%s" % (abs(c),var))
+      #else:
+      #  print("skip: %f*%s" % (abs(c),var))
     strexpr = "+".join(expr)
     E = parse_diffeq(strexpr, "IC", ":%s" % dv,
                      {"IC":0.0})
@@ -89,7 +92,7 @@ def butter(extvar,fvar,freq_cutoff,degree=1):
   wc = hwclock_frequency(freq_cutoff)/(2.0*math.pi)
   expr = degs[degree-1].subs(s,s/wc)
   G0 = 1.0
-  return xfer_fun_to_model(extvar,fvar,1.0,expr)
+  return xfer_fun_to_model(extvar,fvar,0.9999,expr)
 
 def cheby(extvar,fvar,freq_cutoff,degree=1):
   #Chebyshev Prototype Functions in Cascade Form with 0.5-dB Ripple (ε=0.3493)
@@ -107,12 +110,14 @@ def cheby(extvar,fvar,freq_cutoff,degree=1):
   wc = hwclock_frequency(freq_cutoff)/(2.0*math.pi)
   expr = degs[degree-1].subs(s,s/wc)
   G0 = 1.0
-  return xfer_fun_to_model(extvar,fvar,1.0,expr)
+  return xfer_fun_to_model(extvar,fvar,0.9999,expr)
 
 def simple(extvar,fvar,freq_cutoff):
   s = symbols("s")
   #Chebyshev Prototype Functions in Cascade Form with 0.5-dB Ripple (ε=0.3493)
-  degs = [(s+1)]
+  degs = [(s+1),
+          (s+1)*(s**2+s+1)
+  ]
   wc = hwclock_frequency(freq_cutoff)/(2.0*math.pi)
   expr = degs[0].subs(s,s/wc)
   G0 = 1.0

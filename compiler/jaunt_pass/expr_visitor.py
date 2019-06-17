@@ -99,7 +99,7 @@ class SCFPropExprVisitor(ExprVisitor):
                           config.scale_mode, \
                           handle)
       phys_coeff = model.gain
-      print("%s[%s].%s (%s) = %s" % (block.name,loc,port,handle,phys_coeff))
+      #print("%s[%s].%s (%s) = %s" % (block.name,loc,port,handle,phys_coeff))
     else:
       phys_coeff = 1.0
     return jop.JConst(coeff*phys_coeff)

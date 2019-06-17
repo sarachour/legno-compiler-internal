@@ -26,7 +26,7 @@ def model(degree,method="basic"):
     prob.set_analog_snr(0.0)
 
     lb,ub = autil.set_microphone(prob,"I","Z")
-    cutoff_freq = 2000
+    cutoff_freq = 20000
     out,model = autil.lpf("Z","X",method, \
                           cutoff_freq,degree)
 
