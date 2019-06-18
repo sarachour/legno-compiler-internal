@@ -308,7 +308,7 @@ def hierarchical_route(board,locs,conns,layers,assigns):
       list(map(lambda c: ilpop.ILPVar(c), xlayers))
     )
   )
-  print("-> generate z3")
+  print("-> generate ilp")
   print("# vars: %d" % ilpenv.num_vars())
   print("# tempvars: %d" % ilpenv.num_tempvars())
   print("# cstrs: %d" % ilpenv.num_cstrs())

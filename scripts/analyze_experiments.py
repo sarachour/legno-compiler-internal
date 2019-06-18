@@ -67,11 +67,11 @@ def execute_once(args,debug=True):
       print(entry)
 
     if missing_params(entry) or recompute_params:
-      conc_circ = ConcCirc.read(hdacv2_board,entry.skelt_circ_file)
+      conc_circ = ConcCirc.read(board,entry.jaunt_circ_file)
       params.analyze(entry,conc_circ,method=rank_method)
 
     if entry.energy is None or recompute_energy:
-      conc_circ = ConcCirc.read(hdacv2_board,entry.skelt_circ_file)
+      conc_circ = ConcCirc.read(board,entry.jaunt_circ_file)
       energy.analyze(entry,conc_circ)
 
     if entry.quality is None or recompute_quality:

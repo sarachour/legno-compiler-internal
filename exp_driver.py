@@ -26,8 +26,8 @@ del_subp.add_argument('--obj', type=str,
                        help='optimization objective function to delete.')
 
 run_subp = subparsers.add_parser('run', help='run any pending grendel scripts')
-run_subp.add_argument('--ip', type=str,
-                       help='oscilloscope ip.')
+run_subp.add_argument('--calibrate', action="store_true",
+                       help='calibrate.')
 run_subp.add_argument('--email', type=str,
                        help='email address.')
 run_subp.add_argument('--native', action='store_true',
