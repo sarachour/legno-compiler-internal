@@ -12,7 +12,7 @@ import math
 import bmark.menvs as menvs
 
 def emit(v):
-  return op.Emit(op.Mult(op.Const(0.99999), v))
+  return op.Emit(op.Mult(op.Const(0.99999), v), loc="A0")
 
 
 def model():
@@ -30,7 +30,7 @@ def model():
     'V': V,
     'one':0.999999
   }
-  DEG = parse_diffeq('{one}*{W}', 'DEG0', ':t', params)
+  DEG = parse_diffeq('{one}*{V}', 'DEG0', ':t', params)
   X = parse_diffeq('{one}*{V}*COS', 'X0',':u', params)
   Y = parse_diffeq('{one}*{V}*SIN', 'Y0',':v', params)
   prob.set_digital_snr(10)

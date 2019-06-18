@@ -134,9 +134,7 @@ def exec_jaunt_search(prog,conc_circ,args):
                                         max_value=max_pct, \
                                         analog=True,n=3)
 
-    print("INDEP dig_error=%s an_error=%s" % (dig_error,analog_error))
     dig_error,analog_error = joint_search(dig_error,analog_error)
-    print("DEP dig_error=%s an_error=%s" % (dig_error,analog_error))
     for idx,opt,model,scale_circ in jaunt.scale(prog, \
                                                 conc_circ,
                                                 args.scale_circuits,
@@ -225,3 +223,56 @@ def exec_srcgen(hdacv2_board,args):
 
   print(timer)
   timer.save()
+
+
+
+def exec_graph_one(hdacv2_board,path_handler,fname):
+    dirname = path_handler.conc_circ_dir()
+    circ_bmark,circ_indices,circ_scale_index,opt,model = \
+                                                   path_handler.conc_circ_to_args(fname)
+
+    conc_circ = path_handler.conc_circ_file(circ_bmark,
+                                            circ_indices,
+                                            circ_scale_index,
+                                            model,
+                                            opt)
+    print('<<<< %s >>>>' % fname)
+    with open("%s/%s" % (dirname,fname),'r') as fh:
+        obj = json.loads(fh.read())
+        conc_circ = ConcCirc.from_json(hdacv2_board, \
+                                       obj)
+        '''
+          methods = ['interval','scaled-interval', \
+                         'gen-delay','prop-delay', \
+                         'scale-factor','delay-mismatch', \
+                         'gen-noise','prop-noise',\
+                         'gen-bias','prop-bias']
+          '''
+        methods = ['snr']
+        for draw_method in methods:
+            filename = path_handler.conc_graph_file(circ_bmark,
+                                                    circ_indices,
+                                                    circ_scale_index,
+                                                    model,
+                                                    opt,
+                                                    tag=draw_method)
+            conc_circ.write_graph(filename,\
+                                  write_png=True,\
+                                  color_method=draw_method)
+
+def exec_graph(hdacv2_board, args):
+  path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
+  circ_dir = path_handler.conc_circ_dir()
+  scores = []
+  filenames = []
+  if not args.circ is None:
+      exec_graph_one(hdacv2_board,path_handler,args.circ)
+      return
+
+  for dirname, subdirlist, filelist in os.walk(circ_dir):
+      print(dirname)
+      for fname in filelist:
+          print(fname)
+          if fname.endswith('.circ'):
+              print(fname)
+              exec_graph_one(hdacv2_board,path_handler,fname)

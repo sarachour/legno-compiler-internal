@@ -52,6 +52,11 @@ jaunt_subp.add_argument('--analog-error',type=float,default=0.04, \
                         help='do performance sweep.')
 jaunt_subp.add_argument('--search',action="store_true")
 
+graph_subp = subparsers.add_parser('graph', \
+                                   help='emit debugging graph.')
+graph_subp.add_argument('--circ', type=str, \
+                        help='do performance sweep.')
+
 
 gren_subp = subparsers.add_parser('srcgen', help='generate grendel.')
 gren_subp.add_argument('hw_env', type=str, \
@@ -80,3 +85,6 @@ elif args.subparser_name == "jaunt":
 
 elif args.subparser_name == "srcgen":
    legno_util.exec_srcgen(hdacv2_board,args)
+
+elif args.subparser_name == "graph":
+   legno_util.exec_graph(hdacv2_board,args)

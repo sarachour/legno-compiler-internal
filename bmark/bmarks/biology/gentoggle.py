@@ -16,6 +16,7 @@ def model():
     'a2': 15.6,
     'a1': 156.25,
     'K' : 0.000029618*10.0,
+    #'K' : 0.000029618,
     'nu': 2.0015,
     'beta': 2.5,
     'gamma': 1.0,
@@ -39,7 +40,7 @@ def model():
                              op.Const(1.0),
                              op.Mult(
                                op.Const(1.0/params['K']),
-                               op.Var('X')
+                               op.Abs(op.Var('X'))
                              )
                            ),
                            op.Const(params['nu'])
@@ -50,7 +51,8 @@ def model():
                       op.Const(params['a1']),
                       op.Add(
                         op.Const(1.0),
-                        op.Pow(op.Var('X'), op.Const(params['beta']))
+                        op.Pow(op.Var('X'), \
+                               op.Const(params['beta']))
                       )
                     )
   )
@@ -59,7 +61,8 @@ def model():
                       op.Const(params['a2']),
                       op.Add(
                         op.Const(1.0),
-                        op.Pow(op.Var('X'), op.Const(params['gamma']))
+                        op.Pow(op.Var('X'), \
+                               op.Const(params['gamma']))
                       )
                     )
   )
@@ -91,7 +94,8 @@ def model():
   U = parse_diffeq("UTF+{kdeg}*(-U)",'V0',":u", params)
   prob.bind("U",U)
   prob.set_interval("U",0,15.6)
-  prob.bind("U_OUT",op.Emit(op.Var('U')))
+  prob.bind("U_OUT",op.Emit(op.Var('U'),loc="A0"))
+  prob.set_max_sim_time(20)
   prob.compile()
   menv = menvs.get_math_env('t20')
   return menv,prob

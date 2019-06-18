@@ -19,10 +19,8 @@ bioosc / not implemented
 
 # TODO list
 
-- wrapper script for setting standard/unrestricted, ideal/physical
-- quantization constraints for physical
-- error model for physical
-- parameter for percent signal uncertain.
+- BUG: lotka can't scale up gain for multiplier going to output
+- BUG: spring has issues with conservation.
 
 # Calibration Failures
 

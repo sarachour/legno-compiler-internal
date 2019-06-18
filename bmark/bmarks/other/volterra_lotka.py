@@ -24,9 +24,12 @@ def model():
 
     prob.bind("X",X)
     prob.bind("Y",Y)
-    prob.bind("OUT",op.Emit(op.Mult(op.Const(0.9999),
-                                    op.Var("Y")), \
+    prob.bind("OUT",op.Emit(op.Var("Y"), \
                             loc="A0"))
+
+    #prob.bind("OUT",op.Emit(op.Mult(op.Const(0.9999),
+    #                                op.Var("Y")), \
+    #                        loc="A0"))
     prob.set_interval("X",0,7)
     prob.set_interval("Y",0,7)
     prob.set_max_sim_time(20)

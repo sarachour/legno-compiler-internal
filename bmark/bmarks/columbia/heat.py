@@ -1,7 +1,7 @@
 if __name__ == "__main__":
   import sys
   import os
-  sys.path.insert(0,os.path.abspath("../../"))
+  sys.path.insert(0,os.path.abspath("../../../"))
 
 
 from lang.prog import MathProg
@@ -62,6 +62,7 @@ def execute(n,o):
 
 
 if __name__ == "__main__":
+  execute(2,1)
   execute(4,2)
   execute(8,0)
   execute(16,13)

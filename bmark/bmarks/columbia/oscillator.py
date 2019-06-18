@@ -31,7 +31,8 @@ def model():
     prob.bind('V', V)
     prob.bind('P', P)
     prob.bind('Loc', op.Emit(
-      op.Mult(op.Const(1.0),op.Var('P'))
+      op.Mult(op.Const(1.0),op.Var('P')),
+      loc="A0"
     ))
     prob.set_interval("V",-10,10)
     prob.set_interval("P",-10,15)

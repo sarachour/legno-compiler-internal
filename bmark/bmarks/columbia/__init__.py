@@ -15,4 +15,5 @@ def get_benchmarks():
     robot_control.model(),
     heat.model(2,1),
     heat.model(4,2),
+    heat.model(8,0),
   ]

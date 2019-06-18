@@ -49,10 +49,10 @@ class PathHandler:
         (self._bmark,index_str,scale_index,model,opt)
 
 
-    def conc_graph_file(self,bmark,indices,scale_index,model,opt):
+    def conc_graph_file(self,bmark,indices,scale_index,model,opt,tag=""):
       index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.CONC_GRAPH_DIR+ "/%s_%s_s%s_%s_%s.dot" % \
-        (self._bmark,index_str,scale_index,model,opt)
+      return self.CONC_GRAPH_DIR+ "/%s_%s_s%s_%s_%s_%s.dot" % \
+        (self._bmark,index_str,scale_index,model,opt,tag)
 
 
     def plot(self,bmark,indices,scale_index,opt,menv_name,henv_name,tag):

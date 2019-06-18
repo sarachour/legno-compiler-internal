@@ -155,21 +155,33 @@ def digital_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
     prop = pars['prop']
     mscale = pars['math_scale']
     hscale = pars['hw_scale']
+    phys_gain = pars['phys_gain']
     #for k,v in pars.items():
     #    print("%s=%s" % (k,v))
     assert(isinstance(prop, props.DigitalProperties))
+    ratio = jop.JMult(pars['math_scale'], \
+                                jop.expo(pars['hw_scale'],-1.0))
     jaunt_util.upper_bound_constraint(jenv,
-                                      jop.JMult(mscale,
-                                                jop.expo(hscale,-1.0)),
+                                      ratio,
                                       mrng.upper, hwrng.upper,
                                       'jcom-digital-oprange-%s' % annot)
 
     jaunt_util.lower_bound_constraint(jenv,
-                                      jop.JMult(mscale,
-                                                jop.expo(hscale,-1.0)),
+                                      ratio,
                                       mrng.lower, hwrng.lower,
                                       'jcom-digital-oprange-%s' % annot)
 
+
+    phys_unc = pars['phys_unc']
+    min_snr = pars['min_analog_snr']
+    if phys_unc > 0.0  \
+       and mrng.bound > 0.0 \
+       and jenv.params.quality_minimum:
+        signal_expr = jop.JMult(pars['math_scale'],jop.JConst(mrng.bound))
+        noise_expr = jop.JConst(1.0/phys_unc)
+        snr_expr = jop.JMult(signal_expr,noise_expr)
+        jenv.gte(snr_expr,jop.JConst(min_snr), \
+                 annot='jcom-digital-minsig')
 
 
 def analog_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
@@ -180,8 +192,8 @@ def analog_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
     phys_gain = pars['phys_gain']
     prop = pars['prop']
     assert(isinstance(prop, props.AnalogProperties))
-    ratio = jop.JMult(jop.JConst(1.0/phys_gain), \
-                      jop.JMult(pars['math_scale'],jop.expo(pars['hw_scale'],-1.0)))
+    ratio = jop.JMult(pars['math_scale'], \
+                      jop.expo(pars['hw_scale'],-1.0))
     jaunt_util.upper_bound_constraint(jenv,
                                       ratio,
                                       mrng.upper, hwrng.upper,

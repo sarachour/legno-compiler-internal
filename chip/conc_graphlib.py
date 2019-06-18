@@ -3,6 +3,7 @@ import colorlover
 import compiler.common.evaluator_symbolic as evalsym
 import ops.op as op
 import math
+from chip.model import ModelDB, PortModel
 
 def undef_to_one(v):
   return 1.0 if v is None else v
@@ -211,11 +212,27 @@ class ScaleFactorShader(CircShader):
       return scf,"%s" % scf
 
 
+class NoiseEvaluator:
+
+  def __init__(self,circ):
+    self._circ = circ
+    self._db = ModelDB()
+
+
+  def get(self,block_name,loc,port):
+    config = self._circ.config(block_name,loc)
+    model = self._db.get(block_name,loc,port, \
+                   config.comp_mode,
+                   config.scale_mode, \
+                   handle=None)
+    unc = math.sqrt(model.noise**2.0 + model.bias_uncertainty**2.0)
+    physunc = unc+abs(model.bias)
+    return True,physunc
+
 class SNRShader(CircShader):
 
   def __init__(self,circ):
-    self.noise_eval = evalsym \
-        .propagated_noise_evaluator(circ)
+    self.noise_eval = NoiseEvaluator(circ)
     CircShader.__init__(self,circ,None)
 
   def get_port_value(self,name,loc,port):
@@ -231,7 +248,7 @@ class SNRShader(CircShader):
         return Shader.IGNORE,"inf"
 
       snr = math.log10(signal.bound/noise)
-      return snr,"sig=%s nz=%.3e snr=%f" % (signal,noise,snr)
+      return snr,"%.3f/%.3f" % (signal.bound,noise)
 
 
 class ScaledIntervalShader(CircShader):
