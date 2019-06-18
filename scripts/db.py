@@ -18,7 +18,7 @@ def get_output_files(grendel_script):
       elif isinstance(instr,microget.MicroGetADCValuesCmd):
         yield instr.filename
 
-def make_args(bmark,arco_inds,jaunt_indx,opt,menv_name,hwenv_name):
+def make_args(bmark,arco_inds,jaunt_indx,method,opt,menv_name,hwenv_name):
   return  {
     'bmark':bmark,
     'arco0':arco_inds[0],
@@ -26,6 +26,7 @@ def make_args(bmark,arco_inds,jaunt_indx,opt,menv_name,hwenv_name):
     'arco2':arco_inds[2],
     'arco3':arco_inds[3],
     'jaunt':jaunt_indx,
+    'method': method,
     'opt': opt,
     'menv':menv_name,
     'hwenv': hwenv_name
@@ -118,12 +119,14 @@ class ExperimentStatus(Enum):
 class OutputEntry:
 
   def __init__(self,db,bmark,arco_indices,jaunt_index,
+               method,
                objective_fun,math_env,hw_env,varname,trial):
     self._db = db
     self._bmark = bmark
     self._arco_indices = arco_indices
     self._jaunt_index = jaunt_index
     self._objective_fun = objective_fun
+    self._method = method
     self._math_env = math_env
     self._hw_env = hw_env
     self._varname = varname
@@ -215,6 +218,7 @@ class OutputEntry:
       bmark=args['bmark'],
       arco_indices=[args['arco0'],args['arco1'], \
                   args['arco2'], args['arco3']],
+      method=args['method'],
       objective_fun=args['opt'],
       jaunt_index=args['jaunt'],
       math_env=args['menv'],
@@ -239,6 +243,7 @@ class OutputEntry:
      self._db.delete_output(self._bmark,
                             self._arco_indices,
                             self._jaunt_index,
+                            self._method,
                             self._objective_fun,
                             self._math_env,
                             self._hw_env,
@@ -293,8 +298,8 @@ class OutputEntry:
   @property
   def circ_ident(self):
     return "%s(%s,%s)" % (self._bmark,
-                                         self._arco_indices,
-                                         self._jaunt_index)
+                          self._arco_indices,
+                          self._jaunt_index)
   @property
   def port_ident(self):
     return "%s.%s" % (self.circ_ident,self._varname)
@@ -303,8 +308,9 @@ class OutputEntry:
 
   @property
   def ident(self):
-    return "%s[%s](%s,%s)" % (self.port_ident,
+    return "%s[%s,%s](%s,%s)" % (self.port_ident,
                               self._objective_fun,
+                              self._method,
                               self._math_env,
                               self._hw_env)
 
@@ -325,16 +331,16 @@ class OutputEntry:
 class ExperimentEntry:
 
   def __init__(self,db,bmark,arco_indices,jaunt_index,
-               objective_fun,math_env,hw_env):
+               method,objective_fun,math_env,hw_env):
     self._bmark = bmark
     self._arco_indices = arco_indices
     self._jaunt_index = jaunt_index
     self._objective_fun = objective_fun
+    self._method = method
     self._math_env = math_env
     self._hw_env = hw_env
     self._grendel_file = None
     self._jaunt_circ_file = None
-    self._skelt_circ_file = None
     self._rank= None
     self._energy= None
     self._runtime= None
@@ -386,16 +392,6 @@ class ExperimentEntry:
     return self._math_env
 
 
-  @property
-  def skelt_circ_file(self):
-    return self._conc_circ_file
-
-
-
-  @property
-  def skelt_circ_file(self):
-    return self._skelt_circ_file
-
 
   @property
   def jaunt_circ_file(self):
@@ -412,17 +408,17 @@ class ExperimentEntry:
 
   def outputs(self):
     for outp in self._db.get_outputs(self._bmark, \
-                         self._arco_indices,
-                         self._jaunt_index,
-                         self._objective_fun,
-                         self._math_env,
-                         self._hw_env):
+                                     self._arco_indices, \
+                                     self._jaunt_index, \
+                                     self._method, \
+                                     self._objective_fun, \
+                                     self._math_env, \
+                                     self._hw_env):
       yield outp
 
   def synchronize(self):
     # delete if we're missing relevent files
     if not os.path.isfile(self.grendel_file) or \
-       not os.path.isfile(self.skelt_circ_file) or \
        not os.path.isfile(self.jaunt_circ_file):
       self.delete()
       return
@@ -448,6 +444,7 @@ class ExperimentEntry:
     self._db.update_experiment(self._bmark,
                                self._arco_indices,
                                self._jaunt_index,
+                               self._method,
                                self._objective_fun,
                                self._math_env,
                                self._hw_env,
@@ -496,6 +493,7 @@ class ExperimentEntry:
     self._db.delete_experiment(self._bmark,
                                self._arco_indices,
                                self._jaunt_index,
+                               self._method,
                                self._objective_fun,
                                self._math_env,
                                self._hw_env)
@@ -504,6 +502,7 @@ class ExperimentEntry:
     return self._db.get_outputs(self._bmark, \
                                 self._arco_indices,
                                 self._jaunt_index,
+                                self._method,
                                 self._objective_fun,
                                 self._math_env, self._hw_env)
 
@@ -514,6 +513,7 @@ class ExperimentEntry:
       bmark=args['bmark'],
       arco_indices=[args['arco0'],args['arco1'], \
                   args['arco2'], args['arco3']],
+      method=args['method'],
       objective_fun=args['opt'],
       jaunt_index=args['jaunt'],
       math_env=args['menv'],
@@ -522,7 +522,6 @@ class ExperimentEntry:
 
     entry._grendel_file,=args['grendel_file'],
     entry._jaunt_circ_file,=args['jaunt_circ_file'],
-    entry._skelt_circ_file,=args['skelt_circ_file'],
     entry._rank=args['rank']
     entry._quality=args['quality']
     entry._energy=args['energy']
@@ -552,7 +551,6 @@ class ExperimentEntry:
     s += "ident=%s\n" % (self.ident)
     s += "status=%s\n" % (self._status.value)
     s += "grendel_file=%s\n" % (self._grendel_file)
-    s += "skelt_circ=%s\n" % (self._skelt_circ_file)
     s += "jaunt_circ=%s\n" % (self._jaunt_circ_file)
     s += "rank=%s\n" % (self._rank)
     s += "energy=%s\n" % (self._energy)
@@ -578,12 +576,12 @@ class ExperimentDB:
               arco2 int NOT NULL,
               arco3 int NOT NULL,
               jaunt int NOT NULL,
+              method text NOT NULL,
               opt text NOT NULL,
               menv text NOT NULL,
               hwenv text NOT NULL,
               grendel_file text,
               jaunt_circ_file text,
-              skelt_circ_file text,
               rank real,
               mismatch int,
               quality real,
@@ -591,15 +589,16 @@ class ExperimentDB:
               runtime real,
               PRIMARY KEY (bmark,arco0,arco1,
                            arco2,arco3,jaunt,
-                           opt,menv,hwenv)
+                           method,opt,menv,hwenv)
              );
     '''
     self._experiment_order = ['bmark','status','modif','arco0', \
                               'arco1','arco2', \
-                              'arco3','jaunt','opt','menv','hwenv',
+                              'arco3','jaunt',
+                              'method','opt','menv','hwenv',
                               'grendel_file', \
                               'jaunt_circ_file',
-                              'skelt_circ_file','rank','mismatch',
+                              'rank','mismatch',
                               'quality', \
                               'energy','runtime']
 
@@ -615,6 +614,7 @@ class ExperimentDB:
     arco2 int NOT NULL,
     arco3 int NOT NULL,
     jaunt int NOT NULL,
+    method text NOT NULL,
     opt text NOT NULL,
     menv text NOT NULL,
     hwenv text NOT NULL,
@@ -628,15 +628,16 @@ class ExperimentDB:
     scf real,
     modif timestamp,
     PRIMARY KEY (bmark,arco0,arco1,arco2,arco3,jaunt,
-                 opt,menv,hwenv,varname,trial)
-    FOREIGN KEY (bmark,arco0,arco1,arco2,arco3,jaunt,opt,menv,hwenv)
+                 method,opt,menv,hwenv,varname,trial)
+    FOREIGN KEY (bmark,arco0,arco1,arco2,arco3,jaunt,
+                 method,opt,menv,hwenv)
     REFERENCES experiments(bmark,arco0,arco1,arco2,arco3,jaunt,
-                           opt,menv,hwenv)
+                           method,opt,menv,hwenv)
     )
     '''
     self._output_order = ['bmark','status','arco0', \
                           'arco1','arco2', \
-                          'arco3','jaunt','opt','menv','hwenv',
+                          'arco3','jaunt','method','opt','menv','hwenv',
                           'varname','trial','out_file', \
                           'rank','quality','fmax','tau','scf','modif']
 
@@ -675,7 +676,7 @@ class ExperimentDB:
     for entry in self._get_experiment_rows(where_clause):
       yield entry
 
-  def to_where_clause(self,bmark,arco_inds,jaunt_inds,opt, \
+  def to_where_clause(self,bmark,arco_inds,jaunt_inds,method,opt, \
                       menv_name,hwenv_name,varname=None,trial=None):
     cmd = '''WHERE bmark = "{bmark}"
     AND arco0 = {arco0}
@@ -683,11 +684,12 @@ class ExperimentDB:
     AND arco2 = {arco2}
     AND arco3 = {arco3}
     AND jaunt = {jaunt}
+    AND method = "{method}"
     AND opt = "{opt}"
     AND menv = "{menv}"
     AND hwenv = "{hwenv}"
     '''
-    args = make_args(bmark,arco_inds,jaunt_inds,opt, \
+    args = make_args(bmark,arco_inds,jaunt_inds,method,opt, \
                      menv_name,hwenv_name)
     if not varname is None:
       cmd += "AND varname = \"{varname}\""
@@ -728,13 +730,14 @@ class ExperimentDB:
     self._conn.commit()
 
 
-  def update_experiment(self,bmark,arco_inds,jaunt_inds,opt,menv_name,hwenv_name,new_fields):
+  def update_experiment(self,bmark,arco_inds,jaunt_inds,method, \
+                        opt,menv_name,hwenv_name,new_fields):
     cmd = '''
     UPDATE experiments
     SET {assign_clause} {where_clause};
     '''
     where_clause = self.to_where_clause(bmark,\
-                                        arco_inds,jaunt_inds,opt, \
+                                        arco_inds,jaunt_inds,method,opt, \
                                         menv_name,hwenv_name)
     new_fields['modif'] = datetime.datetime.now()
     assign_subclauses = []
@@ -753,14 +756,15 @@ class ExperimentDB:
     self._conn.commit()
 
 
-  def get_outputs(self,bmark,arco_inds,jaunt_inds,opt,menv_name,hwenv_name):
+  def get_outputs(self,bmark,arco_inds,jaunt_inds,method,opt,menv_name,hwenv_name):
     cmd = '''
      SELECT *
      FROM outputs
      {where_clause};
     '''
     where_clause = self.to_where_clause(bmark,\
-                                        arco_inds,jaunt_inds,opt, \
+                                        arco_inds,jaunt_inds,
+                                        method,opt, \
                                         menv_name,hwenv_name)
     for entry in self._get_output_rows(where_clause):
       yield entry
@@ -793,9 +797,9 @@ class ExperimentDB:
       entry.delete()
       yield entry
 
-  def get_experiment(self,bmark,arco_inds,jaunt_inds,opt,menv_name,hwenv_name):
+  def get_experiment(self,bmark,arco_inds,jaunt_inds,method,opt,menv_name,hwenv_name):
     where_clause = self.to_where_clause(bmark,\
-                                        arco_inds,jaunt_inds,opt, \
+                                        arco_inds,jaunt_inds,method,opt, \
                                         menv_name,hwenv_name)
     result = list(self._get_experiment_rows(where_clause))
     if len(result) == 0:
@@ -806,12 +810,14 @@ class ExperimentDB:
       raise Exception("nonunique experiment")
 
   def delete_output(self,bmark,arco_inds,jaunt_inds, \
-                    opt,menv_name,hwenv_name,output,trial):
+                    method,opt,menv_name,hwenv_name,output,trial):
     cmd = '''
     DELETE FROM outputs {where_clause};
     '''
     where_clause = self.to_where_clause(bmark,\
-                                        arco_inds,jaunt_inds,opt, \
+                                        arco_inds,jaunt_inds,
+                                        method, \
+                                        opt, \
                                         menv_name,hwenv_name,
                                         varname=output,
                                         trial=trial)
@@ -821,12 +827,13 @@ class ExperimentDB:
 
 
   def delete_experiment(self,bmark,arco_inds,jaunt_inds, \
-                    opt,menv_name,hwenv_name):
+                        method,opt,menv_name,hwenv_name):
     cmd = '''
     DELETE FROM experiments {where_clause};
     '''
     where_clause = self.to_where_clause(bmark,\
-                                        arco_inds,jaunt_inds,opt, \
+                                        arco_inds,jaunt_inds,
+                                        method,opt, \
                                         menv_name,hwenv_name)
     conc_cmd = cmd.format(where_clause=where_clause)
     self._curs.execute(conc_cmd)
@@ -836,16 +843,16 @@ class ExperimentDB:
 
 
   def add_output(self,path_handler,bmark,arco_inds, \
-                 jaunt_inds, opt,\
+                 jaunt_inds, method, opt,\
                  menv_name,hwenv_name,output,trial):
     cmd = '''
       INSERT INTO outputs (
          bmark,arco0,arco1,arco2,arco3,jaunt,
-         opt,menv,hwenv,out_file,status,modif,varname,trial
+         method,opt,menv,hwenv,out_file,status,modif,varname,trial
       ) VALUES
       (
          "{bmark}",{arco0},{arco1},{arco2},{arco3},{jaunt},
-         "{opt}","{menv}","{hwenv}",
+         "{method}","{opt}","{menv}","{hwenv}",
          "{out_file}",
          "{status}",
          "{modif}",
@@ -853,7 +860,7 @@ class ExperimentDB:
          {trial}
       )
       '''
-    args = make_args(bmark,arco_inds,jaunt_inds,opt, \
+    args = make_args(bmark,arco_inds,jaunt_inds,method,opt, \
                      menv_name,hwenv_name)
     args['modif'] = datetime.datetime.now()
     args['status'] = OutputStatus.PENDING.value
@@ -861,6 +868,7 @@ class ExperimentDB:
     args['trial'] = trial
     args['out_file'] = path_handler.measured_waveform_file(bmark,arco_inds, \
                                                            jaunt_inds, \
+                                                           method,
                                                            opt,menv_name, \
                                                            hwenv_name, \
                                                            output, \
@@ -871,41 +879,41 @@ class ExperimentDB:
 
   def add_experiment(self,path_handler,bmark,arco_inds, \
                      jaunt_inds, \
-                     opt, \
+                     method,opt, \
                      menv_name,hwenv_name):
     entry = self.get_experiment(bmark,arco_inds,jaunt_inds, \
-                                opt,menv_name,hwenv_name)
+                                method,opt,menv_name,hwenv_name)
     if entry is None:
       cmd = '''
       INSERT INTO experiments (
          bmark,arco0,arco1,arco2,arco3,jaunt,
-         opt,menv,hwenv,jaunt_circ_file,skelt_circ_file,
+         method,opt,menv,hwenv,
+         jaunt_circ_file,
          grendel_file,status,modif,mismatch
       ) VALUES
       (
          "{bmark}",{arco0},{arco1},{arco2},{arco3},{jaunt},
-         "{opt}","{menv}","{hwenv}",
+         "{method}","{opt}","{menv}","{hwenv}",
          "{conc_circ}",
-         "{skelt_circ}",
          "{grendel_file}",
          "{status}",
          "{modif}",{mismatch}
       )
       '''
-      args = make_args(bmark,arco_inds,jaunt_inds,opt, \
+      args = make_args(bmark,arco_inds,jaunt_inds,method,opt, \
                        menv_name,hwenv_name)
       args['modif'] = datetime.datetime.now()
       args['status'] = ExperimentStatus.PENDING.value
       args['grendel_file'] = path_handler.grendel_file(bmark,arco_inds, \
-                                                    jaunt_inds, opt,
-                                                    menv_name,
-                                                    hwenv_name)
+                                                       jaunt_inds,
+                                                       method,
+                                                       opt,
+                                                       menv_name,
+                                                       hwenv_name)
       args['conc_circ'] = path_handler.conc_circ_file(bmark,arco_inds, \
-                                                    jaunt_inds,
-                                                    opt)
-      args['skelt_circ'] = path_handler.skelt_circ_file(bmark,arco_inds, \
-                                                    jaunt_inds,
-                                                    opt)
+                                                      jaunt_inds, \
+                                                      method,
+                                                      opt)
 
       # not mismatched
       args['mismatch'] = 0
@@ -913,11 +921,12 @@ class ExperimentDB:
       self._curs.execute(conc_cmd)
       self._conn.commit()
       entry = self.get_experiment(bmark,arco_inds,jaunt_inds, \
-                                  opt,menv_name,hwenv_name)
+                                  method,opt,menv_name,hwenv_name)
       for out_file in get_output_files(args['grendel_file']):
-        _,_,_,_,_,_,var_name,trial = path_handler \
+        _,_,_,_,_,_,_,var_name,trial = path_handler \
                                .measured_waveform_file_to_args(out_file)
-        self.add_output(path_handler,bmark,arco_inds,jaunt_inds,opt, \
+        self.add_output(path_handler,bmark,arco_inds,jaunt_inds, \
+                        method,opt, \
                         menv_name,hwenv_name,var_name,trial)
 
       entry.synchronize()
@@ -925,14 +934,14 @@ class ExperimentDB:
 
   def scan(self):
     for name in diffeqs.get_names():
-      ph = paths.PathHandler('default',name,make_dirs=False)
+      ph = paths.PathHandler('standard',name,make_dirs=False)
       grendel_dir = ph.grendel_file_dir()
       for dirname, subdirlist, filelist in os.walk(grendel_dir):
         for fname in filelist:
           if fname.endswith('.grendel'):
-            bmark,arco_inds,jaunt_inds,opt,menv_name,hwenv_name = \
+            bmark,arco_inds,jaunt_inds,method,opt,menv_name,hwenv_name = \
                                     ph.grendel_file_to_args(fname)
             exp = self.add_experiment(ph,bmark,arco_inds,jaunt_inds, \
-                                      opt,menv_name,hwenv_name)
+                                      method,opt,menv_name,hwenv_name)
             if not exp is None:
               yield exp

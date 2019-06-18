@@ -8,7 +8,7 @@ import lab_bench.lib.expcmd.micro_getter as microget
 import lab_bench.lib.expcmd.osc as osc
 
 from chip.conc import ConcCirc
-from chip.hcdc.hcdcv2_4 import board as hdacv2_board
+from chip.hcdc.hcdcv2_4 import make_board
 
 import compiler.skelter as skelter
 
@@ -18,6 +18,8 @@ import scripts.analysis.quality as quality
 import scripts.analysis.energy as energy
 
 import tqdm
+
+board = make_board('standard')
 
 def missing_params(entry):
   return entry.rank is None or \
@@ -46,7 +48,7 @@ def execute_once(args,debug=True):
       if debug:
         print(entry)
 
-      conc_circ = ConcCirc.read(hdacv2_board,entry.skelt_circ_file)
+      conc_circ = ConcCirc.read(board,entry.skelt_circ_file)
       params.analyze(entry,conc_circ,method=rank_method)
 
   entries = list(db.get_by_status(ExperimentStatus.RAN))

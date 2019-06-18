@@ -14,8 +14,6 @@ class PathHandler:
             self.ABS_CIRC_DIR,
             self.CONC_CIRC_DIR,
             self.CONC_GRAPH_DIR,
-            self.SKELT_CIRC_DIR,
-            self.SKELT_GRAPH_DIR,
             self.ABS_GRAPH_DIR,
             self.REF_WAVEFORM_FILE_DIR,
             self.MEAS_WAVEFORM_FILE_DIR,
@@ -35,8 +33,6 @@ class PathHandler:
         self.ABS_GRAPH_DIR = self.BMARK_DIR + "/abs-graph"
         self.CONC_CIRC_DIR = self.BMARK_DIR + "/conc-circ"
         self.CONC_GRAPH_DIR = self.BMARK_DIR + "/conc-graph"
-        self.SKELT_CIRC_DIR = self.BMARK_DIR + "/skelt-circ"
-        self.SKELT_GRAPH_DIR = self.BMARK_DIR + "/skelt-graph"
         self.GRENDEL_FILE_DIR = self.BMARK_DIR + "/grendel"
         self.PLOT_DIR = self.BMARK_DIR + "/plots"
         self.MEAS_WAVEFORM_FILE_DIR = self.BMARK_DIR + "/out-waveform"
@@ -49,7 +45,7 @@ class PathHandler:
         (self._bmark,index_str,scale_index,model,opt)
 
 
-    def conc_graph_file(self,bmark,indices,scale_index,model,opt,tag=""):
+    def conc_graph_file(self,bmark,indices,scale_index,model,opt,tag="notag"):
       index_str = "_".join(map(lambda ind : str(ind),indices))
       return self.CONC_GRAPH_DIR+ "/%s_%s_s%s_%s_%s_%s.dot" % \
         (self._bmark,index_str,scale_index,model,opt,tag)
@@ -77,7 +73,8 @@ class PathHandler:
       return self.MEAS_WAVEFORM_FILE_DIR
 
 
-    def measured_waveform_file(self,bmark,indices,scale_index,model,opt,\
+    def measured_waveform_file(self,bmark,indices,scale_index, \
+                               model,opt,\
                                menv_name,hwenv_name,variable,trial):
       index_str = "_".join(map(lambda ind : str(ind),indices))
       return self.MEAS_WAVEFORM_FILE_DIR+ "/%s_%s_s%s_%s_%s_%s_%s_%s_%d.json" % \
@@ -112,7 +109,8 @@ class PathHandler:
       var_name = args[-2]
       trial = int(args[-1])
 
-      return bmark,indices,scale_index,opt,menv_name,hwenv_name,var_name,trial
+      return bmark,indices,scale_index,model,opt, \
+          menv_name,hwenv_name,var_name,trial
 
 
     @staticmethod
@@ -134,7 +132,6 @@ class PathHandler:
       basename = name.split(".circ")[0]
       args = basename.split("_")
       bmark = args[0]
-      print(args)
       indices = list(map(lambda token: int(token), args[1:-3]))
       scale_index = int(args[-3].split('s')[1])
       model = args[-2]

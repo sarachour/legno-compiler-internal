@@ -3,8 +3,10 @@ from scripts.db import MismatchStatus
 import numpy as np
 import matplotlib.pyplot as plt
 from chip.conc import ConcCirc
-from chip.hcdc.hcdcv2_4 import board as hdacv2_board
 from enum import Enum
+from chip.hcdc.hcdcv2_4 import make_board
+
+board = make_board('standard')
 
 def to_table(summary):
   to_header = {
@@ -62,7 +64,7 @@ def visualize():
       'blocks': {}
     }
 
-    conc_circ = ConcCirc.read(hdacv2_board,conc_circ)
+    conc_circ = ConcCirc.read(board,conc_circ)
     for block_name,loc,_ in conc_circ.instances():
       if not block_name in summary[bmark]['blocks']:
         summary[bmark]['blocks'][block_name] = 0

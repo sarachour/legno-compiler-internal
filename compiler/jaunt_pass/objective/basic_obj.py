@@ -119,9 +119,10 @@ class MaxSignalObjFunc(optlib.JauntObjectiveFunction):
   @staticmethod
   def make(circ,jobj,varmap):
     jenv = jobj.jenv
-    yield MaxSignalObjFunc(MaxSignalObjFunc.make_add(jenv,varmap))
-    if not jenv.solved():
-      yield MaxSignalObjFunc(MaxSignalObjFunc.make_mult(jenv,varmap))
+    yield MaxSignalObjFunc(MaxSignalObjFunc.make_mult(jenv,varmap))
+    #yield MaxSignalObjFunc(MaxSignalObjFunc.make_add(jenv,varmap))
+    #if not jenv.solved():
+    #  yield MaxSignalObjFunc(MaxSignalObjFunc.make_mult(jenv,varmap))
 
 class MaxSignalAndSpeedObjFunc(optlib.JauntObjectiveFunction):
 
@@ -162,3 +163,81 @@ class MaxSignalAndStabilityObjFunc(optlib.JauntObjectiveFunction):
     else:
       for obj in MaxSignalObjFunc.make(circ,jobj,varmap):
         yield obj
+
+
+class MinSignalObjFunc(optlib.JauntObjectiveFunction):
+
+  def __init__(self,obj):
+    optlib.JauntObjectiveFunction.__init__(self,obj)
+
+  @staticmethod
+  def name():
+    return "minsig"
+
+  @staticmethod
+  def make_mult(jenv,varmap):
+    rngobj = 0.0
+    for scvar in jenv.variables(in_use=True):
+      tag = jenv.get_tag(scvar)
+      if tag == jenvlib.JauntVarType.SCALE_VAR:
+        rngobj *= varmap[scvar]
+    return rngobj
+
+  @staticmethod
+  def make_add(jenv,varmap):
+    rngobj = 0.0
+    for scvar in jenv.variables(in_use=True):
+      tag = jenv.get_tag(scvar)
+      if tag == jenvlib.JauntVarType.SCALE_VAR:
+        rngobj += varmap[scvar]
+    return rngobj
+
+  @staticmethod
+  def make(circ,jobj,varmap):
+    jenv = jobj.jenv
+    yield MinSignalObjFunc(MinSignalObjFunc.make_mult(jenv,varmap))
+    #yield MinSignalObjFunc(MinSignalObjFunc.make_add(jenv,varmap))
+    #if not jenv.solved():
+    #  yield MinSignalObjFunc(MinSignalObjFunc.make_mult(jenv,varmap))
+
+class MinSignalAndStabilityObjFunc(optlib.JauntObjectiveFunction):
+
+  def __init__(self,obj):
+    optlib.JauntObjectiveFunction.__init__(self,obj)
+
+  @staticmethod
+  def name():
+    return MinSignalObjFunc.name() + \
+      SlowObjFunc.name()
+
+  @staticmethod
+  def make(circ,jobj,varmap):
+    if jobj.time_scaling:
+      ot = list(SlowObjFunc.make(circ,jobj,varmap))[0]
+      for oi in MinSignalObjFunc.make(circ,jobj,varmap):
+        yield MinSignalAndStabilityObjFunc(ot.objective()*oi.objective())
+    else:
+      for obj in MinSignalObjFunc.make(circ,jobj,varmap):
+        yield obj
+
+
+class MinSignalAndSpeedObjFunc(optlib.JauntObjectiveFunction):
+
+  def __init__(self,obj):
+    optlib.JauntObjectiveFunction.__init__(self,obj)
+
+  @staticmethod
+  def name():
+    return MinSignalObjFunc.name() + \
+      FastObjFunc.name()
+
+  @staticmethod
+  def make(circ,jobj,varmap):
+    if jobj.time_scaling:
+      ot = list(FastObjFunc.make(circ,jobj,varmap))[0]
+      for oi in MinSignalObjFunc.make(circ,jobj,varmap):
+        yield MinSignalAndSpeedObjFunc(ot.objective()*oi.objective())
+    else:
+      for obj in MinSignalObjFunc.make(circ,jobj,varmap):
+        yield obj
+

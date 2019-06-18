@@ -2,7 +2,7 @@ import scripts.visualize.common as common
 from scripts.db import MismatchStatus
 
 from chip.conc import ConcCirc
-from chip.hcdc.hcdcv2_4 import board as hdacv2_board
+from chip.hcdc.hcdcv2_4 import make_board
 import bmark.diffeqs as diffeqs
 import compiler.jaunt as jaunt
 import compiler.jaunt_pass.jaunt_util as jaunt_util
@@ -10,6 +10,8 @@ import compiler.jaunt_pass.jenv as jenvlib
 
 import numpy as np
 import matplotlib.pyplot as plt
+
+board = make_board("standard")
 
 def compute_varset(circ,bmark):
   prog = diffeqs.get_prog(bmark)
@@ -51,7 +53,7 @@ def visualize():
     varset = None
     Ys = []
     for circ_file,quality in zip(skelt_circs,quality):
-      circ = ConcCirc.read(hdacv2_board,circ_file)
+      circ = ConcCirc.read(board,circ_file)
       if varset is None:
         varset = compute_varset(circ,series)
         Xs = list(map(lambda _: [], range(0,len(varset))))

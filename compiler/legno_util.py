@@ -101,7 +101,7 @@ def exec_jaunt_search(prog,conc_circ,args):
 
         if len(succs) > 0:
             best = min(succs)
-            worst = max(fails)
+            worst = max(fails) if len(fails) > 0 else rng[0]
             if best < rng[1] or worst > rng[0]:
                 best = recursive_grid_search( \
                                               [worst,best], \
@@ -135,13 +135,15 @@ def exec_jaunt_search(prog,conc_circ,args):
                                         analog=True,n=3)
 
     dig_error,analog_error = joint_search(dig_error,analog_error)
-    for idx,opt,model,scale_circ in jaunt.scale(prog, \
-                                                conc_circ,
-                                                args.scale_circuits,
-                                                model=args.model,
-                                                digital_error=dig_error,
-                                                analog_error=analog_error):
-        yield idx,opt,model,scale_circ
+
+    for scale in [1.1]:
+        for idx,opt,model,scale_circ in jaunt.scale(prog, \
+                                                    conc_circ,
+                                                    args.scale_circuits,
+                                                    model=args.model,
+                                                    digital_error=dig_error*scale,
+                                                    analog_error=analog_error*scale):
+            yield idx,opt,model,scale_circ
 
 
 
@@ -167,8 +169,8 @@ def exec_jaunt(hdacv2_board, args):
             filename = path_handler.conc_circ_file(circ_bmark,
                                                    circ_indices,
                                                    idx,
-                                                   opt,
-                                                   model)
+                                                   model,
+                                                   opt)
             timer.end()
             scale_circ.write_circuit(filename)
             filename = path_handler.conc_graph_file(circ_bmark,
@@ -188,10 +190,8 @@ def exec_srcgen(hdacv2_board,args):
   menv = bmark.get_math_env(args.benchmark)
   hwenv = hwenvs.get_hw_env(args.hw_env)
   recompute = args.recompute
-  #circ_dir = path_handler.skelt_circ_dir()
   circ_dir = path_handler.conc_circ_dir()
   timer = Timer('srcgen_%s' % args.benchmark)
-  print(circ_dir)
   for dirname, subdirlist, filelist in os.walk(circ_dir):
     for fname in filelist:
       if fname.endswith('.circ'):
@@ -228,7 +228,7 @@ def exec_srcgen(hdacv2_board,args):
 
 def exec_graph_one(hdacv2_board,path_handler,fname):
     dirname = path_handler.conc_circ_dir()
-    circ_bmark,circ_indices,circ_scale_index,opt,model = \
+    circ_bmark,circ_indices,circ_scale_index,model,opt = \
                                                    path_handler.conc_circ_to_args(fname)
 
     conc_circ = path_handler.conc_circ_file(circ_bmark,

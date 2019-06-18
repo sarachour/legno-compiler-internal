@@ -310,6 +310,7 @@ def hierarchical_route(board,locs,conns,layers,assigns):
   )
   print("-> generate z3")
   print("# vars: %d" % ilpenv.num_vars())
+  print("# tempvars: %d" % ilpenv.num_tempvars())
   print("# cstrs: %d" % ilpenv.num_cstrs())
   ctx = ilpenv.to_model()
   print("-> solve problem")

@@ -9,23 +9,12 @@ class JauntObjectiveFunctionManager():
 
     @staticmethod
     def basic_methods():
-        #return ['fast','slow','max']
-        '''
         return [
-            boptlib.SlowObjFunc,
+            #boptlib.MaxSignalObjFunc,
+            #boptlib.MaxSignalAndSpeedObjFunc,
+            #boptlib.MinSignalObjFunc,
             boptlib.FastObjFunc,
-            boptlib.MaxSignalObjFunc,
-            boptlib.MaxSignalAndSpeedObjFunc,
-            boptlib.MaxSignalAndStabilityObjFunc,
-
-        ]
-        '''
-        return [
-            boptlib.SlowObjFunc,
-            boptlib.FastObjFunc,
-            boptlib.MaxSignalAndStabilityObjFunc,
-            boptlib.MaxSignalAndSpeedObjFunc,
-            boptlib.MaxSignalObjFunc,
+            boptlib.SlowObjFunc
         ]
 
     @staticmethod
@@ -33,7 +22,6 @@ class JauntObjectiveFunctionManager():
         return [
             sweepoptlib.MaxRandomSignalObjFunc,
             sweepoptlib.TauSweepSigObjFunc
-            #physoptlib.TauSweepSNRObjFunc
         ]
 
 

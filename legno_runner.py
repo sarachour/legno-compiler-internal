@@ -53,14 +53,6 @@ def execute(args,params,logfile):
   else:
     return True
 
-def exec_jaunt(params):
-
-  jaunt_args = \
-               "--subset {subset} {bmark} jaunt --model {model} " + \
-               "--scale-circuits {n_scale} {sweep} " + \
-               "--digital-error {digital_error} --analog-error {analog_error}"
-  succ = execute(jaunt_args,params,'jaunt.log')
-
 
 
 parser = argparse.ArgumentParser(description='Legno experiment runner.')
@@ -108,6 +100,10 @@ jaunt_args = \
              "--digital-error {digital_error} --analog-error {analog_error}"
 if succ and not args.srcgen:
   succ = execute(jaunt_args,params,'jaunt.log')
+  if succ:
+    graph_args = \
+                "--subset {subset} {bmark} graph"
+    execute(graph_args,params,'graph.log')
 
 srcgen_args = \
   "--subset {subset} {bmark} srcgen {hwenv} --recompute"

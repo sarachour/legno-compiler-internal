@@ -91,6 +91,10 @@ class ILPEnv:
   def eq(self,e1,e2):
     self._cstrs.append(ILPEq(e1,e2))
 
+  def num_tempvars(self):
+    return self._tempvar
+
+
   def num_vars(self):
     return len(self._to_ilpvar)
 
