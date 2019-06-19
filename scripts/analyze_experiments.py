@@ -36,7 +36,7 @@ def execute_once(args,debug=True):
   db = ExperimentDB()
   rank_method = params.RankMethod(args.rank_method)
   entries = list(db.get_by_status(ExperimentStatus.PENDING))
-  whitelist = None
+  whitelist = ['lotka']
   if args.rank_pending:
     for entry in tqdm.tqdm(entries):
       if not missing_params(entry) and not recompute_params:
@@ -71,7 +71,7 @@ def execute_once(args,debug=True):
       params.analyze(entry,conc_circ,method=rank_method)
 
     if entry.energy is None or recompute_energy:
-      conc_circ = ConcCirc.read(board,entry.jaunt_circ_file)
+      conc_circ = ConcCirc.read(board,entry._jaunt_circ_file)
       energy.analyze(entry,conc_circ)
 
     if entry.quality is None or recompute_quality:

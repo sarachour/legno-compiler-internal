@@ -82,12 +82,21 @@ def fit(_tref,_yref,_tmeas,_ymeas):
                             [x[0],x[1],1.0,0.0])
     return error
 
- 
+
+  def oob(bounds,result):
+    for (lb,ub),r in zip(bounds,result):
+      if r < lb or r > ub:
+        return True
+    return False
+
   bounds = [(1.0, 3.0),(0.0,max(tmeas)*0.15)]
   print("finding transform...")
-  a,b = optimize.brute(compute_loss, bounds)
-  model = [a,b,1.0,0.0]
+  result = optimize.brute(compute_loss, bounds)
+  model = [result[0],result[1],1.0,0.0]
   print(model)
+  if oob(bounds,result):
+    return None,None,model
+
   rt,rx = apply_model_to_obs(tref,tmeas,ymeas,model)
   return rt,rx,model
 
@@ -118,16 +127,18 @@ def analyze(entry):
     common.simple_plot(output,path_h,output.trial,'ref',TREF,YREF)
     common.simple_plot(output,path_h,output.trial,'meas',TMEAS,YMEAS)
     common.simple_plot(output,path_h,output.trial,'pred',THW,YHW)
+    output.set_transform(MODEL)
+
+    if TFIT is None or YFIT is None:
+      continue
+
     common.simple_plot(output,path_h,output.trial,'obs',TFIT,YFIT)
     common.compare_plot(output,path_h,output.trial,'comp',THW,YHW,TFIT,YFIT)
-
     QUALITY = compute_quality(THW,YHW,TFIT,YFIT)
-
-    output.set_transform(MODEL)
     output.set_quality(QUALITY)
     QUALITIES.append(QUALITY)
 
 
-
-  QUALITY = np.median(QUALITIES)
-  entry.set_quality(QUALITY)
+  if len(QUALITIES) > 0:
+    QUALITY = np.median(QUALITIES)
+    entry.set_quality(QUALITY)

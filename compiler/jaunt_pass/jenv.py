@@ -22,6 +22,7 @@ class JauntEnvParams:
   class Type(Enum):
     PHYSICAL = "physical"
     IDEAL = "ideal"
+    NOSCALE = "noscale"
 
   def __init__(self,digital_error=0.05, \
                analog_error=0.05):
@@ -36,8 +37,17 @@ class JauntEnvParams:
     self.bandwidth_maximum = True
     self.model = JauntEnvParams.Type.IDEAL
 
+  def noscale(self):
+    self.experimental_model = True
+    self.do_scale = False
+    self.quantize_minimum = True
+    self.quality_minimum = True
+    self.bandwidth_maximum = True
+    self.model = JauntEnvParams.Type.NOSCALE
+
   def physical(self):
     self.experimental_model = True
+    self.do_scale = True
     self.quantize_minimum = True
     self.quality_minimum = True
     self.bandwidth_maximum = True
@@ -48,6 +58,8 @@ class JauntEnvParams:
       self.physical()
     elif model == JauntEnvParams.Type.IDEAL:
       self.ideal()
+    elif model == JauntEnvParams.Type.NOSCALE:
+      self.noscale()
     else:
       raise Exception("unknown jenv model: <%s>" % model);
 
@@ -61,6 +73,9 @@ class JauntEnvParams:
       tag += "d%d" % (self.percent_digital_error*100.0)
     if self.bandwidth_maximum:
       tag += "b"
+    if not self.do_scale:
+      tag += "NS"
+
     return tag
 
 class JauntEnv:

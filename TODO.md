@@ -8,13 +8,22 @@ standard = only the medium components
 ideal = no minimum value constraints
 physical = minimum value constraints + quantization constraints
 
-bont / success [standard/ideal]
-epor / success [standard/ideal]
-smmrxn / success [standard/ideal]
+-keypoint analysis
+
+columbia 
+pend / success 
+spring / weird [debugme]
+heat / success (2,4)
+vanderpol / success 
+lotka / success (?) interesting case - why?
+
+arco
+bont / success [standard/ideal][hi-error]
+epor / success [standard/ideal][hi-error]
+smmrxn / success [standard/ideal][executable/poor]
 smmrxnbig / success [standard/ideal]
-repri / failed [jaunt]
-gentoggle / failed [jaunt]
-bioosc / not implemented
+repri / success [hi-error > 10e5]
+gentoggle / success [standard/ideal][executable/poor]
 
 
 # TODO list

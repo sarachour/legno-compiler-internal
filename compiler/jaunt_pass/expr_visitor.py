@@ -12,7 +12,6 @@ class ExprVisitor:
     self.block = block
     self.loc = loc
     self.port = port
-    self.db = ModelDB()
 
   def visit(self):
     raise NotImplementedError
@@ -84,13 +83,18 @@ class SCFPropExprVisitor(ExprVisitor):
 
   def __init__(self,jenv,circ,block,loc,port):
     ExprVisitor.__init__(self,jenv,circ,block,loc,port)
+    if jenv.params.experimental_model and jenv.params.do_scale:
+      self.db = ModelDB()
+    else:
+      self.db = None
 
-  def coeff(self,handle):
+  def physical_coeff(self,handle):
+    if self.db is None:
+      return 1.0
+
     block,loc,port = self.block,self.loc,self.port
     config = self.circ.config(block.name,loc)
-    coeff = block.coeff(config.comp_mode, \
-                        config.scale_mode, \
-                        port,handle)
+
     if self.db.has(block.name,loc,port, \
               config.comp_mode,
               config.scale_mode,handle):
@@ -98,10 +102,19 @@ class SCFPropExprVisitor(ExprVisitor):
                           config.comp_mode, \
                           config.scale_mode, \
                           handle)
-      phys_coeff = model.gain
-      #print("%s[%s].%s (%s) = %s" % (block.name,loc,port,handle,phys_coeff))
+      return model.gain
+
     else:
-      phys_coeff = 1.0
+      return 1.0
+
+  def coeff(self,handle):
+    block,loc,port = self.block,self.loc,self.port
+    config = self.circ.config(block.name,loc)
+    coeff = block.coeff(config.comp_mode, \
+                        config.scale_mode, \
+                        port,handle)
+
+    phys_coeff = self.physical_coeff(handle)
     return jop.JConst(coeff*phys_coeff)
 
   def visit_const(self,expr):
