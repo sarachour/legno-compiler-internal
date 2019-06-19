@@ -13,7 +13,7 @@ def ping_user(email,entries):
             fh.write("%s\n" % entry)
 
     cmd = "mail -s \" %d jobs finished\" %s  <<< body.txt" \
-          % (email,len(entries))
+          % (len(entries),email)
 
     os.system(cmd)
     os.remove('body.txt')

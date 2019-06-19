@@ -8,6 +8,7 @@ import datetime
 import lab_bench.lib.command as cmd
 import lab_bench.lib.expcmd.micro_getter as microget
 import lab_bench.lib.expcmd.osc as osc
+import json
 
 def get_output_files(grendel_script):
   with open(grendel_script,'r') as fh:
@@ -131,6 +132,7 @@ class OutputEntry:
     self._hw_env = hw_env
     self._varname = varname
     self._trial = trial
+    self._transform = None
     self._status = None
     self._out_file = None
     self._quality = None
@@ -140,6 +142,11 @@ class OutputEntry:
     self._runtime = None
     self._modif = None
     self._columns = None
+
+  @property
+  def transform(self):
+    return self._transform
+
 
   @property
   def trial(self):
@@ -160,6 +167,9 @@ class OutputEntry:
     return self._scf
 
 
+  @property
+  def transform(self):
+    return self._transform
 
   @property
   def rank(self):
@@ -170,6 +180,9 @@ class OutputEntry:
   def quality(self):
     return self._quality
 
+  @property
+  def model(self):
+    return self._model
 
   @property
   def bmark(self):
@@ -232,6 +245,10 @@ class OutputEntry:
     entry._quality=args['quality']
     entry._rank=args['rank']
     entry._fmax=args['fmax']
+    if not args['transform'] is None:
+      entry._transform = json.loads(args['transform'])
+    else:
+      entry._transform = None
     entry._scf=args['scf']
     entry._tau=args['tau']
     entry._status=OutputStatus(args['status'])
@@ -291,6 +308,11 @@ class OutputEntry:
     self.update_db({'fmax':new_fmax})
     self._fmax = new_fmax
 
+  def set_transform(self,new_transform):
+    self.update_db({'transform': \
+                    json.dumps(new_transform)})
+    self._transform = new_transform
+
   def set_quality(self,new_quality):
     self.update_db({'quality':new_quality})
     self._quality = new_quality
@@ -324,6 +346,7 @@ class OutputEntry:
     s += "tau=%s\n" % (self._tau)
     s += "fmax=%s\n" % (self._fmax)
     s += "quality=%s\n" % (self._quality)
+    s += "transform=%s\n" % (self._transform)
     s += "}\n"
     return s
 
@@ -624,6 +647,7 @@ class ExperimentDB:
     out_file text,
     rank real,
     quality real,
+    transform text,
     fmax real,
     tau real,
     scf real,
@@ -640,9 +664,11 @@ class ExperimentDB:
                           'arco1','arco2', \
                           'arco3','jaunt','model','opt','menv','hwenv',
                           'varname','trial','out_file', \
-                          'rank','quality','fmax','tau','scf','modif']
+                          'rank','quality','transform', \
+                          'fmax','tau','scf','modif']
 
-    self._output_modifiable = ['quality','modif','status','rank','tau','scf','fmax']
+    self._output_modifiable = ['quality','modif','status','rank','transform', \
+                               'tau','scf','fmax']
     self._curs.execute(cmd)
     self._conn.commit()
 
@@ -720,7 +746,7 @@ class ExperimentDB:
     assign_subclauses = []
     for field,value in new_fields.items():
       assert(field in self._output_modifiable)
-      if field == 'modif' or field == 'status':
+      if field == 'modif' or field == 'status' or field == 'transform':
         subcmd = "%s=\"%s\"" % (field,value)
       else:
         subcmd = "%s=%s" % (field,value)

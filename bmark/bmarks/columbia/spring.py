@@ -15,9 +15,9 @@ def model():
     'k2': 0.5,
     'k3': 0.5,
     'cf': 0.15,
-    'PA0': 2,
+    'PA0': 2.0,
     'VA0': 0,
-    'PB0': -1,
+    'PB0': -1.0,
     'VB0': 0,
     'one':0.9999
   }
@@ -47,7 +47,7 @@ def model():
   abnd = 2
   bbnd = 1
   prob.set_interval("PA",-2,2)
-  prob.set_interval("PB",-1.5,1.5)
+  prob.set_interval("PB",-2,2)
   prob.set_interval("VA",-2,2)
   prob.set_interval("VB",-2,2)
   prob.set_max_sim_time(20)

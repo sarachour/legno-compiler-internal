@@ -10,7 +10,7 @@ from bmark.bmarks.common import *
 import bmark.menvs as menvs
 
 def emit(v):
-  return op.Emit(op.Mult(op.Const(0.99999), v),loc="A0")
+  return op.Emit(v,loc="A0")
 
 
 def model(n,obs_idx):
@@ -23,8 +23,8 @@ def model(n,obs_idx):
   params['2coeff'] = params['coeff']*2
 
   prob = MathProg('heat1d-g%d' % n)
-  prob.set_digital_snr(10.0)
-  prob.set_analog_snr(4)
+  #prob.set_digital_snr(10.0)
+  #prob.set_analog_snr(4)
   for i in range(0,n):
     params['curr'] = "u%d" % (i)
     if i > 0 and i < n-1:
@@ -50,9 +50,9 @@ def model(n,obs_idx):
     prob.set_interval(params['curr'],0,params['init_heat'])
 
   prob.bind("POINT", emit(op.Var("u%d" % obs_idx)))
-  prob.set_max_sim_time(200)
+  prob.set_max_sim_time(20)
   prob.compile()
-  menv = menvs.get_math_env('t200')
+  menv = menvs.get_math_env('t20')
   return menv,prob
 
 def execute(n,o):
@@ -62,7 +62,7 @@ def execute(n,o):
 
 
 if __name__ == "__main__":
-  execute(2,1)
-  execute(4,2)
-  execute(8,0)
+  #execute(2,1)
+  #execute(4,2)
+  #execute(8,6)
   execute(16,13)

@@ -6,40 +6,19 @@ import time
 import json
 import util.paths as paths
 import bmark.menvs as menvs
-
+from scipy import optimize
 import bmark.diffeqs as diffeqs
 from bmark.bmarks.common import run_diffeq
+import chip.hcdc.globals as glbls
 import util.util as util
 
 import scripts.analysis.common as common
 
 CACHE = {}
-def demean_signal(y):
-  bias = np.mean(y)
-  return list(map(lambda yi: yi-bias,y))
-
-def truncate_signal(t,y,pred_runtime):
-  min_runtime = 0.5*(max(t)-min(t))
-  runtime = max(min_runtime,pred_runtime)
-  ttrunc = min(t)+runtime
-  idx = (np.abs(np.array(t)- ttrunc)).argmin()
-  return t[0:idx],y[0:idx]
-
-def apply_linear_noise_model(mean,stdev,yref):
-  if len(mean) == 0 or len(stdev) == 0:
-    slope = 1.0
-    intercept = 0.0
-  else:
-    slope,intercept,_,_,stderr = stats.linregress(mean,stdev)
-    print("err: %s" % stderr)
-    print("model: %s*v+%s" % (slope,intercept))
-  nzref = list(map(lambda y: (y*slope + intercept).real, yref))
-  snrref = list(map(lambda args: abs(args[0])/args[1], zip(yref,nzref)))
-  return nzref,snrref
 
 
 def scale_ref_data(tau,scf,tref,yref):
-  thw = list(map(lambda t: t/tau, tref))
+  thw = list(map(lambda t: t/tau*1.0/glbls.TIME_FREQUENCY, tref))
   yhw = list(map(lambda x: x*scf, yref))
   return thw, yhw
 
@@ -60,45 +39,67 @@ def compute_ref(bmark,menvname,varname):
   else:
       return CACHE[(bmark,menvname,varname)]
 
-# FMAX: the maximum frequency in the transformed simulation
-def compute_running_snr(T,Y,nmax=10000):
-  time_between_pts = np.mean(np.diff(T))
-  HWFREQ = 1.0/time_between_pts
-  # maximum frequency of chip
-  SAMPFREQ = 400000*2.0
-  win_size = int(HWFREQ/SAMPFREQ)
-  MEAN,STDEV,SNR,TIME = [],[],[],[]
-  n = len(Y)
-  step = int(round(n/nmax)) if nmax < n else 1
-
-  print(" n: %s" % n)
-  print(" hw_freq: %s" % HWFREQ)
-  print(" mt_freq: %s" % SAMPFREQ)
-  print(" step: %s" % step)
-  print(" win: %s" % win_size)
-  for i in tqdm.tqdm(range(0,n,step)):
-    win_hi = min(round(i+win_size/2.0),n-1)
-    win_lo = max(round(i-win_size/2.0),0)
-    if win_hi - win_lo < win_size/6.0:
-      continue
-
-    u = np.array(Y[win_lo:win_hi+1])
-    t = np.array(T[win_lo:win_hi+1])
-    mean = np.mean(u)
-    stdev = np.std(u)
-    MEAN.append(mean)
-    STDEV.append(stdev)
-    SNR.append(abs(mean)/stdev)
-    TIME.append(np.mean(t))
-
-  return TIME,MEAN,STDEV,SNR
-
 def read_meas_data(filename):
   with open(filename,'r') as fh:
     obj = util.decompress_json(fh.read())
     T,V = obj['times'], obj['values']
-    T_REFLOW = np.array(T) + min(T)
+    T_REFLOW = np.array(T) - min(T)
     return T_REFLOW,V
+
+
+def fit(_tref,_yref,_tmeas,_ymeas):
+  def measure_error(tref,xref,tobs,xobs,model):
+    a,b,c,d = model
+    thw = a*tref + b
+    xhw = c*xref + d
+    return thw,xhw
+
+  def compute_error(ht,hx,mt,mx,model):
+    rt,rx = measure_error(ht,hx,mt,mx,model)
+    if min(rt) < min(mt) or max(rt) > max(mt):
+        return 2.0
+    y = np.interp(rt, mt, mx, left=0, right=0)
+    error = np.sum((y-rx)**2)/len(y)
+    return error
+
+  def apply_model_to_obs(ht,mt,mx,model):
+    a,b,c,d = model
+    tmin,tmax = b, b+max(ht*a)
+    inds = list(filter(lambda i: mt[i] <= tmax and mt[i] >= tmin, \
+                    range(len(mt))))
+    rt = list(map(lambda i: (mt[i]-b)/a,inds))
+    rx = list(map(lambda i: mx[i], inds))
+    return rt,rx
+
+
+  tref = np.array(_tref)
+  yref = np.array(_yref)
+  tmeas = np.array(_tmeas)
+  ymeas = np.array(_ymeas)
+
+  def compute_loss(x):
+    error = compute_error(tref,yref,tmeas,ymeas, \
+                            [x[0],x[1],1.0,0.0])
+    return error
+
+ 
+  bounds = [(1.0, 3.0),(0.0,max(tmeas)*0.15)]
+  print("finding transform...")
+  a,b = optimize.brute(compute_loss, bounds)
+  model = [a,b,1.0,0.0]
+  print(model)
+  rt,rx = apply_model_to_obs(tref,tmeas,ymeas,model)
+  return rt,rx,model
+
+def compute_quality(_tobs,_yobs,_tpred,_ypred):
+  tpred = np.array(_tpred)
+  ypred = np.array(_ypred)
+  tobs = np.array(_tobs)
+  yobs = np.array(_yobs)
+  ypred_flow = np.interp(tobs, tpred, ypred, left=0, right=0)
+  error = math.sqrt(np.median((ypred_flow-yobs)**2))
+  print("quality=%s" % error)
+  return error
 
 def analyze(entry):
   path_h = paths.PathHandler('default',entry.bmark)
@@ -112,26 +113,20 @@ def analyze(entry):
     TMEAS,YMEAS = read_meas_data(output.out_file)
     scf = max(abs(np.array(YMEAS)))/max(abs(np.array(YREF)))
     THW,YHW = scale_ref_data(output.tau,scf,TREF,YREF)
-
+    TFIT,YFIT,MODEL = fit(THW,YHW,TMEAS,YMEAS)
 
     common.simple_plot(output,path_h,output.trial,'ref',TREF,YREF)
     common.simple_plot(output,path_h,output.trial,'meas',TMEAS,YMEAS)
+    common.simple_plot(output,path_h,output.trial,'pred',THW,YHW)
+    common.simple_plot(output,path_h,output.trial,'obs',TFIT,YFIT)
+    common.compare_plot(output,path_h,output.trial,'comp',THW,YHW,TFIT,YFIT)
 
-    RUNTIME = entry.runtime
-    TMEAS_CUT, YMEAS_CUT = truncate_signal(TMEAS,YMEAS,RUNTIME)
-    #YMEAS_ZERO = demean_signal(YMEAS_CUT)
-    common.simple_plot(output,path_h,output.trial,'cut',TMEAS_CUT,YMEAS_CUT)
-    TIME,MEAN,STDEV,_ = \
-          compute_running_snr(TMEAS_CUT,YMEAS_CUT)
+    QUALITY = compute_quality(THW,YHW,TFIT,YFIT)
 
-    NZHW, SNRHW = apply_linear_noise_model(MEAN,STDEV,YHW)
-    QUALITY= np.median(SNRHW)
-    common.mean_std_plot(output,path_h,output.trial,'dist',TREF,YHW,NZHW)
-    common.simple_plot(output,path_h,output.trial,'snr',THW,SNRHW)
-    print("[[ SNR Quality: %s ]]" % QUALITY)
+    output.set_transform(MODEL)
+    output.set_quality(QUALITY)
     QUALITIES.append(QUALITY)
 
-    output.set_quality(QUALITY)
 
 
   QUALITY = np.median(QUALITIES)

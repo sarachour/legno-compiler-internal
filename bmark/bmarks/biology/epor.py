@@ -73,7 +73,7 @@ def model():
   prob.bind(v,EXPR)
   prob.set_interval(v,0.0,ampl)
 
-  measure_var(prob,'EpoEpoRi','EPO_EPORI')
+  measure_var(prob,'EpoEpoRi','EPOEPORI')
   prob.set_max_sim_time(200)
   prob.compile()
   menv = menvs.get_math_env('t200')

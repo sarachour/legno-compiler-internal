@@ -1,4 +1,38 @@
 import matplotlib.pyplot as plt
+import json
+import numpy as np
+
+def waveform(entry,path_h,trial,tag,t,x):
+  filename = path_h.plot(entry.bmark,
+                         entry.arco_indices,
+                         entry.jaunt_index,
+                         entry.model,
+                         entry.objective_fun,
+                         entry.math_env,
+                         entry.hw_env,
+                         '%s-%d-%s' % (entry.varname,trial,tag))
+  filename = filename.split(".png")[0] + ".txt"
+  with open(filename,'w') as fh:
+    fh.write(json.dumps({ \
+                          't':list(t), \
+                          'x':list(np.real(x)) \
+    }))
+
+def compare_plot(entry,path_h,trial,tag,tpred,xpred,tobs,xobs):
+  plt.plot(tobs,xobs,label="obs")
+  plt.plot(tpred,xpred,label="pred")
+  plt.legend()
+  filename = path_h.plot(entry.bmark,
+                         entry.arco_indices,
+                         entry.jaunt_index,
+                         entry.model,
+                         entry.objective_fun,
+                         entry.math_env,
+                         entry.hw_env,
+                         '%s-%d-%s' % (entry.varname,trial,tag))
+  plt.savefig(filename)
+  plt.clf()
+
 
 def simple_plot(entry,path_h,trial,tag,t,x):
   plt.plot(t,x,label=tag)
@@ -6,6 +40,7 @@ def simple_plot(entry,path_h,trial,tag,t,x):
   filename = path_h.plot(entry.bmark,
                          entry.arco_indices,
                          entry.jaunt_index,
+                         entry.model,
                          entry.objective_fun,
                          entry.math_env,
                          entry.hw_env,
@@ -24,6 +59,7 @@ def mean_std_plot(entry,path_h,trial,tag,t,mean,std):
   filename = path_h.plot(entry.bmark,
                          entry.arco_indices,
                          entry.jaunt_index,
+                         entry.model,
                          entry.objective_fun,
                          entry.math_env,
                          entry.hw_env,

@@ -127,6 +127,9 @@ def exec_jaunt_search(prog,conc_circ,args):
         max_pct *= 2
         succ = test_valid(max_pct,max_pct)
 
+    if max_pct >= 1e6:
+        return
+
     dig_error= recursive_grid_search([0.01,max_pct], \
                                      max_value=max_pct,
                                      analog=False,n=3)

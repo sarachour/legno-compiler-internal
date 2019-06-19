@@ -51,10 +51,12 @@ class PathHandler:
         (self._bmark,index_str,scale_index,model,opt,tag)
 
 
-    def plot(self,bmark,indices,scale_index,opt,menv_name,henv_name,tag):
+    def plot(self,bmark,indices,scale_index,model,opt, \
+             menv_name,henv_name,tag):
       index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.PLOT_DIR+ "/%s_%s_s%s_%s_%s_%s_%s.png" % \
-        (self._bmark,index_str,scale_index,opt,menv_name,henv_name,\
+      return self.PLOT_DIR+ "/%s_%s_s%s_%s_%s_%s_%s_%s.png" % \
+        (self._bmark,index_str,scale_index,model,opt, \
+         menv_name,henv_name,\
          tag)
 
 
@@ -100,6 +102,7 @@ class PathHandler:
       basename = name.split(".json")[0]
       args = basename.split("_")
       bmark = args[0]
+      print(name)
       indices = list(map(lambda token: int(token), args[1:-7]))
       scale_index = int(args[-7].split('s')[1])
       model = args[-6]
