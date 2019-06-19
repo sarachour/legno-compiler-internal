@@ -83,7 +83,8 @@ class SCFPropExprVisitor(ExprVisitor):
 
   def __init__(self,jenv,circ,block,loc,port):
     ExprVisitor.__init__(self,jenv,circ,block,loc,port)
-    if jenv.params.experimental_model and jenv.params.do_scale:
+    if jenv.params.experimental_model \
+       and jenv.params.do_gain:
       self.db = ModelDB()
     else:
       self.db = None

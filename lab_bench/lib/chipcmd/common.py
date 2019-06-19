@@ -15,13 +15,13 @@ def build_circ_ctype(circ_data):
 
 def signed_float_to_byte(fvalue):
     assert(fvalue >= -1.0 and fvalue <= 1.0)
-    value = int((fvalue+1.0)/2.0*255)
+    value = int(round((fvalue+1.0)/2.0*255))
     assert(value >= 0 and value <= 255)
     return value
 
 def float_to_byte(fvalue):
     assert(fvalue >= 0.0 and fvalue <= 1.0)
-    value = int(fvalue*255)
+    value = int(round(fvalue*255))
     assert(value >= 0 and value <= 255)
     return value
 

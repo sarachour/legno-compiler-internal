@@ -145,6 +145,16 @@ def compute_scale(jenv,prog,circ,objfun):
         new_circ = apply_result(jenv,circ,sln)
         yield thisobj,new_circ
 
+def report_missing_models(jenv,circ,no_models):
+    for block,loc,port,scale_mode in no_models:
+        config = circ.config(block,loc)
+        jaunt_physlog.log(circ,block,loc, \
+                          config,
+                          scale_mode)
+        msg = "NO model: %s[%s].%s %s %s error" % \
+              (block,loc,port, \
+               config.comp_mode,scale_mode)
+        jenv.fail(msg)
 
 def scale(prog,circ,nslns, \
           model='physical', \
@@ -153,7 +163,6 @@ def scale(prog,circ,nslns, \
     infer.clear(circ)
     infer.infer_intervals(prog,circ)
     infer.infer_bandwidths(prog,circ)
-    infer.infer_snrs(prog,circ)
     objs = JauntObjectiveFunctionManager.basic_methods()
     for idx,infer_circ in enumerate(jaunt_infer.infer_scale_config(prog, \
                                                                    circ, \
@@ -165,6 +174,11 @@ def scale(prog,circ,nslns, \
             jenv = jenvlib.JauntEnv(model=model, \
                                     digital_error=digital_error, \
                                     analog_error=analog_error)
+            no_models = infer.infer_costs(infer_circ, \
+                                          propagate_cost=jenv.params.propagate_uncertainty, \
+                                          ideal=not jenv.params.experimental_model)
+            report_missing_models(jenv,infer_circ,no_models)
+
             for final_obj,final_circ in compute_scale(jenv,prog,infer_circ,obj):
                 yield idx,final_obj.tag(),jenv.params.tag(),final_circ
 

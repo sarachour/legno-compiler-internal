@@ -136,6 +136,16 @@ class BlockStateDatabase:
   def has(self,blockkey):
     return len(self._get(blockkey)) > 0
 
+  def has_profile(self,blockkey):
+    if self.has(blockkey):
+      data = self.get(blockkey)
+      if len(data.profile) == 0:
+        return False
+      else:
+        return True
+    else:
+      return False
+
   def _process(self,data):
     state = data['state']
     loc = chipdata.CircLoc(data['chip'],

@@ -31,6 +31,8 @@ parser.add_argument("--debug", action='store_true', \
                     help="debug script")
 parser.add_argument("--calibrate", action='store_true', \
                     help="calibrate uncalibrated components")
+parser.add_argument("--characterize", action='store_true', \
+                    help="characterize chip")
 parser.add_argument("--recompute", action='store_true', \
                     help="recompute calibration codes")
 parser.add_argument("--profile", action='store_true', \
@@ -77,7 +79,8 @@ state.initialize()
 if args.calibrate:
     assert(args.script != None)
     succ = main_script_calibrate(state,args.script, \
-                                 recompute=args.recompute)
+                                 recompute=args.recompute,
+                                 characterize=args.characterize)
     if not succ:
         print("[ERROR] some calibration steps failed..")
         sys.exit(1)

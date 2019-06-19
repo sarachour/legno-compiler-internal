@@ -214,6 +214,15 @@ def is_same_tile(circ,loc1,loc2):
       return False
   return True
 
+def get_statuses(gprog,circ,block,locstr,config):
+  if block.name == 'integrator':
+    cmd = gen_get_integrator_status(circ,block,locstr)
+    gprog.add(cmd)
+
+  elif block.name == 'tile_adc':
+    cmd = gen_get_adc_status(circ,block,locstr)
+    gprog.add(cmd)
+
 def gen_block(gprog,circ,block,locstr,config):
   if block.name == 'multiplier':
     generator = gen_use_multiplier(circ,block,locstr,config)
@@ -471,8 +480,12 @@ def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,ntrials):
   gren.add(parse('micro_get_status'))
   for trial in range(0,ntrials):
     execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trial)
+    for block_name,loc,config in conc_circ.instances():
+      block = conc_circ.board.block(block_name)
+      get_statuses(gren,conc_circ,block,loc,config)
 
-  gren.add(parse('micro_get_status'))
+    gren.add(parse('micro_get_status'))
+
   return gren
 
 def teardown(gren,stmt):

@@ -43,7 +43,7 @@ class PortModel():
                                    self.comp_mode,
                                    self.scale_mode,
                                    self.handle)
-    return hash(ident)
+    return ident
 
   def to_json(self):
     return self.__dict__
@@ -190,10 +190,9 @@ class ModelDB:
 
   def remove(self,block,loc,port,comp_mode,scale_mode,handle=None):
     model = PortModel(block,loc,port,comp_mode,scale_mode,handle)
-    id = model.identifier
     cmd = '''
-    DELETE FROM models WHERE id="{id}"
-    '''.format(id=id)
+    DELETE FROM models WHERE id="{id}";
+    '''.format(id=model.identifier)
 
     self._curs.execute(cmd)
     self._conn.commit()
@@ -202,8 +201,8 @@ class ModelDB:
     model_bits = bytes(json.dumps(model.to_json()),'utf-8').hex()
     cmd =  '''
     INSERT INTO models (id,block,loc,port,comp_mode,scale_mode,handle,model)
-    VALUES ({id},"{block}","{loc}","{port}","{comp_mode}",
-            "{scale_mode}","{handle}","{model}")
+    VALUES ("{id}","{block}","{loc}","{port}","{comp_mode}",
+            "{scale_mode}","{handle}","{model}");
     '''.format(
       id=model.identifier,
       block=model.block,
@@ -217,6 +216,8 @@ class ModelDB:
     )
     self.remove(model.block,model.loc,model.port, \
                 model.comp_mode,model.scale_mode,model.handle)
+    assert(not self.has(model.block,model.loc,model.port, \
+                        model.comp_mode,model.scale_mode,model.handle))
     self._curs.execute(cmd)
     self._conn.commit()
 

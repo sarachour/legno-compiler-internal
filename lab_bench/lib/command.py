@@ -93,6 +93,7 @@ def profile(state,obj):
 def calibrate(state,obj,recompute=False, \
               targeted_calibrate=False, \
               targeted_measure=False,
+              characterize=True, \
               error_scale=1.0):
     if isinstance(obj,UseCommand):
         dbkey = obj.to_key()
@@ -114,20 +115,21 @@ def calibrate(state,obj,recompute=False, \
                                 max_error=obj.max_error*error_scale,
                                 targeted=targeted_calibrate) \
                                 .execute(state)
-            if succ:
-                print(">> characterize")
-                CharacterizeCmd(obj.block_type,
-                                obj.loc.chip,
-                                obj.loc.tile,
-                                obj.loc.slice,
-                                obj.loc.index,
-                                targeted=targeted_measure) \
-                                .execute(state)
-
-            else:
-                print("CALIBRATE FAILED")
 
         result = state.state_db.get(dbkey)
+        if characterize and \
+           result.success and \
+           not state.state_db.has_profile(dbkey):
+            print(">> characterize")
+            CharacterizeCmd(obj.block_type,
+                            obj.loc.chip,
+                            obj.loc.tile,
+                            obj.loc.slice,
+                            obj.loc.index,
+                            targeted=targeted_measure) \
+                            .execute(state)
+
+
         if result.success:
             print("[[SUCCESS!]]")
             return True

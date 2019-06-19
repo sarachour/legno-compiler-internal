@@ -1,11 +1,13 @@
 import util.config as CONFIG
 from compiler import srcgen
 from lab_bench.lib.chipcmd.use import *
+import os
 
 PROG = srcgen.GrendelProg()
 
-def log(circ,block,loc,config,scale_mode):
+def log(circ,block_name,loc,config,scale_mode):
   backup_scm = config.scale_mode
+  block = circ.board.block(block_name)
   if block.name == 'lut':
     return
   config.set_scale_mode(scale_mode)
@@ -27,5 +29,11 @@ def save():
 
     minprog.add(stmt)
     stmt_keys.append(str(stmt))
+    if os.path.exists(CONFIG.CALIBRATE_FILE):
+      mode = 'a' # append if already exists
+    else:
+      mode = 'w' # make a new file if not
 
-  minprog.write(CONFIG.CALIBRATE_FILE)
+    with open(CONFIG.CALIBRATE_FILE,mode) as fh:
+      for stmt in minprog.stmts:
+        fh.write("%s\n" % stmt)

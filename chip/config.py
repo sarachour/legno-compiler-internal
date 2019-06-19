@@ -28,13 +28,7 @@ class Config:
         self._snrs = {}
 
         # physical model data
-        self._gen_delays = {}
-        self._prop_delays = {}
-        self._mismatch_delays = {}
-        self._gen_noise = {}
-        self._prop_noise = {}
-        self._gen_biases = {}
-        self._prop_biases = {}
+        self._meta = {}
 
         # lut models
         self._injs = {}
@@ -125,6 +119,7 @@ class Config:
 
         get_port_dict(cfg._injs, obj,'injvars')
         get_port_dict(cfg._dacs, obj,'dacs')
+        get_port_handle_dict(cfg._meta, obj,'meta')
         get_port_dict(cfg._labels, obj,'labels', \
                       lambda v: [v[0],Labels(v[1])])
         get_port_handle_dict(cfg._scfs, obj, 'scfs')
@@ -160,6 +155,7 @@ class Config:
 
         set_port_dict('injvars',self._injs)
         set_port_dict('dacs',self._dacs)
+        set_port_handle_dict('meta',self._meta)
         set_port_dict('labels', self._labels,
                       lambda args: [args[0],args[1].value])
 
@@ -182,6 +178,7 @@ class Config:
       cfg._comp_mode = self._comp_mode
       cfg._scale_mode = self._scale_mode
       cfg._dacs = dict(self._dacs)
+      cfg._meta = dict(self._meta)
       cfg._labels = dict(self._labels)
       cfg._scfs = dict(self._scfs)
       cfg._intervals = dict(self._intervals)
@@ -229,145 +226,30 @@ class Config:
       if not port in dict_:
         dict_[port] = {}
 
-    def clear_snrs(self):
-      self._snrs= {}
-
-
     def clear_bandwidths(self):
       self._bandwidths = {}
 
     def clear_intervals(self):
       self._intervals = {}
 
-    def generated_noise(self,port):
-      if not port in self._gen_noise:
+    def meta(self,port,key,handle=None):
+      #print("%s[%s].%s" % (port,handle,key))
+      if not port in self._meta:
           return None
-      return self._gen_noise[port]
-
-    def generated_noises(self):
-        for port,noise in self._gen_noise.items():
-            yield port,noise
-
-    def propagated_noise(self,port):
-      if not port in self._prop_noise:
+      if not handle in self._meta[port]:
           return None
-      return self._prop_noise[port]
-
-    def propagated_noises(self):
-        for port,value in self._prop_noise.items():
-            yield port,value
-
-    def propagated_bias(self,port):
-      if not port in self._prop_biases:
+      if not key in self._meta[port][handle]:
           return None
-      return self._prop_biases[port]
+      #print("%s[%s].%s : %s" % (port,handle,key, \
+      #                          self._meta[port][handle][key]))
+      return self._meta[port][handle][key]
 
-    def propagated_biases(self):
-        for port,value in self._prop_biases.items():
-            yield port,value
-
-    def generated_bias(self,port):
-      if not port in self._gen_biases:
-          return None
-      return self._gen_biases[port]
-
-    def generated_biases(self):
-        for port,bias in self._gen_biases.items():
-            yield port,bias
-
-    def propagated_delay(self,port):
-      if not port in self._prop_delays:
-          return None
-      return self._prop_delays[port]
-
-    def propagated_delays(self):
-        for port,delay in self._prop_delays.items():
-            yield port,delay
-
-    def delay_mismatch(self,port):
-      if not port in self._mismatch_delays:
-          return None
-      return self._mismatch_delays[port]
-
-    def delay_mismatches(self):
-        for port,value in self._mismatch_delays.items():
-            yield port,value
-
-    def generated_delay(self,port):
-      if not port in self._gen_delays:
-          return None
-      return self._gen_delays[port]
-
-    def generated_delays(self):
-        for port,delay in self._gen_delays.items():
-            yield port,delay
-
-    def set_propagated_noise(self,port,noise):
-      assert(noise.is_posynomial())
-      self._prop_noise[port] = noise
-
-    def set_propagated_bias(self,port,bias):
-        if not (bias.is_posynomial()):
-            raise Exception("not posynomial: %s" % bias)
-
-        self._prop_biases[port] = bias
-
-    def set_delay_mismatch(self,port,delay):
-      assert(delay.is_posynomial())
-      self._mismatch_delays[port] = delay
-
-    def set_propagated_delay(self,port,delay):
-      assert(delay.is_posynomial())
-      self._prop_delays[port] = delay
-
-    def set_generated_noise(self,port,noise):
-      if not (noise.is_posynomial()):
-          raise Exception("not posynomial: %s" % noise)
-
-      self._gen_noise[port] = noise
-
-    def set_generated_bias(self,port,bias):
-      if not (bias.is_posynomial()):
-          raise Exception("not posynomial: %s" % bias)
-
-      self._gen_biases[port] = bias
-
-    def set_generated_delay(self,port,delay):
-      assert(delay.is_posynomial())
-      self._gen_delays[port] = delay
-
-    def clear_noise_model(self):
-        def reset(key):
-            setattr(self,key,{})
-
-        reset('_gen_noise')
-        reset('_prop_noise')
-
-    def clear_physical_model(self):
-        def reset(key):
-            setattr(self,key,{})
-
-        reset('_gen_delays')
-        reset('_gen_noise')
-        reset('_gen_biases')
-        reset('_prop_delays')
-        reset('_prop_biases')
-        reset('_prop_noise')
-
-
-    def has_physical_model(self):
-        def test(key):
-            if len(getattr(self,key).keys()) == 0:
-                return False
-            else:
-                return True
-
-        return test('_gen_delays') and \
-            test('_gen_noise') and \
-            test('_gen_biases') and  \
-            test('_prop_delays') and \
-            test('_prop_biases') and \
-            test('_prop_noise')
+    def set_meta(self,port,key,value,handle=None):
+      if not port in self._meta:
+          self._meta[port] = {}
+      if not handle in self._meta[port]:
+          self._meta[port][handle] = {}
+      self._meta[port][handle][key] = value
 
     def set_bandwidth(self,port,bandwidth,handle=None):
       self._make(self._bandwidths,port)
@@ -381,8 +263,6 @@ class Config:
       self._op_ranges[port][handle] = op_range
 
 
-    def set_snr(self,port,snr):
-      self._snrs[port] = snr
 
     def set_interval(self,port,interval,handle=None):
       self._make(self._intervals,port)

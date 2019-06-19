@@ -244,14 +244,7 @@ def exec_graph_one(hdacv2_board,path_handler,fname):
         obj = json.loads(fh.read())
         conc_circ = ConcCirc.from_json(hdacv2_board, \
                                        obj)
-        '''
-          methods = ['interval','scaled-interval', \
-                         'gen-delay','prop-delay', \
-                         'scale-factor','delay-mismatch', \
-                         'gen-noise','prop-noise',\
-                         'gen-bias','prop-bias']
-          '''
-        methods = ['snr']
+        methods = ['snr','cost']
         for draw_method in methods:
             filename = path_handler.conc_graph_file(circ_bmark,
                                                     circ_indices,

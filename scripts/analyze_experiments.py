@@ -36,7 +36,8 @@ def execute_once(args,debug=True):
   db = ExperimentDB()
   rank_method = params.RankMethod(args.rank_method)
   entries = list(db.get_by_status(ExperimentStatus.PENDING))
-  whitelist = ['lotka']
+  whitelist = ['spring']
+  #whitelist = None
   if args.rank_pending:
     for entry in tqdm.tqdm(entries):
       if not missing_params(entry) and not recompute_params:

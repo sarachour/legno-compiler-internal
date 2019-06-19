@@ -126,6 +126,7 @@ def sc_generate_scale_model_constraints(jenv,circ):
         modevars = []
         for mode in scale_model.discrete.modes():
             if not block.whitelist(config.comp_mode, mode):
+                print("blacklist : %s.%s" % (config.comp_mode,scm))
                 continue
             modevar = jenv.decl_mode_var(block_name,loc,mode)
             for contvar,value in scale_model.discrete.cstrs(mode):

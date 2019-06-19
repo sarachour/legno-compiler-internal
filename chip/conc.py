@@ -91,7 +91,8 @@ class ConcCirc:
         if not (tblk,tloc,tport) in self._conns:
             return []
         else:
-            return self._conns[(tblk,tloc,tport)]
+            tup = self._conns[(tblk,tloc,tport)]
+            return [tup]
 
     def get_conns_by_dest(self,tblk,tloc,tport):
         assert(isinstance(tblk,str))

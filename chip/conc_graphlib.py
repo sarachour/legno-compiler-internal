@@ -28,6 +28,8 @@ class Shader:
   def get_shader(circ,method):
     if method == 'snr':
       return SNRShader(circ)
+    if method == 'cost':
+      return CostShader(circ)
     if method == 'interval':
       return IntervalShader(circ)
     if method == 'bandwidth':
@@ -36,20 +38,6 @@ class Shader:
       return ScaledIntervalShader(circ)
     elif method == 'scale-factor':
       return ScaleFactorShader(circ)
-    elif method == 'gen-delay':
-      return GenDelayShader(circ)
-    elif method == 'prop-delay':
-      return PropDelayShader(circ)
-    elif method == 'delay-mismatch':
-      return DelayMismatchShader(circ)
-    elif method == 'gen-noise':
-      return GenNoiseShader(circ)
-    elif method == 'prop-noise':
-      return PropNoiseShader(circ)
-    elif method == 'gen-bias':
-      return GenBiasShader(circ)
-    elif method == 'prop-bias':
-      return PropBiasShader(circ)
     elif method is None:
       return GenericShader()
     else:
@@ -148,55 +136,19 @@ class GenericShader(Shader):
   def all_values(self):
     yield 0
 
-
-class DelayMismatchShader(CircShader):
-
-  def __init__(self,circ):
-    CircShader.__init__(self,circ,\
-                        evalsym.delay_mismatch_evaluator(circ))
-
-
-class PropDelayShader(CircShader):
+class CostShader(CircShader):
 
   def __init__(self,circ):
-    CircShader.__init__(self,circ, \
-                        evalsym.propagated_delay_evaluator(circ))
+    CircShader.__init__(self,circ,None)
 
-class PropBiasShader(CircShader):
+  def get_port_value(self,name,loc,port):
+    cfg = self.circ.config(name,loc)
+    cost = cfg.meta(port,'cost')
+    if cost is None:
+      return Shader.ERROR,"skip"
+    else:
+      return cost,"%s" % cost
 
-  def __init__(self,circ):
-    CircShader.__init__(self,circ, \
-                        evalsym.propagated_bias_evaluator(circ))
-
-
-
-class GenBiasShader(CircShader):
-
-  def __init__(self,circ):
-    CircShader.__init__(self,circ, \
-                        evalsym.generated_bias_evaluator(circ))
-
-
-class PropNoiseShader(CircShader):
-
-  def __init__(self,circ):
-    CircShader.__init__(self,circ, \
-                        evalsym.propagated_noise_evaluator(circ))
-
-
-
-class GenNoiseShader(CircShader):
-
-  def __init__(self,circ):
-    CircShader.__init__(self,circ, \
-                        evalsym.generated_noise_evaluator(circ))
-
-
-class GenDelayShader(CircShader):
-
-  def __init__(self,circ):
-    CircShader.__init__(self,circ, \
-                        evalsym.generated_delay_evaluator(circ))
 
 class ScaleFactorShader(CircShader):
 

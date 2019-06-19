@@ -255,11 +255,11 @@ class GetIntegStatusCmd(AnalogChipCommand):
             }
         })
 
-    def apply(self,state):
+    def execute_command(self,state):
         if state.dummy:
             return
 
-        resp = AnalogChipCommand.apply(self,state)
+        resp = AnalogChipCommand.execute_command(self,state)
         handle = "integ.%s" % self.loc
         oflow = True if resp.data(0) == 1 else False
         print("status_val: %s" % oflow)

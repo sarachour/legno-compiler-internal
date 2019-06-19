@@ -15,14 +15,6 @@ import math
 
 db = ModelDB()
 
-def ideal_model():
-    return 1.0,0.0
-
-def physical_model(model):
-    physgain = model.gain
-    unc = math.sqrt(model.noise**2.0 + model.bias_uncertainty**2.0)
-    physunc = unc+abs(model.bias)
-    return physgain, physunc
 
 def get_parameters(jenv,circ,block,loc,port,handle=None):
     config = circ.config(block.name,loc)
@@ -30,31 +22,14 @@ def get_parameters(jenv,circ,block,loc,port,handle=None):
     baseline = scale_model.baseline
     pars = {}
     if isinstance(jenv, jenvlib.JauntInferEnv):
-        scale_mode = baseline
+        scale_mode = scale_model.baseline
         hwscvar = jop.JVar(jenv.get_op_range_var(block.name,loc,port,handle))
-        physgain,physunc = ideal_model()
+        uncertainty = 0.0
     else:
         scale_mode = config.scale_mode
         hwscvar = jop.JConst(1.0)
-        model = PortModel(block.name,loc,port, \
-                          config.comp_mode,scale_mode)
-        if jenv.params.experimental_model:
-            if db.has(block.name,loc,port, \
-                      config.comp_mode,scale_mode,handle):
-                model = db.get(block.name,loc,port, \
-                               config.comp_mode,scale_mode,handle)
-                physgain,physunc = physical_model(model)
-            else:
-                msg = "NO model: %s[%s].%s [%s] %s %s error" % \
-                                (block.name,loc,port,handle, \
-                                 config.comp_mode,scale_mode)
-                jaunt_physlog.log(circ,block,loc, \
-                            config,
-                            scale_mode)
-                jenv.fail(msg)
-                physgain,physunc = ideal_model()
-        else:
-            physgain,physunc = ideal_model()
+        uncertainty = config.meta(port,'cost',handle=handle)
+        assert(not uncertainty is None)
 
     mrng = config.interval(port)
     mbw = config.bandwidth(port)
@@ -69,8 +44,7 @@ def get_parameters(jenv,circ,block,loc,port,handle=None):
         'prop':prop,
         'hw_range':hwrng,
         'hw_bandwidth':hwbw,
-        'phys_gain': physgain,
-        'phys_unc': physunc,
+        'phys_unc': uncertainty,
         'min_digital_snr': 1.0/jenv.params.percent_digital_error,
         'min_analog_snr': 1.0/jenv.params.percent_analog_error
     }
@@ -85,7 +59,6 @@ def decl_scale_variables(jenv,circ):
             v = jenv.decl_scvar(block_name,loc,output)
             for handle in block.handles(config.comp_mode,output):
                 v = jenv.decl_scvar(block_name,loc,output,handle=handle)
-
             if block.name == "lut":
                 v=jenv.decl_inject_var(block_name,loc,output)
 
@@ -155,7 +128,6 @@ def digital_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
     prop = pars['prop']
     mscale = pars['math_scale']
     hscale = pars['hw_scale']
-    phys_gain = pars['phys_gain']
     #for k,v in pars.items():
     #    print("%s=%s" % (k,v))
     assert(isinstance(prop, props.DigitalProperties))
@@ -189,7 +161,6 @@ def analog_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
     mrng = pars['math_range']
     hwrng = pars['hw_range']
     min_snr = pars['min_analog_snr']
-    phys_gain = pars['phys_gain']
     prop = pars['prop']
     assert(isinstance(prop, props.AnalogProperties))
     ratio = jop.JMult(pars['math_scale'], \
@@ -218,8 +189,6 @@ def analog_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
 
 
 def digital_quantize_constraint(jenv,circ,block,loc,port,handle,annot=""):
-    if jenv.no_quality:
-        return
     pars = get_parameters(jenv,circ,block,loc,port,handle)
     prop = pars['prop']
     mrng = pars['math_range']

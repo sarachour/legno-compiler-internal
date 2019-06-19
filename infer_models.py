@@ -319,8 +319,7 @@ def populate_default_models(board):
   db = ModelDB()
   for blkname in ['tile_in','tile_out', \
                   'chip_in','chip_out', \
-                  'ext_chip_in','ext_chip_out',
-                  'lut']:
+                  'ext_chip_in','ext_chip_out']:
     block = board.block(blkname)
     for inst in board.instances_of_block(blkname):
       for port in block.inputs + block.outputs:
@@ -329,13 +328,91 @@ def populate_default_models(board):
                           scale_mode='*')
         db.put(model)
 
+    for blkname in ['lut']:
+      block = board.block(blkname)
+      for inst in board.instances_of_block(blkname):
+        for port in block.inputs + block.outputs:
+          model = PortModel(blkname,inst,port, \
+                            comp_mode='*', \
+                            scale_mode='*')
+          model.bias_uncertainty = 0.0
+          model.noise = 0.10
+          db.put(model)
+
+def guess_models(board,min_samples=5):
+  db = ModelDB()
+  locs = {}
+  modes = {}
+  models = {}
+
+  for model in db.get_all():
+    key = (model.block,model.port,model.handle,model.comp_mode)
+    if not key in locs:
+      locs[key] = []
+      models[key] = {}
+      modes[key] = {}
+
+    if not model.scale_mode in models[key]:
+      models[key][model.scale_mode] = []
+      modes[key][model.scale_mode] = []
+
+    locs[key].append(model.loc)
+    models[key][model.scale_mode].append(model)
+    modes[key][model.scale_mode].append(model.loc)
+
+  pred_models = {}
+  for (block,port,handle,comp_mode),scms in models.items():
+    pred_models[(block,port,handle,comp_mode)] = {}
+    for scale_mode,model_list in scms.items():
+      biases = list(map(lambda m: m.bias, model_list))
+      noises = list(map(lambda m: m.noise, model_list))
+      uncs = list(map(lambda m: m.bias_uncertainty, model_list))
+      gains = list(map(lambda m: m.gain, model_list))
+
+      if len(model_list) < min_samples:
+        continue
+      print("%s.%s [%s] [%s]" % (block,port,comp_mode,scale_mode))
+      print("-> median model [%d]" % (len(model_list)))
+      model_locs = modes[(block,port,handle,comp_mode)][scale_mode]
+      print("%d (unique=%d)" % (len(model_locs),len(set(model_locs))))
+      model = PortModel(block,None,port,comp_mode,scale_mode,handle=handle)
+      model.bias = np.median(biases)
+      model.noise = np.median(noises)
+      model.uncertainty_bias = np.median(uncs)
+      model.gain = np.median(gains)
+      pred_models[(block,port,handle,comp_mode)][scale_mode] = model
+
+  for (block,port,handle,comp_mode),loc_list in locs.items():
+    for loc in loc_list:
+      for scm,pred_model in pred_models[(block,port,handle,comp_mode)].items():
+        if loc in modes[(block,port,handle,comp_mode)][scm]:
+          continue
+
+        print("+ %s[%s].%s [%s] => %s" % (block,loc,port,handle,scm))
+        model = PortModel(block,loc,port,comp_mode,scm,handle=handle)
+        model.bias = pred_model.bias
+        model.noise = pred_model.noise
+        model.gain = pred_model.gain
+        model.uncertainty_bias = pred_model.uncertainty_bias
+        print(model)
+        db.put(model)
+
 parser = argparse.ArgumentParser(description="Model inference engine")
 parser.add_argument('--subset',default='standard',
                     help='component subset to use for compilation')
 parser.add_argument('--populate-defaults',action='store_true',
                     help='insert default models for connection blocks')
+parser.add_argument('--guess-models',action='store_true',
+                    help='guess models')
+
 
 args = parser.parse_args()
+if args.guess_models:
+  from chip.hcdc.hcdcv2_4 import make_board
+  subset = HCDCSubset(args.subset)
+  hdacv2_board = make_board(subset)
+  guess_models(hdacv2_board)
+  sys.exit(0)
 
 shutil.rmtree(CONFIG.DATASET_DIR)
 

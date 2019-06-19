@@ -22,7 +22,8 @@ class JauntEnvParams:
   class Type(Enum):
     PHYSICAL = "physical"
     IDEAL = "ideal"
-    NOSCALE = "noscale"
+    NOGAIN = "nogain"
+    PROPAGATE = "propagate"
 
   def __init__(self,digital_error=0.05, \
                analog_error=0.05):
@@ -32,34 +33,56 @@ class JauntEnvParams:
 
   def ideal(self):
     self.experimental_model = False
+    self.propagate_uncertainty = False
+    self.do_gain = False
     self.quantize_minimum = False
     self.quality_minimum = False
     self.bandwidth_maximum = True
-    self.model = JauntEnvParams.Type.IDEAL
 
-  def noscale(self):
+  def nogain(self):
     self.experimental_model = True
-    self.do_scale = False
+    self.propagate_uncertainty = False
+    self.do_gain = False
     self.quantize_minimum = True
     self.quality_minimum = True
     self.bandwidth_maximum = True
-    self.model = JauntEnvParams.Type.NOSCALE
 
   def physical(self):
     self.experimental_model = True
-    self.do_scale = True
+    self.propagate_uncertainty = False
+    self.do_gain = True
     self.quantize_minimum = True
     self.quality_minimum = True
     self.bandwidth_maximum = True
-    self.model = JauntEnvParams.Type.PHYSICAL
+
+  def propagate(self):
+    self.experimental_model = True
+    self.propagate_uncertainty = True
+    self.do_gain = True
+    self.quantize_minimum = True
+    self.quality_minimum = True
+    self.bandwidth_maximum = True
+
+
+  def noscale(self):
+    self.experimental_model = True
+    self.propagate_uncertainty = False
+    self.do_gain = False
+    self.quantize_minimum = True
+    self.quality_minimum = True
+    self.bandwidth_maximum = True
+
 
   def set_model(self,model):
     if model == JauntEnvParams.Type.PHYSICAL:
       self.physical()
     elif model == JauntEnvParams.Type.IDEAL:
       self.ideal()
-    elif model == JauntEnvParams.Type.NOSCALE:
+    elif model == JauntEnvParams.Type.NOGAIN:
       self.noscale()
+    elif model == JauntEnvParams.Type.PROPAGATE:
+      self.propagate()
+
     else:
       raise Exception("unknown jenv model: <%s>" % model);
 
@@ -67,14 +90,17 @@ class JauntEnvParams:
     tag = ""
     if self.experimental_model:
       tag += "x"
+    if self.propagate_uncertainty:
+      tag += "P"
     if self.quality_minimum:
       tag += "q%d" % (self.percent_analog_error*100.0)
     if self.quantize_minimum:
       tag += "d%d" % (self.percent_digital_error*100.0)
     if self.bandwidth_maximum:
       tag += "b"
-    if not self.do_scale:
-      tag += "NS"
+    if not self.do_gain:
+      tag += "ng"
+
 
     return tag
 
@@ -101,7 +127,6 @@ class JauntEnv:
     self._interactive = False
     self.decl_jaunt_var((),JauntVarType.TAU)
 
-    self.no_quality = False
     self.time_scaling = True
 
   def set_time_scaling(self,v):

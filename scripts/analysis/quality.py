@@ -89,7 +89,7 @@ def fit(_tref,_yref,_tmeas,_ymeas):
         return True
     return False
 
-  bounds = [(1.0, 3.0),(0.0,max(tmeas)*0.15)]
+  bounds = [(0.6, 3.0),(0.0,max(tmeas)*0.15)]
   print("finding transform...")
   result = optimize.brute(compute_loss, bounds)
   model = [result[0],result[1],1.0,0.0]
@@ -130,6 +130,7 @@ def analyze(entry):
     output.set_transform(MODEL)
 
     if TFIT is None or YFIT is None:
+      QUALITIES.append(-1)
       continue
 
     common.simple_plot(output,path_h,output.trial,'obs',TFIT,YFIT)

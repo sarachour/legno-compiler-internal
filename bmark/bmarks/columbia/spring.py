@@ -10,10 +10,11 @@ from bmark.bmarks.common import *
 import bmark.menvs as menvs
 
 def model():
+  k = 0.5
   params = {
-    'k1': 0.5,
-    'k2': 0.5,
-    'k3': 0.5,
+    'k1': k,
+    'k2': k,
+    'k3': k,
     'cf': 0.15,
     'PA0': 2.0,
     'VA0': 0,
@@ -28,13 +29,13 @@ def model():
   #prob.set_digital_snr(15.0)
   spec_fun = op.Func(['V'], op.Mult(op.Sgn(op.Var('V')),\
                                     op.Sqrt(op.Abs(op.Var('V')))))
-  PA = parse_diffeq('{one}*VA', 'PA0', ':a', params)
-
+  PA = parse_diffeq('VA', 'PA0', ':a', params)
   VA = parse_diffeq('{k2}*FPB+{k1_k2}*(-FPA)+{cf}*(-VA)', 'VA0', ':b', params)
+  #VA = parse_diffeq('{k2}*FPB+(-FPA)+{cf}*(-VA)', 'VA0', ':b', params)
 
-  PB = parse_diffeq('{one}*VB', 'PB0', ':c', params)
-
+  PB = parse_diffeq('VB', 'PB0', ':c', params)
   VB = parse_diffeq('{k2}*FPA+{k2_k3}*(-FPB)+{cf}*(-VB)', 'VB0', ':d', params)
+  #VB = parse_diffeq('{k2}*FPA+(-FPB)+{cf}*(-VB)', 'VB0', ':d', params)
 
   FPA = op.Call([op.Var('PA')],spec_fun)
   FPB = op.Call([op.Var('PB')],spec_fun)
@@ -44,12 +45,11 @@ def model():
   prob.bind('VB', VB)
   prob.bind('FPA', FPA)
   prob.bind('FPB', FPB)
-  abnd = 2
-  bbnd = 1
-  prob.set_interval("PA",-2,2)
-  prob.set_interval("PB",-2,2)
-  prob.set_interval("VA",-2,2)
-  prob.set_interval("VB",-2,2)
+  abnd = 2.5
+  prob.set_interval("PA",-abnd,abnd)
+  prob.set_interval("PB",-abnd,abnd)
+  prob.set_interval("VA",-abnd,abnd)
+  prob.set_interval("VB",-abnd,abnd)
   prob.set_max_sim_time(20)
   prob.bind('PosA', op.Emit(op.Var('PA'),loc="A0"))
   prob.compile()
