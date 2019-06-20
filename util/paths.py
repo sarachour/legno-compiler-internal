@@ -26,6 +26,10 @@ class PathHandler:
         self._name = name
         self._bmark = bmark
 
+    @property
+    def name(self):
+        return self._name
+
     def set_root_dir(self,name,bmark):
         self.ROOT_DIR = "%s/legno/%s" % (config.OUTPUT_PATH,name)
         self.BMARK_DIR = self.ROOT_DIR + ("/%s" % bmark)
@@ -102,7 +106,6 @@ class PathHandler:
       basename = name.split(".json")[0]
       args = basename.split("_")
       bmark = args[0]
-      print(name)
       indices = list(map(lambda token: int(token), args[1:-7]))
       scale_index = int(args[-7].split('s')[1])
       model = args[-6]

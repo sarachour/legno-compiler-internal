@@ -7,11 +7,11 @@ import lab_bench.lib.chipcmd.data as chipcmd
 import json
 import itertools
 import numpy as np
-import scipy.optimize
 import math
 from chip.model import PortModel, ModelDB
 from chip.hcdc.globals import HCDCSubset
-import matplotlib.pyplot as plt
+from scipy import optimize
+import scripts.infer_util as infer_util
 
 def to_sign(name):
   return chipcmd.SignType(name)
@@ -72,62 +72,26 @@ def group_dataset(data):
   loc = "(HDACv2,%d,%d,%d,%d)" % (chip,tile,slce,inst)
   return block,loc,grouped_dataset
 
-def apply_model(xdata,a,b):
-    x = xdata
-    result = (a)*(x) + b
-    return result
-
-def infer_model(data,adc=False):
-  n = len(data['bias'])
-  bias = np.array(list(map(lambda i: data['bias'][i], range(n))))
-  target= np.array(list(map(lambda i: data['target'][i], range(n))))
-  noise = np.array(list(map(lambda i: data['noise'][i], range(n))))
-  if adc:
-    bias = np.array(list(map(lambda i: bias[i]/128.0, range(n))))
-    target = np.array(list(map(lambda i: (target[i]-128.0)/128.0, range(n))))
-    noise = np.array(list(map(lambda i: noise[i]/(128.0**2), range(n))))
-
-  if n == 1:
-    gain,bias,unc_std,nz_std = 1.0,bias[0],0.0,math.sqrt(noise[0])
-
-  elif n > 1:
-    meas = np.array(list(map(lambda i: bias[i]+target[i], range(n))))
-
-    (gain,bias),corrs= scipy.optimize.curve_fit(apply_model, target, meas)
-    pred = np.array(list(map(lambda i: apply_model(target[i],gain,bias), \
-                             range(n))))
-
-    valid_inds = list(filter(lambda i : abs(pred[i]) <= 1.0, range(n)))
-    errors = list(map(lambda i: (meas[i]-pred[i])**2.0, valid_inds))
-    unc_var = sum(errors)/len(valid_inds)
-    unc_std = math.sqrt(unc_var)
-    nz_var = sum(noise)/n
-    nz_std = math.sqrt(nz_var)
-
-  print("gain=%f bias=%f unc-std=%f noise-std=%f" % (gain,bias,unc_std,nz_std))
-  return gain,bias,unc_std,nz_std
 
 def build_adc_model(data):
   block,loc,grouped_dataset = group_dataset(data)
 
   for group_data in grouped_dataset.values():
     group = group_data['group']
-    gain,bias,bias_unc,noise = infer_model(group_data,adc=True)
+    infer_model,bnd = infer_util.infer_model(group_data,adc=True)
     comp_mode = "*"
     scale_mode = to_range(group['rng'])
     model = PortModel('tile_adc',loc,'out',
                         comp_mode=comp_mode,
                         scale_mode=scale_mode)
 
-    model.bias = bias
-    model.bias_uncertainty = bias_unc
-    model.noise = noise
-    model.gain = gain
+    model.set_model(infer_model)
     yield model
 
     model = PortModel('tile_adc',loc,'in',
                            comp_mode=comp_mode,
                            scale_mode=scale_mode)
+    model.set_oprange_scale(*bnd['in0'])
     yield model
 
 def build_fanout_model(data):
@@ -139,7 +103,7 @@ def build_fanout_model(data):
 
   for group_data in grouped_dataset.values():
     group = group_data['group']
-    gain,bias,bias_unc,noise = infer_model(group_data)
+    infer_model,bnd = infer_util.infer_model(group_data)
 
     scale_modes = [to_range(group["range-%s" % group['port']])]
     comp_modes = list(itertools.product(*comp_options))
@@ -148,15 +112,13 @@ def build_fanout_model(data):
         model = PortModel(block,loc,group['port'],
                             comp_mode=comp_mode,
                             scale_mode=scale_mode)
-        model.bias = bias
-        model.bias_uncertainty = bias_unc
-        model.noise = noise
-        model.gain = gain
+        model.set_model(infer_model)
         yield model
 
         model = PortModel(block,loc,"in",
                                comp_mode=comp_mode,
                                scale_mode=scale_mode)
+        model.set_oprange_scale(*bnd['in0'])
         yield model
 
 
@@ -172,7 +134,7 @@ def build_integ_model(data):
     print("%s scale-mode=%s port=%s" % (loc, \
                                         str(scale_mode), \
                                         group['port']))
-    gain,bias,bias_unc,noise = infer_model(group_data)
+    infer_model,bnd = infer_util.infer_model(group_data)
     for comp_mode in comp_options:
       # the initial condition
       if group["port"]== "in1":
@@ -180,24 +142,20 @@ def build_integ_model(data):
                             handle=':z[0]', \
                             comp_mode=comp_mode,
                             scale_mode=scale_mode)
-        model.bias = bias
-        model.bias_uncertainty = bias_unc
-        model.noise = noise
-        model.gain = gain
+        model.set_model(infer_model)
         yield model
 
         model = PortModel('integrator',loc,'ic', \
                           comp_mode=comp_mode,
                           scale_mode=scale_mode)
+        model.set_oprange_scale(*bnd['in1'])
         yield model
 
       if group["port"]== "out0":
         model = PortModel('integrator',loc,'out', \
                           comp_mode=comp_mode,
                           scale_mode=scale_mode)
-        model.bias = bias
-        model.bias_uncertainty = bias_unc
-        model.noise = noise
+        model.set_model(infer_model)
         yield model
 
         model = PortModel('integrator',loc,'out', \
@@ -211,9 +169,8 @@ def build_integ_model(data):
         model = PortModel('integrator',loc,'in', \
                           comp_mode=comp_mode,
                           scale_mode=scale_mode)
-        model.bias = bias
-        model.bias_uncertainty = bias_unc
-        model.noise = noise
+        model.set_model(infer_model)
+        model.set_oprange_scale(*bnd['in0'])
         yield model
         model = PortModel('integrator',loc,'out', \
                           handle=":z'",
@@ -232,20 +189,18 @@ def build_dac_model(data):
                    to_range(group['rng']) \
     )
     print("comp_mode=%s scale_mode=%s" % (comp_mode,scale_mode))
-    gain,bias,bias_unc,noise = infer_model(group_data)
+    infer_model,bnd = infer_util.infer_model(group_data)
     # ignore source
     model = PortModel('tile_dac',loc,'out', \
                         comp_mode=comp_mode, \
                         scale_mode=scale_mode)
-    model.bias = bias
-    model.bias_uncertainty = bias_unc
-    model.noise = noise
-    model.gain = gain
+    model.set_model(infer_model)
     yield model
 
     model = PortModel('tile_dac',loc,'in', \
                       comp_mode=comp_mode,
                       scale_mode=scale_mode)
+    model.set_oprange_scale(*bnd['in0'])
     yield model
 
 def build_mult_model(data):
@@ -262,28 +217,28 @@ def build_mult_model(data):
                     to_range(group["range-out0"]))
 
     print("scale-mode=%s" % str(scale_mode))
-    gain,bias,bias_unc,noise = infer_model(group_data)
+    infer_model,bounds = infer_util.infer_model(group_data)
     comp_mode = "vga" if group['vga'] else "mul"
     model = PortModel("multiplier",loc,'out', \
                         comp_mode=comp_mode,
                         scale_mode=scale_mode)
-    model.bias = bias
-    model.bias_uncertainty = bias_unc
-    model.noise = noise
-    model.gain = gain
+    model.set_model(infer_model)
     yield model
 
     model = PortModel("multiplier",loc,'in0', \
                          comp_mode=comp_mode,
                          scale_mode=scale_mode)
+    model.set_oprange_scale(*bounds['in0'])
     yield model
     model = PortModel("multiplier",loc,'in1', \
                          comp_mode=comp_mode,
                          scale_mode=scale_mode)
+    model.set_oprange_scale(*bounds['in1'])
     yield model
     model = PortModel("multiplier",loc,'coeff', \
                          comp_mode=comp_mode,
                          scale_mode=scale_mode)
+    model.set_oprange_scale(*bounds['in1'])
     yield model
 
 def build_model(data):
@@ -368,6 +323,8 @@ def guess_models(board,min_samples=5):
       noises = list(map(lambda m: m.noise, model_list))
       uncs = list(map(lambda m: m.bias_uncertainty, model_list))
       gains = list(map(lambda m: m.gain, model_list))
+      lbs = list(map(lambda m: m.oprange_scale[0], model_list))
+      ubs = list(map(lambda m: m.oprange_scale[1], model_list))
 
       if len(model_list) < min_samples:
         continue
@@ -380,6 +337,8 @@ def guess_models(board,min_samples=5):
       model.noise = np.median(noises)
       model.uncertainty_bias = np.median(uncs)
       model.gain = np.median(gains)
+      lb,ub = np.median(lbs),np.median(ubs)
+      model.set_oprange_scale(lb,ub)
       pred_models[(block,port,handle,comp_mode)][scale_mode] = model
 
   for (block,port,handle,comp_mode),loc_list in locs.items():
@@ -394,6 +353,7 @@ def guess_models(board,min_samples=5):
         model.noise = pred_model.noise
         model.gain = pred_model.gain
         model.uncertainty_bias = pred_model.uncertainty_bias
+        model.set_oprange_scale(*pred_model.oprange_scale)
         print(model)
         db.put(model)
 

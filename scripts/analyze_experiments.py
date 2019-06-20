@@ -19,8 +19,9 @@ import scripts.analysis.energy as energy
 
 import tqdm
 
-board = make_board('standard')
+#board = make_board('standard')
 
+BOARD_CACHE = {}
 def missing_params(entry):
   return entry.rank is None or \
     entry.runtime is None
@@ -36,20 +37,27 @@ def execute_once(args,debug=True):
   db = ExperimentDB()
   rank_method = params.RankMethod(args.rank_method)
   entries = list(db.get_by_status(ExperimentStatus.PENDING))
-  whitelist = ['spring']
-  #whitelist = None
+
   if args.rank_pending:
     for entry in tqdm.tqdm(entries):
       if not missing_params(entry) and not recompute_params:
         continue
 
-      if not whitelist is None and not entry.bmark in whitelist:
+      if not args.bmark is None and not entry.bmark == args.bmark:
+        continue
+
+      if not args.subset is None and not entry.subset == args.subset:
         continue
 
       if debug:
         print(entry)
 
-      conc_circ = ConcCirc.read(board,entry.skelt_circ_file)
+      if not entry.subset in BOARD_CACHE:
+        board = make_board[entry.subset]
+        BOARD_CACHE[entry.subset] = board
+
+      conc_circ = ConcCirc.read(BOARD_CACHE[entry.subset], \
+                                entry.jaunt_circ_file)
       params.analyze(entry,conc_circ,method=rank_method)
 
   entries = list(db.get_by_status(ExperimentStatus.RAN))
@@ -61,18 +69,29 @@ def execute_once(args,debug=True):
       and not recompute_any:
       continue
 
-    if not whitelist is None and not entry.bmark in whitelist:
+
+    if not args.bmark is None and not entry.bmark == args.bmark:
+      continue
+
+    if not args.subset is None and not entry.subset == args.subset:
       continue
 
     if debug:
       print(entry)
 
+    if not entry.subset in BOARD_CACHE:
+      board = make_board(entry.subset)
+      BOARD_CACHE[entry.subset] = board
+    else:
+      board = BOARD_CACHE[entry.subset]
+
+    print(entry)
     if missing_params(entry) or recompute_params:
       conc_circ = ConcCirc.read(board,entry.jaunt_circ_file)
       params.analyze(entry,conc_circ,method=rank_method)
 
     if entry.energy is None or recompute_energy:
-      conc_circ = ConcCirc.read(board,entry._jaunt_circ_file)
+      conc_circ = ConcCirc.read(board,entry.jaunt_circ_file)
       energy.analyze(entry,conc_circ)
 
     if entry.quality is None or recompute_quality:

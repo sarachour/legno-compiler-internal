@@ -10,6 +10,7 @@ class RankMethod(Enum):
   SCALE = "scale"
   INTERVAL = "interval"
   HANDTUNED = "handtuned"
+
 def compute_params(conc_circ,entry,varname):
   LOC = None
   for block_name,loc,config in conc_circ.instances():
@@ -59,6 +60,8 @@ def compute_rank(conc_circ,entry,method=RankMethod.SKELTER):
 
 
 def analyze(entry,conc_circ,method=RankMethod.SKELTER):
+  params = None
+  print("GET OUTPUTS")
   for output in entry.outputs():
     varname = output.varname
     params = compute_params(conc_circ,entry,
@@ -67,5 +70,7 @@ def analyze(entry,conc_circ,method=RankMethod.SKELTER):
     output.set_fmax(params['fmax'])
     output.set_scf(params['scf'])
     #output.set_rank(RANK)
+    print(output)
 
-  entry.set_runtime(params['runtime'])
+  if not params is None:
+    entry.set_runtime(params['runtime'])

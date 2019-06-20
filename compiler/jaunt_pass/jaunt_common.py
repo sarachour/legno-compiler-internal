@@ -4,7 +4,7 @@ import ops.jop as jop
 import ops.nop as nop
 import ops.op as ops
 import chip.props as props
-from chip.model import ModelDB, PortModel
+from chip.model import ModelDB, PortModel,get_model
 import chip.hcdc.globals as glb
 import util.util as util
 import util.config as CONFIG
@@ -14,6 +14,16 @@ import compiler.jaunt_pass.jenv as jenvlib
 import math
 
 db = ModelDB()
+
+def get_phys_model(circ,block,loc,port,handle=None):
+     if db.has(block.name,loc,port, \
+              config.comp_mode, \
+              config.scale_mode,handle):
+        model = db.get(block.name,loc,port, \
+                        config.comp_mode, \
+                        config.scale_mode,handle)
+        return model
+
 
 
 def get_parameters(jenv,circ,block,loc,port,handle=None):
@@ -25,10 +35,13 @@ def get_parameters(jenv,circ,block,loc,port,handle=None):
         scale_mode = scale_model.baseline
         hwscvar = jop.JVar(jenv.get_op_range_var(block.name,loc,port,handle))
         uncertainty = 0.0
+        oprange_scale = (1.0,1.0)
     else:
         scale_mode = config.scale_mode
         hwscvar = jop.JConst(1.0)
         uncertainty = config.meta(port,'cost',handle=handle)
+        phys_model = get_model(db,circ,block.name,loc,port,handle)
+        oprange_scale  = phys_model.oprange_scale
         assert(not uncertainty is None)
 
     mrng = config.interval(port)
@@ -45,6 +58,7 @@ def get_parameters(jenv,circ,block,loc,port,handle=None):
         'hw_range':hwrng,
         'hw_bandwidth':hwbw,
         'phys_unc': uncertainty,
+        'phys_scale': oprange_scale,
         'min_digital_snr': 1.0/jenv.params.percent_digital_error,
         'min_analog_snr': 1.0/jenv.params.percent_analog_error
     }
@@ -128,6 +142,7 @@ def digital_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
     prop = pars['prop']
     mscale = pars['math_scale']
     hscale = pars['hw_scale']
+    oprngsc_lower,oprngsc_upper = pars['phys_scale']
     #for k,v in pars.items():
     #    print("%s=%s" % (k,v))
     assert(isinstance(prop, props.DigitalProperties))
@@ -135,12 +150,14 @@ def digital_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
                                 jop.expo(pars['hw_scale'],-1.0))
     jaunt_util.upper_bound_constraint(jenv,
                                       ratio,
-                                      mrng.upper, hwrng.upper,
+                                      mrng.upper,
+                                      hwrng.upper*oprngsc_upper,
                                       'jcom-digital-oprange-%s' % annot)
 
     jaunt_util.lower_bound_constraint(jenv,
                                       ratio,
-                                      mrng.lower, hwrng.lower,
+                                      mrng.lower,
+                                      hwrng.lower*oprngsc_lower,
                                       'jcom-digital-oprange-%s' % annot)
 
 
@@ -161,17 +178,20 @@ def analog_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
     mrng = pars['math_range']
     hwrng = pars['hw_range']
     min_snr = pars['min_analog_snr']
+    oprngsc_lower,oprngsc_upper = pars['phys_scale']
     prop = pars['prop']
     assert(isinstance(prop, props.AnalogProperties))
     ratio = jop.JMult(pars['math_scale'], \
                       jop.expo(pars['hw_scale'],-1.0))
     jaunt_util.upper_bound_constraint(jenv,
                                       ratio,
-                                      mrng.upper, hwrng.upper,
+                                      mrng.upper,
+                                      hwrng.upper*oprngsc_upper,
                                       'jcom-analog-oprange-%s' % annot)
     jaunt_util.lower_bound_constraint(jenv,
                                       ratio,
-                                      mrng.lower, hwrng.lower,
+                                      mrng.lower,
+                                      hwrng.lower*oprngsc_lower,
                                       'jcom-analog-oprange-%s' % annot)
     # if this makes the system a system that processes a physical signal.
     if prop.is_physical:

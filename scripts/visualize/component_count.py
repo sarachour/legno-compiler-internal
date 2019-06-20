@@ -6,7 +6,7 @@ from chip.conc import ConcCirc
 from enum import Enum
 from chip.hcdc.hcdcv2_4 import make_board
 
-board = make_board('standard')
+#board = make_board('standard')
 
 def to_table(summary):
   to_header = {

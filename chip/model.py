@@ -16,6 +16,8 @@ class PortModel():
     self._noise = 0.0
     self._bias = 0.0
     self._unc_bias = 0.0
+    # the actual lower bound is [ospos*pos, osneg*neg]
+    self._opscale = (1.0,1.0)
     self._comp_mode = util.normalize_mode(comp_mode)
     self._scale_mode = util.normalize_mode(scale_mode)
 
@@ -27,6 +29,14 @@ class PortModel():
     m._scale_mode = util.normalize_mode(m._scale_mode)
     return m
 
+  def set_model(self,other):
+    self._gain = other._gain
+    self._noise = other._noise
+    self._bias = other._bias
+    self._unc_bias = other._unc_bias
+    l,u = self._opscale
+    self._opscale = (l,u)
+
   @property
   def gain(self):
     return self._gain
@@ -36,6 +46,14 @@ class PortModel():
     assert(v > 0.0)
     self._gain = v
 
+  @property
+  def oprange_scale(self):
+    return self._opscale
+
+  def set_oprange_scale(self,a,b):
+    assert(a >= 0 and a <= 1.0)
+    assert(b >= 0 and b <= 1.0)
+    self._opscale = (a,b)
 
   @property
   def identifier(self):
@@ -102,13 +120,18 @@ class PortModel():
 
   def __repr__(self):
     r = "=== model ===\n"
-    for k,v in self.__dict__.items():
-      r += ("%s=%s\n" % (k,v))
+    r += "ident: %s\n" % (self.identifier)
+    r += "bias: mean=%f std=%f\n" % (self.bias,self.bias_uncertainty)
+    r += "gain: mean=%f\n" % (self.gain)
+    r += "noise: std=%f\n" % (self.noise)
+    l,u = self._opscale
+    r += ("scale=(%fx,%fx)\n" % (l,u))
     return r
 
 
 class ModelDB:
 
+  MISSING = []
   def __init__(self):
     path = CFG.MODEL_DB
     self._conn = sqlite3.connect(path)
@@ -138,6 +161,10 @@ class ModelDB:
                  'handle',
                  'model']
 
+
+  @staticmethod
+  def log_missing_model(block_name,loc,port,comp_mode,scale_mode):
+    ModelDB.MISSING.append((block_name,loc,port,comp_mode,scale_mode))
 
   def get_all(self):
     cmd = '''
@@ -221,3 +248,18 @@ class ModelDB:
     self._curs.execute(cmd)
     self._conn.commit()
 
+
+
+def get_model(db,circ,block_name,loc,port,handle=None):
+    block = circ.board.block(block_name)
+    config = circ.config(block_name,loc)
+    if db.has(block.name,loc,port, \
+              config.comp_mode, \
+              config.scale_mode,handle):
+      model = db.get(block.name,loc,port, \
+                     config.comp_mode, \
+                     config.scale_mode,handle)
+      return model
+    else:
+      ModelDB.log_missing_model(block_name,loc,port,config.scale_mode)
+      return None

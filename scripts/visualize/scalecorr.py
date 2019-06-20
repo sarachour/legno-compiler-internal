@@ -11,7 +11,7 @@ import compiler.jaunt_pass.jenv as jenvlib
 import numpy as np
 import matplotlib.pyplot as plt
 
-board = make_board("standard")
+#board = make_board("standard")
 
 def compute_varset(circ,bmark):
   prog = diffeqs.get_prog(bmark)

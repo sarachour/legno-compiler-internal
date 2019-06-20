@@ -120,6 +120,10 @@ def calibrate(state,obj,recompute=False, \
         if characterize and \
            result.success and \
            not state.state_db.has_profile(dbkey):
+            print(">> set state")
+            backup_cached = obj.cached
+            obj.cached = True
+            obj.execute(state)
             print(">> characterize")
             CharacterizeCmd(obj.block_type,
                             obj.loc.chip,
@@ -128,6 +132,7 @@ def calibrate(state,obj,recompute=False, \
                             obj.loc.index,
                             targeted=targeted_measure) \
                             .execute(state)
+            obj.cached = backup_cached
 
 
         if result.success:

@@ -19,8 +19,9 @@ def get_output_files(grendel_script):
       elif isinstance(instr,microget.MicroGetADCValuesCmd):
         yield instr.filename
 
-def make_args(bmark,arco_inds,jaunt_indx,model,opt,menv_name,hwenv_name):
+def make_args(subset,bmark,arco_inds,jaunt_indx,model,opt,menv_name,hwenv_name):
   return  {
+    'subset':subset,
     'bmark':bmark,
     'arco0':arco_inds[0],
     'arco1':arco_inds[1],
@@ -119,10 +120,12 @@ class ExperimentStatus(Enum):
 
 class OutputEntry:
 
-  def __init__(self,db,bmark,arco_indices,jaunt_index,
-               model,
-               objective_fun,math_env,hw_env,varname,trial):
+  def __init__(self,db,subset,bmark,arco_indices,
+               jaunt_index,model,
+               objective_fun,math_env,hw_env,
+               varname,trial):
     self._db = db
+    self._subset = subset
     self._bmark = bmark
     self._arco_indices = arco_indices
     self._jaunt_index = jaunt_index
@@ -228,6 +231,7 @@ class OutputEntry:
   def from_db_row(db,args):
     entry = OutputEntry(
       db=db,
+      subset=args['subset'],
       bmark=args['bmark'],
       arco_indices=[args['arco0'],args['arco1'], \
                   args['arco2'], args['arco3']],
@@ -257,7 +261,8 @@ class OutputEntry:
     return entry
 
   def delete(self):
-     self._db.delete_output(self._bmark,
+     self._db.delete_output(self._subset,
+                            self._bmark,
                             self._arco_indices,
                             self._jaunt_index,
                             self._model,
@@ -268,7 +273,8 @@ class OutputEntry:
                             self._trial)
 
   def update_db(self,args):
-    self._db.update_output(self._bmark,
+    self._db.update_output(self._subset,
+                           self._bmark,
                            self._arco_indices,
                            self._jaunt_index,
                            self._model,
@@ -331,11 +337,12 @@ class OutputEntry:
 
   @property
   def ident(self):
-    return "%s[%s,%s](%s,%s)" % (self.port_ident,
-                              self._objective_fun,
-                              self._model,
-                              self._math_env,
-                              self._hw_env)
+    return "%s::%s[%s,%s](%s,%s)" % (self._subset, \
+                                     self.port_ident, \
+                                     self._objective_fun, \
+                                     self._model, \
+                                     self._math_env, \
+                                     self._hw_env)
 
   def __repr__(self):
     s = "{\n"
@@ -354,9 +361,10 @@ class OutputEntry:
 
 class ExperimentEntry:
 
-  def __init__(self,db,bmark,arco_indices,jaunt_index,
+  def __init__(self,db,subset,bmark,arco_indices,jaunt_index,
                model,objective_fun,math_env,hw_env):
     self._bmark = bmark
+    self._subset = subset
     self._arco_indices = arco_indices
     self._jaunt_index = jaunt_index
     self._objective_fun = objective_fun
@@ -376,6 +384,12 @@ class ExperimentEntry:
   @property
   def rank(self):
     return self._rank
+
+
+  @property
+  def subset(self):
+    return self._subset
+
 
 
   @property
@@ -431,7 +445,8 @@ class ExperimentEntry:
     return self._grendel_file
 
   def outputs(self):
-    for outp in self._db.get_outputs(self._bmark, \
+    for outp in self._db.get_outputs(self._subset,
+                                     self._bmark, \
                                      self._arco_indices, \
                                      self._jaunt_index, \
                                      self._model, \
@@ -465,7 +480,8 @@ class ExperimentEntry:
       self.set_status(ExperimentStatus.PENDING)
 
   def update_db(self,args):
-    self._db.update_experiment(self._bmark,
+    self._db.update_experiment(self._subset,
+                               self._bmark,
                                self._arco_indices,
                                self._jaunt_index,
                                self._model,
@@ -514,7 +530,8 @@ class ExperimentEntry:
     for outp in self.get_outputs():
       outp.delete()
 
-    self._db.delete_experiment(self._bmark,
+    self._db.delete_experiment(self._subset,
+                               self._bmark,
                                self._arco_indices,
                                self._jaunt_index,
                                self._model,
@@ -523,7 +540,8 @@ class ExperimentEntry:
                                self._hw_env)
 
   def get_outputs(self):
-    return self._db.get_outputs(self._bmark, \
+    return self._db.get_outputs(self._subset,
+                                self._bmark, \
                                 self._arco_indices,
                                 self._jaunt_index,
                                 self._model,
@@ -534,6 +552,7 @@ class ExperimentEntry:
   def from_db_row(db,args):
     entry = ExperimentEntry(
       db=db,
+      subset=args['subset'],
       bmark=args['bmark'],
       arco_indices=[args['arco0'],args['arco1'], \
                   args['arco2'], args['arco3']],
@@ -558,7 +577,8 @@ class ExperimentEntry:
 
   @property
   def circ_ident(self):
-    return "%s(%s,%s)" % (self._bmark,
+    return "%s::%s(%s,%s)" % (self._subset,
+                          self._bmark,
                           self._arco_indices,
                           self._jaunt_index)
 
@@ -592,7 +612,8 @@ class ExperimentDB:
     self._conn = sqlite3.connect(path)
     self._curs = self._conn.cursor()
     cmd = '''CREATE TABLE IF NOT EXISTS experiments
-             (bmark text NOT NULL,
+             (subset text NOT NULL,
+              bmark text NOT NULL,
               status text NOT NULL,
               modif timestamp,
               arco0 int NOT NULL,
@@ -611,12 +632,13 @@ class ExperimentDB:
               quality real,
               energy real,
               runtime real,
-              PRIMARY KEY (bmark,arco0,arco1,
+              PRIMARY KEY (subset,bmark,arco0,arco1,
                            arco2,arco3,jaunt,
                            model,opt,menv,hwenv)
              );
     '''
-    self._experiment_order = ['bmark','status','modif','arco0', \
+    self._experiment_order = ['subset',
+                              'bmark','status','modif','arco0', \
                               'arco1','arco2', \
                               'arco3','jaunt',
                               'model','opt','menv','hwenv',
@@ -631,7 +653,9 @@ class ExperimentDB:
                                     'energy','runtime','mismatch']
     self._curs.execute(cmd)
 
-    cmd = '''CREATE TABLE IF NOT EXISTS outputs( bmark text NULL,
+    cmd = '''CREATE TABLE IF NOT EXISTS outputs(
+    subset text NOT NULL,
+    bmark text NULL,
     status text NOT NULL,
     arco0 int NOT NULL,
     arco1 int NOT NULL,
@@ -652,15 +676,16 @@ class ExperimentDB:
     tau real,
     scf real,
     modif timestamp,
-    PRIMARY KEY (bmark,arco0,arco1,arco2,arco3,jaunt,
+    PRIMARY KEY (subset,bmark,arco0,arco1,arco2,arco3,jaunt,
                  model,opt,menv,hwenv,varname,trial)
-    FOREIGN KEY (bmark,arco0,arco1,arco2,arco3,jaunt,
+    FOREIGN KEY (subset,bmark,arco0,arco1,arco2,arco3,jaunt,
                  model,opt,menv,hwenv)
-    REFERENCES experiments(bmark,arco0,arco1,arco2,arco3,jaunt,
+    REFERENCES experiments(subset,bmark,arco0,arco1,arco2,arco3,jaunt,
                            model,opt,menv,hwenv)
     )
     '''
-    self._output_order = ['bmark','status','arco0', \
+    self._output_order = ['subset',
+                          'bmark','status','arco0', \
                           'arco1','arco2', \
                           'arco3','jaunt','model','opt','menv','hwenv',
                           'varname','trial','out_file', \
@@ -703,9 +728,11 @@ class ExperimentDB:
     for entry in self._get_experiment_rows(where_clause):
       yield entry
 
-  def to_where_clause(self,bmark,arco_inds,jaunt_inds,model,opt, \
+  def to_where_clause(self,subset,bmark,arco_inds,jaunt_inds,model,opt, \
                       menv_name,hwenv_name,varname=None,trial=None):
-    cmd = '''WHERE bmark = "{bmark}"
+    cmd = '''WHERE
+    subset = "{subset}"
+    AND bmark = "{bmark}"
     AND arco0 = {arco0}
     AND arco1 = {arco1}
     AND arco2 = {arco2}
@@ -716,7 +743,7 @@ class ExperimentDB:
     AND menv = "{menv}"
     AND hwenv = "{hwenv}"
     '''
-    args = make_args(bmark,arco_inds,jaunt_inds,model,opt, \
+    args = make_args(subset,bmark,arco_inds,jaunt_inds,model,opt, \
                      menv_name,hwenv_name)
     if not varname is None:
       cmd += "AND varname = \"{varname}\""
@@ -729,13 +756,14 @@ class ExperimentDB:
     conc_cmd = cmd.format(**args)
     return conc_cmd
 
-  def update_output(self,bmark,arco_inds,jaunt_inds,model,opt, \
+  def update_output(self,subset,bmark,arco_inds,jaunt_inds,model,opt, \
                     menv_name,hwenv_name,varname,trial,new_fields):
     cmd = '''
     UPDATE outputs
     SET {assign_clause} {where_clause};
     '''
-    where_clause = self.to_where_clause(bmark,\
+    where_clause = self.to_where_clause(subset,
+                                        bmark,\
                                         arco_inds,jaunt_inds,
                                         model,
                                         opt, \
@@ -759,13 +787,13 @@ class ExperimentDB:
     self._conn.commit()
 
 
-  def update_experiment(self,bmark,arco_inds,jaunt_inds,model, \
+  def update_experiment(self,subset,bmark,arco_inds,jaunt_inds,model, \
                         opt,menv_name,hwenv_name,new_fields):
     cmd = '''
     UPDATE experiments
     SET {assign_clause} {where_clause};
     '''
-    where_clause = self.to_where_clause(bmark,\
+    where_clause = self.to_where_clause(subset,bmark,\
                                         arco_inds,jaunt_inds,model,opt, \
                                         menv_name,hwenv_name)
     new_fields['modif'] = datetime.datetime.now()
@@ -785,13 +813,13 @@ class ExperimentDB:
     self._conn.commit()
 
 
-  def get_outputs(self,bmark,arco_inds,jaunt_inds,model,opt,menv_name,hwenv_name):
+  def get_outputs(self,subset,bmark,arco_inds,jaunt_inds,model,opt,menv_name,hwenv_name):
     cmd = '''
      SELECT *
      FROM outputs
      {where_clause};
     '''
-    where_clause = self.to_where_clause(bmark,\
+    where_clause = self.to_where_clause(subset,bmark,\
                                         arco_inds,jaunt_inds,
                                         model,opt, \
                                         menv_name,hwenv_name)
@@ -826,8 +854,8 @@ class ExperimentDB:
       entry.delete()
       yield entry
 
-  def get_experiment(self,bmark,arco_inds,jaunt_inds,model,opt,menv_name,hwenv_name):
-    where_clause = self.to_where_clause(bmark,\
+  def get_experiment(self,subset,bmark,arco_inds,jaunt_inds,model,opt,menv_name,hwenv_name):
+    where_clause = self.to_where_clause(subset,bmark,\
                                         arco_inds,jaunt_inds,model,opt, \
                                         menv_name,hwenv_name)
     result = list(self._get_experiment_rows(where_clause))
@@ -838,12 +866,12 @@ class ExperimentDB:
     else:
       raise Exception("nonunique experiment")
 
-  def delete_output(self,bmark,arco_inds,jaunt_inds, \
+  def delete_output(self,subset,bmark,arco_inds,jaunt_inds, \
                     model,opt,menv_name,hwenv_name,output,trial):
     cmd = '''
     DELETE FROM outputs {where_clause};
     '''
-    where_clause = self.to_where_clause(bmark,\
+    where_clause = self.to_where_clause(subset,bmark,\
                                         arco_inds,jaunt_inds,
                                         model, \
                                         opt, \
@@ -855,12 +883,12 @@ class ExperimentDB:
     self._conn.commit()
 
 
-  def delete_experiment(self,bmark,arco_inds,jaunt_inds, \
+  def delete_experiment(self,subset,bmark,arco_inds,jaunt_inds, \
                         model,opt,menv_name,hwenv_name):
     cmd = '''
     DELETE FROM experiments {where_clause};
     '''
-    where_clause = self.to_where_clause(bmark,\
+    where_clause = self.to_where_clause(subset,bmark,\
                                         arco_inds,jaunt_inds,
                                         model,opt, \
                                         menv_name,hwenv_name)
@@ -871,15 +899,16 @@ class ExperimentDB:
 
 
 
-  def add_output(self,path_handler,bmark,arco_inds, \
+  def add_output(self,subset,bmark,arco_inds, \
                  jaunt_inds, model, opt,\
                  menv_name,hwenv_name,output,trial):
     cmd = '''
       INSERT INTO outputs (
-         bmark,arco0,arco1,arco2,arco3,jaunt,
+         subset,bmark,arco0,arco1,arco2,arco3,jaunt,
          model,opt,menv,hwenv,out_file,status,modif,varname,trial
       ) VALUES
       (
+         "{subset}",
          "{bmark}",{arco0},{arco1},{arco2},{arco3},{jaunt},
          "{model}","{opt}","{menv}","{hwenv}",
          "{out_file}",
@@ -889,12 +918,13 @@ class ExperimentDB:
          {trial}
       )
       '''
-    args = make_args(bmark,arco_inds,jaunt_inds,model,opt, \
+    args = make_args(subset,bmark,arco_inds,jaunt_inds,model,opt, \
                      menv_name,hwenv_name)
     args['modif'] = datetime.datetime.now()
     args['status'] = OutputStatus.PENDING.value
     args['varname'] = output
     args['trial'] = trial
+    path_handler = paths.PathHandler(subset,bmark,make_dirs=False)
     args['out_file'] = path_handler.measured_waveform_file(bmark,arco_inds, \
                                                            jaunt_inds, \
                                                            model,
@@ -906,22 +936,23 @@ class ExperimentDB:
     self._curs.execute(conc_cmd)
     self._conn.commit()
 
-  def add_experiment(self,path_handler,bmark,arco_inds, \
+  def add_experiment(self,subset,bmark,arco_inds, \
                      jaunt_inds, \
                      model,opt, \
                      menv_name,hwenv_name):
-    entry = self.get_experiment(bmark,arco_inds,jaunt_inds, \
+    entry = self.get_experiment(subset, \
+                                bmark,arco_inds,jaunt_inds, \
                                 model,opt,menv_name,hwenv_name)
     if entry is None:
       cmd = '''
       INSERT INTO experiments (
-         bmark,arco0,arco1,arco2,arco3,jaunt,
+         subset,bmark,arco0,arco1,arco2,arco3,jaunt,
          model,opt,menv,hwenv,
          jaunt_circ_file,
          grendel_file,status,modif,mismatch
       ) VALUES
       (
-         "{bmark}",{arco0},{arco1},{arco2},{arco3},{jaunt},
+         "{subset}","{bmark}",{arco0},{arco1},{arco2},{arco3},{jaunt},
          "{model}","{opt}","{menv}","{hwenv}",
          "{conc_circ}",
          "{grendel_file}",
@@ -929,10 +960,12 @@ class ExperimentDB:
          "{modif}",{mismatch}
       )
       '''
-      args = make_args(bmark,arco_inds,jaunt_inds,model,opt, \
+      args = make_args(subset,
+                       bmark,arco_inds,jaunt_inds,model,opt, \
                        menv_name,hwenv_name)
       args['modif'] = datetime.datetime.now()
       args['status'] = ExperimentStatus.PENDING.value
+      path_handler = paths.PathHandler(subset,bmark,make_dirs=False)
       args['grendel_file'] = path_handler.grendel_file(bmark,arco_inds, \
                                                        jaunt_inds,
                                                        model,
@@ -949,12 +982,12 @@ class ExperimentDB:
       conc_cmd = cmd.format(**args)
       self._curs.execute(conc_cmd)
       self._conn.commit()
-      entry = self.get_experiment(bmark,arco_inds,jaunt_inds, \
+      entry = self.get_experiment(path_handler.name,bmark,arco_inds,jaunt_inds, \
                                   model,opt,menv_name,hwenv_name)
       for out_file in get_output_files(args['grendel_file']):
         _,_,_,_,_,_,_,var_name,trial = path_handler \
                                .measured_waveform_file_to_args(out_file)
-        self.add_output(path_handler,bmark,arco_inds,jaunt_inds, \
+        self.add_output(subset,bmark,arco_inds,jaunt_inds, \
                         model,opt, \
                         menv_name,hwenv_name,var_name,trial)
 
@@ -963,14 +996,15 @@ class ExperimentDB:
 
   def scan(self):
     for name in diffeqs.get_names():
-      ph = paths.PathHandler('standard',name,make_dirs=False)
-      grendel_dir = ph.grendel_file_dir()
-      for dirname, subdirlist, filelist in os.walk(grendel_dir):
-        for fname in filelist:
-          if fname.endswith('.grendel'):
-            bmark,arco_inds,jaunt_inds,model,opt,menv_name,hwenv_name = \
-                                    ph.grendel_file_to_args(fname)
-            exp = self.add_experiment(ph,bmark,arco_inds,jaunt_inds, \
-                                      model,opt,menv_name,hwenv_name)
-            if not exp is None:
-              yield exp
+      for subset in ['standard','unrestricted']:
+        ph = paths.PathHandler(subset,name,make_dirs=False)
+        grendel_dir = ph.grendel_file_dir()
+        for dirname, subdirlist, filelist in os.walk(grendel_dir):
+          for fname in filelist:
+            if fname.endswith('.grendel'):
+              bmark,arco_inds,jaunt_inds,model,opt,menv_name,hwenv_name = \
+                                      ph.grendel_file_to_args(fname)
+              exp = self.add_experiment(ph.name,bmark,arco_inds,jaunt_inds, \
+                                        model,opt,menv_name,hwenv_name)
+              if not exp is None:
+                yield exp

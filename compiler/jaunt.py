@@ -18,6 +18,7 @@ import compiler.jaunt_pass.jaunt_physlog as jaunt_physlog
 
 import ops.jop as jop
 import ops.op as ops
+from chip.model import ModelDB
 import chip.props as props
 import ops.interval as interval
 
@@ -123,7 +124,7 @@ def compute_scale(jenv,prog,circ,objfun):
         print("failed to build inference problem")
         return
 
-    results = list(jsmt.solve_smt_prob(smtenv,nslns=10))
+    results = list(jsmt.solve_smt_prob(smtenv,nslns=1000))
     if len(results) == 0:
         return
 
@@ -145,15 +146,16 @@ def compute_scale(jenv,prog,circ,objfun):
         new_circ = apply_result(jenv,circ,sln)
         yield thisobj,new_circ
 
-def report_missing_models(jenv,circ,no_models):
-    for block,loc,port,scale_mode in no_models:
+def report_missing_models(jenv,circ):
+    for block,loc,port,comp_mode,scale_mode in ModelDB.MISSING:
         config = circ.config(block,loc)
         jaunt_physlog.log(circ,block,loc, \
                           config,
+                          comp_mode,
                           scale_mode)
         msg = "NO model: %s[%s].%s %s %s error" % \
               (block,loc,port, \
-               config.comp_mode,scale_mode)
+               comp_mode,scale_mode)
         jenv.fail(msg)
 
 def scale(prog,circ,nslns, \
@@ -174,10 +176,10 @@ def scale(prog,circ,nslns, \
             jenv = jenvlib.JauntEnv(model=model, \
                                     digital_error=digital_error, \
                                     analog_error=analog_error)
-            no_models = infer.infer_costs(infer_circ, \
+            infer.infer_costs(infer_circ, \
                                           propagate_cost=jenv.params.propagate_uncertainty, \
                                           ideal=not jenv.params.experimental_model)
-            report_missing_models(jenv,infer_circ,no_models)
+            report_missing_models(jenv,infer_circ)
 
             for final_obj,final_circ in compute_scale(jenv,prog,infer_circ,obj):
                 yield idx,final_obj.tag(),jenv.params.tag(),final_circ

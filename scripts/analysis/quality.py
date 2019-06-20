@@ -111,7 +111,7 @@ def compute_quality(_tobs,_yobs,_tpred,_ypred):
   return error
 
 def analyze(entry):
-  path_h = paths.PathHandler('default',entry.bmark)
+  path_h = paths.PathHandler(entry.subset,entry.bmark)
   QUALITIES = []
   print(entry)
   VARS = set(map(lambda o: o.varname, entry.outputs()))
