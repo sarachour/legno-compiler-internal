@@ -6,7 +6,7 @@ import compiler.common.base_propagator_symbolic as propagate
 import compiler.common.data_symbolic as symdata
 import math
 from ops.interval import Interval, IRange, IValue
-from chip.model import ModelDB, PortModel,get_model
+from chip.model import ModelDB, PortModel,get_variance
 
 # find the most expensive input
 class PropCostVisitor(ForwardVisitor):
@@ -30,13 +30,9 @@ class PropCostVisitor(ForwardVisitor):
     if self._ideal:
       return 0.0
 
-    model = get_model(self._db,self._circ,block_name,loc,port,handle)
-    if not model is None:
-      unc = math.sqrt(model.noise**2.0 + model.bias_uncertainty**2.0)
-      physunc = unc+abs(model.bias)
-      return physunc
-    else:
-      return 0
+    return get_variance(self._db,self._circ, \
+                        block_name,loc,port,handle)
+
 
   def input_port(self,block_name,loc,port):
     circ = self._circ

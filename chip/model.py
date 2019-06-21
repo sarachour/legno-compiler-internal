@@ -263,3 +263,24 @@ def get_model(db,circ,block_name,loc,port,handle=None):
     else:
       ModelDB.log_missing_model(block_name,loc,port,config.scale_mode)
       return None
+
+def get_variance(db,circ,block_name,loc,port,handle=None):
+  model = get_model(db,circ,block_name,loc,port,handle=handle)
+  unc = math.sqrt(model.noise**2.0 + model.bias_uncertainty**2.0)
+  physunc = unc+abs(model.bias)
+  return physunc
+
+def get_oprange_scale(db,circ,block_name,loc,port,handle=None):
+  model = get_model(db,circ,block_name,loc,port,handle=handle)
+  if model is None:
+    return (1.0,1.0)
+
+  return model.oprange_scale
+
+def get_gain(db,circ,block_name,loc,port,handle=None):
+  model = get_model(db,circ,block_name,loc,port,handle=handle)
+  if model is None:
+    return 1.0
+
+  return model.gain
+

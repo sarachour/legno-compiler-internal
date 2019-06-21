@@ -1,7 +1,7 @@
 import ops.jop as jop
 import ops.op as ops
 import ops.interval as interval
-from chip.model import ModelDB
+from chip.model import ModelDB,get_gain,get_variance
 
 
 class ExprVisitor:
@@ -93,20 +93,10 @@ class SCFPropExprVisitor(ExprVisitor):
     if self.db is None:
       return 1.0
 
-    block,loc,port = self.block,self.loc,self.port
-    config = self.circ.config(block.name,loc)
-
-    if self.db.has(block.name,loc,port, \
-              config.comp_mode,
-              config.scale_mode,handle):
-      model = self.db.get(block.name,loc,port, \
-                          config.comp_mode, \
-                          config.scale_mode, \
-                          handle)
-      return model.gain
-
-    else:
-      return 1.0
+    return get_gain(self.db,self.circ, \
+                    self.block.name, \
+                    self.loc, \
+                    self.port,handle)
 
   def coeff(self,handle):
     block,loc,port = self.block,self.loc,self.port

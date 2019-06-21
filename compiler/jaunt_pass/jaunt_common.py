@@ -4,7 +4,7 @@ import ops.jop as jop
 import ops.nop as nop
 import ops.op as ops
 import chip.props as props
-from chip.model import ModelDB, PortModel,get_model
+from chip.model import ModelDB, PortModel,get_oprange_scale
 import chip.hcdc.globals as glb
 import util.util as util
 import util.config as CONFIG
@@ -14,16 +14,6 @@ import compiler.jaunt_pass.jenv as jenvlib
 import math
 
 db = ModelDB()
-
-def get_phys_model(circ,block,loc,port,handle=None):
-     if db.has(block.name,loc,port, \
-              config.comp_mode, \
-              config.scale_mode,handle):
-        model = db.get(block.name,loc,port, \
-                        config.comp_mode, \
-                        config.scale_mode,handle)
-        return model
-
 
 
 def get_parameters(jenv,circ,block,loc,port,handle=None):
@@ -40,8 +30,7 @@ def get_parameters(jenv,circ,block,loc,port,handle=None):
         scale_mode = config.scale_mode
         hwscvar = jop.JConst(1.0)
         uncertainty = config.meta(port,'cost',handle=handle)
-        phys_model = get_model(db,circ,block.name,loc,port,handle)
-        oprange_scale  = phys_model.oprange_scale
+        oprange_scale = get_oprange_scale(db,circ,block.name,loc,port,handle)
         assert(not uncertainty is None)
 
     mrng = config.interval(port)
