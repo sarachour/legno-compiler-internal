@@ -24,7 +24,7 @@ def parse_diffeq(expr,ic, handle,params):
 
 def run_fxn(menv,prob):
   time = menv.sim_time
-  n = 100.0*menv.sim_time
+  n = 10.0*menv.sim_time
   dt = time/n
   T = np.linspace(0.0,menv.sim_time,n)
   Z = []

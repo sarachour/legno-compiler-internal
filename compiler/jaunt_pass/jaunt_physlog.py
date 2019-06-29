@@ -1,6 +1,8 @@
 import util.config as CONFIG
 from compiler import srcgen
 from lab_bench.lib.chipcmd.use import *
+import lab_bench.lib.command as cmd
+
 import os
 
 PROG = srcgen.GrendelProg()
@@ -13,15 +15,28 @@ def log(circ,block_name,loc,config,comp_mode,scale_mode):
     return
   config.set_scale_mode(scale_mode)
   config.set_comp_mode(comp_mode)
+  if scale_mode is None:
+    return
+
   srcgen.gen_block(PROG,circ,block,loc,config)
   config.set_comp_mode(backup_cm)
   config.set_scale_mode(backup_scm)
 
 def is_empty():
   return len(PROG.stmts) == 0
+
+def clear():
+  PROG.clear()
+
 def save():
   minprog = srcgen.GrendelProg()
   stmt_keys = []
+  if os.path.isfile(CONFIG.CALIBRATE_FILE):
+    with open(CONFIG.CALIBRATE_FILE,'r') as fh:
+      for line in fh:
+        stmt = cmd.parse(line)
+        stmt_keys.append(str(stmt))
+
   for stmt in PROG.stmts:
     if not isinstance(stmt, UseCommand):
       continue
@@ -31,11 +46,14 @@ def save():
 
     minprog.add(stmt)
     stmt_keys.append(str(stmt))
-    if os.path.exists(CONFIG.CALIBRATE_FILE):
-      mode = 'a' # append if already exists
-    else:
-      mode = 'w' # make a new file if not
 
-    with open(CONFIG.CALIBRATE_FILE,mode) as fh:
-      for stmt in minprog.stmts:
-        fh.write("%s\n" % stmt)
+
+  if os.path.exists(CONFIG.CALIBRATE_FILE):
+    mode = 'a' # append if already exists
+  else:
+    mode = 'w' # make a new file if not
+
+  print("JAUNTLOG: logged %d stmts" % len(minprog.stmts))
+  with open(CONFIG.CALIBRATE_FILE,mode) as fh:
+    for stmt in minprog.stmts:
+      fh.write("%s\n" % stmt)

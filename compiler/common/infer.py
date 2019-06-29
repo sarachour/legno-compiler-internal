@@ -17,7 +17,7 @@ def infer_bandwidths(prog,circ):
 def infer_op_ranges(prog,circ):
   prop_op_range.compute_op_ranges(prog,circ)
 
-def infer_costs(circ,propagate_cost=False,ideal=False):
+def infer_costs(circ,propagate_cost=False,model="physical"):
   return prop_cost.compute_costs(circ, \
                                  propagate_cost=propagate_cost, \
-                                 ideal=ideal)
+                                 model=model)

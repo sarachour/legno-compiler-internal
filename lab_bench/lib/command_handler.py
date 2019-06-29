@@ -67,7 +67,8 @@ def main_script_profile(state,filename):
 
 def main_script_calibrate(state,filename, \
                           characterize=True,
-                          recompute=False):
+                          recompute=False,
+                          targeted=False):
     successes = []
     failures = []
     with open(filename,'r') as fh:
@@ -84,21 +85,21 @@ def main_script_calibrate(state,filename, \
             command_obj = cmd.parse(line)
             succ = cmd.calibrate(state,command_obj, \
                                  recompute=recompute,
+                                 targeted_calibrate=targeted,
+                                 targeted_measure=targeted,
                                  characterize=characterize)
             if succ is None:
                 continue
 
-            if not succ:
+            scale = 2.0
+            while not succ and scale < 200.0:
                 succ = cmd.calibrate(state,command_obj, \
                                      recompute=recompute,
                                      characterize=characterize,
-                                     error_scale=2.0)
-
-            if not succ:
-                succ = cmd.calibrate(state,command_obj, \
-                                     recompute=recompute,
-                                     characterize=characterize,
-                                     error_scale=4.0)
+                                     targeted_calibrate=targeted,
+                                     targeted_measure=targeted,
+                                     error_scale=scale)
+                scale *= 2.0
 
 
             if succ:

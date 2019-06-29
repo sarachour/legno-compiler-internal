@@ -96,7 +96,10 @@ def calibrate(state,obj,recompute=False, \
               characterize=True, \
               error_scale=1.0):
     if isinstance(obj,UseCommand):
-        dbkey = obj.to_key()
+        if obj.max_error*error_scale > 0.50:
+            return False
+
+        dbkey = obj.to_key(targeted=targeted_calibrate)
         if not (state.state_db.has(dbkey)) or \
            not state.state_db.get(dbkey).success or \
            recompute:
@@ -116,6 +119,7 @@ def calibrate(state,obj,recompute=False, \
                                 targeted=targeted_calibrate) \
                                 .execute(state)
 
+        dbkey = obj.to_key(targeted=targeted_measure)
         result = state.state_db.get(dbkey)
         if characterize and \
            result.success and \

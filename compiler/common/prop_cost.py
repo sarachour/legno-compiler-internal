@@ -7,31 +7,35 @@ import compiler.common.data_symbolic as symdata
 import math
 from ops.interval import Interval, IRange, IValue
 from chip.model import ModelDB, PortModel,get_variance
+from enum import Enum
 
 # find the most expensive input
 class PropCostVisitor(ForwardVisitor):
 
-  def __init__(self,circ,prop_cost=True,ideal=False):
+  class Model(Enum):
+    IDEAL = "ideal"
+    PHYSICAL = "physical"
+    NAIVE = "naive"
+
+  def __init__(self,circ,prop_cost=True,model="physical"):
     ForwardVisitor.__init__(self,circ)
     self._db = ModelDB()
     self._prop_cost = prop_cost
-    self._ideal = ideal
-    self._no_model = []
+    self._model = PropCostVisitor.Model(model)
 
   def is_free(self,block_name,loc,port):
     config = self._circ.config(block_name,loc)
     return config.meta(port,'cost') is None
 
-  @property
-  def no_models(self):
-    return self._no_model
 
   def cost(self,block_name,loc,port,handle=None):
-    if self._ideal:
+    if self._model == PropCostVisitor.Model.IDEAL:
       return 0.0
-
-    return get_variance(self._db,self._circ, \
-                        block_name,loc,port,handle)
+    elif self._model == PropCostVisitor.Model.NAIVE:
+      return 0.01
+    else:
+      return get_variance(self._db,self._circ, \
+                          block_name,loc,port,handle)
 
 
   def input_port(self,block_name,loc,port):
@@ -100,7 +104,6 @@ class PropCostVisitor(ForwardVisitor):
       c = self.cost(block_name,loc,port,handle)
       config.set_meta(port,'cost',c,handle=handle)
 
-def compute_costs(conc_circ,propagate_cost=False,ideal=False):
-  visitor = PropCostVisitor(conc_circ,propagate_cost,ideal=ideal)
+def compute_costs(conc_circ,propagate_cost=False,model="physical"):
+  visitor = PropCostVisitor(conc_circ,propagate_cost,model=model)
   visitor.all(inputs=True)
-  return visitor.no_models

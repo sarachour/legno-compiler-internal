@@ -31,6 +31,9 @@ class GrendelProg:
     self.validate(cmd)
     self._stmts.append(cmd)
 
+  def clear(self):
+    self._stmts.clear()
+
   def __repr__(self):
     st = ""
     for stmt in self._stmts:

@@ -31,6 +31,11 @@ parser.add_argument("--debug", action='store_true', \
                     help="debug script")
 parser.add_argument("--calibrate", action='store_true', \
                     help="calibrate uncalibrated components")
+parser.add_argument("--targeted", action='store_true', \
+                    help="targeted calibration of uncalibrated components")
+
+parser.add_argument("--infer", action='store_true', \
+                    help="infer uncalibrated components")
 parser.add_argument("--characterize", action='store_true', \
                     help="characterize chip")
 parser.add_argument("--recompute", action='store_true', \
@@ -80,13 +85,15 @@ if args.calibrate:
     assert(args.script != None)
     succ = main_script_calibrate(state,args.script, \
                                  recompute=args.recompute,
-                                 characterize=args.characterize)
+                                 characterize=args.characterize,
+                                 targeted=args.targeted)
     if not succ:
         print("[ERROR] some calibration steps failed..")
         sys.exit(1)
 
-    print("<< inferring models for compiler >>")
-    retcode = os.system("python3 infer_models.py")
+    if args.infer:
+        print("<< inferring models for compiler >>")
+        retcode = os.system("python3 infer_models.py")
 
 if args.dry_run:
     sys.exit(0)

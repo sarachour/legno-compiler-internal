@@ -12,10 +12,12 @@ class JauntObjectiveFunctionManager():
         return [
             #boptlib.MaxSignalObjFunc,
             #boptlib.MaxSignalAndSpeedObjFunc,
-            #boptlib.MinSignalObjFunc,
-            boptlib.FastObjFunc,
-            boptlib.SlowObjFunc,
-            boptlib.NoScaleFunc
+            boptlib.MinSignalObjFunc,
+            #boptlib.FastObjFunc,
+            #boptlib.SlowObjFunc,
+            boptlib.FastObsObjFunc,
+            boptlib.SlowObsObjFunc
+
         ]
 
     @staticmethod

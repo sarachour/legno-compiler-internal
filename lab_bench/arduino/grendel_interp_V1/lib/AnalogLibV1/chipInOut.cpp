@@ -6,10 +6,10 @@
 
 // for single-ended channels
 #define ADC_CONVERSION (3300.0/4096.0)
-//#define ADC_FULLSCALE (1208.0)
+#define ADC_FULLSCALE (1208.0)
 
 //should be 1208, but it isn't for some reason.
-#define ADC_FULLSCALE (1000.0)
+//#define ADC_FULLSCALE (1000.0)
 #define ADC_MIN 0
 
 float measure_dist(int ardAnaDiffChan, float& variance){

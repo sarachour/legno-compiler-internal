@@ -6,6 +6,7 @@ from lab_bench.lib.chipcmd.common import *
 import lab_bench.lib.chipcmd.state as chipstate
 import json
 import struct
+import os
 
 def from_float16(val):
     nbits_exp = 6
@@ -24,6 +25,17 @@ def from_float16(val):
     ff_float = struct.unpack('>f', ffstr)[0]
     #print("val=%d hex=%x bytes=%s float=%f" % (val, ff, ffstr,ff_float))
     return ff_float
+
+def send_mail(title,log,email="sarachour@gmail.com"):
+    msg = ""
+    with open('body.txt','w') as fh:
+        fh.write("%s\n" % log)
+
+    cmd = "cat body.txt | mail -s \"%s\" %s" \
+          % (title,email)
+
+    os.system(cmd)
+    os.remove('body.txt')
 
 class CharacterizeCmd(AnalogChipCommand):
 
@@ -73,6 +85,8 @@ class CharacterizeCmd(AnalogChipCommand):
 
         profile = []
         print("==== %d TRIALS ====" % result.size)
+        entry = env.state_db.get(st.key)
+        log = "%s\n\n" % (entry)
         for i in range(0,result.size):
             bias = from_float16(result.bias[i])
             noise = from_float16(result.noise[i])
@@ -81,14 +95,19 @@ class CharacterizeCmd(AnalogChipCommand):
             in1 = from_float16(result.input1[i])
             port = enums.PortName.from_code(result.port[i])
             profile.append((port,out,in0,in1,bias,noise))
-            print("TRIAL %s out=%f in0=%f in1=%f bias=%f noise=%f (var)" \
+            msg = ("TRIAL %s out=%f in0=%f in1=%f bias=%f noise=%f (var)" \
                   % (port,out,in0,in1,bias,noise))
+
+            print(msg)
+            log += "%s\n" % msg
+
         #FIXME save cali
-        entry = env.state_db.get(st.key)
         env.state_db.put(st,entry.targeted,
                          profile=profile,
                          success=entry.success,
                          max_error=entry.tolerance)
+        title = "calibrated/characterized %s.%s " % (self._blk,self._loc)
+        send_mail(title,log)
         return True
 
 

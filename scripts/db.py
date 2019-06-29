@@ -391,6 +391,10 @@ class ExperimentEntry:
     return self._subset
 
 
+  @property
+  def model(self):
+    return self._model
+
 
   @property
   def runtime(self):

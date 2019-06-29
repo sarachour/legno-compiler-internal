@@ -311,7 +311,11 @@ class Block:
         data[out] = expr
         return self
 
+    def baseline(self,comp_mode):
+        return self._scale_models[comp_mode].baseline
+
     def scale_model(self,comp_mode):
+        raise NotImplementedError
         if not comp_mode in self._scale_models:
             raise Exception("block <%s> does not contain scale model for <%s>" % \
                             (self.name,comp_mode))

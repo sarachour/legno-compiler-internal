@@ -113,28 +113,21 @@ def apply_result(jenv,circ,sln):
 
     return new_circ
 
-def compute_scale(jenv,prog,circ,objfun):
-    assert(isinstance(circ,ConcCirc))
-    jenv = sc_build_jaunt_env(jenv,prog,circ)
+def compute_scale(jenv,prog,infer_circ,objfun):
+    assert(isinstance(infer_circ,ConcCirc))
+    print("build environment")
+    jenv = sc_build_jaunt_env(jenv,prog,infer_circ)
     jopt = JauntObjectiveFunctionManager(jenv)
     jopt.method = objfun.name()
-    blacklist = []
-    smtenv = jsmt.build_smt_prob(circ,jenv,blacklist=blacklist)
-    if smtenv is None:
-        print("failed to build inference problem")
-        return
-
-    results = list(jsmt.solve_smt_prob(smtenv,nslns=1000))
-    if len(results) == 0:
-        return
 
     print("objective: %s" % objfun.name())
     for gpprob,thisobj in \
-        jgpkit.build_gpkit_problem(circ,jenv,jopt):
+        jgpkit.build_gpkit_problem(infer_circ,jenv,jopt):
         if gpprob is None:
             print("<< could not build geometric problem>>")
             continue
 
+        print("solve")
         sln = jgpkit.solve_gpkit_problem(gpprob)
         if sln == None:
             print("<< solution is none >>")
@@ -143,10 +136,10 @@ def compute_scale(jenv,prog,circ,objfun):
             continue
 
         jopt.add_result(thisobj.tag(),sln)
-        new_circ = apply_result(jenv,circ,sln)
+        new_circ = apply_result(jenv,infer_circ,sln)
         yield thisobj,new_circ
 
-def report_missing_models(jenv,circ):
+def report_missing_models(model,circ):
     for block,loc,port,comp_mode,scale_mode in ModelDB.MISSING:
         config = circ.config(block,loc)
         jaunt_physlog.log(circ,block,loc, \
@@ -156,34 +149,47 @@ def report_missing_models(jenv,circ):
         msg = "NO model: %s[%s].%s %s %s error" % \
               (block,loc,port, \
                comp_mode,scale_mode)
-        jenv.fail(msg)
 
 def scale(prog,circ,nslns, \
           model='physical', \
           digital_error=0.05, \
-          analog_error=0.05):
+          analog_error=0.05,
+          do_log=True):
     infer.clear(circ)
     infer.infer_intervals(prog,circ)
     infer.infer_bandwidths(prog,circ)
     objs = JauntObjectiveFunctionManager.basic_methods()
+    n_missing = 0
     for idx,infer_circ in enumerate(jaunt_infer.infer_scale_config(prog, \
                                                                    circ, \
                                                                    nslns, \
                                                                    model=model,
                                                                    digital_error=digital_error,
                                                                    analog_error=analog_error)):
+
         for obj in objs:
             jenv = jenvlib.JauntEnv(model=model, \
                                     digital_error=digital_error, \
                                     analog_error=analog_error)
+
+            if model == jenvlib.JauntEnvParams.Model.PHYSICAL and \
+               len(ModelDB.MISSING) > n_missing:
+                jenv.fail(msg)
+
+            print("missing: %d -> %d" % (n_missing, len(ModelDB.MISSING)))
+            n_missing = len(ModelDB.MISSING)
             infer.infer_costs(infer_circ, \
-                                          propagate_cost=jenv.params.propagate_uncertainty, \
-                                          ideal=not jenv.params.experimental_model)
-            report_missing_models(jenv,infer_circ)
+                              propagate_cost=jenv.params.propagate_uncertainty, \
+                              model=jenv.params.model)
 
             for final_obj,final_circ in compute_scale(jenv,prog,infer_circ,obj):
                 yield idx,final_obj.tag(),jenv.params.tag(),final_circ
 
-    jaunt_physlog.save()
-    if not jaunt_physlog.is_empty():
-        raise Exception("must calibrate components")
+    if do_log:
+        report_missing_models(model,circ)
+        jaunt_physlog.save()
+        if not jaunt_physlog.is_empty() and \
+        model == jenvlib.JauntEnvParams.Model.PHYSICAL:
+            raise Exception("must calibrate components")
+
+        jaunt_physlog.clear()

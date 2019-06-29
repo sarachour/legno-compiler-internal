@@ -261,26 +261,58 @@ def get_model(db,circ,block_name,loc,port,handle=None):
                      config.scale_mode,handle)
       return model
     else:
-      ModelDB.log_missing_model(block_name,loc,port,config.scale_mode)
+      assert(not config.scale_mode is None and \
+             not config.scale_mode == "None")
+      ModelDB.log_missing_model(block_name,loc,port, \
+                                config.comp_mode,
+                                config.scale_mode)
       return None
 
-def get_variance(db,circ,block_name,loc,port,handle=None):
-  model = get_model(db,circ,block_name,loc,port,handle=handle)
-  unc = math.sqrt(model.noise**2.0 + model.bias_uncertainty**2.0)
-  physunc = unc+abs(model.bias)
-  return physunc
+def get_variance(db,circ,block_name,loc,port,handle=None,mode='physical'):
+  unc_min = 1e-6
+  if mode == 'physical':
+    model = get_model(db,circ,block_name,loc,port,handle=handle)
+    if model is None:
+      return unc_min
 
-def get_oprange_scale(db,circ,block_name,loc,port,handle=None):
-  model = get_model(db,circ,block_name,loc,port,handle=handle)
-  if model is None:
+    unc = math.sqrt(model.noise**2.0 + model.bias_uncertainty**2.0)
+    physunc = unc+abs(model.bias)
+    if physunc == 0.0:
+      return unc_min
+
+    return physunc
+
+  elif mode == 'ideal':
+    return 0.0
+  elif mode == 'naive':
+    return 0.01
+  else:
+    raise Exception("unknown mode")
+
+def get_oprange_scale(db,circ,block_name,loc,port,handle=None,mode='physical'):
+  if mode == 'physical':
+    model = get_model(db,circ,block_name,loc,port,handle=handle)
+    if model is None:
+      return (1.0,1.0)
+
+    l,u = model.oprange_scale
+    return (l,u)
+
+  elif mode == 'naive' or mode == 'ideal':
     return (1.0,1.0)
 
-  return model.oprange_scale
+  else:
+    raise Exception("unknown mode")
 
-def get_gain(db,circ,block_name,loc,port,handle=None):
-  model = get_model(db,circ,block_name,loc,port,handle=handle)
-  if model is None:
+def get_gain(db,circ,block_name,loc,port,handle=None,mode='physical'):
+  if mode == 'physical':
+    model = get_model(db,circ,block_name,loc,port,handle=handle)
+    if model is None:
+      return 1.0
+
+    return model.gain
+  elif mode == 'naive' or mode == 'ideal':
     return 1.0
 
-  return model.gain
-
+  else:
+    raise Exception("unknown mode")

@@ -218,7 +218,7 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTargetHelper (profile_t& re
 bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (profile_t& result, const float max_error) {
   //calibrate at given initial condition, where we allow twiddling
   //the code
-  return calibrateTargetHelper(result,max_error,true);
+  return calibrateTargetHelper(result,max_error,false);
 }
 bool Fabric::Chip::Tile::Slice::Integrator::calibrate (profile_t& result, const float max_error) {
 	//setEnable(true);

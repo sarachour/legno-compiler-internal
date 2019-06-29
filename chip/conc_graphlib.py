@@ -28,6 +28,8 @@ class Shader:
   def get_shader(circ,method):
     if method == 'snr':
       return SNRShader(circ)
+    if method == 'pctrng':
+      return PercentOpRangeShader(circ)
     if method == 'cost':
       return CostShader(circ)
     if method == 'interval':
@@ -166,7 +168,7 @@ class ScaleFactorShader(CircShader):
 
 class NoiseEvaluator:
 
-  def __init__(self,circ):
+  def __init__(self,circ,method="physical"):
     self._circ = circ
     self._db = ModelDB()
 
@@ -184,24 +186,49 @@ class NoiseEvaluator:
 class SNRShader(CircShader):
 
   def __init__(self,circ):
-    self.noise_eval = NoiseEvaluator(circ)
     CircShader.__init__(self,circ,None)
 
   def get_port_value(self,name,loc,port):
     cfg = self.circ.config(name,loc)
+    noise = cfg.meta(port,'cost')
+
     ival = cfg.interval(port)
     scf = cfg.scf(port)
-    if ival is None or scf is None:
+    if ival is None \
+       or scf is None  \
+       or noise == 0.0 \
+       or ival.bound == 0.0:
       return Shader.ERROR,"skip"
     else:
-      signal = ival.scale(scf)
-      _,noise = self.noise_eval.get(name,loc,port)
-      if noise == 0.0:
-        return Shader.IGNORE,"inf"
+      #print(noise,scf*ival.bound,scf)
+      snr = math.log10(scf*ival.bound/noise)
+      return snr,"%.3f/%.3f" % (scf*ival.bound,noise)
 
-      snr = math.log10(signal.bound/noise)
-      return snr,"%.3f/%.3f" % (signal.bound,noise)
 
+class PercentOpRangeShader(CircShader):
+
+  def __init__(self,circ):
+    CircShader.__init__(self,circ,None)
+
+  def get_port_value(self,name,loc,port):
+    cfg = self.circ.config(name,loc)
+    blk = self.circ.board.block(name)
+    scf = cfg.scf(port)
+    ival = cfg.interval(port)
+    props = blk.props(cfg.comp_mode, \
+                      cfg.scale_mode, \
+                      port)
+
+    if ival is None or scf is None or props is None:
+      return Shader.ERROR,"skip"
+
+    mathrange = ival.scale(scf)
+    oprange = props.interval()
+    if mathrange.spread > 0:
+      pct = mathrange.spread/oprange.spread
+      return pct,"%.2f" % (pct*100.0)
+    else:
+      return Shader.ERROR,"ship"
 
 class ScaledIntervalShader(CircShader):
 

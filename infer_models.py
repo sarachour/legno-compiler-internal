@@ -291,7 +291,7 @@ def populate_default_models(board):
                             comp_mode='*', \
                             scale_mode='*')
           model.bias_uncertainty = 0.0
-          model.noise = 0.10
+          model.noise = 0.0
           db.put(model)
 
 def guess_models(board,min_samples=5):

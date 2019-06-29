@@ -39,6 +39,11 @@ def execute(args):
     entry.synchronize()
     if not args.bmark is None and entry.bmark != args.bmark:
       continue
+    if not args.subset is None and entry.subset != args.subset:
+      continue
+
+    if not args.model is None and entry.model != args.model:
+      continue
 
     if not args.obj is None and entry.objective_fun != args.obj:
       continue

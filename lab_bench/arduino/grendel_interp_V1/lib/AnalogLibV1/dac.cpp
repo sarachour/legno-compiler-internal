@@ -11,7 +11,9 @@ float make_reference_dac(cutil::calibrate_t& calib,
                          dac_code_t& config,
                          Fabric::Chip::Tile::Slice::Dac* dac,
                          Fabric::Chip::Tile::Slice::Dac* ref_dac){
-  float base_constant = floor((fabs(dac->m_codes.const_val)-1e-5)*10.0);
+
+  // determine reference
+  float base_constant = floor((fabs(dac->m_codes.const_val)-1e-5)*10.0)-0.1;
   base_constant *= dac->m_codes.const_val < 0 ? 1.0 : -1.0;
   float target = dac->m_codes.const_val*10.0 + base_constant;
   if(dac_cache::get_cached(ref_dac,base_constant,config)){

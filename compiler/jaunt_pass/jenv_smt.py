@@ -46,7 +46,7 @@ def build_smt_prob(circ,jenv,blacklist=[]):
     tag = jenv.get_tag(var)
     if tag == jenvlib.JauntVarType.MODE_VAR:
       smtenv.decl(var,smtop.SMTEnv.Type.BOOL)
-    elif jenv.jaunt_var_in_use(var):
+    else:
       smtenv.decl(var,smtop.SMTEnv.Type.REAL)
 
   constraints = []

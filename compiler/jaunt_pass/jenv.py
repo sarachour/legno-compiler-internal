@@ -8,22 +8,39 @@ import sys
 
 class JauntVarType(Enum):
   SCALE_VAR= "SCV"
-  COEFF_VAR = "COV"
-  #NZ_VAR = "NZ"
-  #PHYSCOEFF_VAR = "PHCOV"
+  GAIN_VAR = "GNV"
 
   OP_RANGE_VAR = "OPV"
   INJECT_VAR = "IJV"
   VAR = "VAR"
   MODE_VAR = "MODV"
   TAU = "TAU"
+  PHYS_OPRANGE_SCALE_VAR_UPPER = "pOPu"
+  PHYS_OPRANGE_SCALE_VAR_LOWER = "pOPl"
+  PHYS_GAIN_VAR = "pGNV"
+  PHYS_UNCERTAINTY = "pUNC"
+
+
 
 class JauntEnvParams:
   class Type(Enum):
     PHYSICAL = "physical"
     IDEAL = "ideal"
-    NOGAIN = "nogain"
+    NAIVE = "naive"
     PROPAGATE = "propagate"
+
+  class Model(Enum):
+    PHYSICAL = "physical"
+    IDEAL = "ideal"
+    NAIVE = "naive"
+
+    def abbrev(self):
+      if JauntEnvParams.Model.PHYSICAL == self:
+        return "x"
+      elif JauntEnvParams.Model.NAIVE == self:
+        return "n"
+      elif JauntEnvParams.Model.IDEAL == self:
+        return "i"
 
   def __init__(self,digital_error=0.05, \
                analog_error=0.05):
@@ -32,42 +49,31 @@ class JauntEnvParams:
     self.ideal()
 
   def ideal(self):
-    self.experimental_model = False
+    self.model = "ideal"
     self.propagate_uncertainty = False
-    self.do_gain = False
     self.quantize_minimum = False
     self.quality_minimum = False
     self.bandwidth_maximum = True
 
-  def nogain(self):
-    self.experimental_model = True
-    self.propagate_uncertainty = False
-    self.do_gain = False
-    self.quantize_minimum = True
-    self.quality_minimum = True
-    self.bandwidth_maximum = True
 
   def physical(self):
-    self.experimental_model = True
+    self.model = "physical"
     self.propagate_uncertainty = False
-    self.do_gain = True
     self.quantize_minimum = True
     self.quality_minimum = True
     self.bandwidth_maximum = True
 
   def propagate(self):
-    self.experimental_model = True
+    self.model = "physical"
     self.propagate_uncertainty = True
-    self.do_gain = True
     self.quantize_minimum = True
     self.quality_minimum = True
     self.bandwidth_maximum = True
 
 
-  def noscale(self):
-    self.experimental_model = True
+  def naive(self):
+    self.model = "naive"
     self.propagate_uncertainty = False
-    self.do_gain = False
     self.quantize_minimum = True
     self.quality_minimum = True
     self.bandwidth_maximum = True
@@ -78,8 +84,8 @@ class JauntEnvParams:
       self.physical()
     elif model == JauntEnvParams.Type.IDEAL:
       self.ideal()
-    elif model == JauntEnvParams.Type.NOGAIN:
-      self.noscale()
+    elif model == JauntEnvParams.Type.NAIVE:
+      self.naive()
     elif model == JauntEnvParams.Type.PROPAGATE:
       self.propagate()
 
@@ -88,18 +94,15 @@ class JauntEnvParams:
 
   def tag(self):
     tag = ""
-    if self.experimental_model:
-      tag += "x"
+    tag += "%s" % JauntEnvParams.Model(self.model).abbrev()
     if self.propagate_uncertainty:
       tag += "P"
     if self.quality_minimum:
-      tag += "q%d" % (self.percent_analog_error*100.0)
+      tag += "q%.2f" % (self.percent_analog_error*100.0)
     if self.quantize_minimum:
-      tag += "d%d" % (self.percent_digital_error*100.0)
+      tag += "d%.2f" % (self.percent_digital_error*100.0)
     if self.bandwidth_maximum:
       tag += "b"
-    if not self.do_gain:
-      tag += "ng"
 
 
     return tag
@@ -181,7 +184,6 @@ class JauntEnv:
     for lhs,rhs,annot in self._ltes:
       yield (lhs,rhs,annot)
 
-
   def get_jaunt_var_info(self,scvar_var):
     if not scvar_var in self._from_jaunt_var:
       print(self._from_jaunt_var.keys())
@@ -196,6 +198,10 @@ class JauntEnv:
 
   def jaunt_vars(self):
     return self._from_jaunt_var.keys()
+
+  def has_jaunt_var(self,tup, tag=JauntVarType.VAR):
+    varname = self.to_jaunt_var(tag,tup)
+    return varname in self._from_jaunt_var
 
   def get_jaunt_var(self,tup, tag=JauntVarType.VAR):
     varname = self.to_jaunt_var(tag,tup)
@@ -246,6 +252,13 @@ class JauntEnv:
                               tag=JauntVarType.SCALE_VAR)
 
 
+  def get_scvar(self,block_name,loc,port,handle=None):
+    return self.get_jaunt_var((block_name,loc,port,handle), \
+                              tag=JauntVarType.SCALE_VAR)
+
+  
+
+
   def eq(self,v1,v2,annot):
       jaunt_util.log_debug("%s == %s {%s}" % (v1,v2,annot))
       # TODO: equality
@@ -291,13 +304,13 @@ class JauntInferEnv(JauntEnv):
       return self.decl_jaunt_var((block_name,loc,port,handle),
                                  tag=JauntVarType.OP_RANGE_VAR)
 
-    def decl_coeff_var(self,block_name,loc,port,handle=None):
+    def decl_gain_var(self,block_name,loc,port,handle=None):
       return self.decl_jaunt_var((block_name,loc,port,handle),
-                                 tag=JauntVarType.COEFF_VAR)
+                                 tag=JauntVarType.GAIN_VAR)
 
-    def get_coeff_var(self,block_name,loc,port,handle=None):
+    def get_gain_var(self,block_name,loc,port,handle=None):
       return self.get_jaunt_var((block_name,loc,port,handle),
-                                tag=JauntVarType.COEFF_VAR)
+                                tag=JauntVarType.GAIN_VAR)
 
     def get_op_range_var(self,block_name,loc,port,handle=None):
       return self.get_jaunt_var((block_name,loc,port,handle),
@@ -313,11 +326,51 @@ class JauntInferEnv(JauntEnv):
       return self.get_jaunt_var((block_name,loc,mode),
                                 tag=JauntVarType.MODE_VAR)
 
+    def has_mode_var(self,block_name,loc,mode):
+      return self.has_jaunt_var((block_name,loc,mode),
+                                tag=JauntVarType.MODE_VAR)
+
+
+    def decl_phys_op_range_scvar(self,block_name,loc,port,handle=None,lower=True):
+      if lower:
+        return self.decl_jaunt_var((block_name,loc,port,handle), \
+                                   tag=JauntVarType.PHYS_OPRANGE_SCALE_VAR_LOWER)
+      else:
+        return self.decl_jaunt_var((block_name,loc,port,handle), \
+                                   tag=JauntVarType.PHYS_OPRANGE_SCALE_VAR_UPPER)
+
+    def decl_phys_gain_var(self,block_name,loc,port,handle=None):
+      return self.decl_jaunt_var((block_name,loc,port,handle), \
+                                 tag=JauntVarType.PHYS_GAIN_VAR)
+
+    def decl_phys_uncertainty(self,block_name,loc,port,handle=None):
+      return self.decl_jaunt_var((block_name,loc,port,handle), \
+                                 tag=JauntVarType.PHYS_UNCERTAINTY)
+
+    def get_phys_op_range_scvar(self,block_name,loc,port,handle=None,lower=True):
+      if lower:
+        return self.get_jaunt_var((block_name,loc,port,handle), \
+                                  tag=JauntVarType.PHYS_OPRANGE_SCALE_VAR_LOWER)
+      else:
+        return self.get_jaunt_var((block_name,loc,port,handle), \
+                                  tag=JauntVarType.PHYS_OPRANGE_SCALE_VAR_UPPER)
+
+
+
+    def get_phys_gain_var(self,block_name,loc,port,handle=None):
+      return self.get_jaunt_var((block_name,loc,port,handle), \
+                                tag=JauntVarType.PHYS_GAIN_VAR)
+
+    def get_phys_uncertainty(self,block_name,loc,port,handle=None):
+      return self.get_jaunt_var((block_name,loc,port,handle), \
+                                tag=JauntVarType.PHYS_UNCERTAINTY)
+
 
     def implies(self,condvar,var,value):
       assert(condvar in self._from_jaunt_var)
       if not condvar in self._implies:
         self._implies[condvar] = []
+      jaunt_util.log_info("%s -> %s = %s" % (condvar,var,value))
       self._implies[condvar].append((var,value))
 
     def exactly_one(self,exclusive):

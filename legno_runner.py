@@ -75,6 +75,7 @@ parser.add_argument("--srcgen",action="store_true", \
                     help="only generate source")
 
 
+
 args = parser.parse_args()
 
 params = read_config(args.config)
@@ -101,8 +102,7 @@ jaunt_args = \
 if succ and not args.srcgen:
   succ = execute(jaunt_args,params,'jaunt.log')
   if succ:
-    graph_args = \
-                "--subset {subset} {bmark} graph"
+    graph_args = "--subset {subset} {bmark} graph"
     execute(graph_args,params,'graph.log')
 
 srcgen_args = \

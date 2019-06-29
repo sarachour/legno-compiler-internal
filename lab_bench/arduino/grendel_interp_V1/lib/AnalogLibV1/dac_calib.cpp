@@ -11,7 +11,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrate (profile_t& result,
 {
   dac_code_t backup = m_codes;
   m_codes.source = DSRC_MEM;
-  setConstant(1.0);
+  setConstant(0.90);
   float succ = calibrateTarget(result,max_error);
   m_codes.source = backup.source;
   m_codes.const_val = backup.const_val;

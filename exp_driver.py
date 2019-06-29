@@ -33,6 +33,10 @@ run_subp.add_argument('--native', action='store_true',
                        help='use ttyACM0.')
 run_subp.add_argument('--bmark', type=str,
                        help='bmark to run.')
+run_subp.add_argument('--subset', type=str,
+                       help='bmark to run.')
+run_subp.add_argument('--model', type=str,
+                       help='model to run.')
 run_subp.add_argument('--obj', type=str,
                        help='objective function to run.')
 
@@ -53,6 +57,11 @@ analyze_subp.add_argument('--bmark', type=str,
                        help='.')
 analyze_subp.add_argument('--subset', type=str,
                        help='.')
+analyze_subp.add_argument('--model', type=str,
+                       help='model to run.')
+analyze_subp.add_argument('--obj', type=str,
+                       help='objective function to run.')
+
 
 
 visualize_subp = subparsers.add_parser('visualize', help='produce graphs.')

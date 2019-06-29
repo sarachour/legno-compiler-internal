@@ -4,7 +4,8 @@ import ops.jop as jop
 import ops.nop as nop
 import ops.op as ops
 import chip.props as props
-from chip.model import ModelDB, PortModel,get_oprange_scale
+from chip.model import ModelDB, PortModel, \
+    get_oprange_scale, get_gain, get_variance
 import chip.hcdc.globals as glb
 import util.util as util
 import util.config as CONFIG
@@ -13,24 +14,61 @@ import compiler.jaunt_pass.jaunt_physlog as jaunt_physlog
 import compiler.jaunt_pass.jenv as jenvlib
 import math
 
-db = ModelDB()
+DB = ModelDB()
+
+def get_physics_params(jenv,circ,block,loc,port,handle=None):
+    model = jenv.params.model
+    config = circ.config(block.name,loc)
+    oprange_lower, oprange_upper = get_oprange_scale(DB,circ,block.name,loc, \
+                                   port,handle=handle,
+                                   mode=model)
+    gain_sc = get_gain(DB,circ,block.name,loc, \
+                       port,handle=handle, \
+                       mode=model)
+    uncertainty_sc = get_variance(DB,circ,block.name,loc, \
+                       port,handle=handle, \
+                       mode=model)
+
+    return {
+        'gain':gain_sc,
+        'uncertainty': uncertainty_sc,
+        'oprange_lower': oprange_lower,
+        'oprange_upper':oprange_upper
+    }
 
 
 def get_parameters(jenv,circ,block,loc,port,handle=None):
     config = circ.config(block.name,loc)
-    scale_model = block.scale_model(config.comp_mode)
-    baseline = scale_model.baseline
+    baseline = block.baseline(config.comp_mode)
     pars = {}
     if isinstance(jenv, jenvlib.JauntInferEnv):
-        scale_mode = scale_model.baseline
-        hwscvar = jop.JVar(jenv.get_op_range_var(block.name,loc,port,handle))
-        uncertainty = 0.0
-        oprange_scale = (1.0,1.0)
+        scale_mode = baseline
+        #physical scale variable
+        hwscvar_lower = jop.JMult( \
+                             jop.JVar(jenv.get_phys_op_range_scvar(block.name,loc,port, \
+                                                                   handle,lower=True)), \
+                             jop.JVar(jenv.get_op_range_var(block.name,loc,port,handle)) \
+        );
+        hwscvar_upper = jop.JMult( \
+                             jop.JVar(jenv.get_phys_op_range_scvar(block.name,loc,port, \
+                                                                   handle,lower=False)), \
+                             jop.JVar(jenv.get_op_range_var(block.name,loc,port,handle)) \
+        );
+        uncertainty = jop.JVar(jenv.get_phys_uncertainty(block.name,loc,port,handle))
+        hwscvar_gain = jop.JMult(
+            jop.JVar(jenv.get_phys_gain_var(block.name,loc,port,handle)),
+            jop.JVar(jenv.get_gain_var(block.name,loc,port,handle))
+        )
+
     else:
+        pars = get_physics_params(jenv,circ,block,loc,port,handle=handle)
         scale_mode = config.scale_mode
-        hwscvar = jop.JConst(1.0)
-        uncertainty = config.meta(port,'cost',handle=handle)
-        oprange_scale = get_oprange_scale(db,circ,block.name,loc,port,handle)
+        hwscvar_lower = jop.JConst(pars['oprange_lower'])
+        hwscvar_upper = jop.JConst(pars['oprange_upper'])
+        hwscvar_gain = jop.JConst(pars['gain']*block.coeff(config.comp_mode, \
+                                                            config.scale_mode, \
+                                                            port,handle=handle))
+        uncertainty = jop.JConst(config.meta(port,'cost',handle=handle))
         assert(not uncertainty is None)
 
     mrng = config.interval(port)
@@ -39,15 +77,16 @@ def get_parameters(jenv,circ,block,loc,port,handle=None):
     prop = block.props(config.comp_mode,scale_mode,port,handle=handle)
     hwrng,hwbw = prop.interval(), prop.bandwidth()
     return {
-        'math_range':mrng,
+        'math_interval':mrng,
         'math_bandwidth':mbw,
         'math_scale':mathscvar,
-        'hw_scale':hwscvar,
         'prop':prop,
-        'hw_range':hwrng,
+        'hw_oprange_scale_lower':hwscvar_lower,
+        'hw_oprange_scale_upper':hwscvar_upper,
+        'hw_gain':hwscvar_gain,
+        'hw_oprange_base':hwrng,
         'hw_bandwidth':hwbw,
-        'phys_unc': uncertainty,
-        'phys_scale': oprange_scale,
+        'hw_uncertainty': uncertainty,
         'min_digital_snr': 1.0/jenv.params.percent_digital_error,
         'min_analog_snr': 1.0/jenv.params.percent_analog_error
     }
@@ -126,72 +165,77 @@ def analog_bandwidth_constraint(jenv,circ,block,loc,port,handle,annot):
 
 def digital_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
     pars = get_parameters(jenv,circ,block,loc,port,handle)
-    mrng = pars['math_range']
-    hwrng = pars['hw_range']
+    mrng = pars['math_interval']
+    hwrng = pars['hw_oprange_base']
     prop = pars['prop']
-    mscale = pars['math_scale']
-    hscale = pars['hw_scale']
-    oprngsc_lower,oprngsc_upper = pars['phys_scale']
-    #for k,v in pars.items():
-    #    print("%s=%s" % (k,v))
+    hscale_lower = pars['hw_oprange_scale_lower']
+    hscale_upper = pars['hw_oprange_scale_upper']
+
     assert(isinstance(prop, props.DigitalProperties))
-    ratio = jop.JMult(pars['math_scale'], \
-                                jop.expo(pars['hw_scale'],-1.0))
+    def ratio(hwexpr):
+        return jop.JMult(pars['math_scale'], jop.expo(hwexpr,-1.0))
+
     jaunt_util.upper_bound_constraint(jenv,
-                                      ratio,
+                                      ratio(hscale_upper),
                                       mrng.upper,
-                                      hwrng.upper*oprngsc_upper,
+                                      hwrng.upper,
                                       'jcom-digital-oprange-%s' % annot)
 
     jaunt_util.lower_bound_constraint(jenv,
-                                      ratio,
+                                      ratio(hscale_lower),
                                       mrng.lower,
-                                      hwrng.lower*oprngsc_lower,
+                                      hwrng.lower,
                                       'jcom-digital-oprange-%s' % annot)
 
 
-    phys_unc = pars['phys_unc']
+    hw_unc = pars['hw_uncertainty']
     min_snr = pars['min_analog_snr']
-    if phys_unc > 0.0  \
+    hw_unc_coeff,_ = hw_unc.factor_const()
+    if hw_unc_coeff > 0.0  \
        and mrng.bound > 0.0 \
        and jenv.params.quality_minimum:
         signal_expr = jop.JMult(pars['math_scale'],jop.JConst(mrng.bound))
-        noise_expr = jop.JConst(1.0/phys_unc)
+        noise_expr = jop.expo(hw_unc, -1.0)
         snr_expr = jop.JMult(signal_expr,noise_expr)
         jenv.gte(snr_expr,jop.JConst(min_snr), \
                  annot='jcom-digital-minsig')
 
 
 def analog_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
+
     pars = get_parameters(jenv,circ,block,loc,port,handle)
-    mrng = pars['math_range']
-    hwrng = pars['hw_range']
+    mrng = pars['math_interval']
+    hwrng = pars['hw_oprange_base']
     min_snr = pars['min_analog_snr']
-    oprngsc_lower,oprngsc_upper = pars['phys_scale']
+    hw_unc = pars['hw_uncertainty']
     prop = pars['prop']
     assert(isinstance(prop, props.AnalogProperties))
-    ratio = jop.JMult(pars['math_scale'], \
-                      jop.expo(pars['hw_scale'],-1.0))
+    hw_lower = pars['hw_oprange_scale_lower']
+    hw_upper = pars['hw_oprange_scale_upper']
+
+    def ratio(hwexpr):
+        return jop.JMult(pars['math_scale'], jop.expo(hwexpr,-1.0))
+
     jaunt_util.upper_bound_constraint(jenv,
-                                      ratio,
+                                      ratio(hw_upper),
                                       mrng.upper,
-                                      hwrng.upper*oprngsc_upper,
+                                      hwrng.upper,
                                       'jcom-analog-oprange-%s' % annot)
     jaunt_util.lower_bound_constraint(jenv,
-                                      ratio,
+                                      ratio(hw_lower),
                                       mrng.lower,
-                                      hwrng.lower*oprngsc_lower,
+                                      hwrng.lower,
                                       'jcom-analog-oprange-%s' % annot)
     # if this makes the system a system that processes a physical signal.
     if prop.is_physical:
         jenv.eq(pars['math_scale'], jop.JConst(1.0),'jcom-analog-physical-rng')
 
-    phys_unc = pars['phys_unc']
-    if phys_unc > 0.0  \
+    hw_unc_coeff,_ = hw_unc.factor_const()
+    if hw_unc_coeff > 0.0  \
        and mrng.bound > 0.0 \
        and jenv.params.quality_minimum:
         signal_expr = jop.JMult(pars['math_scale'],jop.JConst(mrng.bound))
-        noise_expr = jop.JConst(1.0/phys_unc)
+        noise_expr = jop.expo(hw_unc, -1.0)
         snr_expr = jop.JMult(signal_expr,noise_expr)
         jenv.gte(snr_expr,jop.JConst(min_snr), \
                  annot='jcom-analog-minsig')
@@ -200,7 +244,7 @@ def analog_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
 def digital_quantize_constraint(jenv,circ,block,loc,port,handle,annot=""):
     pars = get_parameters(jenv,circ,block,loc,port,handle)
     prop = pars['prop']
-    mrng = pars['math_range']
+    mrng = pars['math_interval']
     min_snr = pars['min_digital_snr']
     delta_h = np.mean(np.diff(prop.values()))
 

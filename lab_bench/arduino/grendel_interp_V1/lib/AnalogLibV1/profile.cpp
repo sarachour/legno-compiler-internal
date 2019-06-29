@@ -17,17 +17,17 @@ namespace prof {
       error("not enough space to allocate data");
     }
     int idx = 0;
-    for(int i=0; i < 256; i += stride){
-      data[idx] = ((float) i)/128.0 - 1.0;
+    for(int i=10; i < 245; i += stride){
+      data[idx] = (((float) i)/128.0 - 1.0);
       idx += 1;
     }
     return idx;
   }
   int data_2d(float* data,int size){
-    static int codes[] = {0,32,64,96,128,
-                          160,191,224,255};
+    static int codes[] = {10,32,64,96,128,
+                          160,191,224,245};
     for(int i=0; i < 9; i += 1){
-      data[i] = codes[i]/128.0 - 1.0;
+      data[i] = (codes[i]/128.0 - 1.0);
     }
     return 9;
   }

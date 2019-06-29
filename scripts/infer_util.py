@@ -3,6 +3,8 @@ import scipy.optimize
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+from scipy.interpolate import interp2d
+import itertools
 
 def apply_model(xdata,a,b):
     x = xdata
@@ -12,7 +14,9 @@ def apply_model(xdata,a,b):
 def inds_model_2(in0,in1,pars,n):
   def inside(pt,ival):
     l,s = ival
-    return pt >= l and pt <= l+s
+    succ = pt >= l and pt <= l+s
+    #print("%f in [%f,%f] -> %s" % (pt,l,l+s,succ))
+    return succ
 
   a,b = pars
   inds = list(filter(lambda i: \
@@ -41,8 +45,8 @@ def sub_index(data,inds):
     subdata.append(subd)
   return subdata
 
-def apply_trimming_model(inps,pred,meas,pars):
-  n = len(pred)
+def apply_trimming_model(inps,error,pars):
+  n = len(error)
   if len(inps) == 2:
     inds = inds_model_2(inps[0],inps[1],pars,n)
     span = compute_span(pars[0]) + compute_span(pars[1])
@@ -52,9 +56,7 @@ def apply_trimming_model(inps,pred,meas,pars):
   if span > 4:
     return 100
   m = len(inds)
-  sub_pred,sub_meas = sub_index([pred,meas],inds)
-  sub_err= np.array(list(map(lambda i: abs(sub_pred[i]-sub_meas[i]), \
-                             range(m))))
+  sub_err = np.array(list(map(lambda i: abs(error[i]), inds)))
   unc_var = sum(sub_err)/m
   unc_std = math.sqrt(unc_var)
   cost=unc_std*2.0+1.0/(span*0.25)
@@ -69,14 +71,53 @@ def find_closest(data,v):
       best = d
   return best
 
+def generate_data_2d(in0,in1,error,n=50):
+  def get(xi,yi):
+    for idx in filter(lambda i: in0[i] == xi and \
+                     in1[i] == yi, range(len(in0))):
+      return error[idx]
+    raise Exception("cannot find??")
+
+  x = np.array(list(set(in0)))
+  x.sort()
+  y = np.array(list(set(in1)))
+  y.sort()
+  zd = []
+  for yi in y:
+    zi = []
+    for xi in x:
+      zi.append(get(xi,yi))
+    zd.append(zi)
+
+  z = np.array(zd)
+  fn = interp2d(x,y,z)
+  l_in0 = np.linspace(min(in0),max(in0),n)
+  l_in1 = np.linspace(min(in1),max(in1),n)
+  gen_in0 = []
+  gen_in1 = []
+  gen_error = []
+  for xi in l_in0:
+    for yi in l_in1:
+      r = fn(xi,yi)[0]
+      gen_in0.append(xi)
+      gen_in1.append(yi)
+      gen_error.append(r)
+
+  return gen_in0,gen_in1,gen_error
+
 def trim_model(data,gain,bias):
   if "in0" in data and "in1" in data:
     in0,in1,target,bias = unpack_data(data,["in0","in1","target","bias"])
     n = len(in0)
+    assert(n > 0)
     meas = np.array(list(map(lambda i: bias[i]+target[i], range(n))))
     pred = apply_model(target,gain,bias)
+    error = np.array(list(map(lambda i: abs(pred[i]-meas[i]), \
+                             range(n))))
+    gen_in0,gen_in1,gen_error = generate_data_2d(in0,in1,error)
     def compute_loss(pars):
-      return apply_trimming_model([in0,in1],pred,meas,[(pars[0],pars[1]), \
+      return apply_trimming_model([gen_in0,gen_in1], \
+                                  gen_error,[(pars[0],pars[1]), \
                                              (pars[2],pars[3])])
 
     bounds = [(-1.0,-0.5),(1.0,2.0),(-1.0,-0.5),(1.0,2.0)]
@@ -97,9 +138,9 @@ def trim_model(data,gain,bias):
     sub_pred,sub_meas = sub_index([pred,meas], inds)
     error = np.array(list(map(lambda i: abs(sub_pred[i]-sub_meas[i]),\
                               range(m))))
-    unc_var = sum(map(lambda e: e**2, error))/m
-    unc_std = math.sqrt(unc_var)
-    return unc_std,bnds
+    unc_std = math.sqrt(sum(map(lambda e: e**2, error))/m)
+    max_err = max(map(lambda e: abs(e), error))
+    return max_err,unc_std,bnds
   else:
     input("helpme")
 
@@ -127,7 +168,7 @@ def infer_model(data,adc=False):
   model = PortModel(None,None,None,None,None)
 
   n = len(data['bias'])
-  bias,target,noise = unpack_data(data,['bias','target','noise'])
+  bias,target,noise,in0 = unpack_data(data,['bias','target','noise','in0'])
   if adc:
     bias = np.array(list(map(lambda i: bias[i]/128.0, range(n))))
     target = np.array(list(map(lambda i: (target[i]-128.0)/128.0, range(n))))
@@ -138,7 +179,7 @@ def infer_model(data,adc=False):
     model.gain = 1.0
     model.bias = bias[0]
     model.uncertainty_bias = 0.0
-    model.noise= math.sqrt(sum(noise)/n)
+    model.noise= math.sqrt(sum(map(lambda n: n**2.0, noise))/n)
 
   elif n > 1:
     meas = np.array(list(map(lambda i: bias[i]+target[i], range(n))))
@@ -150,13 +191,21 @@ def infer_model(data,adc=False):
 
     model.gain = gain
     model.bias = bias
-    model.noise= math.sqrt(sum(noise)/n)
+    model.noise= math.sqrt(sum(map(lambda n: n**2.0, noise))/n)
     model.bias_uncertainty = math.sqrt(sum(errors)/n)
-    if model.bias_uncertainty > 0.1:
-      new_unc,bnd = trim_model(data,gain,bias)
+    max_error =  math.sqrt(max(errors))
+    print("max_error=%f" % max_error)
+    if max_error > 0.05 and len(in0) > 0:
+      new_max_error,new_unc,bnd = trim_model(data,gain,bias)
+      print("uncertainty: %f -> %f" % (model.bias_uncertainty,new_unc))
+      print("max_error: %f -> %f" % (max_error,new_max_error))
       model.bias_uncertainty = new_unc
-      #plot_input_output_rel(data,gain,bias,bnd)
+      plot_input_output_rel(data,gain,bias,bnd)
+      print(model)
+      print(bnd)
 
+      input()
   print(model)
+  print(bnd)
   return model,bnd
 

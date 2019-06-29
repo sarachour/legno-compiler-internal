@@ -2,7 +2,8 @@ import ops.jop as jop
 import ops.op as ops
 import ops.interval as interval
 from chip.model import ModelDB,get_gain,get_variance
-
+from enum import Enum
+import compiler.jaunt_pass.jaunt_common as jaunt_common
 
 class ExprVisitor:
 
@@ -83,30 +84,15 @@ class SCFPropExprVisitor(ExprVisitor):
 
   def __init__(self,jenv,circ,block,loc,port):
     ExprVisitor.__init__(self,jenv,circ,block,loc,port)
-    if jenv.params.experimental_model \
-       and jenv.params.do_gain:
-      self.db = ModelDB()
-    else:
-      self.db = None
+    self.db = ModelDB()
 
-  def physical_coeff(self,handle):
-    if self.db is None:
-      return 1.0
-
-    return get_gain(self.db,self.circ, \
-                    self.block.name, \
-                    self.loc, \
-                    self.port,handle)
 
   def coeff(self,handle):
     block,loc,port = self.block,self.loc,self.port
-    config = self.circ.config(block.name,loc)
-    coeff = block.coeff(config.comp_mode, \
-                        config.scale_mode, \
-                        port,handle)
+    pars = jaunt_common.get_parameters(self.jenv,self.circ, \
+                                       block,loc,port,handle)
 
-    phys_coeff = self.physical_coeff(handle)
-    return jop.JConst(coeff*phys_coeff)
+    return pars['hw_gain']
 
   def visit_const(self,expr):
     return jop.JConst(1.0)

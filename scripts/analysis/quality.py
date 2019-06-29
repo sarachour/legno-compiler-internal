@@ -46,69 +46,82 @@ def read_meas_data(filename):
     T_REFLOW = np.array(T) - min(T)
     return T_REFLOW,V
 
-
-def fit(_tref,_yref,_tmeas,_ymeas):
-  def measure_error(tref,xref,tobs,xobs,model):
+def make_prediction(t_ref,x_ref,model):
     a,b,c,d = model
-    thw = a*tref + b
-    xhw = c*xref + d
-    return thw,xhw
+    t_pred = a*t_ref + b
+    x_pred = c*x_ref + d
+    return t_pred,x_pred
 
-  def compute_error(ht,hx,mt,mx,model):
-    rt,rx = measure_error(ht,hx,mt,mx,model)
-    if min(rt) < min(mt) or max(rt) > max(mt):
-        return 2.0
-    y = np.interp(rt, mt, mx, left=0, right=0)
-    error = np.sum((y-rx)**2)/len(y)
-    return error
+def compute_error(ref_t,ref_x,meas_t,meas_x,model):
+  res_t,res_x = make_prediction(ref_t,ref_x,model)
+  if min(res_t) < min(meas_t) or max(res_t) > max(meas_t):
+      return 2.0
+  meas_x_reflow = np.interp(res_t, meas_t, meas_x, left=0, right=0)
+  error = np.sum((meas_x_reflow-res_x)**2)/len(res_t)
+  return error
 
-  def apply_model_to_obs(ht,mt,mx,model):
+def apply_model_to_obs(pred_t,meas_t,meas_x,model):
     a,b,c,d = model
-    tmin,tmax = b, b+max(ht*a)
-    inds = list(filter(lambda i: mt[i] <= tmax and mt[i] >= tmin, \
-                    range(len(mt))))
-    rt = list(map(lambda i: (mt[i]-b)/a,inds))
-    rx = list(map(lambda i: mx[i], inds))
+    tmin,tmax = b, b+max(pred_t*a)
+    inds = list(filter(lambda i: meas_t[i] <= tmax and meas_t[i] >= tmin, \
+                    range(len(meas_t))))
+    rt = list(map(lambda i: (meas_t[i]-b)/a,inds))
+    rx = list(map(lambda i: (meas_x[i]-d)/c, inds))
     return rt,rx
 
+def out_of_bounds(bounds,result):
+  for (lb,ub),r in zip(bounds,result):
+    if r < lb or r > ub:
+      print("%s not in (%s,%s)" % (r,lb,ub))
+      continue
+      #return True
+  return False
 
+def fit(_tref,_yref,_tmeas,_ymeas):
+  # apply transform to turn ref -> pred
   tref = np.array(_tref)
   yref = np.array(_yref)
   tmeas = np.array(_tmeas)
   ymeas = np.array(_ymeas)
 
+  v_scale = 1.0/1.2
   def compute_loss(x):
     error = compute_error(tref,yref,tmeas,ymeas, \
-                            [x[0],x[1],1.0,0.0])
+                            [x[0],x[1],v_scale,x[2]])
     return error
 
-
-  def oob(bounds,result):
-    for (lb,ub),r in zip(bounds,result):
-      if r < lb or r > ub:
-        return True
-    return False
-
-  bounds = [(0.6, 3.0),(0.0,max(tmeas)*0.15)]
-  print("finding transform...")
-  result = optimize.brute(compute_loss, bounds)
-  model = [result[0],result[1],1.0,0.0]
+  bounds = [
+    (1.6, 1.7), \
+    (0.0,max(tmeas)*0.05), \
+    (-0.1,0.1)
+  ]
+  print("=== finding transform ===")
+  #n = 5
+  n = 10
+  result = optimize.brute(compute_loss, bounds, Ns=n)
+  model = [result[0],result[1],v_scale,result[2]]
   print(model)
-  if oob(bounds,result):
+  if out_of_bounds(bounds,result):
     return None,None,model
 
-  rt,rx = apply_model_to_obs(tref,tmeas,ymeas,model)
-  return rt,rx,model
+  infer_t,infer_x = apply_model_to_obs(tref,tmeas,ymeas,model)
+  return infer_t,infer_x,model
 
 def compute_quality(_tobs,_yobs,_tpred,_ypred):
-  tpred = np.array(_tpred)
-  ypred = np.array(_ypred)
-  tobs = np.array(_tobs)
-  yobs = np.array(_yobs)
+  def compute_error(ypred,yobs):
+    return (ypred-yobs)**2
+
+  tpred,ypred = np.array(_tpred), np.array(_ypred)
+  tobs,yobs = np.array(_tobs), np.array(_yobs)
+  n = len(tobs)
   ypred_flow = np.interp(tobs, tpred, ypred, left=0, right=0)
-  error = math.sqrt(np.median((ypred_flow-yobs)**2))
-  print("quality=%s" % error)
-  return error
+  errors = np.array(list(map(lambda i: compute_error(ypred_flow[i], \
+                                                     yobs[i]), range(n))))
+
+  # SSQE
+  ssqe = math.sqrt(sum(errors)/n)
+  print("mean (errors): %s" % ssqe)
+  return ssqe
 
 def analyze(entry):
   path_h = paths.PathHandler(entry.subset,entry.bmark)
@@ -121,12 +134,12 @@ def analyze(entry):
     TREF,YREF = compute_ref(entry.bmark,entry.math_env,varname)
     TMEAS,YMEAS = read_meas_data(output.out_file)
     scf = max(abs(np.array(YMEAS)))/max(abs(np.array(YREF)))
-    THW,YHW = scale_ref_data(output.tau,scf,TREF,YREF)
-    TFIT,YFIT,MODEL = fit(THW,YHW,TMEAS,YMEAS)
+    TPRED,YPRED = scale_ref_data(output.tau,scf,TREF,YREF)
+    TFIT,YFIT,MODEL = fit(TPRED,YPRED,TMEAS,YMEAS)
 
     common.simple_plot(output,path_h,output.trial,'ref',TREF,YREF)
     common.simple_plot(output,path_h,output.trial,'meas',TMEAS,YMEAS)
-    common.simple_plot(output,path_h,output.trial,'pred',THW,YHW)
+    common.simple_plot(output,path_h,output.trial,'pred',TPRED,YPRED)
     output.set_transform(MODEL)
 
     if TFIT is None or YFIT is None:
@@ -134,8 +147,8 @@ def analyze(entry):
       continue
 
     common.simple_plot(output,path_h,output.trial,'obs',TFIT,YFIT)
-    common.compare_plot(output,path_h,output.trial,'comp',THW,YHW,TFIT,YFIT)
-    QUALITY = compute_quality(THW,YHW,TFIT,YFIT)
+    common.compare_plot(output,path_h,output.trial,'comp',TPRED,YPRED,TFIT,YFIT)
+    QUALITY = compute_quality(TFIT,YFIT,TPRED,YPRED)
     output.set_quality(QUALITY)
     QUALITIES.append(QUALITY)
 

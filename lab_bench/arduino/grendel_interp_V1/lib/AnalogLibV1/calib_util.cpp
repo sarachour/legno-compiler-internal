@@ -18,7 +18,7 @@ namespace cutil {
                           float value,
                           float& ref){
     prof::init_profile(prof::TEMP);
-    if(fabs(value) > 1.0){
+    if(fabs(value) > 0.9){
       ref = value;
       return make_val_dac(calib,dac,value,prof::TEMP);
     }

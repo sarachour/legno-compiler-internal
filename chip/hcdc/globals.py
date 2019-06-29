@@ -75,15 +75,16 @@ class GlobalCtx:
     self.__insert(prop,block,cm,sm,port,value)
 
 CTX = GlobalCtx()
-CTX.insert(GLProp.DIGITAL_INTERVAL, (-1.0,1.0))
 CTX.insert(GLProp.DIGITAL_EXCLUDE, (0.0,0.0))
-#CTX.insert(GLProp.CURRENT_INTERVAL, (-1.9,1.9))
+CTX.insert(GLProp.DIGITAL_INTERVAL, (-1.0,1.0))
 CTX.insert(GLProp.CURRENT_INTERVAL, (-2.0,2.0))
 CTX.insert(GLProp.VOLTAGE_INTERVAL, (-1.0,1.0))
 CTX.insert(GLProp.DIGITAL_QUANTIZE, 256)
 
-#CTX.insert(GLProp.MAX_FREQ, 200*units.khz)
-CTX.insert(GLProp.MAX_FREQ, 1000*units.khz)
+#max_freq_khz = 200
+#max_freq_khz = 200
+max_freq_khz = 100
+CTX.insert(GLProp.MAX_FREQ, max_freq_khz*units.khz)
 CTX.insert(GLProp.DIGITAL_SAMPLE, 3.0*units.us)
 CTX.insert(GLProp.INBUF_SIZE,1200)
 CTX.insert(GLProp.OUTBUF_SIZE,1e9)
@@ -93,11 +94,12 @@ CTX.insert(GLProp.OUTBUF_SIZE,1e9)
 # exclude these constant ranges, because the system is unable to calibrate.
 # the 0.19 is a tight bound, the 0.4 is a guess.
 #CTX.insert(GLProp.DIGITAL_EXCLUDE, (-0.19,0.19), block="multiplier")
-for mode in [(RangeType.HIGH, RangeType.MED), \
-             (RangeType.MED, RangeType.LOW)]:
-  CTX.insert(GLProp.DIGITAL_EXCLUDE, (-0.4,0.4), block="multiplier",cm="vga", \
-             sm=mode)
+#for mode in [(RangeType.HIGH, RangeType.MED), \
+#             (RangeType.MED, RangeType.LOW)]:
+#  CTX.insert(GLProp.DIGITAL_EXCLUDE, (-0.4,0.4), block="multiplier",cm="vga", \
+#             sm=mode)
 
+#freq_khz = 20
 freq_khz = 40
 CTX.insert(GLProp.MAX_FREQ, freq_khz*units.khz, block='tile_dac')
 CTX.insert(GLProp.COEFF, 2.0, block='tile_dac')
@@ -123,4 +125,4 @@ CTX.insert(GLProp.COEFF, 0.5, block='ext_chip_out')
 
 CTX.freeze = True
 
-TIME_FREQUENCY = 200*units.khz
+TIME_FREQUENCY = max_freq_khz*units.khz

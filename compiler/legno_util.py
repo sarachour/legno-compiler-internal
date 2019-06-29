@@ -69,7 +69,7 @@ def exec_jaunt_normal(prog,conc_circ,args):
         yield idx,opt,model,scale_circ
 
 
-def exec_jaunt_search(prog,conc_circ,args):
+def exec_jaunt_search(prog,conc_circ,args,tolerance=0.002):
     def test_valid(digital_error,analog_error):
         print("dig_error=%f an_error=%f" % (digital_error,analog_error))
         for idx,opt,model,scale_circ in jaunt.scale(prog, \
@@ -77,24 +77,30 @@ def exec_jaunt_search(prog,conc_circ,args):
                                                     args.scale_circuits,
                                                     model=args.model,
                                                     digital_error=digital_error,
-                                                    analog_error=analog_error):
+                                                    analog_error=analog_error,
+                                                    do_log=False):
             return True
         return False
 
 
 
-    def recursive_grid_search(rng,analog=True,n=2,max_value=1.0):
+    def recursive_grid_search(rng,analog=True,n=2,max_value=1.0,failures=[]):
         vals = np.linspace(rng[0], \
                                rng[1], n)
-        if abs(rng[0]-rng[1]) < 0.01:
+        if abs(rng[0]-rng[1]) < tolerance:
             return None
 
         succs,fails = [],[]
         for error in vals:
+            if error in failures:
+                fails.append(error)
+                continue;
+
             is_valid = test_valid(max_value,error) if analog \
                        else test_valid(error,max_value)
             if is_valid:
                 succs.append(error)
+                break;
             else:
                 fails.append(error)
 
@@ -107,7 +113,8 @@ def exec_jaunt_search(prog,conc_circ,args):
                                               [worst,best], \
                                               analog=analog, \
                                               max_value=max_value, \
-                                              n=n)
+                                              n=n,
+                                              failures=failures+fails)
                 best = min(succs) if best is None else best
             return best
         else:
@@ -118,7 +125,7 @@ def exec_jaunt_search(prog,conc_circ,args):
         if test_valid(dig_error,alog_error):
             return dig_error,alog_error
 
-        dig,alog = joint_search(dig_error+0.01,alog_error+0.01)
+        dig,alog = joint_search(dig_error+tolerance,alog_error+tolerance)
         return dig,alog
 
     max_pct = 1.0
@@ -244,7 +251,8 @@ def exec_graph_one(hdacv2_board,path_handler,fname):
         obj = json.loads(fh.read())
         conc_circ = ConcCirc.from_json(hdacv2_board, \
                                        obj)
-        methods = ['snr','cost']
+
+        methods = ['snr','pctrng']
         for draw_method in methods:
             filename = path_handler.conc_graph_file(circ_bmark,
                                                     circ_indices,

@@ -71,6 +71,7 @@ class CSMCoeffVar(CSMVar):
     CSMVar.__init__(self,CSMVar.Type.COEFFVAR,port,handle=handle)
 
 
+
 class ContinuousScaleContext:
 
   def __init__(self,model):
