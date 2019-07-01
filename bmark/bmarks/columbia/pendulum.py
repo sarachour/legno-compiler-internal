@@ -10,8 +10,12 @@ from bmark.bmarks.common import *
 import bmark.menvs as menvs
 
 
-def model():
-  prob = MathProg('pend')
+def model(nonlinear=False):
+  if nonlinear:
+    prob = MathProg('pend-nl')
+  else:
+    prob = MathProg('pend')
+
   #prob.set_digital_snr(10.0)
   #prob.set_analog_snr(5.0)
   prob.set_digital_snr(0.0)
@@ -24,18 +28,24 @@ def model():
     'k1':0.18,
     'k2':0.8
   }
-  sin_fun = op.Func(['T'], op.Mult(op.Const(-1.0),op.Sin(op.Var('T'))))
 
-  eqn = parse_diffeq('{k1}*(-angvel) + {k2}*sinAngle',  \
-               'angvel0', ':a', params)
+  if not nonlinear:
+    eqn = parse_diffeq('{k1}*(-angvel) + {k2}*(-angle)',  \
+                       'angvel0', ':a', params)
+  else:
+    # don't approximate small angle theorem
+    sin_fun = op.Func(['T'], op.Mult(op.Const(-1.0),op.Sin(op.Var('T'))))
+    eqn = parse_diffeq('{k1}*(-angvel) + {k2}*sinAngle',  \
+                       'angvel0', ':a', params)
+    prob.bind('sinAngle', \
+              op.Call([op.Var('angle')], sin_fun))
+
   prob.bind('angvel',eqn)
 
   eqn = parse_diffeq('angvel','angle0', \
                      ':b', params)
   prob.bind('angle',eqn)
 
-  prob.bind('sinAngle', \
-            op.Call([op.Var('angle')], sin_fun))
   prob.bind('ANGLE', op.Emit(op.Var('angle'), \
                              loc="A0"))
 

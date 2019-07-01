@@ -4,6 +4,11 @@
 #include "fu.h"
 #include "profile.h"
 
+float compute_in0(mult_code_t& m_codes,float in0);
+float compute_in1(mult_code_t& m_codes, float in1);
+float compute_out_mult(mult_code_t& m_codes, float in0, float in1);
+float compute_out_vga(mult_code_t& m_codes, float in0);
+
 class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
 	public:

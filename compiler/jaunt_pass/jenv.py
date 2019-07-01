@@ -77,6 +77,7 @@ class JauntEnvParams:
     self.quantize_minimum = True
     self.quality_minimum = True
     self.bandwidth_maximum = True
+    #self.bandwidth_maximum = False
 
 
   def set_model(self,model):
@@ -256,7 +257,6 @@ class JauntEnv:
     return self.get_jaunt_var((block_name,loc,port,handle), \
                               tag=JauntVarType.SCALE_VAR)
 
-  
 
 
   def eq(self,v1,v2,annot):

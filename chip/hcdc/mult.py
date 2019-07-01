@@ -57,11 +57,27 @@ def is_standard_vga(mode):
     o == chipcmd.RangeType.MED
 
 
+def is_extended_vga(mode):
+  i,o = mode
+  #return (i == chipcmd.RangeType.LOW or \
+  return (i == chipcmd.RangeType.MED or \
+          i == chipcmd.RangeType.MED) and \
+          (o == chipcmd.RangeType.MED)
+# it works with high.
+
 def is_standard_mul(mode):
   i0,i1,o = mode
   return i0 == chipcmd.RangeType.MED and \
     i1 == chipcmd.RangeType.MED and \
     o == chipcmd.RangeType.MED
+
+
+def is_extended_mul(mode):
+  i0,i1,o = mode
+  return i0 == chipcmd.RangeType.MED and \
+    i1 == chipcmd.RangeType.MED and \
+    o == chipcmd.RangeType.MED
+
 
 def continuous_scale_model_vga(mult):
   vga_modes,_= get_modes()
@@ -69,25 +85,6 @@ def continuous_scale_model_vga(mult):
 
   csm = ContinuousScaleModel()
   csm.set_baseline((m,m))
-  op_in0 = csm.decl_var(CSMOpVar("in0"))
-  op_coeff = csm.decl_var(CSMOpVar("coeff"))
-  op_out = csm.decl_var(CSMOpVar("out"))
-  scf_tf = csm.decl_var(CSMCoeffVar("out"))
-
-  csm.eq(ops.Mult(ops.Var(op_in0.varname),
-                  ops.Var(scf_tf.varname)),
-         ops.Var(op_out.varname))
-
-  for scm in vga_modes:
-    scm_i, scm_o = scm
-    coeff = scm_o.coeff()/scm_i.coeff()
-    #if coeff != 1.0:
-    #  continue
-    csm.discrete.add_mode(scm)
-    csm.discrete.add_cstr(scm,op_in0,scm_i.coeff())
-    csm.discrete.add_cstr(scm,op_coeff,1.0)
-    csm.discrete.add_cstr(scm,op_out,scm_o.coeff())
-    csm.discrete.add_cstr(scm,scf_tf,coeff)
 
   mult.set_scale_model('vga',csm)
 
@@ -97,25 +94,6 @@ def continuous_scale_model_mult(mult):
 
   csm = ContinuousScaleModel()
   csm.set_baseline((m,m,m))
-  in0 = csm.decl_var(CSMOpVar("in0"))
-  in1 = csm.decl_var(CSMOpVar("in1"))
-  out = csm.decl_var(CSMOpVar("out"))
-  scf_tf = csm.decl_var(CSMCoeffVar("out"))
-
-  csm.eq(ops.Mult(ops.Mult(ops.Var(in0.varname),
-                           ops.Var(in1.varname)),
-                  ops.Var(scf_tf.varname)), \
-         ops.Var(out.varname))
-
-
-  for scm in mul_modes:
-    scm_i0,scm_i1,scm_o = scm
-    coeff =scm_o.coeff()/(scm_i0.coeff()*scm_i1.coeff())
-    csm.discrete.add_mode(scm)
-    csm.discrete.add_cstr(scm,in0,scm_i0.coeff())
-    csm.discrete.add_cstr(scm,in1,scm_i1.coeff())
-    csm.discrete.add_cstr(scm,out,scm_o.coeff())
-
   mult.set_scale_model('mul',csm)
 
 def continuous_scale_model(mult):
@@ -126,12 +104,16 @@ def continuous_scale_model(mult):
 def scale_model(mult):
   vga_modes,mul_modes = get_modes()
   std,nonstd = gutil.partition(is_standard_mul,mul_modes)
+  ext,_ = gutil.partition(is_extended_mul,mul_modes)
   mult.set_scale_modes("mul",std,glb.HCDCSubset.all_subsets())
   mult.set_scale_modes("mul",nonstd,[glb.HCDCSubset.UNRESTRICTED])
+  mult.add_subsets("mul",ext,[glb.HCDCSubset.EXTENDED])
 
   std,nonstd = gutil.partition(is_standard_vga,vga_modes)
+  ext,_ = gutil.partition(is_extended_vga,vga_modes)
   mult.set_scale_modes("vga",std,glb.HCDCSubset.all_subsets())
   mult.set_scale_modes("vga",nonstd,[glb.HCDCSubset.UNRESTRICTED])
+  mult.add_subsets("vga",ext,[glb.HCDCSubset.EXTENDED])
 
   for mode in mul_modes:
       in0rng,in1rng,outrng = mode

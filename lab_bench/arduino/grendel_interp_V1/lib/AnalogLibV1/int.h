@@ -14,6 +14,9 @@ typedef enum {
 	lGainMRng = 6  /*-20 to 20 uA input, gain = .1,  -2 to 2  uA output*/
 } intRange;
 
+float compute_init_cond(integ_code_t& m_codes);
+float compute_output(integ_code_t& m_codes,float val);
+
 class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
 

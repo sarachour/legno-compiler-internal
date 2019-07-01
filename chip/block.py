@@ -171,9 +171,9 @@ class Block:
         data = self._get_scale_dict(comp_mode,scale_mode, \
                                     self._props)
 
-        if not self.whitelist(comp_mode,scale_mode):
-            raise Exception("props: not whitelisted : %s.%s" %  \
-                            (comp_mode,scale_mode))
+        #if not self.whitelist(comp_mode,scale_mode):
+        # raise Exception("props: not whitelisted : %s.%s" %  \
+        #                    (comp_mode,scale_mode))
 
         if data is None:
             for k1,v1 in self._props.items():
@@ -272,6 +272,23 @@ class Block:
             self._comp_modes.append(mode)
 
         return self
+
+    def add_subsets(self,comp_mode,scale_modes,subsets):
+        comp_mode_key = util.normalize_mode(comp_mode)
+        if not comp_mode_key in self._props:
+            raise Exception("not in comps <%s> : <%s>" % \
+                            (comp_mode_key,self._scale_modes))
+
+        scale_modes = list(map(lambda m: \
+                               util.normalize_mode(m),
+                               scale_modes))
+
+
+        for mode in scale_modes:
+            assert((comp_mode_key,mode) in self._scale_mode_subsets)
+            for subs in subsets:
+                self._scale_mode_subsets[(comp_mode_key,mode)].append(subs)
+
 
     def set_scale_modes(self,comp_mode,scale_modes,subsets):
         comp_mode_key = util.normalize_mode(comp_mode)

@@ -4,6 +4,8 @@
 #include "fu.h"
 
 
+
+
 bool helper_find_cal_out0(Fabric::Chip::Tile::Slice::Integrator * integ,
                           float max_error){
   float error;
@@ -54,12 +56,14 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
                           Fabric::Chip::Tile::Slice::Dac * ref_dac,
                           float max_error,
                           int code,
-                          float target,
+                          float ref,
                           dac_code_t& ref_codes,
                           bool change_code){
 
   int delta = 0;
   bool succ = false;
+  float ic_val = compute_init_cond(integ->m_codes);
+  float target = ic_val + ref;
   float error;
   //how to identify the magnitude of the signal needs to be increased.
   //if error is negative + number is positive
@@ -118,7 +122,6 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTargetHelper (profile_t& re
   int ic_sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
   bool hiRange = (m_codes.range[out0Id] == RANGE_HIGH);
   float coeff = util::range_to_coeff(m_codes.range[out0Id]);
-  float ic_val = m_codes.ic_val*ic_sign*coeff;
 
   Dac * ref_dac = parentSlice->dac;
   integ_code_t codes_self = m_codes;
@@ -144,23 +147,26 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTargetHelper (profile_t& re
 	Connection tile_to_chip = Connection ( parentSlice->tileOuts[3].out0,
                                          parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
-  dac_code_t dac_0;
-  dac_code_t dac_ic;
+  dac_code_t dac_ref;
+  float ic_val = compute_init_cond(m_codes);
+  float ref_val=0.0;
 
   print_info("making zero dac");
   prof::init_profile(prof::TEMP);
-  dac_0 = make_zero_dac(calib, ref_dac,prof::TEMP);
   if (hiRange) {
     print_info("high range! making reference dac");
     prof::init_profile(prof::TEMP);
-    dac_ic = make_val_dac(calib,ref_dac,
-                          -ic_val,
-                          prof::TEMP);
+    dac_ref = cutil::make_ref_dac(calib,ref_dac,
+                                 -ic_val,
+                                 ref_val);
     ref_to_tile.setConn();
   }
+  else{
+    dac_ref = cutil::make_zero_dac(calib, ref_dac,prof::TEMP);
+  }
+  ref_dac->update(dac_ref);
   integ_to_tile.setConn();
 	tile_to_chip.setConn();
-  ref_dac->update(dac_0);
 
   bool found_code = false;
   integ_code_t best_code = m_codes;
@@ -174,15 +180,25 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTargetHelper (profile_t& re
     sprintf(FMTBUF, "nmos=%d", m_codes.nmos);
     print_info(FMTBUF);
 
-    succ &= helper_find_cal_out0(this,max_error);
+    m_codes.range[in0Id] = RANGE_MED;
+    m_codes.range[out0Id] = RANGE_MED;
+    update(m_codes);
+    succ &= helper_find_cal_out0(this,0.01);
     if(succ)
-      succ &= helper_find_cal_in0(this,max_error);
+      succ &= helper_find_cal_in0(this,0.01);
+
+    m_codes.range[in0Id] = codes_self.range[in0Id];
+    m_codes.range[out0Id] = codes_self.range[out0Id];
+    update(m_codes);
     if(succ)
-      succ &= helper_find_cal_gain(this,ref_dac,max_error,code,
-                                   hiRange ? 0.0: m_codes.ic_val*ic_sign,
-                                   hiRange ? dac_ic : dac_0,
+      succ &= helper_find_cal_gain(this,
+                                   ref_dac,
+                                   max_error,
+                                   code,
+                                   ref_val,
+                                   dac_ref,
                                    change_code);
-    ref_dac->update(dac_0);
+    ref_dac->update(dac_ref);
 
     if(succ){
       found_code = true;
@@ -223,7 +239,7 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (profile_t& result, 
 bool Fabric::Chip::Tile::Slice::Integrator::calibrate (profile_t& result, const float max_error) {
 	//setEnable(true);
   integ_code_t codes_self = m_codes;
-  setInitial(1.0);
+  setInitial(0.93);
   //calibrate at initial condition=1.0, where we don't change the
   //initial condition code
   bool success = calibrateTargetHelper(result,max_error,false);

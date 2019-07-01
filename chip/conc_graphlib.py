@@ -226,7 +226,7 @@ class PercentOpRangeShader(CircShader):
     oprange = props.interval()
     if mathrange.spread > 0:
       pct = mathrange.spread/oprange.spread
-      return pct,"%.2f" % (pct*100.0)
+      return pct,"%.2f (%.3f)" % (pct*100.0,oprange.spread)
     else:
       return Shader.ERROR,"ship"
 

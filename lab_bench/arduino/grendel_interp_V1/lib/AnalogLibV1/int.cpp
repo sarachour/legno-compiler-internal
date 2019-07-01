@@ -3,6 +3,20 @@
 #include "calib_util.h"
 #include "fu.h"
 
+float compute_init_cond(integ_code_t& m_codes){
+  float sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
+  float rng = util::range_to_coeff(m_codes.range[out0Id]);
+  float ic = m_codes.ic_val;
+  return rng*sign*ic;
+}
+
+float compute_output(integ_code_t& m_codes,float val){
+  float sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
+  float rng = util::range_to_coeff(m_codes.range[out0Id])
+    /util::range_to_coeff(m_codes.range[in0Id]);
+  return rng*sign*val;
+}
+
 void Fabric::Chip::Tile::Slice::Integrator::update(integ_code_t codes){
   m_codes = codes;
   updateFu();

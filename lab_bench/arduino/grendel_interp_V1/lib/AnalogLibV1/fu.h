@@ -145,6 +145,7 @@ namespace util {
   float meas_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu);
   void meas_dist_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                           float& mean, float& variance);
+  void meas_trend_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu);
 
   void test_iref(unsigned char code);
   bool is_valid_iref(unsigned char code);

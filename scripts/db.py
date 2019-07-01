@@ -1000,7 +1000,7 @@ class ExperimentDB:
 
   def scan(self):
     for name in diffeqs.get_names():
-      for subset in ['standard','unrestricted']:
+      for subset in ['standard','unrestricted','extended']:
         ph = paths.PathHandler(subset,name,make_dirs=False)
         grendel_dir = ph.grendel_file_dir()
         for dirname, subdirlist, filelist in os.walk(grendel_dir):

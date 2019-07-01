@@ -24,8 +24,15 @@ namespace prof {
     return idx;
   }
   int data_2d(float* data,int size){
+    // high
     static int codes[] = {10,32,64,96,128,
                           160,191,224,245};
+    // 0.3 : 90 to 166
+    /*
+    static int codes[] = {90,100,110,120,128,
+                          138,148,158,166};
+    */
+
     for(int i=0; i < 9; i += 1){
       data[i] = (codes[i]/128.0 - 1.0);
     }

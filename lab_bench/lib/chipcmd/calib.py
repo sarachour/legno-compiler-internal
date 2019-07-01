@@ -103,7 +103,7 @@ class CharacterizeCmd(AnalogChipCommand):
 
         #FIXME save cali
         env.state_db.put(st,entry.targeted,
-                         profile=profile,
+                         profile=profile + entry.profile,
                          success=entry.success,
                          max_error=entry.tolerance)
         title = "calibrated/characterized %s.%s " % (self._blk,self._loc)

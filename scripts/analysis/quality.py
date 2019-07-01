@@ -84,22 +84,21 @@ def fit(_tref,_yref,_tmeas,_ymeas):
   tmeas = np.array(_tmeas)
   ymeas = np.array(_ymeas)
 
-  v_scale = 1.0/1.2
   def compute_loss(x):
     error = compute_error(tref,yref,tmeas,ymeas, \
-                            [x[0],x[1],v_scale,x[2]])
+                            [x[2],x[0],1.0,x[1]])
     return error
 
   bounds = [
-    (1.6, 1.7), \
-    (0.0,max(tmeas)*0.05), \
-    (-0.1,0.1)
+    (0.0,max(tmeas)*0.10), \
+    (-0.1,0.1), \
+    (0.9,1.1)
   ]
   print("=== finding transform ===")
   #n = 5
   n = 10
   result = optimize.brute(compute_loss, bounds, Ns=n)
-  model = [result[0],result[1],v_scale,result[2]]
+  model = [result[2],result[0],1.0,result[1]]
   print(model)
   if out_of_bounds(bounds,result):
     return None,None,model
@@ -131,15 +130,18 @@ def analyze(entry):
   for output in entry.outputs():
     varname = output.varname
     trial = output.trial
-    TREF,YREF = compute_ref(entry.bmark,entry.math_env,varname)
-    TMEAS,YMEAS = read_meas_data(output.out_file)
-    scf = max(abs(np.array(YMEAS)))/max(abs(np.array(YREF)))
-    TPRED,YPRED = scale_ref_data(output.tau,scf,TREF,YREF)
-    TFIT,YFIT,MODEL = fit(TPRED,YPRED,TMEAS,YMEAS)
+    print(output)
 
-    common.simple_plot(output,path_h,output.trial,'ref',TREF,YREF)
+    TMEAS,YMEAS = read_meas_data(output.out_file)
     common.simple_plot(output,path_h,output.trial,'meas',TMEAS,YMEAS)
+
+    TREF,YREF = compute_ref(entry.bmark,entry.math_env,varname)
+    common.simple_plot(output,path_h,output.trial,'ref',TREF,YREF)
+
+    TPRED,YPRED = scale_ref_data(output.tau,output.scf,TREF,YREF)
     common.simple_plot(output,path_h,output.trial,'pred',TPRED,YPRED)
+
+    TFIT,YFIT,MODEL = fit(TPRED,YPRED,TMEAS,YMEAS)
     output.set_transform(MODEL)
 
     if TFIT is None or YFIT is None:

@@ -98,6 +98,7 @@ def apply_result(jenv,circ,sln):
     lut_updates = {}
     for variable,value in sln['freevariables'].items():
         jaunt_util.log_debug("%s = %s" % (variable,value))
+        print("%s = %s" % (variable,value))
         if variable.name == jenv.tau():
             new_circ.set_tau(value)
         else:
@@ -121,7 +122,7 @@ def compute_scale(jenv,prog,infer_circ,objfun):
     jopt.method = objfun.name()
 
     print("objective: %s" % objfun.name())
-    for gpprob,thisobj in \
+    for gpvars,gpprob,thisobj in \
         jgpkit.build_gpkit_problem(infer_circ,jenv,jopt):
         if gpprob is None:
             print("<< could not build geometric problem>>")
@@ -129,6 +130,7 @@ def compute_scale(jenv,prog,infer_circ,objfun):
 
         print("solve")
         sln = jgpkit.solve_gpkit_problem(gpprob)
+        #jgpkit.validate_gpkit_problem(jenv,gpvars,sln)
         if sln == None:
             print("<< solution is none >>")
             jgpkit.debug_gpkit_problem(gpprob)

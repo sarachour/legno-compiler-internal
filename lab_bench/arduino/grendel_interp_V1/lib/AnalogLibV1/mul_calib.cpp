@@ -609,12 +609,15 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (profile_t& result, 
     //calibrate bias, no external input
     sprintf(FMTBUF, "execute nmos=%d", m_codes.nmos);
     print_info(FMTBUF);
-    succ &= helper_find_port_cal_out0(val1_dac, this,max_error);
+    succ &= helper_find_port_cal_out0(val1_dac, this,0.005);
     if(succ)
-      succ &= helper_find_port_cal_in0(val1_dac, this,max_error);
-    if(succ)
-      succ &= helper_find_port_cal_in1(val1_dac, this,dval1_0,max_error);
-
+      succ &= helper_find_port_cal_in0(val1_dac, this,0.005);
+    if(succ){
+      if(codes_self.vga)
+        helper_find_port_cal_in1(val1_dac, this,dval1_0,0.005);
+      else
+        succ &= helper_find_port_cal_in1(val1_dac, this,dval1_0,0.005);
+    }
     if(succ){
       m_codes.vga = codes_self.vga;
       ref_to_tileout.setConn();

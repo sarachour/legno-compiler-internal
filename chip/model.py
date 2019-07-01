@@ -269,8 +269,9 @@ def get_model(db,circ,block_name,loc,port,handle=None):
       return None
 
 def get_variance(db,circ,block_name,loc,port,handle=None,mode='physical'):
-  unc_min = 1e-6
   if mode == 'physical':
+    #unc_min = 1e-6
+    unc_min = 0.01
     model = get_model(db,circ,block_name,loc,port,handle=handle)
     if model is None:
       return unc_min
@@ -280,10 +281,11 @@ def get_variance(db,circ,block_name,loc,port,handle=None,mode='physical'):
     if physunc == 0.0:
       return unc_min
 
-    return physunc
+    return unc_min
+    #return physunc
 
   elif mode == 'ideal':
-    return 0.0
+    return 1e-12
   elif mode == 'naive':
     return 0.01
   else:

@@ -65,6 +65,26 @@ def main_script_profile(state,filename):
             command_obj = cmd.parse(line)
             cmd.profile(state,command_obj)
 
+def main_script_characterize(state,filename, \
+                             targeted=False,
+                             recompute=False):
+    with open(filename,'r') as fh:
+        for idx,line in enumerate(fh):
+            if line == "quit":
+                sys.exit(0)
+            elif line.strip() == "":
+                continue
+
+            if line.startswith("#"):
+                print(line)
+                print("<comment, skipping..>")
+
+            command_obj = cmd.parse(line)
+            succ = cmd.characterize(state,command_obj, \
+                                 recompute=recompute,
+                                 targeted_measure=targeted)
+
+
 def main_script_calibrate(state,filename, \
                           characterize=True,
                           recompute=False,
@@ -87,7 +107,7 @@ def main_script_calibrate(state,filename, \
                                  recompute=recompute,
                                  targeted_calibrate=targeted,
                                  targeted_measure=targeted,
-                                 characterize=characterize)
+                                 do_characterize=characterize)
             if succ is None:
                 continue
 
@@ -95,7 +115,7 @@ def main_script_calibrate(state,filename, \
             while not succ and scale < 200.0:
                 succ = cmd.calibrate(state,command_obj, \
                                      recompute=recompute,
-                                     characterize=characterize,
+                                     do_characterize=characterize,
                                      targeted_calibrate=targeted,
                                      targeted_measure=targeted,
                                      error_scale=scale)

@@ -2,6 +2,11 @@
 
 1. I connected a mic with a dynamic range of 2.0 V (-1.0V to 1.0V) to the input pins, then directly routed the pins using interconnects to the external output ADC. The dynamic range of the corresponding differential signal is 3.3 V (-1.6-1.6 V). This is different from what is reported in the documentation (-1.3-1.3 V). Why? 
 
+# Debugging
+
+- currently, integrator m-m and integrator h-m enabled for spring/heat-1d.
+- currently spring and pend are linear.
+- for smmrxn: enable dac/h, mult/h,h,m
 
 # Benchmark Status
 standard = only the medium components

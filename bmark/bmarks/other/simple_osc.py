@@ -36,12 +36,17 @@ def model(name,omega,menv_name='t20', adc=False):
     prob.set_digital_snr(0.0)
     prob.set_analog_snr(0.0)
     P = parse_diffeq("V", "P0", ":a", params)
-    V = parse_diffeq("{omega}*P", "V0", ":b", params)
+    V = parse_diffeq("(-P)", "V0", ":b", params)
+    #V = parse_diffeq("{omega}*P", "V0", ":b", params)
 
     scf = omega
     prob.bind("P", P)
     prob.bind("V", V)
-    make_output(prob,"Loc", "P", adc)
+    #make_output(prob,"Loc", "P", adc)
+    prob.bind("Pos", \
+              op.Emit(op.Var("P"),loc="A0") \
+    )
+
     # most accurately, 0.1
     #base_bnd = 0.1
     base_bnd = 0.12

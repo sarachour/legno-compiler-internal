@@ -34,10 +34,12 @@ class GLProp(Enum):
 class HCDCSubset(Enum):
     STANDARD = "standard"
     UNRESTRICTED = "unrestricted"
+    EXTENDED = "extended"
 
     @staticmethod
     def all_subsets():
       return [HCDCSubset.STANDARD,
+              HCDCSubset.EXTENDED,
               HCDCSubset.UNRESTRICTED]
 
 class GlobalCtx:
@@ -77,13 +79,17 @@ class GlobalCtx:
 CTX = GlobalCtx()
 CTX.insert(GLProp.DIGITAL_EXCLUDE, (0.0,0.0))
 CTX.insert(GLProp.DIGITAL_INTERVAL, (-1.0,1.0))
+#CTX.insert(GLProp.CURRENT_INTERVAL, (-2.0,2.0))
 CTX.insert(GLProp.CURRENT_INTERVAL, (-2.0,2.0))
 CTX.insert(GLProp.VOLTAGE_INTERVAL, (-1.0,1.0))
 CTX.insert(GLProp.DIGITAL_QUANTIZE, 256)
 
 #max_freq_khz = 200
 #max_freq_khz = 200
-max_freq_khz = 100
+#max_freq_khz = 200.00
+max_freq_khz = 40.00
+cap_freq_khz = 126.00
+adc_khz = 40.00
 CTX.insert(GLProp.MAX_FREQ, max_freq_khz*units.khz)
 CTX.insert(GLProp.DIGITAL_SAMPLE, 3.0*units.us)
 CTX.insert(GLProp.INBUF_SIZE,1200)
@@ -100,14 +106,13 @@ CTX.insert(GLProp.OUTBUF_SIZE,1e9)
 #             sm=mode)
 
 #freq_khz = 20
-freq_khz = 40
-CTX.insert(GLProp.MAX_FREQ, freq_khz*units.khz, block='tile_dac')
+CTX.insert(GLProp.MAX_FREQ, adc_khz*units.khz, block='tile_dac')
 CTX.insert(GLProp.COEFF, 2.0, block='tile_dac')
 
-CTX.insert(GLProp.MAX_FREQ, freq_khz*units.khz, block='tile_adc')
+CTX.insert(GLProp.MAX_FREQ, adc_khz*units.khz, block='tile_adc')
 CTX.insert(GLProp.COEFF, 0.5, block='tile_adc')
 
-CTX.insert(GLProp.MAX_FREQ, freq_khz*units.khz, block='tile_lut')
+CTX.insert(GLProp.MAX_FREQ, adc_khz*units.khz, block='tile_lut')
 
 # specialized ext_chip_in
 CTX.insert(GLProp.COEFF, 2.0, block='ext_chip_analog_in')
@@ -121,8 +126,9 @@ CTX.insert(GLProp.COEFF, 2.0, block='ext_chip_in')
 # specialized ext_chip_out
 CTX.insert(GLProp.DIGITAL_QUANTIZE, 4096, block='ext_chip_out')
 CTX.insert(GLProp.DIGITAL_SAMPLE, 1*units.ns, block='ext_chip_out')
-CTX.insert(GLProp.COEFF, 0.5, block='ext_chip_out')
+CTX.insert(GLProp.COEFF, 0.5*1.2, block='ext_chip_out')
+CTX.insert(GLProp.DIGITAL_INTERVAL, (-1.2,1.2), block='ext_chip_out')
 
 CTX.freeze = True
 
-TIME_FREQUENCY = max_freq_khz*units.khz
+TIME_FREQUENCY = cap_freq_khz*units.khz

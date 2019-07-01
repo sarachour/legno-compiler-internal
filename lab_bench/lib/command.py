@@ -90,13 +90,35 @@ def profile(state,obj):
             print(data.state)
             data.write_dataset(state.state_db)
 
+def characterize(state,obj,recompute=False, \
+              targeted_measure=False):
+    if isinstance(obj,UseCommand):
+        dbkey = obj.to_key(targeted=targeted_measure)
+        result = state.state_db.get(dbkey)
+        if characterize and \
+            result.success and \
+            (not state.state_db.has_profile(dbkey) or recompute):
+            print(">> set state")
+            backup_cached = obj.cached
+            obj.cached = True
+            obj.execute(state)
+            print(">> characterize")
+            CharacterizeCmd(obj.block_type,
+                            obj.loc.chip,
+                            obj.loc.tile,
+                            obj.loc.slice,
+                            obj.loc.index,
+                            targeted=targeted_measure) \
+                            .execute(state)
+            obj.cached = backup_cached
+
 def calibrate(state,obj,recompute=False, \
               targeted_calibrate=False, \
               targeted_measure=False,
-              characterize=True, \
+              do_characterize=True, \
               error_scale=1.0):
     if isinstance(obj,UseCommand):
-        if obj.max_error*error_scale > 0.50:
+        if obj.max_error*error_scale > 1.0:
             return False
 
         dbkey = obj.to_key(targeted=targeted_calibrate)
@@ -119,26 +141,14 @@ def calibrate(state,obj,recompute=False, \
                                 targeted=targeted_calibrate) \
                                 .execute(state)
 
-        dbkey = obj.to_key(targeted=targeted_measure)
+
+        if do_characterize:
+            characterize(state,obj,
+                         recompute=recompute,
+                         targeted_measure=targeted_measure
+            )
+
         result = state.state_db.get(dbkey)
-        if characterize and \
-           result.success and \
-           not state.state_db.has_profile(dbkey):
-            print(">> set state")
-            backup_cached = obj.cached
-            obj.cached = True
-            obj.execute(state)
-            print(">> characterize")
-            CharacterizeCmd(obj.block_type,
-                            obj.loc.chip,
-                            obj.loc.tile,
-                            obj.loc.slice,
-                            obj.loc.index,
-                            targeted=targeted_measure) \
-                            .execute(state)
-            obj.cached = backup_cached
-
-
         if result.success:
             print("[[SUCCESS!]]")
             return True

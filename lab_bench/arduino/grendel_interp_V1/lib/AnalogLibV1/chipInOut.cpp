@@ -12,6 +12,34 @@
 //#define ADC_FULLSCALE (1000.0)
 #define ADC_MIN 0
 
+void measure_trend(int ardAnaDiffChan){
+  unsigned long codes[SAMPLES];
+  unsigned int pos[SAMPLES];
+  unsigned int neg[SAMPLES];
+  const unsigned int samples = SAMPLES;
+  unsigned int pinmap[] = {7,6,5,4,3,2,1,0};
+  for(unsigned int index = 0; index < SAMPLES; index++){
+    pos[index] = analogRead(pinmap[ardAnaDiffChan+1]);
+    neg[index] = analogRead(pinmap[ardAnaDiffChan]);
+    codes[index] = micros();
+  }
+  float values[SAMPLES];
+  float times[SAMPLES];
+  unsigned int base_time = codes[0];
+  for(unsigned int index = 0; index < SAMPLES; index++){
+    int diff = pos[index] - neg[index];
+    float value = ADC_CONVERSION*((float)(diff));
+    value /= ADC_FULLSCALE;
+    values[index] = value;
+    times[index] = (codes[index]-base_time)*1e-6;
+  }
+  for(unsigned int index = 0; index < SAMPLES; index++){
+    sprintf(FMTBUF,"chan=%d time=%e value=%f", ardAnaDiffChan,
+            times[index],values[index]);
+    print_info(FMTBUF);
+
+  }
+}
 float measure_dist(int ardAnaDiffChan, float& variance){
   unsigned int pos[SAMPLES];
   unsigned int neg[SAMPLES];
@@ -37,6 +65,7 @@ float measure_dist(int ardAnaDiffChan, float& variance){
   print_debug(FMTBUF);
   return mean;
 }
+
 
 
 float measure(int ardAnaDiffChan){
@@ -70,7 +99,11 @@ void Fabric::Chip::Tile::Slice::ChipOutput::analogDist (
 
   mean = measure_dist(ardAnaDiffChan,variance);
 }
+void Fabric::Chip::Tile::Slice::ChipOutput::analogTrend() const {
 
+
+  measure_trend(ardAnaDiffChan);
+}
 
 /*Measure the reading of an ADC from multiple samples*/
 float Fabric::Chip::Tile::Slice::ChipOutput::analogAvg () const

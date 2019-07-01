@@ -37,9 +37,8 @@ def build_gpkit_cstrs(circ,jenv):
   blacklist = []
   for var in jenv.variables(in_use=True):
     gpvar = gpkit.Variable(var)
+    assert(not var in variables)
     variables[var] = gpvar
-    #constraints.append((gpvar <= VMAX,""))
-    #constraints.append((VMIN <= gpvar,""))
 
   for lhs,rhs,annot in jenv.eqs():
       gp_lhs = gpkit_expr(variables,lhs)
@@ -78,6 +77,30 @@ def build_gpkit_cstrs(circ,jenv):
   cstrs = list(gpkit_cstrs)
   return variables,cstrs
 
+def validate_gpkit_problem(jenv,variables,sln):
+    assigns = {}
+    tol = 1e-3
+    for jvar,gpvar in variables.items():
+        value = sln['freevariables'][gpvar]
+        assert(not jvar in assigns)
+        assigns[jvar] = value
+
+    for lhs,rhs,annot in jenv.eqs():
+        lhs_val = lhs.evaluate(assigns)
+        rhs_val = rhs.evaluate(assigns)
+        if abs(lhs_val-rhs_val) > tol:
+            print("%s==%s" % (lhs,rhs))
+            raise Exception("doesn't validate")
+
+
+    for lhs,rhs,annot in jenv.ltes():
+        lhs_val = lhs.evaluate(assigns)
+        rhs_val = rhs.evaluate(assigns)
+        if abs(min(0,rhs_val-lhs_val)) > tol:
+            print("%s<=%s" % (lhs,rhs))
+            raise Exception("doesn't validate")
+
+
 def build_gpkit_problem(circ,jenv,jopt):
   variables,gpkit_cstrs = build_gpkit_cstrs(circ,jenv)
   if gpkit_cstrs is None:
@@ -91,7 +114,7 @@ def build_gpkit_problem(circ,jenv,jopt):
       ofun = obj.objective()
       jaunt_util.log_info(ofun)
       model = gpkit.Model(ofun, cstrs)
-      yield model,obj
+      yield variables,model,obj
 
 def solve_gpkit_problem_cvxopt(gpmodel,timeout=10):
     def handle_timeout(signum,frame):

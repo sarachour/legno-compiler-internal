@@ -4,6 +4,8 @@ import ops.interval as interval
 from chip.model import ModelDB,get_gain,get_variance
 from enum import Enum
 import compiler.jaunt_pass.jaunt_common as jaunt_common
+import compiler.jaunt_pass.jaunt_util as jaunt_util
+import logging
 
 class ExprVisitor:
 
@@ -114,6 +116,8 @@ class SCFPropExprVisitor(ExprVisitor):
     if self.jenv.has_inject_var(block.name,loc,expr.name):
       injvar = self.jenv.get_inject_var(block.name,loc,expr.name)
       expr = jop.JMult(jop.JVar(scvar),jop.JVar(injvar))
+      #self.jenv.eq(jop.JVar(injvar), jop.JConst(2.0), 'expr-visit-noscale-in')
+      self.jenv.eq(expr, jop.JConst(1.0), 'expr-visit-inj')
       return expr
     else:
       return jop.JVar(scvar)
@@ -168,6 +172,11 @@ class SCFPropExprVisitor(ExprVisitor):
     coeff_state = self.coeff(expr.handle)
     coeff_ic = self.coeff(expr.ic_handle)
 
+    #jaunt_util.log_debug("deriv: coeff=%s var=%s" % (coeff_deriv,scvar_deriv))
+    #jaunt_util.log_debug("stvar: coeff=%s var=%s" % (coeff_state,scvar_state))
+    #jaunt_util.log_debug("ic:    coeff=%s var=%s" % (coeff_ic,scvar_ic))
+    #jaunt_util.log_debug("deriv-expr: %s" % scexpr_deriv)
+    #jaunt_util.log_debug("ic-expr: %s" % scexpr_ic)
     jenv.eq(jop.JMult(scexpr_ic,coeff_ic), scvar_ic,'expr-visit-integ')
     jenv.eq(scvar_ic, scvar_state,'expr-visit-integ')
 
@@ -195,6 +204,8 @@ class SCFPropExprVisitor(ExprVisitor):
       rhsexpr = self.visit_expr(expr)
       if self.jenv.has_inject_var(block.name,loc,self.port):
         injvar = self.jenv.get_inject_var(block.name,loc,self.port)
+        self.jenv.eq(rhsexpr, jop.JConst(1.0), 'expr-visit-inj')
+        #self.jenv.eq(jop.JVar(injvar), jop.JConst(0.5), 'expr-visit-noscale-in')
         rhsexpr = jop.JMult(rhsexpr,jop.JVar(injvar))
 
       coeffvar = self.coeff(None)

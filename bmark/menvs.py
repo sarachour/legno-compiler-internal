@@ -20,6 +20,13 @@ def med_time():
   exp.set_input_time(20)
   return exp
 
+def med2_time():
+  exp = MathEnv('t50')
+  exp.set_sim_time(50)
+  exp.set_input_time(50)
+  return exp
+
+
 def medlong_time():
   exp = MathEnv('t200')
   exp.set_sim_time(200)
@@ -54,6 +61,7 @@ def sensor_env_steady():
 MATH_ENVS = [
   short_time(),
   med_time(),
+  med2_time(),
   audio(),
   long_time(),
   medlong_time(),

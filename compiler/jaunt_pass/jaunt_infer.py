@@ -139,7 +139,8 @@ def sc_physics_model(jenv,scale_mode,circ,block_name,loc,port,handle):
                                                port, \
                                                handle=handle)
         uncertainty,gain = pars['uncertainty'],pars['gain']
-        oprange_scale_lower,oprange_scale_upper = pars['oprange_lower'],pars['oprange_upper']
+        oprange_scale_lower = pars['oprange_lower']
+        oprange_scale_upper = pars['oprange_upper']
         jenv.implies(modevar,jvar_phys_gain, gain)
         jenv.implies(modevar,jvar_phys_ops_lower, oprange_scale_lower)
         jenv.implies(modevar,jvar_phys_ops_upper, oprange_scale_upper)
@@ -155,7 +156,7 @@ def sc_decl_scale_model_variables(jenv,circ):
                 for scm in block.scale_modes(config.comp_mode):
                  if not block.whitelist(config.comp_mode, scm):
                      continue
-                 sc_physics_model(jenv,scm,circ,block_name,loc,port,handle)
+                 sc_physics_model(jenv,scm,circ,block_name,loc,port,handle=handle)
 
         modevars = []
         for scale_mode in block.scale_modes(config.comp_mode):

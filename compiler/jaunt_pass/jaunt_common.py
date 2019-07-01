@@ -124,7 +124,7 @@ def _to_phys_time(circ,time):
     return time/circ.board.time_constant
 
 def _to_phys_bandwidth(circ,bw):
-    return bw*circ.board.time_constant
+    return circ.board.time_constant
 
 def analog_bandwidth_constraint(jenv,circ,block,loc,port,handle,annot):
     tau = jop.JVar(jenv.tau())
@@ -145,7 +145,6 @@ def analog_bandwidth_constraint(jenv,circ,block,loc,port,handle,annot):
 
     # physical signals are not corrected by the board's time constant
     physbw = _to_phys_bandwidth(circ,mbw.bandwidth)
-
     jenv.use_tau()
     if hwbw.upper > 0:
         if jenv.params.bandwidth_maximum:
@@ -226,6 +225,7 @@ def analog_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
                                       mrng.lower,
                                       hwrng.lower,
                                       'jcom-analog-oprange-%s' % annot)
+
     # if this makes the system a system that processes a physical signal.
     if prop.is_physical:
         jenv.eq(pars['math_scale'], jop.JConst(1.0),'jcom-analog-physical-rng')
@@ -252,6 +252,9 @@ def digital_quantize_constraint(jenv,circ,block,loc,port,handle,annot=""):
        and mrng.bound > 0.0 \
        and jenv.params.quantize_minimum:
         noise_expr = jop.JConst(1.0/delta_h)
+        #if block.name == "lut":
+        #    noise_expr = jop.JConst(1.0)
+
         signal_expr = jop.JMult(pars['math_scale'],jop.JConst(mrng.bound))
         snr_expr = jop.JMult(signal_expr,noise_expr)
         jenv.gte(snr_expr,jop.JConst(min_snr), \

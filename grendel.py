@@ -7,6 +7,7 @@ import util.config as CONFIG
 from lab_bench.lib.command_handler import main_stdout,  \
     main_script, \
     main_script_calibrate, \
+    main_script_characterize, \
     main_script_profile, \
     main_dump_db
 from lab_bench.lib.base_command import ArduinoCommand
@@ -95,6 +96,10 @@ if args.calibrate:
         print("<< inferring models for compiler >>")
         retcode = os.system("python3 infer_models.py")
 
+elif args.characterize:
+    succ = main_script_characterize(state,args.script, \
+                                 recompute=args.recompute,
+                                 targeted=args.targeted)
 if args.dry_run:
     sys.exit(0)
 
