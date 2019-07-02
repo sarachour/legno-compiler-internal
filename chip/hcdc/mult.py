@@ -65,6 +65,15 @@ def is_extended_vga(mode):
           (o == chipcmd.RangeType.MED)
 # it works with high.
 
+def is_extended2_vga(mode):
+  i,o = mode
+  #return (i == chipcmd.RangeType.LOW or \
+  return (i == chipcmd.RangeType.MED or \
+          i == chipcmd.RangeType.MED) and \
+          (o == chipcmd.RangeType.MED)
+# it works with high.
+
+
 def is_standard_mul(mode):
   i0,i1,o = mode
   return i0 == chipcmd.RangeType.MED and \
@@ -73,6 +82,13 @@ def is_standard_mul(mode):
 
 
 def is_extended_mul(mode):
+  i0,i1,o = mode
+  return i0 == chipcmd.RangeType.MED and \
+    i1 == chipcmd.RangeType.MED and \
+    o == chipcmd.RangeType.MED
+
+
+def is_extended2_mul(mode):
   i0,i1,o = mode
   return i0 == chipcmd.RangeType.MED and \
     i1 == chipcmd.RangeType.MED and \
@@ -105,12 +121,14 @@ def scale_model(mult):
   vga_modes,mul_modes = get_modes()
   std,nonstd = gutil.partition(is_standard_mul,mul_modes)
   ext,_ = gutil.partition(is_extended_mul,mul_modes)
+  ext2,_ = gutil.partition(is_extended2_mul,mul_modes)
   mult.set_scale_modes("mul",std,glb.HCDCSubset.all_subsets())
   mult.set_scale_modes("mul",nonstd,[glb.HCDCSubset.UNRESTRICTED])
   mult.add_subsets("mul",ext,[glb.HCDCSubset.EXTENDED])
 
   std,nonstd = gutil.partition(is_standard_vga,vga_modes)
   ext,_ = gutil.partition(is_extended_vga,vga_modes)
+  ext2,_ = gutil.partition(is_extended2_vga,vga_modes)
   mult.set_scale_modes("vga",std,glb.HCDCSubset.all_subsets())
   mult.set_scale_modes("vga",nonstd,[glb.HCDCSubset.UNRESTRICTED])
   mult.add_subsets("vga",ext,[glb.HCDCSubset.EXTENDED])

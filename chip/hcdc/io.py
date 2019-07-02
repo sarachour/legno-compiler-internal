@@ -49,7 +49,8 @@ def dac_scale_model(dac):
    modes = dac_get_modes()
    std,nonstd = gutil.partition(dac_is_standard,modes)
    dac.set_scale_modes("*",std,glb.HCDCSubset.all_subsets())
-   dac.set_scale_modes("*",nonstd,[glb.HCDCSubset.UNRESTRICTED])
+   dac.set_scale_modes("*",nonstd,[glb.HCDCSubset.UNRESTRICTED, \
+                                   glb.HCDCSubset.EXTENDED2])
    for mode in modes:
       get_prop = lambda p : CTX.get(p, dac.name,
                                     '*',mode,None)

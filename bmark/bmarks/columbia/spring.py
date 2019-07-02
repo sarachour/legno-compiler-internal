@@ -32,8 +32,7 @@ def model(nonlinear=False):
     prob = MathProg("spring")
 
   #prob.set_digital_snr(15.0)
-  #spec_fun = op.Func(['V'], op.Mult(op.Sgn(op.Var('V')),\
-  #                                  op.Sqrt(op.Abs(op.Var('V')))))
+  
   PA = parse_diffeq('VA', 'PA0', ':a', params)
   if nonlinear:
     VA = parse_diffeq('{k2}*FPB+{k1_k2}*(FPA)+{cf}*(VA)', 'VA0', ':b', params)
@@ -51,6 +50,8 @@ def model(nonlinear=False):
   prob.bind('VA', VA)
   prob.bind('VB', VB)
   if nonlinear:
+    spec_fun = op.Func(['V'], op.Mult(op.Sgn(op.Var('V')),\
+                                      op.Sqrt(op.Abs(op.Var('V')))))
     FPA = op.Call([op.Var('PA')],spec_fun)
     FPB = op.Call([op.Var('PB')],spec_fun)
     prob.bind('FPA', FPA)

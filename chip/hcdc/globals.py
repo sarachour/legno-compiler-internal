@@ -35,11 +35,15 @@ class HCDCSubset(Enum):
     STANDARD = "standard"
     UNRESTRICTED = "unrestricted"
     EXTENDED = "extended"
+    EXTENDED2 = "extended2"
+    EXTENDED3 = "extended3"
 
     @staticmethod
     def all_subsets():
       return [HCDCSubset.STANDARD,
               HCDCSubset.EXTENDED,
+              HCDCSubset.EXTENDED2,
+              HCDCSubset.EXTENDED3,
               HCDCSubset.UNRESTRICTED]
 
 class GlobalCtx:

@@ -46,7 +46,8 @@ def scale_model(fanout):
         fanout.set_scale_modes(comp_mode,std, \
                                glb.HCDCSubset.all_subsets())
         fanout.set_scale_modes(comp_mode,nonstd, \
-                               [glb.HCDCSubset.UNRESTRICTED])
+                               [glb.HCDCSubset.UNRESTRICTED, \
+                                glb.HCDCSubset.EXTENDED2])
 
         for rng in scale_modes:
             # ERRATA: fanout doesn't scale

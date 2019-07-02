@@ -31,7 +31,7 @@ def model(big=False):
   prob.set_interval("E",-params['E0'],params['E0'])
   prob.set_interval("S",-params['S0'],params['S0'])
   max_ES = min(params['E0'],params['S0'])
-  prob.set_interval("ES",max_ES,max_ES)
+  prob.set_interval("ES",-max_ES,max_ES)
   prob.bind("COMPLEX", op.Emit(
     op.Mult(op.Const(params['one']),op.Var("ES"))
   ))
