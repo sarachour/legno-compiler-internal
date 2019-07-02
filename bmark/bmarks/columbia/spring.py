@@ -52,6 +52,8 @@ def model(nonlinear=False):
   if nonlinear:
     spec_fun = op.Func(['V'], op.Mult(op.Sgn(op.Var('V')),\
                                       op.Sqrt(op.Abs(op.Var('V')))))
+    #spec_fun = op.Func(['V'], op.Var('V'))
+
     FPA = op.Call([op.Var('PA')],spec_fun)
     FPB = op.Call([op.Var('PB')],spec_fun)
     prob.bind('FPA', FPA)
@@ -66,7 +68,10 @@ def model(nonlinear=False):
   prob.set_max_sim_time(20)
   #measure_var(prob,"PA","PosA")
   #measure_var(prob,"FPA","FuncA")
-  prob.bind('PosA', op.Emit(op.Var('PA'),loc="A0"))
+  if nonlinear:
+    prob.bind('PosB', op.Emit(op.Var('PB'),loc="A0"))
+  else:
+    prob.bind('PosA', op.Emit(op.Var('PA'),loc="A0"))
   prob.compile()
 
   menv = menvs.get_math_env('t20')

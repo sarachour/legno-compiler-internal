@@ -313,6 +313,7 @@ def get_gain(db,circ,block_name,loc,port,handle=None,mode='physical'):
       return 1.0
 
     return model.gain
+
   elif mode == 'naive' or mode == 'ideal':
     return 1.0
 

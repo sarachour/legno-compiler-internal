@@ -142,8 +142,8 @@ def scale_model(mult):
       dig_props = util.make_dig_props(chipcmd.RangeType.MED, \
                                       get_prop(GLProp.DIGITAL_INTERVAL),
                                       get_prop(GLProp.DIGITAL_QUANTIZE))
-      dig_props.set_exclude(get_prop(GLProp.DIGITAL_EXCLUDE));
       dig_props.set_constant()
+      dig_props.set_resolution(get_prop(GLProp.DIGITAL_RESOLUTION))
       mult.set_props("mul",mode,["in0"],
                     util.make_ana_props(in0rng,
                                         get_prop(GLProp.CURRENT_INTERVAL)))
@@ -166,8 +166,8 @@ def scale_model(mult):
       dig_props = util.make_dig_props(chipcmd.RangeType.MED,\
                                       get_prop(GLProp.DIGITAL_INTERVAL), \
                                       get_prop(GLProp.DIGITAL_QUANTIZE))
-      dig_props.set_exclude(get_prop(GLProp.DIGITAL_EXCLUDE));
       dig_props.set_constant()
+      dig_props.set_resolution(get_prop(GLProp.DIGITAL_RESOLUTION))
       mult.set_props("vga",mode,["in0"],
                     util.make_ana_props(in0rng, \
                                         get_prop(GLProp.CURRENT_INTERVAL)

@@ -23,8 +23,8 @@ class GLProp(Enum):
   CURRENT_INTERVAL = "curr_ival"
   VOLTAGE_INTERVAL = "volt_ival"
   DIGITAL_INTERVAL = "dig_ival"
-  DIGITAL_EXCLUDE = "dig_exclude"
   DIGITAL_QUANTIZE = "dig_quantize"
+  DIGITAL_RESOLUTION = "dig_resolution"
   MAX_FREQ = "max_freq"
   DIGITAL_SAMPLE = "dig_samp"
   INBUF_SIZE = "in_buf"
@@ -81,19 +81,19 @@ class GlobalCtx:
     self.__insert(prop,block,cm,sm,port,value)
 
 CTX = GlobalCtx()
-CTX.insert(GLProp.DIGITAL_EXCLUDE, (0.0,0.0))
 CTX.insert(GLProp.DIGITAL_INTERVAL, (-1.0,1.0))
 #CTX.insert(GLProp.CURRENT_INTERVAL, (-2.0,2.0))
 CTX.insert(GLProp.CURRENT_INTERVAL, (-2.0,2.0))
 CTX.insert(GLProp.VOLTAGE_INTERVAL, (-1.0,1.0))
 CTX.insert(GLProp.DIGITAL_QUANTIZE, 256)
+CTX.insert(GLProp.DIGITAL_RESOLUTION, 5)
 
 #max_freq_khz = 200
 #max_freq_khz = 200
 #max_freq_khz = 200.00
 max_freq_khz = 40.00
 cap_freq_khz = 126.00
-adc_khz = 40.00
+adc_khz = 20.00
 CTX.insert(GLProp.MAX_FREQ, max_freq_khz*units.khz)
 CTX.insert(GLProp.DIGITAL_SAMPLE, 3.0*units.us)
 CTX.insert(GLProp.INBUF_SIZE,1200)

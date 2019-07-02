@@ -76,6 +76,10 @@ def get_parameters(jenv,circ,block,loc,port,handle=None):
     mathscvar = jop.JVar(jenv.get_scvar(block.name,loc,port,handle))
     prop = block.props(config.comp_mode,scale_mode,port,handle=handle)
     hwrng,hwbw = prop.interval(), prop.bandwidth()
+    resolution = 1
+    if isinstance(prop,props.DigitalProperties):
+        resolution = prop.resolution
+
     return {
         'math_interval':mrng,
         'math_bandwidth':mbw,
@@ -88,6 +92,7 @@ def get_parameters(jenv,circ,block,loc,port,handle=None):
         'hw_bandwidth':hwbw,
         'hw_uncertainty': uncertainty,
         'min_digital_snr': 1.0/jenv.params.percent_digital_error,
+        'digital_resolution': resolution,
         'min_analog_snr': 1.0/jenv.params.percent_analog_error
     }
 
@@ -246,14 +251,13 @@ def digital_quantize_constraint(jenv,circ,block,loc,port,handle,annot=""):
     prop = pars['prop']
     mrng = pars['math_interval']
     min_snr = pars['min_digital_snr']
+    resolution = pars['digital_resolution']
     delta_h = np.mean(np.diff(prop.values()))
 
     if delta_h > 0.0  \
        and mrng.bound > 0.0 \
        and jenv.params.quantize_minimum:
-        noise_expr = jop.JConst(1.0/delta_h)
-        #if block.name == "lut":
-        #    noise_expr = jop.JConst(1.0)
+        noise_expr = jop.JConst(1.0/(resolution*delta_h))
 
         signal_expr = jop.JMult(pars['math_scale'],jop.JConst(mrng.bound))
         snr_expr = jop.JMult(signal_expr,noise_expr)

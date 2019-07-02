@@ -65,6 +65,7 @@ def dac_scale_model(dac):
       ana_props = util.make_ana_props(rng,
                                       get_prop(GLProp.CURRENT_INTERVAL))
       digital_props.set_continuous(0,get_prop(GLProp.MAX_FREQ))
+      digital_props.set_resolution(get_prop(GLProp.DIGITAL_RESOLUTION))
       dac.set_coeff("*",mode,'out', coeff)
       dac.set_props("*",mode,["in"], digital_props)
       dac.set_props("*",mode,["out"], ana_props)
@@ -123,6 +124,7 @@ def adc_scale_model(adc):
                                           get_prop(GLProp.DIGITAL_INTERVAL),
                                           get_prop(GLProp.DIGITAL_QUANTIZE)
       )
+      digital_props.set_resolution(get_prop(GLProp.DIGITAL_RESOLUTION))
       digital_props.set_continuous(0,get_prop(GLProp.MAX_FREQ))
       adc.set_props("*",mode,["in"],analog_props)
       adc.set_props("*",mode,["out"], digital_props)

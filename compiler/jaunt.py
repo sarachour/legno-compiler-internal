@@ -35,7 +35,6 @@ def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
                                                  annot)
 
     elif isinstance(prop, props.DigitalProperties):
-        hwexc = prop.exclude()
         jaunt_common.digital_op_range_constraint(jenv,circ,block,loc,port,handle, \
                                                  annot)
         # phys,prop,scfvar,jop.JConst(1.0),mrng

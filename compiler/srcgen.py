@@ -69,7 +69,11 @@ def gen_use_lut(circ,block,locstr,config,source):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   in_scf,in_ival = config.scf('in'),config.interval('in')
   out_scf,out_ival = config.scf('out'),config.interval('out')
+  config.set_scf('in', in_scf*0.5)
+  config.set_scf('in', out_scf*2.0)
   variables,expr = op.to_python(config.expr('out',inject=True))
+  config.set_scf('in', in_scf)
+  config.set_scf('in', out_scf)
   yield UseLUTCmd(chip,tile,slce,source=source,cached=True)
   yield WriteLUTCmd(chip,tile,slce,variables,expr)
 

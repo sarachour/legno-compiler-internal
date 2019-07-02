@@ -19,8 +19,8 @@ def model():
       "X0": 0.9999,
       "Y0": 0.99999
     }
-    X = parse_diffeq('{a}*X + {b}*(-Z)',"X0",":a",params)
-    Y = parse_diffeq('{g}*Z + {d}*(-Y)',"Y0",":b",params)
+    X = parse_diffeq('{a}*X + (-Z)',"X0",":a",params)
+    Y = parse_diffeq('{g}*Z + (-Y)',"Y0",":b",params)
     Z = parse_fn("X*Y",params)
     prob.bind("Z",Z)
     prob.bind("X",X)
@@ -31,8 +31,8 @@ def model():
     #prob.bind("OUT",op.Emit(op.Mult(op.Const(0.9999),
     #                                op.Var("Y")), \
     #                        loc="A0"))
-    prob.set_interval("X",0,1.7)
-    prob.set_interval("Y",0,1.0)
+    prob.set_interval("X",-1.7,1.7)
+    prob.set_interval("Y",1.0,1.0)
     prob.set_max_sim_time(20)
     prob.compile()
     menv = menvs.get_math_env('t20')

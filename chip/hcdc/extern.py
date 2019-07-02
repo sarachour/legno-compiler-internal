@@ -80,6 +80,9 @@ props_in = util.make_dig_props(chipcmd.RangeType.MED, \
                                CTX.get(GLProp.DIGITAL_QUANTIZE, \
                                        'ext_chip_in', \
                                        "*","*","in"))
+props_in.set_resolution(CTX.get(GLProp.DIGITAL_RESOLUTION,
+                                 "ext_chip_in",
+                                 "*","*",None))
 
 # sample rate is 10 us
 props_in.set_clocked(CTX.get(GLProp.DIGITAL_SAMPLE, \
@@ -134,6 +137,9 @@ props_out = util.make_dig_props(chipcmd.RangeType.MED, \
                                          CTX.get(GLProp.DIGITAL_QUANTIZE,
                                                  "ext_chip_out",
                                                  "*","*",None))
+props_out.set_resolution(CTX.get(GLProp.DIGITAL_RESOLUTION,
+                                 "ext_chip_out",
+                                 "*","*",None))
 
 #sample rate is 1 ns
 props_out.set_clocked(CTX.get(GLProp.DIGITAL_SAMPLE, \
