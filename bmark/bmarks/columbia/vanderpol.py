@@ -15,8 +15,6 @@ def model():
     # y1' = y2
     # y2' = u*(1-y1*y1)*y2 - y1
     prob = MathProg("vanderpol")
-    prob.set_digital_snr(0.0)
-    prob.set_analog_snr(0.0)
 
     # i reduced mu from 0.2 to 0.05 so that the interval of Y' is between
     # [-2,2]

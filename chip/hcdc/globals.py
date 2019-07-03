@@ -86,7 +86,7 @@ CTX.insert(GLProp.DIGITAL_INTERVAL, (-1.0,1.0))
 CTX.insert(GLProp.CURRENT_INTERVAL, (-2.0,2.0))
 CTX.insert(GLProp.VOLTAGE_INTERVAL, (-1.0,1.0))
 CTX.insert(GLProp.DIGITAL_QUANTIZE, 256)
-CTX.insert(GLProp.DIGITAL_RESOLUTION, 5)
+CTX.insert(GLProp.DIGITAL_RESOLUTION, 1)
 
 #max_freq_khz = 200
 #max_freq_khz = 200

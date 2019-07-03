@@ -118,7 +118,7 @@ class DigitalProperties(Properties):
         return self
 
     def set_resolution(self,res):
-        assert(res > 1.0)
+        assert(res >= 1.0)
         self._resolution = res
 
     def interval(self):

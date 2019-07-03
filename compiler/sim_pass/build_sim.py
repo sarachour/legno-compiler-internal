@@ -68,11 +68,9 @@ def build_output(db,conc_circ,block_name,loc,port,expr,
     pars = get_params(db,conc_circ,block_name,loc,port,\
                       handle=handle,
                       mode=mode)
-    print(handle)
-    print(pars)
     e = oplib.Mult(oplib.Const(pars['gain']),expr)
-    #if not pars['interval'] is None:
-    # e = oplib.Clamp(e,pars['interval'])
+    if not pars['interval'] is None:
+      e = oplib.Clamp(e,pars['interval'])
     #e = oplib.Add(e,
     #              oplib.RandomVar(pars['unc']))
     return e
@@ -83,8 +81,6 @@ def build_output(db,conc_circ,block_name,loc,port,expr,
                           expr.ic_handle)
     deriv = phys_expr(expr.deriv, \
                       expr.deriv_handle)
-    print(deriv)
-    input()
     return init_cond,deriv
 
   else:
@@ -110,9 +106,8 @@ def build_input(db,conc_circ,block_name,loc,port,expr,
   pars = get_params(db,conc_circ,block_name,loc,port,\
                     handle=None,
                     mode=mode)
-  #e = oplib.Clamp(expr,pars['interval'])
-  #return e
-  return expr
+  e = oplib.Clamp(expr,pars['interval'])
+  return e
 
 def build_expr(db,conc_circ, \
                block_name,loc,port, \
@@ -168,7 +163,6 @@ def build_expr(db,conc_circ, \
                            depth=depth+1)
       inputs.append(src_expr)
 
-    print(inputs)
     in_expr = oplib.mkadd(inputs)
     print("in %s[%s].%s val=%s" % \
       (block_name,loc,port,in_expr))

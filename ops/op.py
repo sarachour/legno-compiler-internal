@@ -71,6 +71,17 @@ def to_python(e):
         v,a = to_python(e.arg(0))
         return v,"abs(%s)" % a
 
+    elif e.op == OpType.CALL:
+        expr = e.func.expr
+        args = e.func.func_args
+        vals = e.values
+        assigns = dict(zip(args,vals))
+        conc_expr = expr.substitute(assigns)
+        return to_python(conc_expr)
+
+    elif e.op == OpType.EMIT:
+        return to_python(e.arg(0))
+
     else:
         raise Exception("unimpl: %s" % e)
 
@@ -829,6 +840,10 @@ class Func(Op):
             assert(v in bindings)
 
         return self._expr.compute(bindings)
+
+    @property
+    def expr(self):
+        return self._expr
 
     @property
     def func_args(self):

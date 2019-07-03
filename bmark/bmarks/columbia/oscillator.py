@@ -1,7 +1,7 @@
 if __name__ == "__main__":
   import sys
   import os
-  sys.path.insert(0,os.path.abspath("../../"))
+  sys.path.insert(0,os.path.abspath("../../../"))
 
 
 from lang.prog import MathProg
@@ -12,7 +12,6 @@ import bmark.menvs as menvs
 
 def model():
     prob = MathProg("cosc")
-    prob.set_digital_snr(10.0)
     dy2 = op.Add(
         op.Mult(op.Var("dy1"),op.Const(-0.2)),
         op.Mult(op.Var("y"),op.Const(-0.8))

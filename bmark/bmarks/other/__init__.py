@@ -13,5 +13,6 @@ def get_benchmarks():
                      menv_name='t200'),
     lotka.model(),
     test.nochange(),
-    test.lut()
+    test.lut(),
+    test.feedback()
   ]

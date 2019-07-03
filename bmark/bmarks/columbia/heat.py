@@ -62,7 +62,7 @@ def execute(n,o):
 
 
 if __name__ == "__main__":
-  #execute(2,1)
-  #execute(4,2)
-  #execute(8,6)
+  execute(2,1)
+  execute(4,2)
+  execute(8,6)
   execute(16,13)

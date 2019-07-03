@@ -16,11 +16,6 @@ def model(nonlinear=False):
   else:
     prob = MathProg('pend')
 
-  #prob.set_digital_snr(10.0)
-  #prob.set_analog_snr(5.0)
-  prob.set_digital_snr(0.0)
-  prob.set_analog_snr(0.0)
-
 
   params = {
     'angvel0': -1.0,
@@ -57,11 +52,12 @@ def model(nonlinear=False):
   menv = menvs.get_math_env('t20')
   return menv,prob
 
-def execute():
-  menv,prob = model()
+def execute(nonlinear=False):
+  menv,prob = model(nonlinear)
   T,Y = run_diffeq(menv,prob)
   plot_diffeq(menv,prob,T,Y)
 
 
 if __name__ == "__main__":
-  execute()
+  execute(nonlinear=False)
+  execute(nonlinear=True)
