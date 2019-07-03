@@ -90,8 +90,8 @@ CTX.insert(GLProp.DIGITAL_RESOLUTION, 1)
 
 #max_freq_khz = 200
 #max_freq_khz = 200
-max_freq_khz = 200.00
-#max_freq_khz = 40.00
+#max_freq_khz = 200.00
+max_freq_khz = 40.00
 cap_freq_khz = 126.00
 adc_khz = 20.00
 CTX.insert(GLProp.MAX_FREQ, max_freq_khz*units.khz)
@@ -99,15 +99,6 @@ CTX.insert(GLProp.DIGITAL_SAMPLE, 3.0*units.us)
 CTX.insert(GLProp.INBUF_SIZE,1200)
 CTX.insert(GLProp.OUTBUF_SIZE,1e9)
 
-#CTX.insert(GLProp.DIGITAL_EXCLUDE, (-0.19,0.19), block="integrator")
-
-# exclude these constant ranges, because the system is unable to calibrate.
-# the 0.19 is a tight bound, the 0.4 is a guess.
-#CTX.insert(GLProp.DIGITAL_EXCLUDE, (-0.19,0.19), block="multiplier")
-#for mode in [(RangeType.HIGH, RangeType.MED), \
-#             (RangeType.MED, RangeType.LOW)]:
-#  CTX.insert(GLProp.DIGITAL_EXCLUDE, (-0.4,0.4), block="multiplier",cm="vga", \
-#             sm=mode)
 
 #freq_khz = 20
 CTX.insert(GLProp.MAX_FREQ, adc_khz*units.khz, block='tile_dac')

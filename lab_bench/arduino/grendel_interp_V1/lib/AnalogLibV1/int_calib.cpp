@@ -9,10 +9,10 @@
 bool helper_find_cal_out0(Fabric::Chip::Tile::Slice::Integrator * integ,
                           float max_error){
   float error;
+  float target = 0.0;
   bool calib_failed;
-  integ->m_codes.cal_enable[in0Id] = false;
   integ->m_codes.cal_enable[out0Id] = true;
-  binsearch::find_bias(integ, 0.0,
+  binsearch::find_bias(integ, target,
                        integ->m_codes.port_cal[out0Id],
                        error,
                        MEAS_CHIP_OUTPUT);
@@ -22,8 +22,8 @@ bool helper_find_cal_out0(Fabric::Chip::Tile::Slice::Integrator * integ,
                        error,
                        max_error,
                        calib_failed);
-  sprintf(FMTBUF,"integ out0 target=%f measured=%f max=%f",
-          0.0, error, max_error);
+  sprintf(FMTBUF,"integ out0 target=%f measured=%f error=%f max=%f",
+          target, target+error, error, max_error);
   print_info(FMTBUF);
   integ->m_codes.cal_enable[out0Id] = false;
   return !calib_failed;
@@ -33,9 +33,11 @@ bool helper_find_cal_in0(Fabric::Chip::Tile::Slice::Integrator * integ,
                          float max_error){
   float error;
   bool calib_failed;
-  integ->m_codes.cal_enable[out0Id] = false;
+  float target = 0.0;
+  //float target = 0.0;
   integ->m_codes.cal_enable[in0Id] = true;
-  binsearch::find_bias(integ, 0.0,
+  binsearch::find_bias(integ,
+                       target,
                        integ->m_codes.port_cal[in0Id],
                        error,
                        MEAS_CHIP_OUTPUT);
@@ -44,13 +46,14 @@ bool helper_find_cal_in0(Fabric::Chip::Tile::Slice::Integrator * integ,
                        error,
                        max_error,
                        calib_failed);
-  sprintf(FMTBUF,"integ in0 target=%f measured=%f max=%f",
-          0.0, error, max_error);
+  sprintf(FMTBUF,"integ in0 target=%f measured=%f error=%f max=%f",
+          target, target+error,error, max_error);
   print_info(FMTBUF);
   integ->m_codes.cal_enable[in0Id] = false;
   return !calib_failed;
 
 }
+
 
 bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
                           Fabric::Chip::Tile::Slice::Dac * ref_dac,
@@ -180,15 +183,11 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTargetHelper (profile_t& re
     sprintf(FMTBUF, "nmos=%d", m_codes.nmos);
     print_info(FMTBUF);
 
-    m_codes.range[in0Id] = RANGE_MED;
-    m_codes.range[out0Id] = RANGE_MED;
     update(m_codes);
     succ &= helper_find_cal_out0(this,0.01);
     if(succ)
       succ &= helper_find_cal_in0(this,0.01);
 
-    m_codes.range[in0Id] = codes_self.range[in0Id];
-    m_codes.range[out0Id] = codes_self.range[out0Id];
     update(m_codes);
     if(succ)
       succ &= helper_find_cal_gain(this,
