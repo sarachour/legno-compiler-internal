@@ -35,6 +35,7 @@ def plot_diffeq(menv,prob,T,Y):
         vals = {}
         for fvar in fnvars:
             vals[fvar] = _evaluate(fns[fvar],vs)
+            vs["%s_" % fvar] = vals[fvar]
         for v in stvars:
             vals[v] = vs['%s_' % v]
         return vals

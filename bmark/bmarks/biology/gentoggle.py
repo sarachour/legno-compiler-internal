@@ -94,7 +94,7 @@ def model():
   U = parse_diffeq("UTF+{kdeg}*(-U)",'V0',":u", params)
   prob.bind("U",U)
   prob.set_interval("U",0,15.6)
-  prob.bind("UOUT",op.Emit(op.Var('U'),loc="A0"))
+  prob.bind("VOUT",op.Emit(op.Var('V'),loc="A0"))
   prob.set_max_sim_time(20)
   prob.compile()
   menv = menvs.get_math_env('t20')

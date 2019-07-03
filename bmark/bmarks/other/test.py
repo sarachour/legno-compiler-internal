@@ -19,8 +19,8 @@ def feedback():
   prob.bind("O",op.Emit(op.Var('Y'),loc='A0'))
   prob.set_interval("Y",-1.0,1.0)
   prob.compile()
-  menv = menvs.get_math_env('t2')
-  prob.set_max_sim_time(2)
+  menv = menvs.get_math_env('t20')
+  prob.set_max_sim_time(20)
   return menv,prob
 
 def nochange():

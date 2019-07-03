@@ -9,7 +9,7 @@ dt = k3(io − c2)(eo − c1 − c2) − k−3c2
 if __name__ == "__main__":
   import sys
   import os
-  sys.path.insert(0,os.path.abspath("../../"))
+  sys.path.insert(0,os.path.abspath("../../../"))
 
 from lang.prog import MathProg
 from ops import op, opparse
@@ -44,9 +44,9 @@ def model():
   B = parse_diffeq("{k3f}*({I0}+(-B))*({E0}+(-A)+(-B))+{k3r}*(-B)", 'B0', \
                    ":z",params)
   prob.bind("B",B)
-  prob.set_interval("S",0,0.5)
-  prob.set_interval("A",0,0.5)
-  prob.set_interval("B",0,0.5)
+  prob.set_interval("S",0,0.05)
+  prob.set_interval("A",0,0.1)
+  prob.set_interval("B",0,0.3)
   prob.bind("COMPLEX", emit(op.Var("S")))
   prob.set_max_sim_time(20)
   prob.compile()

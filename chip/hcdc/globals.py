@@ -90,8 +90,8 @@ CTX.insert(GLProp.DIGITAL_RESOLUTION, 1)
 
 #max_freq_khz = 200
 #max_freq_khz = 200
-#max_freq_khz = 200.00
-max_freq_khz = 40.00
+max_freq_khz = 200.00
+#max_freq_khz = 40.00
 cap_freq_khz = 126.00
 adc_khz = 20.00
 CTX.insert(GLProp.MAX_FREQ, max_freq_khz*units.khz)

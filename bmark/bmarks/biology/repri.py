@@ -1,7 +1,7 @@
 if __name__ == "__main__":
   import sys
   import os
-  sys.path.insert(0,os.path.abspath("../../"))
+  sys.path.insert(0,os.path.abspath("../../../"))
 
 from lang.prog import MathProg
 from ops import op, opparse
@@ -12,35 +12,31 @@ def emit(v):
   return op.Emit(op.Mult(op.Const(0.99999), v))
 
 
-def model():
-    #K = 20.0
-    K = 2.0
+def model(closed_form=True):
+    K = 20.0
+    #K = 2.0
     params = {
       'LacLm0':0.5,
       'clm0':0.25,
       'TetRm0':0.12,
-      #'LacLp0':60.0,
-      #'clp0':20.0,
-      #'TetRp0':40.0,
-      'LacLp0':60.0*0.1,
-      'clp0':20.0*0.1,
-      'TetRp0':40.0*0.1,
+      'LacLp0':60.0,
+      'clp0':20.0,
+      'TetRp0':40.0,
       'K':K,
       'n':2.0,
       'a_tr':0.4995,
       'kd_mrna' : 0.15051499783,
-      #'a0_tr':0.005,
-      'a0_tr':0.0,
+      'a0_tr':0.0005,
       'k_tl': 3.01029995664,
-      #'kd_prot': 0.03010299956,
-      'kd_prot': 0.6010299956,
+      'kd_prot': 0.03010299956,
       'kf_bind':1.0,
       'kd_bind':1.0/K,
       'one': 0.9999999
 
     }
 
-    prob = MathProg("repri")
+    suff = "" if closed_form else "-cont"
+    prob = MathProg("repri"+suff)
 
     LacLm  = parse_diffeq('{a0_tr}+{one}*ALacL+{kd_mrna}*(-LacLm)', \
                    'LacLm0',':a',params)
@@ -51,7 +47,7 @@ def model():
     TetRm = parse_diffeq('{a0_tr}+{one}*ATetR+{kd_mrna}*(-TetRm)', \
                   'TetRm0',':c',params)
 
-    mrna_bnd = 1.5
+    mrna_bnd = 3.0
     prob.bind("LacLm",LacLm)
     prob.bind("clm",clm)
     prob.bind("TetRm",TetRm)
@@ -66,7 +62,7 @@ def model():
     TetRp = parse_diffeq('{k_tl}*TetRm + {kd_prot}*(-TetRp)', \
                   'TetRp0',':f',params)
 
-    prot_bnd = 10.0
+    prot_bnd = 140.0
     prob.bind("LacLp",LacLp)
     prob.bind("clp",clp)
     prob.bind("TetRp",TetRp)
@@ -84,7 +80,6 @@ def model():
             op.Const(-1.0)
         )
     ))
-    closed_form = False
     if closed_form:
         ALacL = op.Call(
             [op.Var('clp')],
@@ -118,17 +113,18 @@ def model():
     prob.set_interval("ALacL",0,act_bnd)
     prob.set_interval("Aclp",0,act_bnd)
     prob.set_interval("ATetR",0,act_bnd)
-    prob.set_max_sim_time(200)
+    prob.set_max_sim_time(2000)
     prob.compile()
     #menv = menvs.get_math_env('t200')
-    menv = menvs.get_math_env('t200')
+    menv = menvs.get_math_env('t2k')
     return menv,prob
 
-def execute():
-  menv,prob = model()
+def execute(closed_form=False):
+  menv,prob = model(closed_form=closed_form)
   T,Y = run_diffeq(menv,prob)
   plot_diffeq(menv,prob,T,Y)
 
 
 if __name__ == "__main__":
-  execute()
+  execute(closed_form=True)
+  execute(closed_form=False)

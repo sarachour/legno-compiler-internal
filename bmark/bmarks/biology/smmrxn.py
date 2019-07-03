@@ -1,7 +1,7 @@
 if __name__ == "__main__":
   import sys
   import os
-  sys.path.insert(0,os.path.abspath("../../"))
+  sys.path.insert(0,os.path.abspath("../../../"))
 
 from lang.prog import MathProg
 from ops import op, opparse
