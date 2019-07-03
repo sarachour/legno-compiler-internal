@@ -200,6 +200,11 @@ class Block:
 
         return data[port][handle]
 
+    def has_handle(self,comp_mode,port,handle):
+        if handle is None:
+            return True
+        return handle in self.handles(comp_mode,port)
+
     def handles(self,comp_mode,port):
         if self.is_input(port):
             return []

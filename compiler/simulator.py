@@ -42,7 +42,6 @@ def plot_simulation(menv,conc_circ_path,V,T,Y):
   for series_name,values in Z.items():
     filepath = "%s/%s.png" % (filedir,series_name);
     print('plotting %s' % series_name)
-    print(values)
     plt.plot(T,values,label=series_name)
     plt.savefig(filepath)
     plt.clf()
@@ -54,6 +53,7 @@ def run_simulation(board,conc_circ, \
   def dt_func(t,vs):
     return next_state(derivs,var_order,vs)
 
+  print(menv.sim_time)
   time = menv.sim_time/conc_circ.tau
   n = 300.0
   dt = time/n
@@ -70,10 +70,9 @@ def run_simulation(board,conc_circ, \
   Y = []
   with tqdm.tqdm(total=tqdm_segs) as prog:
     while r.successful() and r.t < time:
-        T.append(r.t)
+        T.append(r.t/conc_circ.board.time_constant)
         Y.append(r.y)
         r.integrate(r.t + dt)
-        print(r.t,time)
         seg = int(tqdm_segs*float(r.t)/float(time))
         if seg != last_seg:
             prog.n = seg
@@ -92,5 +91,6 @@ def simulate(board,circ_file,bmark):
   init_conds,derivs =  \
                        buildsim.build_simulation(board, \
                                                circ)
-  V,T,Y = run_simulation(board,circ,init_conds,derivs,menv)
+  V,T,Y = run_simulation(board,circ, \
+                         init_conds,derivs,menv)
   plot_simulation(menv,circ_file,V,T,Y)

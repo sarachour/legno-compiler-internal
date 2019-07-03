@@ -2,7 +2,6 @@ from chip.model import ModelDB
 import chip.model as model
 import chip.props as proplib
 import ops.op as oplib
-from scipy.integrate import ode
 import ops.interval as intervallib
 
 
@@ -12,7 +11,9 @@ def get_params(db,conc_circ, \
                mode='naive'):
   block = conc_circ.board.block(block_name)
   config = conc_circ.config(block_name,loc)
-
+  if not block.has_handle(config.comp_mode,port,handle):
+    raise Exception("no handle %s in %s[%s].%s %s" % \
+                    (handle,block_name,oc,port,config.comp_mode))
   coeff = block.coeff(config.comp_mode, \
                       config.scale_mode, \
                       port, handle)
@@ -67,33 +68,51 @@ def build_output(db,conc_circ,block_name,loc,port,expr,
     pars = get_params(db,conc_circ,block_name,loc,port,\
                       handle=handle,
                       mode=mode)
+    print(handle)
+    print(pars)
     e = oplib.Mult(oplib.Const(pars['gain']),expr)
-    if not pars['interval'] is None:
-      e = oplib.Clamp(e,pars['interval'])
+    #if not pars['interval'] is None:
+    # e = oplib.Clamp(e,pars['interval'])
     #e = oplib.Add(e,
     #              oplib.RandomVar(pars['unc']))
     return e
 
   if block_name == "integrator":
     assert(isinstance(expr,oplib.Integ))
-
     init_cond = phys_expr(expr.init_cond, \
                           expr.ic_handle)
     deriv = phys_expr(expr.deriv, \
                       expr.deriv_handle)
-
+    print(deriv)
+    input()
     return init_cond,deriv
 
   else:
     return phys_expr(expr, None)
+
+
+def build_stub(db,conc_circ,block_name,loc,port,expr,
+                 mode='naive'):
+  config = conc_circ.config(block_name,loc)
+  pars = get_params(db,conc_circ,block_name,loc,port,\
+                    handle=':z',
+                    mode=mode)
+  pars2 = get_params(db,conc_circ,block_name,loc,port,\
+                    handle=None,
+                    mode=mode)
+
+  e = oplib.Mult(oplib.Const(pars['gain']*pars2['gain']), expr)
+  return e
+
 
 def build_input(db,conc_circ,block_name,loc,port,expr,
                  mode='naive'):
   pars = get_params(db,conc_circ,block_name,loc,port,\
                     handle=None,
                     mode=mode)
-  e2 = oplib.Clamp(expr,pars['interval'])
-  return e2
+  #e = oplib.Clamp(expr,pars['interval'])
+  #return e
+  return expr
 
 def build_expr(db,conc_circ, \
                block_name,loc,port, \
@@ -107,7 +126,12 @@ def build_expr(db,conc_circ, \
      depth > 0:
     lbl = config.label(port)
     print("stub %s[%s].%s -> %s" % (block_name,loc,port,lbl))
-    return oplib.Var(lbl)
+    expr = oplib.Var(lbl)
+    stub = build_stub(db,conc_circ,
+                      block_name,loc,port, \
+                      expr, \
+                      mode=mode)
+    return stub
 
   if port in block.outputs:
     expr = block.get_dynamics(config.comp_mode, port)
@@ -124,7 +148,7 @@ def build_expr(db,conc_circ, \
     print("out %s[%s].%s -> %s" % \
       (block_name,loc,port,out_expr))
     return build_output(db,conc_circ, \
-                        block_name,loc,v, \
+                        block_name,loc,port, \
                         out_expr, \
                         mode=mode)
 
