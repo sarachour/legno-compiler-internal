@@ -12,8 +12,6 @@ import numpy as np
 
 def model():
     prob = MathProg("aud-passthru")
-    prob.set_digital_snr(0.0)
-    prob.set_analog_snr(0.0)
 
     bw = 20*units.khz/glb.TIME_FREQUENCY
     ampl = 1.0

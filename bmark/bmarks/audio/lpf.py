@@ -22,8 +22,6 @@ from enum import Enum
 
 def model(degree,method="basic"):
     prob = MathProg("lpf-%d-%s" % (degree,method))
-    prob.set_digital_snr(0.0)
-    prob.set_analog_snr(0.0)
 
     lb,ub = autil.set_microphone(prob,"I","Z")
     cutoff_freq = 20000

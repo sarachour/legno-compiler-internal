@@ -42,8 +42,6 @@ def model():
 
     prob = MathProg("repri")
 
-    prob.set_digital_snr(0.0)
-    prob.set_analog_snr(0.0)
     LacLm  = parse_diffeq('{a0_tr}+{one}*ALacL+{kd_mrna}*(-LacLm)', \
                    'LacLm0',':a',params)
 

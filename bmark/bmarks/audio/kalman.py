@@ -11,8 +11,6 @@ import numpy as np
 
 def model():
   prob = MathProg("aud-kalman")
-  prob.set_digital_snr(0.0)
-  prob.set_analog_snr(0.0)
 
   params = {
     'a': 2.0,
