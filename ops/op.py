@@ -32,9 +32,21 @@ def to_python(e):
         v = list(set(vs1+vs2))
         return v,"(%s)*(%s)" % (a1,a2)
 
+    elif e.op == OpType.CLAMP:
+        v,a = to_python(e.arg1)
+        ival = e.interval
+        a2 = "max(%f,%s)" % (ival.lower,a)
+        a3 = "min(%f,%s)" % (ival.upper,a2)
+        return v,a3
+
     elif e.op == OpType.SGN:
         v,a = to_python(e.arg(0))
         return v,"math.copysign(1,%s)" % a
+
+    elif e.op == OpType.RANDOM_VAR:
+        v = e.variance
+        return [],"np.random.uniform(%f,%f)" \
+            % (-v,v)
 
     elif e.op == OpType.UNIFNOISE:
         nmax = e.bound
@@ -85,11 +97,15 @@ class OpType(Enum):
     SQUARE= "pow2"
     UNIFNOISE = "uniformnz"
 
+    CLAMP="clamp"
+    RANDOM_VAR="rv"
+
 class Op:
 
     def __init__(self,op,args):
         for arg in args:
-            assert(isinstance(arg,Op))
+            if not (isinstance(arg,Op)):
+                raise Exception("not op: %s" % arg)
         self._args = args
         self._op = op
         self._is_associative = True \
@@ -307,6 +323,11 @@ class Integ(Op2):
         Op.__init__(self,OpType.INTEG,[deriv,init_cond])
         self._handle = handle
         pass
+
+    def substitute(self,bindings):
+        inp = self.arg(0).substitute(bindings)
+        ic = self.arg(1).substitute(bindings)
+        return Integ(inp,ic,self._handle)
 
     @property
     def handle(self):
@@ -834,6 +855,40 @@ class Func(Op):
         pars = " ".join(map(lambda p: str(p), self._vars))
         return "lambd(%s).(%s)" % (pars,self._expr)
 
+class Clamp(Op):
+
+    def __init__(self,arg,ival):
+        Op.__init__(self,OpType.CLAMP,[arg])
+        self._interval = ival
+
+    @property
+    def arg1(self):
+        return self.arg(0)
+
+    @property
+    def interval(self):
+        return self._interval
+
+    def compute(self,bindings):
+        result = self.arg(0).compute(bindings)
+        return self._interval.clamp(result)
+
+    def __repr__(self):
+        return "clamp(%s,%s)" % (self.arg(0), \
+                              self._interval)
+
+class RandomVar(Op):
+    def __init__(self,variance):
+        Op.__init__(self,OpType.RANDOM_VAR,[])
+        self._variance = variance
+
+    @property
+    def variance(self):
+        return self._variance
+
+    def compute(self,bindings):
+        raise Exception("random variable")
+
 class Abs(Op):
 
     def __init__(self,arg):
@@ -1145,6 +1200,6 @@ def mkadd(terms):
         return Add(terms[0],terms[1])
     else:
         curr = Add(terms[0],terms[1])
-        for t in range(2,len(terms)):
-            curr = Add(curr,t)
+        for i in range(2,len(terms)):
+            curr = Add(curr,terms[i])
         return curr

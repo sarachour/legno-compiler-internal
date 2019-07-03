@@ -129,15 +129,11 @@ class Block:
             assert(not port in self._signals)
             self._signals[port] = prop
 
-    def _wrap_coeff(self,coeff,expr):
-        if coeff == 1.0:
-            return expr
-        else:
-            return ops.Mult(ops.Const(coeff,tag='scf'),expr)
-
     def get_dynamics(self,comp_mode,output):
-        copy_data = self._get_comp_dict(comp_mode,self._copies)
-        op_data = self._get_comp_dict(comp_mode,self._ops)
+        copy_data = self._get_comp_dict(comp_mode, \
+                                        self._copies)
+        op_data = self._get_comp_dict(comp_mode, \
+                                      self._ops)
         if not self.whitelist(comp_mode):
             raise Exception("get_dynamics: not whitelisted : %s" %  \
                             str(comp_mode))
@@ -167,6 +163,18 @@ class Block:
     def signals(self,port):
         return self._signals[port]
 
+    def has_prop(self,comp_mode,scale_mode,port,handle=None):
+        data = self._get_scale_dict(comp_mode,scale_mode, \
+                                    self._props)
+
+        if not port in data:
+            return False
+
+        if not handle in data[port]:
+            return False
+
+        return True
+
     def props(self,comp_mode,scale_mode,port,handle=None):
         data = self._get_scale_dict(comp_mode,scale_mode, \
                                     self._props)
@@ -185,6 +193,9 @@ class Block:
             raise Exception("port not in prop-dict <%s>" % port)
 
         if not handle in data[port]:
+            print("=== handles ===")
+            for h in data[port]:
+                print("  %s" % h)
             raise Exception("handle not in prop-dict <%s>" % handle)
 
         return data[port][handle]

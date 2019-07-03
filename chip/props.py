@@ -72,12 +72,11 @@ class AnalogProperties(Properties):
         assert(not self._bounds[0] is None)
         assert(not self._bounds[1] is None)
         assert(not self._bounds[1] is units.unknown)
-        assert(not self._min[0] is None)
-        assert(not self._min[1] is units.unknown)
 
     def __repr__(self):
-        return "Analog(bounds=%s, bw=%s, min=%s)" \
-            % (self._bounds,self._bandwidth,self._min)
+        return "Analog(bounds=%s, bw=%s, phys=%s)" \
+            % (self._bounds,self._bandwidth, \
+               self._physical)
 
 class DigitalProperties(Properties):
     class ClockType(Enum):
@@ -146,6 +145,8 @@ class DigitalProperties(Properties):
     @property
     def sample_rate(self):
         rate,unit = self._sample_rate
+        if rate is None:
+            return None
         return rate*unit
 
 

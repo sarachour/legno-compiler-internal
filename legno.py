@@ -6,7 +6,7 @@ import bmark.menvs as menvs
 import util.paths as paths
 
 
-from compiler import arco, jaunt, srcgen, execprog, skelter
+from compiler import  simulator
 from chip.conc import ConcCirc
 
 import argparse
@@ -19,7 +19,7 @@ import compiler.legno_util as legno_util
 
 
 parser = argparse.ArgumentParser(description='Legno compiler.')
-parser.add_argument('--subset',
+parser.add_argument('--subset', default="unrestricted",
                     help='component subset to use for compilation')
 parser.add_argument('benchmark', type=str,help='benchmark to compile')
 
@@ -58,7 +58,7 @@ graph_subp.add_argument('--circ', type=str, \
                         help='do performance sweep.')
 
 
-gren_subp = subparsers.add_parser('srcgen', help='generate grendel.')
+gren_subp = subparsers.add_parser('srcgen', help='generate grendel scriot.')
 gren_subp.add_argument('hw_env', type=str, \
                         help='hardware environment')
 gren_subp.add_argument('--recompute', action='store_true',
@@ -66,6 +66,9 @@ gren_subp.add_argument('--recompute', action='store_true',
 gren_subp.add_argument('--trials', type=int, default=3,
                        help='compute trials.')
 
+
+sim_subp = subparsers.add_parser('simulate', help='simulate circuit.')
+sim_subp.add_argument('conc_circ', help='simulate concrete circuit.')
 
 
 args = parser.parse_args()
@@ -88,3 +91,7 @@ elif args.subparser_name == "srcgen":
 
 elif args.subparser_name == "graph":
    legno_util.exec_graph(hdacv2_board,args)
+
+elif args.subparser_name == "simulate":
+   simulator.simulate(hdacv2_board,args.conc_circ, \
+                      args.benchmark)

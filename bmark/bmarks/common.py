@@ -97,7 +97,6 @@ def run_diffeq(menv,prob):
         T.append(r.t)
         Y.append(r.y)
         r.integrate(r.t + dt)
-        prog.set_description("max=%f | t=%f" % (time,r.t))
         seg = int(tqdm_segs*float(r.t)/float(time))
         if seg != last_seg:
             prog.n = seg
