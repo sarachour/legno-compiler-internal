@@ -104,20 +104,14 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::calibrate (profile_t& result,
   dac_code_t dac_code_0;
   dac_code_t dac_code_1;
   dac_code_t dac_code_neg1;
-  prof::init_profile(prof::TEMP);
   dac_code_0 = cutil::make_val_dac(calib, val_dac,
-                                   0.0,
-                                   prof::TEMP);
+                                   0.0);
 
-  prof::init_profile(prof::TEMP);
   dac_code_1 = cutil::make_val_dac(calib, val_dac,
-                                   1.0*coeff,
-                                   prof::TEMP);
+                                   1.0*coeff);
 
-  prof::init_profile(prof::TEMP);
   dac_code_neg1 = cutil::make_val_dac(calib, val_dac,
-                                      -1.0*coeff,
-                                      prof::TEMP);
+                                      -1.0*coeff);
 
 
 	Connection conn0 = Connection ( val_dac->out0, in0 );

@@ -212,6 +212,16 @@ def circ_calib_t():
         "max_error" / cstruct.Float32l
     )
 
+def circ_prof_t():
+    return cstruct.Struct(
+        "mode" / cstruct.Int8ul,
+        cstruct.Padding(1),
+        "blk" / block_type_t(),
+        "loc" / circ_loc_idx1_t(),
+        "in0" / cstruct.Float32l,
+        "in1" / cstruct.Float32l
+    )
+
 def circ_cmd_data():
     return cstruct.Union(None,
                          fanout=circ_use_fanout_t(),
@@ -225,7 +235,8 @@ def circ_cmd_data():
                          circ_loc=circ_loc_t(),
                          circ_loc_idx1=circ_loc_idx1_t(),
                          state=circ_state_t(),
-                         calib=circ_calib_t()
+                         calib=circ_calib_t(),
+                         prof=circ_prof_t()
     )
 
 def circ_cmd_t():
@@ -367,13 +378,11 @@ def state_t():
     )
 
 def profile_t():
-    nels = 100
     return cstruct.Struct(
-        "bias" / cstruct.Array(nels,cstruct.Int16ul),
-        "noise" / cstruct.Array(nels,cstruct.Int16ul),
-        "output" / cstruct.Array(nels,cstruct.Int16ul),
-        "input0" / cstruct.Array(nels,cstruct.Int16ul),
-        "input1" / cstruct.Array(nels,cstruct.Int16ul),
-        "size" / cstruct.Int8ul,
-        "port" / cstruct.Array(nels,cstruct.Int8ul)
+        "bias" / cstruct.Int16ul,
+        "noise" / cstruct.Int16ul,
+        "output" / cstruct.Int16ul,
+        "input0" / cstruct.Int16ul,
+        "input1" / cstruct.Int16ul,
+        "port" / cstruct.Int8ul
     )

@@ -40,15 +40,15 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
                           const float max_error);
 		bool calibrate (profile_t& result,
                     const float max_error);
-		void characterize(profile_t& result);
-		void characterizeTarget(profile_t& result);
+		profile_t measure(char mode, float input);
     void defaults();
 	private:
+		profile_t measure_ss(float input);
+		profile_t measure_ic(float input);
     bool calibrateTargetHelper(profile_t& result,
                                const float max_error,
                                bool change_code);
 
-		void measure(profile_t& result,float input, bool test_initial_cond);
 		Integrator (Slice * parentSlice);
 		~Integrator () override { delete in0; delete out0; };
 		/*Set enable, invert, range*/

@@ -25,14 +25,15 @@ def make_output(prob,out,var,adc=False):
 
 
 # from wikipedia
-def model(name,omega,menv_name='t20', adc=False):
+def model(menv_name='t20', adc=False):
+    omega = 1.0
     params = {
         'P0': 0.1,
         'V0' :0.0,
         'omega': -1*omega*omega
     }
     # t20
-    prob = MathProg("micro-osc-%s" % name)
+    prob = MathProg("micro-osc")
     P = parse_diffeq("V", "P0", ":a", params)
     V = parse_diffeq("(-P)", "V0", ":b", params)
     #V = parse_diffeq("{omega}*P", "V0", ":b", params)
@@ -55,15 +56,14 @@ def model(name,omega,menv_name='t20', adc=False):
     menv = menvs.get_math_env(menv_name)
     return menv,prob
 
-def execute(name,omega,menv_name='t20'):
-  menv,prob = model(name,omega, \
-                    menv_name=menv_name)
+def execute(menv_name='t20'):
+  menv,prob = model(menv_name=menv_name)
   T,Y = run_diffeq(menv,prob)
   plot_diffeq(menv,prob,T,Y)
 
 
 if __name__ == "__main__":
-  execute("one",1.0)
-  execute("quarter",0.25,menv_name='t200')
-  execute("quad",4.0)
+  execute()
+  #execute("quarter",0.25,menv_name='t200')
+  #execute("quad",4.0)
 1

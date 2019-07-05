@@ -7,11 +7,12 @@
 
 namespace calibrate {
 
-  void characterize(Fabric* fab,
-                    profile_t& result,
-                    uint16_t blk,
-                    circ::circ_loc_idx1_t loc,
-                    bool targeted)
+  profile_t measure(Fabric* fab,
+                         uint16_t blk,
+                         circ::circ_loc_idx1_t loc,
+                         uint8_t mode,
+                         float in0,
+                         float in1)
   {
     Fabric::Chip::Tile::Slice::Fanout * fanout;
     Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -23,37 +24,28 @@ namespace calibrate {
     switch(blk){
     case circ::block_type_t::FANOUT:
       fanout = common::get_fanout(fab,loc);
-      fanout->characterize(result);
+      fanout->measure(mode,in0);
       break;
 
     case circ::block_type_t::MULT:
       // TODO: indicate if input or output.
       mult = common::get_mult(fab,loc);
-      if(targeted)
-        mult->characterizeTarget(result);
-      else
-        mult->characterize(result);
+      return mult->measure(in0,in1);
       break;
 
     case circ::block_type_t::TILE_ADC:
       adc = common::get_slice(fab,loc.loc)->adc;
-      adc->characterize(result);
+      return adc->measure(in0);
       break;
 
     case circ::block_type_t::TILE_DAC:
       dac = common::get_slice(fab,loc.loc)->dac;
-      if(targeted)
-        dac->characterizeTarget(result);
-      else
-        dac->characterize(result);
+      return dac->measure(in0);
       break;
 
     case circ::block_type_t::INTEG:
       integ = common::get_slice(fab,loc.loc)->integrator;
-      if(targeted)
-        integ->characterizeTarget(result);
-      else
-        integ->characterize(result);
+      return integ->measure(mode,in0);
       break;
 
     case circ::block_type_t::LUT:

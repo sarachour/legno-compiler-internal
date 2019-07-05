@@ -43,41 +43,46 @@ class JauntEnvParams:
         return "i"
 
   def __init__(self,digital_error=0.05, \
-               analog_error=0.05):
+               analog_error=0.05,
+               max_freq=None):
     self.percent_digital_error = digital_error
     self.percent_analog_error = analog_error
+    if not max_freq is None:
+      self.max_freq = max_freq*1000.0
+    else:
+      self.max_freq = None
+
     self.ideal()
 
   def ideal(self):
     self.model = "ideal"
     self.propagate_uncertainty = False
-    self.quantize_minimum = False
-    self.quality_minimum = False
-    self.bandwidth_maximum = True
+    self.enable_quantize_constraint = False
+    self.enable_quality_constraint = False
+    self.enable_bandwidth_constraint = True
 
 
   def physical(self):
     self.model = "physical"
     self.propagate_uncertainty = False
-    self.quantize_minimum = True
-    self.quality_minimum = True
-    self.bandwidth_maximum = True
+    self.enable_quantize_constraint = True
+    self.enable_quality_constraint = True
+    self.enable_bandwidth_constraint = True
 
   def propagate(self):
     self.model = "physical"
     self.propagate_uncertainty = True
-    self.quantize_minimum = True
-    self.quality_minimum = True
-    self.bandwidth_maximum = True
+    self.enable_quantize_constraint= True
+    self.enable_quality_constraint = True
+    self.enable_bandwidth_constraint = True
 
 
   def naive(self):
     self.model = "naive"
     self.propagate_uncertainty = False
-    self.quantize_minimum = True
-    self.quality_minimum = True
-    self.bandwidth_maximum = True
-    #self.bandwidth_maximum = False
+    self.enable_quantize_constraint = True
+    self.enable_quality_constraint = True
+    self.enable_bandwidth_constraint = True
 
 
   def set_model(self,model):
@@ -98,20 +103,22 @@ class JauntEnvParams:
     tag += "%s" % JauntEnvParams.Model(self.model).abbrev()
     if self.propagate_uncertainty:
       tag += "P"
-    if self.quality_minimum:
+    if self.enable_quality_constraint:
       tag += "q%.2f" % (self.percent_analog_error*100.0)
-    if self.quantize_minimum:
+    if self.enable_quantize_constraint:
       tag += "d%.2f" % (self.percent_digital_error*100.0)
-    if self.bandwidth_maximum:
+    if self.enable_bandwidth_constraint:
       tag += "b"
-
+    if not self.max_freq is None:
+      tag += "%dk" % int(self.max_freq/1000.0)
 
     return tag
 
 class JauntEnv:
   def __init__(self,model="physical", \
                digital_error=0.05, \
-               analog_error=0.05):
+               analog_error=0.05,
+               max_freq=None):
     # scaling factor name to port
     self._to_jaunt_var = {}
     self._from_jaunt_var ={}
@@ -119,7 +126,8 @@ class JauntEnv:
     self._in_use = {}
 
     self.params = JauntEnvParams(digital_error=digital_error, \
-                                 analog_error=analog_error)
+                                 analog_error=analog_error, \
+                                 max_freq=max_freq)
     self.params.set_model(JauntEnvParams.Type(model))
     self._eqs = []
     self._ltes = []
@@ -291,9 +299,11 @@ class JauntEnv:
 class JauntInferEnv(JauntEnv):
 
     def __init__(self,model="ideal", \
+                 max_freq=None,
                  digital_error=0.05, \
                  analog_error=0.05):
       JauntEnv.__init__(self,model, \
+                        max_freq=max_freq, \
                         digital_error=digital_error,
                         analog_error=analog_error)
       self._exactly_one = []

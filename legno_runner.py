@@ -10,6 +10,7 @@ def read_config(cfgfile):
     'n_conc': 3,
     'n_scale': 1,
     'sweep': True,
+    'max-freq':None,
     'subset': 'unrestricted',
     'model': 'physical'
   }
@@ -98,7 +99,10 @@ if args.arco:
 jaunt_args = \
              "--subset {subset} {bmark} jaunt {search} --model {model}  " + \
              "--scale-circuits {n_scale} {sweep} " + \
-             "--digital-error {digital_error} --analog-error {analog_error}"
+             "--digital-error {digital_error} --analog-error {analog_error} "
+if not params['max-freq'] is None:
+  jaunt_args += " --max-freq %f" % params['max-freq']
+
 if succ and not args.srcgen:
   succ = execute(jaunt_args,params,'jaunt.log')
   if succ:

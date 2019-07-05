@@ -26,7 +26,27 @@ def _evaluate(expr,vmap):
     vmap['math'] = math
     return np.real(eval(expr,vmap))
 
-def plot_diffeq(menv,prob,T,Y):
+def plot_diffeq(menv,prob):
+    T,Z = run_system(menv,prob)
+
+    cwd = os.getcwd()
+    filedir = "%s/BMARK_REF/%s_%s" % (cwd,prob.name,menv.name)
+
+    if not os.path.exists(filedir):
+        os.makedirs(filedir)
+
+    for series_name,values in Z.items():
+        print("%s: %d" % (series_name,len(values)))
+
+    for series_name,values in Z.items():
+        filepath = "%s/%s.png" % (filedir,series_name);
+        print('plotting %s' % series_name)
+        plt.plot(T,values,label=series_name)
+        plt.savefig(filepath)
+        plt.clf()
+
+def run_system(menv,prob):
+    T,Y = run_diffeq(menv,prob)
     stvars,ics,derivs,fnvars,fns = prob.build_ode_prob()
 
     def fn_func(t,values):
@@ -40,27 +60,13 @@ def plot_diffeq(menv,prob,T,Y):
             vals[v] = vs['%s_' % v]
         return vals
 
-    cwd = os.getcwd()
-    filedir = "%s/BMARK_REF/%s_%s" % (cwd,prob.name,menv.name)
-
-    if not os.path.exists(filedir):
-        os.makedirs(filedir)
-
     Z =dict(map(lambda v: (v,[]), stvars+fnvars))
     for t,y in zip(T,Y):
         for var,value in fn_func(t,y).items():
             Z[var].append(value)
 
-    for series_name,values in Z.items():
-        print("%s: %d" % (series_name,len(values)))
 
-    for series_name,values in Z.items():
-        filepath = "%s/%s.png" % (filedir,series_name);
-        print('plotting %s' % series_name)
-        plt.plot(T,values,label=series_name)
-        plt.savefig(filepath)
-        plt.clf()
-
+    return T,Z
 
 def run_diffeq(menv,prob):
     stvars,ics,derivs,fnvars,fns = prob.build_ode_prob()

@@ -10,6 +10,27 @@ from bmark.bmarks.common import *
 import bmark.menvs as menvs
 
 
+def build_std_bb_sys(prob,ampl,index):
+  params = {
+    'P0': ampl,
+    'V0' :0.0,
+    'P': "P%d" % index,
+    'V': "V%d" % index,
+    }
+  P = parse_diffeq("{V}", "P0",
+                   ":a%d" % index,
+                   params)
+  V = parse_diffeq("(-{P})", \
+                   "V0",
+                   ":b%d" % index,
+                   params)
+  prob.bind(params['P'], P)
+  prob.bind(params['V'], V)
+  scf = math.sqrt(1.0)
+  base_bnd = params['P0']*1.2
+  prob.set_interval(params['P'],-base_bnd,base_bnd)
+  prob.set_interval(params['V'],-base_bnd*scf,base_bnd*scf)
+  return params['P'],params['V']
 
 def build_bb_sys(prob,ampl,omega,index):
   params = {

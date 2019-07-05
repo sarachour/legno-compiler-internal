@@ -4,18 +4,7 @@
 #include "calib_util.h"
 
 
-void Fabric::Chip::Tile::Slice::ChipAdc::characterize(profile_t& result){
-  prof::init_profile(result);
-  int n = 20;
-  for(int i=0; i < n; i += 1){
-    float in0 = (i/((float) n))*2.0-1.0;
-    sprintf(FMTBUF, "COMPUTE %f", in0);
-    measure(result,in0);
-  }
-}
-
-
-void Fabric::Chip::Tile::Slice::ChipAdc::measure(profile_t& result, float input){
+profile_t Fabric::Chip::Tile::Slice::ChipAdc::measure(float input){
   float coeff = util::range_to_coeff(m_codes.range);
   update(m_codes);
 
@@ -32,10 +21,8 @@ void Fabric::Chip::Tile::Slice::ChipAdc::measure(profile_t& result, float input)
 
   val_dac->setEnable(true);
   dac_code_t dac_code_value;
-  profile_t interim_result;
   dac_code_value = cutil::make_val_dac(calib,val_dac,
-                                       coeff*input,
-                                       interim_result);
+                                       coeff*input);
   val_dac->update(dac_code_value);
 
   Connection conn0 = Connection ( val_dac->out0, in0 );
@@ -46,12 +33,13 @@ void Fabric::Chip::Tile::Slice::ChipAdc::measure(profile_t& result, float input)
 
   float mean,variance;
   util::meas_dist_adc(this,mean,variance);
-  prof::add_prop(result,out0Id,
-                 target,
-                 input,
-                 0.0,
-                 mean-target,
-                 variance);
+  profile_t prof = prof::make_profile(out0Id,
+                                      0,
+                                      target,
+                                      input,
+                                      0.0,
+                                      mean-target,
+                                      variance);
 
   sprintf(FMTBUF, "MEAS target=%f input=%f / mean=%f var=%f",
           target, input, mean, variance);
@@ -61,4 +49,5 @@ void Fabric::Chip::Tile::Slice::ChipAdc::measure(profile_t& result, float input)
 
   cutil::restore_conns(calib);
   val_dac->update(codes_dac);
+  return prof;
 }

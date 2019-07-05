@@ -5,43 +5,9 @@
 #include "slice.h"
 #include "dac.h"
 
-void Fabric::Chip::Tile::Slice::Dac::characterize(profile_t& result){
-  if(m_codes.source == DSRC_MEM){
-    dac_code_t backup = m_codes;
-    // spoof source.
-    m_codes.source = DSRC_LUT0;
-    characterizeTarget(result);
-    update(backup);
-  }
-  else{
-    characterizeTarget(result);
-  }
-}
-
-void Fabric::Chip::Tile::Slice::Dac::characterizeTarget(profile_t& result)
-{
-  if(m_codes.source == DSRC_MEM){
-    prof::init_profile(result);
-    measure(result);
-  }
-  else{
-    dac_code_t backup = m_codes;
-    m_codes.source = DSRC_MEM;
-    float vals[SIZE1D];
-    int n = prof::data_1d(vals,SIZE1D);
-    // measure how good the dac is at writing certain values.
-    prof::init_profile(result);
-    for(int i=0; i < n; i+=1){
-      setConstant(vals[i]);
-      measure(result);
-    }
-    update(backup);
-  }
-
-}
 
 
-void Fabric::Chip::Tile::Slice::Dac::measure(profile_t& result)
+profile_t Fabric::Chip::Tile::Slice::Dac::measure(float in)
 {
   if(!m_codes.enable){
     print_log("DAC not enabled");
@@ -54,9 +20,11 @@ void Fabric::Chip::Tile::Slice::Dac::measure(profile_t& result)
 
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   Dac * ref_dac = parentSlice->parentTile->slices[next_slice].dac;
-  dac_code_t codes_self = m_codes;
+  dac_code_t codes_dac = m_codes;
   dac_code_t codes_ref = ref_dac->m_codes;
 
+  m_codes.source = DSRC_MEM;
+  setConstant(in);
   update(m_codes);
 
   cutil::buffer_dac_conns(calib,this);
@@ -75,14 +43,11 @@ void Fabric::Chip::Tile::Slice::Dac::measure(profile_t& result)
                                          parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
   dac_code_t base_code;
-  profile_t base_code_result;
   float target = m_codes.const_val*scf;
-  prof::init_profile(base_code_result);
 	if (hiRange) {
     // feed dac output into scaling down multiplier input
 		ref_to_tile.setConn();
     target = make_reference_dac(calib,
-                       base_code_result,
                        base_code, this,ref_dac);
 	}
   dac_to_tile.setConn();
@@ -90,12 +55,13 @@ void Fabric::Chip::Tile::Slice::Dac::measure(profile_t& result)
 
   float mean=0.0,variance=0.0;
   util::meas_dist_chip_out(this,mean,variance);
-  prof::add_prop(result, out0Id,
-                 m_codes.const_val*scf,
-                 m_codes.const_val,
-                 0.0,
-                 mean-target,
-                 variance);
+  profile_t result = prof::make_profile(out0Id,
+                                        0,
+                                        m_codes.const_val*scf,
+                                        m_codes.const_val,
+                                        0.0,
+                                        mean-target,
+                                        variance);
 
   if (hiRange) {
     // feed dac output into scaling down multiplier input
@@ -107,7 +73,8 @@ void Fabric::Chip::Tile::Slice::Dac::measure(profile_t& result)
   dac_to_tile.brkConn();
 
   cutil::restore_conns(calib);
-  update(codes_self);
+  update(codes_dac);
+  return result;
 }
 
 

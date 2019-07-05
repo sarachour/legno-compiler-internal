@@ -7,7 +7,6 @@
 
 
 float make_reference_dac(cutil::calibrate_t& calib,
-                         profile_t& result,
                          dac_code_t& config,
                          Fabric::Chip::Tile::Slice::Dac* dac,
                          Fabric::Chip::Tile::Slice::Dac* ref_dac){
@@ -21,8 +20,7 @@ float make_reference_dac(cutil::calibrate_t& calib,
     return target;
   }
   config = cutil::make_val_dac(calib, ref_dac,
-                               base_constant,
-                               result);
+                               base_constant);
   dac_cache::cache(ref_dac,base_constant,config);
   ref_dac->update(config);
   return target;

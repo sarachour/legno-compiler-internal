@@ -25,9 +25,9 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
       m_codes = codes;
       updateFu();
     }
+		profile_t measure(char mode, float input);
     fanout_code_t m_codes;
 	private:
-		void measure(profile_t& result);
 		class FanoutOut;
 		Fanout (Slice * parentSlice, unit unitId);
 		~Fanout () override {

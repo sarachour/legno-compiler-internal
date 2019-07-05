@@ -65,15 +65,11 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (profile_t& result,
                                          parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
   dac_code_t base_code;
-  profile_t base_code_result;
-  prof::init_profile(prof::TEMP);
   float target = m_codes.const_val;
 	if (hiRange) {
     // feed dac output into scaling down multiplier input
 		ref_to_tile.setConn();
-    target = make_reference_dac(calib,
-                                prof::TEMP,
-                                base_code, this,ref_dac);
+    target = make_reference_dac(calib,base_code, this,ref_dac);
 	}
   dac_to_tile.setConn();
 	tile_to_chip.setConn();
@@ -121,7 +117,6 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (profile_t& result,
       }
     }
   }
-  prof::init_profile(result);
   if (hiRange) {
     // feed dac output into scaling down multiplier input
 		ref_to_tile.brkConn();

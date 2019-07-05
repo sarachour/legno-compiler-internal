@@ -5,6 +5,7 @@ from lab_bench.lib.chipcmd.use import *
 from lab_bench.lib.chipcmd.config import *
 from lab_bench.lib.chipcmd.conn import *
 from lab_bench.lib.chipcmd.calib import *
+from lab_bench.lib.chipcmd.profile import *
 from lab_bench.lib.chipcmd.misc import *
 from lab_bench.lib.expcmd.micro_action import *
 from lab_bench.lib.expcmd.micro_getter import *
@@ -37,7 +38,7 @@ COMMANDS = [
     CalibrateCmd,
     # offset commands
     GetStateCmd,
-    CharacterizeCmd,
+    ProfileCmd,
     # experiment commands dispatched to microcontroller
     MicroResetCmd,
     MicroRunCmd,
@@ -102,20 +103,18 @@ def characterize(state,obj,recompute=False, \
             backup_cached = obj.cached
             obj.cached = True
             obj.execute(state)
-            print(">> characterize")
-            CharacterizeCmd(obj.block_type,
-                            obj.loc.chip,
-                            obj.loc.tile,
-                            obj.loc.slice,
-                            obj.loc.index,
-                            targeted=targeted_measure) \
-                            .execute(state)
+            print(">> profile")
+            ProfileCmd(obj.block_type,
+                       obj.loc.chip,
+                       obj.loc.tile,
+                       obj.loc.slice,
+                       obj.loc.index) \
+                       .execute(state)
             obj.cached = backup_cached
 
 def calibrate(state,obj,recompute=False, \
               targeted_calibrate=False, \
               targeted_measure=False,
-              do_characterize=True, \
               error_scale=1.0):
     if isinstance(obj,UseCommand):
         if obj.max_error*error_scale > 1.0:
@@ -141,12 +140,6 @@ def calibrate(state,obj,recompute=False, \
                                 targeted=targeted_calibrate) \
                                 .execute(state)
 
-
-        if do_characterize:
-            characterize(state,obj,
-                         recompute=recompute,
-                         targeted_measure=targeted_measure
-            )
 
         result = state.state_db.get(dbkey)
         if result.success:

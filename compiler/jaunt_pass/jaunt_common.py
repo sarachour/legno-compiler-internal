@@ -75,7 +75,8 @@ def get_parameters(jenv,circ,block,loc,port,handle=None):
     mbw = config.bandwidth(port)
     mathscvar = jop.JVar(jenv.get_scvar(block.name,loc,port,handle))
     prop = block.props(config.comp_mode,scale_mode,port,handle=handle)
-    hwrng,hwbw = prop.interval(), prop.bandwidth()
+    hwrng= prop.interval()
+    hwbw = prop.bandwidth()
     resolution = 1
     if isinstance(prop,props.DigitalProperties):
         resolution = prop.resolution
@@ -142,6 +143,9 @@ def analog_bandwidth_constraint(jenv,circ,block,loc,port,handle,annot):
         jenv.eq(tau,jop.JConst(1.0),'jcom-physical-bw')
         jenv.set_time_scaling(False)
 
+    if not jenv.params.enable_bandwidth_constraint:
+        return
+
     if mbw.is_infinite():
         return
 
@@ -151,21 +155,26 @@ def analog_bandwidth_constraint(jenv,circ,block,loc,port,handle,annot):
     # physical signals are not corrected by the board's time constant
     physbw = _to_phys_bandwidth(circ,mbw.bandwidth)
     jenv.use_tau()
+
+    if not jenv.params.max_freq is None:
+        jenv.lte(jop.JMult(tau,jop.JConst(physbw)), \
+                jop.JConst(jenv.params.max_freq),
+                'jcom-analog-maxbw-%s' % annot
+        )
+
     if hwbw.upper > 0:
-        if jenv.params.bandwidth_maximum:
-            jenv.lte(jop.JMult(tau,jop.JConst(physbw)), \
-                    jop.JConst(hwbw.upper),
-                    'jcom-analog-bw-%s' % annot
-            )
+        jenv.lte(jop.JMult(tau,jop.JConst(physbw)), \
+                jop.JConst(hwbw.upper),
+                'jcom-analog-bw-%s' % annot
+        )
     else:
         jenv.fail()
 
     if hwbw.lower > 0:
-        if jenv.params.bandwidth_maximum:
-            jenv.gte(jop.JMult(tau,jop.JConst(physbw)), \
-                    jop.JConst(hwbw.lower),
-                    'jcom-analog-bw-%s' % annot
-            )
+        jenv.gte(jop.JMult(tau,jop.JConst(physbw)), \
+                jop.JConst(hwbw.lower),
+                'jcom-analog-bw-%s' % annot
+        )
 
 def digital_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
     pars = get_parameters(jenv,circ,block,loc,port,handle)
@@ -197,7 +206,7 @@ def digital_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
     hw_unc_coeff,_ = hw_unc.factor_const()
     if hw_unc_coeff > 0.0  \
        and mrng.bound > 0.0 \
-       and jenv.params.quality_minimum:
+       and jenv.params.enable_quality_constraint:
         signal_expr = jop.JMult(pars['math_scale'],jop.JConst(mrng.bound))
         noise_expr = jop.expo(hw_unc, -1.0)
         snr_expr = jop.JMult(signal_expr,noise_expr)
@@ -238,7 +247,7 @@ def analog_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
     hw_unc_coeff,_ = hw_unc.factor_const()
     if hw_unc_coeff > 0.0  \
        and mrng.bound > 0.0 \
-       and jenv.params.quality_minimum:
+       and jenv.params.enable_quality_constraint:
         signal_expr = jop.JMult(pars['math_scale'],jop.JConst(mrng.bound))
         noise_expr = jop.expo(hw_unc, -1.0)
         snr_expr = jop.JMult(signal_expr,noise_expr)
@@ -256,7 +265,7 @@ def digital_quantize_constraint(jenv,circ,block,loc,port,handle,annot=""):
 
     if delta_h > 0.0  \
        and mrng.bound > 0.0 \
-       and jenv.params.quantize_minimum:
+       and jenv.params.enable_quantize_constraint:
         noise_expr = jop.JConst(1.0/(resolution*delta_h))
 
         signal_expr = jop.JMult(pars['math_scale'],jop.JConst(mrng.bound))
@@ -296,11 +305,16 @@ def digital_bandwidth_constraint(jenv,prob,circ,block,loc,port,handle,annot):
         # maximum number of samples
         # sample frequency required
         sim_sample_freq = 2.0*physbw
-        if jenv.params.bandwidth_maximum:
+        if jenv.params.enable_bandwidth_constraint:
             jenv.lte(jop.JMult(tau, jop.JConst(sim_sample_freq)), \
                     jop.JConst(hw_sample_freq),
                     'jcom-digital-bw-%s' % annot
             )
+            if not jenv.params.max_freq is None:
+                jenv.lte(jop.JMult(tau,jop.JConst(sim_sample_freq)), \
+                         jop.JConst(jenv.params.max_freq),
+                         'jcom-digital-maxbw-%s' % annot
+                )
 
         if not prop.max_samples is None:
             # (max_sim_time/tau)*(sim_sample_freq*tau)

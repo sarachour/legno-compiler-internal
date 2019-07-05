@@ -186,13 +186,13 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     break;
 
   case cmd_type_t::CHARACTERIZE:
-    prof::init_profile(result.result);
     print_log("characterizing...");
-    calibrate::characterize(fab,
-                            result.result,
-                            cmd.data.calib.blk,
-                            cmd.data.calib.loc,
-                            cmd.data.calib.targeted);
+    result.result = calibrate::measure(fab,
+                                            cmd.data.prof.blk,
+                                            cmd.data.prof.loc,
+                                            cmd.data.prof.mode,
+                                            cmd.data.prof.in0,
+                                            cmd.data.prof.in1);
     print_log("getting codes...");
     calibrate::get_codes(fab,
                          cmd.data.calib.blk,
@@ -200,19 +200,17 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
                          state);
     print_log("done");
     comm::response("characterization terminated",1);
-    sprintf(FMTBUF,"result=%d state=%d",sizeof(result.result), sizeof(state));
-    print_log(FMTBUF);
     sprintf(FMTBUF,"%d",sizeof(state)+sizeof(result.result)+2);
     comm::data(FMTBUF,"I");
     comm::payload();
     Serial.print(sizeof(state));
     Serial.print(" ");
     Serial.print(sizeof(result.result));
-    for(int i=0; i < sizeof(state); i+=1){
+    for(unsigned int i=0; i < sizeof(state); i+=1){
       Serial.print(" ");
       Serial.print(state.charbuf[i]);
     }
-    for(int i=0; i < sizeof(result.result); i+=1){
+    for(unsigned int i=0; i < sizeof(result.result); i+=1){
       Serial.print(" ");
       Serial.print(result.charbuf[i]);
     }

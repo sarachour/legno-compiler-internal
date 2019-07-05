@@ -18,7 +18,7 @@ import math
 import bmark.menvs as menvs
 
 def emit(v):
-  return op.Emit(op.Mult(op.Const(0.99999), v))
+  return op.Emit(op.Mult(op.Const(0.99999), v),loc="A0")
 
 
 def model():

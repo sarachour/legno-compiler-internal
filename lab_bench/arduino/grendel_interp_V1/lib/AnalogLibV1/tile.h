@@ -26,6 +26,7 @@ class Fabric::Chip::Tile {
 
 		Slice * slices;
 
+		Chip * const parentChip;
 	private:
 		Tile (
 			Chip * parentChip,
@@ -40,7 +41,6 @@ class Fabric::Chip::Tile {
 		void controllerHelperTile (unsigned char selLine, unsigned char cfgTile) const;
 		int spiDriveTile ( const bool * vector ) const;
 
-		Chip * const parentChip;
 
 		const tileRow tileRowId;
 		const tileCol tileColId;

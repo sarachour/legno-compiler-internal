@@ -1,49 +1,10 @@
 #include "AnalogLib.h"
 #include "fu.h"
+#include "mul.h"
 #include "calib_util.h"
 #include <float.h>
 
 
-float compute_in0(mult_code_t& m_codes,float in0){
-  return in0*util::range_to_coeff(m_codes.range[in0Id]);
-}
-float compute_in1(mult_code_t& m_codes, float in1){
-  return in1*util::range_to_coeff(m_codes.range[in1Id]);
-}
-float compute_out_mult(mult_code_t& m_codes, float in0, float in1){
-  float sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
-  float rng = util::range_to_coeff(m_codes.range[out0Id]);
-  rng *= 1.0/util::range_to_coeff(m_codes.range[in0Id]);
-  rng *= 1.0/util::range_to_coeff(m_codes.range[in1Id]);
-  /*
-  sprintf(FMTBUF,"range=%f (%f,%f,out=%f)",rng,
-          util::range_to_coeff(m_codes.range[in0Id]),
-          util::range_to_coeff(m_codes.range[in1Id]),
-          util::range_to_coeff(m_codes.range[out0Id])
-          ); print_info(FMTBUF);
-  sprintf(FMTBUF,"sign=%f",sign); print_info(FMTBUF);
-  sprintf(FMTBUF,"in0=%f",compute_in0(m_codes,in0)); print_info(FMTBUF);
-  sprintf(FMTBUF,"in1=%f",compute_in1(m_codes,in1)); print_info(FMTBUF);
-  */
-  return rng*sign*compute_in0(m_codes,in0)*compute_in1(m_codes,in1);
-}
-
-float compute_out_vga(mult_code_t& m_codes, float in0){
-  float gain = m_codes.gain_val;
-  float sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
-  float rng = util::range_to_coeff(m_codes.range[out0Id]);
-  rng *= 1.0/util::range_to_coeff(m_codes.range[in0Id]);
-  return gain*rng*sign*compute_in0(m_codes,in0);
-}
-
-float compute_out(mult_code_t& m_codes, float in0, float in1){
-  if(m_codes.vga){
-    return compute_out_vga(m_codes,in0);
-  }
-  else{
-    return compute_out_mult(m_codes,in0,in1);
-  }
-}
 bool Fabric::Chip::Tile::Slice::Multiplier::calibrate (profile_t& result, float max_error) {
   mult_code_t codes_self = m_codes;
   if(m_codes.vga)
@@ -573,27 +534,21 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (profile_t& result, 
   sprintf(FMTBUF, "target val-full=%f val-half=%f",
           val_full, val_half);
   print_info(FMTBUF);
-  prof::init_profile(prof::TEMP);
-  dval1_0 = cutil::make_zero_dac(calib,val1_dac,
-                                   prof::TEMP);
+  dval1_0 = cutil::make_zero_dac(calib,val1_dac);
 
-  prof::init_profile(prof::TEMP);
   dval1_full = cutil::make_val_dac(calib,
-                                   val1_dac,compute_in0(m_codes,val_full),
-                                   prof::TEMP);
-  prof::init_profile(prof::TEMP);
+                                   val1_dac,
+                                   compute_in0(m_codes,val_full));
   dval1_half= cutil::make_val_dac(calib,
-                                  val1_dac,compute_in0(m_codes,val_half),
-                                  prof::TEMP);
+                                  val1_dac,
+                                  compute_in0(m_codes,val_half));
   if(!m_codes.vga){
-    prof::init_profile(prof::TEMP);
     dval2_full = cutil::make_val_dac(calib,
-                                     val2_dac,compute_in1(m_codes,val_full),
-                                     prof::TEMP);
-    prof::init_profile(prof::TEMP);
+                                     val2_dac,
+                                     compute_in1(m_codes,val_full));
     dval2_half= cutil::make_val_dac(calib,
-                                    val2_dac,compute_in1(m_codes,val_half),
-                                    prof::TEMP);
+                                    val2_dac,
+                                    compute_in1(m_codes,val_half));
   }
 
   bool found_code = false;

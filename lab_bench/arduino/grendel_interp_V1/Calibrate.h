@@ -5,11 +5,12 @@
 #define CALIBRATE_H
 
 namespace calibrate {
-  bool characterize(Fabric * fab,
-                    profile_t& result,
-                    uint16_t blk,
-                    circ::circ_loc_idx1_t loc,
-                    bool targeted);
+  profile_t measure(Fabric * fab,
+                         uint16_t blk,
+                         circ::circ_loc_idx1_t loc,
+                         uint8_t mode,
+                         float in0,
+                         float in1);
 
 
   bool calibrate(Fabric * fab,

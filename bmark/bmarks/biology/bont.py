@@ -60,8 +60,7 @@ def model():
 
 def execute():
   menv,prob = model()
-  T,Y = run_diffeq(menv,prob)
-  plot_diffeq(menv,prob,T,Y)
+  plot_diffeq(menv,prob)
 
 
 

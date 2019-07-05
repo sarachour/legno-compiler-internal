@@ -17,21 +17,20 @@ namespace cutil {
                         Fabric::Chip::Tile::Slice::Dac * dac,
                           float value,
                           float& ref){
-    prof::init_profile(prof::TEMP);
+
     if(fabs(value) > 0.9){
       ref = value;
-      return make_val_dac(calib,dac,value,prof::TEMP);
+      return make_val_dac(calib,dac,value);
     }
     else {
       ref = 0.0;
-      return make_zero_dac(calib,dac,prof::TEMP);
+      return make_zero_dac(calib,dac);
     }
   }
 
   dac_code_t make_val_dac(calibrate_t& calib,
                           Fabric::Chip::Tile::Slice::Dac * dac,
-                          float value,
-                          profile_t& calib_result){
+                          float value){
     dac_code_t backup = dac->m_codes;
     dac_code_t result = dac->m_codes;
     dac->setEnable(true);
@@ -53,7 +52,7 @@ namespace cutil {
     dac->setInv(false);
     sprintf(FMTBUF, "dac calibrate %f", value);
     print_log(FMTBUF);
-    if(!dac->calibrateTarget(calib_result,0.01)){
+    if(!dac->calibrateTarget(prof::TEMP,0.01)){
       sprintf(FMTBUF, "dac-aux: cannot set DAC=%f", value);
       print_log(FMTBUF);
       calib.success = false;
@@ -68,14 +67,12 @@ namespace cutil {
 
   }
   dac_code_t make_zero_dac(calibrate_t& calib,
-                           Fabric::Chip::Tile::Slice::Dac * dac,
-                           profile_t& result){
-    return make_val_dac(calib,dac,0.0,result);
+                           Fabric::Chip::Tile::Slice::Dac * dac){
+    return make_val_dac(calib,dac,0.0);
   }
   dac_code_t make_one_dac(calibrate_t& calib,
-                          Fabric::Chip::Tile::Slice::Dac * dac,
-                          profile_t& result){
-    return make_val_dac(calib,dac,1.0,result);
+                          Fabric::Chip::Tile::Slice::Dac * dac){
+    return make_val_dac(calib,dac,1.0);
   }
   void buffer_conn(calibrate_t& calib, Fabric::Chip::Connection& conn){
     if(calib.nconns < MAX_CONNS){

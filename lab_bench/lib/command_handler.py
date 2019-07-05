@@ -102,6 +102,7 @@ def main_script_calibrate(state,filename, \
                 print(line)
                 print("<comment, skipping..>")
 
+            print("==== CALIBRATE BLOCK ====")
             command_obj = cmd.parse(line)
             succ = cmd.calibrate(state,command_obj, \
                                  recompute=recompute,

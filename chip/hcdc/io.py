@@ -110,7 +110,8 @@ def adc_scale_model(adc):
    modes = adc_get_modes()
    std,nonstd = gutil.partition(adc_is_standard,modes)
    adc.set_scale_modes("*",std,glb.HCDCSubset.all_subsets())
-   adc.set_scale_modes("*",nonstd,[glb.HCDCSubset.UNRESTRICTED])
+   adc.set_scale_modes("*",nonstd,[glb.HCDCSubset.UNRESTRICTED, \
+                                   glb.HCDCSubset.EXTENDED2])
    for mode in modes:
       get_prop = lambda p : CTX.get(p, adc.name,
                                     '*',mode,None)

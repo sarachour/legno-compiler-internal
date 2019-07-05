@@ -76,6 +76,7 @@ def exec_jaunt_search(prog,conc_circ,args,tolerance=0.002):
                                                     conc_circ,
                                                     args.scale_circuits,
                                                     model=args.model,
+                                                    max_freq=args.max_freq,
                                                     digital_error=digital_error,
                                                     analog_error=analog_error,
                                                     do_log=False):
@@ -151,6 +152,7 @@ def exec_jaunt_search(prog,conc_circ,args,tolerance=0.002):
                                                     conc_circ,
                                                     args.scale_circuits,
                                                     model=args.model,
+                                                    max_freq=args.max_freq,
                                                     digital_error=dig_error*scale,
                                                     analog_error=analog_error*scale):
             yield idx,opt,model,scale_circ

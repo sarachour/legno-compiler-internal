@@ -42,10 +42,11 @@ def is_extended2(scale_mode):
   #return i == chipcmd.RangeType.MED and \
   #  (o == chipcmd.RangeType.MED or \
   #   o == chipcmd.RangeType.LOW)
-  return (i == chipcmd.RangeType.MED or \
-          i == chipcmd.RangeType.HIGH) and \
-          (o == chipcmd.RangeType.MED or \
-           o == chipcmd.RangeType.HIGH)
+
+  # increase
+  return (i == chipcmd.RangeType.MED) and \
+    (o == chipcmd.RangeType.MED or \
+     o == chipcmd.RangeType.HIGH)
 
 
 def is_standard(scale_mode):

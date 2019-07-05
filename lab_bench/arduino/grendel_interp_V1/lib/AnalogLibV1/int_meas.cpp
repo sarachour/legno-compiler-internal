@@ -4,125 +4,115 @@
 #include "fu.h"
 
 
-void Fabric::Chip::Tile::Slice::Integrator::characterize(profile_t& result){
-  integ_code_t backup = m_codes;
-  prof::init_profile(result);
-  float vals[SIZE1D];
-  int n = prof::data_1d(vals,SIZE1D);
-  measure(result,0.2,false);
-  measure(result,0.0,false);
-  for(int i=0; i < n; i += 1){
-    setInitial(vals[i]);
-    measure(result,0.0,true);
+profile_t Fabric::Chip::Tile::Slice::Integrator::measure(char mode, float input){
+  if(mode == 0){
+    return measure_ic(input);
   }
-  update(backup);
-}
-
-
-void Fabric::Chip::Tile::Slice::Integrator::characterizeTarget(profile_t& result){
-  float vals[SIZE1D];
-  int n = prof::data_1d(vals,SIZE1D);
-  prof::init_profile(result);
-  measure(result,0.0,true);
-  for(int i=0; i < n; i += 2){
-    measure(result,vals[i],false);
+  else{
+    return measure_ss(input);
   }
 }
 
 
-void helper_get_cal_in0(Fabric::Chip::Tile::Slice::Integrator * integ,
-                        profile_t& result)
-{
+profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
+  Fanout * fanout = &this->parentSlice->fans[0];
+  Dac* val_dac = this->parentSlice->dac;
+  int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
+  Dac * ref_dac = parentSlice->parentTile->slices[next_slice].dac;
 
-  integ->m_codes.cal_enable[out0Id] = false;
-  integ->m_codes.cal_enable[in0Id] = true;
-  integ->update(integ->m_codes);
+  fanout_code_t fan_codes = fanout->m_codes;
+  dac_code_t val_dac_codes = val_dac->m_codes;
+  dac_code_t ref_dac_codes = ref_dac->m_codes;
+  integ_code_t integ_codes = this->m_codes;
 
-  float mean,variance;
-  util::meas_dist_chip_out(integ,mean,variance);
-  prof::add_prop(result,
-                 in0Id,
-                 0.0,
-                 0.0,
-                 0.0,
-                 mean,
-                 variance);
-  //print_info("INPUT TREND");
-  //util::meas_trend_chip_out(integ);
-  integ->m_codes.cal_enable[in0Id] = false;
-}
+  cutil::calibrate_t calib;
+  cutil::initialize(calib);
+  cutil::buffer_fanout_conns(calib,fanout);
+  cutil::buffer_integ_conns(calib,this);
+  cutil::buffer_dac_conns(calib,val_dac);
+  cutil::buffer_dac_conns(calib,ref_dac);
+  cutil::buffer_tileout_conns(calib,&this->parentSlice->tileOuts[3]);
+  cutil::buffer_chipout_conns(calib,
+                              this->parentSlice->parentTile->parentChip
+                              ->tiles[3].slices[2].chipOutput);
 
+  cutil::break_conns(calib);
 
-void helper_get_cal_out0(Fabric::Chip::Tile::Slice::Integrator * integ,
-                         profile_t& result)
-{
-  integ->m_codes.cal_enable[in0Id] = false;
-  integ->m_codes.cal_enable[out0Id] = true;
-  integ->update(integ->m_codes);
+  fanout->m_codes.range[in0Id] = RANGE_MED;
+  fanout->m_codes.range[out0Id] = RANGE_MED;
+  fanout->m_codes.range[out1Id] = RANGE_MED;
+  fanout->m_codes.range[out2Id] = RANGE_MED;
+  fanout->m_codes.inv[out0Id] = false;
+  fanout->m_codes.inv[out1Id] = true;
+  fanout->update(fanout->m_codes);
 
-  float mean,variance;
-  util::meas_dist_chip_out(integ,mean,variance);
-  prof::add_prop(result,
-                 out0Id,
-                 0.0,
-                 0.0,
-                 0.0,
-                 mean,
-                 variance);
-
-  //print_info("OUTPUT TREND");
-  //util::meas_trend_chip_out(integ);
+  float target = input*util::range_to_coeff(m_codes.range[in0Id]);
+  float ref;
+  dac_code_t dac_code_value;
+  dac_code_t dac_code_ref;
+  dac_code_value = cutil::make_val_dac(calib,val_dac,target);
+  val_dac->update(dac_code_value);
 
 
-  integ->m_codes.cal_enable[out0Id] = false;
-}
-void helper_get_cal_trend(Fabric::Chip::Tile::Slice::Integrator * integ,
-                          Fabric::Chip::Tile::Slice::Dac * val_dac,
-                          dac_code_t& val_dac_codes,
-                          float val,
-                          profile_t& result)
-{
-  integ->update(integ->m_codes);
+  dac_code_ref = cutil::make_ref_dac(calib,
+                                     ref_dac,
+                                     -target,
+                                     ref);
+  ref_dac->update(dac_code_ref);
+  setInitial(0.0);
+  update(m_codes);
+
+
+  Connection integ_to_fan = Fabric::Chip::Connection ( out0, fanout->in0 );
+  Connection fan_to_tile = Fabric::Chip::Connection ( fanout->out0,
+                                                      parentSlice->tileOuts[3].out0);
+  Connection refdac_to_tile = Fabric::Chip::Connection ( ref_dac->out0,
+                                                                    parentSlice->tileOuts[3].out0);
+  Connection fan_to_integ = Fabric::Chip::Connection(fanout->out1, in0);
+  Connection valdac_to_integ = Fabric::Chip::Connection(val_dac->out0, in0);
+  Connection tile_to_chip = Fabric::Chip::Connection ( parentSlice->tileOuts[3].out0,
+                                         parentSlice->parentTile        \
+                                         ->parentChip->tiles[3].slices[2].chipOutput->in0 );
+
+  integ_to_fan.setConn();
+  fan_to_tile.setConn();
+  refdac_to_tile.setConn();
+  fan_to_integ.setConn();
+  valdac_to_integ.setConn();
+  tile_to_chip.setConn();
+  float mean, variance;
+  util::meas_steady_chip_out(this,mean,variance);
+  profile_t prof = prof::make_profile(out0Id,
+                                      0,
+                                      target,
+                                      -target,
+                                      0.0,
+                                      mean+(target+ref),
+                                      variance);
+
+
+  integ_to_fan.brkConn();
+  fan_to_tile.brkConn();
+  refdac_to_tile.brkConn();
+  fan_to_integ.brkConn();
+  valdac_to_integ.brkConn();
+  tile_to_chip.brkConn();
+  cutil::restore_conns(calib);
+  fanout->update(fan_codes);
   val_dac->update(val_dac_codes);
-  sprintf(FMTBUF, "BIAS TREND %f", val);
-  print_info(FMTBUF);
-  util::meas_trend_chip_out(integ);
-}
-bool helper_get_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
-                         Fabric::Chip::Tile::Slice::Dac * ref_dac,
-                         dac_code_t& ref_dac_codes,
-                         float ref,
-                         profile_t& result
-                         )
-{
-  print_info("---- test initial cond ---");
-  float target = compute_init_cond(integ->m_codes);
   ref_dac->update(ref_dac_codes);
-  integ->update(integ->m_codes);
-  float mean,variance;
-  util::meas_dist_chip_out(integ,mean,variance);
-  sprintf(FMTBUF,"mean=%f variance=%f target=%f ref=%f",
-          mean,variance,target,ref);
-  print_info(FMTBUF);
-  prof::add_prop(result,
-                 in1Id,
-                 target,
-                 0.0,
-                 integ->m_codes.ic_val,
-                 mean-(target+ref),
-                 variance);
+  this->update(integ_codes);
 }
 
-
-
-void Fabric::Chip::Tile::Slice::Integrator::measure(profile_t& result, float input, \
-                                                    bool test_init_cond)
+profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ic(float input)
 {
   Dac * aux_dac = parentSlice->dac;
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   //back up codes
-  integ_code_t codes_self = m_codes;
+  integ_code_t codes_integ = m_codes;
   dac_code_t aux_codes = aux_dac->m_codes;
+
+  setInitial(input);
 
   cutil::calibrate_t calib;
   cutil::initialize(calib);
@@ -148,57 +138,30 @@ void Fabric::Chip::Tile::Slice::Integrator::measure(profile_t& result, float inp
                                          parentSlice->parentTile
                                          ->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
-  dac_code_t dac_ref;
-  float ref_target,ref;
-  dac_code_t dac_val;
-  float val;
-  if(test_init_cond){
-    ref_target = compute_init_cond(m_codes);
-    dac_ref = cutil::make_ref_dac(calib,aux_dac,-ref_target,ref);
-    aux_dac->update(dac_ref);
-    aux_to_tile.setConn();
-  }
-  else{
-    prof::init_profile(prof::TEMP);
-    dac_val = cutil::make_val_dac(calib,aux_dac,input,
-                                  prof::TEMP);
-    aux_dac->update(dac_val);
-    aux_to_input.setConn();
-  }
+  float target,ref;
+  dac_code_t dac_ref_codes;
+  target = compute_init_cond(m_codes);
+  dac_ref_codes = cutil::make_ref_dac(calib,aux_dac,-target,ref);
+  aux_dac->update(dac_ref_codes);
+  aux_to_tile.setConn();
   integ_to_tile.setConn();
 	tile_to_chip.setConn();
+  update(m_codes);
+  float mean,variance;
+  util::meas_dist_chip_out(this,mean,variance);
+  profile_t prof = prof::make_profile(out0Id,
+                                      0,
+                                      target,
+                                      m_codes.ic_val,
+                                      0.0,
+                                      mean-(target+ref),
+                                      variance);
 
-  if(!test_init_cond){
-    helper_get_cal_out0(this,
-                        result);
-    helper_get_cal_in0(this,
-                       result);
-    /*
-    helper_get_cal_trend(this,
-                         aux_dac,
-                         dac_val,
-                         input,
-                         result);
-    */
-  }
-  else{
-    helper_get_cal_gain(this,
-                        aux_dac,
-                        dac_ref,
-                        ref,
-                        result);
-  }
-
-  if(test_init_cond){
-    aux_to_tile.brkConn();
-  }
-  else{
-    aux_to_input.brkConn();
-  }
+  aux_to_tile.brkConn();
   integ_to_tile.brkConn();
 	tile_to_chip.brkConn();
   aux_dac->update(aux_codes);
   cutil::restore_conns(calib);
-  update(codes_self);
-
+  update(codes_integ);
+  return prof;
 }

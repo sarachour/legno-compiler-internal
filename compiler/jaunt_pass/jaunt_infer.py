@@ -171,9 +171,11 @@ def sc_decl_scale_model_variables(jenv,circ):
 
 def sc_build_jaunt_env(prog,circ, \
                        model="ideal", \
+                       max_freq=None, \
                        digital_error=0.05, \
                        analog_error=0.05):
     jenv = jenvlib.JauntInferEnv(model, \
+                                 max_freq=max_freq, \
                                  digital_error=digital_error,
                                  analog_error=analog_error)
     # declare scaling factors
@@ -311,11 +313,13 @@ def solve_convex_first(prob,circ,jenv):
 
 def infer_scale_config(prog,circ,nslns, \
                        model="ideal", \
+                       max_freq=None, \
                        analog_error=0.05,
                        digital_error=0.05):
     assert(isinstance(circ,ConcCirc))
     jenv = sc_build_jaunt_env(prog,circ,
                               model=model, \
+                              max_freq=max_freq, \
                               analog_error=analog_error, \
                               digital_error=digital_error)
     #solve_convex_first(prog,circ,jenv)

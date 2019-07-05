@@ -8,7 +8,7 @@ import util.paths as paths
 import bmark.menvs as menvs
 from scipy import optimize
 import bmark.diffeqs as diffeqs
-from bmark.bmarks.common import run_diffeq
+from bmark.bmarks.common import run_system
 import chip.hcdc.globals as glbls
 import util.util as util
 
@@ -27,12 +27,8 @@ def compute_ref(bmark,menvname,varname):
   if not (bmark,menvname,varname) in CACHE:
     prob = diffeqs.get_prog(bmark)
     menv = menvs.get_math_env(menvname)
-    TREF,YREF = [],[]
-    I = prob.variable_order.index(varname)
-    for t,y in zip(*run_diffeq(menv,prob)):
-      z = prob.curr_state(menv,t,y)
-      TREF.append(t)
-      YREF.append(z[I])
+    T,D = run_system(menv,prob)
+    TREF,YREF = T,D[varname]
 
     CACHE[(bmark,menvname,varname)] = (TREF,YREF)
     return TREF,YREF
@@ -106,6 +102,17 @@ def fit(_tref,_yref,_tmeas,_ymeas):
   infer_t,infer_x = apply_model_to_obs(tref,tmeas,ymeas,model)
   return infer_t,infer_x,model
 
+def apply_model(_tref,_yref,_tmeas,_ymeas,model):
+  # apply transform to turn ref -> pred
+  tref = np.array(_tref)
+  yref = np.array(_yref)
+  tmeas = np.array(_tmeas)
+  ymeas = np.array(_ymeas)
+  print(model)
+
+  infer_t,infer_x = apply_model_to_obs(tref,tmeas,ymeas,model)
+  return infer_t,infer_x
+
 def compute_quality(_tobs,_yobs,_tpred,_ypred):
   def compute_error(ypred,yobs):
     return (ypred-yobs)**2
@@ -118,15 +125,18 @@ def compute_quality(_tobs,_yobs,_tpred,_ypred):
                                                      yobs[i]), range(n))))
 
   # SSQE
+  if n == 0:
+    return -1
   ssqe = math.sqrt(sum(errors)/n)
   print("mean (errors): %s" % ssqe)
-  return ssqe
+  return ssqe,tobs,errors
 
 def analyze(entry):
   path_h = paths.PathHandler(entry.subset,entry.bmark)
   QUALITIES = []
   print(entry)
   VARS = set(map(lambda o: o.varname, entry.outputs()))
+  MODEL = None
   for output in entry.outputs():
     varname = output.varname
     trial = output.trial
@@ -141,7 +151,13 @@ def analyze(entry):
     TPRED,YPRED = scale_ref_data(output.tau,output.scf,TREF,YREF)
     common.simple_plot(output,path_h,output.trial,'pred',TPRED,YPRED)
 
-    TFIT,YFIT,MODEL = fit(TPRED,YPRED,TMEAS,YMEAS)
+    if not output.model is None:
+      MODEL = output.transform
+
+    if MODEL is None:
+      TFIT,YFIT,MODEL = fit(TPRED,YPRED,TMEAS,YMEAS)
+    else:
+      TFIT,YFIT = apply_model(TPRED,YPRED,TMEAS,YMEAS,MODEL)
     output.set_transform(MODEL)
 
     if TFIT is None or YFIT is None:
@@ -150,7 +166,8 @@ def analyze(entry):
 
     common.simple_plot(output,path_h,output.trial,'obs',TFIT,YFIT)
     common.compare_plot(output,path_h,output.trial,'comp',TPRED,YPRED,TFIT,YFIT)
-    QUALITY = compute_quality(TFIT,YFIT,TPRED,YPRED)
+    QUALITY,TERR,YERR = compute_quality(TFIT,YFIT,TPRED,YPRED)
+    common.simple_plot(output,path_h,output.trial,'err',TERR,YERR)
     output.set_quality(QUALITY)
     QUALITIES.append(QUALITY)
 

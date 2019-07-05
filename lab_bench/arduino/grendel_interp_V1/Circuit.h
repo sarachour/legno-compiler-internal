@@ -175,6 +175,14 @@ namespace circ {
   } cmd_calib_t;
 
   typedef struct {
+    uint8_t mode;
+    uint16_t blk;
+    circ_loc_idx1_t loc;
+    float in0;
+    float in1;
+  } cmd_prof_t;
+
+  typedef struct {
     uint16_t blk;
     circ_loc_idx1_t loc;
     uint8_t data[64];
@@ -193,6 +201,7 @@ namespace circ {
     circ_loc_idx1_t circ_loc_idx1;
     cmd_state_t state;
     cmd_calib_t calib;
+    cmd_prof_t prof;
   } cmd_data_t;
 
   typedef struct cmd {

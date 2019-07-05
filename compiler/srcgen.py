@@ -144,6 +144,7 @@ def gen_use_integrator(circ,block,locstr,config,debug=True):
                               RangeType])
 
   scf = config.scf('ic') if config.has_scf('ic') else 1.0
+  # correct for the 2x scaling factor, similar to lut
   init_cond = config.dac('ic')*scf
   init_cond = nearest_value(init_cond)
 
@@ -396,6 +397,7 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
   scaled_tc_hz = board.time_constant*conc_circ.tau
   scaled_sim_time = to_hw_time(conc_circ,mathenv.sim_time)
   scaled_input_time = to_hw_time(conc_circ,mathenv.input_time)
+  osc_slack = 1.3
   gren.add(parse('micro_reset'))
   # initialize oscilloscope
   if hwenv.use_oscilloscope:
@@ -404,7 +406,7 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
        cmd = "osc_set_volt_range %d %f %f" % (chan,lb,ub)
        gren.add(parse(cmd))
        cmd = "osc_set_sim_time %.3e" % \
-             (scaled_sim_time)
+             (scaled_sim_time*osc_slack)
        gren.add(parse(cmd))
 
   # initialize microcontroller

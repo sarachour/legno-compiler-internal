@@ -145,7 +145,8 @@ namespace util {
   float meas_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu);
   void meas_dist_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                           float& mean, float& variance);
-  void meas_trend_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu);
+  void meas_steady_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                            float& mean, float& variance);
 
   void test_iref(unsigned char code);
   bool is_valid_iref(unsigned char code);
@@ -210,6 +211,7 @@ class Fabric::Chip::Tile::Slice::FunctionUnit {
     }
     void updateFu();
 
+		const Slice * const parentSlice;
 	private:
 		class GenericInterface;
 		FunctionUnit (
@@ -229,7 +231,6 @@ class Fabric::Chip::Tile::Slice::FunctionUnit {
 		virtual void setParam4 () const { error("setParam4 not implemented"); };
 		virtual void setParam5 () const { error("setParam5 not implemented"); };
 
-		const Slice * const parentSlice;
 		// used for gain and initial condition range calibration
 		const unit unitId;
 };

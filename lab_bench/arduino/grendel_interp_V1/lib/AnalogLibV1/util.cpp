@@ -85,13 +85,16 @@ namespace util {
       ->analogDist(mean,variance);
   }
 
-  void meas_trend_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu){
+  void meas_steady_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                            float& mean, float& variance){
     Fabric* fab = fu->getFabric();
     fu->updateFu();
     fab->cfgCommit();
     fab->execStart();
+    //wait for one millisecond.
+    delay(1);
     fu->getChip()->tiles[3].slices[2].chipOutput
-      ->analogTrend();
+      ->analogDist(mean,variance);
     fab->execStop();
   }
 }

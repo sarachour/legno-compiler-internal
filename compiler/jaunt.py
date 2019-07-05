@@ -154,7 +154,8 @@ def report_missing_models(model,circ):
 def scale(prog,circ,nslns, \
           model='physical', \
           digital_error=0.05, \
-          analog_error=0.05,
+          analog_error=0.05, \
+          max_freq=None, \
           do_log=True):
     infer.clear(circ)
     infer.infer_intervals(prog,circ)
@@ -165,11 +166,13 @@ def scale(prog,circ,nslns, \
                                                                    circ, \
                                                                    nslns, \
                                                                    model=model,
+                                                                   max_freq=max_freq, \
                                                                    digital_error=digital_error,
                                                                    analog_error=analog_error)):
 
         for obj in objs:
             jenv = jenvlib.JauntEnv(model=model, \
+                                    max_freq=max_freq, \
                                     digital_error=digital_error, \
                                     analog_error=analog_error)
 

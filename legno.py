@@ -51,6 +51,7 @@ jaunt_subp.add_argument('--digital-error', type=float, default=0.04, \
 jaunt_subp.add_argument('--analog-error',type=float,default=0.04, \
                         help='do performance sweep.')
 jaunt_subp.add_argument('--search',action="store_true")
+jaunt_subp.add_argument("--max-freq", type=float, help="maximum frequency in Khz")
 
 graph_subp = subparsers.add_parser('graph', \
                                    help='emit debugging graph.')

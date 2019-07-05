@@ -7,12 +7,11 @@ import bmark.bmarks.other.test as test
 
 def get_benchmarks():
   return [
-    simple_osc.model("quad",4.0),
-    #simple_osc.model("adc",0.9,adc=True),
-    simple_osc.model("quarter",0.25, \
-                     menv_name='t200'),
+    simple_osc.model(),
     lotka.model(),
     test.nochange(),
     test.lut(),
-    test.feedback()
+    test.feedback(),
+    test.feedback2(),
+    test.feedback3()
   ]

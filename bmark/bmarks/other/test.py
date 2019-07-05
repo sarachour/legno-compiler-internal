@@ -9,6 +9,38 @@ from ops import op, opparse
 from bmark.bmarks.common import *
 import bmark.menvs as menvs
 
+def feedback3():
+  params = {
+    'Y0':0.0
+  }
+  prob = MathProg("feedback3")
+  Y = parse_diffeq('0.2+(-Y)', 'Y0', ':a', params)
+  prob.bind("Y",Y)
+  prob.bind("O",op.Emit(op.Var('Y'),loc='A0'))
+  prob.set_interval("Y",-1.0,1.0)
+  prob.compile()
+  menv = menvs.get_math_env('t20')
+  prob.set_max_sim_time(20)
+  return menv,prob
+
+def feedback2():
+  params = {
+    'Y0':0.0,
+    'Z0':0.0
+  }
+  prob = MathProg("feedback2")
+  Y = parse_diffeq('-Y', 'Y0', ':a', params)
+  Z = parse_diffeq('Y', 'Z0', ':b', params)
+  prob.bind("Y",Y)
+  prob.bind("Z",Z)
+  prob.bind("O",op.Emit(op.Var('Z'),loc='A0'))
+  prob.set_interval("Y",-1.0,1.0)
+  prob.set_interval("Z",-1.0,1.0)
+  prob.compile()
+  menv = menvs.get_math_env('t20')
+  prob.set_max_sim_time(20)
+  return menv,prob
+
 def feedback():
   params = {
     'Y0':1.0

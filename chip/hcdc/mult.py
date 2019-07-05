@@ -90,9 +90,7 @@ def is_extended_mul(mode):
 
 def is_extended2_mul(mode):
   i0,i1,o = mode
-  return i0 == chipcmd.RangeType.MED and \
-    i1 == chipcmd.RangeType.MED and \
-    o == chipcmd.RangeType.MED
+  return True
 
 
 def continuous_scale_model_vga(mult):

@@ -44,8 +44,7 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 		bool calibrate (profile_t& result,
                     const float max_error);
 
-		void characterize(profile_t& result);
-		void measure(profile_t& result, float input);
+		profile_t measure(float input);
     void defaults();
 		void setAnaIrefNmos () const override;
 	private:

@@ -99,11 +99,7 @@ void Fabric::Chip::Tile::Slice::ChipOutput::analogDist (
 
   mean = measure_dist(ardAnaDiffChan,variance);
 }
-void Fabric::Chip::Tile::Slice::ChipOutput::analogTrend() const {
 
-
-  measure_trend(ardAnaDiffChan);
-}
 
 /*Measure the reading of an ADC from multiple samples*/
 float Fabric::Chip::Tile::Slice::ChipOutput::analogAvg () const

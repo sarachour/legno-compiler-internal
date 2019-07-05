@@ -95,10 +95,6 @@ def build_adc_model(data):
     yield model
 
 def build_fanout_model(data):
-  comp_options = [sign_options(), \
-                  sign_options(), \
-                  sign_options()]
-
   block,loc,grouped_dataset = group_dataset(data)
 
   for group_data in grouped_dataset.values():
@@ -106,7 +102,7 @@ def build_fanout_model(data):
     infer_model,bnd = infer_util.infer_model(group_data)
 
     scale_modes = [to_range(group["range-%s" % group['port']])]
-    comp_modes = list(itertools.product(*comp_options))
+    print(group)
     for comp_mode in comp_modes:
       for scale_mode in scale_modes:
         model = PortModel(block,loc,group['port'],

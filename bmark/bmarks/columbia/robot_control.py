@@ -1,13 +1,13 @@
 if __name__ == "__main__":
   import sys
   import os
-  sys.path.insert(0,os.path.abspath("../../"))
+  sys.path.insert(0,os.path.abspath("../../../"))
 
 
 from lang.prog import MathProg
 from ops import op, opparse
 from bmark.bmarks.common import *
-from bmark.bmarks.other.bbsys import build_bb_sys
+from bmark.bmarks.other.bbsys import build_std_bb_sys
 import math
 import bmark.menvs as menvs
 
@@ -20,8 +20,8 @@ def model():
   sin_fun = op.Func(['T'], op.Sin(op.Var('T')))
   cos_fun = op.Func(['T'], op.Cos(op.Var('T')))
 
-  ampl,freq = 0.5,0.99
-  W,V = build_bb_sys(prob,ampl,freq,0)
+  ampl = 0.5
+  W,V = build_std_bb_sys(prob,ampl,0)
   params = {
     'DEG0' : 0,
     'X0': 0,
@@ -54,8 +54,7 @@ def model():
 
 def execute():
   menv,prob = model()
-  T,Y = run_diffeq(menv,prob)
-  plot_diffeq(menv,prob,T,Y)
+  plot_diffeq(menv,prob)
 
 
 if __name__ == "__main__":
