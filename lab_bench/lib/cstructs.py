@@ -379,10 +379,11 @@ def state_t():
 
 def profile_t():
     return cstruct.Struct(
-        "bias" / cstruct.Int16ul,
-        "noise" / cstruct.Int16ul,
-        "output" / cstruct.Int16ul,
-        "input0" / cstruct.Int16ul,
-        "input1" / cstruct.Int16ul,
-        "port" / cstruct.Int8ul
+        "bias" / cstruct.Float32l,
+        "noise" / cstruct.Float32l,
+        "output" / cstruct.Float32l,
+        "input0" / cstruct.Float32l,
+        "input1" / cstruct.Float32l,
+        "port" / cstruct.Int8ul,
+        "mode" / cstruct.Int8ul
     )

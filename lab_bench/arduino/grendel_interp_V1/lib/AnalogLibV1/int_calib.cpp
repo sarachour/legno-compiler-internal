@@ -118,7 +118,8 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
 
 
 
-void find_zero(Fabric::Chip::Tile::Slice::Integrator* integ, float max_error, int* buf){
+void find_zero(Fabric::Chip::Tile::Slice::Integrator* integ, float max_error,
+               int* buf_in,int * buf_out){
   Fabric::Chip::Tile::Slice::Fanout * fanout = &integ->parentSlice->fans[0];
   fanout_code_t fan_codes = fanout->m_codes;
   integ_code_t integ_codes = integ->m_codes;
@@ -160,8 +161,12 @@ void find_zero(Fabric::Chip::Tile::Slice::Integrator* integ, float max_error, in
   bool found_code = false;
   integ_code_t best_code = integ->m_codes;
   for(int nmos=0; nmos < 8; nmos += 1) {
-    float best_error = max_error;
-    buf[nmos] = -1;
+    float bias_neg = -1;
+    float bias_pos = -1;
+    int code[2];
+
+    buf_in[nmos] = -1;
+    buf_out[nmos] = -1;
     for(int bias_in=0; bias_in < 64; bias_in += 1){
       float mean, variance;
       integ->m_codes.nmos = nmos;
@@ -169,16 +174,40 @@ void find_zero(Fabric::Chip::Tile::Slice::Integrator* integ, float max_error, in
       integ->m_codes.port_cal[out0Id] = 32;
       integ->update(integ->m_codes);
       util::meas_steady_chip_out(integ,mean,variance);
-      sprintf(FMTBUF, "nmos=%d in_bias=%d error=%f",
-              nmos, bias_in, mean);
-      print_info(FMTBUF);
-      if(fabs(mean) < best_error and fabs(mean) < max_error){
-        buf[nmos] = bias_in;
-        best_error = fabs(mean);
+      if(mean < 0.0 &&
+         (bias_neg == -1 || fabs(mean) < bias_neg)){
+        code[0]= bias_in;
+        bias_neg = fabs(mean);
+      }
+      else if(mean >= 0.0 &&
+              (bias_pos == -1 || fabs(mean) < bias_pos)){
+        code[1]= bias_in;
+        bias_pos = fabs(mean);
       }
     }
-    sprintf(FMTBUF, "nmos=%d in_bias=%d error=%f",
-            nmos, buf[nmos], best_error);
+
+    float bias_best = max_error;
+    int out_code = -1;
+    int in_code = -1;
+    for(int bias_out=0; bias_out < 64; bias_out += 1){
+      for(int i = 0; i < 2; i +=1 ){
+        float mean, variance;
+        integ->m_codes.nmos = nmos;
+        integ->m_codes.port_cal[in0Id] = code[i];
+        integ->m_codes.port_cal[out0Id] = bias_out;
+        integ->update(integ->m_codes);
+        util::meas_steady_chip_out(integ,mean,variance);
+        if(fabs(mean) <= bias_best){
+          bias_best = fabs(mean);
+          out_code = bias_out;
+          in_code = code[i];
+        }
+      }
+    }
+    buf_in[nmos] = in_code;
+    buf_out[nmos] = out_code;
+    sprintf(FMTBUF, "nmos=%d in_bias=%d out_bias=%d error=%f",
+            nmos, buf_in[nmos],buf_out[nmos],bias_best);
     print_info(FMTBUF);
   }
 
@@ -199,7 +228,8 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTargetHelper (profile_t& re
 
   print_info("===== FIND ZERO =====");
   int bias_ins[8];
-  find_zero(this,0.03,bias_ins);
+  int bias_outs[8];
+  find_zero(this,0.03,bias_ins,bias_outs);
 
   print_info("===== CALIBRATE COMPONENT =====");
   Dac * ref_dac = parentSlice->dac;
@@ -252,7 +282,8 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTargetHelper (profile_t& re
     bool succ = true;
     sprintf(FMTBUF, "nmos=%d", m_codes.nmos);
     print_info(FMTBUF);
-    if(bias_ins[m_codes.nmos] < 0){
+    if(bias_ins[m_codes.nmos] < 0 or
+       bias_outs[m_codes.nmos] < 0){
       print_info("  -> no bias that moves to zero");
       m_codes.nmos += 1;
       if(m_codes.nmos <= 7){
@@ -261,8 +292,8 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTargetHelper (profile_t& re
       continue;
     }
     this->m_codes.port_cal[in0Id] = bias_ins[m_codes.nmos];
+    this->m_codes.port_cal[out0Id] = bias_outs[m_codes.nmos];
     update(m_codes);
-    succ &= helper_find_cal_out0(this,0.0,0.01);
     //if(succ)
     //  succ &= helper_find_cal_in0(this,0.01);
 

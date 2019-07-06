@@ -7,7 +7,6 @@ import util.config as CONFIG
 from lab_bench.lib.command_handler import main_stdout,  \
     main_script, \
     main_script_calibrate, \
-    main_script_characterize, \
     main_script_profile, \
     main_dump_db
 from lab_bench.lib.base_command import ArduinoCommand
@@ -37,12 +36,12 @@ parser.add_argument("--targeted", action='store_true', \
 
 parser.add_argument("--infer", action='store_true', \
                     help="infer uncalibrated components")
-parser.add_argument("--characterize", action='store_true', \
-                    help="characterize chip")
+parser.add_argument("--profile", action='store_true', \
+                    help="profile components on chip")
+parser.add_argument("--clear-profile", action='store_true', \
+                    help="clear profiles on chip")
 parser.add_argument("--recompute", action='store_true', \
                     help="recompute calibration codes")
-parser.add_argument("--profile", action='store_true', \
-                    help="emit profile data")
 parser.add_argument("--dump-db", action='store_true', \
                     help="dump the database contents to files")
 parser.add_argument("--dry-run", action='store_true', \
@@ -75,18 +74,12 @@ state = GrendelEnv(ip,args.port,
               ard_native=args.native,
               validate=args.validate)
 
-if args.profile:
-    assert(args.script != None)
-    succ = main_script_profile(state,args.script)
-    sys.exit(0)
-
 state.initialize()
 
 if args.calibrate:
     assert(args.script != None)
     succ = main_script_calibrate(state,args.script, \
                                  recompute=args.recompute,
-                                 characterize=args.characterize,
                                  targeted=args.targeted)
     if not succ:
         print("[ERROR] some calibration steps failed..")
@@ -96,10 +89,10 @@ if args.calibrate:
         print("<< inferring models for compiler >>")
         retcode = os.system("python3 infer_models.py")
 
-elif args.characterize:
-    succ = main_script_characterize(state,args.script, \
-                                 recompute=args.recompute,
-                                 targeted=args.targeted)
+elif args.profile:
+    succ = main_script_profile(state,args.script, \
+                               recompute=args.recompute,
+                               clear=args.clear_profile)
 if args.dry_run:
     sys.exit(0)
 

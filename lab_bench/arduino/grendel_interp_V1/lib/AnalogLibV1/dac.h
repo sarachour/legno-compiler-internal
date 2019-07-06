@@ -25,10 +25,11 @@ typedef enum {
 
 
 typedef struct {
-dac_code_t cache[NCACHE_SLOTS][NCACHE_ELS];
-bool is_cached[NCACHE_SLOTS][NCACHE_ELS];
-Fabric::Chip::Tile::Slice::Dac* owners[NCACHE_SLOTS];
-int lru[NCACHE_SLOTS];
+  dac_code_t cache[NCACHE_SLOTS][NCACHE_ELS];
+  bool is_cached[NCACHE_SLOTS][NCACHE_ELS];
+  Fabric::Chip::Tile::Slice::Dac* owners[NCACHE_SLOTS];
+  int lru_dac[NCACHE_SLOTS];
+  int lru_val[NCACHE_SLOTS][NCACHE_ELS];
 } dac_cache_t;
 
 extern dac_cache_t DAC_CACHE;

@@ -6,16 +6,14 @@ dac_cache_t DAC_CACHE;
 namespace dac_cache {
 
 
-  const float VALUES[NCACHE_ELS] = {-9,-7,-5,-3,-1,
-                                    1,3,5,7,9};
-
 
   void initialize(){
     for(int i=0; i < NCACHE_SLOTS; i++){
       DAC_CACHE.owners[i] = NULL;
-      DAC_CACHE.lru[i] = 0;
+      DAC_CACHE.lru_dac[i] = 0;
       for(int j=0; j < NCACHE_ELS; j+=1){
         DAC_CACHE.is_cached[i][j] = false;
+        DAC_CACHE.lru_val[i][j] = 0;
       }
     }
 
@@ -23,66 +21,99 @@ namespace dac_cache {
   int oldest_row(){
     int oldest_row = 0;
     for(int i=0; i < NCACHE_SLOTS; i+=1){
-      if(DAC_CACHE.lru[i] > DAC_CACHE.lru[oldest_row]){
+      if(DAC_CACHE.lru_dac[i] > DAC_CACHE.lru_dac[oldest_row]){
         oldest_row = i;
       }
     }
     print_log(FMTBUF);
     return oldest_row;
   }
+  int oldest_cell(int row){
+    int best_cell = 0;
+    for(int i=0; i < NCACHE_ELS; i += 1){
+      if(DAC_CACHE.lru_val[row][i] > DAC_CACHE.lru_val[row][best_cell]){
+        best_cell = i;
+      }
+    }
+    return best_cell;
+  }
   void age(){
     for(int i=0; i < NCACHE_SLOTS; i+=1){
-      DAC_CACHE.lru[i] += 1;
+      DAC_CACHE.lru_dac[i] += 1;
+      for(int j=0; j < NCACHE_ELS; j += 1){
+        DAC_CACHE.lru_val[i][j] += 1;
+      }
     }
   }
+  void use(int line, int cell){
+    DAC_CACHE.lru_dac[line] = 0;
+    DAC_CACHE.lru_val[line][cell] = 0;
+  }
+
   int new_line(Fabric::Chip::Tile::Slice::Dac* dac){
     int slot = oldest_row();
     for(int i=0; i < NCACHE_ELS; i+=1){
       DAC_CACHE.is_cached[slot][i] = false;
+      DAC_CACHE.lru_val[slot][i] = 0;
     }
     DAC_CACHE.owners[slot] = dac;
-    age();
-    DAC_CACHE.lru[slot] = 0;
+    DAC_CACHE.lru_dac[slot] = 0;
     return slot;
+  }
+  int new_cell(Fabric::Chip::Tile::Slice::Dac* dac,int line){
+    int cell = oldest_cell(line);
+    DAC_CACHE.is_cached[line][cell] = false;
+    DAC_CACHE.lru_val[line][cell] = 0;
+    return cell;
   }
   int get_line(Fabric::Chip::Tile::Slice::Dac* dac){
     for(int i=0; i < NCACHE_SLOTS; i += 1){
       if(DAC_CACHE.owners[i] == dac){
-        age();
-        DAC_CACHE.lru[i] = 0;
-        print_log(FMTBUF);
         return i;
       }
     }
     return new_line(dac);
   }
-  bool get_cached(Fabric::Chip::Tile::Slice::Dac* dac,
-                  float value,
-                  dac_code_t& this_code){
+  bool get_cell(Fabric::Chip::Tile::Slice::Dac* dac,
+                float value,
+                int& line,
+                int& cell){
     int slot = get_line(dac);
+    line = slot;
+
     for(int i = 0; i < NCACHE_ELS; i += 1){
-      if(fabs(value - VALUES[i]) < 1e-3 &&
+      float cached_value = DAC_CACHE.cache[slot][i].const_val;
+      if(fabs(value - cached_value) < 1e-3 &&
          DAC_CACHE.is_cached[slot][i]){
-        this_code = DAC_CACHE.cache[slot][i];
-        sprintf(FMTBUF, "found code slot=%d idx=%d", slot, i);
-        print_log(FMTBUF);
+        cell = i;
         return true;
       }
     }
+    cell = new_cell(dac,slot);
     return false;
+  }
+  bool get_cached(Fabric::Chip::Tile::Slice::Dac* dac,
+                  float value,
+                  dac_code_t& this_code){
+    int line,cell;
+    bool in_cache = get_cell(dac,value,line,cell);
+    if(in_cache){
+      use(line,cell);
+      this_code = DAC_CACHE.cache[line][cell];
+    }
+    return in_cache;
   }
 
   void cache(Fabric::Chip::Tile::Slice::Dac* dac,
              float value,
              dac_code_t& this_code){
-    int slot = get_line(dac);
-    for(int i = 0; i < NCACHE_ELS; i += 1){
-      if(fabs(value - VALUES[i]) < 1e-3){
-        DAC_CACHE.is_cached[slot][i] = true;
-        DAC_CACHE.cache[slot][i] = this_code;
-        sprintf(FMTBUF, "update code slot=%d idx=%d", slot, i);
-        print_log(FMTBUF);
-      }
-    }
+    int line,cell;
+    bool is_cached = get_cell(dac,value,line,cell);
+    DAC_CACHE.cache[line][cell] = this_code;
+    age();
+    use(line,cell);
+    DAC_CACHE.lru_dac[line] = 0;
+    DAC_CACHE.lru_val[line][cell] = 0;
+
   }
 }

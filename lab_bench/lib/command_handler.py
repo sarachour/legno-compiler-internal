@@ -49,25 +49,10 @@ def main_dump_db(state):
         obj.write_dataset(state.state_db)
 
 
-def main_script_profile(state,filename):
-    with open(filename,'r') as fh:
-        for idx,line in enumerate(fh):
-            if line == "quit":
-                sys.exit(0)
 
-            elif line.strip() == "":
-                continue
-
-            if line.startswith("#"):
-                print(line)
-                print("<comment, skipping..>")
-
-            command_obj = cmd.parse(line)
-            cmd.profile(state,command_obj)
-
-def main_script_characterize(state,filename, \
-                             targeted=False,
-                             recompute=False):
+def main_script_profile(state,filename, \
+                        recompute=False,
+                        clear=False):
     with open(filename,'r') as fh:
         for idx,line in enumerate(fh):
             if line == "quit":
@@ -80,9 +65,9 @@ def main_script_characterize(state,filename, \
                 print("<comment, skipping..>")
 
             command_obj = cmd.parse(line)
-            succ = cmd.characterize(state,command_obj, \
-                                 recompute=recompute,
-                                 targeted_measure=targeted)
+            succ = cmd.profile(state,command_obj, \
+                               recompute=recompute,
+                               clear=clear)
 
 
 def main_script_calibrate(state,filename, \
@@ -107,8 +92,7 @@ def main_script_calibrate(state,filename, \
             succ = cmd.calibrate(state,command_obj, \
                                  recompute=recompute,
                                  targeted_calibrate=targeted,
-                                 targeted_measure=targeted,
-                                 do_characterize=characterize)
+                                 targeted_measure=targeted)
             if succ is None:
                 continue
 
@@ -116,7 +100,6 @@ def main_script_calibrate(state,filename, \
             while not succ and scale < 200.0:
                 succ = cmd.calibrate(state,command_obj, \
                                      recompute=recompute,
-                                     do_characterize=characterize,
                                      targeted_calibrate=targeted,
                                      targeted_measure=targeted,
                                      error_scale=scale)

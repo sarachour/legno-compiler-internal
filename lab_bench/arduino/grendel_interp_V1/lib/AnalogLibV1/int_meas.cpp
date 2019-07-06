@@ -85,9 +85,9 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
   profile_t prof = prof::make_profile(out0Id,
                                       0,
                                       target,
-                                      -target,
+                                      target,
                                       0.0,
-                                      mean+(target+ref),
+                                      mean-(target+ref),
                                       variance);
 
 
@@ -102,6 +102,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
   val_dac->update(val_dac_codes);
   ref_dac->update(ref_dac_codes);
   this->update(integ_codes);
+  return prof;
 }
 
 profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ic(float input)

@@ -203,16 +203,16 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     sprintf(FMTBUF,"%d",sizeof(state)+sizeof(result.result)+2);
     comm::data(FMTBUF,"I");
     comm::payload();
-    Serial.print(sizeof(state));
-    Serial.print(" ");
     Serial.print(sizeof(result.result));
-    for(unsigned int i=0; i < sizeof(state); i+=1){
-      Serial.print(" ");
-      Serial.print(state.charbuf[i]);
-    }
+    Serial.print(" ");
+    Serial.print(sizeof(state));
     for(unsigned int i=0; i < sizeof(result.result); i+=1){
       Serial.print(" ");
       Serial.print(result.charbuf[i]);
+    }
+    for(unsigned int i=0; i < sizeof(state); i+=1){
+      Serial.print(" ");
+      Serial.print(state.charbuf[i]);
     }
     Serial.println("");
     break;

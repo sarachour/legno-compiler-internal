@@ -19,8 +19,8 @@ def model():
       "X0": 0.9999,
       "Y0": 0.99999
     }
-    X = parse_diffeq('{a}*X + (-Z)',"X0",":a",params)
-    Y = parse_diffeq('{g}*Z + (-Y)',"Y0",":b",params)
+    X = parse_diffeq('{a}*X + {b}*(-Z)',"X0",":a",params)
+    Y = parse_diffeq('{g}*Z + {d}*(-Y)',"Y0",":b",params)
     Z = parse_fn("X*Y",params)
     prob.bind("Z",Z)
     prob.bind("X",X)

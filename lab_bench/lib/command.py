@@ -91,14 +91,11 @@ def profile(state,obj):
             print(data.state)
             data.write_dataset(state.state_db)
 
-def characterize(state,obj,recompute=False, \
-              targeted_measure=False):
+def profile(state,obj,recompute=False, clear=False):
     if isinstance(obj,UseCommand):
-        dbkey = obj.to_key(targeted=targeted_measure)
+        dbkey = obj.to_key(targeted=False)
         result = state.state_db.get(dbkey)
-        if characterize and \
-            result.success and \
-            (not state.state_db.has_profile(dbkey) or recompute):
+        if result.success:
             print(">> set state")
             backup_cached = obj.cached
             obj.cached = True
@@ -108,7 +105,8 @@ def characterize(state,obj,recompute=False, \
                        obj.loc.chip,
                        obj.loc.tile,
                        obj.loc.slice,
-                       obj.loc.index) \
+                       obj.loc.index,
+                       clear=clear) \
                        .execute(state)
             obj.cached = backup_cached
 

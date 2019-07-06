@@ -8,6 +8,7 @@ import lab_bench.lib.chipcmd.state as chipstate
 import json
 import struct
 import os
+import random
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from bayes_opt import UtilityFunction
@@ -88,25 +89,27 @@ class ExecuteInput(AnalogChipCommand):
 
     def execute_command(self,env):
       resp = ArduinoCommand.execute_command(self,env)
-      state_size = int(resp.data(0)[0])
-      result_size = int(resp.data(0)[1])
+      result_size = int(resp.data(0)[0])
+      state_size = int(resp.data(0)[1])
       base = 2
-      state_data = bytes(resp.data(0)[base:(base+state_size)])
-      result_data = bytes(resp.data(0)[(base+state_size):])
+      result_data = bytes(resp.data(0)[base:(base+result_size)])
+      result = cstructs.profile_t() \
+                       .parse(result_data);
+
+      state_data = bytes(resp.data(0)[(base+state_size):])
       st = chipstate.BlockState \
                     .toplevel_from_cstruct(self._blk,
                                            self._loc,
                                            state_data,
                                            targeted=False)
-      result = cstructs.profile_t() \
-                       .parse(result_data);
-      bias = from_float16(result.bias)
-      noise = from_float16(result.noise)
-      out = from_float16(result.output)
-      in0 = from_float16(result.input0)
-      in1 = from_float16(result.input1)
+      print(result)
+      bias = result.bias
+      noise = result.noise
+      out = result.output
+      in0 = result.input0
+      in1 = result.input1
       port = enums.PortName.from_code(result.port)
-      return {
+      prof = {
         'bias':bias,
         'noise':noise,
         'out':out,
@@ -114,14 +117,16 @@ class ExecuteInput(AnalogChipCommand):
         'in1':in1,
         'port':port
       }
+      return st,prof
 
 class ProfileCmd(Command):
 
-    def __init__(self,blk,chip,tile,slce,index=None):
+    def __init__(self,blk,chip,tile,slce,index=None,clear=False):
         AnalogChipCommand.__init__(self)
         self._blk = enums.BlockType(blk)
         self._loc = CircLoc(chip,tile,slce,index=0 if index is None \
                             else index)
+        self._clear = clear
         if self._blk == enums.BlockType.MULT:
           self._n_inputs = 2
         else:
@@ -131,18 +136,32 @@ class ProfileCmd(Command):
     def name():
         return 'profile'
 
-    def get_output(self,state,inputs,mode=0):
+    def get_output(self,env,inputs,mode=0):
       cmd = ExecuteInput(self._blk, \
                          self._loc.chip, \
                          self._loc.tile, \
                          self._loc.slice, \
                          inputs=inputs, mode=mode)
-      return cmd.execute(state)
+      state,profile = cmd.execute(env)
+      self.update_database(env,state,profile)
 
-    def update_database(self,state,profile):
-        entry = env.state_db.get(st.key)
-        env.state_db.put(st,entry.targeted,
-                         profile=profile + entry.profile,
+    def clear_database(self,env,state):
+        entry = env.state_db.get(state.key)
+        env.state_db.put(state,entry.targeted,
+                         profile=[],
+                         success=entry.success,
+                         max_error=entry.tolerance)
+
+    def update_database(self,env,state,profile):
+        entry = env.state_db.get(state.key)
+        if self._clear:
+            print("-> clear database")
+            self.clear_database(env,state)
+            entry.profile = []
+            self._clear = False
+
+        env.state_db.put(state,entry.targeted,
+                         profile=[profile] + entry.profile,
                          success=entry.success,
                          max_error=entry.tolerance)
 
@@ -152,30 +171,60 @@ class ProfileCmd(Command):
         return True
 
 
-    def execute_command(self,state):
-      def unknown_fxn(x0,y):
+    def execute_command(self,env):
+      def unknown_fxn(x0):
           prop = "bias"
-          row = self.get_output(state,[x0],
+          row = self.get_output(env,[x0],
                                 mode=0)
+          print(row)
           return -(row[prop]-y)**2
 
 
-      opt = bayes.make_optimizer(self._n_inputs, \
-                                 unknown_fxn)
-      nsteps = 10
-      x = np.linspace(-1, 1, 100).reshape(-1, 1)
-      for _ in range(0,nsteps):
-        opt.maximize(
-            init_points=0,
-            n_iter=1
-        )
-        plot_gp(opt, x)
-        input()
+      if self._n_inputs == 1:
+        if self._blk == enums.BlockType.INTEG:
+            #for x0 in [0,1]:
+            #    self.get_output(env,[x0],mode=0)
 
-      for i, res in enumerate(opt.res):
-          print("Iteration {}: \n\t{}".format(i, res))
+            #for i in range(0,50):
+            #    x0 = random.uniform(-1,1)
+            #    self.get_output(env,[x0],mode=0)
 
-      input("stop")
+            for x0 in [0,1]:
+                self.get_output(env,[x0],mode=1)
+            self.get_output(env,[0],mode=1)
+            for i in range(0,50):
+                x0 = random.uniform(-1,1)
+                self.get_output(env,[x0],mode=1)
+
+        elif self._blk == enums.BlockType.FANOUT:
+            for x0 in [0,1,-1]:
+                self.get_output(env,[x0],mode=0)
+                self.get_output(env,[x0],mode=1)
+                self.get_output(env,[x0],mode=2)
+
+            for i in range(0,50):
+                x0 = random.uniform(-1,1)
+                self.get_output(env,[x0],mode=0)
+                self.get_output(env,[x0],mode=1)
+                self.get_output(env,[x0],mode=2)
+
+        else:
+            for i in range(0,50):
+                x0 = random.uniform(-1,1)
+                self.get_output(env,[x0],mode=0)
+
+      elif self._n_inputs == 2:
+          for x0,x1 in [(1,1),(0,1),(1,0),(0,0)]:
+              self.get_output(env,[x0,x1],mode=0)
+
+          for _ in range(0,50):
+              x0 = random.uniform(-1,1)
+              x1 = random.uniform(-1,1)
+              self.get_output(env,[x0,x1],mode=0)
+
+      else:
+        raise Exception("profiling eliminated")
+
 
     @staticmethod
     def parse(args):

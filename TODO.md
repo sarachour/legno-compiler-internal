@@ -4,6 +4,8 @@
 
 # Benchmark Status
 
+- vanderpol and sin require low-freq
+
 ## Subsets
 
 sets of parameters

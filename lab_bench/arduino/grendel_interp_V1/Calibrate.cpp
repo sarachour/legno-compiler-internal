@@ -24,7 +24,7 @@ namespace calibrate {
     switch(blk){
     case circ::block_type_t::FANOUT:
       fanout = common::get_fanout(fab,loc);
-      fanout->measure(mode,in0);
+      return fanout->measure(mode,in0);
       break;
 
     case circ::block_type_t::MULT:

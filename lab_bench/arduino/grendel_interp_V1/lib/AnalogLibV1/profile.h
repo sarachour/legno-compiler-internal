@@ -6,12 +6,11 @@
 
 
 typedef struct {
-  uint16_t bias;
-  uint16_t noise;
-  uint16_t target;
-  uint16_t input0;
-  uint16_t input1;
-  uint8_t size;
+  float bias;
+  float noise;
+  float target;
+  float input0;
+  float input1;
   uint8_t port;
   uint8_t mode;
 } profile_t;
