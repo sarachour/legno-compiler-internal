@@ -52,7 +52,9 @@ def main_dump_db(state):
 
 def main_script_profile(state,filename, \
                         recompute=False,
-                        clear=False):
+                        clear=False,
+                        bootstrap=False,
+                        n=5):
     with open(filename,'r') as fh:
         for idx,line in enumerate(fh):
             if line == "quit":
@@ -67,7 +69,8 @@ def main_script_profile(state,filename, \
             command_obj = cmd.parse(line)
             succ = cmd.profile(state,command_obj, \
                                recompute=recompute,
-                               clear=clear)
+                               bootstrap=bootstrap,
+                               n=5)
 
 
 def main_script_calibrate(state,filename, \

@@ -73,7 +73,6 @@ class ExecuteInput(AnalogChipCommand):
 
     def build_ctype(self):
         loc_type = self._loc.build_ctype()
-        print(loc_type)
         return build_circ_ctype({
             'type':enums.CircCmdType.CHARACTERIZE.name,
             'data':{
@@ -110,23 +109,33 @@ class ExecuteInput(AnalogChipCommand):
       in1 = result.input1
       port = enums.PortName.from_code(result.port)
       prof = {
-        'bias':bias,
-        'noise':noise,
-        'out':out,
-        'in0':in0,
-        'in1':in1,
-        'port':port
+          'bias':bias,
+          'noise':noise,
+          'mode':result.mode,
+          'out':out,
+          'in0':in0,
+          'in1':in1,
+          'port':port
       }
+      print(prof)
       return st,prof
+
+
+
+
+
 
 class ProfileCmd(Command):
 
-    def __init__(self,blk,chip,tile,slce,index=None,clear=False):
+    def __init__(self,blk,chip,tile,slce, \
+                 index=None,clear=False,bootstrap=False,n=5):
         AnalogChipCommand.__init__(self)
         self._blk = enums.BlockType(blk)
-        self._loc = CircLoc(chip,tile,slce,index=0 if index is None \
-                            else index)
+        self._loc = CircLoc(chip,tile,slce,index)
         self._clear = clear
+        self._n = n
+        print(n)
+        self._bootstrap=bootstrap
         if self._blk == enums.BlockType.MULT:
           self._n_inputs = 2
         else:
@@ -141,7 +150,9 @@ class ProfileCmd(Command):
                          self._loc.chip, \
                          self._loc.tile, \
                          self._loc.slice, \
-                         inputs=inputs, mode=mode)
+                         index=self._loc.index, \
+                         inputs=inputs,
+                         mode=mode)
       state,profile = cmd.execute(env)
       self.update_database(env,state,profile)
 
@@ -172,52 +183,48 @@ class ProfileCmd(Command):
 
 
     def execute_command(self,env):
-      def unknown_fxn(x0):
-          prop = "bias"
-          row = self.get_output(env,[x0],
-                                mode=0)
-          print(row)
-          return -(row[prop]-y)**2
-
-
       if self._n_inputs == 1:
         if self._blk == enums.BlockType.INTEG:
-            #for x0 in [0,1]:
-            #    self.get_output(env,[x0],mode=0)
+            if self._bootstrap:
+                for x0 in [0,1]:
+                    self.get_output(env,[x0],mode=0)
 
-            #for i in range(0,50):
-            #    x0 = random.uniform(-1,1)
-            #    self.get_output(env,[x0],mode=0)
+            for i in range(0,self._n):
+                x0 = random.uniform(-1,1)
+                self.get_output(env,[x0],mode=0)
 
-            for x0 in [0,1]:
-                self.get_output(env,[x0],mode=1)
-            self.get_output(env,[0],mode=1)
-            for i in range(0,50):
+            if self._bootstrap:
+                for x0 in [0,1]:
+                    self.get_output(env,[x0],mode=1)
+
+            for i in range(0,self._n):
                 x0 = random.uniform(-1,1)
                 self.get_output(env,[x0],mode=1)
 
         elif self._blk == enums.BlockType.FANOUT:
-            for x0 in [0,1,-1]:
-                self.get_output(env,[x0],mode=0)
-                self.get_output(env,[x0],mode=1)
-                self.get_output(env,[x0],mode=2)
+            if self._bootstrap:
+                for x0 in [0,1,-1]:
+                    self.get_output(env,[x0],mode=0)
+                    self.get_output(env,[x0],mode=1)
+                    self.get_output(env,[x0],mode=2)
 
-            for i in range(0,50):
+            for i in range(0,self._n):
                 x0 = random.uniform(-1,1)
                 self.get_output(env,[x0],mode=0)
                 self.get_output(env,[x0],mode=1)
                 self.get_output(env,[x0],mode=2)
 
         else:
-            for i in range(0,50):
+            for i in range(0,self._n):
                 x0 = random.uniform(-1,1)
                 self.get_output(env,[x0],mode=0)
 
       elif self._n_inputs == 2:
-          for x0,x1 in [(1,1),(0,1),(1,0),(0,0)]:
-              self.get_output(env,[x0,x1],mode=0)
+          if self._bootstrap:
+            for x0,x1 in [(1,1),(0,1),(1,0),(0,0)]:
+                self.get_output(env,[x0,x1],mode=0)
 
-          for _ in range(0,50):
+          for _ in range(0,self._n):
               x0 = random.uniform(-1,1)
               x1 = random.uniform(-1,1)
               self.get_output(env,[x0,x1],mode=0)

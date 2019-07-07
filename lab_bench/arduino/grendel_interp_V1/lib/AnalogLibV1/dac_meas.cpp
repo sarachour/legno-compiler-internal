@@ -62,7 +62,9 @@ profile_t Fabric::Chip::Tile::Slice::Dac::measure(float in)
                                         0.0,
                                         mean-target,
                                         variance);
-
+  if(!calib.success){
+    result.mode = 255;
+  }
   if (hiRange) {
     // feed dac output into scaling down multiplier input
 		ref_to_tile.brkConn();

@@ -132,6 +132,7 @@ namespace util {
   const char * ifc_to_string(ifc id);
 
   float range_to_coeff(range_t range);
+  float sign_to_coeff(bool inv);
 
   void distribution(float * values, int size, float& mean, float& variance);
   void save_conns(Fabric::Chip::Tile::Slice::FunctionUnit* fu,

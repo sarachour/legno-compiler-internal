@@ -75,13 +75,13 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_vga(float in0val,float 
 
   float mean=0.0,variance=0.0;
   util::meas_dist_chip_out(this,mean,variance);
-  profile_t prof = prof::make_profile(out0Id,0,
+  profile_t prof = prof::make_profile(out0Id,
+                                      calib.success ? 0 : 255,
                                       target_vga,
                                       in0val,
                                       gain,
                                       mean-(target_vga+ref),
                                       variance);
-
   dac_to_in0.brkConn();
   mult_to_tileout.brkConn();
   tileout_to_chipout.brkConn();
@@ -163,7 +163,8 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_mult(float in0val, floa
   val2_dac->update(dac_code_in1);
   float mean,variance;
   util::meas_dist_chip_out(this,mean,variance);
-  profile_t prof = prof::make_profile(out0Id,0,
+  profile_t prof = prof::make_profile(out0Id,
+                                      calib.success ? 0: 255,
                                       target_mult,
                                       in0val,
                                       in1val,

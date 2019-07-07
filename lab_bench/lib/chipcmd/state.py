@@ -66,6 +66,11 @@ class BlockStateDatabase:
     for values in self._curs.execute(cmd):
       data = dict(zip(self.keys,values))
       result = self._process(data)
+      if result is None:
+        print("==== FAILED TO PROCESS ===")
+        print(data)
+        raise Exception("could not process row")
+
       yield result
 
   def get_by_instance(self,blk,chip,tile,slice,index):
@@ -154,10 +159,11 @@ class BlockStateDatabase:
                   data['idx'])
 
     blk = enums.BlockType(data['block'])
+    targeted = chipdata.BoolType.from_code(data['targeted']).boolean()
     try:
       obj = BlockState \
             .toplevel_from_cstruct(blk,loc,bytes.fromhex(state), \
-                                   data['targeted'])
+                                   targeted)
     except ValueError:
       return None
 
@@ -172,8 +178,10 @@ class BlockStateDatabase:
   def get(self,blockkey):
     results = self._get(blockkey)
     if not (len(results) == 1):
-      raise Exception("cannot get <%s> : no results found" \
-                      % blockkey.to_key())
+      for row in self.get_all():
+        print(row.key.to_key())
+      raise Exception("cannot get <%s> : %d results found" \
+                      % (blockkey.to_key(),len(results)))
     data = dict(zip(self.keys,results[0]))
     result = self._process(data)
     return result
@@ -182,6 +190,7 @@ class BlockState:
 
   class Key:
     def __init__(self,blk,loc,targeted=False):
+      assert(isinstance(targeted,bool))
       self.block = blk
       self.loc = loc
       self.targeted = targeted
@@ -192,7 +201,10 @@ class BlockState:
       raise NotImplementedError
 
     def to_json(self):
-      return self.__dict__
+      obj = dict(self.__dict__)
+      obj['loc'] = self.loc.to_json()
+      obj['block'] = self.block.value
+      return obj
 
     def to_key(self):
       obj = self.to_json()
@@ -237,8 +249,19 @@ class BlockState:
         self.loc.tile,
         self.loc.slice,
         self.loc.index):
-      for group,param,value,error in self.to_rows(obj):
-        yield group,param,value,error
+      if len(obj.profile) == 0:
+        continue
+
+      keys = ['mode','in0','in1','out','bias','noise']
+      prof = dict(map(lambda k : (k,[]), keys))
+      for datum in obj.profile:
+        for k in keys:
+          prof[k].append(datum[k])
+
+      yield {
+        'metadata':obj.key.to_json(),
+        'dataset':prof
+      }
 
   def write_dataset(self,db):
     filename = "%s/%s_%d_%d_%d_%d.json" % (CFG.DATASET_DIR,
@@ -247,39 +270,15 @@ class BlockState:
                                            self.loc.tile,
                                            self.loc.slice,
                                            self.loc.index)
-    dataset = {"groups":[], "params":[],
-               "expected":[],"observed":[]}
-    G,P,E,O = [],[],[],[]
-    for g,p,e,o in self.get_dataset(db):
-      G.append(g)
-      P.append(p)
-      E.append(e)
-      O.append(o)
+    dataset= []
+    for datum in self.get_dataset(db):
+      dataset.append(datum)
 
-    GH,PH,EH,OH = self.header()
-    dataset = {}
-    dataset['metadata'] = self.metadata()
-    dataset['groups'] = {'fields': GH, 'values': G}
-    dataset['params'] = {'fields':PH, 'values': P}
-    dataset['expected'] = {'fields':EH, 'values': E}
-    dataset['observed'] = {'fields':OH, 'values': O}
     objstr = json.dumps(dataset)
     util.mkdir_if_dne(CFG.DATASET_DIR)
     with open(filename,'w') as fh:
       fh.write(objstr)
 
-  def metadata(self):
-    return {
-      "loc": self.loc.to_json(),
-      "block": self.block
-    }
-
-  def header(self):
-    raise NotImplementedError
-
-  def to_rows(self,obj):
-    print(self.__class__.__name__)
-    raise NotImplementedError
 
 
   @staticmethod
@@ -304,6 +303,7 @@ class BlockState:
   @staticmethod
   def toplevel_from_cstruct(blk,loc,data,targeted):
     obj = BlockState.decode_cstruct(blk,data)
+    assert(isinstance(targeted,bool))
     if blk == enums.BlockType.FANOUT:
       st = FanoutBlockState(loc,obj)
     elif blk == enums.BlockType.INTEG:
@@ -492,6 +492,7 @@ class MultBlockState(BlockState):
       return ['gain_val']
 
   def __init__(self,loc,state,targeted):
+    assert(isinstance(targeted,bool))
     BlockState.__init__(self,enums.BlockType.MULT,loc,state,targeted)
 
   def header(self):

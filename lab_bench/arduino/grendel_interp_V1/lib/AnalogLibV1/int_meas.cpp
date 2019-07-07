@@ -83,13 +83,12 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
   float mean, variance;
   util::meas_steady_chip_out(this,mean,variance);
   profile_t prof = prof::make_profile(out0Id,
-                                      0,
+                                      calib.success ? 1 : 255,
                                       target,
                                       target,
                                       0.0,
                                       mean-(target+ref),
                                       variance);
-
 
   integ_to_fan.brkConn();
   fan_to_tile.brkConn();
@@ -151,13 +150,12 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ic(float input)
   float mean,variance;
   util::meas_dist_chip_out(this,mean,variance);
   profile_t prof = prof::make_profile(out0Id,
-                                      0,
+                                      calib.success ? 0 : 255,
                                       target,
                                       m_codes.ic_val,
                                       0.0,
                                       mean-(target+ref),
                                       variance);
-
   aux_to_tile.brkConn();
   integ_to_tile.brkConn();
 	tile_to_chip.brkConn();

@@ -91,7 +91,11 @@ def profile(state,obj):
             print(data.state)
             data.write_dataset(state.state_db)
 
-def profile(state,obj,recompute=False, clear=False):
+def profile(state,obj, \
+            recompute=False, \
+            clear=False, \
+            bootstrap=False, \
+            n=5):
     if isinstance(obj,UseCommand):
         dbkey = obj.to_key(targeted=False)
         result = state.state_db.get(dbkey)
@@ -105,8 +109,10 @@ def profile(state,obj,recompute=False, clear=False):
                        obj.loc.chip,
                        obj.loc.tile,
                        obj.loc.slice,
-                       obj.loc.index,
-                       clear=clear) \
+                       index=obj.loc.index,
+                       clear=clear,
+                       bootstrap=bootstrap,
+                       n=n) \
                        .execute(state)
             obj.cached = backup_cached
 

@@ -17,6 +17,9 @@ namespace util {
     return "?";
   }
 
+  float sign_to_coeff(bool inv){
+    return inv ? -1.0 : 1.0;
+  }
   float range_to_coeff(range_t rng){
     switch(rng){
     case RANGE_LOW:

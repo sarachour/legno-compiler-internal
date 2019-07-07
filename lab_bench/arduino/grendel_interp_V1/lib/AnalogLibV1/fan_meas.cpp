@@ -13,7 +13,7 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
   fanout_code_t codes_fan = m_codes;
   dac_code_t codes_dac = val_dac->m_codes;
   dac_code_t codes_ref_dac = ref_dac->m_codes;
-  float target = input*util::range_to_coeff(m_codes.range[in0Id]);
+  float in_target = input*util::range_to_coeff(m_codes.range[in0Id]);
 
   cutil::calibrate_t calib;
   cutil::initialize(calib);
@@ -29,14 +29,8 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
   float ref;
 
   val_dac->setEnable(true);
-  dac_code_value = cutil::make_val_dac(calib,val_dac,target);
+  dac_code_value = cutil::make_val_dac(calib,val_dac,in_target);
   val_dac->update(dac_code_value);
-  ref_dac->setEnable(true);
-  dac_code_ref = cutil::make_ref_dac(calib,
-                                       ref_dac,
-                                       -target,
-                                       ref);
-  ref_dac->update(dac_code_ref);
 
   Connection dac_to_fan = Connection ( val_dac->out0, in0 );
   Connection tile_to_chip = Connection (parentSlice->tileOuts[3].out0,
@@ -49,33 +43,47 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
 	tile_to_chip.setConn();
 	ref_to_tile.setConn();
   unsigned char port = 0;
+  float out_target;
   switch(mode){
   case 0:
     Connection (out0, this->parentSlice->tileOuts[3].in0).setConn();
     port = out0Id;
+    out_target = in_target*util::sign_to_coeff(m_codes.inv[out0Id]);
     break;
   case 1:
-    Connection(out0, this->parentSlice->tileOuts[3].in0).setConn();
+    Connection(out1, this->parentSlice->tileOuts[3].in0).setConn();
     port = out1Id;
+    out_target = in_target*util::sign_to_coeff(m_codes.inv[out1Id]);
     break;
   case 2:
     setThird(true);
-    Connection(out0, this->parentSlice->tileOuts[3].in0).setConn();
+    Connection(out2, this->parentSlice->tileOuts[3].in0).setConn();
+    out_target = in_target*util::sign_to_coeff(m_codes.inv[out2Id]);
     port = out2Id;
     break;
   default:
     error("unknown mode");
   }
+  ref_dac->setEnable(true);
+  dac_code_ref = cutil::make_ref_dac(calib,
+                                     ref_dac,
+                                     -out_target,
+                                     ref);
+  ref_dac->update(dac_code_ref);
+
   float mean,variance;
 	// Serial.print("\nFanout interface calibration");
   util::meas_dist_chip_out(this,mean,variance);
   profile_t prof = prof::make_profile(port,
-                                      mode,
-                                      target,
+                                      calib.success ? mode : 255,
+                                      out_target,
                                       input,
                                       0.0,
-                                      mean-(target+ref),
+                                      mean-(out_target+ref),
                                       variance);
+  if(!calib.success){
+    prof.mode = 255;
+  }
   dac_to_fan.brkConn();
   tile_to_chip.brkConn();
   ref_to_tile.brkConn();
