@@ -3,13 +3,36 @@ import numpy as np
 from enum import Enum
 import seaborn as sns
 
+def unpack_model(handle):
+  method = "unknown"
+  i=0
+  if handle[i] == 'n':
+    method="naive"
+  elif handle[i] == 'i':
+    method="ideal"
+  elif handle[i] == 'x':
+    method="physics"
+
+  i += 1
+  assert(handle[i] == 'q')
+  i += 1
+  analog = float(handle[i:i+4])
+  i += 4
+  assert(handle[i] == 'd')
+  i += 1
+  digital= float(handle[i:i+4])
+  i += 4
+  assert(handle[i] == 'b')
+  return method,analog,digital
+
 class Dataset:
 
   def __init__(self,key):
     self._key = key
     self._data = {}
     self._fields = ['ident','circ_ident','bmark', \
-                    'objective_fun', 'rank', 'mismatch',
+                    'objective_fun', 'model',\
+                    'rank', 'mismatch',
                     'jaunt_circ_file',
                     'quality','runtime','energy']
     self._metafields = ['quality_variance','quality_time_ratio']
@@ -80,23 +103,31 @@ def get_data(series_type='bmarks',executed_only=True):
   return data
 
 class BenchmarkVisualization:
-  BENCHMARK_ORDER = ['micro-osc-quarter',
+  BENCHMARK_ORDER = ['micro-osc',
                      'cosc',
                      'pend',
-                     'vanderpol',
-                     'sensor-fanout',
+                     'pend-nl',
                      'spring',
+                     'spring-nl',
+                     'vanderpol',
                      'robot',
-                     'heat1d-g6'
+                     'heat1d-g2',
+                     'heat1d-g4',
+                     'heat1d-g8'
   ]
   BENCHMARK_NAMES = {
-    'micro-osc-quarter': 'sin',
-    'cosc': 'damp',
+    'micro-osc': 'sin',
+    'cosc': 'dampened',
     'vanderpol': 'vanderpol',
     'pend': 'pendulum',
-    'spring': 'blocks',
-    'heat1d-g6': 'heat6',
-    'sensor-fanout': 'linfit'
+    'pend-nl': 'pendulum-nl',
+    'spring': 'springs',
+    'spring-nl': 'springs-nl',
+    'robot': 'robot',
+    'heat1d-g2': 'heat2-1',
+    'heat1d-g4': 'heat4-2',
+    'heat1d-g6': 'heat6-3',
+    'heat1d-g8': 'heat8-4',
   }
 
   @staticmethod
@@ -110,8 +141,8 @@ class BenchmarkVisualization:
 
 class Plot(BenchmarkVisualization):
 
-  MARKERS = ['x','^',',','_','v','+','|','D','s']
-  COLORS = sns.color_palette()
+  MARKERS = ['x','^',',','_','v','+','|','D','s']*2
+  COLORS = list(sns.color_palette())*2
 
   MARKER_MAP = {}
   COLOR_MAP = {}
