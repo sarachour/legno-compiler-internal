@@ -170,12 +170,16 @@ class Table(BenchmarkVisualization):
     HEADER = "header"
     DATA = "data"
 
-  def __init__(self,name,description,handle,layout,loc='tp'):
+  def __init__(self,name,description, \
+               handle,layout, \
+               loc='tp', \
+               benchmarks=True):
     BenchmarkVisualization.__init__(self)
     self._name = name
     self._handle = handle
     self._layout = layout
     self._loc = loc
+    self._benchmarks = benchmarks
     self._description = description
     self.lines = []
 
@@ -187,9 +191,10 @@ class Table(BenchmarkVisualization):
     self.lines.append((Table.LineType.HEADER,None))
 
   def data(self,bmark,fields):
-    paper_bmark = Table.BENCHMARK_NAMES[bmark]
-    assert(not 'benchmark' in fields)
-    fields['benchmark'] = paper_bmark
+    if self._benchmarks:
+      paper_bmark = Table.BENCHMARK_NAMES[bmark]
+      assert(not 'benchmark' in fields)
+      fields['benchmark'] = paper_bmark
     self.lines.append((Table.LineType.DATA,fields))
 
   @property
@@ -197,11 +202,14 @@ class Table(BenchmarkVisualization):
     return self._fields
 
   def set_fields(self,header):
-    self._fields = header
+    if self._benchmarks:
+      self._fields = ['benchmark'] + header
+    else:
+      self._fields = header
 
   def to_table(self):
     lines = []
-    hdr = ['benchmark']+self._fields
+    hdr = self._fields
     q = lambda l: lines.append(l)
     q('table')
     q(self._loc)

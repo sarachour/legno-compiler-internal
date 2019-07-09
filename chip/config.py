@@ -43,6 +43,16 @@ class Config:
         else:
             return self._injs[port]
 
+    def scale_vars(self):
+        for p,data in self._scfs.items():
+            for h,v in data.items():
+                yield (p,h),v
+
+
+    def inject_vars(self):
+        for p,val in self._injs.items():
+            yield p,val
+
     def set_expr(self,port,expr):
         self._exprs[port] = expr
 

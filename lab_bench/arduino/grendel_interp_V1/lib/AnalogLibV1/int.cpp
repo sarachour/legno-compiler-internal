@@ -17,6 +17,29 @@ float compute_output(integ_code_t& m_codes,float val){
   return rng*sign*val;
 }
 
+float compute_steady_state_output(integ_code_t& m_codes, float in_val){
+  float integ_scale = util::range_to_coeff(m_codes.range[out0Id]);
+  integ_scale /= util::range_to_coeff(m_codes.range[in0Id]);
+  float steady_state_scale = 1.0/(integ_scale);
+  return in_val*steady_state_scale;
+}
+
+
+float compute_steady_state_input(integ_code_t& m_codes, float in_val){
+  float input_scale = util::range_to_coeff(m_codes.range[in0Id]);
+  float output_scale = util::range_to_coeff(m_codes.range[out0Id]);
+  float integ_scale = output_scale/input_scale;
+  float steady_state_scale = 1.0/(integ_scale);
+  // scale input to fill integrator
+  float coeff = input_scale;
+  // divide the input scale by the gain of the steady state
+  // to ensure we don't saturate the steady state
+  if(steady_state_scale > 1.0){
+    coeff /= steady_state_scale;
+  }
+  return coeff*in_val;
+}
+
 void Fabric::Chip::Tile::Slice::Integrator::update(integ_code_t codes){
   m_codes = codes;
   updateFu();

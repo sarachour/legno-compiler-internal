@@ -1,11 +1,13 @@
-import util.config as CONFIG
+import util.paths as pathlib
 import os
 import numpy as np
 import scripts.visualize.common as common
 
-def read_compile_times():
+def read_compile_times(subset):
   summary = {}
-  for dirname, subdirlist, filelist in os.walk(CONFIG.TIME_DIR):
+  ph = pathlib.PathHandler(subset,"NONE",make_dirs=False)
+  time_dir = ph.TIME_DIR
+  for dirname, subdirlist, filelist in os.walk(time_dir):
     for fname in filelist:
       if not fname.endswith('.txt'):
         continue
@@ -63,5 +65,5 @@ def to_runtime_table(summary):
 
 
 def visualize():
-  summary = read_compile_times()
+  summary = read_compile_times('extended')
   to_runtime_table(summary)

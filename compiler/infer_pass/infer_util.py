@@ -15,7 +15,7 @@ def indirect_index(data,inds):
 
 def get_data_by_mode(dataset,mode):
     modes = dataset['mode']
-    inds = list(filter(lambda i: modes[i] == 0, range(len(modes))))
+    inds = list(filter(lambda i: modes[i] == mode, range(len(modes))))
     bias = indirect_index(dataset['bias'],inds)
     noise = indirect_index(dataset['noise'],inds)
     in0 = indirect_index(dataset['in0'],inds)

@@ -56,7 +56,8 @@ class ConcCirc:
 
 
     def use(self,block,loc,config=None):
-        if not self._board.is_block_at(block,loc):
+        if not self._board is None and\
+           not self._board.is_block_at(block,loc):
             for block in self._board.blocks_at(loc):
                 print(block.name)
             raise Exception("no block <%s> at that location.")
@@ -150,7 +151,8 @@ class ConcCirc:
             raise Exception("block <%s.%s> not in use" % (block1,loc1))
 
 
-        if not self._board.can_connect(block1,loc1,port1,
+        if not self._board is None and \
+           not self._board.can_connect(block1,loc1,port1,
                                        block2,loc2,port2):
             raise Exception("cannot connect <%s.%s.%s> to <%s.%s.%s>" % \
                             (block1,loc1,port1,block2,loc2,port2))
@@ -172,7 +174,8 @@ class ConcCirc:
         circ = ConcCirc(board)
         circ.set_tau(obj['tau'])
         for inst in obj['insts']:
-            assert(inst['board'] == board.name)
+            assert(board is None or \
+                   inst['board'] == board.name)
             config = Config.from_json(inst['config'])
             block,loc = inst['block'],inst['loc']
             circ.use(block,loc,config)

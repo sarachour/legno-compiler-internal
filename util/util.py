@@ -14,9 +14,10 @@ def mkdir_if_dne(dirname):
 
 class Timer:
 
-    def __init__(self,name):
+    def __init__(self,name,ph):
         self._runs = []
         self._name = name
+        self._paths = ph
 
     def start(self):
         self._start = time.time()
@@ -38,8 +39,9 @@ class Timer:
         return "%s mean=%s std=%s" % (self._name,mean,std)
 
     def save(self):
-        mkdir_if_dne(CONFIG.TIME_DIR)
-        filename = "%s/time_%s.txt" % (CONFIG.TIME_DIR,self._name)
+        time_dir = self._paths.TIME_DIR
+        mkdir_if_dne(time_dir)
+        filename = "%s/time_%s.txt" % (time_dir,self._name)
         with open(filename,'w') as fh:
             fh.write("%s\n" % self._name)
             for run in self._runs:

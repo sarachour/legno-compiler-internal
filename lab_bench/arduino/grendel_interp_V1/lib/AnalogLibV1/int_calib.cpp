@@ -58,6 +58,7 @@ float helper_measure_zero(Fabric::Chip::Tile::Slice::Integrator* integ,
                           Fabric::Chip::Tile::Slice::Fanout* fo,
                           )
 */
+
 bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
                           Fabric::Chip::Tile::Slice::Dac * ref_dac,
                           float max_error,
@@ -278,7 +279,8 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTargetHelper (profile_t& re
   m_codes.nmos = 0;
 	setAnaIrefNmos ();
   unsigned int code = m_codes.ic_code;
-  while (m_codes.nmos <= 7 && !found_code && calib.success) {
+  // the higher the nmos code, the better the dynamic range
+  while (m_codes.nmos <= 7 && calib.success) {
     bool succ = true;
     sprintf(FMTBUF, "nmos=%d", m_codes.nmos);
     print_info(FMTBUF);
@@ -349,7 +351,8 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTarget (profile_t& result, 
 bool Fabric::Chip::Tile::Slice::Integrator::calibrate (profile_t& result, const float max_error) {
 	//setEnable(true);
   integ_code_t codes_self = m_codes;
-  setInitial(0.93);
+  //setInitial(0.93);
+  setInitial(0.0);
   //calibrate at initial condition=1.0, where we don't change the
   //initial condition code
   bool success = calibrateTargetHelper(result,max_error,false);

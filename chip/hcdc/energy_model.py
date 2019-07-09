@@ -105,4 +105,4 @@ def compute_energy(circ,runtime):
   print("figure: %s J/s" % energy_figure)
   print("runtime: %s s" % runtime)
   print("energy: %s uJ" % (energy_figure*runtime/units.uJ))
-  return energy_figure*runtime
+  return energy_figure,energy_figure*runtime

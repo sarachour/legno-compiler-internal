@@ -18,6 +18,8 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
   cutil::calibrate_t calib;
   cutil::initialize(calib);
   cutil::buffer_fanout_conns(calib,this);
+  cutil::buffer_dac_conns(calib,ref_dac);
+  cutil::buffer_dac_conns(calib,val_dac);
   cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
   cutil::buffer_chipout_conns(calib,
                               parentSlice->parentTile->parentChip
@@ -92,11 +94,11 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
     Connection (out0, this->parentSlice->tileOuts[3].in0).brkConn();
     break;
   case 1:
-    Connection(out0, this->parentSlice->tileOuts[3].in0).brkConn();
+    Connection(out2, this->parentSlice->tileOuts[3].in0).brkConn();
     break;
   case 2:
     setThird(false);
-    Connection(out0, this->parentSlice->tileOuts[3].in0).brkConn();
+    Connection(out2, this->parentSlice->tileOuts[3].in0).brkConn();
     break;
   }
 	setEnable ( false );

@@ -17,6 +17,9 @@ class Properties:
     def type(self):
         return self._type
 
+    def analog(self):
+        return Properties.is_analog(self._type)
+
     @staticmethod
     def is_analog(typ):
         return typ == Properties.CURRENT or typ == Properties.VOLTAGE \

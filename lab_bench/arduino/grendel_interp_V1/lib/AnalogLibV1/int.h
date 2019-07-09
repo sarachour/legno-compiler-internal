@@ -16,6 +16,8 @@ typedef enum {
 
 float compute_init_cond(integ_code_t& m_codes);
 float compute_output(integ_code_t& m_codes,float val);
+float compute_steady_state_input(integ_code_t& m_codes,float in_val);
+float compute_steady_state_output(integ_code_t& m_codes,float out_val);
 
 class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;

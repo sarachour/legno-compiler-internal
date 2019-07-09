@@ -134,7 +134,6 @@ class ProfileCmd(Command):
         self._loc = CircLoc(chip,tile,slce,index)
         self._clear = clear
         self._n = n
-        print(n)
         self._bootstrap=bootstrap
         if self._blk == enums.BlockType.MULT:
           self._n_inputs = 2

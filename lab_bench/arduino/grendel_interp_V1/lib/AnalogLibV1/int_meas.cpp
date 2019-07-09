@@ -38,25 +38,27 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
 
   cutil::break_conns(calib);
 
-  fanout->m_codes.range[in0Id] = RANGE_MED;
-  fanout->m_codes.range[out0Id] = RANGE_MED;
-  fanout->m_codes.range[out1Id] = RANGE_MED;
-  fanout->m_codes.range[out2Id] = RANGE_MED;
+  range_t out_range = integ_codes.range[out0Id];
+  fanout->m_codes.range[in0Id] = out_range;
+  fanout->m_codes.range[out0Id] = out_range;
+  fanout->m_codes.range[out1Id] = out_range;
+  fanout->m_codes.range[out2Id] = out_range;
   fanout->m_codes.inv[out0Id] = false;
   fanout->m_codes.inv[out1Id] = true;
   fanout->update(fanout->m_codes);
 
-  float target = input*util::range_to_coeff(m_codes.range[in0Id]);
+  float target_input = compute_steady_state_input(m_codes,input);
   float ref;
   dac_code_t dac_code_value;
   dac_code_t dac_code_ref;
-  dac_code_value = cutil::make_val_dac(calib,val_dac,target);
+  dac_code_value = cutil::make_val_dac(calib,val_dac,target_input);
   val_dac->update(dac_code_value);
 
 
+  float target_output = compute_steady_state_output(m_codes,input);
   dac_code_ref = cutil::make_ref_dac(calib,
                                      ref_dac,
-                                     -target,
+                                     -target_output,
                                      ref);
   ref_dac->update(dac_code_ref);
   setInitial(0.0);
@@ -84,10 +86,10 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
   util::meas_steady_chip_out(this,mean,variance);
   profile_t prof = prof::make_profile(out0Id,
                                       calib.success ? 1 : 255,
-                                      target,
-                                      target,
+                                      target_input,
+                                      target_output,
                                       0.0,
-                                      mean-(target+ref),
+                                      mean-(target_output+ref),
                                       variance);
 
   integ_to_fan.brkConn();

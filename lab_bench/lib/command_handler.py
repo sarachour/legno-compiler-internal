@@ -70,6 +70,7 @@ def main_script_profile(state,filename, \
             succ = cmd.profile(state,command_obj, \
                                recompute=recompute,
                                bootstrap=bootstrap,
+                               clear=clear,
                                n=5)
 
 

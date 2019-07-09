@@ -34,7 +34,7 @@ namespace cutil {
     dac_code_t backup = dac->m_codes;
     dac_code_t result = dac->m_codes;
     dac->setEnable(true);
-    if(fabs(value) > 1.0){
+    if(fabs(value) > 0.9){
       dac->setRange(RANGE_HIGH);
       if(!dac->setConstant(value/10.0)){
         sprintf(FMTBUF, "could not set constant: %f/10", value);

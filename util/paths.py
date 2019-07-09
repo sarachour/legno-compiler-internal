@@ -41,6 +41,7 @@ class PathHandler:
         self.PLOT_DIR = self.BMARK_DIR + "/plots"
         self.MEAS_WAVEFORM_FILE_DIR = self.BMARK_DIR + "/out-waveform"
         self.REF_WAVEFORM_FILE_DIR = self.BMARK_DIR + "/ref-waveform"
+        self.TIME_DIR = self.ROOT_DIR + "/TIMES"
 
 
     def conc_circ_file(self,bmark,indices,scale_index,model,opt):

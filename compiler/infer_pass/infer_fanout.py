@@ -37,11 +37,13 @@ def infer(obj):
                            .get_data_by_mode(obj['dataset'],0)
   infer_vis.plot_bias("bias.png",in0,in1,out,bias)
   infer_vis.plot_noise("noise.png",in0,in1,out,noise)
+  print("==== fanout %s ====" % model_in.loc)
+  print(obj['metadata'])
   for i0,i1,o,b in zip(in0,in1,out,bias):
     print("in=(%f,%f) out=%f bias=%f" % (i0,i1,o,b))
   bnds0 = infer_fit.infer_model(model_out0,in0,in1,out, \
                                 bias,noise,adc=False)
-
+  input()
   bias,noise,in0,in1,out = infer_util \
                            .get_data_by_mode(obj['dataset'],1)
   infer_vis.plot_bias("bias.png",in0,in1,out,bias)
@@ -49,10 +51,12 @@ def infer(obj):
   bnds1 = infer_fit.infer_model(model_out1,in0,in1,out, \
                                 bias,noise,adc=False)
 
+  input()
   bias,noise,in0,in1,out = infer_util \
                            .get_data_by_mode(obj['dataset'],2)
   bnds2 = infer_fit.infer_model(model_out2,in0,in1,out, \
                                 bias,noise,adc=False)
+  input()
   print(bnds0)
   print(bnds1)
   print(bnds2)

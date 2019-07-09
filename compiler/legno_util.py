@@ -37,7 +37,7 @@ def exec_arco(hdacv2_board, args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
   problem = bmark.get_prog(args.benchmark)
 
-  timer = Timer('arco_%s' % args.benchmark)
+  timer = Timer('arco_%s' % args.benchmark,path_handler)
   timer.start()
   for indices,conc_circ in \
       arco.compile(hdacv2_board,
@@ -163,7 +163,7 @@ def exec_jaunt(hdacv2_board, args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
   prog = bmark.get_prog(args.benchmark)
   circ_dir = path_handler.abs_circ_dir()
-  timer = Timer('jaunt_%s' % args.benchmark)
+  timer = Timer('jaunt_%s' % args.benchmark, path_handler)
   for dirname, subdirlist, filelist in os.walk(circ_dir):
     for fname in filelist:
       if fname.endswith('.circ'):
@@ -203,7 +203,7 @@ def exec_srcgen(hdacv2_board,args):
   hwenv = hwenvs.get_hw_env(args.hw_env)
   recompute = args.recompute
   circ_dir = path_handler.conc_circ_dir()
-  timer = Timer('srcgen_%s' % args.benchmark)
+  timer = Timer('srcgen_%s' % args.benchmark,path_handler)
   for dirname, subdirlist, filelist in os.walk(circ_dir):
     for fname in filelist:
       if fname.endswith('.circ'):

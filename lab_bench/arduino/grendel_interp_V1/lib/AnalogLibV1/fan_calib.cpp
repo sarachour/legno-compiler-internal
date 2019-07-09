@@ -56,8 +56,9 @@ bool Fabric::Chip::Tile::Slice::Fanout::calibrate (profile_t& result,
     succ &= !calib_failed;
     conn1.brkConn();
 
-    Connection conn2 = Connection (out2, this->parentSlice->tileOuts[3].in0);
-    conn1.setConn();
+    Connection conn2 = Connection (out2,
+                                   this->parentSlice->tileOuts[3].in0);
+    conn2.setConn();
     setThird(true);
     binsearch::find_bias(this,0.0,
                          m_codes.port_cal[out2Id],
