@@ -21,15 +21,15 @@ def build_config(meta):
   out_z0 = PortModel('integrator',loc,'out', \
                   comp_mode=comp_mode, \
                   scale_mode=scale_mode, \
-                  handle='z[0]')
+                  handle=':z[0]')
   out_zp = PortModel('integrator',loc,'out', \
                   comp_mode=comp_mode, \
                   scale_mode=scale_mode, \
-                  handle='z\'')
+                  handle=':z\'')
   out_z = PortModel('integrator',loc,'out', \
                   comp_mode=comp_mode, \
                   scale_mode=scale_mode, \
-                  handle='z')
+                  handle=':z')
 
   ic = PortModel('integrator',loc,'ic', \
                   comp_mode=comp_mode, \
@@ -45,24 +45,23 @@ def infer(obj):
   infer_vis.plot_noise("noise.png",in0,in1,out,noise)
   bnds_ic = infer_fit.infer_model(out_z0,in0,in1,out, \
                                   bias,noise,adc=False)
+  model_ic.bounds = bnds_ic
 
-  for o,b in zip(out,bias):
-    print("out=%s bias=%s" % (o,b))
-  input("ic")
   bias,noise,in0,in1,out = infer_util \
                            .get_data_by_mode(obj['dataset'],1)
-  for o,b in zip(out,bias):
-    print("out=%s bias=%s" % (o,b))
 
   infer_vis.plot_bias("bias.png",in0,in1,out,bias)
   infer_vis.plot_noise("noise.png",in0,in1,out,noise)
+  for t in zip(in0,in1,out,bias):
+    print(t)
+
   bnds_z = infer_fit.infer_model(out_z,in0,in1,out, \
                                   bias,noise,adc=False)
+  model_in.bounds = bnds_z
 
-  for o,b in zip(out,bias):
-    print("out=%s bias=%s" % (o,b))
-  input("ic")
-
-  input("ss")
-
-  print(obj)
+  yield model_in
+  yield model_ic
+  yield model_out
+  yield out_z
+  yield out_z0
+  yield out_zp

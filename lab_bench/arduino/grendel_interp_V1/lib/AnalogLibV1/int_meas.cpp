@@ -86,8 +86,8 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
   util::meas_steady_chip_out(this,mean,variance);
   profile_t prof = prof::make_profile(out0Id,
                                       calib.success ? 1 : 255,
-                                      target_input,
                                       target_output,
+                                      target_input,
                                       0.0,
                                       mean-(target_output+ref),
                                       variance);

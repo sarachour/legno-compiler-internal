@@ -25,15 +25,19 @@ def build_model(obj):
     blk = datum['metadata']['block']
     if blk == 'dac':
       for model in infer_dac.infer(datum):
-        db.put(model)
+        yield model
 
     elif blk == 'fanout':
-      infer_fanout.infer(datum)
+      for model in infer_fanout.infer(datum):
+        yield model
+
     elif blk == 'integ':
-      infer_integ.infer(datum)
+      for model in infer_integ.infer(datum):
+        yield model
+
     elif blk == 'mult':
       for model in infer_mult.infer(datum):
-        db.put(model)
+        yield model
     else:
       raise Exception("unsupported <%s>" % blk)
 
@@ -49,4 +53,6 @@ for dirname, subdirlist, filelist in os.walk(CONFIG.DATASET_DIR):
       fpath = "%s/%s" % (dirname,fname)
       with open(fpath,'r') as fh:
         obj = json.loads(fh.read())
-        build_model(obj)
+        for m in build_model(obj):
+          print(m)
+          db.put(m)

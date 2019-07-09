@@ -266,6 +266,10 @@ def get_model(db,circ,block_name,loc,port,handle=None):
       ModelDB.log_missing_model(block_name,loc,port, \
                                 config.comp_mode,
                                 config.scale_mode)
+      print("no model: %s[%s].%s :%s cm=%s scm=%s" % \
+            (block_name,loc,port,handle, \
+             str(config.comp_mode), \
+             str(config.scale_mode)))
       return None
 
 def get_variance(db,circ,block_name,loc,port,handle=None,mode='physical'):
@@ -281,6 +285,10 @@ def get_variance(db,circ,block_name,loc,port,handle=None,mode='physical'):
     if physunc == 0.0:
       return unc_min
 
+    print("%s[%s].%s uncertainty: %f" % (block_name, \
+                                         loc, \
+                                         port, \
+                                         physunc))
     return unc_min
     #return physunc
 

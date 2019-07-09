@@ -2,6 +2,7 @@
 #include <float.h>
 #include "calib_util.h"
 #include "fu.h"
+#include "assert.h"
 
 float compute_init_cond(integ_code_t& m_codes){
   float sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
@@ -17,28 +18,36 @@ float compute_output(integ_code_t& m_codes,float val){
   return rng*sign*val;
 }
 
-float compute_steady_state_output(integ_code_t& m_codes, float in_val){
-  float integ_scale = util::range_to_coeff(m_codes.range[out0Id]);
-  integ_scale /= util::range_to_coeff(m_codes.range[in0Id]);
-  float steady_state_scale = 1.0/(integ_scale);
-  return in_val*steady_state_scale;
+float predict_steady_state_output(integ_code_t& m_codes, float in_val){
+  return in_val;
 }
-
-
 float compute_steady_state_input(integ_code_t& m_codes, float in_val){
-  float input_scale = util::range_to_coeff(m_codes.range[in0Id]);
-  float output_scale = util::range_to_coeff(m_codes.range[out0Id]);
-  float integ_scale = output_scale/input_scale;
-  float steady_state_scale = 1.0/(integ_scale);
-  // scale input to fill integrator
-  float coeff = input_scale;
-  // divide the input scale by the gain of the steady state
-  // to ensure we don't saturate the steady state
-  if(steady_state_scale > 1.0){
-    coeff /= steady_state_scale;
+  float coeff = util::range_to_coeff(m_codes.range[in0Id]);
+  float output_scale = util::range_to_coeff(m_codes.range[out0Id]); 
+  while(true) {
+    float ss_out = predict_steady_state_output(m_codes, coeff);
+    if(fabs(ss_out) > output_scale){
+      coeff /= 10.0;
+    }
+    else{
+      break;
+    }
   }
+  // at this point,
+  sprintf(FMTBUF,"comp-ss-in target=%f coeff=%f input=%f",
+          coeff*in_val,
+          coeff,
+          in_val
+          );
+  print_info(FMTBUF);
   return coeff*in_val;
 }
+
+float compute_steady_state_output(integ_code_t& m_codes, float in_val){
+  float target_input = compute_steady_state_input(m_codes,in_val);
+  return predict_steady_state_output(m_codes,target_input);
+}
+
 
 void Fabric::Chip::Tile::Slice::Integrator::update(integ_code_t codes){
   m_codes = codes;

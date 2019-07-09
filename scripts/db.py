@@ -997,6 +997,9 @@ class ExperimentDB:
 
       entry.synchronize()
       return entry
+    else:
+      entry.synchronize()
+      return entry
 
   def scan(self):
     for name in diffeqs.get_names():

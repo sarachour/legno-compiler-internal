@@ -3,10 +3,16 @@ import numpy as np
 import lab_bench.lib.chipcmd.data as chipcmd
 import itertools
 
+def tightest_bounds(bnds):
+    lb = min(map(lambda b: b[0], bnds))
+    ub = min(map(lambda b: b[1], bnds))
+    return (lb,ub)
+
 def apply_model(model,xdata):
     x = xdata
     result = (model.gain)*(x) + model.bias
     return result
+
 # A[B[i]]
 def indirect_index(data,inds):
   subdata = []
@@ -23,6 +29,8 @@ def get_data_by_mode(dataset,mode):
     out = indirect_index(dataset['out'],inds)
     return bias,noise,in0,in1,out
 
+def to_bool(value):
+  return chipcmd.BoolType(value).boolean()
 
 def to_sign(name):
   return chipcmd.SignType(name)

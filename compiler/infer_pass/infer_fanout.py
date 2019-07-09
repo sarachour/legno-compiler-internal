@@ -6,14 +6,16 @@ from chip.model import PortModel
 
 def build_config(meta):
   loc = infer_util.to_loc(meta['loc'])
-  comp_mode=  "*"
   comp_mode = ( \
-                 infer_util.to_sign(meta['invs']['out0']),
-                 infer_util.to_sign(meta['invs']['out1']),
-                 infer_util.to_sign(meta['invs']['out2']) \
+                 infer_util.to_sign(meta['invs']['out0']).value,
+                 infer_util.to_sign(meta['invs']['out1']).value,
+                 infer_util.to_sign(meta['invs']['out2']).value \
   )
-  scale_mode = infer_util.to_range(meta['rngs']['in0'])
-
+  scale_mode = infer_util.to_range(meta['rngs']['in0']).value
+  print('fanout[%s]' % loc)
+  print(comp_mode)
+  print(scale_mode)
+  #input()
   out0 = PortModel('fanout',loc,'out0', \
                   comp_mode=comp_mode, \
                   scale_mode=scale_mode)
@@ -43,7 +45,6 @@ def infer(obj):
     print("in=(%f,%f) out=%f bias=%f" % (i0,i1,o,b))
   bnds0 = infer_fit.infer_model(model_out0,in0,in1,out, \
                                 bias,noise,adc=False)
-  input()
   bias,noise,in0,in1,out = infer_util \
                            .get_data_by_mode(obj['dataset'],1)
   infer_vis.plot_bias("bias.png",in0,in1,out,bias)
@@ -51,15 +52,16 @@ def infer(obj):
   bnds1 = infer_fit.infer_model(model_out1,in0,in1,out, \
                                 bias,noise,adc=False)
 
-  input()
   bias,noise,in0,in1,out = infer_util \
                            .get_data_by_mode(obj['dataset'],2)
   bnds2 = infer_fit.infer_model(model_out2,in0,in1,out, \
                                 bias,noise,adc=False)
-  input()
-  print(bnds0)
-  print(bnds1)
-  print(bnds2)
+  bnds = infer_util.tightest_bounds([bnds0['in0'], \
+                                     bnds1['in0'], \
+                                     bnds2['in0']])
+  model_in.bounds = bnds
 
-
-  print(obj)
+  yield model_in
+  yield model_out0
+  yield model_out1
+  yield model_out2

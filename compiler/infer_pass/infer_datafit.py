@@ -121,15 +121,18 @@ def infer_model(model,in0,in1,out,bias,noise,adc=False):
                              apply_params(out[i],gain,offset), \
                              range(n))))
     errors = list(map(lambda i: (meas[i]-pred[i])**2.0, range(n)))
-    print("gain=%f offset=%f" % (gain,offset))
+    #print("gain=%f offset=%f" % (gain,offset))
     model.gain = gain
     model.bias = offset
     model.noise= math.sqrt(sum(map(lambda n: n**2.0, noise))/n)
     model.bias_uncertainty = math.sqrt(sum(errors)/n)
     max_error =  math.sqrt(max(errors))
-    print(model)
-    print("max_error=%f" % max_error)
+    #print(model)
+    #print("max_error=%f" % max_error)
 
+    return bnd
+
+    input("FIXME: Trims too much")
     if max_error > 0.01:
       new_max_error,new_unc,bnd = trim_model(model,\
                                              in0,in1,out,bias)
