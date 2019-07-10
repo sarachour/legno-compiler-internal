@@ -40,15 +40,19 @@ def infer(obj):
   infer_vis.plot_noise("noise.png",in0,in1,out,noise)
   bnds = infer_fit.infer_model(model_out,in0,in1,out, \
                                      bias,noise,adc=False)
+  #for idx,(i0,i1,o,b) in enumerate(zip(in0,in1,out,bias)):
+  #  print("%d: %f*%f = %f + %f" % (idx,i0,i1,o,b))
   infer_vis.plot_prediction_error('pred.png',model_out,bnds,
                                   in0,in1,out,bias)
 
-  model_in0.bound = bnds['in0']
+  model_in0.set_oprange_scale(*bnds['in0'])
   if model_out.comp_mode == 'vga':
-    model_coeff.bound = bnds['in1']
+    model_coeff.set_oprange_scale(*bnds['in1'])
   else:
-    model_in1.bound = bnds['in1']
+    model_in1.set_oprange_scale(*bnds['in1'])
+
   yield model_out
   yield model_in0
   yield model_in1
   yield model_coeff
+  #input()

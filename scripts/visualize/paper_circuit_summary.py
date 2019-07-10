@@ -43,6 +43,8 @@ def to_arco_table(circuits):
   to_header = {
     'tile_out': 'crossbar',
     'tile_in': 'crossbar',
+    'chip_out': 'crossbar',
+    'chip_in': 'crossbar',
     'ext_chip_out': 'crossbar',
     'ext_chip_in': 'crossbar',
     'tile_dac':'dac',
@@ -56,28 +58,31 @@ def to_arco_table(circuits):
   desc = 'analog chip configuration statistics'
   table = common.Table('Circuit Configurations', \
                        desc, 'circarco','|c|ccccccc|c|')
-  table.set_fields(['blocks','integrator','multiplier', \
+  fields = ['blocks','integrator','multiplier', \
                     'fanout','adc','dac','lut', \
-                    'crossbar','connections'])
+                    'crossbar','connections']
+  table.set_fields(fields)
   table.horiz_rule()
   table.header()
   table.horiz_rule()
   for bmark in table.benchmarks():
-    fields = dict(map(lambda f: (f,0), table.fields))
+    row = {}
     if not bmark in circuits:
       continue
 
     data = average_comp_count(circuits[bmark])
+    for f in fields:
+      row[f] = 0
 
     for key,value in data['blocks'].items():
-      fields[to_header[key]] += value
+      row[to_header[key]] += value
 
-    fields[to_header['conns']] += data['conns']
-    fields['blocks'] = data['total']
-    for f,v in fields.items():
-      fields[f] = "%d" % v
+    row[to_header['conns']] += data['conns']
+    row['blocks'] = data['total']
+    for f,v in row.items():
+      row[f] = "%d" % v
 
-    table.data(bmark,fields)
+    table.data(bmark,row)
 
   table.horiz_rule()
   table.write('circuit-arco.tbl')
@@ -111,7 +116,6 @@ def count_scaling_factors(circ,model):
 
 
 def average_scale_factor_count(circs,models):
-  assert(len(circs) == 1)
   for c,m in zip(circs,models):
     summary = count_scaling_factors(c,m)
     return summary

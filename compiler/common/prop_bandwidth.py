@@ -44,7 +44,6 @@ class PropBandwidthVisitor(Visitor):
                           config.dac(port)*scf)
 
     dest_bw = dest_expr.compute_bandwidth({}).bandwidth
-
     for src_block_name,src_loc,src_port in \
         circ.get_conns_by_dest(block_name,loc,port):
       src_config = circ.config(src_block_name,src_loc)

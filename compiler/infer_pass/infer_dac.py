@@ -31,6 +31,6 @@ def infer(obj):
   infer_vis.plot_prediction_error('pred.png',model_out,bnds,
                                   in0,in1,out,bias)
 
-  model_in.bound = bnds['in0']
+  model_in.set_oprange_scale(*bnds['in0'])
   yield model_in
   yield model_out

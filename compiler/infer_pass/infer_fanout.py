@@ -59,8 +59,7 @@ def infer(obj):
   bnds = infer_util.tightest_bounds([bnds0['in0'], \
                                      bnds1['in0'], \
                                      bnds2['in0']])
-  model_in.bounds = bnds
-
+  model_in.set_oprange_scale(*bnds)
   yield model_in
   yield model_out0
   yield model_out1

@@ -5,6 +5,7 @@ import scripts.visualize.paper_bmark_summary as paper_bmark_summary
 import scripts.visualize.paper_circuit_summary as paper_circuit_summary
 import scripts.visualize.paper_chip_summary as paper_chip_summary
 import scripts.visualize.paper_compile_time as paper_compile_time
+import scripts.visualize.paper_quality_graphs as paper_quality_graphs
 import matplotlib.pyplot as plt
 import numpy as np
 import math
@@ -20,6 +21,7 @@ def execute(args):
     'paper-benchmark-summary': paper_bmark_summary.visualize,
     'paper-circuit-summary': paper_circuit_summary.visualize,
     'paper-compile-time': paper_compile_time.visualize,
+    'paper-quality-graphs': paper_quality_graphs.visualize,
 
   }
   if name in opts:

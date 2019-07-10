@@ -22,10 +22,9 @@ def measure_var(prob,invar,outvar):
             op.Emit(op.Mult(op.Const(0.999999), op.Var(invar)), \
                     loc='A0'))
 
-def math_env(prob):
+def math_env(prob,time=0.1):
     menv = MathEnv('audenv');
     hwfreq = glb.TIME_FREQUENCY
-    time = 0.1
     prob.set_max_sim_time(time*hwfreq)
     menv.set_sim_time(time*hwfreq)
     menv.set_input_time(time*hwfreq)

@@ -71,7 +71,7 @@ def main_script_profile(state,filename, \
                                recompute=recompute,
                                bootstrap=bootstrap,
                                clear=clear,
-                               n=5)
+                               n=n)
 
 
 def main_script_calibrate(state,filename, \

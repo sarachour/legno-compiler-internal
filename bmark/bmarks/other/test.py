@@ -8,6 +8,22 @@ from lang.prog import MathProg
 from ops import op, opparse
 from bmark.bmarks.common import *
 import bmark.menvs as menvs
+import bmark.bmarks.audio.audio_util as autil
+
+def integrate_noise():
+  params = {
+    'Y0':0.0
+  }
+  prob = MathProg("integrate-noise")
+  lb,ub = autil.set_microphone(prob,"I","Z")
+  Y = parse_diffeq('Z', 'Y0', ':a', params)
+  prob.bind("Y",Y)
+  prob.bind("O",op.Emit(op.Var('Y'),loc='A0'))
+  prob.set_interval("Y",-1.0,1.0)
+  prob.compile()
+  menv = autil.math_env(prob,0.1)
+  return menv,prob
+
 
 def feedback3():
   params = {

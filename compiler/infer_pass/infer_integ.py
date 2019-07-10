@@ -45,7 +45,7 @@ def infer(obj):
   infer_vis.plot_noise("noise.png",in0,in1,out,noise)
   bnds_ic = infer_fit.infer_model(out_z0,in0,in1,out, \
                                   bias,noise,adc=False)
-  model_ic.bounds = bnds_ic
+  model_ic.set_oprange_scale(*bnds_ic['in0'])
 
   bias,noise,in0,in1,out = infer_util \
                            .get_data_by_mode(obj['dataset'],1)
@@ -57,7 +57,7 @@ def infer(obj):
 
   bnds_z = infer_fit.infer_model(out_z,in0,in1,out, \
                                   bias,noise,adc=False)
-  model_in.bounds = bnds_z
+  model_in.set_oprange_scale(*bnds_z['in0'])
 
   yield model_in
   yield model_ic

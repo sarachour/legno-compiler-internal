@@ -13,7 +13,7 @@ def visualize():
   desc = "performance, energy and quality for HDACv2 Board"
   table = common.Table("Results", desc, "tblres", \
                        layout = "c|cc|ccc")
-  header = ['runtime','energy','ssqe']
+  header = ['runtime','power','energy','ssqe']
   table.set_fields(header)
   table.horiz_rule();
   table.header()
@@ -26,7 +26,8 @@ def visualize():
       row = {}
       method,ana_error,dig_error = common.unpack_model(model[0])
       row['runtime'] = "%.2f ms" % (runtime[0]*1e3)
-      row['energy'] = "%.2f $\mu$W/s" % (energy[0]*1e6)
+      row['power'] = "%.2f $\mu$W/s" % (energy[0]*1e6)
+      row['energy'] = "%.2f $\mu$W" % (energy[0]*runtime[0]*1e6)
       row['ssqe'] = "%.4f $\pm$ %.4f" \
                        % (quality[0],quality_variance[0])
       row['digital error'] = "%f" % dig_error

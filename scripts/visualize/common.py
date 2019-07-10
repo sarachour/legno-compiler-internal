@@ -121,6 +121,7 @@ class BenchmarkVisualization:
     'vanderpol': 'vanderpol',
     'pend': 'pendulum',
     'pend-nl': 'pendulum-nl',
+    'lotka': 'lotka-volterra',
     'spring': 'springs',
     'spring-nl': 'springs-nl',
     'robot': 'robot',

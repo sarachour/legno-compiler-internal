@@ -16,7 +16,6 @@ import scripts.analysis.common as common
 
 CACHE = {}
 
-
 def scale_ref_data(tau,scf,tref,yref):
   thw = list(map(lambda t: t/tau*1.0/glbls.TIME_FREQUENCY, tref))
   yhw = list(map(lambda x: x*scf, yref))
@@ -82,19 +81,18 @@ def fit(_tref,_yref,_tmeas,_ymeas):
 
   def compute_loss(x):
     error = compute_error(tref,yref,tmeas,ymeas, \
-                            [x[2],x[0],1.0,x[1]])
+                            [x[0],x[1],1.0,0.0])
     return error
 
   bounds = [
-    (0.0,max(tmeas)*0.10), \
-    (-0.1,0.1), \
-    (0.9,1.1)
+    (0.9,1.1),
+    (0.0,max(tmeas)*0.10)
   ]
   print("=== finding transform ===")
   #n = 5
   n = 10
   result = optimize.brute(compute_loss, bounds, Ns=n)
-  model = [result[2],result[0],1.0,result[1]]
+  model = [result[0],result[1],1.0,0.0]
   print(model)
   if out_of_bounds(bounds,result):
     return None,None,model

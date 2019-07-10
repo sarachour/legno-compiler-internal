@@ -141,10 +141,8 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_mult(float in0val, floa
   dac_code_t dac_code_ref;
   dac_code_t dac_code_in0;
   dac_code_t dac_code_in1;
-  dac_code_t dac_code_0;
   float ref;
 
-  dac_code_0 = cutil::make_zero_dac(calib, ref_dac);
   if(fabs(target_mult) > 10.0){
     sprintf(FMTBUF, "can't fit %f", target_mult);
     error(FMTBUF);

@@ -4,12 +4,15 @@ import bmark.bmarks.other.sensor_dynsys as sensor_dynsys
 import bmark.bmarks.other.sensor_fan as sensor_fanout
 import bmark.bmarks.other.bbsys as bbsys
 import bmark.bmarks.other.test as test
+import bmark.bmarks.other.forced_vanderpol as forced_vanderpol
 
 def get_benchmarks():
   return [
+    forced_vanderpol.model(),
     simple_osc.model(),
     lotka.model(),
     test.nochange(),
+    test.integrate_noise(),
     test.lut(),
     test.feedback(),
     test.feedback2(),

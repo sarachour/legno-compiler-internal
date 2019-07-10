@@ -146,6 +146,10 @@ def analog_bandwidth_constraint(jenv,circ,block,loc,port,handle,annot):
     if not jenv.params.enable_bandwidth_constraint:
         return
 
+    # this bandwidth is constant
+    if mbw.fmax == 0.0:
+        return
+
     if mbw.is_infinite():
         return
 
@@ -175,6 +179,7 @@ def analog_bandwidth_constraint(jenv,circ,block,loc,port,handle,annot):
                 jop.JConst(hwbw.lower),
                 'jcom-analog-bw-%s' % annot
         )
+
 
 def digital_op_range_constraint(jenv,circ,block,loc,port,handle,annot=""):
     pars = get_parameters(jenv,circ,block,loc,port,handle)
@@ -297,6 +302,7 @@ def digital_bandwidth_constraint(jenv,prob,circ,block,loc,port,handle,annot):
     physbw = _to_phys_bandwidth(circ,mbw.bandwidth)
     if prop.kind == props.DigitalProperties.ClockType.CONSTANT:
         assert(mbw.bandwidth == 0)
+        return
 
     elif prop.kind == props.DigitalProperties.ClockType.CLOCKED:
         jenv.use_tau()
@@ -332,6 +338,6 @@ def digital_bandwidth_constraint(jenv,prob,circ,block,loc,port,handle,annot):
     elif prop.kind == props.DigitalProperties.ClockType.CONTINUOUS:
         hwbw = prop.bandwidth()
         analog_bandwidth_constraint(jenv,circ,block,loc,port,handle,
-                                    "digcont-bw-%s[%s].%s" % (block,loc,port))
+                                    "digcont-bw-%s[%s].%s" % (block.name,loc,port))
     else:
         raise Exception("unknown not permitted")

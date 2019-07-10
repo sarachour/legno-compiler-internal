@@ -30,7 +30,7 @@ def model():
     'V': V,
     'one':0.999999
   }
-  DEG = parse_diffeq('{one}*{V}', 'DEG0', ':t', params)
+  DEG = parse_diffeq('{one}*{W}', 'DEG0', ':t', params)
   X = parse_diffeq('{one}*{V}*COS', 'X0',':u', params)
   Y = parse_diffeq('{one}*{V}*SIN', 'Y0',':v', params)
   prob.bind('DEG',DEG)

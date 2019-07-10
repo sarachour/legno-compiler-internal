@@ -82,7 +82,6 @@ class GlobalCtx:
 
 CTX = GlobalCtx()
 CTX.insert(GLProp.DIGITAL_INTERVAL, (-1.0,1.0))
-#CTX.insert(GLProp.CURRENT_INTERVAL, (-2.0,2.0))
 CTX.insert(GLProp.CURRENT_INTERVAL, (-2.0,2.0))
 CTX.insert(GLProp.VOLTAGE_INTERVAL, (-1.0,1.0))
 CTX.insert(GLProp.DIGITAL_QUANTIZE, 256)
@@ -108,6 +107,7 @@ CTX.insert(GLProp.MAX_FREQ, adc_khz*units.khz, block='tile_adc')
 CTX.insert(GLProp.COEFF, 0.5, block='tile_adc')
 
 CTX.insert(GLProp.MAX_FREQ, adc_khz*units.khz, block='tile_lut')
+CTX.insert(GLProp.DIGITAL_RESOLUTION, 4, block='tile_adc')
 
 # specialized ext_chip_in
 CTX.insert(GLProp.COEFF, 2.0, block='ext_chip_analog_in')

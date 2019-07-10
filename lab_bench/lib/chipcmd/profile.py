@@ -77,8 +77,17 @@ class ExecuteInput(AnalogChipCommand):
 
 
 
+def sample_reverse_normal():
+    z_inv = np.random.normal(0,0.8)
+    while abs(z_inv) > 1.0:
+        z_inv = np.random.normal(0,0.5)
 
+    if z_inv < 0:
+        z = -1.0 - z_inv
+    else:
+        z = 1.0 - z_inv
 
+    return z
 
 class ProfileCmd(Command):
 
@@ -89,6 +98,7 @@ class ProfileCmd(Command):
         self._loc = CircLoc(chip,tile,slce,index)
         self._clear = clear
         self._n = n
+        self._max_n = 50
         self._bootstrap=bootstrap
         if self._blk == enums.BlockType.MULT:
           self._n_inputs = 2
@@ -100,15 +110,17 @@ class ProfileCmd(Command):
         return 'profile'
 
     def get_output(self,env,inputs,mode=0):
-      cmd = ExecuteInput(self._blk, \
-                         self._loc.chip, \
-                         self._loc.tile, \
-                         self._loc.slice, \
-                         index=self._loc.index, \
-                         inputs=inputs,
-                         mode=mode)
-      state,profile = cmd.execute(env)
-      self.update_database(env,state,profile)
+        print("PROFILE inputs=%s mode=%d" % (inputs,mode))
+        cmd = ExecuteInput(self._blk, \
+                           self._loc.chip, \
+                           self._loc.tile, \
+                           self._loc.slice, \
+                           index=self._loc.index, \
+                           inputs=inputs,
+                           mode=mode)
+        state,profile = cmd.execute(env)
+        n = self.update_database(env,state,profile)
+        return n >= self._max_n
 
     def clear_database(self,env,state):
         entry = env.state_db.get(state.key)
@@ -129,6 +141,7 @@ class ProfileCmd(Command):
                          profile=[profile] + entry.profile,
                          success=entry.success,
                          max_error=entry.tolerance)
+        return len(entry.profile+[profile])
 
     def insert_result(self,env,resp):
         title = "profiled %s.%s " % (self._blk,self._loc)
@@ -140,48 +153,65 @@ class ProfileCmd(Command):
       if self._n_inputs == 1:
         if self._blk == enums.BlockType.INTEG:
             if self._bootstrap:
-                for x0 in [0,1]:
-                    self.get_output(env,[x0],mode=0)
+                for x0 in [0,1,-1]:
+                    if self.get_output(env,[x0],mode=0):
+                        break
 
             for i in range(0,self._n):
-                x0 = random.uniform(-1,1)
-                self.get_output(env,[x0],mode=0)
+                x0 = sample_reverse_normal()
+                if self.get_output(env,[x0],mode=0):
+                    break
 
             if self._bootstrap:
-                for x0 in [0,1]:
-                    self.get_output(env,[x0],mode=1)
+                for x0 in [0,1,-1]:
+                    if self.get_output(env,[x0],mode=1):
+                        return
 
             for i in range(0,self._n):
-                x0 = random.uniform(-1,1)
-                self.get_output(env,[x0],mode=1)
+                x0 = sample_reverse_normal()
+                if self.get_output(env,[x0],mode=1):
+                    return
 
         elif self._blk == enums.BlockType.FANOUT:
             if self._bootstrap:
                 for x0 in [0,1,-1]:
-                    self.get_output(env,[x0],mode=0)
-                    self.get_output(env,[x0],mode=1)
-                    self.get_output(env,[x0],mode=2)
+                    succ=self.get_output(env,[x0],mode=0)
+                    succ&=self.get_output(env,[x0],mode=1)
+                    succ&=self.get_output(env,[x0],mode=2)
+                    if succ:
+                        return
 
             for i in range(0,self._n):
-                x0 = random.uniform(-1,1)
-                self.get_output(env,[x0],mode=0)
-                self.get_output(env,[x0],mode=1)
-                self.get_output(env,[x0],mode=2)
-
+                x0 = sample_reverse_normal()
+                succ = self.get_output(env,[x0],mode=0)
+                succ &= self.get_output(env,[x0],mode=1)
+                succ &= self.get_output(env,[x0],mode=2)
+                if succ:
+                    return
         else:
             for i in range(0,self._n):
-                x0 = random.uniform(-1,1)
-                self.get_output(env,[x0],mode=0)
+                x0 = sample_reverse_normal()
+                if self.get_output(env,[x0],mode=0):
+                    return
 
       elif self._n_inputs == 2:
           if self._bootstrap:
-            for x0,x1 in [(1,1),(0,1),(1,0),(0,0)]:
-                self.get_output(env,[x0,x1],mode=0)
+            for x0,x1 in [(1,1),(-1,1),(1,-1),(-1,-1),(0,0)]:
+                if self.get_output(env,[x0,x1],mode=0):
+                    return
 
-          for _ in range(0,self._n):
+          for i in range(0,self._n):
+              print(">>> profiling operation %d/%d <<<" \
+                    % (i+1,self._n))
+              z = sample_reverse_normal()
               x0 = random.uniform(-1,1)
-              x1 = random.uniform(-1,1)
-              self.get_output(env,[x0,x1],mode=0)
+              while abs(z/x0) > 1.0:
+                  z = sample_reverse_normal()
+                  x0 = random.uniform(-1,1)
+
+              x1 = z/x0
+              if self.get_output(env,[x0,x1],mode=0):
+                  return
 
       else:
         raise Exception("profiling eliminated")

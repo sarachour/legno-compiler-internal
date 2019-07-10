@@ -12,13 +12,6 @@ import bmark.menvs as menvs
 
 def model():
     prob = MathProg("cosc")
-    dy2 = op.Add(
-        op.Mult(op.Var("dy1"),op.Const(-0.2)),
-        op.Mult(op.Var("y"),op.Const(-0.8))
-    )
-    dy1 = op.Integ(dy2, op.Const(-2),":z")
-    y = op.Integ(op.Var("dy1"), op.Const(9),":w")
-
     params = {
       'V0': -2,
       'P0': 9,

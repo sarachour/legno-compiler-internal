@@ -96,7 +96,9 @@ def apply_params(xdata,a,b):
     result = (a)*(x) + b
     return result
 
-def infer_model(model,in0,in1,out,bias,noise,adc=False):
+def infer_model(model,in0,in1,out,bias,noise, \
+                adc=False,
+                required_points=50):
 
   n = len(out)
   if adc:
@@ -130,20 +132,17 @@ def infer_model(model,in0,in1,out,bias,noise,adc=False):
     #print(model)
     #print("max_error=%f" % max_error)
 
-    return bnd
-
-    input("FIXME: Trims too much")
-    if max_error > 0.01:
+    if n > required_points:
       new_max_error,new_unc,bnd = trim_model(model,\
                                              in0,in1,out,bias)
-      print("uncertainty: %f -> %f" % (model.bias_uncertainty,new_unc))
-      print("max_error: %f -> %f" % (max_error,new_max_error))
-      model.bias_uncertainty = new_unc
-      infer_vis.plot_prediction_error("pred2.png", \
-                                      model,bnd,in0,in1,out,bias)
-      print(model)
-      print(bnd)
-      input()
+      if new_unc < model.bias_uncertainty:
+        print("uncertainty: %f -> %f" % (model.bias_uncertainty,new_unc))
+        print("max_error: %f -> %f" % (max_error,new_max_error))
+        print(bnd)
+        model.bias_uncertainty = new_unc
+        infer_vis.plot_prediction_error("pred2.png", \
+                                        model,bnd,in0,in1,out,bias)
+        return bnd
 
   return bnd
 
