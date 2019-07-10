@@ -1,6 +1,6 @@
 import compiler.infer_pass.infer_util as infer_util
 import compiler.infer_pass.infer_visualize as infer_vis
-import compiler.infer_pass.infer_datafit as infer_fit
+import compiler.infer_pass.infer_fit as infer_fit
 
 from chip.model import PortModel
 
@@ -35,27 +35,10 @@ def build_config(meta):
 def infer(obj):
   model_in,model_out0,model_out1,model_out2 = \
                             build_config(obj['metadata'])
-  bias,noise,in0,in1,out = infer_util \
-                           .get_data_by_mode(obj['dataset'],0)
-  infer_vis.plot_bias("bias.png",in0,in1,out,bias)
-  infer_vis.plot_noise("noise.png",in0,in1,out,noise)
-  print("==== fanout %s ====" % model_in.loc)
-  print(obj['metadata'])
-  for i0,i1,o,b in zip(in0,in1,out,bias):
-    print("in=(%f,%f) out=%f bias=%f" % (i0,i1,o,b))
-  bnds0 = infer_fit.infer_model(model_out0,in0,in1,out, \
-                                bias,noise,adc=False)
-  bias,noise,in0,in1,out = infer_util \
-                           .get_data_by_mode(obj['dataset'],1)
-  infer_vis.plot_bias("bias.png",in0,in1,out,bias)
-  infer_vis.plot_noise("noise.png",in0,in1,out,noise)
-  bnds1 = infer_fit.infer_model(model_out1,in0,in1,out, \
-                                bias,noise,adc=False)
 
-  bias,noise,in0,in1,out = infer_util \
-                           .get_data_by_mode(obj['dataset'],2)
-  bnds2 = infer_fit.infer_model(model_out2,in0,in1,out, \
-                                bias,noise,adc=False)
+  bnds0 = infer_fit.build_model(model_out0,obj['dataset'],0)
+  bnds1 = infer_fit.build_model(model_out1,obj['dataset'],1)
+  bnds2 = infer_fit.build_model(model_out2,obj['dataset'],2)
   bnds = infer_util.tightest_bounds([bnds0['in0'], \
                                      bnds1['in0'], \
                                      bnds2['in0']])

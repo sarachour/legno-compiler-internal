@@ -168,7 +168,8 @@ void find_zero(Fabric::Chip::Tile::Slice::Integrator* integ, float max_error,
 
     buf_in[nmos] = -1;
     buf_out[nmos] = -1;
-    for(int bias_in=0; bias_in < 64; bias_in += 1){
+    code[0] = code[1] = -1;
+    for(unsigned int bias_in=0; bias_in < 64; bias_in += 1){
       float mean, variance;
       integ->m_codes.nmos = nmos;
       integ->m_codes.port_cal[in0Id] = bias_in;
@@ -193,6 +194,9 @@ void find_zero(Fabric::Chip::Tile::Slice::Integrator* integ, float max_error,
     for(int bias_out=0; bias_out < 64; bias_out += 1){
       for(int i = 0; i < 2; i +=1 ){
         float mean, variance;
+        if(code[i] < 0){
+          continue;
+        }
         integ->m_codes.nmos = nmos;
         integ->m_codes.port_cal[in0Id] = code[i];
         integ->m_codes.port_cal[out0Id] = bias_out;

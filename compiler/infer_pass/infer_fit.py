@@ -67,7 +67,13 @@ def trim_model(model,in0,in1,out,bias):
                                 error,[(pars[0],pars[1]), \
                                        (pars[2],pars[3])])
 
-  bounds = [(-1.0,-0.5),(1.0,2.0),(-1.0,-0.5),(1.0,2.0)]
+
+  trim = 0.1
+  bounds = [(-1.0,-1.0+trim), \
+            (2.0-trim*2.0,2.0), \
+            (-1.0,-1.0+trim), \
+            (2.0-trim*2.0,2.0)]
+
   result = scipy.optimize.brute(compute_loss, bounds, Ns=5)
   in0l,in0s,in1l,in1s = result
   bnds = {
@@ -140,9 +146,20 @@ def infer_model(model,in0,in1,out,bias,noise, \
         print("max_error: %f -> %f" % (max_error,new_max_error))
         print(bnd)
         model.bias_uncertainty = new_unc
-        infer_vis.plot_prediction_error("pred2.png", \
-                                        model,bnd,in0,in1,out,bias)
         return bnd
 
   return bnd
 
+
+def build_model(model,dataset,mode,adc=False):
+  bias,noise,in0,in1,out = infer_util \
+                           .get_data_by_mode(dataset,mode)
+  infer_vis.plot_bias(infer_vis.get_plot_name(model,'bias'), \
+                      in0,in1,out,bias)
+  infer_vis.plot_noise(infer_vis.get_plot_name(model,'noise'), \
+                       in0,in1,out,noise)
+  bnd= infer_model(model,in0,in1,out, \
+                        bias,noise,adc=adc)
+  infer_vis.plot_prediction_error("predict.png", \
+                                  model,bnd,in0,in1,out,bias)
+  return bnd

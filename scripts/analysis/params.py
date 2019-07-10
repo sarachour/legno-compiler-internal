@@ -34,34 +34,10 @@ def compute_params(conc_circ,entry,varname):
   params['runtime'] = params['simtime']/params['fmax']
   return params
 
-'''
-def compute_rank(conc_circ,entry,method=RankMethod.SKELTER):
-  if method == RankMethod.SKELTER:
-    skelter.clear_noise_model(conc_circ)
-    pnlib.compute(conc_circ)
-    return skelter.rank_model(conc_circ)
-
-  elif method == RankMethod.MAXSIGFAST:
-    return skelter.rank_maxsigfast_heuristic(conc_circ)
-
-  elif method == RankMethod.MAXSIGSLOW:
-    return skelter.rank_maxsigslow_heuristic(conc_circ)
-
-  elif method == RankMethod.SCALE:
-    return skelter.rank_scale_heuristic(conc_circ)
-
-  elif method == RankMethod.INTERVAL:
-    return skelter.rank_scale_heuristic(conc_circ)
-
-  elif method == RankMethod.HANDTUNED:
-    return skelter.rank_handtuned_heuristic(entry.bmark,conc_circ)
-'''
-
 
 
 def analyze(entry,conc_circ,method=RankMethod.SKELTER):
   params = None
-  print("GET OUTPUTS")
   for output in entry.outputs():
     varname = output.varname
     params = compute_params(conc_circ,entry,

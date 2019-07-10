@@ -57,7 +57,7 @@ def to_arco_table(circuits):
   }
   desc = 'analog chip configuration statistics'
   table = common.Table('Circuit Configurations', \
-                       desc, 'circarco','|c|ccccccc|c|')
+                       desc, 'circarco','|c|c|ccccccc|c|')
   fields = ['blocks','integrator','multiplier', \
                     'fanout','adc','dac','lut', \
                     'crossbar','connections']
@@ -85,7 +85,7 @@ def to_arco_table(circuits):
     table.data(bmark,row)
 
   table.horiz_rule()
-  table.write('circuit-arco.tbl')
+  table.write(common.get_path('circuit-arco.tbl'))
 
 def count_scaling_factors(circ,model):
   #conc_circ = ConcCirc.read(board,conc_circ)
@@ -123,16 +123,16 @@ def average_scale_factor_count(circs,models):
 def to_jaunt_table(circuits,models):
   desc = "statistics for Jaunt compilation pass"
   table = common.Table('Circuit Configurations', \
-                       desc, 'circjaunt','|cc|c|cccc|')
+                       desc, 'circjaunt','|c|cc|c|cccc|')
 
   fields = [
     'minimum digital snr',
     'minimum analog snr',
     'time constant',
-    '# scale vars',
-    '# unique scale values',
-    '# injected vars',
-    '# unique injection values'
+    'scale vars',
+    'unique scale values',
+    'injected vars',
+    'unique injection values'
 
   ]
   table.set_fields(fields)
@@ -150,15 +150,14 @@ def to_jaunt_table(circuits,models):
     row['minimum digital snr'] = "%.3f" % summary['digital_snr']
     row['minimum analog snr'] = "%.3f" % summary['analog_snr']
     row['time constant'] = "%.2f" % summary['tau']
-    row['# scale vars'] = "%d" % summary['scvars']
-    row['# unique scale values'] = "%d" % summary['scvals']
-    row['# injected vars'] = "%d" % summary['injvars']
-    row['# unique injection values'] = "%d" % summary['injvals']
+    row['scale vars'] = "%d" % summary['scvars']
+    row['unique scale values'] = "%d" % summary['scvals']
+    row['injected vars'] = "%d" % summary['injvars']
+    row['unique injection values'] = "%d" % summary['injvals']
     table.data(bmark,row)
 
   table.horiz_rule()
-  table.write('circuit-jaunt.tbl')
-
+  table.write(common.get_path('circuit-jaunt.tbl'))
 
 def visualize():
   data = common.get_data(series_type='circ_ident')

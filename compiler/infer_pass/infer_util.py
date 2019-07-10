@@ -2,6 +2,7 @@ from chip.model import PortModel, ModelDB
 import numpy as np
 import lab_bench.lib.chipcmd.data as chipcmd
 import itertools
+import util.util as util
 
 def tightest_bounds(bnds):
     lb = min(map(lambda b: b[0], bnds))
@@ -47,3 +48,16 @@ def to_loc(obj):
 def to_range(name):
   return chipcmd.RangeType(name)
 
+def get_directory(model):
+    def to_tag(mode):
+        if isinstance(mode,tuple):
+            tag = ''.join(map(lambda m: str(m)[0], mode))
+        else:
+            tag = str(mode)
+        return tag
+
+    block,loc = model.block,model.loc
+    cm,sm = to_tag(model.comp_mode),to_tag(model.scale_mode)
+    direc = "MODELS/%s_%s/%s_%s" % (block,loc,cm,sm)
+    util.mkdir_if_dne(direc)
+    return direc

@@ -32,10 +32,10 @@ to_type = {
   'conns': 'connections',
 }
 to_expr = {
-  ('multiplier','vga'): "$d_0 \cdot x_1$",
-  ('multiplier','mul'): "$d_0 \cdot x_1$",
-  ('integrator',None): "$z_0 = \int x_0, z_0(0) = d_0$",
-  ('fanout',None): "z_i = x_0",
+  ('multiplier','vga'): "$d_0 \cdot x_0$",
+  ('multiplier','mul'): "$x_1 \cdot x_0$",
+  ('integrator',None): "$z_0 = \int x_0 \wedge z_0(0) = d_0$",
+  ('fanout',None): "$z_i = x_0$",
   ('lut',None): "$z_0 = f(d_0)$"
 }
 
@@ -139,18 +139,21 @@ def build_board_summary(profile):
   row['value'] = '%d hz' % profile['time_constant']
   table.data(None,row)
 
+  row = {}
   row['property'] = 'connections'
   row['value'] = '%d' % profile['conns']
   table.data(None,row)
 
+  row = {}
   row['property'] = 'external inputs'
   row['value'] = profile['ext_inputs']
   table.data(None,row)
 
+  row = {}
   row['property'] = 'external outputs'
   row['value'] = profile['ext_outputs']
   table.data(None,row)
-  table.write('hwboard.tbl')
+  table.write(common.get_path('hwboard.tbl'))
 
 def build_block_summary(profile):
   desc = "summaries of computational blocks available on device"
@@ -170,6 +173,9 @@ def build_block_summary(profile):
   ]
 
   table.set_fields(fields)
+  table.horiz_rule()
+  table.header()
+  table.horiz_rule()
   for block in profile['blocks']:
     prof = profile['blocks'][block]
 
@@ -186,16 +192,18 @@ def build_block_summary(profile):
                                   prof['digital_outputs'])
     if block == 'multiplier':
       for comp_mode,data in prof['scale_modes'].items():
+        row = dict(row)
         row['compute mode'] = comp_mode
         row['function'] = to_expr[(block,comp_mode)]
         row['scale modes'] = data['scale_modes']
-        row['current limit'] = "%d $\mu A$~ %d $\mu A$" \
+        row['current limit'] = "%.1f $\mu A$-%.1f $\mu A$" \
                                % (data['oprange_min'], \
                                   data['oprange_max'])
-        row['gain'] = "%d $\mu A$~ %d $\mu A$" \
+        row['gain'] = "%.1f x-%.1f x" \
                       % (data['coeff_min'], \
                          data['coeff_max'])
 
+        print(row)
         table.data(None,row)
 
     else:
@@ -206,17 +214,19 @@ def build_block_summary(profile):
       if (block,None) in to_expr:
         row['function'] = to_expr[(block,None)]
       else:
-        row['function'] = 'identity'
+        row['function'] = '$z_0 = x_0$'
 
       row['scale modes'] = data['scale_modes']
-      row['current limit'] = "%d $\mu A$~ %d $\mu A$" \
+      row['current limit'] = "%.1f $\mu A$-%.1f $\mu A$" \
                               % (data['oprange_min'], \
                                 data['oprange_max'])
-      row['gain'] = "%d $\mu A$~ %d $\mu A$" \
+      row['gain'] = "%.1f x $\mu A$-%.1f x" \
                     % (data['coeff_min'], \
                         data['coeff_max'])
       table.data(None,row)
-  table.write('hwblocks.tbl')
+
+  table.horiz_rule()
+  table.write(common.get_path('hwblocks.tbl'))
 
 
 def visualize():

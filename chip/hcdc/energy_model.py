@@ -32,6 +32,7 @@ BLOCK_ENERGY = {
   'ext_chip_in': 0,
   'lut': 20.0*units.uW,
   'ext_chip_out': 0,
+  'ext_chip_analog_in':0,
   'tile_in':0,
   'chip_in':0,
   'tile_out':0,

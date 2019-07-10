@@ -61,7 +61,7 @@ def to_runtime_table(summary):
     table.data(bmark,row)
 
   table.horiz_rule()
-  table.write('compile-time.tbl')
+  table.write(common.get_path('compile-time.tbl'))
 
 
 def visualize():

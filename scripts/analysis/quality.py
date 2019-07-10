@@ -129,7 +129,7 @@ def compute_quality(_tobs,_yobs,_tpred,_ypred):
   print("mean (errors): %s" % ssqe)
   return ssqe,tobs,errors
 
-def analyze(entry):
+def analyze(entry,recompute=False):
   path_h = paths.PathHandler(entry.subset,entry.bmark)
   QUALITIES = []
   print(entry)
@@ -152,7 +152,7 @@ def analyze(entry):
     if not output.model is None:
       MODEL = output.transform
 
-    if MODEL is None:
+    if MODEL is None or recompute:
       TFIT,YFIT,MODEL = fit(TPRED,YPRED,TMEAS,YMEAS)
     else:
       TFIT,YFIT = apply_model(TPRED,YPRED,TMEAS,YMEAS,MODEL)
@@ -164,7 +164,12 @@ def analyze(entry):
 
     common.simple_plot(output,path_h,output.trial,'obs',TFIT,YFIT)
     common.compare_plot(output,path_h,output.trial,'comp',TPRED,YPRED,TFIT,YFIT)
-    QUALITY,TERR,YERR = compute_quality(TFIT,YFIT,TPRED,YPRED)
+    RESULT = compute_quality(TFIT,YFIT,TPRED,YPRED)
+    if RESULT == -1:
+      QUALITIES.append(RESULT)
+      continue
+
+    QUALITY,TERR,YERR = RESULT
     common.simple_plot(output,path_h,output.trial,'err',TERR,YERR)
     output.set_quality(QUALITY)
     QUALITIES.append(QUALITY)

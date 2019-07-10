@@ -229,7 +229,10 @@ void Fabric::Chip::Tile::Slice::Integrator::setParam3 () const {
 /*Set calInOs, calInEn*/
 void Fabric::Chip::Tile::Slice::Integrator::setParam4 () const {
 	unsigned char calInOs = m_codes.port_cal[in0Id];
-	if (calInOs<0||63<calInOs) error ("calInOs out of bounds");
+	if (calInOs<0||63<calInOs){
+    sprintf(FMTBUF, "calInOs out of bounds <%d>", calInOs);
+    error (FMTBUF);
+  }
 	unsigned char cfgTile = 0;
 	cfgTile += calInOs<<2;
 	cfgTile += (m_codes.cal_enable[in0Id]) ? 1<<1 : 0;

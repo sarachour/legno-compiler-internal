@@ -35,4 +35,4 @@ def visualize():
 
       table.data(ser,row)
   table.horiz_rule();
-  table.write('quality-energy-runtime.tbl')
+  table.write(common.get_path('quality-energy-runtime.tbl'))

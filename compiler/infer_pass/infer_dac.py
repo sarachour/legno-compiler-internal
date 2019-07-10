@@ -1,6 +1,6 @@
 import compiler.infer_pass.infer_util as infer_util
 import compiler.infer_pass.infer_visualize as infer_vis
-import compiler.infer_pass.infer_datafit as infer_fit
+import compiler.infer_pass.infer_fit as infer_fit
 
 from chip.model import PortModel
 
@@ -22,15 +22,8 @@ def build_config(meta):
 
 def infer(obj):
   model_in,model_out = build_config(obj['metadata'])
-  bias,noise,in0,in1,out = infer_util \
-                           .get_data_by_mode(obj['dataset'],0)
-  infer_vis.plot_bias("bias.png",in0,in1,out,bias)
-  infer_vis.plot_noise("noise.png",in0,in1,out,noise)
-  bnds = infer_fit.infer_model(model_out,in0,in1,out, \
-                                     bias,noise,adc=False)
-  infer_vis.plot_prediction_error('pred.png',model_out,bnds,
-                                  in0,in1,out,bias)
 
+  bnds = infer_fit.build_model(model_out,obj['dataset'],0)
   model_in.set_oprange_scale(*bnds['in0'])
   yield model_in
   yield model_out

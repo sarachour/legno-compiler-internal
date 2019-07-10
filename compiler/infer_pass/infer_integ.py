@@ -1,6 +1,6 @@
 import compiler.infer_pass.infer_util as infer_util
 import compiler.infer_pass.infer_visualize as infer_vis
-import compiler.infer_pass.infer_datafit as infer_fit
+import compiler.infer_pass.infer_fit as infer_fit
 
 from chip.model import PortModel
 
@@ -36,27 +36,15 @@ def build_config(meta):
                   scale_mode=scale_mode)
   return inp,ic,out,out_z,out_z0,out_zp
 
+
 def infer(obj):
   model_in,model_ic,model_out, \
     out_z,out_z0,out_zp = build_config(obj['metadata'])
-  bias,noise,in0,in1,out = infer_util \
-                           .get_data_by_mode(obj['dataset'],0)
-  infer_vis.plot_bias("bias.png",in0,in1,out,bias)
-  infer_vis.plot_noise("noise.png",in0,in1,out,noise)
-  bnds_ic = infer_fit.infer_model(out_z0,in0,in1,out, \
-                                  bias,noise,adc=False)
+
+  bnds_ic = infer_fit.build_model(out_z0,obj['dataset'],0)
   model_ic.set_oprange_scale(*bnds_ic['in0'])
 
-  bias,noise,in0,in1,out = infer_util \
-                           .get_data_by_mode(obj['dataset'],1)
-
-  infer_vis.plot_bias("bias.png",in0,in1,out,bias)
-  infer_vis.plot_noise("noise.png",in0,in1,out,noise)
-  for t in zip(in0,in1,out,bias):
-    print(t)
-
-  bnds_z = infer_fit.infer_model(out_z,in0,in1,out, \
-                                  bias,noise,adc=False)
+  bnds_z = infer_fit.build_model(out_z,obj['dataset'],1)
   model_in.set_oprange_scale(*bnds_z['in0'])
 
   yield model_in

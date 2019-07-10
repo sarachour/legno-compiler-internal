@@ -33,7 +33,8 @@ def model(big=False):
   max_ES = min(params['E0'],params['S0'])
   prob.set_interval("ES",-max_ES,max_ES)
   prob.bind("COMPLEX", op.Emit(
-    op.Mult(op.Const(params['one']),op.Var("ES"))
+    op.Mult(op.Const(params['one']),op.Var("ES")),
+    loc="A0"
   ))
   #prob.bind("COMPLEX", op.Emit(op.Var("ES"),loc="A0"))
   prob.set_max_sim_time(20)

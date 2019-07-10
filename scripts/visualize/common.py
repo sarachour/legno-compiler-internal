@@ -2,6 +2,12 @@ from scripts.db import ExperimentDB, ExperimentStatus, OutputStatus, MismatchSta
 import numpy as np
 from enum import Enum
 import seaborn as sns
+import util.util as util
+
+def get_path(filename):
+  path = "PAPER/%s" % filename
+  util.mkdir_if_dne("PAPER")
+  return path
 
 def unpack_model(handle):
   method = "unknown"
@@ -81,7 +87,8 @@ class Dataset:
           .append(0)
 
     else:
-      qualities = list(map(lambda o: o.quality, entry.outputs()))
+      qualities = list(filter(lambda q: not q is None, \
+                              map(lambda o: o.quality, entry.outputs())))
       self._data[key][entry.mismatch]['quality_variance'] \
           .append(np.std(qualities))
 

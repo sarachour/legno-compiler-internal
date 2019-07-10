@@ -8,8 +8,8 @@ import ops.op as op
 
 DESCRIPTIONS = {
   'micro-osc': 'differential equation representation of sin function',
-  'pend': 'pendulum simulation with no small angle estimation.$cross$',
-  'spring': 'simulation of two boxes connected with springs.$cross$',
+  'pend': 'pendulum simulation.$\dagger$',
+  'spring': 'simulation of box-spring system.$\dagger$',
   'vanderpol': 'stiff vanderpol oscillator',
   'cosc': 'dampened spring physics simulation',
   'heat1d': 'movement of heat through lattice',
@@ -72,4 +72,4 @@ def visualize():
     }
     table.data(bmark,entry)
 
-  table.write('bmarks.tbl')
+  table.write(common.get_path('bmarks.tbl'))

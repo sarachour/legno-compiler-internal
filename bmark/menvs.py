@@ -1,11 +1,14 @@
 from lang.prog import MathEnv
 import ops.op as op
+import chip.hcdc.globals as glb
 
-def audio():
-  exp = MathEnv('audio');
-  exp.set_sim_time(2)
-  exp.set_input_time(2)
-  return exp
+def audenv(time=0.1):
+  menv = MathEnv('audenv');
+  hwfreq = glb.TIME_FREQUENCY
+  menv.set_sim_time(time*hwfreq)
+  menv.set_input_time(time*hwfreq)
+  return menv
+
 
 def short_time():
   exp = MathEnv('t2')
@@ -62,10 +65,10 @@ MATH_ENVS = [
   short_time(),
   med_time(),
   med2_time(),
-  audio(),
   long_time(),
   medlong_time(),
-  long_time()
+  long_time(),
+  audenv()
 ]
 
 def get_math_env(name):

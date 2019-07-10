@@ -108,7 +108,9 @@ def plot_quality(bmark,subset,model,experiments):
   ax.plot(TREF,YREF,label='reference',linestyle='-', \
           color='#EE5A24')
   plt.tight_layout()
-  plt.savefig("paper-%s-%s-%s.pdf" % (subset,bmark,model))
+  filename = "paper-%s-%s-%s.pdf" % (subset,bmark,model)
+  filepath = common.get_path(filename)
+  plt.savefig(filepath)
   plt.clf()
 
 def visualize():

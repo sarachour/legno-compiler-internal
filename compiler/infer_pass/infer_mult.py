@@ -1,6 +1,6 @@
 import compiler.infer_pass.infer_util as infer_util
 import compiler.infer_pass.infer_visualize as infer_vis
-import compiler.infer_pass.infer_datafit as infer_fit
+import compiler.infer_pass.infer_fit as infer_fit
 import lab_bench.lib.chipcmd.data as chipdata
 from chip.model import PortModel
 
@@ -34,16 +34,7 @@ def build_config(meta):
 def infer(obj):
   result = build_config(obj['metadata'])
   model_out,model_in0,model_in1,model_coeff = result
-  bias,noise,in0,in1,out = infer_util \
-                           .get_data_by_mode(obj['dataset'],0)
-  infer_vis.plot_bias("bias.png",in0,in1,out,bias)
-  infer_vis.plot_noise("noise.png",in0,in1,out,noise)
-  bnds = infer_fit.infer_model(model_out,in0,in1,out, \
-                                     bias,noise,adc=False)
-  #for idx,(i0,i1,o,b) in enumerate(zip(in0,in1,out,bias)):
-  #  print("%d: %f*%f = %f + %f" % (idx,i0,i1,o,b))
-  infer_vis.plot_prediction_error('pred.png',model_out,bnds,
-                                  in0,in1,out,bias)
+  bnds = infer_fit.build_model(model_out,obj['dataset'],0)
 
   model_in0.set_oprange_scale(*bnds['in0'])
   if model_out.comp_mode == 'vga':
