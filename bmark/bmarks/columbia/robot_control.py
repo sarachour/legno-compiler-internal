@@ -7,7 +7,9 @@ if __name__ == "__main__":
 from lang.prog import MathProg
 from ops import op, opparse
 from bmark.bmarks.common import *
-from bmark.bmarks.other.bbsys import build_std_bb_sys
+from bmark.bmarks.other.bbsys import \
+  build_bb_sys, \
+  build_std_bb_sys
 import math
 import bmark.menvs as menvs
 
@@ -21,31 +23,30 @@ def model():
   cos_fun = op.Func(['T'], op.Cos(op.Var('T')))
 
   ampl = 0.5
-  W,V = build_std_bb_sys(prob,ampl,0)
+  # position is theta.
+  P1,V1 = build_std_bb_sys(prob,ampl,0)
+  P2,V2 = build_bb_sys(prob,ampl,0.73,1)
   params = {
     'DEG0' : 0,
     'X0': 0,
     'Y0': 0,
-    'W': W,
-    'V': V,
+    'P1': P1,
+    'P2': P2,
     'one':0.999999
   }
-  DEG = parse_diffeq('{one}*{W}', 'DEG0', ':t', params)
-  X = parse_diffeq('{one}*{V}*COS', 'X0',':u', params)
-  Y = parse_diffeq('{one}*{V}*SIN', 'Y0',':v', params)
-  prob.bind('DEG',DEG)
+  X = parse_diffeq('({P2})*COS', 'X0',':u', params)
+  Y = parse_diffeq('({P2})*SIN', 'Y0',':v', params)
   prob.bind('X',X)
   prob.bind('Y',Y)
-  prob.bind('SIN', op.Call([op.Var('DEG')], sin_fun))
-  prob.bind('COS', op.Call([op.Var('DEG')], cos_fun))
+  pexpr = op.Var(P1)
+  prob.bind('SIN', op.Call([pexpr], sin_fun))
+  prob.bind('COS', op.Call([pexpr], cos_fun))
   prob.bind('Rot', emit(op.Var('Y')))
-  pos = 1.0
-  xrng = 1.5
-  yrng = 2.5
-  degrng = 0.5
+  xrng = 0.5
+  yrng = 0.05
+  degrng = 0.15
   prob.set_interval("X",-xrng,xrng)
-  prob.set_interval("Y",0,yrng)
-  prob.set_interval("DEG",-degrng,degrng)
+  prob.set_interval("Y",-yrng,yrng)
   # W
   prob.set_max_sim_time(200)
   prob.compile()

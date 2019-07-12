@@ -9,60 +9,38 @@ from ops import op, opparse
 from bmark.bmarks.common import *
 import bmark.menvs as menvs
 
-def emit(v):
-  return op.Emit(v,loc="A0")
-
 
 def model(n,obs_idx):
+  #h = 1.0/(n-1)
   params = {
-    'init_heat': 1.0,
+    'init_heat': 2.0,
     'ic': 0,
-    #'coeff': 1/(2.0*n)
-    'coeff': 0.9999999
   }
-  params['2coeff'] = params['coeff']*2
 
   prob = MathProg('heat1d-g%d' % n)
-  #prob.set_digital_snr(10.0)
-  #prob.set_analog_snr(4)
-  for i in range(0,n):
-    params['curr'] = "u%d" % (i)
-    if i > 0 and i < n-1:
-      params['prev'] = "u%d" % (i-1)
-      params['next'] = "u%d" % (i+1)
-      eqn=parse_diffeq('{coeff}*{prev} + {2coeff}*(-{curr}) + {coeff}*{next}',\
-                       'ic', \
-                       ':q%d' % i, params)
-    elif i > 0:
-      assert(i == n-1)
-      params['prev'] = "u%d" % (i-1)
-      eqn=parse_diffeq('{coeff}*{prev} + {2coeff}*(-{curr})', \
-                       'init_heat', \
-                       ':q%d' % i, params)
-    elif i < n-1:
-      params['next'] = "u%d" % (i+1)
-      eqn=parse_diffeq('{coeff}*{next}+{2coeff}*(-{curr})', 'ic', \
-                   ':q%d' % i, params)
-    else:
-      raise Exception("???")
 
+  for i in range(1,n):
+    params['curr'] = "u%d" % (i)
+    params['prev'] = "u%d" % (i-1) if i-1 >= 1 else 0.0
+    params['next'] = "u%d" % (i+1) if i+1 < n else params['init_heat']
+    eqn=parse_diffeq('({prev} +(-{curr}) +(-{curr})+ {next})',\
+                      'ic', \
+                      ':q%d' % i, params)
     prob.bind(params['curr'], eqn)
     prob.set_interval(params['curr'],0,params['init_heat'])
 
-  prob.bind("POINT", emit(op.Var("u%d" % obs_idx)))
-  prob.set_max_sim_time(20)
+  measure_var(prob,"u%d" % obs_idx,'POINT')
+  prob.set_max_sim_time(200)
   prob.compile()
-  menv = menvs.get_math_env('t20')
+  menv = menvs.get_math_env('t200')
   return menv,prob
 
 def execute(n,o):
   menv,prob = model(n,o)
-  T,Y = run_diffeq(menv,prob)
-  plot_diffeq(menv,prob,T,Y)
+  plot_diffeq(menv,prob)
 
 
 if __name__ == "__main__":
-  execute(2,1)
   execute(4,2)
-  execute(8,6)
-  execute(16,13)
+  execute(8,7)
+  execute(16,15)

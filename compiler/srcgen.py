@@ -379,8 +379,11 @@ def get_ext_adcs_in_use(board,conc_circ,menv):
   info = {}
   for loc,config in conc_circ.instances_of_block('ext_chip_out'):
     handle = board.handle_by_inst('ext_chip_out',loc)
-    info[handle] = {'label':config.label('out'),
-                    'scf':config.scf('out')}
+    info[handle] = { \
+                     'label':config.label('out'),
+                     'scf':config.scf('out'),
+                     'interval':config.interval('out')
+    }
 
 
   return info
@@ -389,6 +392,24 @@ def to_hw_time(circ,time):
   scaled_time = time/circ.tau
   hw_time = scaled_time/(circ.board.time_constant)
   return hw_time
+
+def to_volt_ranges(board,conc_circ,mathenv,hwenv):
+  adcs_in_use = get_ext_adcs_in_use(board,conc_circ,mathenv)
+  for handle, info in adcs_in_use.items():
+    out_no = hwenv.adc(handle)
+    pin_mode = hwenv.oscilloscope.output(handle)
+    if isinstance(pin_mode,DiffPinMode):
+      llb,lub  = hwenv.oscilloscope.chan_range(pin_mode.low)
+      hlb,hub  = hwenv.oscilloscope.chan_range(pin_mode.high)
+      sig_range = info['scf']*info['interval'].bound
+      hw_range = max(abs(hub-llb),abs(hlb-lub))
+      scf = sig_range/hw_range
+      yield pin_mode.low,scf*llb,scf*lub
+      yield pin_mode.high,scf*hlb,scf*hub
+
+    else:
+      raise Exception("None")
+
 
 def preamble(gren,board,conc_circ,mathenv,hwenv):
   dacs_in_use = get_ext_dacs_in_use(board,conc_circ,mathenv)
@@ -402,8 +423,12 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
   # initialize oscilloscope
   if hwenv.use_oscilloscope:
     gren.add(parse('micro_use_osc'))
-    for chan,lb,ub in hwenv.oscilloscope.chan_ranges():
-       cmd = "osc_set_volt_range %d %f %f" % (chan,lb,ub)
+    for chan,lb,ub in to_volt_ranges(board, \
+                                     conc_circ, \
+                                     mathenv, \
+                                     hwenv):
+       cmd = "osc_set_volt_range %d %f %f" \
+             % (chan,lb,ub)
        gren.add(parse(cmd))
        cmd = "osc_set_sim_time %.3e" % \
              (scaled_sim_time*osc_slack)

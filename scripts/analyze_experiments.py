@@ -73,9 +73,6 @@ def execute_once(args,debug=True):
     if not args.bmark is None and not entry.bmark == args.bmark:
       continue
 
-    if entry.math_env == 'audenv':
-      continue
-
     if not args.subset is None and not entry.subset == args.subset:
       continue
 
@@ -104,7 +101,10 @@ def execute_once(args,debug=True):
       energy.analyze(entry,conc_circ)
 
     if entry.quality is None or recompute_quality:
-      quality.analyze(entry,recompute=recompute_quality)
+      quality.analyze(entry, \
+                      recompute=recompute_quality,
+                      no_reference=(entry.math_env == 'audenv') \
+      )
 
   db.close()
 

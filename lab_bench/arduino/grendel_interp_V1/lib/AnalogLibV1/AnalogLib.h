@@ -68,10 +68,8 @@ static void error (
   }
 }
 
-#define SAMPLES 100
+#define SAMPLES 1000
 // how much to delay before measurement and how many times to measure
-//#define CAL_REPS 65536
-//#define FULL_SCALE 1.2
 #endif
 
 #ifndef _PIN

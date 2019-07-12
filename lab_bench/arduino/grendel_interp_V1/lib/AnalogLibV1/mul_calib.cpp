@@ -159,7 +159,7 @@ bool helper_find_max_val(Fabric::Chip::Tile::Slice::Multiplier* mult,
           error);
   print_log(FMTBUF);
   float targ_ratio = target/target_half;
-  float meas_ratio = measurement/measurement_half;
+  float meas_ratio = (measurement-ref_full)/(measurement_half-ref_half);
   float ratio_max = (target+max_error)/(target_half-max_error);
   float ratio_min = (target-max_error)/(target_half+max_error);
   sprintf(FMTBUF, "calibrate-pmos targ-ratio=%f meas-ratio=%f bnd=(%f,%f)",

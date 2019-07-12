@@ -18,6 +18,9 @@ class HWEnv:
       for chan,(low,high) in self._ranges.items():
         yield chan,low,high
 
+    def chan_range(self,chan):
+      return self._ranges[chan]
+
     def add_range(self,chan,low,high):
       self._ranges[chan] = (low,high)
 

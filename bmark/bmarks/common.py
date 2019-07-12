@@ -45,6 +45,22 @@ def plot_diffeq(menv,prob):
         plt.savefig(filepath)
         plt.clf()
 
+
+def plot_phase_portrait(menv,prob,var1,var2):
+  T,Z = run_system(menv,prob)
+  cwd = os.getcwd()
+  filedir = "%s/BMARK_REF/%s_%s" % (cwd,prob.name,menv.name)
+  plt.xlabel(var1)
+  plt.ylabel(var2)
+  if not os.path.exists(filedir):
+    os.makedirs(filedir)
+
+  plt.plot(Z[var1],Z[var2])
+  filepath = "%s/phase_portrait_%s_%s.png" \
+             % (filedir,var1,var2);
+  plt.savefig(filepath)
+  plt.clf()
+
 def run_system(menv,prob):
     T,Y = run_diffeq(menv,prob)
     stvars,ics,derivs,fnvars,fns = prob.build_ode_prob()

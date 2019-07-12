@@ -129,7 +129,7 @@ def compute_quality(_tobs,_yobs,_tpred,_ypred):
   print("mean (errors): %s" % ssqe)
   return ssqe,tobs,errors
 
-def analyze(entry,recompute=False):
+def analyze(entry,recompute=False,no_reference=False):
   path_h = paths.PathHandler(entry.subset,entry.bmark)
   QUALITIES = []
   print(entry)
@@ -142,6 +142,10 @@ def analyze(entry,recompute=False):
 
     TMEAS,YMEAS = read_meas_data(output.out_file)
     common.simple_plot(output,path_h,output.trial,'meas',TMEAS,YMEAS)
+
+    if no_reference:
+      QUALITIES.append(-1)
+      continue
 
     TREF,YREF = compute_ref(entry.bmark,entry.math_env,varname)
     common.simple_plot(output,path_h,output.trial,'ref',TREF,YREF)

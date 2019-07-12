@@ -41,7 +41,7 @@ def to_runtime_table(summary):
     if not std == 0.0:
       return "%.2f $\pm$ %.2f s" % (mean,std)
     else:
-      return "%.2f s" % mean
+      return "%.2f s $\pm$ %.2f" % (mean,std)
 
   desc = "compilation time, broken down by compilation pass"
   table = common.Table('Compilation Times', \

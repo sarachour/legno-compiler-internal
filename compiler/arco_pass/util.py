@@ -322,7 +322,7 @@ def validate_fragment(frag):
 
     if isinstance(frag, acirc.ABlockInst):
       if frag.block.name == 'multiplier':
-        print(frag.id,frag.config.comp_mode)
+        #print(frag.id,frag.config.comp_mode)
         if frag.config.comp_mode == 'vga':
           test_inputs(['in0'])
           test_inputs(['in1','coeff'],connected=False)
