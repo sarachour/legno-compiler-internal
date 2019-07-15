@@ -43,6 +43,10 @@ def infer(obj):
                                      bnds1['in0'], \
                                      bnds2['in0']])
   model_in.set_oprange_scale(*bnds)
+  # this causes scaling issues because there aren't enough degrees of freedom.
+  model_out0.gain = 1.0
+  model_out1.gain = 1.0
+  model_out2.gain = 1.0
   yield model_in
   yield model_out0
   yield model_out1

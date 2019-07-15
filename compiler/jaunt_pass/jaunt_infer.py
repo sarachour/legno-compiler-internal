@@ -151,16 +151,35 @@ def sc_decl_scale_model_variables(jenv,circ):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
 
+        valid_scms = []
         for port in block.inputs + block.outputs:
             for handle in list(block.handles(config.comp_mode,port)) + [None]:
                 for scm in block.scale_modes(config.comp_mode):
-                 if not block.whitelist(config.comp_mode, scm):
-                     continue
-                 sc_physics_model(jenv,scm,circ,block_name,loc,port,handle=handle)
+                    if not block.whitelist(config.comp_mode, scm):
+                        continue
+
+                    if jenv.params.only_scale_modes_with_models and \
+                       not jaunt_common.DB.has(block.name,loc,port, \
+                                               config.comp_mode, \
+                                               scm,handle):
+                        #print("no model: %s[%s] cm=%s scm=%s handle=%s"  \
+                        #      % (block_name,loc, \
+                        #         config.comp_mode, \
+                        #         scm, \
+                        #         handle))
+                        continue
+
+                    valid_scms.append(scm)
+                    sc_physics_model(jenv,scm,circ,block_name, \
+                                     loc,port,handle=handle)
 
         modevars = []
+        if len(valid_scms) == 0:
+            print("no valid scale modes: %s[%s]" % (block_name,loc))
+            input()
+
         for scale_mode in block.scale_modes(config.comp_mode):
-            if not block.whitelist(config.comp_mode, scale_mode):
+            if not scale_mode in valid_scms:
                 continue
             modevar = jenv.get_mode_var(block_name,loc,scale_mode)
             modevars.append(modevar)
@@ -274,14 +293,16 @@ def concretize_result(jenv,circ,nslns):
             block = circ.board.block(block_name)
             scale_mode = None
             for scm in block.scale_modes(config.comp_mode):
-                if not block.whitelist(config.comp_mode,scm):
+                if not jenv.has_mode_var(block_name,loc,scm):
                     continue
 
                 mode = jenv.get_mode_var(block_name,loc,scm)
                 if result[mode]:
                     assert(scale_mode is None)
                     scale_mode = scm
+
             assert(not scale_mode is None)
+
             config.set_scale_mode(scale_mode)
             print("%s[%s] = %s" % (block_name,loc,scale_mode))
             jaunt_util.log_info("%s[%s] = %s" % (block_name,loc,scale_mode))
@@ -323,6 +344,8 @@ def infer_scale_config(prog,circ,nslns, \
                               analog_error=analog_error, \
                               digital_error=digital_error)
     #solve_convex_first(prog,circ,jenv)
+    count = 0
     for new_circ in concretize_result(jenv,circ,nslns):
         yield new_circ
+        count += 1
 

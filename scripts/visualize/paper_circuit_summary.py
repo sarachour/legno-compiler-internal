@@ -89,7 +89,7 @@ def to_arco_table(circuits):
 
 def count_scaling_factors(circ,model):
   #conc_circ = ConcCirc.read(board,conc_circ)
-  model,dig_error,ana_error = common.unpack_model(model)
+  model,dig_error,ana_error,bandwidth = common.unpack_model(model)
   scvals = []
   injvals = []
   n_injvars = 0
@@ -112,6 +112,7 @@ def count_scaling_factors(circ,model):
   summary['tau']=circ.tau
   summary['digital_snr'] = dig_error
   summary['analog_snr'] = ana_error
+  summary['bandwidth'] = bandwidth
   return summary
 
 
@@ -128,6 +129,7 @@ def to_jaunt_table(circuits,models):
   fields = [
     'minimum digital snr',
     'minimum analog snr',
+    'maximum bandwidth',
     'time constant',
     'scale vars',
     'unique scale values',
@@ -149,6 +151,7 @@ def to_jaunt_table(circuits,models):
     row = {}
     row['minimum digital snr'] = "%.3f" % summary['digital_snr']
     row['minimum analog snr'] = "%.3f" % summary['analog_snr']
+    row['maximum bandwidth'] = "%.3f" % summary['bandwidth']
     row['time constant'] = "%.2f" % summary['tau']
     row['scale vars'] = "%d" % summary['scvars']
     row['unique scale values'] = "%d" % summary['scvals']

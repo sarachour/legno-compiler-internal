@@ -9,7 +9,6 @@ def read_config(cfgfile):
     'n_abs': 1,
     'n_conc': 3,
     'n_scale': 1,
-    'sweep': True,
     'max-freq':None,
     'subset': 'unrestricted',
     'model': 'physical'
@@ -25,11 +24,6 @@ def read_config(cfgfile):
     for k,v in obj.items():
       assert(k in defaults)
       cfg[k] = v
-
-    if cfg['sweep']:
-      cfg['sweep'] = "--sweep"
-    else:
-      cfg['sweep'] = ""
 
     return cfg
 
@@ -98,7 +92,7 @@ if args.arco:
 
 jaunt_args = \
              "--subset {subset} {bmark} jaunt {search} --model {model}  " + \
-             "--scale-circuits {n_scale} {sweep} " + \
+             "--scale-circuits {n_scale} " + \
              "--digital-error {digital_error} --analog-error {analog_error} "
 if not params['max-freq'] is None:
   jaunt_args += " --max-freq %f" % params['max-freq']

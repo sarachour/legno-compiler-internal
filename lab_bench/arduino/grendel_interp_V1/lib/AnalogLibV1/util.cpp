@@ -95,7 +95,7 @@ namespace util {
     fab->cfgCommit();
     fab->execStart();
     //wait for one millisecond.
-    delay(1);
+    delay(3);
     fu->getChip()->tiles[3].slices[2].chipOutput
       ->analogDist(mean,variance);
     fab->execStop();

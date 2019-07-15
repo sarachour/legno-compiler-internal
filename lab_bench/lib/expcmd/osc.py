@@ -43,9 +43,9 @@ class OscSetVoltageRangeCmd(Command):
         volt_offset = -(self._low+self._high)/2.0
         volts_per_div = (self._high-self._low)/vdivs
         state.oscilloscope \
-            .set_voltage_offset(chan,volt_offset)
-        state.oscilloscope \
              .set_volts_per_division(chan,volts_per_div)
+        state.oscilloscope \
+            .set_voltage_offset(chan,volt_offset)
 
 
 class OscGetValuesCmd(Command):

@@ -27,7 +27,6 @@ class JauntEnvParams:
     PHYSICAL = "physical"
     IDEAL = "ideal"
     NAIVE = "naive"
-    PROPAGATE = "propagate"
 
   class Model(Enum):
     PHYSICAL = "physical"
@@ -47,6 +46,9 @@ class JauntEnvParams:
                max_freq=None):
     self.percent_digital_error = digital_error
     self.percent_analog_error = analog_error
+    self.use_model_uncertainty = False
+    self.only_scale_modes_with_models = False
+
     if not max_freq is None:
       self.max_freq = max_freq*1000.0
     else:
@@ -68,14 +70,7 @@ class JauntEnvParams:
     self.enable_quantize_constraint = True
     self.enable_quality_constraint = True
     self.enable_bandwidth_constraint = True
-
-  def propagate(self):
-    self.model = "physical"
-    self.propagate_uncertainty = True
-    self.enable_quantize_constraint= True
-    self.enable_quality_constraint = True
-    self.enable_bandwidth_constraint = True
-
+    self.only_scale_modes_with_models = True
 
   def naive(self):
     self.model = "naive"
@@ -92,8 +87,6 @@ class JauntEnvParams:
       self.ideal()
     elif model == JauntEnvParams.Type.NAIVE:
       self.naive()
-    elif model == JauntEnvParams.Type.PROPAGATE:
-      self.propagate()
 
     else:
       raise Exception("unknown jenv model: <%s>" % model);

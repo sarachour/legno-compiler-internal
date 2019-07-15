@@ -153,7 +153,7 @@ class ProfileCmd(Command):
       if self._n_inputs == 1:
         if self._blk == enums.BlockType.INTEG:
             if self._bootstrap:
-                for x0 in [0,1,-1]:
+                for x0 in [0]:
                     if self.get_output(env,[x0],mode=0):
                         break
 
@@ -162,19 +162,19 @@ class ProfileCmd(Command):
                 if self.get_output(env,[x0],mode=0):
                     break
 
-            if self._bootstrap:
-                for x0 in [0,1,-1]:
-                    if self.get_output(env,[x0],mode=1):
-                        return
+            #if self._bootstrap:
+            #    for x0 in [0,1,-1]:
+            #        if self.get_output(env,[x0],mode=1):
+            #            return
 
             for i in range(0,self._n):
-                x0 = sample_reverse_normal()
+                x0 = sample_reverse_normal()*0.5
                 if self.get_output(env,[x0],mode=1):
                     return
 
         elif self._blk == enums.BlockType.FANOUT:
             if self._bootstrap:
-                for x0 in [0,1,-1]:
+                for x0 in [0]:
                     succ=self.get_output(env,[x0],mode=0)
                     succ&=self.get_output(env,[x0],mode=1)
                     succ&=self.get_output(env,[x0],mode=2)
@@ -196,7 +196,7 @@ class ProfileCmd(Command):
 
       elif self._n_inputs == 2:
           if self._bootstrap:
-            for x0,x1 in [(1,1),(-1,1),(1,-1),(-1,-1),(0,0)]:
+            for x0,x1 in [(0,0)]:
                 if self.get_output(env,[x0,x1],mode=0):
                     return
 

@@ -42,8 +42,6 @@ jaunt_subp = subparsers.add_parser('jaunt', \
                                    help='scale circuit parameters.')
 jaunt_subp.add_argument('--model', default="physical",
                         help='use physical models to inform constraints.')
-jaunt_subp.add_argument('--sweep', action='store_true', \
-                        help='do performance sweep.')
 jaunt_subp.add_argument('--scale-circuits', type=int,default=15, \
                        help='number of scaled circuits to generate.')
 jaunt_subp.add_argument('--digital-error', type=float, default=0.04, \
@@ -51,6 +49,11 @@ jaunt_subp.add_argument('--digital-error', type=float, default=0.04, \
 jaunt_subp.add_argument('--analog-error',type=float,default=0.04, \
                         help='do performance sweep.')
 jaunt_subp.add_argument('--search',action="store_true")
+jaunt_subp.add_argument('--use_model-uncertainty', \
+                        action='store_true', \
+                        help='use the uncertainty bundled with the model')
+
+
 jaunt_subp.add_argument("--max-freq", type=float, help="maximum frequency in Khz")
 
 graph_subp = subparsers.add_parser('graph', \

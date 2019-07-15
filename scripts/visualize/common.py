@@ -22,14 +22,21 @@ def unpack_model(handle):
   i += 1
   assert(handle[i] == 'q')
   i += 1
-  analog = float(handle[i:i+4])
-  i += 4
+  next_tag = handle[i:].find('d')
+  analog = float(handle[i:i+next_tag])
+  i += next_tag
   assert(handle[i] == 'd')
   i += 1
-  digital= float(handle[i:i+4])
-  i += 4
+  next_tag = handle[i:].find('b')
+  digital= float(handle[i:i+next_tag])
+  i += next_tag
   assert(handle[i] == 'b')
-  return method,analog,digital
+  i += 1
+  if len(handle[i:]) == 0:
+      bandwidth = 200
+  else:
+      bandwidth = float(handle[i:])
+  return method,analog,digital,bandwidth
 
 class Dataset:
 
@@ -118,7 +125,6 @@ class BenchmarkVisualization:
                      'spring-nl',
                      'vanderpol',
                      'robot',
-                     'heat1d-g2',
                      'heat1d-g4',
                      'heat1d-g8'
   ]
@@ -126,10 +132,12 @@ class BenchmarkVisualization:
     'micro-osc': 'sin',
     'cosc': 'dampened',
     'vanderpol': 'vanderpol',
+    'closed-forced-vanderpol': 'forced-vanderpol',
     'pend': 'pendulum',
     'pend-nl': 'pendulum-nl',
     'lotka': 'lotka-volterra',
     'spring': 'springs',
+    'kalman-const': 'kalman-const',
     'spring-nl': 'springs-nl',
     'robot': 'robot',
     'heat1d-g2': 'heat2-1',

@@ -25,6 +25,15 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
   dac_code_t ref_dac_codes = ref_dac->m_codes;
   integ_code_t integ_codes = this->m_codes;
 
+  range_t out_range = integ_codes.range[out0Id];
+  fanout->m_codes.range[in0Id] = out_range;
+  fanout->m_codes.range[out0Id] = out_range;
+  fanout->m_codes.range[out1Id] = out_range;
+  fanout->m_codes.range[out2Id] = out_range;
+  fanout->m_codes.inv[out0Id] = false;
+  fanout->m_codes.inv[out1Id] = true;
+  fanout->update(fanout->m_codes);
+  fanout->calibrate(prof::TEMP, 0.01);
   cutil::calibrate_t calib;
   cutil::initialize(calib);
   cutil::buffer_fanout_conns(calib,fanout);
@@ -38,14 +47,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
 
   cutil::break_conns(calib);
 
-  range_t out_range = integ_codes.range[out0Id];
-  fanout->m_codes.range[in0Id] = out_range;
-  fanout->m_codes.range[out0Id] = out_range;
-  fanout->m_codes.range[out1Id] = out_range;
-  fanout->m_codes.range[out2Id] = out_range;
-  fanout->m_codes.inv[out0Id] = false;
-  fanout->m_codes.inv[out1Id] = true;
-  fanout->update(fanout->m_codes);
+
 
   float target_input = compute_steady_state_input(m_codes,input);
   float ref;

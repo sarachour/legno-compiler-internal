@@ -394,6 +394,13 @@ def to_hw_time(circ,time):
   return hw_time
 
 def to_volt_ranges(board,conc_circ,mathenv,hwenv):
+  def scale(scf,lb,ub,slack=1.1):
+    rng = (ub-lb)*scf/2
+    midpoint = (ub+lb)/2.0
+    slb = max((midpoint-rng*slack),lb)
+    sub = min((midpoint+rng*slack),ub)
+    return slb,sub
+
   adcs_in_use = get_ext_adcs_in_use(board,conc_circ,mathenv)
   for handle, info in adcs_in_use.items():
     out_no = hwenv.adc(handle)
@@ -404,8 +411,11 @@ def to_volt_ranges(board,conc_circ,mathenv,hwenv):
       sig_range = info['scf']*info['interval'].bound
       hw_range = max(abs(hub-llb),abs(hlb-lub))
       scf = sig_range/hw_range
-      yield pin_mode.low,scf*llb,scf*lub
-      yield pin_mode.high,scf*hlb,scf*hub
+      print(sig_range,hw_range,scf)
+      slb,sub = scale(scf,llb,lub)
+      yield pin_mode.low,slb,sub
+      slb,sub = scale(scf,hlb,hub)
+      yield pin_mode.high,slb,sub
 
     else:
       raise Exception("None")

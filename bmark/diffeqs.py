@@ -3,12 +3,14 @@ import bmark.bmarks.biology as biology
 import bmark.bmarks.columbia as columbia
 import bmark.bmarks.audio as audio
 import bmark.bmarks.other as other
+import bmark.bmarks.kalman as kalman
 
 # commented out any benchmarks that don't work.
 BMARKS = biology.get_benchmarks() + \
          audio.get_benchmarks() + \
          columbia.get_benchmarks() + \
-         other.get_benchmarks()
+         other.get_benchmarks() + \
+         kalman.get_benchmarks()
 
 
 # energy model: page 26 of thesis, chapter 2

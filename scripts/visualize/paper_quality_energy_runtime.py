@@ -12,8 +12,14 @@ def visualize():
   data = common.get_data(series_type='bmark')
   desc = "performance, energy and quality for HDACv2 Board"
   table = common.Table("Results", desc, "tblres", \
-                       layout = "c|cc|ccc")
-  header = ['runtime','power','energy','ssqe']
+                       layout = "c|ccc|cccc")
+  header = ['minimum analog snr', \
+          'minimum digital snr', \
+          'bandwidth', \
+          'runtime', \
+          'power', \
+          'energy', \
+          'ssqe']
   table.set_fields(header)
   table.horiz_rule();
   table.header()
@@ -24,14 +30,15 @@ def visualize():
       result = data.get_data(ser,fields,statuses)
       runtime,energy,quality,quality_variance,model = result
       row = {}
-      method,ana_error,dig_error = common.unpack_model(model[0])
+      method,ana_error,dig_error,bandwidth= common.unpack_model(model[0])
       row['runtime'] = "%.2f ms" % (runtime[0]*1e3)
       row['power'] = "%.2f $\mu$W/s" % (energy[0]*1e6)
       row['energy'] = "%.2f $\mu$W" % (energy[0]*runtime[0]*1e6)
       row['ssqe'] = "%.4f $\pm$ %.4f" \
                        % (quality[0],quality_variance[0])
-      row['digital error'] = "%f" % dig_error
-      row['analog error'] = "%f" % ana_error
+      row['minimum digital snr'] = "%f" % dig_error
+      row['minimum analog snr'] = "%f" % ana_error
+      row['bandwidth'] = "%f" % bandwidth
 
       table.data(ser,row)
   table.horiz_rule();

@@ -110,6 +110,10 @@ class Board(Layer):
         self._connections = {}
         self._routes = nx.DiGraph()
         self._freeze_insts = False
+        self._blacklist = []
+
+    def set_blacklist(self,b):
+        self._blacklist = b
 
     def freeze_instances(self):
         self._freeze_insts =  True
@@ -283,6 +287,9 @@ class Board(Layer):
 
     def inst(self,block_name,_position):
         assert(not self._freeze_insts)
+        if (block_name,_position) in self._blacklist:
+            return
+
         if not block_name in self._inst_by_block:
             self._inst_by_block[block_name] = []
 

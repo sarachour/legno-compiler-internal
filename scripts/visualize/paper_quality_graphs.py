@@ -52,11 +52,13 @@ YLABELS = {
   'micro-osc': 'amplitude',
   'vanderpol': 'amplitude',
   'pend': 'position',
+  'closed-forced-vanderpol': 'amplitude',
   'robot': 'xvel',
   'pend-nl': 'position',
   'lotka': 'population',
   'spring': 'position',
   'cosc': 'amplitude',
+  'kalman-const': 'constant',
   'spring-nl': 'position',
   'heat1d-g2': 'heat',
   'heat1d-g4': 'heat',
@@ -90,6 +92,10 @@ def plot_quality(bmark,subset,model,experiments):
   # compute experimental results
   for exp in experiments:
     for out in exp.outputs():
+      # the subsequent runs have issues with the fit.
+      if not "_0.json" in out.out_file:
+        continue
+
       TMEAS,YMEAS = read_meas_data(output.out_file)
       xform = out.transform
       tau = out.tau

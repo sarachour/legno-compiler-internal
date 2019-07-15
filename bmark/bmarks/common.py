@@ -5,6 +5,7 @@ import numpy as np
 import math
 import os
 import tqdm
+import util.util as util
 
 def measure_var(prob,invar,outvar):
   prob.bind(outvar,
@@ -24,6 +25,8 @@ def parse_diffeq(expr,ic, handle,params):
 
 def _evaluate(expr,vmap):
     vmap['math'] = math
+    vmap['np'] = np
+    vmap['randlist'] = util.randlist
     return np.real(eval(expr,vmap))
 
 def plot_diffeq(menv,prob):

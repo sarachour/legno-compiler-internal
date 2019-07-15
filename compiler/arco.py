@@ -17,7 +17,8 @@ import compiler.arco_pass.util as arco_util
 #logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('arco')
-logger.setLevel(logging.ERROR)
+#logger.setLevel(logging.ERROR)
+logger.setLevel(logging.INFO)
 
 def bind_namespace(node,namespace,ids=[]):
     if node.id in ids:

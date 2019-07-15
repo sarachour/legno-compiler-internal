@@ -60,7 +60,8 @@ class ConcCirc:
            not self._board.is_block_at(block,loc):
             for block in self._board.blocks_at(loc):
                 print(block.name)
-            raise Exception("no block <%s> at that location.")
+            raise Exception("no block <%s> at location <%s>." \
+                            % (block.name,loc))
 
         if not block in self._configs:
             self._configs[block] = {}

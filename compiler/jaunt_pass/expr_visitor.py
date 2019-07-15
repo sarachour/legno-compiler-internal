@@ -45,6 +45,9 @@ class ExprVisitor:
     elif expr.op == ops.OpType.COS:
       result = self.visit_cos(expr)
 
+    elif expr.op == ops.OpType.RANDFUN:
+      result = self.visit_randfun(expr)
+
     elif expr.op == ops.OpType.SIN:
       result = self.visit_sin(expr)
 
@@ -133,6 +136,10 @@ class SCFPropExprVisitor(ExprVisitor):
     expr2 = self.visit_expr(expr.arg2)
     self.jenv.eq(expr1,expr2,'expr-visit-add')
     return expr1
+
+  def visit_randfun(self,expr):
+    expr1 = self.visit_expr(expr.arg(0))
+    return jop.JConst(1.0)
 
   def visit_sgn(self,expr):
     expr1 = self.visit_expr(expr.arg(0))

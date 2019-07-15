@@ -1,6 +1,7 @@
 from enum import Enum
 import numpy as np
 import math as math
+import util.util as util
 
 class RoundMode(Enum):
     UP = "up"
@@ -53,5 +54,6 @@ def uniform(master,index):
 def eval_func(fn,args):
     args['math'] = math
     args['np'] = np
+    args['randlist'] = util.randlist
     args['random_uniform'] = uniform
     return eval(fn,args)

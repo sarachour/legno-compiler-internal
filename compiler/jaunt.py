@@ -189,6 +189,7 @@ def scale(prog,circ,nslns, \
             for final_obj,final_circ in compute_scale(jenv,prog,infer_circ,obj):
                 yield idx,final_obj.tag(),jenv.params.tag(),final_circ
 
+    print("logging: %s" % do_log)
     if do_log:
         report_missing_models(model,circ)
         jaunt_physlog.save()

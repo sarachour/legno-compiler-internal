@@ -8,6 +8,6 @@ echo "circuit summary"
 python3 exp_driver.py visualize paper-circuit-summary
 echo "compile time"
 python3 exp_driver.py visualize paper-compile-time
-#echo "graphs"
-#python3 exp_driver.py visualize paper-quality-graphs
+echo "graphs"
+python3 exp_driver.py visualize paper-quality-graphs
 #python3 exp_driver.py visualize paper-subset-comparison

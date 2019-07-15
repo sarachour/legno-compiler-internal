@@ -15,6 +15,13 @@ import chip.hcdc.globals as glb
 from chip.board import Board
 
 
+BLACKLIST = []
+# these integrators failed to calibrate, it cannot
+# find calibration codes that produce a steady state of zero for these guys,
+# given an input current of zero when in high-medium mode.
+# i tried doing a brute force search for calibration, to no avail.
+BLACKLIST += []
+
 def test_board(board):
     mult = board.block('multiplier')
     assert(board.route_exists(mult.name,board.position_string([0,0,0,1]),'out',
@@ -89,6 +96,7 @@ def make_board(subset=glb.HCDCSubset.UNRESTRICTED):
     hw.add(list(map(lambda b: b.subset(subset), blocks)))
 
     hw.set_time_constant(glb.TIME_FREQUENCY)
+    hw.set_blacklist(BLACKLIST)
 
     chips = map(lambda i : hw.layer(i),range(0,n_chips))
     for chip_idx,chip in enumerate(chips):
@@ -145,6 +153,7 @@ def make_board(subset=glb.HCDCSubset.UNRESTRICTED):
                     elif slice_idx == 3 and chip_idx == 1:
                         hw.add_handle('A3','ext_chip_out',loc=adc)
                         hw.add_handle('E2','ext_chip_analog_in',loc=dac)
+
 
     chip0_chip1 = [
         ([0,0,0,0],[1,1,3,0],'+'),

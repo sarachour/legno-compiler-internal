@@ -68,7 +68,7 @@ static void error (
   }
 }
 
-#define SAMPLES 1000
+#define SAMPLES 200
 // how much to delay before measurement and how many times to measure
 #endif
 

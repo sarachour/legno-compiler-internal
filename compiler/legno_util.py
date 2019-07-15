@@ -241,7 +241,8 @@ def exec_srcgen(hdacv2_board,args):
 def exec_graph_one(hdacv2_board,path_handler,fname):
     dirname = path_handler.conc_circ_dir()
     circ_bmark,circ_indices,circ_scale_index,model,opt = \
-                                                   path_handler.conc_circ_to_args(fname)
+                                                   path_handler \
+                                                   .conc_circ_to_args(fname)
 
     conc_circ = path_handler.conc_circ_file(circ_bmark,
                                             circ_indices,

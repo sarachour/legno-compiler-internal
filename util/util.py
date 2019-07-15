@@ -8,6 +8,11 @@ import util.config as CONFIG
 import os
 from enum import Enum
 
+def randlist(seed,n):
+  np.random.seed(seed)
+  return list(map(lambda _ : np.random.uniform(-1,1),range(n)))
+
+
 def mkdir_if_dne(dirname):
     if not os.path.exists(dirname):
         os.makedirs(dirname)

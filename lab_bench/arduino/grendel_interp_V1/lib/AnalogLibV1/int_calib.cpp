@@ -125,9 +125,6 @@ void find_zero(Fabric::Chip::Tile::Slice::Integrator* integ, float max_error,
   fanout_code_t fan_codes = fanout->m_codes;
   integ_code_t integ_codes = integ->m_codes;
 
-  cutil::calibrate_t calib;
-  cutil::initialize(calib);
-
   fanout->m_codes.range[in0Id] = RANGE_MED;
   fanout->m_codes.range[out0Id] = RANGE_MED;
   fanout->m_codes.range[out1Id] = RANGE_MED;
@@ -135,6 +132,14 @@ void find_zero(Fabric::Chip::Tile::Slice::Integrator* integ, float max_error,
   fanout->m_codes.inv[out0Id] = false;
   fanout->m_codes.inv[out1Id] = true;
   fanout->update(fanout->m_codes);
+
+  // do not invert the signal
+  cutil::calibrate_t calib;
+  cutil::initialize(calib);
+
+  print_info("===== CALIBRATE FANOUT =====");
+  calib.success &= fanout->calibrate(prof::TEMP,0.01);
+  print_info("===== FIND ZERO =====");
 
   integ->setInitial(0.0);
   cutil::buffer_fanout_conns(calib,fanout);
@@ -159,6 +164,9 @@ void find_zero(Fabric::Chip::Tile::Slice::Integrator* integ, float max_error,
   fan_to_integ.setConn();
   tile_to_chip.setConn();
 
+  // DO NOT NEGATE THE INTEGRATORS SIGNAL.
+  // this makes it impossible to find steady state.
+  integ->m_codes.inv[out0Id] = false;
   bool found_code = false;
   integ_code_t best_code = integ->m_codes;
   for(int nmos=0; nmos < 8; nmos += 1) {
@@ -187,6 +195,12 @@ void find_zero(Fabric::Chip::Tile::Slice::Integrator* integ, float max_error,
         bias_pos = fabs(mean);
       }
     }
+    sprintf(FMTBUF, "  - nmos=%d in_bias=%d error=%f",
+            nmos,code[0],bias_neg);
+    print_info(FMTBUF);
+    sprintf(FMTBUF, "  + nmos=%d in_bias=%d error=%f",
+            nmos,code[1],bias_pos);
+    print_info(FMTBUF);
 
     float bias_best = max_error;
     int out_code = -1;
@@ -231,7 +245,6 @@ bool Fabric::Chip::Tile::Slice::Integrator::calibrateTargetHelper (profile_t& re
     return true;
   }
 
-  print_info("===== FIND ZERO =====");
   int bias_ins[8];
   int bias_outs[8];
   find_zero(this,0.03,bias_ins,bias_outs);

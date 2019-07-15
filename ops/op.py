@@ -4,6 +4,7 @@ import ops.interval as interval
 import ops.bandwidth as bandwidth
 from enum import Enum
 import numpy as np
+import random
 
 def to_python(e):
     if e.op == OpType.VAR:
@@ -43,6 +44,16 @@ def to_python(e):
         v,a = to_python(e.arg(0))
         return v,"math.copysign(1,%s)" % a
 
+    elif e.op == OpType.RANDFUN:
+        v,a = to_python(e.arg(0))
+        fmt = "np.interp([{expr}],np.linspace(-1,1,{n}),randlist({seed},{n}))[0]" \
+              .format(
+                  expr=a,
+                  n=e.n,
+                  seed=e.seed
+              )
+        return v,fmt
+
     elif e.op == OpType.RANDOM_VAR:
         v = e.variance
         return [],"np.random.uniform(%f,%f)" \
@@ -56,11 +67,11 @@ def to_python(e):
 
     elif e.op == OpType.SIN:
         v,a = to_python(e.arg(0))
-        return v,"math.sin(%s)" % a
+        return v,"math.sin(%s.real)" % a
 
     elif e.op == OpType.COS:
         v,a = to_python(e.arg(0))
-        return v,"math.cos(%s)" % a
+        return v,"math.cos(%s.real)" % a
 
 
     elif e.op == OpType.SQRT:
@@ -106,8 +117,8 @@ class OpType(Enum):
     LN= "ln"
     EXP= "exp"
     SQUARE= "pow2"
+    RANDFUN = "randfun"
     UNIFNOISE = "uniformnz"
-
     CLAMP="clamp"
     RANDOM_VAR="rv"
 
@@ -222,6 +233,9 @@ class Op:
             return Cos.from_json(obj)
         elif op == OpType.ADD:
             return Add.from_json(obj)
+        elif op == OpType.RANDFUN:
+            return RandFun.from_json(obj)
+
 
         else:
             raise Exception("unimpl: %s" % obj)
@@ -684,6 +698,13 @@ class Mult(Op2):
         return bw1.merge(bw2,
                          bw1.bandwidth.mult(bw2.bandwidth))
 
+    def compute_bandwidth(self,bandwidths):
+        bw1 = self.arg1.compute_bandwidth(bandwidths)
+        bw2 = self.arg2.compute_bandwidth(bandwidths)
+        return bw1.merge(bw2,
+                         bw1.bandwidth.mult(bw2.bandwidth))
+
+
     def match_op(self,expr):
         if expr.op == self._op:
             return True,False,[
@@ -934,6 +955,49 @@ class Abs(Op):
         bwcoll.update(bandwidth.InfBandwidth())
         return bwcoll
 
+
+class RandFun(Op):
+
+    def __init__(self,arg,n=100,seed=None):
+        Op.__init__(self,OpType.RANDFUN,[arg])
+        self.n = n
+        if seed is None:
+            self.seed = random.randint(0,1000000)
+        else:
+            self.seed = seed
+
+    @staticmethod
+    def from_json(obj):
+        rf = RandFun(Op.from_json(obj['args'][0]), \
+                     obj['n'], \
+                     obj['seed'])
+        return rf
+
+    def substitute(self,assigns):
+        rf = RandFun(self.arg(0).substitute(assigns), \
+                     self.n,self.seed)
+        return rf
+
+    def compute(self,bindings):
+        raise NotImplementedError
+
+    def infer_bandwidth(self,intervals,bandwidths):
+        bwcoll = self.arg(0).infer_bandwidth(intervals,bandwidths)
+        bwcoll.update(bandwidth.InfBandwidth())
+        return bwcoll
+ 
+    def compute_interval(self,ivals):
+        ivalcoll = self.arg(0).compute_interval(ivals)
+        new_ival = interval.Interval(-1,1)
+        ivalcoll.update(new_ival)
+        return ivalcoll
+
+
+    def to_json(self):
+        obj = Op.to_json(self)
+        obj['n'] = self.n
+        obj['seed'] = self.seed
+        return obj
 
 class Sgn(Op):
 
