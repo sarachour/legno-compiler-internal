@@ -127,7 +127,10 @@ def compute_quality(_tobs,_yobs,_tpred,_ypred):
     return -1
   ssqe = math.sqrt(sum(errors)/n)
   print("mean (errors): %s" % ssqe)
-  return ssqe,tobs,errors
+  max_val = max(map(lambda v: abs(v), ypred))
+  norm_ssqe = ssqe/max_val
+  print("norm mean (errors): %s" % norm_ssqe)
+  return norm_ssqe,tobs,errors
 
 def analyze(entry,recompute=False,no_reference=False):
   path_h = paths.PathHandler(entry.subset,entry.bmark)

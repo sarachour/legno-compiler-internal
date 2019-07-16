@@ -108,9 +108,13 @@ def infer_model(model,in0,in1,out,bias,noise, \
 
   n = len(out)
   if adc:
-    bias = np.array(list(map(lambda i: bias[i]/128.0, range(n))))
-    out = np.array(list(map(lambda i: (out[i]-128.0)/128.0, range(n))))
-    noise = np.array(list(map(lambda i: noise[i]/(128.0**2), range(n))))
+    idxs = list(range(n))
+    bias = np.array(list(map(lambda i: bias[i]/128.0, idxs)))
+    noise = np.array(list(map(lambda i: noise[i]/(128.0**2), idxs)))
+    in0 = np.array(list(map(lambda i: in0[i], idxs)))
+    in1 = np.array(list(map(lambda i: in1[i], idxs)))
+    out = np.array(list(map(lambda i: (out[i]-128.0)/128.0, idxs)))
+    n = len(out)
 
   else:
     idxs = list(filter(lambda i: abs(bias[i]) < 1.3, range(n)))
@@ -120,7 +124,8 @@ def infer_model(model,in0,in1,out,bias,noise, \
     in1 = np.array(list(map(lambda i: in1[i], idxs)))
     out = np.array(list(map(lambda i: out[i], idxs)))
     n = len(out)
-    bnd = {"in0":(1.0,1.0), "in1":(1.0,1.0)}
+
+  bnd = {"in0":(1.0,1.0), "in1":(1.0,1.0)}
 
   if n == 1:
     model.gain = 1.0

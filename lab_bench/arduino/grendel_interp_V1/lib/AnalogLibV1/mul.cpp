@@ -83,7 +83,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::setGainCode (
 
 bool Fabric::Chip::Tile::Slice::Multiplier::setGain(float gain){
   if(-1.0000001 < gain && gain < 1.0000001){
-    setGainCode(min(255,gain*128.0+128.0));
+    setGainCode(min(255,round(gain*128.0)+128.0));
     m_codes.gain_val= gain;
     return true;
   }
@@ -94,7 +94,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::setGain(float gain){
 
 
 void Fabric::Chip::Tile::Slice::Multiplier::setRange (ifc port,
-                                                                           range_t range) {
+                                                      range_t range) {
   if(!(port == in0Id || port == in1Id || port == out0Id)){
     error("unsupported range");
   }

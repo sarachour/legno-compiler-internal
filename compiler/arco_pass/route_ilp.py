@@ -351,7 +351,8 @@ def random_locs(board,locs,conns,restrict):
 
       if not board.route_exists(sblk,sloc,sport, \
                                 dblk,dloc,dport):
-        print("cannot connect %s[%s].%s -> %s[%s].%s" % (sblk,sloc,sport,dblk,dloc,dport))
+        print("cannot connect %s[%s].%s -> %s[%s].%s" \
+              % (sblk,sloc,sport,dblk,dloc,dport))
         return False
     return True
 

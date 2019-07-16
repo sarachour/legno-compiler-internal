@@ -148,6 +148,7 @@ def sc_physics_model(jenv,scale_mode,circ,block_name,loc,port,handle):
         config.set_scale_mode(baseline)
 
 def sc_decl_scale_model_variables(jenv,circ):
+    success = True
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
 
@@ -162,11 +163,7 @@ def sc_decl_scale_model_variables(jenv,circ):
                        not jaunt_common.DB.has(block.name,loc,port, \
                                                config.comp_mode, \
                                                scm,handle):
-                        #print("no model: %s[%s] cm=%s scm=%s handle=%s"  \
-                        #      % (block_name,loc, \
-                        #         config.comp_mode, \
-                        #         scm, \
-                        #         handle))
+
                         continue
 
                     valid_scms.append(scm)
@@ -176,7 +173,10 @@ def sc_decl_scale_model_variables(jenv,circ):
         modevars = []
         if len(valid_scms) == 0:
             print("no valid scale modes: %s[%s]" % (block_name,loc))
-            input()
+            scm = block.baseline(config.comp_mode)
+            jaunt_common.DB.log_missing_model(block.name,loc,block.outputs[0], \
+                                              config.comp_mode, scm)
+            success =False
 
         for scale_mode in block.scale_modes(config.comp_mode):
             if not scale_mode in valid_scms:
@@ -187,6 +187,7 @@ def sc_decl_scale_model_variables(jenv,circ):
         jenv.exactly_one(modevars)
 
 
+    return success 
 
 def sc_build_jaunt_env(prog,circ, \
                        model="ideal", \
@@ -200,7 +201,11 @@ def sc_build_jaunt_env(prog,circ, \
     # declare scaling factors
     jaunt_common.decl_scale_variables(jenv,circ)
     # build continuous model constraints
-    sc_decl_scale_model_variables(jenv,circ)
+    success = sc_decl_scale_model_variables(jenv,circ)
+    if not success:
+        jenv.fail("missing models")
+        return jenv
+
     sc_generate_problem(jenv,prog,circ)
 
     for block_name,loc,config in circ.instances():
@@ -280,6 +285,9 @@ def sc_generate_problem(jenv,prob,circ):
 
 
 def concretize_result(jenv,circ,nslns):
+    if jenv.failed():
+        return
+
     smtenv = jsmt.build_smt_prob(circ,jenv)
     for result in jsmt.solve_smt_prob(smtenv,nslns=nslns):
         new_circ = circ.copy()

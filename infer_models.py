@@ -10,6 +10,7 @@ from chip.hcdc.globals import HCDCSubset
 from chip.model import PortModel, ModelDB
 
 import compiler.infer_pass.infer_dac as infer_dac
+import compiler.infer_pass.infer_adc as infer_adc
 import compiler.infer_pass.infer_fanout as infer_fanout
 import compiler.infer_pass.infer_integ as infer_integ
 import compiler.infer_pass.infer_mult as infer_mult
@@ -21,6 +22,10 @@ def build_model(obj):
     blk = datum['metadata']['block']
     if blk == 'dac':
       for model in infer_dac.infer(datum):
+        yield model
+
+    elif blk == 'adc':
+      for model in infer_adc.infer(datum):
         yield model
 
     elif blk == 'fanout':

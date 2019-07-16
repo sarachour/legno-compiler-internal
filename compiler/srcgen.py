@@ -81,7 +81,7 @@ def nearest_value(value):
   if value == 0.0:
     return 0.0
   delta = 1.0/256
-  vals = np.linspace(-1,1-delta,256)
+  vals = np.linspace(-1,1,256)
   idx = (np.abs(vals - value)).argmin()
   return vals[idx]
 
@@ -104,6 +104,7 @@ def gen_use_dac(circ,block,locstr,config,source):
   scf = config.scf('in') if config.has_scf('in') else 1.0
   if not config.dac('in') is None:
     value = config.dac('in')*scf
+    value = nearest_value(value)
   else:
     assert(not source == DACSourceType.MEM)
     value = 0.0
@@ -122,15 +123,15 @@ def gen_use_dac(circ,block,locstr,config,source):
 def gen_get_adc_status(circ,block,locstr):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   return GetADCStatusCmd(chip,
-                                  tile,
-                                  slce)
+                         tile,
+                         slce)
 
 
 def gen_get_integrator_status(circ,block,locstr):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   return GetIntegStatusCmd(chip,
-                                 tile,
-                                 slce)
+                           tile,
+                           slce)
 
 
 def gen_use_integrator(circ,block,locstr,config,debug=True):

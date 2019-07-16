@@ -289,8 +289,8 @@ def get_variance(db,circ,block_name,loc,port,handle=None,mode='physical'):
     #                                     loc, \
     #                                     port, \
     #                                     physunc))
-    return unc_min
-    #return physunc
+    #return unc_min
+    return physunc
 
   elif mode == 'ideal':
     return 1e-12

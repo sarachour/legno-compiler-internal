@@ -7,7 +7,7 @@ import sys
 def read_config(cfgfile):
   defaults = {
     'n_abs': 1,
-    'n_conc': 3,
+    'n_conc': 1,
     'n_scale': 1,
     'max-freq':None,
     'subset': 'unrestricted',
@@ -104,7 +104,7 @@ if succ and not args.srcgen:
     execute(graph_args,params,'graph.log')
 
 srcgen_args = \
-  "--subset {subset} {bmark} srcgen {hwenv} --recompute"
+  "--subset {subset} {bmark} srcgen {hwenv} --recompute --trials 1"
 succ = execute(srcgen_args,params,'srcgen.log')
 
 

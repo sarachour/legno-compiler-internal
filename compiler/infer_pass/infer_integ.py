@@ -42,10 +42,12 @@ def infer(obj):
     out_z,out_z0,out_zp = build_config(obj['metadata'])
 
   bnds_ic = infer_fit.build_model(out_z0,obj['dataset'],0)
+  bnds_ic['in0'] = [0.75,0.75]
   model_ic.set_oprange_scale(*bnds_ic['in0'])
 
   bnds_z = infer_fit.build_model(out_z,obj['dataset'],1)
   model_in.set_oprange_scale(*bnds_z['in0'])
+  bnds_ic['in0'] = [0.9,0.9]
   # this causes scaling issues because there aren't enough degrees of freedom.
   out_z.gain = 1.0
 

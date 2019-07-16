@@ -10,9 +10,12 @@ reset_on_extinction   = 0
 
 [DefaultGenome]
 num_inputs              = 1
-num_hidden              = 1
+#this is good enough for the noise analysis
+#num_hidden              = 1
+num_hidden              = 8
 num_outputs             = 1
-initial_connection      = partial_direct 0.5
+#initial_connection      = partial_direct 0.5
+initial_connection      = full_direct
 feed_forward            = False
 compatibility_disjoint_coefficient = 1.0
 compatibility_weight_coefficient   = 0.6
@@ -20,7 +23,8 @@ conn_add_prob           = 0.1
 conn_delete_prob        = 0.1
 node_add_prob           = 0.1
 node_delete_prob        = 0.1
-activation_default      = activation_func
+#activation_default      = activation_func
+activation_default      = sigmoid
 activation_options      = sigmoid activation_func
 activation_mutate_rate  = 0.1
 aggregation_default     = sum

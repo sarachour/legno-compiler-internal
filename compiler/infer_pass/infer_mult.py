@@ -36,6 +36,9 @@ def infer(obj):
   model_out,model_in0,model_in1,model_coeff = result
   bnds = infer_fit.build_model(model_out,obj['dataset'],0)
 
+  #model_out.gain = 1.0
+  bnds['in0'] = [0.90,0.90]
+  bnds['in1'] = [0.90,0.90]
   model_in0.set_oprange_scale(*bnds['in0'])
   if model_out.comp_mode == 'vga':
     model_coeff.set_oprange_scale(*bnds['in1'])

@@ -91,7 +91,9 @@ def execute_once(args,debug=True):
     else:
       board = BOARD_CACHE[entry.subset]
 
-    print(entry)
+    if not os.path.isfile(entry.jaunt_circ_file):
+      continue
+
     if missing_params(entry) or recompute_params:
       conc_circ = ConcCirc.read(board,entry.jaunt_circ_file)
       params.analyze(entry,conc_circ,method=rank_method)

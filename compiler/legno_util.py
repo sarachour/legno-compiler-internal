@@ -79,7 +79,7 @@ def exec_jaunt_search(prog,conc_circ,args,tolerance=0.002):
                                                     max_freq=args.max_freq,
                                                     digital_error=digital_error,
                                                     analog_error=analog_error,
-                                                    do_log=False):
+                                                    do_log=True):
             return True
         return False
 

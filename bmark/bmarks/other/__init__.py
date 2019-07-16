@@ -12,6 +12,7 @@ def get_benchmarks():
     forced_vanderpol.model(),
     closed_forced_vanderpol.model(),
     simple_osc.model(),
+    simple_osc.model_with_gain(),
     lotka.model(),
     test.nochange(),
     test.integrate_noise(),

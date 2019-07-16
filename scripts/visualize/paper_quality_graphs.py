@@ -93,9 +93,6 @@ def plot_quality(bmark,subset,model,experiments):
   for exp in experiments:
     for out in exp.outputs():
       # the subsequent runs have issues with the fit.
-      if not "_0.json" in out.out_file:
-        continue
-
       TMEAS,YMEAS = read_meas_data(output.out_file)
       xform = out.transform
       tau = out.tau

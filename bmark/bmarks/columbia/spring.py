@@ -69,7 +69,7 @@ def model(nonlinear=False):
   #measure_var(prob,"PA","PosA")
   #measure_var(prob,"FPA","FuncA")
   if nonlinear:
-    prob.bind('PosB', op.Emit(op.Var('PB'),loc="A0"))
+    prob.bind('PosA', op.Emit(op.Var('PA'),loc="A0"))
   else:
     prob.bind('PosA', op.Emit(op.Var('PA'),loc="A0"))
   prob.compile()

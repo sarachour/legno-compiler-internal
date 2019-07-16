@@ -19,6 +19,7 @@ def emit(v):
 
 def model():
   prob = MathProg("robot")
+
   sin_fun = op.Func(['T'], op.Sin(op.Mult(op.Const(math.pi), \
                                           op.Var('T'))))
   cos_fun = op.Func(['T'], op.Cos(op.Mult(op.Const(math.pi), \
@@ -26,16 +27,12 @@ def model():
 
   ampl = 1.0
   # position is theta.
-  P1,_ = build_std_bb_sys(prob,ampl,0)
-  inpgen1 = op.Func(['T'],op.RandFun(op.Var('T'),255,123213))
-  inpgen2 = op.Func(['T'],op.RandFun(op.Var('T'),255,4324324))
-
+  P1,V1 = build_std_bb_sys(prob,ampl,0)
   #P2,V2 = build_bb_sys(prob,ampl,0.73,1)
   params = {
     'DEG0' : 0,
     'X0': 0,
     'Y0': 0,
-    'P1': P1,
     'one':0.999999,
     'decay':0.2
   }
@@ -45,8 +42,8 @@ def model():
   X = parse_diffeq('V*COS-{decay}*X', 'X0',':u', params)
   Y = parse_diffeq('V*SIN-{decay}*Y', 'Y0',':v', params)
   pexpr = op.Var(P1)
-  prob.bind('W', op.Call([pexpr], inpgen1))
-  prob.bind('V', op.Call([pexpr], inpgen2))
+  prob.bind('W', op.Var(V1))
+  prob.bind('V', op.Var(P1))
   prob.bind('X',X)
   prob.bind('Y',Y)
   pexpr = op.Var('W')
@@ -62,6 +59,40 @@ def model():
   prob.compile()
   menv = menvs.get_math_env('t50')
   return menv,prob
+
+def model():
+  prob = MathProg("robot")
+
+  P1,V1 = build_bb_sys(prob,1.0,0.2,0)
+  params = {
+    'target': 0.2,
+    'initial': 1.0,
+    'zero':0.0,
+    'Z0':P1,
+    'Z1':V1
+  }
+  # speed
+
+  Z = parse_fn("{Z0}+{Z1}",params)
+  PLANT = parse_diffeq('U+0.1*Z', 'initial', ":a",params)
+  ERROR = parse_fn('V-{target}',params)
+  I = parse_diffeq('E-0.1*I','zero',':b',params)
+  CONTROL = parse_fn('0.6*(-E)+0.5*(-I)',params)
+  prob.bind('V', PLANT)
+  prob.bind('E', ERROR)
+  prob.bind('I', I)
+  prob.bind('Z', Z)
+  prob.bind('U',CONTROL)
+
+  prob.bind('Vel', emit(op.Var('V')))
+  for v in ['V','E','I','U','Z']:
+    prob.set_interval(v,-1,1)
+
+  prob.set_max_sim_time(50)
+  prob.compile()
+  menv = menvs.get_math_env('t200')
+  return menv,prob
+
 
 def execute():
   menv,prob = model()

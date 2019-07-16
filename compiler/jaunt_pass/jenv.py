@@ -62,6 +62,8 @@ class JauntEnvParams:
     self.enable_quantize_constraint = False
     self.enable_quality_constraint = False
     self.enable_bandwidth_constraint = True
+    self.use_model_uncertainty = False
+    self.only_scale_modes_with_models = False
 
 
   def physical(self):
@@ -78,6 +80,8 @@ class JauntEnvParams:
     self.enable_quantize_constraint = True
     self.enable_quality_constraint = True
     self.enable_bandwidth_constraint = True
+    self.use_model_uncertainty = False
+    self.only_scale_modes_with_models = False
 
 
   def set_model(self,model):
