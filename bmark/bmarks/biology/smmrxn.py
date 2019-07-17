@@ -45,7 +45,7 @@ def model(big=False):
 def execute(big):
   menv,prob = model(big)
   T,Y = run_diffeq(menv,prob)
-  plot_diffeq(menv,prob,T,Y)
+  plot_diffeq(menv,prob)
 
 
 if __name__ == "__main__":

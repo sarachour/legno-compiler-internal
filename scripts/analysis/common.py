@@ -21,6 +21,8 @@ def waveform(entry,path_h,trial,tag,t,x):
 def compare_plot(entry,path_h,trial,tag,tpred,xpred,tobs,xobs):
   plt.plot(tobs,xobs,label="obs")
   plt.plot(tpred,xpred,label="pred")
+  bot,top = plt.ylim()
+  plt.ylim(min(bot,0),top)
   plt.legend()
   filename = path_h.plot(entry.bmark,
                          entry.arco_indices,
@@ -36,6 +38,8 @@ def compare_plot(entry,path_h,trial,tag,tpred,xpred,tobs,xobs):
 
 def simple_plot(entry,path_h,trial,tag,t,x):
   plt.plot(t,x,label=tag)
+  bot,top = plt.ylim()
+  plt.ylim(min(bot,0),top)
   plt.legend()
   filename = path_h.plot(entry.bmark,
                          entry.arco_indices,

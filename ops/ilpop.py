@@ -94,7 +94,6 @@ class ILPEnv:
   def num_tempvars(self):
     return self._tempvar
 
-
   def num_vars(self):
     return len(self._to_ilpvar)
 
@@ -124,6 +123,10 @@ class ILPEnv:
   def get_ilpvar(self,name):
     return self._to_ilpvar[name]
 
+
+  def ilp_vars(self):
+    return filter(lambda v: not '__temp' in v, \
+                  self._to_ilpvar.keys())
 
   def decl(self,name,typ):
     if name in self._to_ilpvar:

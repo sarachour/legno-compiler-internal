@@ -312,6 +312,27 @@ def hierarchical_route(board,locs,conns,layers,assigns):
   print("# vars: %d" % ilpenv.num_vars())
   print("# tempvars: %d" % ilpenv.num_tempvars())
   print("# cstrs: %d" % ilpenv.num_cstrs())
+  subtype = {"inst":0,'conn':0,'xgroup':0}
+  conntype = {}
+  for var in ilpenv.ilp_vars():
+    if var[0] == 'inst':
+      subtype['inst'] += 1
+    elif var[0] == 'xgroup':
+      subtype['xgroup'] += 1
+    elif var[0] == 'conn':
+      subtype['conn'] += 1
+      if not var[2] in conntype:
+        conntype[var[2]] = 0
+      conntype[var[2]] += 1
+
+  for type_,count in subtype.items():
+    print("  # %s vars: %d" % (type_,count))
+
+  for type_,count in conntype.items():
+    print("  %s::%s -> %s::%s = %d"  \
+          % (type_[0],str(type_[1]),type_[2],str(type_[3]),count)  \
+    )
+  #input()
   ctx = ilpenv.to_model()
   print("-> solve problem")
   result = ctx.solve()
