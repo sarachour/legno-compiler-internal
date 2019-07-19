@@ -6,6 +6,13 @@
 #include "dac.h"
 
 
+void dmeas_make_ref_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac,float target){
+  aux_dac->setEnable(true);
+  aux_dac->setRange(RANGE_HIGH);
+  aux_dac->setSource(DSRC_MEM);
+  aux_dac->setInv(false);
+  aux_dac->setConstant(-target/10.0);
+}
 
 profile_t Fabric::Chip::Tile::Slice::Dac::measure(float in)
 {
@@ -13,7 +20,6 @@ profile_t Fabric::Chip::Tile::Slice::Dac::measure(float in)
     print_log("DAC not enabled");
     return;
   }
-  bool hiRange = (m_codes.range == RANGE_HIGH);
   float scf = util::range_to_coeff(m_codes.range);
   cutil::calibrate_t calib;
   cutil::initialize(calib);
@@ -44,33 +50,36 @@ profile_t Fabric::Chip::Tile::Slice::Dac::measure(float in)
 
   dac_code_t base_code;
   float target = m_codes.const_val*scf;
-	if (hiRange) {
-    // feed dac output into scaling down multiplier input
-		ref_to_tile.setConn();
-    target = make_reference_dac(calib,
-                       base_code, this,ref_dac);
-	}
+  ref_to_tile.setConn();
+  cutil::fast_make_ref_dac(ref_dac,target);
   dac_to_tile.setConn();
 	tile_to_chip.setConn();
+  float mean,variance;
+  calib.success &= cutil::measure_signal_robust(this,
+                                                ref_dac,
+                                                target,
+                                                false,
+                                                mean,
+                                                variance);
 
-  float mean=0.0,variance=0.0;
-  util::meas_dist_chip_out(this,mean,variance);
+
+  float ref = ref_dac->fastMeasureValue();
+  sprintf(FMTBUF,"PARS target=%f ref=%f mean=%f",
+          target,ref,mean);
+  print_info(FMTBUF);
+  float bias = (mean-(target+ref));
   profile_t result = prof::make_profile(out0Id,
                                         0,
                                         m_codes.const_val*scf,
                                         m_codes.const_val,
                                         0.0,
-                                        mean-target,
+                                        bias,
                                         variance);
   if(!calib.success){
     result.mode = 255;
   }
-  if (hiRange) {
-    // feed dac output into scaling down multiplier input
-		ref_to_tile.brkConn();
-    ref_dac->update(codes_ref);
-    // feed output of scaledown multiplier to tile output.
-	}
+  ref_to_tile.brkConn();
+  ref_dac->update(codes_ref);
 	tile_to_chip.brkConn();
   dac_to_tile.brkConn();
 

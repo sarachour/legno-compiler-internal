@@ -98,7 +98,7 @@ class ProfileCmd(Command):
         self._loc = CircLoc(chip,tile,slce,index)
         self._clear = clear
         self._n = n
-        self._max_n = 50
+        self._max_n = 500
         self._bootstrap=bootstrap
         if self._blk == enums.BlockType.MULT:
           self._n_inputs = 2
@@ -157,18 +157,20 @@ class ProfileCmd(Command):
                     if self.get_output(env,[x0],mode=0):
                         break
 
+
+
             for i in range(0,self._n):
                 x0 = sample_reverse_normal()
                 if self.get_output(env,[x0],mode=0):
                     break
 
-            #if self._bootstrap:
-            #    for x0 in [0,1,-1]:
-            #        if self.get_output(env,[x0],mode=1):
-            #            return
+            if self._bootstrap:
+                for x0 in [0]:
+                    if self.get_output(env,[x0],mode=1):
+                        return
 
             for i in range(0,self._n):
-                x0 = sample_reverse_normal()*0.5
+                x0 = sample_reverse_normal()
                 if self.get_output(env,[x0],mode=1):
                     return
 
@@ -210,8 +212,8 @@ class ProfileCmd(Command):
                   x0 = random.uniform(-1,1)
 
               x1 = z/x0
-              if self.get_output(env,[x0,x1],mode=0):
-                  return
+              self.get_output(env,[x0,x1],mode=0)
+              print("%f*%f" % (x0,x1))
 
       else:
         raise Exception("profiling eliminated")

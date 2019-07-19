@@ -46,6 +46,8 @@ class ILPCtx:
     result = {}
     for v in self._solver.variables():
       jvar = self._ilpenv.from_ilpvar(v.name)
+      if jvar is None:
+        continue
       value = v.varValue
       result[jvar] = value
     return result
@@ -73,10 +75,15 @@ class ILPEnv:
     v = self.decl("__temp%d" % self._tempvar,
                   ILPEnv.Type.BOOL)
     self._tempvar += 1
+    self._ctx = None
     return v
 
   def set_objfun(self,o):
     self._objfun = o
+
+  @property
+  def ctx(self):
+    return self._ctx
 
   def cstr(self,stmt):
     for cstr in stmt.compile():
@@ -110,11 +117,13 @@ class ILPEnv:
 
     if not self._objfun is None:
       ctx.objfun(self._objfun.to_model(ctx))
+    self._ctx = ctx
     return ctx
 
 
-
   def from_ilpvar(self,name):
+    if name == '__dummy':
+      return None
     return self._from_ilpvar[name]
 
   def has_ilpvar(self,name):

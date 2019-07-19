@@ -119,10 +119,12 @@ CTX.insert(GLProp.DIGITAL_SAMPLE, 10*units.us, block='ext_chip_in')
 CTX.insert(GLProp.COEFF, 2.0, block='ext_chip_in')
 
 # specialized ext_chip_out
+
+V2I_range = 1.208
 CTX.insert(GLProp.DIGITAL_QUANTIZE, 4096, block='ext_chip_out')
 CTX.insert(GLProp.DIGITAL_SAMPLE, 1*units.ns, block='ext_chip_out')
-CTX.insert(GLProp.COEFF, 0.5*1.2, block='ext_chip_out')
-CTX.insert(GLProp.DIGITAL_INTERVAL, (-1.2,1.2), block='ext_chip_out')
+CTX.insert(GLProp.COEFF, 0.5*V2I_range, block='ext_chip_out')
+CTX.insert(GLProp.DIGITAL_INTERVAL, (-V2I_range,V2I_range), block='ext_chip_out')
 
 CTX.freeze = True
 

@@ -29,14 +29,17 @@ class RoutingEnv:
     print("-> compute groups")
     self.groups = list(map(lambda layer: \
                     tuple(layer.position), self.layers))
+    self.straddling = {}
+    self.straddling_connections = {}
 
+    print(self.groups)
     # compute possible connections.
     locmap = {}
     for locstr in set(map(lambda args: args[1], board.instances())):
       grp = self.loc_to_group(locstr)
       locmap[locstr] = grp
 
-    print("-> compute connections")
+
     self.widths = {}
     by_group = dict(map(lambda g: (g,{'src':{},'dest':{}}), self.groups))
     for (sblk,sport),(dblk,dport),locs in board.connection_list():
@@ -89,7 +92,6 @@ class RoutingEnv:
                   sinks.append(sblk)
                   break
 
-          #print("%s[%s].%s = %s" % (blk.name,group,dport,sinks))
           self.connectivities[(blk.name,group,dport)] = sinks
 
         for sport in blk.outputs:
@@ -102,7 +104,6 @@ class RoutingEnv:
                 sources.append(dblk)
                 break;
 
-          #print("%s[%s].%s = %s" % (blk.name,group,sport,sources))
           self.connectivities[(blk.name,group,sport)] = sources
 
 
@@ -119,9 +120,11 @@ def ilp_instance_cstr(ilpenv,renv):
   by_block_group = {}
   for (blk,frag_id),loc in renv.instances.items():
     choices = []
+    #print("-> limit components to layer")
     if (blk,frag_id) in renv.assigns:
       prefix = renv.assigns[(blk,frag_id)]
       par_layer = renv.board.sublayer(prefix[1:])
+      #print("limit %s[%s] : %s" %(blk,frag_id,prefix))
     else:
       par_layer = None
 
@@ -155,6 +158,7 @@ def ilp_instance_cstr(ilpenv,renv):
       ilpop.ILPConst(1.0)
     )
 
+  # ensure that no more than the available components are used.
   for (blk,grp),ilpvars in by_block_group.items():
     clauses = list(map(lambda v: ilpop.ILPVar(v), ilpvars))
     n = renv.counts[(grp,blk)]
@@ -162,7 +166,9 @@ def ilp_instance_cstr(ilpenv,renv):
 
 def ilp_single_connection_cstr(ilpenv,renv,conn_id,conn,by_straddle):
   board = renv.board
-  ((sblkname,sfragid),sport,(dblkname,dfragid),dport) = conn
+  # the connection.
+  ((sblkname,sfragid),sport, \
+   (dblkname,dfragid),dport) = conn
 
   sblk = board.block(sblkname)
   dblk = board.block(dblkname)
@@ -184,7 +190,7 @@ def ilp_single_connection_cstr(ilpenv,renv,conn_id,conn,by_straddle):
         by_group[(grp1,grp2)] = []
 
 
-  for cardkey,locs in renv.widths.items():
+  for cardkey,_ in renv.widths.items():
     (scblkname,sgrp,dcblkname,dgrp) = cardkey
     scblk = board.block(scblkname)
     dcblk = board.block(dcblkname)
@@ -235,6 +241,10 @@ def ilp_single_connection_cstr(ilpenv,renv,conn_id,conn,by_straddle):
       by_straddle[cardkey] = []
 
     by_straddle[cardkey].append(connvar)
+
+  idx = 0
+  for (g1,g2),data in by_group.items():
+    idx += 1
 
   return by_group
 
@@ -288,6 +298,19 @@ def ilp_connection_cstr(ilpenv,renv):
 
   return xgroups
 
+def to_assignments(result):
+  config = list(filter(lambda k: result[k] == 1.0, result.keys()))
+  n_conns = len(list(filter(lambda k: 'conn' in k, config)))
+  print("n_conns: %s" % n_conns)
+  assigns = {}
+  for key in config:
+    if 'inst' in key:
+      _,blk,fragid,group = key
+      assigns[(blk,fragid)] = group
+      print("%s[%s] = %s" % (blk,fragid,group))
+
+  return assigns
+
 def hierarchical_route(board,locs,conns,layers,assigns):
   def get_n_conns(result):
     config = list(filter(lambda k: result[k] == 1, result.keys()))
@@ -302,7 +325,6 @@ def hierarchical_route(board,locs,conns,layers,assigns):
   ilp_instance_cstr(ilpenv,renv)
   print("-> generating connection constraints")
   xlayers = ilp_connection_cstr(ilpenv,renv)
-
   ilpenv.set_objfun(
     ilpop.ILPMapAdd(
       list(map(lambda c: ilpop.ILPVar(c), xlayers))
@@ -328,28 +350,39 @@ def hierarchical_route(board,locs,conns,layers,assigns):
   for type_,count in subtype.items():
     print("  # %s vars: %d" % (type_,count))
 
-  for type_,count in conntype.items():
-    print("  %s::%s -> %s::%s = %d"  \
-          % (type_[0],str(type_[1]),type_[2],str(type_[3]),count)  \
-    )
-  #input()
   ctx = ilpenv.to_model()
   print("-> solve problem")
-  result = ctx.solve()
+  results = ctx.solve()
   if not ctx.optimal():
-    return None
+    return ilpenv,None
 
-  config = list(filter(lambda k: result[k] == 1.0, result.keys()))
-  n_conns = len(list(filter(lambda k: 'conn' in k, config)))
-  print("n_conns: %s" % n_conns)
-  assigns = {}
-  for key in config:
-    if 'inst' in key:
-      _,blk,fragid,group = key
-      assigns[(blk,fragid)] = group
-      print("%s[%s] = %s" % (blk,fragid,group))
+  assigns = to_assignments(results)
 
-  return assigns
+  return ilpenv,assigns
+
+
+
+def next_solution(ilpenv,assigns):
+  terms = []
+  for (blk,frag_id),grp in assigns.items():
+    instvar = ilpenv.get_ilpvar(('inst',blk,frag_id,grp))
+    terms.append(ilpop.ILPEq(ilpop.ILPVar(instvar), \
+                             ilpop.ILPConst(1)))
+
+
+  n = len(terms)
+  cstr = ilpop.ILPLTE(ilpop.ILPMapAdd(terms), \
+                      ilpop.ILPConst(n-1))
+  ilpenv.ctx.cstr(cstr.to_model(ilpenv.ctx))
+  result = ilpenv.ctx.solve()
+  if not ilpenv.ctx.optimal():
+    return ilpenv,None
+
+  assigns = to_assignments(result)
+  return ilpenv,assigns
+
+
+
 
 def random_locs(board,locs,conns,restrict):
   # test this annotation.
@@ -394,7 +427,6 @@ def random_locs(board,locs,conns,restrict):
                            board.instances_of_block(blk)))
 
         print("%s[%d] = %d" % (blk,fragid,len(orig_locs)))
-
         if (blk,fragid) in restrict:
           prefix = restrict[(blk,fragid)]
           layer = board.sublayer(prefix[1:])
@@ -407,7 +439,8 @@ def random_locs(board,locs,conns,restrict):
           result_locs = orig_locs
 
         for loc in result_locs:
-          new_assigns = dict(list(assigns.items()) + [((blk,fragid),loc)])
+          new_assigns = dict(list(assigns.items())  \
+                             + [((blk,fragid),loc)])
           new_in_use = list(in_use) + [(blk,loc)]
           for assign in recurse(locs[1:],new_assigns,new_in_use):
             yield assign
@@ -451,7 +484,9 @@ def find_routes(board,locs,conns,inst_assigns):
         new_routes.append(to_conns(route))
         new_in_use = list(in_use) + route[1:-1]
 
-        for solution in recurse(new_in_use, new_routes, remaining_conns[1:]):
+        for solution in recurse(new_in_use,  \
+                                new_routes,  \
+                                remaining_conns[1:]):
           yield solution
 
 
@@ -562,11 +597,26 @@ def route(board,prob,node_map):
   print("=== tile resolution ===")
   chips = get_sublayers([board])
   tiles = get_sublayers(chips)
-  chip_assigns = hierarchical_route(board,locs,conns,
+  chip_env,chip_assigns = hierarchical_route(board,locs,conns,
                                    chips,{})
 
-  tile_assigns = hierarchical_route(board,locs,conns,
-                                    tiles,{})
+  if chip_assigns is None:
+    raise Exception("no chip assigns")
+
+
+  tile_assigns = None
+  idx = 0
+  while tile_assigns is None \
+        and not chip_assigns is None:
+    print("=== index %d ===" % idx)
+    tile_env,tile_assigns = hierarchical_route(board,locs,conns,
+                                               tiles,chip_assigns)
+
+    if tile_assigns is None:
+      chip_env,chip_assigns = next_solution(chip_env,chip_assigns)
+      print("[[[[ NO TILE ASSIGNS, TRY AGAIN]]]]")
+
+    idx += 1
 
   for assigns in random_locs(board,locs,conns,tile_assigns):
     for routes in find_routes(board,locs,conns,assigns):

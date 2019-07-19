@@ -18,9 +18,6 @@ float compute_output(integ_code_t& m_codes,float val){
   return rng*sign*val;
 }
 
-float predict_steady_state_output(integ_code_t& m_codes, float in_val){
-  return in_val;
-}
 float compute_steady_state_input(integ_code_t& m_codes, float in_val){
   float coeff = util::range_to_coeff(m_codes.range[in0Id]);
   float output_scale = util::range_to_coeff(m_codes.range[out0Id]); 
@@ -42,11 +39,16 @@ float compute_steady_state_input(integ_code_t& m_codes, float in_val){
   print_info(FMTBUF);
   return coeff*in_val;
 }
+float predict_steady_state_output(integ_code_t& m_codes, float in_val){
+  return in_val;
+}
 
 float compute_steady_state_output(integ_code_t& m_codes, float in_val){
   float target_input = compute_steady_state_input(m_codes,in_val);
   return predict_steady_state_output(m_codes,target_input);
 }
+
+
 
 
 void Fabric::Chip::Tile::Slice::Integrator::update(integ_code_t codes){

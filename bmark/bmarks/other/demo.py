@@ -24,7 +24,10 @@ def legno_demo():
   prob.bind("Y",Y)
 
   # measure Y, name the measurement O
-  prob.bind("O",op.Emit(op.Var('Y'), loc='A0'))
+  prob.bind("O",op.Emit( \
+                         op.Mult(op.Var('Y'), \
+                                 op.Const(0.9999) \
+                         ), loc='A0'))
   prob.set_interval("Y",0.0,0.3)
 
   # compile benchmark

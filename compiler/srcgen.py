@@ -81,8 +81,11 @@ def nearest_value(value):
   if value == 0.0:
     return 0.0
   delta = 1.0/256
-  vals = np.linspace(-1,1,256)
+  vals = np.array(list(map(lambda i: (i-128)/128.0, \
+                           range(0,255))))
+
   idx = (np.abs(vals - value)).argmin()
+  print("%s->%s" % (value,vals[idx]))
   return vals[idx]
 
 def gen_use_adc(circ,block,locstr,config):
@@ -104,7 +107,6 @@ def gen_use_dac(circ,block,locstr,config,source):
   scf = config.scf('in') if config.has_scf('in') else 1.0
   if not config.dac('in') is None:
     value = config.dac('in')*scf
-    value = nearest_value(value)
   else:
     assert(not source == DACSourceType.MEM)
     value = 0.0

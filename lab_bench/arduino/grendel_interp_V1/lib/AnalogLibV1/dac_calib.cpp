@@ -22,8 +22,7 @@ bool Fabric::Chip::Tile::Slice::Dac::calibrate (profile_t& result,
 }
 
 
-
-
+// calibrate dac to emit a certain value.
 bool Fabric::Chip::Tile::Slice::Dac::calibrateTarget (profile_t& result,
                                                       const float max_error)
 {

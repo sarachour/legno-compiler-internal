@@ -129,6 +129,7 @@ void Fabric::Chip::Tile::Slice::Dac::defaults(){
   m_codes.const_code = 128;
   m_codes.const_val = 0.0;
   m_codes.enable = false;
+  calibrated = false;
 	setAnaIrefNmos ();
 }
 Fabric::Chip::Tile::Slice::Dac::Dac (

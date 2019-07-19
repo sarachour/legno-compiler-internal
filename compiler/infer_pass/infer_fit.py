@@ -174,6 +174,10 @@ def build_model(model,dataset,mode,adc=False):
                        in0,in1,out,noise)
   bnd= infer_model(model,in0,in1,out, \
                         bias,noise,adc=adc)
-  infer_vis.plot_prediction_error("predict.png", \
+  # none can be bnd
+  infer_vis.plot_prediction_error(infer_vis.get_plot_name(model,'error'), \
+                                  model,None,in0,in1,out,bias)
+  infer_vis.plot_prediction_error(infer_vis.get_plot_name(model,'bnd'), \
                                   model,bnd,in0,in1,out,bias)
+
   return bnd

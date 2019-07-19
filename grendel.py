@@ -34,8 +34,6 @@ parser.add_argument("--calibrate", action='store_true', \
 parser.add_argument("--targeted", action='store_true', \
                     help="targeted calibration of uncalibrated components")
 
-parser.add_argument("--infer", action='store_true', \
-                    help="infer uncalibrated components")
 parser.add_argument("--profile", action='store_true', \
                     help="profile components on chip")
 parser.add_argument("--n", default=5, type=int, \
@@ -90,9 +88,6 @@ if args.calibrate:
         print("[ERROR] some calibration steps failed..")
         sys.exit(1)
 
-    if args.infer:
-        print("<< inferring models for compiler >>")
-        retcode = os.system("python3 infer_models.py")
 
 elif args.profile:
     succ = main_script_profile(state,args.script, \

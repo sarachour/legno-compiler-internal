@@ -13,6 +13,18 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure(char mode, float input)
   }
 }
 
+void make_feedback_fanout(Fabric::Chip::Tile::Slice::Fanout * fanout,
+                          range_t out_range){
+  fanout->m_codes.range[in0Id] = out_range;
+  fanout->m_codes.range[out0Id] = out_range;
+  fanout->m_codes.range[out1Id] = out_range;
+  fanout->m_codes.range[out2Id] = out_range;
+  fanout->m_codes.inv[out0Id] = false;
+  fanout->m_codes.inv[out1Id] = true;
+  fanout->m_codes.enable = true;
+  fanout->update(fanout->m_codes);
+  fanout->calibrate(prof::TEMP, 0.01);
+}
 
 profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
   Fanout * fanout = &this->parentSlice->fans[0];
@@ -25,15 +37,6 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
   dac_code_t ref_dac_codes = ref_dac->m_codes;
   integ_code_t integ_codes = this->m_codes;
 
-  range_t out_range = integ_codes.range[out0Id];
-  fanout->m_codes.range[in0Id] = out_range;
-  fanout->m_codes.range[out0Id] = out_range;
-  fanout->m_codes.range[out1Id] = out_range;
-  fanout->m_codes.range[out2Id] = out_range;
-  fanout->m_codes.inv[out0Id] = false;
-  fanout->m_codes.inv[out1Id] = true;
-  fanout->update(fanout->m_codes);
-  fanout->calibrate(prof::TEMP, 0.01);
   cutil::calibrate_t calib;
   cutil::initialize(calib);
   cutil::buffer_fanout_conns(calib,fanout);
@@ -47,24 +50,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
 
   cutil::break_conns(calib);
 
-
-
-  float target_input = compute_steady_state_input(m_codes,input);
-  float ref;
-  dac_code_t dac_code_value;
-  dac_code_t dac_code_ref;
-  dac_code_value = cutil::make_val_dac(calib,val_dac,target_input);
-  val_dac->update(dac_code_value);
-
-
-  float target_output = compute_steady_state_output(m_codes,input);
-  dac_code_ref = cutil::make_ref_dac(calib,
-                                     ref_dac,
-                                     -target_output,
-                                     ref);
-  ref_dac->update(dac_code_ref);
-  setInitial(0.0);
-  update(m_codes);
+  // calibrate the fanout for feedback control
 
 
   Connection integ_to_fan = Fabric::Chip::Connection ( out0, fanout->in0 );
@@ -78,22 +64,49 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
                                          parentSlice->parentTile        \
                                          ->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
+
+  make_feedback_fanout(fanout, integ_codes.range[out0Id]);
+
+  // make an approximate input value
+  float target_input = compute_steady_state_input(m_codes,input);
+  target_input = val_dac->fastMakeValue(target_input);
+  float target_output = predict_steady_state_output(m_codes,target_input);
+
+
+  cutil::fast_make_ref_dac(ref_dac,target_output);
+
+  setInitial(0.0);
+  update(m_codes);
+
+  refdac_to_tile.setConn();
   integ_to_fan.setConn();
   fan_to_tile.setConn();
-  refdac_to_tile.setConn();
   fan_to_integ.setConn();
   valdac_to_integ.setConn();
   tile_to_chip.setConn();
-  float mean, variance;
-  util::meas_steady_chip_out(this,mean,variance);
+  float mean,variance;
+  calib.success &= cutil::measure_signal_robust(this,
+                                                ref_dac,
+                                                target_output,
+                                                true,
+                                                mean,
+                                                variance);
+
+  float ref = ref_dac->fastMeasureValue();
+  sprintf(FMTBUF,"PARS target=%f ref=%f mean=%f",
+          target_output,ref,mean);
+  print_info(FMTBUF);
+  float bias = (mean-(target_output+ref));
   profile_t prof = prof::make_profile(out0Id,
-                                      calib.success ? 1 : 255,
+                                      1,
                                       target_output,
                                       target_input,
                                       0.0,
-                                      mean-(target_output+ref),
+                                      bias,
                                       variance);
-
+  if(!calib.success){
+    prof.mode = 255;
+  }
   integ_to_fan.brkConn();
   fan_to_tile.brkConn();
   refdac_to_tile.brkConn();
@@ -111,11 +124,10 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
 profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ic(float input)
 {
   Dac * aux_dac = parentSlice->dac;
-  int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
+
   //back up codes
   integ_code_t codes_integ = m_codes;
-  dac_code_t aux_codes = aux_dac->m_codes;
-
+  dac_code_t aux_dac_codes = aux_dac->m_codes;
   setInitial(input);
 
   cutil::calibrate_t calib;
@@ -128,42 +140,58 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ic(float input)
                               ->parentChip->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
 
+  bool high_output = (m_codes.range[out0Id] == RANGE_HIGH);
 	// output side
   //conn1
   Connection aux_to_tile = Connection ( aux_dac->out0,
                                         parentSlice->tileOuts[3].in0 );
-  Connection aux_to_input = Connection ( aux_dac->out0,
-                                        in0 );
+
 
   //conn2
-	Connection integ_to_tile= Connection ( out0, parentSlice->tileOuts[3].in0 );
+	Connection integ_to_tile= Connection ( out0,
+                                         parentSlice->tileOuts[3].in0 );
 
 	Connection tile_to_chip = Connection ( parentSlice->tileOuts[3].out0,
                                          parentSlice->parentTile
                                          ->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
-  float target,ref;
-  dac_code_t dac_ref_codes;
+
+  float target;
+  mult_code_t scd_codes;
   target = compute_init_cond(m_codes);
-  dac_ref_codes = cutil::make_ref_dac(calib,aux_dac,-target,ref);
-  aux_dac->update(dac_ref_codes);
+  cutil::fast_make_ref_dac(aux_dac,target);
   aux_to_tile.setConn();
   integ_to_tile.setConn();
 	tile_to_chip.setConn();
   update(m_codes);
   float mean,variance;
-  util::meas_dist_chip_out(this,mean,variance);
+  calib.success &= cutil::measure_signal_robust(this,
+                                                aux_dac,
+                                                target,
+                                                false,
+                                                mean,
+                                                variance);
+
+  float ref = aux_dac->fastMeasureValue();
+  sprintf(FMTBUF,"PARS target=%f ref=%f mean=%f",
+          target,ref,mean);
+  print_info(FMTBUF);
+  float bias = (mean-(target+ref));
   profile_t prof = prof::make_profile(out0Id,
-                                      calib.success ? 0 : 255,
+                                      0,
                                       target,
                                       m_codes.ic_val,
                                       0.0,
-                                      mean-(target+ref),
+                                      bias,
                                       variance);
+  if(!calib.success){
+    prof.mode = 255;
+  }
+  aux_dac->update(aux_dac_codes);
   aux_to_tile.brkConn();
   integ_to_tile.brkConn();
 	tile_to_chip.brkConn();
-  aux_dac->update(aux_codes);
+  aux_dac->update(aux_dac_codes);
   cutil::restore_conns(calib);
   update(codes_integ);
   return prof;

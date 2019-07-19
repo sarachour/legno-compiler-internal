@@ -82,14 +82,6 @@ def parse(line):
 
     return None
 
-def profile(state,obj):
-    if isinstance(obj,UseCommand):
-        dbkey = obj.to_key()
-        if (state.state_db.has(dbkey)):
-            data = state.state_db.get(dbkey)
-            print(obj)
-            print(data.state)
-            data.write_dataset(state.state_db)
 
 def profile(state,obj, \
             recompute=False, \
@@ -115,6 +107,8 @@ def profile(state,obj, \
                        n=n) \
                        .execute(state)
             obj.cached = backup_cached
+
+
 
 def calibrate(state,obj,recompute=False, \
               targeted_calibrate=False, \

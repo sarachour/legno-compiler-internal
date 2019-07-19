@@ -2,6 +2,13 @@
 #include "assert.h"
 #include "calib_util.h"
 
+void fmeas_make_ref_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac,float target){
+  aux_dac->setEnable(true);
+  aux_dac->setRange(RANGE_HIGH);
+  aux_dac->setSource(DSRC_MEM);
+  aux_dac->setInv(false);
+  aux_dac->setConstant(-target/10.0);
+}
 
 
 profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
@@ -13,7 +20,6 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
   fanout_code_t codes_fan = m_codes;
   dac_code_t codes_dac = val_dac->m_codes;
   dac_code_t codes_ref_dac = ref_dac->m_codes;
-  float in_target = input*util::range_to_coeff(m_codes.range[in0Id]);
 
   cutil::calibrate_t calib;
   cutil::initialize(calib);
@@ -28,11 +34,9 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
 
   dac_code_t dac_code_value;
   dac_code_t dac_code_ref;
-  float ref;
 
-  val_dac->setEnable(true);
-  dac_code_value = cutil::make_val_dac(calib,val_dac,in_target);
-  val_dac->update(dac_code_value);
+  float in_target = input*util::range_to_coeff(m_codes.range[in0Id]);
+  in_target = val_dac->fastMakeValue(in_target);
 
   Connection dac_to_fan = Connection ( val_dac->out0, in0 );
   Connection tile_to_chip = Connection (parentSlice->tileOuts[3].out0,
@@ -41,9 +45,6 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
   Connection ref_to_tile = Connection ( ref_dac->out0,
                                         parentSlice->tileOuts[3].in0 );
 
-  dac_to_fan.setConn();
-	tile_to_chip.setConn();
-	ref_to_tile.setConn();
   unsigned char port = 0;
   float out_target;
   switch(mode){
@@ -66,22 +67,32 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
   default:
     error("unknown mode");
   }
-  ref_dac->setEnable(true);
-  dac_code_ref = cutil::make_ref_dac(calib,
-                                     ref_dac,
-                                     -out_target,
-                                     ref);
-  ref_dac->update(dac_code_ref);
+
+  dac_to_fan.setConn();
+	tile_to_chip.setConn();
+
+  cutil::fast_make_ref_dac(ref_dac, out_target);
+  ref_to_tile.setConn();
 
   float mean,variance;
-	// Serial.print("\nFanout interface calibration");
-  util::meas_dist_chip_out(this,mean,variance);
+  calib.success &= cutil::measure_signal_robust(this,
+                                                ref_dac,
+                                                out_target,
+                                                false,
+                                                mean,
+                                                variance);
+  float ref = ref_dac->fastMeasureValue();
+  sprintf(FMTBUF,"PARS target=%f ref=%f mean=%f",
+          out_target,ref,mean);
+  print_info(FMTBUF);
+
+  float bias = (mean-(out_target+ref));
   profile_t prof = prof::make_profile(port,
-                                      calib.success ? mode : 255,
+                                      mode,
                                       out_target,
-                                      input,
+                                      in_target,
                                       0.0,
-                                      mean-(out_target+ref),
+                                      bias,
                                       variance);
   if(!calib.success){
     prof.mode = 255;

@@ -69,15 +69,25 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 			// -10.0 to 10.0 are valid
 		);
     void update(dac_code_t codes);
-    dac_code_t m_codes;
 		void setInv (bool inverse ); // whether output is negated
     profile_t measure(float input);
     bool calibrate (profile_t& result,
                     const float max_error);
 		bool calibrateTarget (profile_t& result,
                           const float max_error);
+    float fastMeasureValue();
+    float fastMakeValue(float value);
     void defaults();
+
+    dac_code_t m_codes;
+    dac_code_t calib_codes;
+    bool calibrated;
 	private:
+    float fastMakeHighValue(float value, float max_error);
+    float fastMakeMedValue(float value, float max_error);
+    float fastMeasureHighValue();
+    float fastMeasureMedValue();
+
 		Dac (Slice * parentSlice);
 		~Dac () override { delete out0; };
 		/*Set enable, invert, range, clock select*/

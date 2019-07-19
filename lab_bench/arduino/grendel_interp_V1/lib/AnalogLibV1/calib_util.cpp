@@ -13,6 +13,60 @@ namespace cutil {
     cal.nconns = 0;
   }
 
+  bool measure_signal_robust(Fabric::Chip::Tile::Slice::FunctionUnit * fu,
+                             Fabric::Chip::Tile::Slice::Dac * ref_dac,
+                             float target,
+                             bool steady,
+                             float& mean,
+                             float& variance){
+    float delta = 0.0;
+    float thresh = 2.0;
+    float step = 0.25;
+    // Serial.print("\nFanout interface calibration");
+    do {
+      if(steady){
+        util::meas_steady_chip_out(fu,mean,variance);
+      }
+      else{
+        util::meas_dist_chip_out(fu,mean,variance);
+      }
+      sprintf(FMTBUF,"MEASUREMENT target=%f delta=%f mean=%f variance=%f",
+              target+delta,delta,mean,variance);
+      print_info(FMTBUF);
+      if(fabs(mean) > thresh){
+        delta += mean < 0 ? -step : step;
+        fast_make_ref_dac(ref_dac, target+delta);
+      }
+    } while(fabs(mean) > thresh &&
+            fabs(target + delta) < 10.0);
+    mean = mean;
+    variance = variance;
+    return fabs(mean) <= thresh;
+  }
+  /*
+    this is different from making a true reference dac. This does
+    a lazy calibration of the dac (to ~0.9), then 
+   */
+  void fast_make_ref_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac,
+                               float target){
+    if(!aux_dac->m_codes.enable)
+      aux_dac->setEnable(true);
+
+    if(aux_dac->m_codes.source != DSRC_MEM)
+      aux_dac->setSource(DSRC_MEM);
+
+    if(aux_dac->m_codes.inv)
+      aux_dac->setInv(false);
+
+    if(fabs(target) > 0.8){
+      aux_dac->setRange(RANGE_HIGH);
+      aux_dac->setConstant(-target/10.0);
+    }
+    else{
+      aux_dac->setRange(RANGE_MED);
+      aux_dac->setConstant(-target);
+    }
+  }
   dac_code_t make_ref_dac(calibrate_t& calib,
                         Fabric::Chip::Tile::Slice::Dac * dac,
                           float value,

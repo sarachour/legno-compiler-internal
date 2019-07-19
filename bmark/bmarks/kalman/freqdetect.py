@@ -23,7 +23,6 @@ def model():
 
   params['Q'] = params['meas_noise']
   params['Rinv'] = 1.0/params['proc_noise']
-  params['nRinv'] = -params['Rinv']
 
   ZP,ZV = build_std_bb_sys(prob,1.0,99)
   EV = parse_fn("%s-V" % ZV,params)
@@ -42,41 +41,48 @@ def model():
                     ':c', \
                     params)
 
-  dP1 = parse_diffeq("{Q}+{nRinv}*(P2*P4 + P3*P7)", \
+  dP1 = parse_diffeq("{Q}+{Rinv}*(P2*(-P4) + P3*(-P7))", \
                      "Pinit", \
                      ":p1", \
                      params)
-  dP2 = parse_diffeq("V*(-P1)+W*(-P2)+{Q}+{nRinv}*(P2*P5 + P3*P8)", \
+
+  dP2 = parse_diffeq("V*(-P1)+W*(-P2)+{Q}+{Rinv}*((-P2)*P5 + (-P3)*P8)", \
                      "Pinit", \
                      ":p2", \
                      params)
-  dP3 = parse_diffeq("P2 + {Q} + {nRinv}*(P2*P6+P3*P9)", \
+
+  dP3 = parse_diffeq("P2 + {Q} + {Rinv}*(P2*(-P6)+P3*(-P9))", \
                      "Pinit", \
                      ":p3", \
                      params)
 
-  dP4 = parse_diffeq("V*(-P2) + W*(-P4) + {Q} + {nRinv}*(P4*P5 + P6*P7)", \
+  dP4 = parse_diffeq("V*(-P2) + W*(-P4) + {Q} + {Rinv}*((-P4)*P5 + (-P6)*P7)", \
                      "Pinit", \
                      ":p4", \
                      params)
-  dP5 = parse_diffeq("V*((-P2)+(-P4)) + W*((-P5)+(-P5)) + {Q} + {nRinv}*(P5*P5 + P6*P8)", \
+
+  dP5 = parse_diffeq("V*((-P2)+(-P4)) + W*((-P5)+(-P5)) + {Q} + {Rinv}*(P5*(-P5) + P6*(-P8))", \
                      "Pinit", \
                      ":p5", \
                      params)
-  dP6 = parse_diffeq("V*(-P3) + W*(-P6) + P5 + {Q} + {nRinv}*(P5*P6 + P6*P9)", \
+  dP5 = parse_diffeq("0","Pinit",":p5",params)
+
+  dP6 = parse_diffeq("V*(-P3) + W*(-P6) + P5 + {Q} + {Rinv}*(P5*(-P6) + P6*(-P9))", \
                      "Pinit", \
                      ":p6", \
                      params)
 
-  dP7 = parse_diffeq("P4 + {Q} + {nRinv}*(P8*P4 + P7*P9)", \
+  dP7 = parse_diffeq("P4 + {Q} + {Rinv}*(P8*(-P4) + P7*(-P9))", \
                      "Pinit", \
                      ":p7", \
                      params)
-  dP8 = parse_diffeq("P5 + V*(-P7) + W*(-P8) + {Q} + {nRinv}*(P5 + P9)*P8", \
+
+  dP8 = parse_diffeq("P5 + V*(-P7) + W*(-P8) + {Q} + {Rinv}*(P5 + P9)*(-P8)", \
                      "Pinit", \
                      ":p8", \
                      params)
-  dP9 = parse_diffeq("P6 + P8 + {Q} + {nRinv}*(P8*P6 + P9*P9)", \
+
+  dP9 = parse_diffeq("P6 + P8 + {Q} + {Rinv}*(P8*(-P6) + P9*(-P9))", \
                      "Pinit", \
                      ":p9", \
                      params)

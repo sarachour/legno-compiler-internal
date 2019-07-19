@@ -182,6 +182,25 @@ class ModelDB:
     return model
 
 
+  def get_by_block(self,block,loc,comp_mode,scale_mode):
+    model = PortModel(block,loc,"",comp_mode,scale_mode,None)
+    cmd = '''
+    SELECT * from models WHERE
+    block = "{block}"
+    AND loc = "{loc}"
+    AND comp_mode = "{comp_mode}"
+    AND scale_mode = "{scale_mode}"
+    '''.format(
+      block=model.block,
+      loc=model.loc,
+      comp_mode=model.comp_mode,
+      scale_mode=model.scale_mode,
+    )
+    for values in self._curs.execute(cmd):
+      data = dict(zip(self.keys,values))
+      yield self._process(data)
+
+
   def _get(self,block,loc,port,comp_mode,scale_mode,handle=None):
     model = PortModel(block,loc,port,comp_mode,scale_mode,handle)
     cmd = '''

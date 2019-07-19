@@ -18,11 +18,20 @@ namespace cutil {
     bool success;
   } calibrate_t;
 
+  bool measure_signal_robust(Fabric::Chip::Tile::Slice::FunctionUnit * fu,
+                             Fabric::Chip::Tile::Slice::Dac * ref_dac,
+                             float target,
+                             bool measure_steady_state,
+                             float& mean,
+                             float& variance);
+
 
   void initialize(calibrate_t& cal);
   // this is a special high-to-medium converter specifically for
   // the multiplier, since we want to be able to scale down signals
   //
+  void fast_make_ref_dac(Fabric::Chip::Tile::Slice::Dac* dac,
+                        float value);
   dac_code_t make_ref_dac(calibrate_t& calib,
                            Fabric::Chip::Tile::Slice::Dac* dac,
                           float value,
