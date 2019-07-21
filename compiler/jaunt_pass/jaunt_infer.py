@@ -153,18 +153,20 @@ def sc_decl_scale_model_variables(jenv,circ):
         block = circ.board.block(block_name)
 
         valid_scms = []
+        missing_scms = []
         for port in block.inputs + block.outputs:
             for handle in list(block.handles(config.comp_mode,port)) + [None]:
                 for scm in block.scale_modes(config.comp_mode):
                     if not block.whitelist(config.comp_mode, scm):
                         continue
 
-                    if jenv.params.only_scale_modes_with_models and \
-                       not jaunt_common.DB.has(block.name,loc,port, \
+                    if  not jaunt_common.DB.has(block.name,loc,port, \
                                                config.comp_mode, \
                                                scm,handle):
+                        missing_scms.append(scm)
 
-                        continue
+                        if jenv.params.only_scale_modes_with_models:
+                            continue
 
                     valid_scms.append(scm)
                     sc_physics_model(jenv,scm,circ,block_name, \
@@ -173,9 +175,12 @@ def sc_decl_scale_model_variables(jenv,circ):
         modevars = []
         if len(valid_scms) == 0:
             print("no valid scale modes: %s[%s]" % (block_name,loc))
-            scm = block.baseline(config.comp_mode)
-            jaunt_common.DB.log_missing_model(block.name,loc,block.outputs[0], \
-                                              config.comp_mode, scm)
+            for scm in missing_scms:
+                jaunt_common.DB.log_missing_model(block.name, \
+                                                  loc, \
+                                                  block.outputs[0], \
+                                                  config.comp_mode, \
+                                                  scm)
             success =False
 
         for scale_mode in block.scale_modes(config.comp_mode):
@@ -186,8 +191,10 @@ def sc_decl_scale_model_variables(jenv,circ):
 
         jenv.exactly_one(modevars)
 
+    # figure out which ports have linked scaling modes by collapsing * ports.
+    #sc_coalesce_conns(circ)
 
-    return success 
+    return success
 
 def sc_build_jaunt_env(prog,circ, \
                        model="ideal", \

@@ -124,6 +124,8 @@ typedef union {
 
 typedef enum {
   MEAS_CHIP_OUTPUT,
+  MEAS_CHIP_OUTPUT_DIST,
+  MEAS_CHIP_OUTPUT_STEADY,
   MEAS_ADC
 } meas_method_t;
 

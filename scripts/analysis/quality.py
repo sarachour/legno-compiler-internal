@@ -39,6 +39,7 @@ def read_meas_data(filename):
     obj = util.decompress_json(fh.read())
     T,V = obj['times'], obj['values']
     T_REFLOW = np.array(T) - min(T)
+    print("mean: %s" % np.mean(V))
     return T_REFLOW,V
 
 def make_prediction(t_ref,x_ref,model):
@@ -81,17 +82,18 @@ def fit(_tref,_yref,_tmeas,_ymeas):
 
   def compute_loss(x):
     error = compute_error(tref,yref,tmeas,ymeas, \
-                            [1.0,x[0],1.0,0.0])
+                            [x[0],x[1],1.0,0.0])
     return error
 
   bounds = [
-    (0.0,max(tmeas)*0.10)
+    (0.97,1.13),
+    (0.0,max(tmeas)*0.10),
   ]
   print("=== finding transform ===")
   #n = 5
   n = 10
   result = optimize.brute(compute_loss, bounds, Ns=n)
-  model = [1.0,result[0],1.0,0.0]
+  model = [result[0],result[1],1.0,0.0]
   print(model)
   if out_of_bounds(bounds,result):
     return None,None,model

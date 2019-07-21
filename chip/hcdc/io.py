@@ -31,18 +31,6 @@ def dac_continuous_scale_model(dac):
   modes = dac_get_modes()
   csm = ContinuousScaleModel()
   csm.set_baseline((chipcmd.SignType.POS, chipcmd.RangeType.MED))
-  out = csm.decl_var(CSMOpVar("out"))
-  inp = csm.decl_var(CSMOpVar("in"))
-  coeff = csm.decl_var(CSMCoeffVar("out"))
-  csm.eq(ops.Mult(ops.Var(inp.varname),
-                  ops.Var(coeff.varname)), \
-         ops.Var(out.varname))
-  for scm in modes:
-     _,scm_o = scm
-     csm.discrete.add_mode(scm)
-     csm.discrete.add_cstr(scm,out,scm_o.coeff())
-     csm.discrete.add_cstr(scm,coeff,scm_o.coeff())
-
   dac.set_scale_model("*", csm)
 
 def dac_scale_model(dac):
@@ -50,7 +38,7 @@ def dac_scale_model(dac):
    std,nonstd = gutil.partition(dac_is_standard,modes)
    dac.set_scale_modes("*",std,glb.HCDCSubset.all_subsets())
    dac.set_scale_modes("*",nonstd,[glb.HCDCSubset.UNRESTRICTED, \
-                                   glb.HCDCSubset.EXTENDED2])
+                                   glb.HCDCSubset.EXTENDED])
    for mode in modes:
       get_prop = lambda p : CTX.get(p, dac.name,
                                     '*',mode,None)
@@ -93,17 +81,6 @@ def adc_continuous_scale_model(adc):
    modes = adc_get_modes()
    csm = ContinuousScaleModel()
    csm.set_baseline(chipcmd.RangeType.MED)
-   out = csm.decl_var(CSMOpVar("out"))
-   inp = csm.decl_var(CSMOpVar("in"))
-   coeff = csm.decl_var(CSMCoeffVar("out"))
-   csm.eq(ops.Mult(ops.Var(inp.varname),
-                   ops.Var(coeff.varname)), \
-          ops.Var(out.varname))
-   for scm_i in modes:
-     csm.discrete.add_mode(scm_i)
-     csm.discrete.add_cstr(scm_i,inp,scm_i.coeff())
-     csm.discrete.add_cstr(scm_i,coeff,1.0/scm_i.coeff())
-
    adc.set_scale_model("*", csm)
 
 def adc_scale_model(adc):
@@ -111,7 +88,7 @@ def adc_scale_model(adc):
    std,nonstd = gutil.partition(adc_is_standard,modes)
    adc.set_scale_modes("*",std,glb.HCDCSubset.all_subsets())
    adc.set_scale_modes("*",nonstd,[glb.HCDCSubset.UNRESTRICTED, \
-                                   glb.HCDCSubset.EXTENDED2])
+                                   glb.HCDCSubset.EXTENDED])
    for mode in modes:
       get_prop = lambda p : CTX.get(p, adc.name,
                                     '*',mode,None)

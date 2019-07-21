@@ -74,7 +74,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_vga(float in0val,float 
   profile_t prof = prof::make_profile(out0Id,
                                       0,
                                       target_vga,
-                                      in0val,
+                                      target_in0,
                                       gain,
                                       bias,
                                       variance);
@@ -138,7 +138,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_mult(float in0val, floa
   float target_in1 = compute_in1(m_codes,in1val);
 
   target_in0 = val1_dac->fastMakeValue(target_in0);
-  target_in1 = val1_dac->fastMakeValue(target_in1);
+  target_in1 = val2_dac->fastMakeValue(target_in1);
   float target_mult = predict_out_mult(m_codes,target_in0,target_in1);
 
 
@@ -160,11 +160,12 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_mult(float in0val, floa
           target_mult,ref,mean);
   print_info(FMTBUF);
 
+  float bias = mean-(target_mult+ref);
   profile_t prof = prof::make_profile(out0Id,
                                       0,
                                       target_mult,
-                                      in0val,
-                                      in1val,
+                                      target_in0,
+                                      target_in1,
                                       mean-(target_mult+ref),
                                       variance);
 

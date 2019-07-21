@@ -97,13 +97,14 @@ class ProfileCmd(Command):
         self._blk = enums.BlockType(blk)
         self._loc = CircLoc(chip,tile,slce,index)
         self._clear = clear
-        self._n = n
-        self._max_n = 500
         self._bootstrap=bootstrap
+        self._max_n = 500
         if self._blk == enums.BlockType.MULT:
           self._n_inputs = 2
+          self._n = int(n*n/4.0)
         else:
           self._n_inputs = 1
+          self._n = n
 
     @staticmethod
     def name():
@@ -176,7 +177,7 @@ class ProfileCmd(Command):
 
         elif self._blk == enums.BlockType.FANOUT:
             if self._bootstrap:
-                for x0 in [0]:
+                for x0 in [0,1.0,-1.0]:
                     succ=self.get_output(env,[x0],mode=0)
                     succ&=self.get_output(env,[x0],mode=1)
                     succ&=self.get_output(env,[x0],mode=2)
@@ -191,6 +192,11 @@ class ProfileCmd(Command):
                 if succ:
                     return
         else:
+            if self._bootstrap:
+                for x0 in [0.0,-1.0,1.0]:
+                    if self.get_output(env,[x0],mode=0):
+                        return
+
             for i in range(0,self._n):
                 x0 = sample_reverse_normal()
                 if self.get_output(env,[x0],mode=0):
@@ -198,7 +204,11 @@ class ProfileCmd(Command):
 
       elif self._n_inputs == 2:
           if self._bootstrap:
-            for x0,x1 in [(0,0)]:
+            for x0,x1 in [(0,0), \
+                          (1.0,1.0), \
+                          (-1.0,1.0), \
+                          (1.0,-1.0), \
+                          (-1.0,-1.0)]:
                 if self.get_output(env,[x0,x1],mode=0):
                     return
 

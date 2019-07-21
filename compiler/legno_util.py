@@ -64,8 +64,10 @@ def exec_jaunt_normal(prog,conc_circ,args):
                                                 conc_circ,
                                                 args.scale_circuits,
                                                 model=args.model,
+                                                max_freq=args.max_freq,
                                                 digital_error=args.digital_error,
-                                                analog_error=args.analog_error):
+                                                analog_error=args.analog_error,
+                                                do_log=True):
         yield idx,opt,model,scale_circ
 
 

@@ -45,6 +45,7 @@ def infer(obj):
   model_in.set_oprange_scale(*bnds_z['in0'])
   #bnds_z['in0'] = [0.9,0.9]
   # this causes scaling issues because there aren't enough degrees of freedom.
+  out_z.gain = 1.0
 
   bnds_ic = infer_fit.build_model(out_z0,obj['dataset'],0)
   #bnds_ic['in0'] = [0.75,0.75]

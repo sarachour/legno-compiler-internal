@@ -40,10 +40,10 @@ def plot_prediction_error(filename,model,bounds,in0,in1,out,bias):
   error = np.array(list(map(lambda i: abs(pred[i]-meas[i]), range(n))))
   plt.scatter(in0,in1,c=error,s=5.0)
   if not bounds is None:
-    plt.axhline(y=-bounds['in0'][0], color='r', linestyle='-')
-    plt.axhline(y=bounds['in0'][1], color='r', linestyle='-')
-    plt.axvline(x=-bounds['in1'][0], color='r', linestyle='-')
-    plt.axvline(x=bounds['in1'][1], color='r', linestyle='-')
+    plt.axhline(y=-bounds['in1'][0], color='r', linestyle='-')
+    plt.axhline(y=bounds['in1'][1], color='r', linestyle='-')
+    plt.axvline(x=-bounds['in0'][0], color='r', linestyle='-')
+    plt.axvline(x=bounds['in0'][1], color='r', linestyle='-')
 
   plt.xlabel("in0")
   plt.ylabel("in1")

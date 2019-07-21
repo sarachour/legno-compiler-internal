@@ -36,11 +36,11 @@ parser.add_argument("--targeted", action='store_true', \
 
 parser.add_argument("--profile", action='store_true', \
                     help="profile components on chip")
-parser.add_argument("--n", default=5, type=int, \
+parser.add_argument("--n", default=25, type=int, \
                     help="number of values to collect")
 
-parser.add_argument("--bootstrap-profile", action='store_true', \
-                    help="clear profiles on chip")
+parser.add_argument("--bootstrap", action='store_true', \
+                    help="use idiomatic inputs")
 parser.add_argument("--clear-profile", action='store_true', \
                     help="clear profiles on chip")
 parser.add_argument("--recompute", action='store_true', \
@@ -93,7 +93,7 @@ elif args.profile:
     succ = main_script_profile(state,args.script, \
                                recompute=args.recompute,
                                clear=args.clear_profile,
-                               bootstrap=args.bootstrap_profile,
+                               bootstrap=args.bootstrap,
                                n=args.n)
 if args.dry_run:
     sys.exit(0)

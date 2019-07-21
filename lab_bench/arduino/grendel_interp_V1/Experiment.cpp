@@ -280,6 +280,14 @@ void run_experiment(experiment_t * expr, Fabric * fab){
   else{
     comm::error("unrecognized case");
   }
+
+  /*
+  fab->execStart();
+  float val= fab->chips[0].tiles[3].slices[2].chipOutput->analogAvg();
+  fab->execStop();
+  sprintf(FMTBUF,"AVG Value: %f", val);
+  print_info(FMTBUF);
+  */
   set_SDA(LOW);
   analogWrite(DAC0, 0);
   analogWrite(DAC1, 0);

@@ -32,7 +32,7 @@ def model():
 
     prob.bind("Y",Y)
     prob.bind("X",X)
-    prob.bind("OUTX",op.Emit(op.Var("X"), loc="A0"))
+    measure_var(prob,"X","OUTX")
     prob.set_interval("X",-2.0,2.0)
     prob.set_interval("Y",-2.0,2.0)
     prob.set_interval("OUTX",-2.0,2.0)

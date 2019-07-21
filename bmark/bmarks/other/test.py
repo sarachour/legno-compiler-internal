@@ -71,6 +71,17 @@ def feedback():
   prob.set_max_sim_time(20)
   return menv,prob
 
+def constant():
+    prob = MathProg("constant")
+    params = {'Y0': 0.0}
+    prob.bind("O",op.Emit(op.Const(1.0),loc='A0'))
+    prob.set_interval("O",-1.0,1.0)
+    prob.set_bandwidth('O', 0)
+    prob.compile()
+    menv = menvs.get_math_env('t2')
+    prob.set_max_sim_time(2)
+    return menv,prob
+
 def nochange():
     prob = MathProg("nochange")
     params = {'Y0': 0.0}

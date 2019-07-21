@@ -28,31 +28,19 @@ def get_scale_modes():
                                     blacklist))
   return modes
 
-def is_extended(scale_mode):
-  i,o = scale_mode
-  #return i == chipcmd.RangeType.MED and \
-  #  (o == chipcmd.RangeType.MED or \
-  #   o == chipcmd.RangeType.LOW)
-  return (i == chipcmd.RangeType.MED or \
-          i == chipcmd.RangeType.HIGH) and \
-          o == chipcmd.RangeType.MED
-
-def is_extended2(scale_mode):
-  i,o = scale_mode
-  #return i == chipcmd.RangeType.MED and \
-  #  (o == chipcmd.RangeType.MED or \
-  #   o == chipcmd.RangeType.LOW)
-
-  # increase
-  return (i == chipcmd.RangeType.MED) and \
-    (o == chipcmd.RangeType.MED or \
-     o == chipcmd.RangeType.HIGH)
-
 
 def is_standard(scale_mode):
   i,o = scale_mode
   return i == chipcmd.RangeType.MED and \
     o == chipcmd.RangeType.MED
+
+def is_extended(scale_mode):
+  i,o = scale_mode
+  #return i == chipcmd.RangeType.MED and \
+  #  (o == chipcmd.RangeType.MED or \
+  #   o == chipcmd.RangeType.LOW)
+  return (i != chipcmd.RangeType.LOW) and \
+          o != chipcmd.RangeType.LOW
 
 def continuous_scale_model(integ):
   m = chipcmd.RangeType.MED
@@ -69,11 +57,9 @@ def scale_model(integ):
   for comp_mode in comp_modes:
     standard,nonstandard = gutil.partition(is_standard,scale_modes)
     extended,_ = gutil.partition(is_extended,scale_modes)
-    extended2,_ = gutil.partition(is_extended2,scale_modes)
     integ.set_scale_modes(comp_mode,standard,glb.HCDCSubset.all_subsets())
     integ.set_scale_modes(comp_mode,nonstandard,[glb.HCDCSubset.UNRESTRICTED])
     integ.add_subsets(comp_mode,extended,[glb.HCDCSubset.EXTENDED])
-    integ.add_subsets(comp_mode,extended2,[glb.HCDCSubset.EXTENDED2])
     for scale_mode in scale_modes:
       get_prop = lambda p : CTX.get(p, integ.name,
                                     comp_mode,scale_mode,None)

@@ -35,15 +35,11 @@ class HCDCSubset(Enum):
     STANDARD = "standard"
     UNRESTRICTED = "unrestricted"
     EXTENDED = "extended"
-    EXTENDED2 = "extended2"
-    EXTENDED3 = "extended3"
 
     @staticmethod
     def all_subsets():
       return [HCDCSubset.STANDARD,
               HCDCSubset.EXTENDED,
-              HCDCSubset.EXTENDED2,
-              HCDCSubset.EXTENDED3,
               HCDCSubset.UNRESTRICTED]
 
 class GlobalCtx:
@@ -81,7 +77,7 @@ class GlobalCtx:
     self.__insert(prop,block,cm,sm,port,value)
 
 CTX = GlobalCtx()
-CTX.insert(GLProp.DIGITAL_INTERVAL, (-1.0,1.0))
+CTX.insert(GLProp.DIGITAL_INTERVAL, (-1.0,0.98))
 CTX.insert(GLProp.CURRENT_INTERVAL, (-2.0,2.0))
 CTX.insert(GLProp.VOLTAGE_INTERVAL, (-1.0,1.0))
 CTX.insert(GLProp.DIGITAL_QUANTIZE, 256)
@@ -121,10 +117,11 @@ CTX.insert(GLProp.COEFF, 2.0, block='ext_chip_in')
 # specialized ext_chip_out
 
 V2I_range = 1.208
+DUE_range = 3.3/2.0
 CTX.insert(GLProp.DIGITAL_QUANTIZE, 4096, block='ext_chip_out')
 CTX.insert(GLProp.DIGITAL_SAMPLE, 1*units.ns, block='ext_chip_out')
 CTX.insert(GLProp.COEFF, 0.5*V2I_range, block='ext_chip_out')
-CTX.insert(GLProp.DIGITAL_INTERVAL, (-V2I_range,V2I_range), block='ext_chip_out')
+CTX.insert(GLProp.DIGITAL_INTERVAL, (-DUE_range,DUE_range), block='ext_chip_out')
 
 CTX.freeze = True
 

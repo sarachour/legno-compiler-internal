@@ -6,12 +6,26 @@
 
 // for single-ended channels
 #define ADC_CONVERSION (3300.0/4096.0)
+// computed regression for ARDV -> OSCV: = 0.9888*V_ard - 0.0201
+// R^2 = 0.99902
+// ===== FULLSCALE =====
 #define ADC_FULLSCALE (1208.0)
 
-//should be 1208, but it isn't for some reason.
-//#define ADC_FULLSCALE (1000.0)
-#define ADC_MIN 0
+inline float to_diff_voltage(int pos, int neg){
+  float pos_mV = pos*ADC_CONVERSION;
+  float neg_mV = neg*ADC_CONVERSION;
+  float value = (pos_mV - neg_mV);
+  float scaled_value = value/ADC_FULLSCALE;
 
+  /*
+  sprintf(FMTBUF,"pos=%d/%f neg=%d/%f diff=%f/%f",
+          pos,pos_mV,
+          neg,neg_mV,
+          value,scaled_value);
+  print_info(FMTBUF);
+  */
+  return scaled_value;
+}
 void measure_trend(int ardAnaDiffChan){
   unsigned long codes[SAMPLES];
   unsigned int pos[SAMPLES];
@@ -27,10 +41,7 @@ void measure_trend(int ardAnaDiffChan){
   float times[SAMPLES];
   unsigned int base_time = codes[0];
   for(unsigned int index = 0; index < SAMPLES; index++){
-    int diff = pos[index] - neg[index];
-    float value = ADC_CONVERSION*((float)(diff));
-    value /= ADC_FULLSCALE;
-    values[index] = value;
+    values[index] = to_diff_voltage(pos[index],neg[index]);
     times[index] = (codes[index]-base_time)*1e-6;
   }
   for(unsigned int index = 0; index < SAMPLES; index++){
@@ -52,10 +63,7 @@ float measure_dist(int ardAnaDiffChan, float& variance){
 
   float values[SAMPLES];
   for(unsigned int index = 0; index < SAMPLES; index++){
-    int diff = pos[index] - neg[index];
-    float value = ADC_CONVERSION*((float)(diff));
-    value /= ADC_FULLSCALE;
-    values[index] = value;
+    values[index] = to_diff_voltage(pos[index],neg[index]);
   }
   float mean;
   util::distribution(values, SAMPLES, mean, variance);
@@ -83,12 +91,9 @@ float measure(int ardAnaDiffChan){
     adcPos += analogRead(pinmap[ardAnaDiffChan+1]);
     adcNeg += analogRead(pinmap[ardAnaDiffChan]);
   }
-  float pos_mv = ADC_CONVERSION * ((float)adcPos/(float)samples);
-  float neg_mv = ADC_CONVERSION * ((float)adcNeg/(float)samples);
-  float value = (pos_mv-neg_mv)/ADC_FULLSCALE;
-  sprintf(FMTBUF,"chan=%d pos=%f neg=%f diff=%f val=%f", ardAnaDiffChan,
-          pos_mv, neg_mv,pos_mv-neg_mv,value);
-  print_debug(FMTBUF);
+  float pos = ((float)adcPos/(float)samples);
+  float neg = ((float)adcNeg/(float)samples);
+  float value = to_diff_voltage(pos,neg);
   return value;
 }
 void Fabric::Chip::Tile::Slice::ChipOutput::analogDist (

@@ -49,11 +49,20 @@ def save():
 
 
   if os.path.exists(CONFIG.CALIBRATE_FILE):
-    mode = 'a' # append if already exists
+    lines = []
+    with open(CONFIG.CALIBRATE_FILE,'r') as fh:
+      for line in fh:
+        lines.append(line.strip())
   else:
-    mode = 'w' # make a new file if not
+    lines = []
 
   print("JAUNTLOG: logged %d stmts" % len(minprog.stmts))
-  with open(CONFIG.CALIBRATE_FILE,mode) as fh:
+  with open(CONFIG.CALIBRATE_FILE,'w') as fh:
+    for line in lines:
+      fh.write("%s\n" % line)
+
     for stmt in minprog.stmts:
-      fh.write("%s\n" % stmt)
+      stmt_str = str(stmt)
+      if not stmt_str in lines:
+        fh.write("%s\n" % stmt)
+        lines.append(stmt_str)

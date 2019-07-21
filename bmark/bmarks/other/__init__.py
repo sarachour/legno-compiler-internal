@@ -19,6 +19,7 @@ def get_benchmarks():
     test.nochange(),
     test.integrate_noise(),
     test.lut(),
+    test.constant(),
     test.feedback(),
     test.feedback2(),
     test.feedback3()

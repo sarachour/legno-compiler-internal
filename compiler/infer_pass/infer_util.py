@@ -61,3 +61,19 @@ def get_directory(model):
     direc = "MODELS/%s_%s/%s_%s" % (block,loc,cm,sm)
     util.mkdir_if_dne(direc)
     return direc
+
+def normalize_bound(bnds,scm):
+  lb,ub = bnds
+  if scm == chipcmd.RangeType.HIGH:
+      coeff = 0.1
+  elif scm == chipcmd.RangeType.LOW:
+      coeff = 10.0
+  elif scm == chipcmd.RangeType.MED:
+      coeff = 1.0
+  else:
+      raise Exception("unknown mode <%s>" % scm)
+
+
+  def clamp(v):
+      return min(max(v,0.0),1.0)
+  return [clamp(lb*coeff),clamp(ub*coeff)]

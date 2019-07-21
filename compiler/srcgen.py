@@ -85,7 +85,7 @@ def nearest_value(value):
                            range(0,255))))
 
   idx = (np.abs(vals - value)).argmin()
-  print("%s->%s" % (value,vals[idx]))
+  #print("%s->%s" % (value,vals[idx]))
   return vals[idx]
 
 def gen_use_adc(circ,block,locstr,config):

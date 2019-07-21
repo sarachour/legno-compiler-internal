@@ -39,6 +39,9 @@ def apply_trimming_model(inps,error,pars):
     return 100
   m = len(inds)
   sub_err = np.array(list(map(lambda i: abs(error[i]), inds)))
+  if m == 0:
+    return 100.0
+
   unc_var = sum(sub_err)/m
   unc_std = math.sqrt(unc_var)
   cost=unc_std*2.0+1.0/(span*0.25)
@@ -68,14 +71,24 @@ def trim_model(model,in0,in1,out,bias):
                                        (pars[2],pars[3])])
 
 
-  trim = 0.1
-  bounds = [(-1.0,-1.0+trim), \
-            (2.0-trim*2.0,2.0), \
-            (-1.0,-1.0+trim), \
-            (2.0-trim*2.0,2.0)]
+  trim_pct = 0.1
 
+  in0_lb = min(in0)
+  in0_sc = max(in0)-min(in0)
+  in1_lb = min(in1)
+  in1_sc = max(in1)-min(in1)
+  in0_trim = trim_pct*in0_sc/2.0
+  in1_trim = trim_pct*in1_sc/2.0
+
+  bounds = [(in0_lb,in0_lb+in0_trim), \
+            (in0_sc-in0_trim*2.0,in0_sc), \
+            (in1_lb,in1_lb+in1_trim), \
+            (in1_sc-in1_trim*2.0,in1_sc)]
+
+  print(bounds)
   result = scipy.optimize.brute(compute_loss, bounds, Ns=5)
   in0l,in0s,in1l,in1s = result
+  print(result)
   bnds = {
     'in0':(
       abs(find_closest(in0,in0l)), \
@@ -86,7 +99,8 @@ def trim_model(model,in0,in1,out,bias):
       abs(find_closest(in1,in1l+in1s))
     ),
   }
-  inds = inds_model_2(in0,in0,((in0l,in0s),(in1l,in1s)),n)
+
+  inds = inds_model_2(in0,in1,((in0l,in0s),(in1l,in1s)),n)
   m = len(inds)
   sub_pred = infer_util.indirect_index(pred, inds)
   sub_meas = infer_util.indirect_index(meas, inds)
