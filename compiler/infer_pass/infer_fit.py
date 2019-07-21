@@ -95,8 +95,12 @@ def trim_model(model,in0,in1,out,bias):
      not test_bounds(in1l,bounds[2]) or \
      not test_bounds(in1s,bounds[3]):
     for v,b in zip(result,bounds):
-      print("%s in %s?" % (v,b))
-    input("out of bounds")
+      if test_bounds(v,b):
+        print("%s IN %s" % (v,b))
+      else:
+        print("%s NOT IN %s" % (v,b))
+
+    print("OUT OF BOUNDS")
 
   bnds = {
     'in0':(

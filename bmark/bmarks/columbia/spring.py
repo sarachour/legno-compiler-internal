@@ -66,12 +66,7 @@ def model(nonlinear=False):
   prob.set_interval("VA",-vbnd,vbnd)
   prob.set_interval("VB",-vbnd,vbnd)
   prob.set_max_sim_time(20)
-  #measure_var(prob,"PA","PosA")
-  #measure_var(prob,"FPA","FuncA")
-  if nonlinear:
-    prob.bind('PosA', op.Emit(op.Var('PA'),loc="A0"))
-  else:
-    prob.bind('PosA', op.Emit(op.Var('PA'),loc="A0"))
+  measure_var(prob,"PA","PosA")
   prob.compile()
 
   menv = menvs.get_math_env('t20')

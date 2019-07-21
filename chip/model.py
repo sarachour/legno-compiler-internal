@@ -301,6 +301,7 @@ def get_variance(db,circ,block_name,loc,port,handle=None,mode='physical'):
 
     unc = math.sqrt(model.noise**2.0 + model.bias_uncertainty**2.0)
     physunc = unc+abs(model.bias)
+    #physunc = model.noise
     if physunc == 0.0:
       return unc_min
 

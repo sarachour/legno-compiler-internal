@@ -41,8 +41,9 @@ def model(nonlinear=False):
                      ':b', params)
   prob.bind('angle',eqn)
 
-  prob.bind('ANGLE', op.Emit(op.Var('angle'), \
-                             loc="A0"))
+  measure_var(prob,"angle","ANGLE")
+  #prob.bind('ANGLE', op.Emit(op.Var('angle'), \
+  #                           loc="A0"))
 
   bound = 1.8
   prob.set_interval('angle', -bound,bound)
