@@ -70,6 +70,9 @@ def trim_model(model,in0,in1,out,bias):
                                 error,[(pars[0],pars[1]), \
                                        (pars[2],pars[3])])
 
+  def test_bounds(val,bnd):
+    lb,ub = bnd
+    return val <= lb and val >= ub
 
   trim_pct = 0.1
 
@@ -85,10 +88,16 @@ def trim_model(model,in0,in1,out,bias):
             (in1_lb,in1_lb+in1_trim), \
             (in1_sc-in1_trim*2.0,in1_sc)]
 
-  print(bounds)
   result = scipy.optimize.brute(compute_loss, bounds, Ns=5)
   in0l,in0s,in1l,in1s = result
-  print(result)
+  if not test_bounds(in0l,bounds[0]) or \
+     not test_bounds(in0s,bounds[1]) or \
+     not test_bounds(in1l,bounds[2]) or \
+     not test_bounds(in1s,bounds[3]):
+    for v,b in zip(result,bounds):
+      print("%s in %s?" % (v,b))
+    input("out of bounds")
+
   bnds = {
     'in0':(
       abs(find_closest(in0,in0l)), \
@@ -170,9 +179,15 @@ def infer_model(model,in0,in1,out,bias,noise, \
       new_max_error,new_unc,bnd = trim_model(model,\
                                              in0,in1,out,bias)
       if new_unc < model.bias_uncertainty:
-        print("uncertainty: %f -> %f" % (model.bias_uncertainty,new_unc))
-        print("max_error: %f -> %f" % (max_error,new_max_error))
-        print(bnd)
+        print("MODEL %s[%s].%s:%s" % \
+              (model.block,model.loc,model.port,model.handle))
+        print("  scale-mode=%s" % str(model.scale_mode))
+        print("  comp-mode=%s" % str(model.comp_mode))
+        print("  uncertainty: %f -> %f" % (model.bias_uncertainty,new_unc))
+        print("  max_error: %f -> %f" % (max_error,new_max_error))
+        print("  in0=(%f,%f) in1=(%f,%f)" % (bnd['in0'][0],bnd['in0'][1], \
+                                             bnd['in1'][0],bnd['in1'][1]))
+        print("")
         model.bias_uncertainty = new_unc
         return bnd
 

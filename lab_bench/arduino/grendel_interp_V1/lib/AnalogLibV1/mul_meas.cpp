@@ -143,19 +143,24 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_mult(float in0val, floa
 
 
   if(fabs(target_mult) > 10.0){
-    sprintf(FMTBUF, "can't fit %f", target_mult);
-    error(FMTBUF);
+    calib.success = false;
   }
-  cutil::fast_make_ref_dac(ref_dac, target_mult);
+  if(calib.success)
+    cutil::fast_make_ref_dac(ref_dac, target_mult);
 
   float mean,variance;
-  calib.success &= cutil::measure_signal_robust(this,
-                                                ref_dac,
-                                                target_mult,
-                                                false,
-                                                mean,
-                                                variance);
-  float ref = ref_dac->fastMeasureValue();
+  if(calib.success)
+    calib.success &= cutil::measure_signal_robust(this,
+                                                  ref_dac,
+                                                  target_mult,
+                                                  false,
+                                                  mean,
+                                                  variance);
+
+  float ref;
+  if(calib.success)
+    ref = ref_dac->fastMeasureValue();
+
   sprintf(FMTBUF,"PARS target=%f ref=%f mean=%f",
           target_mult,ref,mean);
   print_info(FMTBUF);

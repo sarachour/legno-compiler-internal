@@ -19,30 +19,29 @@ import compiler.infer_pass.infer_visualize as infer_visualize
 
 db = ModelDB()
 
-def build_model(obj):
-  for datum in obj:
-    blk = datum['metadata']['block']
-    if blk == 'dac':
-      for model in infer_dac.infer(datum):
-        yield model
+def build_model(datum):
+  blk = datum['metadata']['block']
+  if blk == 'dac':
+    for model in infer_dac.infer(datum):
+      yield model
 
-    elif blk == 'adc':
-      for model in infer_adc.infer(datum):
-        yield model
+  elif blk == 'adc':
+    for model in infer_adc.infer(datum):
+      yield model
 
-    elif blk == 'fanout':
-      for model in infer_fanout.infer(datum):
-        yield model
+  elif blk == 'fanout':
+    for model in infer_fanout.infer(datum):
+      yield model
 
-    elif blk == 'integ':
-      for model in infer_integ.infer(datum):
-        yield model
+  elif blk == 'integ':
+    for model in infer_integ.infer(datum):
+      yield model
 
-    elif blk == 'mult':
-      for model in infer_mult.infer(datum):
-        yield model
-    else:
-      raise Exception("unsupported <%s>" % blk)
+  elif blk == 'mult':
+    for model in infer_mult.infer(datum):
+      yield model
+  else:
+    raise Exception("unsupported <%s>" % blk)
 
 def populate_default_models(board):
   print("==== Populate Default Models ===")
@@ -69,6 +68,18 @@ def populate_default_models(board):
           model.noise = 0.0
           db.put(model)
 
+def write_models(models):
+  if len(models) == 0:
+    return
+
+  direc = infer_visualize.get_directory(models[0])
+  filename = "model.json"
+  path = "%s/%s" % (direc,filename)
+  with open(path,'w') as fh:
+    for model in models:
+      fh.write(str(model))
+      fh.write("\n\n")
+
 
 def infer(args):
   if args.visualize:
@@ -93,9 +104,13 @@ def infer(args):
         fpath = "%s/%s" % (dirname,fname)
         with open(fpath,'r') as fh:
           obj = json.loads(fh.read())
-          for m in build_model(obj):
-            print(m)
-            db.put(m)
+          for datum in obj:
+            models = []
+            for m in build_model(datum):
+              models.append(m)
+              db.put(m)
+
+            write_models(models)
 
 def analyze(args):
   circ = ConcCirc.read(None,args.circ_file)
