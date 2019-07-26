@@ -81,7 +81,7 @@ def write_models(models):
       fh.write("\n\n")
 
 
-def infer(args):
+def infer(args,dump_db=True):
   if args.visualize:
     infer_visualize.DO_PLOTS = True
 
@@ -92,11 +92,13 @@ def infer(args):
     populate_default_models(hdacv2_board)
     sys.exit(0)
 
-  cmd = "python3 grendel.py --dump-db calibrate.grendel"
-  print(cmd)
-  retcode = os.system(cmd)
-  if retcode != 0:
-    raise Exception("could not dump database: retcode=%d" % retcode)
+  dump_db = False
+  if dump_db:
+    cmd = "python3 grendel.py --dump-db calibrate.grendel"
+    print(cmd)
+    retcode = os.system(cmd)
+    if retcode != 0:
+      raise Exception("could not dump database: retcode=%d" % retcode)
 
   for dirname, subdirlist, filelist in os.walk(CONFIG.DATASET_DIR):
     for fname in filelist:

@@ -89,6 +89,12 @@ def sample_reverse_normal():
 
     return z
 
+def canonical_normal():
+    x = np.random.normal(0,0.8)
+    while abs(x) > 1.0:
+        x = np.random.normal(0,0.8)
+    return x
+
 class ProfileCmd(Command):
 
     def __init__(self,blk,chip,tile,slce, \
@@ -205,6 +211,10 @@ class ProfileCmd(Command):
       elif self._n_inputs == 2:
           if self._bootstrap:
             for x0,x1 in [(0,0), \
+                          (-1.0,0.0), \
+                          (1.0,0.0), \
+                          (0.0,1.0), \
+                          (0.0,-1.0), \
                           (1.0,1.0), \
                           (-1.0,1.0), \
                           (1.0,-1.0), \
@@ -215,13 +225,17 @@ class ProfileCmd(Command):
           for i in range(0,self._n):
               print(">>> profiling operation %d/%d <<<" \
                     % (i+1,self._n))
-              z = sample_reverse_normal()
-              x0 = random.uniform(-1,1)
-              while abs(z/x0) > 1.0:
-                  z = sample_reverse_normal()
+              if i % 2 == 0:
                   x0 = random.uniform(-1,1)
+                  z = sample_reverse_normal()
+                  while abs(z/x0) > 1.0:
+                      z = sample_reverse_normal()
+                      x0 = random.uniform(-1,1)
+                  x1 = z/x0
+              else:
+                  x0 = canonical_normal()
+                  x1 = canonical_normal()
 
-              x1 = z/x0
               self.get_output(env,[x0,x1],mode=0)
               print("%f*%f" % (x0,x1))
 

@@ -40,9 +40,9 @@ def model(closed_form=True):
     'LacLm0':0.5,
     'clm0':0.25,
     'TetRm0':0.30,
-    'LacLp0':6.0,
-    'clp0':2.0,
-    'TetRp0':4.0,
+    'LacLp0':3.0,
+    'clp0':1.0,
+    'TetRp0':2.0,
     'K':K,
     'n':2.0,
     'a_tr':0.75,
@@ -56,12 +56,15 @@ def model(closed_form=True):
   }
   assert(closed_form)
   prob = MathProg("repri")
-  LacLm  = parse_diffeq('{a0_tr}+{a_tr}*ALacL+{kd_mrna}*(-LacLm)', \
+  ##
+  #LacLm  = parse_diffeq('{a0_tr}+{a_tr}*ALacL+{kd_mrna}*(-LacLm)', \
+  #                      'LacLm0',':a',params)
+  LacLm  = parse_diffeq('{a_tr}*ALacL+{kd_mrna}*(-LacLm)', \
                         'LacLm0',':a',params)
 
-  clm = parse_diffeq('{a0_tr}+{a_tr}*Aclp+{kd_mrna}*(-clm)', \
+  clm = parse_diffeq('{a_tr}*Aclp+{kd_mrna}*(-clm)', \
                      'clm0',':b',params)
-  TetRm = parse_diffeq('{a0_tr}+{a_tr}*ATetR+{kd_mrna}*(-TetRm)', \
+  TetRm = parse_diffeq('{a_tr}*ATetR+{kd_mrna}*(-TetRm)', \
                        'TetRm0',':c',params)
   mrna_bnd = params['mrna_bnd']
   prob.bind("LacLm",LacLm)
