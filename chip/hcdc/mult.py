@@ -68,17 +68,30 @@ def is_standard_mul(mode):
 def is_extended_vga(mode):
   i,o = mode
   #return (i == chipcmd.RangeType.LOW or \
-  return (i != chipcmd.RangeType.LOW) and \
+  not_low = (i != chipcmd.RangeType.LOW) and \
           (o != chipcmd.RangeType.LOW)
+  not_ampl = not (i == chipcmd.RangeType.MED and \
+                  o == chipcmd.RangeType.HIGH)
+  not_high = not (i == chipcmd.RangeType.HIGH and \
+                  o == chipcmd.RangeType.HIGH)
+  return not_low and not_ampl and not_high
 # it works with high.
 
 
 def is_extended_mul(mode):
   i0,i1,o = mode
-  return i0 != chipcmd.RangeType.LOW and \
-    i1 != chipcmd.RangeType.LOW and \
-    o != chipcmd.RangeType.LOW
+  not_low = i0 != chipcmd.RangeType.LOW and \
+                  i1 != chipcmd.RangeType.LOW and \
+                        o != chipcmd.RangeType.LOW
+  not_ampl = not (i0 == chipcmd.RangeType.MED and \
+                  i1 == chipcmd.RangeType.MED) and \
+                  o == chipcmd.RangeType.HIGH
+  not_hi = not (i0 == chipcmd.RangeType.HIGH or \
+                i1 == chipcmd.RangeType.HIGH) and \
+                  o == chipcmd.RangeType.HIGH
 
+
+  return not_low and not_ampl and not_hi
 
 
 def continuous_scale_model_vga(mult):

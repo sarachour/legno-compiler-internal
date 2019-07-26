@@ -32,7 +32,7 @@ def model(nonlinear=False):
     prob = MathProg("spring")
 
   #prob.set_digital_snr(15.0)
-  
+
   PA = parse_diffeq('VA', 'PA0', ':a', params)
   if nonlinear:
     VA = parse_diffeq('{k2}*FPB+{k1_k2}*(FPA)+{cf}*(VA)', 'VA0', ':b', params)

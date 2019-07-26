@@ -49,9 +49,9 @@ def model():
     prob.set_interval("X",-2.0,2.0)
     prob.set_interval("Y",-2.0,2.0)
     prob.set_interval("OUTX",-2.0,2.0)
-    prob.set_max_sim_time(50)
+    prob.set_max_sim_time(20)
     prob.compile()
-    menv = menvs.get_math_env('t50')
+    menv = menvs.get_math_env('t20')
     return menv,prob
 
 def execute():

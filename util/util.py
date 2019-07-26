@@ -8,6 +8,39 @@ import util.config as CONFIG
 import os
 from enum import Enum
 
+
+def unpack_tag(handle):
+  method = "unknown"
+  i=0
+  if handle[i] == 'n':
+    method="naive"
+  elif handle[i] == 'i':
+    method="ideal"
+  elif handle[i] == 'x':
+    method="physical"
+  elif handle[i] == 'z':
+    method="partial"
+
+  i += 1
+  assert(handle[i] == 'q')
+  i += 1
+  next_tag = handle[i:].find('d')
+  analog = float(handle[i:i+next_tag])
+  i += next_tag
+  assert(handle[i] == 'd')
+  i += 1
+  next_tag = handle[i:].find('b')
+  digital= float(handle[i:i+next_tag])
+  i += next_tag
+  assert(handle[i] == 'b')
+  i += 1
+  if len(handle[i:]) == 0:
+      bandwidth = 200
+  else:
+      bandwidth = float(handle[i:].split('k')[0])
+      bandwidth *= 10000
+  return method,analog,digital,bandwidth
+
 def randlist(seed,n):
   np.random.seed(seed)
   return list(map(lambda _ : np.random.uniform(-1,1),range(n)))

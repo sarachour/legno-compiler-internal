@@ -597,8 +597,11 @@ def route(board,prob,node_map):
   print("=== tile resolution ===")
   chips = get_sublayers([board])
   tiles = get_sublayers(chips)
+  initial = {}
+  blk,frag = next(iter(locs.keys()))
+  initial[(blk,frag)] = chips[0].position
   chip_env,chip_assigns = hierarchical_route(board,locs,conns,
-                                   chips,{})
+                                             chips,initial)
 
   if chip_assigns is None:
     raise Exception("no chip assigns")

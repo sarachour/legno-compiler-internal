@@ -13,6 +13,7 @@ class ConcCirc:
         self._filename = filename
         #self._intervals = {}
         #self._bandwidths = {}
+        self.meta = {}
 
     def copy(self):
         circ = ConcCirc(self._board)
@@ -245,3 +246,5 @@ class ConcCirc:
         graphlib.write_graph(self,filename, \
                              color_method, \
                              write_png)
+
+

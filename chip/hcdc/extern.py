@@ -95,16 +95,6 @@ extern_in_cont_model(block_in)
 def extern_out_cont_model(xbar):
   csm = ContinuousScaleModel()
   csm.set_baseline("*")
-  out = csm.decl_var(CSMOpVar("out"))
-  inp = csm.decl_var(CSMOpVar("in"))
-  coeff = csm.decl_var(CSMCoeffVar("out"))
-  csm.eq(ops.Mult(ops.Var(inp.varname),
-                  ops.Var(coeff.varname)), \
-         ops.Var(out.varname))
-
-  csm.discrete.add_mode("*")
-  csm.discrete.add_cstr("*",inp,1.0)
-  csm.discrete.add_cstr("*",out,1.0)
   xbar.set_scale_model("*", csm)
 
 

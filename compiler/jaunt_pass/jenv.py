@@ -27,15 +27,19 @@ class JauntEnvParams:
     PHYSICAL = "physical"
     IDEAL = "ideal"
     NAIVE = "naive"
+    PARTIAL = "partial"
 
   class Model(Enum):
     PHYSICAL = "physical"
+    PARTIAL = "partial"
     IDEAL = "ideal"
     NAIVE = "naive"
 
     def abbrev(self):
       if JauntEnvParams.Model.PHYSICAL == self:
         return "x"
+      if JauntEnvParams.Model.PARTIAL == self:
+        return "z"
       elif JauntEnvParams.Model.NAIVE == self:
         return "n"
       elif JauntEnvParams.Model.IDEAL == self:
@@ -66,6 +70,15 @@ class JauntEnvParams:
     self.only_scale_modes_with_models = False
 
 
+  def partial(self):
+    self.model = "partial"
+    self.propagate_uncertainty = False
+    self.enable_quantize_constraint = True
+    self.enable_quality_constraint = True
+    self.enable_bandwidth_constraint = True
+    self.only_scale_modes_with_models = True
+
+
   def physical(self):
     self.model = "physical"
     self.propagate_uncertainty = False
@@ -91,7 +104,8 @@ class JauntEnvParams:
       self.ideal()
     elif model == JauntEnvParams.Type.NAIVE:
       self.naive()
-
+    elif model == JauntEnvParams.Type.PARTIAL:
+      self.partial()
     else:
       raise Exception("unknown jenv model: <%s>" % model);
 
@@ -321,6 +335,10 @@ class JauntInferEnv(JauntEnv):
 
     def get_op_range_var(self,block_name,loc,port,handle=None):
       return self.get_jaunt_var((block_name,loc,port,handle),
+                                tag=JauntVarType.OP_RANGE_VAR)
+
+    def has_op_range_var(self,block_name,loc,port,handle=None):
+      return self.has_jaunt_var((block_name,loc,port,handle),
                                 tag=JauntVarType.OP_RANGE_VAR)
 
 

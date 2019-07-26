@@ -16,6 +16,8 @@ def get_benchmarks():
     spring.model(True),
     robot_control.model(),
     heat.model(4,2),
+    heat.model(4,2,with_gain=True),
     heat.model(8,4),
+    heat.model(8,4,with_gain=True),
     heat.model(17,9)
   ]

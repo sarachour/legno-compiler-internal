@@ -3,12 +3,12 @@ import chip.hcdc.globals as glb
 import scripts.visualize.common as common
 
 to_header = {
-  'tile_out': 'tile out',
-  'tile_in': 'tile in',
-  'chip _in': 'chip in',
-  'chip_out': 'chip out',
-  'ext_chip_out': 'board out',
-  'ext_chip_in': 'board in',
+  'tile_out': 'tile_out',
+  'tile_in': 'tile_in',
+  'chip _in': 'chip_in',
+  'chip_out': 'chip_out',
+  'ext_chip_out': 'board_out',
+  'ext_chip_in': 'board_in',
   'tile_dac':'dac',
   'tile_adc':'adc',
   'lut':'lut',
@@ -48,7 +48,7 @@ def count(iterator):
 def build_block_profile(block):
   n_comp_modes = len(block.comp_modes)
   scale_modes = {}
-  subset = glb.HCDCSubset('unrestricted')
+  subset = glb.HCDCSubset('extended')
   block.subset(subset)
   for comp_mode in block.comp_modes:
     n_scale_modes = 0
@@ -61,10 +61,11 @@ def build_block_profile(block):
           for handle in list(block.handles(comp_mode,port)) \
               + [None]:
 
-            coeffs.append(block.coeff(comp_mode, \
-                                      scm, \
-                                      port,
-                                      handle))
+            if port in block.outputs:
+              coeffs.append(block.coeff(comp_mode, \
+                                        scm, \
+                                        port,
+                                        handle))
 
             prop = block.props(comp_mode,scm,port,handle)
             opranges.append(prop.interval().bound)
@@ -160,6 +161,7 @@ def build_block_summary(profile):
   table = common.Table('HDACv2 Board Block Summaries', \
                        desc, 'hwblocks','|ccc|cccc|ccc|ccc|ccc|',
                        benchmarks=False)
+  table.two_column = True
   fields = ['block', \
             'type', \
             'count', \
@@ -196,9 +198,16 @@ def build_block_summary(profile):
         row['compute mode'] = comp_mode
         row['function'] = to_expr[(block,comp_mode)]
         row['scale modes'] = data['scale_modes']
-        row['current limit'] = "%.1f $\mu A$-%.1f $\mu A$" \
-                               % (data['oprange_min'], \
-                                  data['oprange_max'])
+
+        if data['oprange_min'] == data['oprange_max']:
+          row['current limit'] = "%.1f $\mu A$" % (data['oprange_min'])
+        else:
+          row['current limit'] = "%.1f $\mu A$-%.1f $\mu A$" \
+                                 % (data['oprange_min'], \
+                                    data['oprange_max'])
+      if data['coeff_min'] == data['coeff_max']:
+        row['gain'] = "%.1f x" % data['coeff_min']
+      else:
         row['gain'] = "%.1f x-%.1f x" \
                       % (data['coeff_min'], \
                          data['coeff_max'])
@@ -220,9 +229,12 @@ def build_block_summary(profile):
       row['current limit'] = "%.1f $\mu A$-%.1f $\mu A$" \
                               % (data['oprange_min'], \
                                 data['oprange_max'])
-      row['gain'] = "%.1f x $\mu A$-%.1f x" \
-                    % (data['coeff_min'], \
-                        data['coeff_max'])
+      if data['coeff_min'] == data['coeff_max']:
+        row['gain'] = "%.1f x" % data['coeff_min']
+      else:
+        row['gain'] = "%.1f x -%.1f x" \
+                      % (data['coeff_min'], \
+                         data['coeff_max'])
       table.data(None,row)
 
   table.horiz_rule()

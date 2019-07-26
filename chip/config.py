@@ -213,6 +213,10 @@ class Config:
     def has_dac(self,v):
       return v in self._dacs
 
+    def dacs(self):
+        for port,value in self._dacs.items():
+            yield port,value
+
     def dac(self,v):
       if not v in self._dacs:
         return None

@@ -17,8 +17,8 @@ def model():
     'mean':0.5,
   }
   params['meas_noise_inv'] = 1.0/params['meas_noise']
-  params['X0'] = 0.25
-  params['P0'] = 0.3
+  params['X0'] = 0.0
+  params['P0'] = 0.05
 
   prob = MathProg("kalman-const")
 
@@ -33,7 +33,7 @@ def model():
   prob.bind("Z",Z)
   measure_var(prob,"X", "OUT")
   prob.set_interval("X",0,1.0)
-  prob.set_interval("P",0,0.3)
+  prob.set_interval("P",0,0.1)
   prob.set_interval("Z",0,1.0)
   prob.set_max_sim_time(50)
   prob.compile()

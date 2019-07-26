@@ -9,34 +9,6 @@ def get_path(filename):
   util.mkdir_if_dne("PAPER")
   return path
 
-def unpack_model(handle):
-  method = "unknown"
-  i=0
-  if handle[i] == 'n':
-    method="naive"
-  elif handle[i] == 'i':
-    method="ideal"
-  elif handle[i] == 'x':
-    method="physics"
-
-  i += 1
-  assert(handle[i] == 'q')
-  i += 1
-  next_tag = handle[i:].find('d')
-  analog = float(handle[i:i+next_tag])
-  i += next_tag
-  assert(handle[i] == 'd')
-  i += 1
-  next_tag = handle[i:].find('b')
-  digital= float(handle[i:i+next_tag])
-  i += next_tag
-  assert(handle[i] == 'b')
-  i += 1
-  if len(handle[i:]) == 0:
-      bandwidth = 200
-  else:
-      bandwidth = float(handle[i:])
-  return method,analog,digital,bandwidth
 
 class Dataset:
 
@@ -126,24 +98,34 @@ class BenchmarkVisualization:
                      'vanderpol',
                      'robot',
                      'heat1d-g4',
-                     'heat1d-g8'
+                     'heat1d-g8',
+                     'closed-forced-vanderpol',
+                     'kalman-const',
+                     'gentoggle'
   ]
   BENCHMARK_NAMES = {
     'micro-osc': 'sin',
+    'micro-osc-with-gain': 'sinw',
     'cosc': 'dampened',
-    'vanderpol': 'vanderpol',
-    'closed-forced-vanderpol': 'forced-vanderpol',
-    'pend': 'pendulum',
-    'pend-nl': 'pendulum-nl',
+    'vanderpol': 'vander',
+    'closed-forced-vanderpol': 'chaotic-vander',
+    'pend': 'pendl',
+    'pend-nl': 'pend',
     'lotka': 'lotka-volterra',
-    'spring': 'springs',
-    'kalman-const': 'kalman-const',
-    'spring-nl': 'springs-nl',
-    'robot': 'robot',
+    'spring': 'springl',
+    'kalman-const': 'kalman',
+    'spring-nl': 'spring',
+    'robot': 'pid',
+    'gentoggle': 'gentoggle',
+    'bont': 'bont',
+    'epor': 'epor',
     'heat1d-g2': 'heat2-1',
     'heat1d-g4': 'heat4-2',
+    'heat1d-g4-wg': 'heat4-2-gain',
     'heat1d-g6': 'heat6-3',
+    'heat1d-g6-wg': 'heat6-3-gain',
     'heat1d-g8': 'heat8-4',
+    'kalman-const': 'kalman'
   }
 
   @staticmethod
@@ -197,6 +179,7 @@ class Table(BenchmarkVisualization):
     self._loc = loc
     self._benchmarks = benchmarks
     self._description = description
+    self.two_column = False
     self.lines = []
 
  
@@ -227,7 +210,11 @@ class Table(BenchmarkVisualization):
     lines = []
     hdr = self._fields
     q = lambda l: lines.append(l)
-    q('table')
+    if self.two_column:
+      q('table*')
+    else:
+      q('table')
+
     q(self._loc)
     q(self._description)
     q('tbl:%s' % self._handle)

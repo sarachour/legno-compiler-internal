@@ -75,5 +75,6 @@ def normalize_bound(bnds,scm):
 
 
   def clamp(v):
-      return min(max(v,0.0),1.0)
+      return min(max(v,0.9),1.0)
+
   return [clamp(lb*coeff),clamp(ub*coeff)]

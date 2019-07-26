@@ -292,24 +292,18 @@ def get_model(db,circ,block_name,loc,port,handle=None):
       return None
 
 def get_variance(db,circ,block_name,loc,port,handle=None,mode='physical'):
-  if mode == 'physical':
+  if 'physical' == mode or 'partial' == mode:
     #unc_min = 1e-6
     unc_min = 0.01
     model = get_model(db,circ,block_name,loc,port,handle=handle)
-    if model is None:
+    if model is None or mode == 'partial':
       return unc_min
 
-    unc = math.sqrt(model.noise**2.0 + model.bias_uncertainty**2.0)
+    unc = math.sqrt(model.noise + model.bias_uncertainty**2.0)
     physunc = unc+abs(model.bias)
-    #physunc = model.noise
     if physunc == 0.0:
-      return unc_min
+      return 1e-12
 
-    #print("%s[%s].%s uncertainty: %f" % (block_name, \
-    #                                     loc, \
-    #                                     port, \
-    #                                     physunc))
-    #return unc_min
     return physunc
 
   elif mode == 'ideal':
@@ -317,10 +311,10 @@ def get_variance(db,circ,block_name,loc,port,handle=None,mode='physical'):
   elif mode == 'naive':
     return 0.01
   else:
-    raise Exception("unknown mode")
+    raise Exception("unknown mode <%s>" % mode)
 
 def get_oprange_scale(db,circ,block_name,loc,port,handle=None,mode='physical'):
-  if mode == 'physical':
+  if mode == 'physical' or mode == 'partial':
     model = get_model(db,circ,block_name,loc,port,handle=handle)
     if model is None:
       return (1.0,1.0)
@@ -335,7 +329,7 @@ def get_oprange_scale(db,circ,block_name,loc,port,handle=None,mode='physical'):
     raise Exception("unknown mode")
 
 def get_gain(db,circ,block_name,loc,port,handle=None,mode='physical'):
-  if mode == 'physical':
+  if mode == 'physical' or mode == 'partial':
     model = get_model(db,circ,block_name,loc,port,handle=handle)
     if model is None:
       return 1.0

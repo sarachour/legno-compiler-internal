@@ -3,7 +3,7 @@ import colorlover
 import compiler.common.evaluator_symbolic as evalsym
 import ops.op as op
 import math
-from chip.model import ModelDB, PortModel
+from chip.model import ModelDB, PortModel, get_variance
 
 def undef_to_one(v):
   return 1.0 if v is None else v
@@ -30,8 +30,6 @@ class Shader:
       return SNRShader(circ)
     if method == 'pctrng':
       return PercentOpRangeShader(circ)
-    if method == 'cost':
-      return CostShader(circ)
     if method == 'interval':
       return IntervalShader(circ)
     if method == 'bandwidth':
@@ -168,39 +166,46 @@ class ScaleFactorShader(CircShader):
 
 class NoiseEvaluator:
 
-  def __init__(self,circ,method="physical"):
+  def __init__(self,circ):
     self._circ = circ
     self._db = ModelDB()
-
+    self._circ = circ.metadata["method"]
 
   def get(self,block_name,loc,port):
     config = self._circ.config(block_name,loc)
-    model = self._db.get(block_name,loc,port, \
-                   config.comp_mode,
-                   config.scale_mode, \
-                   handle=None)
-    unc = math.sqrt(model.noise**2.0 + model.bias_uncertainty**2.0)
-    physunc = unc+abs(model.bias)
-    return True,physunc
+    noise = get_variance(self._db,self._circ, \
+                         block_name,loc,port, \
+                         handle=None,
+                         mode=self._method)
+    return True,noise
 
 class SNRShader(CircShader):
 
   def __init__(self,circ):
+    self._db = ModelDB()
+    self._method = circ.meta["model"]
+    self._circ = circ
     CircShader.__init__(self,circ,None)
 
   def get_port_value(self,name,loc,port):
     cfg = self.circ.config(name,loc)
-    noise = cfg.meta(port,'cost')
 
     ival = cfg.interval(port)
     scf = cfg.scf(port)
     if ival is None \
        or scf is None  \
-       or noise == 0.0 \
        or ival.bound == 0.0:
       return Shader.ERROR,"skip"
     else:
       #print(noise,scf*ival.bound,scf)
+      noise = get_variance(self._db,self._circ, \
+                           name,loc,port, \
+                           handle=None, \
+                           mode=self._method)
+
+      if noise == 0:
+        return Shader.ERROR,"skip"
+
       snr = math.log10(scf*ival.bound/noise)
       return snr,"%.3f/%.3f" % (scf*ival.bound,noise)
 

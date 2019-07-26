@@ -25,20 +25,21 @@ def read_meas_data(filename):
     return T_REFLOW,V
 
 def scale_measured_data(xform,tau,scf,tmeas,ymeas):
+  tc = tau*glbls.TIME_FREQUENCY
   def sct(time):
     tsc = xform[0]
     toff = xform[1]
-    return (time-toff)/tsc
+    return (time-toff)*tc/tsc
 
-  def scv(value):
+  def scv(value,scf):
     #vsc = xform[2]
     #voff = xform[3]
     voff = 0.0
     vsc = 1.0
-    return (value-voff)/vsc
+    return (value-voff)/(scf*vsc)
 
-  thw = list(map(lambda t: sct(t)*tau*glbls.TIME_FREQUENCY, tmeas))
-  yhw = list(map(lambda x: scv(x)/scf, ymeas))
+  thw = list(map(lambda t: sct(t), tmeas))
+  yhw = list(map(lambda x: scv(x,scf), ymeas))
   return thw, yhw
 
 def resample(t,x,n):
@@ -50,6 +51,7 @@ def resample(t,x,n):
 
 YLABELS = {
   'micro-osc': 'amplitude',
+  'micro-osc-with-gain': 'amplitude',
   'vanderpol': 'amplitude',
   'pend': 'position',
   'closed-forced-vanderpol': 'amplitude',
@@ -62,12 +64,56 @@ YLABELS = {
   'spring-nl': 'position',
   'heat1d-g2': 'heat',
   'heat1d-g4': 'heat',
-  'heat1d-g8': 'heat'
-
+  'heat1d-g4-wg': 'heat',
+  'heat1d-g8': 'heat',
+  'heat1d-g8-wg': 'heat',
+  'gentoggle':'conc',
+  'bont':'conc',
+  'epor':'conc',
+  'kalman-const':'state'
 }
+
+def plot_preamble(entry,TREF,YREF):
+ # compute reference using information from first element
+  output = list(entry.outputs())[0]
+  palette = sns.color_palette()
+  ax = plt.subplot(1, 1, 1)
+  title = common.BenchmarkVisualization.benchmark(entry.bmark)
+  ax.set_xlabel('simulation time',fontsize=18)
+  ax.set_ylabel(YLABELS[entry.bmark],fontsize=18)
+  ax.set_xticklabels([])
+  ax.set_yticklabels([])
+  ax.set_title(title,fontsize=20)
+  #ax.set_grid(False)
+  ax.set_xlim((min(TREF),max(TREF)))
+  ax.grid(False)
+
+  ax.plot(TREF,YREF,label='reference',
+          linestyle='-', \
+          linewidth=4, \
+          color='#EE5A24')
+  return ax
 
 def plot_quality(bmark,subset,model,experiments):
   print("%s %s %s %d" % (bmark,subset,model,len(experiments)))
+
+  def plot_waveform(out,alpha):
+    TMEAS,YMEAS = read_meas_data(out.out_file)
+    xform = out.transform
+    tau = out.tau
+    scf = out.scf
+    TSC,YSC = scale_measured_data(out.transform,
+                                  out.tau,
+                                  out.scf,
+                                  TMEAS,
+                                  YMEAS
+    )
+    TSCR,YSCR = resample(TSC,YSC,len(TREF))
+    ax.plot(TSCR,YSCR,alpha=alpha,
+            label='measured', \
+            color='#5758BB', \
+            linewidth=4.0, \
+            linestyle='--')
 
   # compute reference using information from first element
   entry = experiments[0]
@@ -75,43 +121,39 @@ def plot_quality(bmark,subset,model,experiments):
   TREF,YREF = run_reference_simulation(entry.bmark, \
                                        entry.math_env, \
                                        output.varname)
-  palette = sns.color_palette()
-  ax = plt.subplot(1, 1, 1)
-  ax.set_xlabel('simulation time')
-  ax.set_ylabel(YLABELS[bmark])
-  ax.set_title(common.BenchmarkVisualization.benchmark(bmark))
-  #ax.set_grid(False)
-  ax.set_xlim((min(TREF),max(TREF)))
-  ax.grid(False)
+  ax = plot_preamble(entry,TREF,YREF)
   n_execs = 0
   for exp in experiments:
     for out in exp.outputs():
       n_execs += 1
 
-  alpha = 0.3
+  outputs = []
   # compute experimental results
   for exp in experiments:
     for out in exp.outputs():
+      outputs.append(out)
       # the subsequent runs have issues with the fit.
-      TMEAS,YMEAS = read_meas_data(output.out_file)
-      xform = out.transform
-      tau = out.tau
-      scf = out.scf
-      TSC,YSC = scale_measured_data(out.transform,
-                                    out.tau,
-                                    out.scf,
-                                    TMEAS,
-                                    YMEAS
-      )
-      TSCR,YSCR = resample(TSC,YSC,len(TREF))
-      ax.plot(TSCR,YSCR,alpha=0.7,label='measured', \
-              color='#5758BB', \
-              linestyle='--')
+      plot_waveform(out,0.6/n_execs+0.4)
 
-  ax.plot(TREF,YREF,label='reference',linestyle='-', \
-          color='#EE5A24')
   plt.tight_layout()
-  filename = "paper-%s-%s-%s.pdf" % (subset,bmark,model)
+  filename = "paper-%s-%s-%s-all.pdf" % (subset,bmark,model)
+  filepath = common.get_path(filename)
+  plt.savefig(filepath)
+  plt.clf()
+
+  ax = plot_preamble(entry,TREF,YREF)
+  valid_outputs = list(filter(lambda o: not o.quality is None, outputs))
+
+  if len(valid_outputs) == 0:
+    plt.clf()
+    return
+
+  best_output = min( \
+    valid_outputs, \
+    key=lambda o: o.quality)
+  plot_waveform(best_output,1.0)
+  plt.tight_layout()
+  filename = "paper-%s-%s-%s-best.pdf" % (subset,bmark,model)
   filepath = common.get_path(filename)
   plt.savefig(filepath)
   plt.clf()

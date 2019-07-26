@@ -534,6 +534,7 @@ class Var(Op):
 
     def infer_bandwidth(self,intervals,bandwidths={}):
         if not self.name in bandwidths:
+            print(bandwidths)
             raise Exception("unbound  bandwidth <%s>" % self.name)
 
         return bandwidth.BandwidthCollection(bandwidths[self.name])

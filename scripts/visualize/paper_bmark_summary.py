@@ -13,7 +13,10 @@ DESCRIPTIONS = {
   'vanderpol': 'stiff vanderpol oscillator',
   'cosc': 'dampened spring physics simulation',
   'heat1d': 'movement of heat through lattice',
-  'robot': 'robotics control system'
+  'robot': 'PID control system',
+  'gentoggle': 'genetic toggle switch',
+  'kalman-const': 'kalman filter',
+  'closed-forced-vanderpol':'chaotic vanderpol oscillator'
 
 }
 OBSERVATIONS = {
@@ -21,24 +24,31 @@ OBSERVATIONS = {
   'pend': 'position of pendulum',
   'spring': 'position of block 1',
   'vanderpol': '',
+  'closed-forced-vanderpol': '',
   'cosc': '',
   'robot': 'velocity of left wheel',
   'repri': 'chemical compounds',
-  'heat1d': 'heat at point'
+  'heat1d': 'heat at point',
+  'gentoggle': 'concentration of protein',
+  'kalman-const': 'state estimation'
 }
 NONLINEAR = {
   'micro-osc': False,
   'pend': True,
-  'robot': True,
+  'robot': False,
   'heat1d': False,
   'spring': True,
   'vanderpol': True,
+  'closed-forced-vanderpol': True,
+  'gentoggle': True,
+  'kalman-const': True,
   'cosc': False
 }
 def visualize():
   header = ['description', 'observation','time','diffeqs','funcs','nonlinear']
-  desc = 'dynamical system benchmarks used in evaluation'
-  table = common.Table('Benchmarks',desc, 'bmarksumm', 'c|lccccc')
+  desc = 'dynamical system benchmarks used in evaluation. $\dagger$ these benchmarks '
+  table = common.Table('Benchmarks',desc, 'bmarksumm', '|c|lccccc|')
+  table.two_column = True
   bool_to_field = {True:'yes',False:'no'}
   table.set_fields(header)
   table.horiz_rule()
@@ -71,5 +81,6 @@ def visualize():
       'nonlinear': bool_to_field[NONLINEAR[bmark_name]]
     }
     table.data(bmark,entry)
+  table.horiz_rule()
 
   table.write(common.get_path('bmarks.tbl'))

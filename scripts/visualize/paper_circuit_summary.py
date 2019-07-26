@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from chip.conc import ConcCirc
 from enum import Enum
 from chip.hcdc.hcdcv2_4 import make_board
-
+import util.util as util
 
 def count_components(circ):
   summary = {'blocks': {}, 'total':0.0,'conns':0.0}
@@ -89,7 +89,7 @@ def to_arco_table(circuits):
 
 def count_scaling_factors(circ,model):
   #conc_circ = ConcCirc.read(board,conc_circ)
-  model,dig_error,ana_error,bandwidth = common.unpack_model(model)
+  model,dig_error,ana_error,bandwidth = common.unpack_tag(model)
   scvals = []
   injvals = []
   n_injvars = 0

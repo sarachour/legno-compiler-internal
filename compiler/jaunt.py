@@ -132,8 +132,6 @@ def compute_scale(jenv,prog,infer_circ,objfun):
         #jgpkit.validate_gpkit_problem(jenv,gpvars,sln)
         if sln == None:
             print("<< solution is none >>")
-            jgpkit.debug_gpkit_problem(gpprob)
-            input()
             continue
 
         jopt.add_result(thisobj.tag(),sln)

@@ -79,7 +79,7 @@ def model():
   #prob.bind("UTF",UTF)
   prob.bind("UTF",op.Call([op.Var('V')], UTF_fun))
   prob.set_interval("UTF",0.0,params['utf_tr'])
-
+  prob.set_bandwidth("UTF",1)
   #params['vtf_tr_kf'] = params['vtf_tr']*params['vtf_kf']
   #VTF = parse_diffeq('{vtf_tr_kf}+{vtf_kf}*(-VTF) + {vtf_kd}*(-VTF)*umodif',
   #                     'vtf_tr',':vtf',params)
@@ -87,6 +87,7 @@ def model():
   #prob.bind("VTF",VTF)
   prob.bind("VTF",op.Call([op.Var('umodif')], VTF_fun))
   prob.set_interval("VTF",0.0,params['vtf_tr'])
+  prob.set_bandwidth("VTF",1)
 
   V = parse_diffeq("VTF+{kdeg}*(-V)","U0",":v", params)
   prob.bind("V",V)

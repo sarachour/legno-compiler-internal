@@ -257,6 +257,7 @@ def exec_graph_one(hdacv2_board,path_handler,fname):
         conc_circ = ConcCirc.from_json(hdacv2_board, \
                                        obj)
 
+        path_handler.extract_metadata_from_filename(conc_circ, fname)
         methods = ['snr','pctrng']
         for draw_method in methods:
             filename = path_handler.conc_graph_file(circ_bmark,

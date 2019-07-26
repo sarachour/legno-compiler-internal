@@ -15,6 +15,7 @@ class PropCostVisitor(ForwardVisitor):
   class Model(Enum):
     IDEAL = "ideal"
     PHYSICAL = "physical"
+    PARTIAL = "partial"
     NAIVE = "naive"
 
   def __init__(self,circ,prop_cost=True,model="physical"):
@@ -29,14 +30,10 @@ class PropCostVisitor(ForwardVisitor):
 
 
   def cost(self,block_name,loc,port,handle=None):
-    if self._model == PropCostVisitor.Model.IDEAL:
-      return 0.0
-    elif self._model == PropCostVisitor.Model.NAIVE:
-      return 0.01
-    else:
-      return get_variance(self._db,self._circ, \
-                          block_name,loc,port,handle)
-
+    var = get_variance(self._db,self._circ, \
+                       block_name,loc,port,handle,
+                       mode=self._model.value)
+    return var
 
   def input_port(self,block_name,loc,port):
     circ = self._circ

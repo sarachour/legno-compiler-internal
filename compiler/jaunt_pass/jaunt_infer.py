@@ -7,6 +7,7 @@ from chip.config import Labels
 import chip.cont as cont
 from chip.conc import ConcCirc
 import chip.model as modelib
+import chip.block as blocklib
 
 from compiler.common import infer
 import compiler.jaunt_pass.jenv as jenvlib
@@ -147,6 +148,115 @@ def sc_physics_model(jenv,scale_mode,circ,block_name,loc,port,handle):
         jenv.implies(modevar,jvar_unc, uncertainty)
         config.set_scale_mode(baseline)
 
+def sc_coalesce_connections(circ):
+    backward_links = {}
+    source_links = []
+    dest_links = []
+    conns = []
+
+    def get_ancestors(blk,loc,port,visited=[]):
+        visited = visited +[(blk,loc,port)]
+        if not (blk,loc,port) in backward_links or \
+           (blk,loc,port) in visited:
+            return []
+        else:
+            lst = backward_links[(blk,loc,port)]
+            for sb,sl,sp in backward_links[(blk,loc,port)]:
+                lst += get_ancestors(sb,sl,sp)
+            return list(set(lst))
+
+
+    for blkname,loc,_ in circ.instances():
+        blk = circ.board.block(blkname)
+        if blk.type == blocklib.BlockType.BUS:
+            assert(len(blk.inputs) == 1)
+            assert(len(blk.outputs) == 1)
+            backward_links[(blkname,loc,blk.outputs[0])] \
+                = [(blkname,loc,blk.inputs[0])]
+
+    for sblkname,sloc,sport, \
+        dblkname,dloc,dport in circ.conns():
+        sblk = circ.board.block(sblkname)
+        dblk = circ.board.block(dblkname)
+
+        if not (dblkname,dloc,dport) in backward_links:
+            backward_links[(dblkname,dloc,dport)] = []
+
+        backward_links[(dblkname,dloc,dport)] \
+            .append((sblkname,sloc,sport))
+
+
+        backward_links[(dblkname,dloc,dport)] = list(set( \
+                                                     backward_links[(dblkname,dloc,dport)] +
+                                                     [(sblkname,sloc,sport)] + \
+                                                     get_ancestors(sblkname,sloc,sport) \
+        ))
+
+        # mark this block as a source
+        if sblk.type != blocklib.BlockType.BUS:
+            source_links.append((sblkname,sloc,sport))
+
+        if dblk.type != blocklib.BlockType.BUS:
+            dest_links.append((dblkname,dloc,dport))
+
+        #print(sblkname,sloc,sport)
+        #print(dblkname,dloc,dport)
+        #for (db,dl,dp),data  in backward_links.items():
+        #    print(" %s[%s].%s : %s" % (db,dl,dp,data))
+
+    #print("=== iterate until steady state ===")
+    is_steady_state = False
+    while not is_steady_state:
+        is_steady_state = True
+        for db,dl,dp in backward_links:
+            n = len(backward_links[(db,dl,dp)])
+            backward_links[(db,dl,dp)] = get_ancestors(db,dl,dp)
+            m = len(backward_links[(db,dl,dp)])
+            is_steady_state &= (n == m)
+            #print("%d -> %d" % (n,m))
+        #print("iterate")
+
+    #print("=== extract connections ===")
+    for dblk,dloc,dport in dest_links:
+        for sblk,sloc,sport in backward_links[(dblk,dloc,dport)]:
+            if not (sblk,sloc,sport) in source_links:
+                continue
+
+            yield sblk,sloc,sport, \
+                dblk,dloc,dport
+
+def sc_build_connection_constraints(jenv,circ):
+    def get_range(blkname,loc,port):
+        block = circ.board.block(blkname)
+        config = circ.config(blkname,loc)
+        baseline = block.baseline(config.comp_mode)
+        props_bl = block.props(config.comp_mode, \
+                               baseline, \
+                               port, \
+                               None)
+        amt = props_bl.interval().bound
+        return amt
+
+    for sblk,sloc,sport, \
+        dblk,dloc,dport in sc_coalesce_connections(circ):
+        if jenv.has_op_range_var(sblk,sloc,sport) and \
+           jenv.has_op_range_var(dblk,dloc,dport):
+            src_ov = jenv.get_op_range_var(sblk, \
+                                           sloc, \
+                                           sport)
+            src_max = get_range(sblk,sloc,sport)
+            dest_ov = jenv.get_op_range_var(dblk, \
+                                            dloc, \
+                                            dport)
+            dest_max = get_range(dblk,dloc,dport)
+            jenv.lte( \
+                     jop.JMult(jop.JVar(src_ov),jop.JConst(src_max)), \
+                     jop.JMult(jop.JVar(dest_ov),jop.JConst(dest_max)), \
+                     'jc-match-scale-modes')
+
+
+    return True
+
 def sc_decl_scale_model_variables(jenv,circ):
     success = True
     for block_name,loc,config in circ.instances():
@@ -166,6 +276,7 @@ def sc_decl_scale_model_variables(jenv,circ):
                         missing_scms.append(scm)
 
                         if jenv.params.only_scale_modes_with_models:
+                            print("scale mode dne: %s[%s] scm=%s" % (block_name,loc,scm))
                             continue
 
                     valid_scms.append(scm)
@@ -173,14 +284,15 @@ def sc_decl_scale_model_variables(jenv,circ):
                                      loc,port,handle=handle)
 
         modevars = []
-        if len(valid_scms) == 0:
-            print("no valid scale modes: %s[%s]" % (block_name,loc))
-            for scm in missing_scms:
+        for scm in missing_scms:
                 jaunt_common.DB.log_missing_model(block.name, \
                                                   loc, \
                                                   block.outputs[0], \
                                                   config.comp_mode, \
                                                   scm)
+
+        if len(valid_scms) == 0:
+            print("no valid scale modes: %s[%s]" % (block_name,loc))
             success =False
 
         for scale_mode in block.scale_modes(config.comp_mode):
@@ -192,7 +304,7 @@ def sc_decl_scale_model_variables(jenv,circ):
         jenv.exactly_one(modevars)
 
     # figure out which ports have linked scaling modes by collapsing * ports.
-    #sc_coalesce_conns(circ)
+    sc_build_connection_constraints(jenv,circ)
 
     return success
 

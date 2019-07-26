@@ -56,8 +56,16 @@ def to_runtime_table(summary):
 
     row = {}
     row['arco'] = format_runtime(summary[bmark]['arco'])
-    row['jaunt'] = format_runtime(summary[bmark]['jaunt'])
-    row['srcgen'] = format_runtime(summary[bmark]['srcgen'])
+    if not 'jaunt' in summary[bmark]:
+      row['jaunt'] = '-'
+    else:
+      row['jaunt'] = format_runtime(summary[bmark]['jaunt'])
+
+    if not 'srcgen' in summary[bmark]:
+      row['srcgen'] = '-'
+    else:
+      row['srcgen'] = format_runtime(summary[bmark]['srcgen'])
+
     table.data(bmark,row)
 
   table.horiz_rule()

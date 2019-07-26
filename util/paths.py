@@ -134,6 +134,18 @@ class PathHandler:
       return bmark,indices,scale_index,model,opt,menv_name,hwenv_name
 
 
+
+    def extract_metadata_from_filename(self, conc_circ, fname):
+      bmark,indices,scale_index,tag,opt = self.conc_circ_to_args(fname)
+      conc_circ.meta['bmark'] = bmark
+      conc_circ.meta['arco_index'] = indices
+      conc_circ.meta['jaunt_index'] = scale_index
+      model,analog_error,digital_error,bandwidth = util.unpack_tag(tag)
+      conc_circ.meta['model'] = model
+      conc_circ.meta['analog_error'] = analog_error
+      conc_circ.meta['digital_error'] = digital_error
+      conc_circ.meta['bandwidth'] = bandwidth
+
     @staticmethod
     def conc_circ_to_args(name):
       basename = name.split(".circ")[0]
