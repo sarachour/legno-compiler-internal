@@ -4,11 +4,16 @@ import chip.conc as ccirc
 import ops.ilpop as ilpop
 import chip.config as configlib
 import logging
+import networkx as nx
+import matplotlib.pyplot as plt
+
+import compiler.arco_pass.route_ilp_util as route_ilp_util
+import compiler.arco_pass.route_partition_tree as partition_tree
+import compiler.arco_pass.route_find_slices as find_slices
 
 logger = logging.getLogger('arco_route')
 logger.setLevel(logging.DEBUG)
 
-import networkx as nx
 
 def get_sublayers(parent_layers):
   layers = []
@@ -18,106 +23,10 @@ def get_sublayers(parent_layers):
 
   return layers
 
-class RoutingEnv:
-
-  def __init__(self,board,instances,connections,layers,assigns):
-    self.board = board
-    self.instances = instances
-    self.connections = connections
-    self.assigns = assigns
-    self.layers = layers
-    print("-> compute groups")
-    self.groups = list(map(lambda layer: \
-                    tuple(layer.position), self.layers))
-    self.straddling = {}
-    self.straddling_connections = {}
-
-    print(self.groups)
-    # compute possible connections.
-    locmap = {}
-    for locstr in set(map(lambda args: args[1], board.instances())):
-      grp = self.loc_to_group(locstr)
-      locmap[locstr] = grp
-
-
-    self.widths = {}
-    by_group = dict(map(lambda g: (g,{'src':{},'dest':{}}), self.groups))
-    for (sblk,sport),(dblk,dport),locs in board.connection_list():
-      for sloc,dloc in filter(lambda args: \
-                              locmap[args[0]] != locmap[args[1]], locs):
-        sgrp = locmap[sloc]
-        dgrp = locmap[dloc]
-        key = (sblk,sgrp,dblk,dgrp)
-        if not (sblk,sport) in by_group[sgrp]['src']:
-          by_group[sgrp]['src'][(sblk,sport)] = []
-
-        by_group[sgrp]['src'][(sblk,sport)].append(sloc)
-
-        if not (dblk,dport) in by_group[dgrp]['dest']:
-          by_group[dgrp]['dest'][(dblk,dport)] = []
-
-        by_group[dgrp]['dest'][(dblk,dport)].append(dloc)
-
-        if not key in self.widths:
-          self.widths[key] = []
-        if not dloc in self.widths[key]:
-          self.widths[key].append((dloc))
-
-    # compute quantities
-    print("-> compute counts")
-    self.counts = {}
-    for layer in self.layers:
-      group = tuple(layer.position)
-      for blk in board.blocks:
-        n = len(list(board.block_locs(layer,blk.name)))
-        self.counts[(group,blk.name)] = n
-
-
-    print("-> compute reachable")
-    self.connectivities = {}
-    for layer in self.layers:
-      group = tuple(layer.position)
-      for blk in board.blocks:
-        if self.counts[(group,blk.name)] == 0:
-          continue
-
-        loc = list(board.block_locs(layer,blk.name))[0]
-        for dport in blk.inputs:
-          sinks = []
-          for (sblk,sport),slocs in by_group[group]['src'].items():
-            for sloc in slocs:
-              if board.route_exists(sblk,sloc,sport,\
-                                    blk.name,loc,dport) \
-                                    and not sblk in sinks:
-                  sinks.append(sblk)
-                  break
-
-          self.connectivities[(blk.name,group,dport)] = sinks
-
-        for sport in blk.outputs:
-          sources= []
-          for (dblk,dport),dlocs in by_group[group]['dest'].items():
-            for dloc in dlocs:
-              if board.route_exists(blk.name,loc,sport,
-                                    dblk,dloc,dport) \
-                                    and not dblk in sources:
-                sources.append(dblk)
-                break;
-
-          self.connectivities[(blk.name,group,sport)] = sources
-
-
-  def loc_to_group(self,loc):
-    matches = list(filter(lambda ch: ch.is_member(
-      self.board.from_position_string(loc)
-    ), self.layers))
-    if not (len(matches) == 1):
-      raise Exception("%s: <%d matches>" % (loc,len(matches)))
-    return tuple(matches[0].position)
-
-def ilp_instance_cstr(ilpenv,renv):
+def ilp_instance_cstr(ilpenv,renv,groups=None):
   # create group-conn hot coding
   by_block_group = {}
+
   for (blk,frag_id),loc in renv.instances.items():
     choices = []
     #print("-> limit components to layer")
@@ -131,14 +40,16 @@ def ilp_instance_cstr(ilpenv,renv):
     for grp in renv.groups:
       if not par_layer is None and \
          not par_layer.is_member(grp):
+        #print("%s[%d] is concretized" % (blk,frag_id))
         continue
 
       if renv.counts[(grp,blk)] == 0:
+        print("%s not in %s" % (blk,grp))
         continue
 
       instvar = ilpenv.decl(('inst',blk,frag_id,grp),
                             ilpop.ILPEnv.Type.BOOL)
-
+      print(('inst',blk,frag_id,grp))
       choices.append(instvar)
       if not (blk,grp) in by_block_group:
         by_block_group[(blk,grp)] = []
@@ -150,6 +61,10 @@ def ilp_instance_cstr(ilpenv,renv):
           ilpenv.eq(ilpop.ILPVar(instvar), ilpop.ILPConst(1))
         else:
           ilpenv.eq(ilpop.ILPVar(instvar), ilpop.ILPConst(0))
+
+    if len(choices) == 0:
+      ilpenv.fail("no options for %s[%s]" % (blk,frag_id))
+      return
 
     ilpenv.eq(
       ilpop.ILPMapAdd(
@@ -163,6 +78,28 @@ def ilp_instance_cstr(ilpenv,renv):
     clauses = list(map(lambda v: ilpop.ILPVar(v), ilpvars))
     n = renv.counts[(grp,blk)]
     ilpenv.lte(ilpop.ILPMapAdd(clauses), ilpop.ILPConst(n))
+
+  if not groups is None:
+    for group_id,group in enumerate(groups):
+      groupvars = []
+      for pos in renv.groups:
+        groupvar = ilpenv.decl(('grp',group_id,pos),
+                               ilpop.ILPEnv.Type.BOOL)
+        groupvars.append(groupvar)
+        for blk,frag_id in group:
+          if ilpenv.has_ilpvar(('inst',blk,frag_id,pos)):
+            instvar = ilpenv.get_ilpvar(('inst',blk,frag_id,pos))
+            ilpenv.eq(ilpop.ILPVar(groupvar),ilpop.ILPVar(instvar))
+          else:
+            ilpenv.eq(ilpop.ILPVar(groupvar),ilpop.ILPConst(0))
+
+
+    ilpenv.eq(
+      ilpop.ILPMapAdd(
+        list(map(lambda v: ilpop.ILPVar(v), groupvars))
+      ),
+      ilpop.ILPConst(1.0)
+    )
 
 def ilp_single_connection_cstr(ilpenv,renv,conn_id,conn,by_straddle):
   board = renv.board
@@ -311,7 +248,10 @@ def to_assignments(result):
 
   return assigns
 
-def hierarchical_route(board,locs,conns,layers,assigns):
+def hierarchical_route(board,locs,conns,layers,
+                       assigns,
+                       groups=None,
+                       connection_constraints=True):
   def get_n_conns(result):
     config = list(filter(lambda k: result[k] == 1, result.keys()))
     n_conns = len(list(filter(lambda k: 'conn' in k, config)))
@@ -319,17 +259,26 @@ def hierarchical_route(board,locs,conns,layers,assigns):
 
 
   print("-> generating environment")
-  renv = RoutingEnv(board,locs,conns,layers, assigns)
+  renv = route_ilp_util.RoutingEnv(board,locs,conns,layers, assigns)
   ilpenv = ilpop.ILPEnv()
   print("-> generating instance constraints")
-  ilp_instance_cstr(ilpenv,renv)
-  print("-> generating connection constraints")
-  xlayers = ilp_connection_cstr(ilpenv,renv)
-  ilpenv.set_objfun(
-    ilpop.ILPMapAdd(
-      list(map(lambda c: ilpop.ILPVar(c), xlayers))
-    )
-  )
+  ilp_instance_cstr(ilpenv,renv,groups=groups)
+  if connection_constraints:
+    print("-> generating connection constraints")
+    xlayers = ilp_connection_cstr(ilpenv,renv)
+    if len(xlayers) > 0:
+
+      ilpenv.set_objfun(
+        ilpop.ILPMapAdd(
+          list(map(lambda c: ilpop.ILPVar(c), xlayers))
+        )
+      )
+    else:
+      ilpenv.set_objfun(ilpop.ILPConst(0))
+
+  else:
+    ilpenv.set_objfun(ilpop.ILPConst(0))
+
   print("-> generate ilp")
   print("# vars: %d" % ilpenv.num_vars())
   print("# tempvars: %d" % ilpenv.num_tempvars())
@@ -354,8 +303,10 @@ def hierarchical_route(board,locs,conns,layers,assigns):
   print("-> solve problem")
   results = ctx.solve()
   if not ctx.optimal():
+    print("-> FAILED")
     return ilpenv,None
 
+  print("-> SUCCEEDED")
   assigns = to_assignments(results)
 
   return ilpenv,assigns
@@ -384,156 +335,6 @@ def next_solution(ilpenv,assigns):
 
 
 
-def random_locs(board,locs,conns,restrict):
-  # test this annotation.
-  def test_conns(assigns,blk,fragid,loc):
-    for (sblk,sfragid),sport, \
-        (dblk,dfragid),dport in conns:
-      sloc,dloc = None,None
-      if sblk == blk and fragid == sfragid:
-        sloc = loc
-      elif (sblk,sfragid) in assigns:
-        sloc = assigns[(sblk,sfragid)]
-
-      if dblk == blk and fragid == dfragid:
-        dloc = loc
-      elif (dblk,dfragid) in assigns:
-        dloc = assigns[(dblk,dfragid)]
-
-      if sloc is None or dloc is None:
-        continue
-
-      if not board.route_exists(sblk,sloc,sport, \
-                                dblk,dloc,dport):
-        print("cannot connect %s[%s].%s -> %s[%s].%s" \
-              % (sblk,sloc,sport,dblk,dloc,dport))
-        return False
-    return True
-
-  def recurse(locs,assigns,in_use):
-    if len(locs) == 0:
-      yield assigns
-    else:
-      (blk,fragid),annot_loc = locs[0]
-      if not annot_loc is None:
-        new_assigns = dict(list(assigns.items()) + [((blk,fragid),annot_loc)])
-        new_in_use = list(in_use) + [(blk,annot_loc)]
-        for assign in recurse(locs[1:],new_assigns,new_in_use):
-          yield assign
-
-      else:
-        orig_locs = list(filter(lambda loc: not (blk,loc) in in_use
-                           and test_conns(assigns,blk,fragid,loc),
-                           board.instances_of_block(blk)))
-
-        print("%s[%d] = %d" % (blk,fragid,len(orig_locs)))
-        if (blk,fragid) in restrict:
-          prefix = restrict[(blk,fragid)]
-          layer = board.sublayer(prefix[1:])
-          valid_locs = list(filter(lambda loc: \
-                                   layer.is_member(board.from_position_string(loc)),  \
-                                   orig_locs))
-          result_locs = valid_locs
-        else:
-          assert(len(locs) > 0)
-          result_locs = orig_locs
-
-        for loc in result_locs:
-          new_assigns = dict(list(assigns.items())  \
-                             + [((blk,fragid),loc)])
-          new_in_use = list(in_use) + [(blk,loc)]
-          for assign in recurse(locs[1:],new_assigns,new_in_use):
-            yield assign
-
-  for assigns in recurse(list(locs.items()), {}, []):
-    result = {}
-    for key,loc in assigns.items():
-      result[key] = board.from_position_string(loc)
-    yield result
-
-def find_routes(board,locs,conns,inst_assigns):
-  def to_conns(route):
-    result = []
-    for i in range(0,len(route)-1):
-      sb,sl,sp = route[i]
-      db,dl,dp = route[i+1]
-      # internal connection
-      if sb == db and sl == dl:
-        continue
-      result.append([(sb,sl,sp),(db,dl,dp)])
-    return result
-
-  def recurse(in_use,routes,remaining_conns):
-    if len(remaining_conns) == 0:
-      yield routes
-
-    else:
-      (sblk,sfragid),sport,(dblk,dfragid),dport = remaining_conns[0]
-      sloc = board.position_string(inst_assigns[(sblk,sfragid)])
-      dloc = board.position_string(inst_assigns[(dblk,dfragid)])
-      n_routes = 0
-      for route in board.find_routes(sblk,sloc,sport,dblk,dloc,dport):
-        double_use = list(filter(lambda place: place in in_use, route))
-        if len(double_use) > 0:
-          continue
-
-        print("[%d] %s[%s].%s -> %s[%s].%s" % (len(remaining_conns), \
-                                               sblk,sloc,sport,dblk,dloc,dport))
-        n_routes += 1
-        new_routes = list(routes)
-        new_routes.append(to_conns(route))
-        new_in_use = list(in_use) + route[1:-1]
-
-        for solution in recurse(new_in_use,  \
-                                new_routes,  \
-                                remaining_conns[1:]):
-          yield solution
-
-
-  def sort_conns(conns):
-    lengths = {}
-    for conn in conns:
-      (sblk,sfragid),sport,(dblk,dfragid),dport= conn
-      sloc = board.position_string(inst_assigns[(sblk,sfragid)])
-      dloc = board.position_string(inst_assigns[(dblk,dfragid)])
-      for route in board.find_routes(sblk,sloc,sport,dblk,dloc,dport):
-        lengths[conn] = len(route)
-        break
-
-      assert(conn in lengths)
-
-    new_conns = sorted(conns, key=lambda c: -lengths[c])
-    assert(len(new_conns) == len(conns))
-    return new_conns
-
-  new_conns = sort_conns(conns)
-  for solution in recurse([],[],new_conns):
-    yield solution
-
-
-def make_concrete_circuit(board,routes,inst_assigns,configs):
-  circ = ccirc.ConcCirc(board)
-  for (blk,fragid),loc in inst_assigns.items():
-    locstr = board.position_string(loc)
-    circ.use(blk,locstr,configs[(blk,fragid)])
-
-  for route in routes:
-    for (sblk,sloc,sport),(dblk,dloc,dport) in route:
-      if not circ.in_use(sblk,sloc):
-        cfg = configlib.Config()
-        cfg.set_comp_mode("*")
-        circ.use(sblk,sloc,cfg)
-      if not circ.in_use(dblk,dloc):
-        cfg = configlib.Config()
-        cfg.set_comp_mode("*")
-        circ.use(dblk,dloc,cfg)
-
-      circ.conn(sblk,sloc,sport,dblk,dloc,dport)
-
-  return circ
-
-
-
 # TODO: check if there exists a path through port before adding to cardinality.
 
 def extract_src_node(fragment,port=None):
@@ -559,6 +360,12 @@ def extract_src_node(fragment,port=None):
 
     else:
         raise Exception(fragment)
+
+def tile_assigns_to_chip_assigns(tile_assigns):
+  chip_assigns = {}
+  for (block,frag),pos in tile_assigns.items():
+    chip_assigns[(block,frag)] = pos[:-1]
+  return chip_assigns
 
 def extract_backward_paths(nodes,starting_node):
   conns = []
@@ -594,33 +401,38 @@ def route(board,prob,node_map):
     locs[key] = node.loc
     configs[key] = node.config
 
-  print("=== tile resolution ===")
   chips = get_sublayers([board])
   tiles = get_sublayers(chips)
-  initial = {}
-  blk,frag = next(iter(locs.keys()))
-  initial[(blk,frag)] = chips[0].position
-  chip_env,chip_assigns = hierarchical_route(board,locs,conns,
-                                             chips,initial)
-
-  if chip_assigns is None:
-    raise Exception("no chip assigns")
 
 
-  tile_assigns = None
-  idx = 0
-  while tile_assigns is None \
-        and not chip_assigns is None:
-    print("=== index %d ===" % idx)
-    tile_env,tile_assigns = hierarchical_route(board,locs,conns,
-                                               tiles,chip_assigns)
+  part_tree = partition_tree.build_partition_tree(board,locs,conns)
+  groups = partition_tree.greedy_partition(part_tree,tiles)
+  print("=== first map tiles ===")
+  tile_env,tile_assigns = hierarchical_route(board,locs,conns,
+                                             tiles,
+                                             assigns={},
+                                             groups=groups,
+                                             connection_constraints=True)
 
-    if tile_assigns is None:
-      chip_env,chip_assigns = next_solution(chip_env,chip_assigns)
-      print("[[[[ NO TILE ASSIGNS, TRY AGAIN]]]]")
+  success = False
+  while not success and not tile_assigns is None:
+    success = True
+    print("=== route chips ===")
+    chip_assigns = tile_assigns_to_chip_assigns(tile_assigns)
+    _,result = hierarchical_route(board,locs,conns,
+                                  chips,
+                                  chip_assigns,
+                                  connection_constraints=True)
+    success &= (not result is None)
 
-    idx += 1
+    if not success:
+      tile_env,tile_assigns = next_solution(tile_env, \
+                                            tile_assigns)
 
-  for assigns in random_locs(board,locs,conns,tile_assigns):
-    for routes in find_routes(board,locs,conns,assigns):
-      return make_concrete_circuit(board,routes,assigns,configs)
+
+  if not success:
+    return None
+
+  for assigns in find_slices.random_locs(board,locs,conns,tile_assigns):
+    for routes in find_slices.find_routes(board,locs,conns,assigns):
+      return find_slices.make_concrete_circuit(board,routes,assigns,configs)

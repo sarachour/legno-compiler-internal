@@ -12,25 +12,34 @@ import bmark.menvs as menvs
 def model(tag='simple'):
     prob = MathProg("lotka-%s" % tag)
     params = {
-      'a': 0.4,
-      'b': 0.3,
-      'c': 0.2,
-      'd': 0.3,
-      "X0": 1.0,
-      "Y0": 0.5
+      'rabbit_spawn':0.01,
+      'fox_death': 0.2,
+      'rabbit_kill': 0.1,
+      'fox_reproduce': 0.20,
+      "fox_init": 1.0,
+      "rabbit_init": 5.0,
+      'one':0.999999
     }
-    X = parse_diffeq('{a}*X + {b}*(-Z)',"X0",":a",params)
-    Y = parse_diffeq('{d}*Z + {c}*(-Y)',"Y0",":b",params)
-    Z = parse_fn("X*Y",params)
-    prob.bind("Z",Z)
-    prob.bind("X",X)
-    prob.bind("Y",Y)
-    measure_var(prob,"Y", "OUT")
-    prob.set_interval("X",0,4)
-    prob.set_interval("Y",0,6)
-    prob.set_max_sim_time(200)
+    params['fox_spawn'] = params['fox_reproduce']*params['rabbit_kill']
+
+    X = parse_diffeq('{rabbit_spawn}*RABBIT + {rabbit_kill}*(-FIGHT)', \
+                     "rabbit_init",":a",params)
+    Y = parse_diffeq('{fox_spawn}*FIGHT+ {fox_death}*(-FOX)', \
+                     "fox_init",":b",params)
+    Z = parse_fn("FOX*({one}*RABBIT)",params)
+    prob.bind("FIGHT",Z)
+    prob.bind("RABBIT",X)
+    prob.bind("FOX",Y)
+    measure_var(prob,"RABBIT", "PREY")
+
+    rabbit_ival = 8.0
+    fox_ival = 2.0
+    prob.set_interval("RABBIT",0,rabbit_ival)
+    prob.set_interval("FOX",0,fox_ival)
+    prob.set_interval("FIGHT",0,5.5)
+    prob.set_max_sim_time(50)
     prob.compile()
-    menv = menvs.get_math_env('t200')
+    menv = menvs.get_math_env('t50')
     return menv,prob
 
 

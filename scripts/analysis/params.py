@@ -22,6 +22,10 @@ def compute_params(conc_circ,entry,varname):
       if label == varname:
         LOC = (block_name,loc,port)
 
+  if LOC is None:
+    print(entry)
+    raise Exception("cannot find measurement port")
+
   block_name,loc,port = LOC
   cfg = conc_circ.config(block_name,loc)
   menv = menvs.get_math_env(entry.math_env)

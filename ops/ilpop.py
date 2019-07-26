@@ -70,6 +70,11 @@ class ILPEnv:
     self._from_ilpvar = {}
     self._tempvar = 0
     self._objfun = None
+    self._fail_msg = []
+
+  def fail(self,msg):
+    print("fail: %s" % msg)
+    self.eq(ILPConst(0),ILPConst(1))
 
   def tempvar(self):
     v = self.decl("__temp%d" % self._tempvar,

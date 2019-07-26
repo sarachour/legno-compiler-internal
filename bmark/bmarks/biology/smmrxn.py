@@ -12,19 +12,41 @@ import bmark.menvs as menvs
 
 def model(big=False):
   prob = MathProg("smmrxn%s" % ("big" if big else ""))
-  params = {
-    'E0' : 6800 if big else 0.15,
-    'S0' : 4400 if big else 0.11,
-    'ES0' : 0.0,
-    'kf' : 0.0001 if big else 0.0999,
-    'kr' : 0.01 if big else 0.999,
-    'one': 0.9999
-  }
+  if big:
+    params = {
+      'E0': 6800,
+      'S0': 4400,
+      'ES0': 0.0,
+      'kf': 0.0001,
+      'kr': 0.01,
+      'one': 0.9999
+    }
+
+  else:
+    params = {
+      'E0': 0.15,
+      'S0': 0.11,
+      'ES0': 0.0,
+      'kf': 0.1,
+      'kr': 0.9999,
+      'one': 0.9999
+    }
+    # reparametrization
+    params = {
+      'E0': 0.8,
+      'S0': 0.5,
+      'ES0': 0.0,
+      'kf': 0.999,
+      'kr': 0.5,
+      'one': 0.9999
+    }
+
+
   ES = parse_diffeq("(({kf}*E)*S) + {kr}*(-ES)", "ES0", ":z", params)
-  E = parse_diffeq("(({kf}*(-E))*S) + {kr}*(ES)", "E0", ":y", params)
-  S = parse_diffeq("(({kf}*(-E))*S) + {kr}*(ES)", "S0", ":x", params)
-  #E = parse_fn("{E0} + {one}*(-ES)",params)
-  #S = parse_fn("{S0} + {one}*(-ES)",params)
+  #E = parse_diffeq("(({kf}*(-E))*S) + {kr}*(ES)", "E0", ":y", params)
+  #S = parse_diffeq("(({kf}*(-E))*S) + {kr}*(ES)", "S0", ":x", params)
+  E = parse_fn("{E0} + {one}*(-ES)",params)
+  S = parse_fn("{S0} + {one}*(-ES)",params)
   prob.bind("E",E)
   prob.bind("S",S)
   prob.bind("ES",ES)

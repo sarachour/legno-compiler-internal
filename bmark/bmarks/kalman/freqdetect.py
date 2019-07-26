@@ -13,7 +13,7 @@ from bmark.bmarks.other.bbsys import build_std_bb_sys
 def model():
   params = {
     'meas_noise':0.0,
-    'proc_noise':0.1,
+    'proc_noise':1.0,
     'W0':1.0,
     'V0':0.0,
     'X0':1.0,
