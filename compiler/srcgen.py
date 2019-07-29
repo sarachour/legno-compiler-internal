@@ -8,9 +8,12 @@ from lang.hwenv import DiffPinMode
 import ops.op as op
 
 class GrendelProg:
-
   def __init__(self):
-    self._stmts = []
+    self._stmts= []
+
+  @property
+  def stmts(self):
+    return self._stmts
 
   def validate(self,cmd):
     cmdstr = str(cmd)
@@ -23,16 +26,12 @@ class GrendelProg:
       raise Exception("failed to validate: %s" % cmd)
 
 
-  @property
-  def stmts(self):
-    return self._stmts
-
-  def clear(self):
-    self._stmts = []
-
   def add(self,cmd):
     self.validate(cmd)
     self._stmts.append(cmd)
+
+  def clear(self):
+    self._stmts.clear()
 
   def __repr__(self):
     st = ""
@@ -69,16 +68,23 @@ def gen_use_lut(circ,block,locstr,config,source):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   in_scf,in_ival = config.scf('in'),config.interval('in')
   out_scf,out_ival = config.scf('out'),config.interval('out')
+  config.set_scf('in', in_scf*0.5)
+  config.set_scf('in', out_scf*2.0)
   variables,expr = op.to_python(config.expr('out',inject=True))
-  yield UseLUTCmd(chip,tile,slce,source=source)
+  config.set_scf('in', in_scf)
+  config.set_scf('in', out_scf)
+  yield UseLUTCmd(chip,tile,slce,source=source,cached=True)
   yield WriteLUTCmd(chip,tile,slce,variables,expr)
 
 def nearest_value(value):
   if value == 0.0:
     return 0.0
   delta = 1.0/256
-  vals = np.linspace(-1,1-delta,256)
+  vals = np.array(list(map(lambda i: (i-128)/128.0, \
+                           range(0,255))))
+
   idx = (np.abs(vals - value)).argmin()
+  #print("%s->%s" % (value,vals[idx]))
   return vals[idx]
 
 def gen_use_adc(circ,block,locstr,config):
@@ -86,8 +92,11 @@ def gen_use_adc(circ,block,locstr,config):
   rng = cast_enum([config.scale_mode],\
                   [RangeType])
 
-  yield UseADCCmd(chip,tile,slce,
-                           in_range=rng[0])
+  yield UseADCCmd(chip=chip,
+                  tile=tile,
+                  slice=slce,
+                  in_range=rng[0],
+                  cached=True)
 
 def gen_use_dac(circ,block,locstr,config,source):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
@@ -98,31 +107,31 @@ def gen_use_dac(circ,block,locstr,config,source):
   if not config.dac('in') is None:
     value = config.dac('in')*scf
   else:
-    assert(not source == DACSourceType.MEM)
     value = 0.0
 
   value = nearest_value(value)
-  yield UseDACCmd(chip, \
-                  tile, \
-                  slce, \
+  yield UseDACCmd(chip=chip, \
+                  tile=tile, \
+                  slice=slce, \
                   value=value, \
                   inv=inv, \
                   out_range=rng,
-                  source=source)
+                  source=source,
+                  cached=True)
 
 
 def gen_get_adc_status(circ,block,locstr):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   return GetADCStatusCmd(chip,
-                                  tile,
-                                  slce)
+                         tile,
+                         slce)
 
 
 def gen_get_integrator_status(circ,block,locstr):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
   return GetIntegStatusCmd(chip,
-                                 tile,
-                                 slce)
+                           tile,
+                           slce)
 
 
 def gen_use_integrator(circ,block,locstr,config,debug=True):
@@ -136,6 +145,7 @@ def gen_use_integrator(circ,block,locstr,config,debug=True):
                               RangeType])
 
   scf = config.scf('ic') if config.has_scf('ic') else 1.0
+  # correct for the 2x scaling factor, similar to lut
   init_cond = config.dac('ic')*scf  \
               if config.has_dac('ic') else 0.0
   init_cond = nearest_value(init_cond)
@@ -147,8 +157,8 @@ def gen_use_integrator(circ,block,locstr,config,debug=True):
                     inv=inv,
                     in_range=in_rng,
                     out_range=out_rng,
-                    debug=debug)
-  
+                    debug=debug,
+                    cached=True)
 
 
 def gen_use_multiplier(circ,block,locstr,config):
@@ -161,7 +171,8 @@ def gen_use_multiplier(circ,block,locstr,config):
                                 [RangeType,RangeType])
 
     scf = config.scf('coeff') if config.has_scf('coeff') else 1.0
-    coeff = config.dac('coeff')*scf if config.has_dac('coeff') else 0.0
+    coeff = config.dac('coeff')*scf  \
+            if config.has_dac('coeff') else 0.0
     coeff = nearest_value(coeff)
     yield UseMultCmd(chip,
                      tile,
@@ -170,7 +181,8 @@ def gen_use_multiplier(circ,block,locstr,config):
                      in0_range=in0_rng,
                      out_range=out_rng,
                      coeff=coeff,
-                     use_coeff=True)
+                     use_coeff=True,
+                     cached=True)
 
 
   else:
@@ -180,14 +192,16 @@ def gen_use_multiplier(circ,block,locstr,config):
                                  RangeType])
 
     yield UseMultCmd(chip,
-                               tile,
-                               slce,
-                               index,
-                               in0_range=in0_rng,
-                               in1_range=in1_rng,
-                               out_range=out_rng)
+                     tile,
+                     slce,
+                     index,
+                     in0_range=in0_rng,
+                     in1_range=in1_rng,
+                     out_range=out_rng,
+                     cached=True)
 
-def gen_use_fanout(circ,block,locstr,config):
+
+def gen_use_fanout(circ,block,locstr,config,third=False):
   chip,tile,slce,index =gen_unpack_loc(circ,locstr)
   inv0,inv1,inv2 = cast_enum(config.comp_mode,
                                     [SignType,
@@ -199,7 +213,8 @@ def gen_use_fanout(circ,block,locstr,config):
                      in_range=in_rng,
                      inv0=inv0,
                      inv1=inv1,
-                     inv2=inv2)
+                     inv2=inv2,
+                     third=third)
 
 
 def is_same_tile(circ,loc1,loc2):
@@ -209,6 +224,15 @@ def is_same_tile(circ,loc1,loc2):
     if inds1[i] != inds2[i]:
       return False
   return True
+
+def get_statuses(gprog,circ,block,locstr,config):
+  if block.name == 'integrator':
+    cmd = gen_get_integrator_status(circ,block,locstr)
+    gprog.add(cmd)
+
+  elif block.name == 'tile_adc':
+    cmd = gen_get_adc_status(circ,block,locstr)
+    gprog.add(cmd)
 
 def gen_block(gprog,circ,block,locstr,config):
   if block.name == 'multiplier':
@@ -261,9 +285,12 @@ def gen_block(gprog,circ,block,locstr,config):
     gprog.add(cmd)
 
   elif block.name == 'fanout':
-    generator = gen_use_fanout(circ,block,locstr,config)
+    targets = list(circ.get_conns_by_src(block.name,locstr,'out2'))
+    third = len(targets) > 0
+    generator = gen_use_fanout(circ,block,locstr,config,targets)
 
   elif block.name == 'ext_chip_in' or \
+       block.name == 'ext_chip_analog_in' or \
        block.name == 'tile_in' or \
        block.name == 'chip_in' or \
        block.name == 'ext_chip_out' or \
@@ -277,6 +304,7 @@ def gen_block(gprog,circ,block,locstr,config):
   for cmd in generator:
     gprog.add(cmd)
 
+
 def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
   TO_BLOCK_TYPE = {
     'lut': 'lut',
@@ -287,7 +315,10 @@ def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
     'tile_dac': 'dac',
     'tile_adc': 'adc',
     'multiplier':'mult',
+    'chip_in': 'chip_input',
+    'chip_out': 'chip_output',
     'ext_chip_in': 'chip_input',
+    'ext_chip_analog_in': 'chip_input',
     'ext_chip_out': 'chip_output',
   }
   TO_PORT_ID = {
@@ -304,6 +335,9 @@ def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
   if sblk == 'lut' and dblk == 'tile_dac':
     return
   if sblk == 'tile_adc' and dblk == 'lut':
+    return
+  # this is hard wired
+  if sblk == 'chip_out' and dblk == 'chip_in':
     return
 
   chip,tile,slce,index =gen_unpack_loc(circ,slocstr)
@@ -322,9 +356,7 @@ def gen_conn(gprog,circ,sblk,slocstr,sport,dblk,dlocstr,dport):
                     dest_loc)
   gprog.add(cmd)
 
-
 def parse(line):
-  print(line)
   cmd = toplevel_cmd.parse(line)
   assert(not cmd is None)
   cmd = toplevel_cmd.parse(str(cmd))
@@ -350,16 +382,47 @@ def get_ext_adcs_in_use(board,conc_circ,menv):
   info = {}
   for loc,config in conc_circ.instances_of_block('ext_chip_out'):
     handle = board.handle_by_inst('ext_chip_out',loc)
-    info[handle] = {'label':config.label('out'),
-                    'scf':config.scf('out')}
+    info[handle] = { \
+                     'label':config.label('out'),
+                     'scf':config.scf('out'),
+                     'interval':config.interval('out')
+    }
 
 
   return info
 
 def to_hw_time(circ,time):
   scaled_time = time/circ.tau
-  hw_time = scaled_time/(circ.board.time_constant)*2.0
+  hw_time = scaled_time/(circ.board.time_constant)
   return hw_time
+
+def to_volt_ranges(board,conc_circ,mathenv,hwenv):
+  def scale(scf,lb,ub,slack=1.1):
+    rng = (ub-lb)*scf/2
+    midpoint = (ub+lb)/2.0
+    slb = max((midpoint-rng*slack),lb)
+    sub = min((midpoint+rng*slack),ub)
+    return slb,sub
+
+  adcs_in_use = get_ext_adcs_in_use(board,conc_circ,mathenv)
+  for handle, info in adcs_in_use.items():
+    out_no = hwenv.adc(handle)
+    pin_mode = hwenv.oscilloscope.output(handle)
+    if isinstance(pin_mode,DiffPinMode):
+      llb,lub  = hwenv.oscilloscope.chan_range(pin_mode.low)
+      hlb,hub  = hwenv.oscilloscope.chan_range(pin_mode.high)
+      sig_range = info['scf']*info['interval'].bound
+      hw_range = max(abs(hub-llb),abs(hlb-lub))
+      scf = sig_range/hw_range
+      print(sig_range,hw_range,scf)
+      slb,sub = scale(scf,llb,lub)
+      yield pin_mode.low,slb,sub
+      slb,sub = scale(scf,hlb,hub)
+      yield pin_mode.high,slb,sub
+
+    else:
+      raise Exception("None")
+
 
 def preamble(gren,board,conc_circ,mathenv,hwenv):
   dacs_in_use = get_ext_dacs_in_use(board,conc_circ,mathenv)
@@ -368,19 +431,24 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
   scaled_tc_hz = board.time_constant*conc_circ.tau
   scaled_sim_time = to_hw_time(conc_circ,mathenv.sim_time)
   scaled_input_time = to_hw_time(conc_circ,mathenv.input_time)
+  osc_slack = 1.3
   gren.add(parse('micro_reset'))
   # initialize oscilloscope
   if hwenv.use_oscilloscope:
     gren.add(parse('micro_use_osc'))
-    for chan,lb,ub in hwenv.oscilloscope.chan_ranges():
-       cmd = "osc_set_volt_range %d %f %f" % (chan,lb,ub)
+    for chan,lb,ub in to_volt_ranges(board, \
+                                     conc_circ, \
+                                     mathenv, \
+                                     hwenv):
+       cmd = "osc_set_volt_range %d %f %f" \
+             % (chan,lb,ub)
        gren.add(parse(cmd))
-       cmd = "osc_set_sim_time %f" % \
-             (scaled_sim_time)
+       cmd = "osc_set_sim_time %.3e" % \
+             (scaled_sim_time*osc_slack)
        gren.add(parse(cmd))
 
   # initialize microcontroller
-  cmd = "micro_set_sim_time %f %f" % \
+  cmd = "micro_set_sim_time %.3e %.3e" % \
              (scaled_sim_time,scaled_input_time)
   gren.add(parse(cmd))
 
@@ -416,8 +484,12 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
 def execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trialno):
   if hwenv.use_oscilloscope and len(hwenv.oscilloscope.outputs()) > 0:
     gren.add(parse('osc_setup_trigger'))
+
+  if hwenv.manual:
+    gren.add(parse('wait_for_key'))
+
   gren.add(parse('micro_run'))
-  circ_bmark,circ_indices,circ_scale_index,circ_opt,_,_ = \
+  circ_bmark,circ_indices,circ_scale_index,circ_method,circ_opt,_,_ = \
                     path_handler.grendel_file_to_args(filename)
 
 
@@ -428,7 +500,8 @@ def execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trialno):
     filename = path_handler.measured_waveform_file(circ_bmark, \
                                                    circ_indices, \
                                                    circ_scale_index, \
-                                                   circ_opt,
+                                                   circ_method, \
+                                                   circ_opt, \
                                                    menv.name, \
                                                    hwenv.name, \
                                                    info['label'],
@@ -454,18 +527,26 @@ def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,ntrials):
   gren.add(parse('micro_get_status'))
   for trial in range(0,ntrials):
     execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trial)
+    for block_name,loc,config in conc_circ.instances():
+      block = conc_circ.board.block(block_name)
+      get_statuses(gren,conc_circ,block,loc,config)
 
-  gren.add(parse('micro_get_status'))
-  gren.add(parse('micro_teardown_chip'))
+    gren.add(parse('micro_get_status'))
+
   return gren
+
+def teardown(gren,stmt):
+  if isinstance(stmt, MakeConnCmd):
+    gren.add(stmt.disable())
+
+  elif isinstance(stmt, UseCommand):
+    gren.add(stmt.disable())
 
 def generate(paths,board,conc_circ,menv,hwenv,filename,ntrials):
   gren = GrendelProg()
   preamble(gren,board,conc_circ,menv,hwenv)
-  #for block_name,loc,config in conc_circ.instances():
-  #  if block_name == 'lut' or block_name == 'tile_adc':
-  #    no_calib = True
 
+  stmts = []
   for block_name,loc,config in conc_circ.instances():
     block = conc_circ.board.block(block_name)
     gen_block(gren,conc_circ,block,loc,config)
@@ -473,7 +554,16 @@ def generate(paths,board,conc_circ,menv,hwenv,filename,ntrials):
   for sblk,sloc,sport, \
       dblk,dloc,dport in conc_circ.conns():
     gen_conn(gren,conc_circ,sblk,sloc,sport, \
-             dblk,dloc,dport)
+                      dblk,dloc,dport)
+
+
+  for stmt in stmts:
+    gren.add(stmt)
 
   postconfig(paths,gren,board,conc_circ,menv,hwenv,filename,ntrials)
+
+  for stmt in gren.stmts:
+    teardown(gren,stmt)
+
+
   return gren
