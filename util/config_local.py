@@ -1,4 +1,3 @@
-
 def get_arduino_path():
   import os
   for root, dirs, files in os.walk("/dev/", topdown=False):
@@ -13,11 +12,15 @@ def get_arduino_path():
 
 
 OUTPUT_PATH="outputs/"
-GPKIT_SOLVER="mosek_cli"
+#GPKIT_SOLVER="mosek_cli"
+GPKIT_SOLVER="cvxopt"
 EXPERIMENT_DB="outputs/experiments.db"
 STATE_DB="state.db"
-OSC_IP=""
+MODEL_DB="model.db"
+OSC_IP="192.168.1.6"
 ARDUINO_FILE_DESC=get_arduino_path()
 #GPKIT_SOLVER="cvxopt"
 TIME_DIR="%s/times/" % OUTPUT_PATH
 DATASET_DIR="%s/datasets/" % OUTPUT_PATH
+CALIBRATE_FILE="calibrate.grendel"
+

@@ -1,4 +1,4 @@
-import bmark.bmarks.audio.audio_util as autil
+from bmark.bmarks.audio import audio_util as autil
 
 from lang.prog import MathProg
 from lang.prog import MathEnv

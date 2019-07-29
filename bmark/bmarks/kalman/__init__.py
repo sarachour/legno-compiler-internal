@@ -1,6 +1,4 @@
-import bmark.bmarks.kalman.constant as constant
-import bmark.bmarks.kalman.freqdetect as freqdetect
-import bmark.bmarks.kalman.freqdetect2 as freqdetect2
+from bmark.bmarks.kalman import constant,freqdetect,freqdetect2
 
 def get_benchmarks():
   return [

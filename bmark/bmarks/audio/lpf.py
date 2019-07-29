@@ -9,7 +9,7 @@ import bmark.menvs as menvs
 import chip.units as units
 import chip.hcdc.globals as glb
 import numpy as np
-import bmark.bmarks.audio.audio_util as autil
+from bmark.bmarks.audio import audio_util as autil
 from enum import Enum
 
 '''

@@ -1,9 +1,7 @@
-import bmark.bmarks.columbia.oscillator as oscillator
-import bmark.bmarks.columbia.vanderpol as vanderpol
-import bmark.bmarks.columbia.pendulum as pendulum
-import bmark.bmarks.columbia.spring as spring
-import bmark.bmarks.columbia.robot_control as robot_control
-import bmark.bmarks.columbia.heat as heat
+from bmark.bmarks.columbia import \
+        oscillator,vanderpol,\
+        pendulum,spring,\
+        robot_control,heat
 
 
 def get_benchmarks():
