@@ -10,7 +10,6 @@ parser = argparse.ArgumentParser(description='toplevel chip runner.')
 subparsers = parser.add_subparsers(dest='subparser_name',
                                    help='compilers/compilation passes.')
 
-
 scan_subp = subparsers.add_parser('scan', help='scan for new grendel scripts')
 list_subp = subparsers.add_parser('list', help='list database entries')
 list_subp.add_argument('--bmark', type=str,
@@ -26,14 +25,18 @@ del_subp.add_argument('--obj', type=str,
                        help='optimization objective function to delete.')
 
 run_subp = subparsers.add_parser('run', help='run any pending grendel scripts')
-run_subp.add_argument('--ip', type=str,
-                       help='oscilloscope ip.')
+run_subp.add_argument('--calibrate', action="store_true",
+                       help='calibrate.')
 run_subp.add_argument('--email', type=str,
                        help='email address.')
 run_subp.add_argument('--native', action='store_true',
                        help='use ttyACM0.')
 run_subp.add_argument('--bmark', type=str,
                        help='bmark to run.')
+run_subp.add_argument('--subset', type=str,
+                       help='bmark to run.')
+run_subp.add_argument('--model', type=str,
+                       help='model to run.')
 run_subp.add_argument('--obj', type=str,
                        help='objective function to run.')
 
@@ -50,15 +53,19 @@ analyze_subp.add_argument('--monitor', action='store_true',
 analyze_subp.add_argument('--rank-method', type=str, default='skelter', \
                             help='.')
 analyze_subp.add_argument('--rank-pending', action='store_true', help='.')
+analyze_subp.add_argument('--bmark', type=str,
+                       help='.')
+analyze_subp.add_argument('--subset', type=str,
+                       help='.')
+analyze_subp.add_argument('--model', type=str,
+                       help='model to run.')
+analyze_subp.add_argument('--obj', type=str,
+                       help='objective function to run.')
+
+
 
 visualize_subp = subparsers.add_parser('visualize', help='produce graphs.')
 visualize_subp.add_argument('type', help='visualization type [rank-vs-quality,correlation,etc]')
-
-
-annotate_subp = subparsers.add_parser('annotate', help='annotate mismatched graphs.')
-annotate_subp.add_argument('bmark', type=str,help='benchmark to annotate.')
-annotate_subp.add_argument('--recompute', action='store_true',
-                       help='.')
 
 
 args = parser.parse_args()
@@ -68,9 +75,6 @@ if args.subparser_name == "scan":
   print("=== added ===")
   for exp in db.scan():
     print(exp)
-
-elif args.subparser_name == "annotate":
-  annotate.execute(args)
 
 elif args.subparser_name == "list":
   db = ExperimentDB()

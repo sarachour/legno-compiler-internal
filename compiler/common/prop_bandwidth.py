@@ -2,6 +2,7 @@ from compiler.common.visitor import Visitor
 import chip.props as props
 import ops.op as ops
 from ops.interval import Interval, IRange, IValue
+from ops.bandwidth import Bandwidth
 
 
 class PropBandwidthVisitor(Visitor):
@@ -44,17 +45,13 @@ class PropBandwidthVisitor(Visitor):
                           config.dac(port)*scf)
 
     dest_bw = dest_expr.compute_bandwidth({}).bandwidth
-
     for src_block_name,src_loc,src_port in \
         circ.get_conns_by_dest(block_name,loc,port):
       src_config = circ.config(src_block_name,src_loc)
       src_bw = src_config.bandwidth(src_port)
       if(src_bw is None):
-        print("free: <%s>\n" % free)
-        print("bound: <%s>\n" % bound)
-
         raise Exception("unknown bandwidth: %s[%s].%s" % \
-                        (src_block_name,src_loc,src_port))
+              (src_block_name,src_loc,src_port))
 
       dest_bw = dest_bw.add(src_bw)
 
@@ -76,18 +73,33 @@ class PropBandwidthVisitor(Visitor):
     # compute intervals
     ival_map = config.intervals()
     bw_map = config.bandwidths()
-    bandwidths = expr.infer_bandwidth(ival_map,bw_map)
+    for p,v in config.dacs():
+      bw_map[p] = Bandwidth(0)
+      ival_map[p] = IValue(v)
 
+    #print("bw %s[%s].%s?" % (block.name,loc,port))
+    bandwidths = expr.infer_bandwidth(ival_map,bw_map)
     if config.bandwidth(port) is None:
       #print("bw %s[%s].%s = %s" % (block.name,loc,port,bandwidths.bandwidth))
       config.set_bandwidth(port,bandwidths.bandwidth)
 
     for handle,bandwidth in bandwidths.bindings():
-      if not config.bandwidth(port,handle=handle):
+      if config.bandwidth(port,handle=handle) is None:
         config.set_bandwidth(port,bandwidth,handle=handle)
 
 
 
+  def all(self,inputs=False):
+    circ = self._circ
+    for block_name,loc,config in circ.instances():
+      if block_name == 'integrator':
+        self.block(block_name,loc)
+
+    for block_name,loc,config in circ.instances():
+      self.block(block_name,loc)
+
+
 
 def compute(prog,circ):
+  PropBandwidthVisitor(prog,circ).all()
   PropBandwidthVisitor(prog,circ).all()

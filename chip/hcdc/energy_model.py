@@ -32,8 +32,11 @@ BLOCK_ENERGY = {
   'ext_chip_in': 0,
   'lut': 20.0*units.uW,
   'ext_chip_out': 0,
+  'ext_chip_analog_in':0,
   'tile_in':0,
+  'chip_in':0,
   'tile_out':0,
+  'chip_out':0,
 
 }
 
@@ -103,4 +106,4 @@ def compute_energy(circ,runtime):
   print("figure: %s J/s" % energy_figure)
   print("runtime: %s s" % runtime)
   print("energy: %s uJ" % (energy_figure*runtime/units.uJ))
-  return energy_figure*runtime
+  return energy_figure,energy_figure*runtime

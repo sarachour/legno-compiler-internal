@@ -44,6 +44,12 @@ class JVar(JOp):
     def factor_const(self):
         return 1,self
 
+    def evaluate(self,args):
+        if not self._name in args:
+            for v in args.keys():
+                print(v)
+            raise Exception("cannot evaluate <%s> not in assignments" % self._name)
+        return args[self._name]**self._exponent
     @property
     def name(self):
         return self._name
@@ -63,6 +69,9 @@ class JConst(JOp):
 
     def factor_const(self):
         return self._value,JConst(1.0)
+
+    def evaluate(self,args):
+        return self._value
 
     @property
     def value(self):
@@ -90,6 +99,10 @@ class JMult(JOp):
             return c,JMult(x1,x2)
 
 
+    def evaluate(self,args):
+        return self.arg(0).evaluate(args)*self.arg(1).evaluate(args)
+
+
 
 class JAdd(JOp):
 
@@ -98,6 +111,10 @@ class JAdd(JOp):
 
     def factor_const(self):
         return 1.0,self
+
+
+    def evaluate(self,args):
+        return self.arg(0).evaluate(args)+self.arg(1).evaluate(args)
 
 
 

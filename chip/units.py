@@ -1,4 +1,5 @@
 
+mA = mV = ms = 1e-3
 uA = uV = us = 1e-6
 nA = nV = ns = 1e-9
 pA = pV = ps = 1e-12

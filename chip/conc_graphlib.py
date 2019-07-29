@@ -3,6 +3,7 @@ import colorlover
 import compiler.common.evaluator_symbolic as evalsym
 import ops.op as op
 import math
+from chip.model import ModelDB, PortModel, get_variance
 
 def undef_to_one(v):
   return 1.0 if v is None else v
@@ -27,6 +28,8 @@ class Shader:
   def get_shader(circ,method):
     if method == 'snr':
       return SNRShader(circ)
+    if method == 'pctrng':
+      return PercentOpRangeShader(circ)
     if method == 'interval':
       return IntervalShader(circ)
     if method == 'bandwidth':
@@ -35,20 +38,6 @@ class Shader:
       return ScaledIntervalShader(circ)
     elif method == 'scale-factor':
       return ScaleFactorShader(circ)
-    elif method == 'gen-delay':
-      return GenDelayShader(circ)
-    elif method == 'prop-delay':
-      return PropDelayShader(circ)
-    elif method == 'delay-mismatch':
-      return DelayMismatchShader(circ)
-    elif method == 'gen-noise':
-      return GenNoiseShader(circ)
-    elif method == 'prop-noise':
-      return PropNoiseShader(circ)
-    elif method == 'gen-bias':
-      return GenBiasShader(circ)
-    elif method == 'prop-bias':
-      return PropBiasShader(circ)
     elif method is None:
       return GenericShader()
     else:
@@ -147,55 +136,19 @@ class GenericShader(Shader):
   def all_values(self):
     yield 0
 
-
-class DelayMismatchShader(CircShader):
-
-  def __init__(self,circ):
-    CircShader.__init__(self,circ,\
-                        evalsym.delay_mismatch_evaluator(circ))
-
-
-class PropDelayShader(CircShader):
+class CostShader(CircShader):
 
   def __init__(self,circ):
-    CircShader.__init__(self,circ, \
-                        evalsym.propagated_delay_evaluator(circ))
+    CircShader.__init__(self,circ,None)
 
-class PropBiasShader(CircShader):
+  def get_port_value(self,name,loc,port):
+    cfg = self.circ.config(name,loc)
+    cost = cfg.meta(port,'cost')
+    if cost is None:
+      return Shader.ERROR,"skip"
+    else:
+      return cost,"%s" % cost
 
-  def __init__(self,circ):
-    CircShader.__init__(self,circ, \
-                        evalsym.propagated_bias_evaluator(circ))
-
-
-
-class GenBiasShader(CircShader):
-
-  def __init__(self,circ):
-    CircShader.__init__(self,circ, \
-                        evalsym.generated_bias_evaluator(circ))
-
-
-class PropNoiseShader(CircShader):
-
-  def __init__(self,circ):
-    CircShader.__init__(self,circ, \
-                        evalsym.propagated_noise_evaluator(circ))
-
-
-
-class GenNoiseShader(CircShader):
-
-  def __init__(self,circ):
-    CircShader.__init__(self,circ, \
-                        evalsym.generated_noise_evaluator(circ))
-
-
-class GenDelayShader(CircShader):
-
-  def __init__(self,circ):
-    CircShader.__init__(self,circ, \
-                        evalsym.generated_delay_evaluator(circ))
 
 class ScaleFactorShader(CircShader):
 
@@ -211,28 +164,76 @@ class ScaleFactorShader(CircShader):
       return scf,"%s" % scf
 
 
+class NoiseEvaluator:
+
+  def __init__(self,circ):
+    self._circ = circ
+    self._db = ModelDB()
+    self._circ = circ.metadata["method"]
+
+  def get(self,block_name,loc,port):
+    config = self._circ.config(block_name,loc)
+    noise = get_variance(self._db,self._circ, \
+                         block_name,loc,port, \
+                         handle=None,
+                         mode=self._method)
+    return True,noise
+
 class SNRShader(CircShader):
 
   def __init__(self,circ):
-    self.noise_eval = evalsym \
-        .propagated_noise_evaluator(circ)
+    self._db = ModelDB()
+    self._method = circ.meta["model"]
+    self._circ = circ
     CircShader.__init__(self,circ,None)
 
   def get_port_value(self,name,loc,port):
     cfg = self.circ.config(name,loc)
+
     ival = cfg.interval(port)
     scf = cfg.scf(port)
-    if ival is None or scf is None:
+    if ival is None \
+       or scf is None  \
+       or ival.bound == 0.0:
       return Shader.ERROR,"skip"
     else:
-      signal = ival.scale(scf)
-      _,noise = self.noise_eval.get(name,loc,port)
-      if noise == 0.0:
-        return Shader.IGNORE,"inf"
+      #print(noise,scf*ival.bound,scf)
+      noise = get_variance(self._db,self._circ, \
+                           name,loc,port, \
+                           handle=None, \
+                           mode=self._method)
 
-      snr = math.log10(signal.bound/noise)
-      return snr,"sig=%s nz=%.3e snr=%f" % (signal,noise,snr)
+      if noise == 0:
+        return Shader.ERROR,"skip"
 
+      snr = math.log10(scf*ival.bound/noise)
+      return snr,"%.3f/%.3f" % (scf*ival.bound,noise)
+
+
+class PercentOpRangeShader(CircShader):
+
+  def __init__(self,circ):
+    CircShader.__init__(self,circ,None)
+
+  def get_port_value(self,name,loc,port):
+    cfg = self.circ.config(name,loc)
+    blk = self.circ.board.block(name)
+    scf = cfg.scf(port)
+    ival = cfg.interval(port)
+    props = blk.props(cfg.comp_mode, \
+                      cfg.scale_mode, \
+                      port)
+
+    if ival is None or scf is None or props is None:
+      return Shader.ERROR,"skip"
+
+    mathrange = ival.scale(scf)
+    oprange = props.interval()
+    if mathrange.spread > 0:
+      pct = mathrange.spread/oprange.spread
+      return pct,"%.3f/%.3f" % (mathrange.spread,oprange.spread)
+    else:
+      return Shader.ERROR,"ship"
 
 class ScaledIntervalShader(CircShader):
 

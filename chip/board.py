@@ -9,6 +9,9 @@ class Layer:
         self._parent = parent
         self._layers = {}
 
+    def identifiers(self):
+        return self._layers.keys()
+
     def sublayer(self,pos):
         layer = self.layer(pos[0])
         if len(pos) > 1:
@@ -23,6 +26,20 @@ class Layer:
         layer = Layer(self._board,index,parent=self)
         self._layers[index] = layer
         return layer
+
+    @staticmethod
+    def from_position_string(position):
+        args = position.split("(")[1].split(")")[0].split(",")
+        unboxed = []
+        for arg in args:
+            try:
+                unbox_arg = int(arg)
+            except Exception as e:
+                unbox_arg = arg
+
+            unboxed.append(unbox_arg)
+
+        return unboxed
 
     @staticmethod
     def _position_string(position):
@@ -47,6 +64,15 @@ class Layer:
     def index(self):
         return self._index
 
+
+    def is_member(self,sub_pos):
+        super_pos = self.position
+        assert(len(super_pos) <= len(sub_pos))
+        for idx in range(0,len(super_pos)):
+            if super_pos[idx] != sub_pos[idx]:
+                return False
+
+        return True
 
     def subpositions(self,recurse=False):
         if len(self._layers) == 0:
@@ -84,6 +110,10 @@ class Board(Layer):
         self._connections = {}
         self._routes = nx.DiGraph()
         self._freeze_insts = False
+        self._blacklist = []
+
+    def set_blacklist(self,b):
+        self._blacklist = b
 
     def freeze_instances(self):
         self._freeze_insts =  True
@@ -139,6 +169,9 @@ class Board(Layer):
         self._handles[handle] = (block_name,loc)
 
     def handle(self,handle):
+        if not handle in self._handles:
+            print(self._handles.keys())
+            raise Exception("not in handles: <%s>" % handle)
         return self._handles[handle]
 
     def handles(self):
@@ -196,13 +229,26 @@ class Board(Layer):
 
         return posstr
 
-    def route_exists(self,sblk,skey,sport,dblk,dkey,dport,cutoff=3):
-        for route in self.find_routes(sblk,skey,sport,
-                                      dblk,dkey,dport,cutoff=cutoff):
-            return True
-        return False
 
-    def find_routes(self,sblk,skey,sport,dblk,dkey,dport,cutoff=3):
+    def route_exists(self,sblk,skey,sport,dblk,dkey,dport):
+
+        if self.can_connect(sblk,skey,sport,dblk,dkey,dport):
+            return True
+
+        assert(skey in self._key_to_pos)
+        assert(dkey in self._key_to_pos)
+        if not self._routes.has_node((sblk,skey,sport)):
+            return False
+
+        if not self._routes.has_node((dblk,dkey,dport)):
+            return False
+
+        return nx.has_path(self._routes,
+                           source=(sblk,skey,sport),
+                           target=(dblk,dkey,dport))
+
+
+    def find_routes(self,sblk,skey,sport,dblk,dkey,dport,count=-1):
         assert(isinstance(skey,str))
         assert(isinstance(dkey,str))
 
@@ -212,22 +258,25 @@ class Board(Layer):
         assert(skey in self._key_to_pos)
         assert(dkey in self._key_to_pos)
         if not self._routes.has_node((sblk,skey,sport)):
-            insts = list(self.instances_of_block(sblk))
-            raise Exception("find_routes: source <%s.%s.%s> not in board [%d insts]" % \
-                            (sblk,skey,sport, len(insts)))
+            return
 
         if not self._routes.has_node((dblk,dkey,dport)):
-            insts = list(self.instances_of_block(dblk))
-            raise Exception("find_routes: dest <%s.%s.%s> not in board" % \
-                            (dblk,dkey,dport))
+            return
 
+        all_routes = []
+        pathgen = nx.all_shortest_paths(self._routes,
+                                source=(sblk,skey,sport),
+                                target=(dblk,dkey,dport))
+        try:
+            for path in pathgen:
+                if len(all_routes) < count or count < 0:
+                    all_routes.append(path)
 
-        all_routes = list(nx.all_simple_paths(self._routes,
-                                         source=(sblk,skey,sport),
-                                         target=(dblk,dkey,dport),
-                                         cutoff=cutoff))
+        except nx.NetworkXNoPath as e:
+            print("no path: %s[%s].%s->%s[%s].%s" % (sblk,skey,sport, \
+                                                     dblk,dkey,dport))
+            return
 
-        all_routes.sort(key=lambda route:len(route))
         for route in all_routes:
             yield list(map(lambda args:
                            (args[0],
@@ -238,6 +287,9 @@ class Board(Layer):
 
     def inst(self,block_name,_position):
         assert(not self._freeze_insts)
+        if (block_name,_position) in self._blacklist:
+            return
+
         if not block_name in self._inst_by_block:
             self._inst_by_block[block_name] = []
 
@@ -294,10 +346,15 @@ class Board(Layer):
         _,_,invert = self._connections[(sblk,sport)][(dblk,dport)][(skey,dkey)]
         return invert
 
+    def connection_list(self):
+        for (sblk,sport) in self._connections:
+            for (dblk,dport) in self._connections[(sblk,sport)]:
+                yield (sblk,sport),(dblk,dport),self._connections[(sblk,sport)][(dblk,dport)]
+
     def connections(self):
         for (sblk,sport) in self._connections:
             for (dblk,dport) in self._connections[(sblk,sport)]:
-                for spos,dpos in self._connections[(sblk,sport)][(dblk,dport)].values():
+                for spos,dpos in self._connections[(sblk,sport)][(dblk,dport)]:
                     yield (sblk,spos,sport),(dblk,dpos,dport)
 
     def conn(self,sblkname,skey,sport,dblkname,dkey,dport):
@@ -336,7 +393,8 @@ class Board(Layer):
         if not dblkport in self._connections[sblkport]:
             self._connections[sblkport][dblkport] = []
 
-        self._connections[sblkport][dblkport].append((skey,dkey))
+        if not (skey,dkey) in self._connections[sblkport][dblkport]:
+            self._connections[sblkport][dblkport].append((skey,dkey))
 
         if not self._routes.has_node((dblkname,dkey,dport)):
             self._routes.add_node((dblkname,dkey,dport))

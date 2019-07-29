@@ -1,5 +1,6 @@
 import lab_bench.lib.enums as enums
-from lab_bench.lib.chipcmd.data import AnalogChipCommand, CircLoc
+from lab_bench.lib.chipcmd.data import CircLoc
+from lab_bench.lib.base_command import AnalogChipCommand
 from lab_bench.lib.chipcmd.common import *
 
 class DisableCmd(AnalogChipCommand):
@@ -90,24 +91,40 @@ class DisableCmd(AnalogChipCommand):
 
 
     def parse(args):
-        result1 = parse_pattern_block(args[1:],0,0,0,
-                                      "disable %s" % args[0],
-                                      index=True)
-        result2 = parse_pattern_block(args[1:],0,0,0,
-                                      "disable %s" % args[0],
-                                      index=False)
+        _result1 = parse_pattern_use_block(args,0,0,0,
+                                           "disable %s" % args[1],
+                                           index=True,
+                                           db=False)
+        _result2 = parse_pattern_use_block(args,0,0,0,
+                                           "disable %s" % args[1],
+                                           index=False,
+                                           db=False)
 
-        if not result1 is None:
-            return DisableCmd(args[0],
+        if _result1.success:
+            result1 = _result1.value
+            return DisableCmd(args[1],
                               result1['chip'],
                               result1['tile'],
                               result1['slice'],
                               result1['index'])
-        if not result2 is None:
-            return DisableCmd(args[0],
+        if _result2.success:
+            result2 = _result2.value
+            return DisableCmd(args[1],
                               result2['chip'],
                               result2['tile'],
                               result2['slice'])
 
     def __repr__(self):
-        return "disable %s.%s" % (self._loc,self._block)
+        if self._loc.index is None:
+            return "disable %s %d %d %d" % (self._block.value,
+                                               self._loc.chip,
+                                               self._loc.tile,
+                                               self._loc.slice)
+
+        else:
+            return "disable %s %d %d %d %d" % (self._block.value,
+                                               self._loc.chip,
+                                               self._loc.tile,
+                                               self._loc.slice,
+                                               self._loc.index)
+

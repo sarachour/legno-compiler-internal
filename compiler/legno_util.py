@@ -9,6 +9,7 @@ import json
 import shutil
 import numpy as np
 from util.util import Timer
+import itertools
 
 # TODO: in concrete specification, connection is made to same dest.
 def compile(board,problem):
@@ -36,7 +37,7 @@ def exec_arco(hdacv2_board, args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
   problem = bmark.get_prog(args.benchmark)
 
-  timer = Timer('arco_%s' % args.benchmark)
+  timer = Timer('arco_%s' % args.benchmark,path_handler)
   timer.start()
   for indices,conc_circ in \
       arco.compile(hdacv2_board,
@@ -58,59 +59,113 @@ def exec_arco(hdacv2_board, args):
   print(timer)
   timer.save()
 
-def exec_jaunt_phys(hdacv2_board,args):
-  path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
-  prog = bmark.get_prog(args.benchmark)
-  circ_dir = path_handler.skelt_circ_dir()
-  generated = {}
-  timer = Timer('jphys_%s' % args.benchmark)
-  for dirname, subdirlist, filelist in os.walk(circ_dir):
-    for fname in filelist:
-      if fname.endswith('.circ'):
-        circ_bmark,circ_indices,circ_scale_index,circ_opt = \
-           path_handler.conc_circ_to_args(fname)
-
-        gen_key = (circ_bmark,str(circ_indices),circ_scale_index)
-
-        if circ_opt in jaunt.JauntObjectiveFunctionManager.physical_methods():
-          continue
-
-        if gen_key in generated:
-            continue
-
-        filename = "%s/%s" % (dirname,fname)
-        conc_circ = ConcCirc.read(hdacv2_board, filename)
-        timer.start()
-        for opt,scaled_circ in jaunt.scale_again(prog,conc_circ, \
-                                                 args.physical,
-                                                 args.sweep,
-                                                 no_quality=args.no_quality):
-            timer.end()
-            filename = path_handler.conc_circ_file(circ_bmark,
-                                                    circ_indices,
-                                                    circ_scale_index,
-                                                    opt)
-            scaled_circ.write_circuit(filename)
-            print("-> %s" % filename)
-            filename = path_handler.conc_graph_file(circ_bmark,
-                                                    circ_indices,
-                                                    circ_scale_index,
-                                                    opt)
-            scaled_circ.write_graph(filename,write_png=True)
-            generated[gen_key] = True
-            timer.start()
-
-        timer.kill()
+def exec_jaunt_normal(prog,conc_circ,args):
+    for idx,opt,model,scale_circ in jaunt.scale(prog, \
+                                                conc_circ,
+                                                args.scale_circuits,
+                                                model=args.model,
+                                                max_freq=args.max_freq,
+                                                digital_error=args.digital_error,
+                                                analog_error=args.analog_error,
+                                                do_log=True):
+        yield idx,opt,model,scale_circ
 
 
-    print(timer)
-    timer.save()
+def exec_jaunt_search(prog,conc_circ,args,tolerance=0.002):
+    def test_valid(digital_error,analog_error):
+        print("dig_error=%f an_error=%f" % (digital_error,analog_error))
+        for idx,opt,model,scale_circ in jaunt.scale(prog, \
+                                                    conc_circ,
+                                                    args.scale_circuits,
+                                                    model=args.model,
+                                                    max_freq=args.max_freq,
+                                                    digital_error=digital_error,
+                                                    analog_error=analog_error,
+                                                    do_log=True):
+            return True
+        return False
+
+
+
+    def recursive_grid_search(rng,analog=True,n=2,max_value=1.0,failures=[]):
+        vals = np.linspace(rng[0], \
+                               rng[1], n)
+        if abs(rng[0]-rng[1]) < tolerance:
+            return None
+
+        succs,fails = [],[]
+        for error in vals:
+            if error in failures:
+                fails.append(error)
+                continue;
+
+            is_valid = test_valid(max_value,error) if analog \
+                       else test_valid(error,max_value)
+            if is_valid:
+                succs.append(error)
+                break;
+            else:
+                fails.append(error)
+
+
+        if len(succs) > 0:
+            best = min(succs)
+            worst = max(fails) if len(fails) > 0 else rng[0]
+            if best < rng[1] or worst > rng[0]:
+                best = recursive_grid_search( \
+                                              [worst,best], \
+                                              analog=analog, \
+                                              max_value=max_value, \
+                                              n=n,
+                                              failures=failures+fails)
+                best = min(succs) if best is None else best
+            return best
+        else:
+            return None
+
+
+    def joint_search(dig_error,alog_error):
+        if test_valid(dig_error,alog_error):
+            return dig_error,alog_error
+
+        dig,alog = joint_search(dig_error+tolerance,alog_error+tolerance)
+        return dig,alog
+
+    max_pct = 1.0
+    succ = test_valid(max_pct,max_pct)
+    while not succ and max_pct <= 1e6:
+        max_pct *= 2
+        succ = test_valid(max_pct,max_pct)
+
+    if max_pct >= 1e6:
+        return
+
+    dig_error= recursive_grid_search([0.01,max_pct], \
+                                     max_value=max_pct,
+                                     analog=False,n=3)
+    analog_error= recursive_grid_search([0.01,max_pct], \
+                                        max_value=max_pct, \
+                                        analog=True,n=3)
+
+    dig_error,analog_error = joint_search(dig_error,analog_error)
+
+    for scale in [1.1]:
+        for idx,opt,model,scale_circ in jaunt.scale(prog, \
+                                                    conc_circ,
+                                                    args.scale_circuits,
+                                                    model=args.model,
+                                                    max_freq=args.max_freq,
+                                                    digital_error=dig_error*scale,
+                                                    analog_error=analog_error*scale):
+            yield idx,opt,model,scale_circ
+
+
 
 def exec_jaunt(hdacv2_board, args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
   prog = bmark.get_prog(args.benchmark)
   circ_dir = path_handler.abs_circ_dir()
-  timer = Timer('jaunt_%s' % args.benchmark)
+  timer = Timer('jaunt_%s' % args.benchmark, path_handler)
   for dirname, subdirlist, filelist in os.walk(circ_dir):
     for fname in filelist:
       if fname.endswith('.circ'):
@@ -121,16 +176,21 @@ def exec_jaunt(hdacv2_board, args):
         conc_circ = ConcCirc.read(hdacv2_board, filename)
 
         timer.start()
-        for idx,opt,scale_circ in jaunt.scale(prog,conc_circ,args.scale_circuits):
+        gen = exec_jaunt_normal(prog,conc_circ,args) if not args.search \
+              else exec_jaunt_search(prog,conc_circ,args)
+
+        for idx,opt,model,scale_circ in gen:
             filename = path_handler.conc_circ_file(circ_bmark,
-                                                    circ_indices,
-                                                    idx,
-                                                    opt)
+                                                   circ_indices,
+                                                   idx,
+                                                   model,
+                                                   opt)
             timer.end()
             scale_circ.write_circuit(filename)
             filename = path_handler.conc_graph_file(circ_bmark,
                                                     circ_indices,
                                                     idx,
+                                                    model,
                                                     opt)
             scale_circ.write_graph(filename,write_png=True)
             timer.start()
@@ -144,20 +204,21 @@ def exec_srcgen(hdacv2_board,args):
   menv = bmark.get_math_env(args.benchmark)
   hwenv = hwenvs.get_hw_env(args.hw_env)
   recompute = args.recompute
-  circ_dir = path_handler.skelt_circ_dir()
-  timer = Timer('srcgen_%s' % args.benchmark)
+  circ_dir = path_handler.conc_circ_dir()
+  timer = Timer('srcgen_%s' % args.benchmark,path_handler)
   for dirname, subdirlist, filelist in os.walk(circ_dir):
     for fname in filelist:
       if fname.endswith('.circ'):
         print('<<<< %s >>>>' % fname)
-        circ_bmark,circ_indices,circ_scale_index,circ_opt = \
+        circ_bmark,circ_indices,circ_scale_index,circ_method,circ_opt = \
             path_handler.conc_circ_to_args(fname)
         filename = path_handler.grendel_file(circ_bmark, \
-                                            circ_indices, \
-                                            circ_scale_index, \
-                                            circ_opt,
-                                            menv.name,
-                                            hwenv.name)
+                                             circ_indices, \
+                                             circ_scale_index, \
+                                             circ_method, \
+                                             circ_opt,
+                                             menv.name,
+                                             hwenv.name)
 
         if path_handler.has_file(filename) and not recompute:
             continue
@@ -177,118 +238,51 @@ def exec_srcgen(hdacv2_board,args):
   print(timer)
   timer.save()
 
-def exec_graph_one(hdacv2_board,path_handler,fname):
-    dirname = path_handler.skelt_circ_dir()
-    circ_bmark,circ_indices,circ_scale_index,opt = \
-                                                   path_handler.conc_circ_to_args(fname)
 
-    skelt_circ = path_handler.skelt_circ_file(circ_bmark,
-                                              circ_indices,
-                                              circ_scale_index,
-                                              opt)
+
+def exec_graph_one(hdacv2_board,path_handler,fname):
+    dirname = path_handler.conc_circ_dir()
+    circ_bmark,circ_indices,circ_scale_index,model,opt = \
+                                                   path_handler \
+                                                   .conc_circ_to_args(fname)
+
+    conc_circ = path_handler.conc_circ_file(circ_bmark,
+                                            circ_indices,
+                                            circ_scale_index,
+                                            model,
+                                            opt)
     print('<<<< %s >>>>' % fname)
     with open("%s/%s" % (dirname,fname),'r') as fh:
         obj = json.loads(fh.read())
         conc_circ = ConcCirc.from_json(hdacv2_board, \
                                        obj)
-        '''
-          methods = ['interval','scaled-interval', \
-                         'gen-delay','prop-delay', \
-                         'scale-factor','delay-mismatch', \
-                         'gen-noise','prop-noise',\
-                         'gen-bias','prop-bias']
-          '''
-        methods = ['gen-noise', 'prop-noise',  \
-                   'scaled-interval','interval','snr', 'bandwidth']
-        for method in methods:
-            filename = path_handler.skelt_graph_file(circ_bmark,
-                                                     circ_indices,
-                                                     circ_scale_index,
-                                                     "%s-%s" % (opt,method))
+
+        path_handler.extract_metadata_from_filename(conc_circ, fname)
+        methods = ['snr','pctrng']
+        for draw_method in methods:
+            filename = path_handler.conc_graph_file(circ_bmark,
+                                                    circ_indices,
+                                                    circ_scale_index,
+                                                    model,
+                                                    opt,
+                                                    tag=draw_method)
             conc_circ.write_graph(filename,\
                                   write_png=True,\
-                                  color_method=method)
+                                  color_method=draw_method)
 
 def exec_graph(hdacv2_board, args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
-  circ_dir = path_handler.skelt_circ_dir()
+  circ_dir = path_handler.conc_circ_dir()
   scores = []
   filenames = []
-
   if not args.circ is None:
       exec_graph_one(hdacv2_board,path_handler,args.circ)
       return
 
   for dirname, subdirlist, filelist in os.walk(circ_dir):
-    for fname in filelist:
-      if fname.endswith('.circ'):
-          exec_graph_one(hdacv2_board,path_handler,fname)
-
-def exec_skelter_existing(hdacv2_board,args):
-    path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
-    circ_dir = path_handler.conc_circ_dir()
-    recompute = args.recompute
-    if recompute:
-        return
-
-    for dirname, subdirlist, filelist in os.walk(circ_dir):
-        for fname in filelist:
-            if fname.endswith('.circ'):
-                print(fname)
-                circ_bmark,circ_indices,circ_scale_index,opt = \
-                                    path_handler.conc_circ_to_args(fname)
-
-                skelt_circ = path_handler.skelt_circ_file(circ_bmark,
-                                                        circ_indices,
-                                                        circ_scale_index,
-                                                        opt)
-                if path_handler.has_file(skelt_circ):
-                    continue
-
-                with open("%s/%s" % (dirname,fname),'r') as fh:
-                    obj = json.loads(fh.read())
-                    conc_circ = ConcCirc.from_json(hdacv2_board, \
-                                                            obj)
-                    if conc_circ.has_physical_model():
-                        print('<<<< %s >>>>' % fname)
-
-                        filename = path_handler.skelt_circ_file(circ_bmark,
-                                                            circ_indices,
-                                                            circ_scale_index,
-                                                            opt)
-                        src = "%s/%s" % (dirname,fname)
-                        dest = filename
-                        shutil.copyfile(src,dest)
-
-def exec_skelter(hdacv2_board, args):
-  path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
-  circ_dir = path_handler.conc_circ_dir()
-  recompute = args.recompute
-  exec_skelter_existing(hdacv2_board,args)
-  for dirname, subdirlist, filelist in os.walk(circ_dir):
-    for fname in filelist:
-      if fname.endswith('.circ'):
-        circ_bmark,circ_indices,circ_scale_index,opt = \
-                            path_handler.conc_circ_to_args(fname)
-
-        skelt_circ = path_handler.skelt_circ_file(circ_bmark,
-                                                  circ_indices,
-                                                  circ_scale_index,
-                                                  opt)
-        if path_handler.has_file(skelt_circ)  \
-           and not recompute:
-          continue
-
-        print('<<<< %s >>>>' % fname)
-        with open("%s/%s" % (dirname,fname),'r') as fh:
-          obj = json.loads(fh.read())
-          conc_circ = ConcCirc.from_json(hdacv2_board, \
-                                                  obj)
-          if recompute:
-              skelter.clear(conc_circ)
-          skelter.execute(conc_circ)
-          filename = path_handler.skelt_circ_file(circ_bmark,
-                                                  circ_indices,
-                                                  circ_scale_index,
-                                                  opt)
-          conc_circ.write_circuit(filename)
+      print(dirname)
+      for fname in filelist:
+          print(fname)
+          if fname.endswith('.circ'):
+              print(fname)
+              exec_graph_one(hdacv2_board,path_handler,fname)

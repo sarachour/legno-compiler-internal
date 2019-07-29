@@ -17,7 +17,8 @@ import compiler.arco_pass.util as arco_util
 #logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('arco')
-logger.setLevel(logging.ERROR)
+#logger.setLevel(logging.ERROR)
+logger.setLevel(logging.INFO)
 
 def bind_namespace(node,namespace,ids=[]):
     if node.id in ids:
@@ -194,7 +195,7 @@ def compile(board,prob,depth=3, \
                 for route_index,conc_circ in try_conc.enumerate(arco_route.route(board,
                                                                                  prob,
                                                                                  node_map,
-                                                                                 max_failures=100,
+                                                                                 max_failures=1000,
                                                                                  max_resolutions=100)):
 
                     indices = [abs_idx,merge_idx,stub_src_idx,route_index]

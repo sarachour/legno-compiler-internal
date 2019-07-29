@@ -18,13 +18,23 @@ class Bandwidth:
     return interval.Interval.isinf(self.fmax)
 
   def add(self,bw2):
-    return Bandwidth(max(bw2.bandwidth,self._bw))
+    return self.union(bw2)
 
   def union(self,bw2):
-    return Bandwidth(max(bw2.bandwidth,self._bw))
+    result = Bandwidth(max(bw2.bandwidth,self._bw))
+    #print("%s+%s -> %s" % (self._bw,bw2,result))
+    return result
+
+  def scale(self,v):
+    result = Bandwidth(self._bw*v)
+    #print("%s*(const %s) -> %s" % (self._bw,v,result))
+    return result
+
 
   def mult(self,bw2):
-    return Bandwidth(bw2.bandwidth+self._bw)
+    result = Bandwidth(bw2.bandwidth+self._bw)
+    #print("%s*%s -> %s" % (bw2.bandwidth,self._bw,result))
+    return result
 
   def timescale(self,v):
       assert(v > 0)
@@ -47,6 +57,9 @@ class Bandwidth:
     # dA = 2*pi*f_0*A
     # dA/(2*pi*A) = f_0
     BW = Bandwidth(dA/(2*math.pi*A))
+    #print("[st]=%s [ddt]=%s bw=%s" % (deriv_ival, \
+    #                                  stvar_ival,
+    #                                  BW))
     return BW
 
   def to_json(self):

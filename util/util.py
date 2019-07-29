@@ -4,12 +4,58 @@ import zlib
 import numpy as np
 import binascii
 import time
+import util.config as CONFIG
+import os
+from enum import Enum
+
+
+def unpack_tag(handle):
+  method = "unknown"
+  i=0
+  if handle[i] == 'n':
+    method="naive"
+  elif handle[i] == 'i':
+    method="ideal"
+  elif handle[i] == 'x':
+    method="physical"
+  elif handle[i] == 'z':
+    method="partial"
+
+  i += 1
+  assert(handle[i] == 'q')
+  i += 1
+  next_tag = handle[i:].find('d')
+  analog = float(handle[i:i+next_tag])
+  i += next_tag
+  assert(handle[i] == 'd')
+  i += 1
+  next_tag = handle[i:].find('b')
+  digital= float(handle[i:i+next_tag])
+  i += next_tag
+  assert(handle[i] == 'b')
+  i += 1
+  if len(handle[i:]) == 0:
+      bandwidth = 200
+  else:
+      bandwidth = float(handle[i:].split('k')[0])
+      bandwidth *= 10000
+  return method,analog,digital,bandwidth
+
+def randlist(seed,n):
+  np.random.seed(seed)
+  return list(map(lambda _ : np.random.uniform(-1,1),range(n)))
+
+
+def mkdir_if_dne(dirname):
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
 
 class Timer:
 
-    def __init__(self,name):
+    def __init__(self,name,ph):
         self._runs = []
         self._name = name
+        self._paths = ph
 
     def start(self):
         self._start = time.time()
@@ -23,16 +69,22 @@ class Timer:
         self._start = None
 
     def __repr__(self):
+        if len(self._runs) == 0:
+            return "%s mean=n/a std=n/a"
+
         mean = np.mean(self._runs)
         std = np.std(self._runs)
         return "%s mean=%s std=%s" % (self._name,mean,std)
 
     def save(self):
-        with open("time_%s.txt" % self._name,'w') as fh:
+        time_dir = self._paths.TIME_DIR
+        mkdir_if_dne(time_dir)
+        filename = "%s/time_%s.txt" % (time_dir,self._name)
+        with open(filename,'w') as fh:
             fh.write("%s\n" % self._name)
             for run in self._runs:
                 fh.write("%f\n" % run)
- 
+
 def flatten(dictionary, level = []):
     tmp_dict = {}
     for key, val in dictionary.items():
@@ -54,6 +106,16 @@ def unflatten(dictionary):
         d[parts[-1]] = value
     return resultDict
 
+
+def partition(boolfn,lst):
+    yes = []
+    no = []
+    for el in lst:
+        if boolfn(el):
+            yes.append(el)
+        else:
+            no.append(el)
+    return yes,no
 
 def values_in_list(vals,lst):
   for val in vals:
@@ -103,3 +165,15 @@ def profile(fn):
 
 def is_inf(v):
   return v == float('inf')
+
+def normalize_mode(m):
+    if isinstance(m,list):
+        m = tuple(m)
+
+    if isinstance(m,tuple):
+        return tuple(map(lambda mi: normalize_mode(mi), m))
+
+    elif isinstance(m,Enum):
+        return m.value
+    else:
+        return str(m)

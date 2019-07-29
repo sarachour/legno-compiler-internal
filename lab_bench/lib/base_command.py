@@ -86,7 +86,7 @@ class GenericArduinoResponse:
         return self._type
 
     def __repr__(self):
-        return "generic-resp(%s)" % self.type.value
+        return "generic-resp(%s)" % str(self.type.value)
 
 class ErrorArduinoResponse(GenericArduinoResponse):
 
@@ -168,17 +168,24 @@ class HeaderArduinoResponse(GenericArduinoResponse):
 
 class DataArduinoResponse(GenericArduinoResponse):
 
-    def __init__(self,value,size=1):
+    def __init__(self,value,size=1,type=float):
         GenericArduinoResponse.__init__(self,ArduinoResponseType.DATA)
-        self._value = value
         self._size = size
+        self._datatype = type
+        self._value = None
+        self.set_value(value)
 
     @property
     def value(self):
         return self._value
 
     def set_value(self,v):
-        self._value = v
+        if not v is None:
+            if not self.is_array():
+                self._value = self._datatype(v)
+            else:
+                self._value = list(map(lambda el: \
+                                       self._datatype(el), v))
 
     def is_array(self):
         return self._size > 1
@@ -187,13 +194,23 @@ class DataArduinoResponse(GenericArduinoResponse):
     def parse(args):
         typ = args[0]
         if typ == 'i':
-            return DataArduinoResponse(int(args[1]))
+            return DataArduinoResponse(int(args[1]), \
+                                       type=int)
         elif typ == 'f':
-            return DataArduinoResponse(float(args[1]))
+            return DataArduinoResponse(float(args[1]), \
+                                       type=float)
+        elif typ == 'I':
+            return DataArduinoResponse(None,size=int(args[1]), \
+                                       type=int)
         elif typ == 'F':
-            return DataArduinoResponse(None,size=int(args[1]))
+            return DataArduinoResponse(None,size=int(args[1]), \
+                                       type=float)
         else:
             raise Exception("unimpl: %s" % str(args))
+
+    def __repr__(self):
+        return "data-resp(%s)" % str(self.type.value)
+
 
 
 
@@ -225,6 +242,10 @@ class PayloadArduinoResponse(GenericArduinoResponse):
             buf[idx] = float(val)
         resp.set_array(buf)
         return resp
+
+
+    def __repr__(self):
+        return "payload-resp(%s,n=%d)" % (str(self._array),self._n)
 
 
 class ArduinoCommand(Command):
@@ -368,7 +389,8 @@ class ArduinoCommand(Command):
             # twenty bytes
             state.arduino.write_bytes(cdata)
             state.arduino.write_newline()
-            return self.get_response(state)
+            resp = self.get_response(state)
+            return resp
 
         return None
 
@@ -381,7 +403,7 @@ class ArduinoCommand(Command):
                 header_type= self.build_ctype(offset=offset,n=n)
                 header_data = self._c_type.build(header_type)
                 # pad to fill up rest of struct before tacking on data.
-                pad_size=24
+                pad_size= 80
                 n_pad = util.compute_pad_bytes(len(header_data),pad_size)
                 pad_data = bytearray([0]*n_pad)
                 # data
@@ -438,3 +460,62 @@ class FlushCommand(ArduinoCommand):
 
     def __repr__(self):
         return "flush"
+
+
+
+
+class AnalogChipCommand(ArduinoCommand):
+
+    def __init__(self):
+        ArduinoCommand.__init__(self,cstructs.cmd_t())
+
+    def specify_index(self,block,loc):
+        return (block == enums.BlockType.FANOUT) \
+            or (block == enums.BlockType.TILE_INPUT) \
+            or (block == enums.BlockType.TILE_OUTPUT) \
+            or (block == enums.BlockType.MULT)
+
+    def specify_output_port(self,block):
+        return (block == enums.BlockType.FANOUT)
+
+    def specify_input_port(self,block):
+        return (block == enums.BlockType.MULT)
+
+    def test_loc(self,block,loc):
+        NCHIPS = 2
+        NTILES = 4
+        NSLICES = 4
+        NINDICES_COMP = 2
+        NINDICES_TILE = 4
+        if not loc.chip in range(0,NCHIPS):
+            self.fail("unknown chip <%d>" % loc.chip)
+        if not loc.tile in range(0,NTILES):
+            self.fail("unknown tile <%d>" % loc.tile)
+        if not loc.slice in range(0,NSLICES):
+            self.fail("unknown slice <%d>" % loc.slice)
+
+        if (block == enums.BlockType.FANOUT) \
+            or (block == enums.BlockType.TILE_INPUT) \
+            or (block == enums.BlockType.TILE_OUTPUT) \
+            or (block == enums.BlockType.MULT):
+            indices = {
+                enums.BlockType.FANOUT: range(0,NINDICES_COMP),
+                enums.BlockType.MULT: range(0,NINDICES_COMP),
+                enums.BlockType.TILE_INPUT: range(0,NINDICES_TILE),
+                enums.BlockType.TILE_OUTPUT: range(0,NINDICES_TILE)
+            }
+            if loc.index is None:
+                self.fail("expected index <%s>" % block)
+
+            elif not loc.index in indices[block]:
+                self.fail("block <%s> index <%d> must be from indices <%s>" %\
+                          (block,loc.index,indices[block]))
+
+        elif not block is None:
+           if not (loc.index is None or loc.index == 0):
+               self.fail("expected no index <%s> <%d>" %\
+                         (block,loc.index))
+
+        else:
+            self.fail("not in block list <%s>" % block)
+

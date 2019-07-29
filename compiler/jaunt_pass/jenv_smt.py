@@ -46,7 +46,7 @@ def build_smt_prob(circ,jenv,blacklist=[]):
     tag = jenv.get_tag(var)
     if tag == jenvlib.JauntVarType.MODE_VAR:
       smtenv.decl(var,smtop.SMTEnv.Type.BOOL)
-    elif jenv.jaunt_var_in_use(var):
+    else:
       smtenv.decl(var,smtop.SMTEnv.Type.REAL)
 
   constraints = []
@@ -61,6 +61,13 @@ def build_smt_prob(circ,jenv,blacklist=[]):
     smt_rhs = smt_expr(smtenv,rhs)
     if not annot in blacklist:
       smtenv.lte(smt_lhs,smt_rhs)
+
+  if hasattr(jenv,'get_lts'):
+    for lhs,rhs,annot in jenv.get_lts():
+      smt_lhs = smt_expr(smtenv,lhs)
+      smt_rhs = smt_expr(smtenv,rhs)
+      if not annot in blacklist:
+        smtenv.lt(smt_lhs,smt_rhs)
 
   if hasattr(jenv,'get_implies'):
     for boolvar,var,value in jenv.get_implies():

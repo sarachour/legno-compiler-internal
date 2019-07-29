@@ -2,7 +2,39 @@ import parse as parselib
 import numpy as np
 from lab_bench.lib.chipcmd.data import *
 import lab_bench.lib.cstructs as cstructs
-from lab_bench.lib.base_command import OptionalValue
+from lab_bench.lib.base_command  \
+    import OptionalValue, ArduinoCommand
+import struct
+
+def from_float16(val):
+    nbits_exp = 6
+    if val == 0:
+        return 0.0
+
+    # sign bit
+    ff = (val&0x8000) << 16;
+    oldexp = ((val&0x7FFF)>>(15-nbits_exp))
+    bias = (1<<(nbits_exp-1))-1
+    ff |= ((oldexp-bias+127)<<23);
+    mantissa_mask=(0xFFFF>>(nbits_exp+1))
+    ff |= ((val&mantissa_mask)<<(23-(15-nbits_exp)));
+
+    ffstr = struct.pack('>L', ff)
+    ff_float = struct.unpack('>f', ffstr)[0]
+    #print("val=%d hex=%x bytes=%s float=%f" % (val, ff, ffstr,ff_float))
+    return ff_float
+
+def send_mail(title,log,email="sarachour@gmail.com"):
+    msg = ""
+    with open('body.txt','w') as fh:
+        fh.write("%s\n" % log)
+
+    cmd = "cat body.txt | mail -s \"%s\" %s" \
+          % (title,email)
+
+    os.system(cmd)
+    os.remove('body.txt')
+
 
 def build_circ_ctype(circ_data):
     return {
@@ -14,16 +46,42 @@ def build_circ_ctype(circ_data):
     }
 
 def signed_float_to_byte(fvalue):
-    assert(fvalue <= 1.0 and fvalue <= 1.0)
-    value = int((fvalue+1.0)/2.0*255)
+    assert(fvalue >= -1.0 and fvalue <= 1.0)
+    value = int(round((fvalue+1.0)/2.0*255))
     assert(value >= 0 and value <= 255)
     return value
 
 def float_to_byte(fvalue):
     assert(fvalue >= 0.0 and fvalue <= 1.0)
-    value = int(fvalue*255)
+    value = int(round(fvalue*255))
     assert(value >= 0 and value <= 255)
     return value
+
+def parse_pattern_port(args,name):
+    line = " ".join(args)
+
+    cmds = [
+        '{blk:w} {chip:d} {tile:d} {slice:d} {index:d} port {port:d}',
+        '{blk:w} {chip:d} {tile:d} {slice:d} port {port:d}',
+        '{blk:w} {chip:d} {tile:d} {slice:d} {index:d}',
+        '{blk:w} {chip:d} {tile:d} {slice:d}'
+    ]
+    result = None
+    for cmd in cmds:
+       if result is None:
+           full_cmd = "%s %s {port_type:w} {range:w}" % (name,cmd)
+           result = parselib.parse(full_cmd,line)
+
+    if result is None:
+        return OptionalValue.error("usage:<%s>\nline:<%s>" % (cmd,line))
+
+    result = dict(result.named.items())
+    if not 'index' in result:
+        result['index'] = None
+    if not 'port' in result:
+        result['port'] = None
+
+    return OptionalValue.value(result)
 
 def parse_pattern_conn(args,name):
     line = " ".join(args)
@@ -63,10 +121,45 @@ def parse_pattern_conn(args,name):
 
     return OptionalValue.value(result)
 
-def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
-                        name,index=False,debug=False,source=None,expr=False):
+
+def parse_pattern_block_loc(args,name,max_error=False):
+    line = " ".join(args).strip()
+    cmds = [
+        "{blk:w} {chip:d} {tile:d} {slice:d}",
+        "{blk:w} {chip:d} {tile:d} {slice:d} {index:d}",
+    ]
+    suffix = "";
+    if max_error:
+        suffix += " {max_error:f}"
+
+    result = None
+    for cmd in cmds:
+        final_cmd = "%s %s%s" % (name,cmd,suffix)
+
+        if result is None:
+            result = parselib.parse(final_cmd,line)
+
+    if result is None:
+        return OptionalValue.error("usage:<%s>\nline:<%s>" % (final_cmd, line))
+
+    result = dict(result.named.items())
+    if not "index" in result:
+        result["index"] = None
+
+    return OptionalValue.value(result)
+
+
+def parse_pattern_use_block(args,n_signs,n_consts,n_range_codes, \
+                            name,
+                            index=False,
+                            debug=False,
+                            source=None,
+                            expr=False,
+                            third=False,
+                            db=True):
     line = " ".join(args)
     DEBUG = {'debug':True,'prod':False}
+    THIRD = {'three':True,'two':False}
 
     cmd = "%s {chip:d} {tile:d} {slice:d}" % name
     if index:
@@ -91,11 +184,17 @@ def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
                            range(0,n_range_codes)))
 
 
+    if third:
+        cmd += " {third:w}"
+
     if debug:
         cmd += " {debug:w}"
 
     if expr:
         cmd += " {vars} {expr}"
+
+    if db:
+        cmd += " {state_mode}"
 
     cmd = cmd.strip()
     result = parselib.parse(cmd,line)
@@ -123,13 +222,21 @@ def parse_pattern_block(args,n_signs,n_consts,n_range_codes, \
     if debug:
         result['debug'] = DEBUG[result['debug']]
 
+    if third:
+        result['third'] = THIRD[result['third']]
 
     if expr:
         args = result['vars'].split('[')[1] \
                              .split(']')[0].split()
         result['vars'] = args
 
+    if db:
+        if not (result['state_mode'] == 'update' or \
+                result['state_mode'] == 'cached'):
+            raise Exception("[%s] unknown state mode <%s>" % \
+                            (line,result['state_mode']))
 
+        result['cached'] = (result['state_mode'] == 'cached')
     return OptionalValue.value(result)
 
 class ConstVal:

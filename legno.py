@@ -6,7 +6,7 @@ import bmark.menvs as menvs
 import util.paths as paths
 
 
-from compiler import arco, jaunt, srcgen, execprog, skelter
+from compiler import  simulator
 from chip.conc import ConcCirc
 
 import argparse
@@ -19,15 +19,17 @@ import compiler.legno_util as legno_util
 
 
 parser = argparse.ArgumentParser(description='Legno compiler.')
+parser.add_argument('--subset', default="unrestricted",
+                    help='component subset to use for compilation')
 parser.add_argument('benchmark', type=str,help='benchmark to compile')
-parser.add_argument('--bmark-dir', type=str,default='default',
-                       help='directory to output files to.')
 
 
 subparsers = parser.add_subparsers(dest='subparser_name',
                                    help='compilers/compilation passes.')
 
 arco_subp = subparsers.add_parser('arco', help='generate circuit')
+arco_subp.add_argument('--simulate', action="store_true",
+                       help="ignore resource constraints while compiling.")
 arco_subp.add_argument('--xforms', type=int,default=3,
                        help='number of abs circuits to generate.')
 arco_subp.add_argument('--abs-circuits', type=int,default=100,
@@ -36,22 +38,31 @@ arco_subp.add_argument('--conc-circuits', type=int,default=3,
                        help='number of conc circuits to generate.')
 
 
-jaunt_subp = subparsers.add_parser('jaunt', help='scale circuit parameters.')
-jaunt_subp.add_argument('--physical', action='store_true',help='perform noise analysis.')
-jaunt_subp.add_argument('--sweep', action='store_true',help='do performance sweep.')
-jaunt_subp.add_argument('--no-quality', action='store_true',help='dont put in quality constraints.')
-jaunt_subp.add_argument('--scale-circuits', type=int,default=15,
+jaunt_subp = subparsers.add_parser('jaunt', \
+                                   help='scale circuit parameters.')
+jaunt_subp.add_argument('--model', default="physical",
+                        help='use physical models to inform constraints.')
+jaunt_subp.add_argument('--scale-circuits', type=int,default=15, \
                        help='number of scaled circuits to generate.')
+jaunt_subp.add_argument('--digital-error', type=float, default=0.04, \
+                        help='do performance sweep.')
+jaunt_subp.add_argument('--analog-error',type=float,default=0.04, \
+                        help='do performance sweep.')
+jaunt_subp.add_argument('--search',action="store_true")
+jaunt_subp.add_argument('--use_model-uncertainty', \
+                        action='store_true', \
+                        help='use the uncertainty bundled with the model')
 
 
-skelt_subp = subparsers.add_parser('skelter', help='perform noise analysis')
-skelt_subp.add_argument('--recompute', action='store_true',
-                       help='recompute skelter.')
+jaunt_subp.add_argument("--max-freq", type=float, help="maximum frequency in Khz")
 
-graph_subp = subparsers.add_parser('graph', help='generate graphs for noise analysis')
-graph_subp.add_argument('--circ', help='circuit.')
+graph_subp = subparsers.add_parser('graph', \
+                                   help='emit debugging graph.')
+graph_subp.add_argument('--circ', type=str, \
+                        help='do performance sweep.')
 
-gren_subp = subparsers.add_parser('srcgen', help='generate grendel.')
+
+gren_subp = subparsers.add_parser('srcgen', help='generate grendel scriot.')
 gren_subp.add_argument('hw_env', type=str, \
                         help='hardware environment')
 gren_subp.add_argument('--recompute', action='store_true',
@@ -60,29 +71,31 @@ gren_subp.add_argument('--trials', type=int, default=3,
                        help='compute trials.')
 
 
+sim_subp = subparsers.add_parser('simulate', help='simulate circuit.')
+sim_subp.add_argument('conc_circ', help='simulate concrete circuit.')
+
 
 args = parser.parse_args()
 prog = bmark.get_prog(args.benchmark)
 
-from chip.hcdc.hcdcv2_4 import board as hdacv2_board
+from chip.hcdc.hcdcv2_4 import make_board
+from chip.hcdc.globals import HCDCSubset
+subset = HCDCSubset(args.subset)
+hdacv2_board = make_board(subset)
+args.bmark_dir = subset.value
 
 if args.subparser_name == "arco":
     legno_util.exec_arco(hdacv2_board, args)
 
-elif args.subparser_name == "graph":
-    legno_util.exec_graph(hdacv2_board,args)
-
-elif args.subparser_name == "skelter":
-    legno_util.exec_skelter(hdacv2_board,args)
-
-
 elif args.subparser_name == "jaunt":
-    if args.physical or args.sweep:
-        legno_util.exec_jaunt_phys(hdacv2_board,args)
-
-    if not args.physical and not args.sweep:
-        legno_util.exec_jaunt(hdacv2_board,args)
+    legno_util.exec_jaunt(hdacv2_board,args)
 
 elif args.subparser_name == "srcgen":
    legno_util.exec_srcgen(hdacv2_board,args)
 
+elif args.subparser_name == "graph":
+   legno_util.exec_graph(hdacv2_board,args)
+
+elif args.subparser_name == "simulate":
+   simulator.simulate(hdacv2_board,args.conc_circ, \
+                      args.benchmark)

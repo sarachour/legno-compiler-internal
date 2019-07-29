@@ -1,6 +1,6 @@
 import ops.op as ops
 from enum import Enum
-import chip.phys as phys
+import util.util as util
 
 class BlockType(Enum):
     ADC = "adc"
@@ -11,7 +11,7 @@ class BlockType(Enum):
 
 class Block:
 
-    def __init__(self,name,type=None):
+    def __init__(self,name,type=None,subset=None):
         self._name = name
         self._type = type
         # port info
@@ -25,49 +25,85 @@ class Block:
 
         self._coeffs = {}
         self._props = {} # operating ranges and values
-        self._physical = {} # physical characteristics
 
         # scale factors
         self._scale_models = {}
         self._scale_modes = {}
-        self.set_comp_modes(['*'])
-        self.set_scale_modes("*",['*'])
+
+        #self.set_comp_modes(['*'])
+        #self.set_scale_modes("*",['*'])
+        self._comp_mode_subsets = {}
+        self._scale_mode_subsets = {}
+        self._comp_modes = []
+        self._scale_modes = {}
+        self._subset = None
+
+    def whitelist(self,comp_mode,scale_mode=None):
+        comp_mode_key = util.normalize_mode(comp_mode)
+        subs = self._comp_mode_subsets[comp_mode]
+        if self._subset is None:
+            return True
+
+        if not self._subset in self._comp_mode_subsets[comp_mode_key]:
+            return False
+
+        if scale_mode is None:
+            return True
+
+        scale_mode_key = util.normalize_mode(scale_mode)
+        if not self._subset in self._scale_mode_subsets[(comp_mode_key, \
+                                                         scale_mode_key)]:
+            return False
+
+        return True
+
+    def subset(self,subs):
+        self._subset = subs
+        return self
 
     def _make_comp_dict(self,comp_mode,d):
-        if not comp_mode in d:
-            d[comp_mode] = {}
+        comp_mode_key = util.normalize_mode(comp_mode)
+        if not comp_mode_key in d:
+            d[comp_mode_key] = {}
 
-        return d[comp_mode]
+        return d[comp_mode_key]
 
     def _make_scale_dict(self,comp_mode,scale_mode,d):
-        if not (comp_mode in self._comp_modes):
+        comp_mode_key = util.normalize_mode(comp_mode)
+        if not (comp_mode_key in self._comp_modes):
             raise Exception("%s not in <%s>" % \
-                            (comp_mode,self._comp_modes))
-        data = self._make_comp_dict(comp_mode,d)
+                            (comp_mode_key,self._comp_modes))
+        data = self._make_comp_dict(comp_mode_key,d)
 
-        if not scale_mode in data:
-            data[scale_mode] = {}
+        scale_mode_key = util.normalize_mode(scale_mode)
+        if not scale_mode_key in data:
+            data[scale_mode_key] = {}
 
-        return data[scale_mode]
+        return data[scale_mode_key]
 
     def _get_comp_dict(self,comp_mode,d):
-        if not comp_mode in d:
+        comp_mode_key = util.normalize_mode(comp_mode)
+        if not comp_mode_key in d:
             return None
 
-        return d[comp_mode]
+        return d[comp_mode_key]
 
     def _get_scale_dict(self,comp_mode,scale_mode,d):
+        scale_mode_key = util.normalize_mode(scale_mode)
         data = self._get_comp_dict(comp_mode,d)
         if data is None:
             return None
-        if not scale_mode in data:
+        if not scale_mode_key in data:
             return None
 
-        return data[scale_mode]
+        return data[scale_mode_key]
 
     def coeff(self,comp_mode,scale_mode,out,handle=None):
         data = self._get_scale_dict(comp_mode,scale_mode, \
                                     self._coeffs)
+        if not self.whitelist(comp_mode,scale_mode):
+            raise Exception("coeff: not whitelisted : %s.%s" %  \
+                            (comp_mode,scale_mode))
         if data is None or \
            not out in data or \
            not handle in data[out]:
@@ -93,47 +129,60 @@ class Block:
             assert(not port in self._signals)
             self._signals[port] = prop
 
-    def _wrap_coeff(self,coeff,expr):
-        if coeff == 1.0:
-            return expr
-        else:
-            return ops.Mult(ops.Const(coeff,tag='scf'),expr)
-
     def get_dynamics(self,comp_mode,output):
-        copy_data = self._get_comp_dict(comp_mode,self._copies)
-        op_data = self._get_comp_dict(comp_mode,self._ops)
+        copy_data = self._get_comp_dict(comp_mode, \
+                                        self._copies)
+        op_data = self._get_comp_dict(comp_mode, \
+                                      self._ops)
+        if not self.whitelist(comp_mode):
+            raise Exception("get_dynamics: not whitelisted : %s" %  \
+                            str(comp_mode))
+
         if output in copy_data:
             output = copy_data[output]
 
         expr = op_data[output]
         return expr
 
-    def physical(self,comp_mode,scale_mode,output):
-        assert(output in self._outputs)
-        ddict = self._make_scale_dict(comp_mode,scale_mode, \
-                                    self._physical)
-        if not output in ddict:
-            ddict[output] = phys.PhysicalModel(output)
-
-        return ddict[output]
-
-
     def dynamics(self,comp_mode):
+        if not self.whitelist(comp_mode):
+            return
+
         for output in self._outputs:
             expr = self.get_dynamics(comp_mode,output)
             yield output,expr
 
     def all_dynamics(self):
         for comp_mode in self._ops:
+            if not self.whitelist(comp_mode):
+                continue
+
             for output,expr in self._ops[comp_mode].items():
                 yield comp_mode,output,expr
 
     def signals(self,port):
         return self._signals[port]
 
+    def has_prop(self,comp_mode,scale_mode,port,handle=None):
+        data = self._get_scale_dict(comp_mode,scale_mode, \
+                                    self._props)
+
+        if not port in data:
+            return False
+
+        if not handle in data[port]:
+            return False
+
+        return True
+
     def props(self,comp_mode,scale_mode,port,handle=None):
         data = self._get_scale_dict(comp_mode,scale_mode, \
                                     self._props)
+
+        #if not self.whitelist(comp_mode,scale_mode):
+        # raise Exception("props: not whitelisted : %s.%s" %  \
+        #                    (comp_mode,scale_mode))
+
         if data is None:
             for k1,v1 in self._props.items():
                 for k2,v2 in v1.items():
@@ -144,13 +193,26 @@ class Block:
             raise Exception("port not in prop-dict <%s>" % port)
 
         if not handle in data[port]:
+            print("=== handles ===")
+            for h in data[port]:
+                print("  %s" % h)
             raise Exception("handle not in prop-dict <%s>" % handle)
 
         return data[port][handle]
 
+    def has_handle(self,comp_mode,port,handle):
+        if handle is None:
+            return True
+        return handle in self.handles(comp_mode,port)
+
     def handles(self,comp_mode,port):
         if self.is_input(port):
             return []
+
+        if not self.whitelist(comp_mode):
+            raise Exception("handles: not whitelisted : %s.%s" %  \
+                            (comp_mode))
+
         return self.get_dynamics(comp_mode,port).handles()
 
     @property
@@ -172,6 +234,9 @@ class Block:
 
     def copies(self,comp_mode,port):
         data = self._get_comp_dict(comp_mode,self._copies)
+        if not self.whitelist(comp_mode):
+            return
+
         for this_port, copy_port in data.items():
             if this_port == port:
                 yield copy_port
@@ -202,26 +267,69 @@ class Block:
     def scale_modes(self,comp_mode):
         return self._scale_modes[comp_mode]
 
-    def set_comp_modes(self,modes):
-        self._comp_modes = list(modes)
-        for mode in self._comp_modes:
+    def set_comp_modes(self,modes,subsets):
+        comp_modes = list(map(lambda m: \
+                                    util.normalize_mode(m), \
+                                    modes))
+
+        for mode in comp_modes:
             self._ops[mode] = {}
             self._signals[mode] = {}
             self._copies[mode] = {}
             self._props[mode] = {}
             self._coeffs[mode] = {}
 
+        for mode in comp_modes:
+            self._comp_mode_subsets[mode] = []
+            for subs in subsets:
+                self._comp_mode_subsets[mode].append(subs)
+
+        for mode in comp_modes:
+            self._comp_modes.append(mode)
+
         return self
 
-    def set_scale_modes(self,comp_mode,modes):
-        if not comp_mode in self._props:
+    def add_subsets(self,comp_mode,scale_modes,subsets):
+        comp_mode_key = util.normalize_mode(comp_mode)
+        if not comp_mode_key in self._props:
             raise Exception("not in comps <%s> : <%s>" % \
-                            (comp_mode,self._scale_modes))
+                            (comp_mode_key,self._scale_modes))
 
-        self._scale_modes[comp_mode] = list(modes)
-        for scale_mode in self._scale_modes[comp_mode]:
-            self._props[comp_mode][scale_mode] = {}
-            self._coeffs[comp_mode][scale_mode] = {}
+        scale_modes = list(map(lambda m: \
+                               util.normalize_mode(m),
+                               scale_modes))
+
+
+        for mode in scale_modes:
+            assert((comp_mode_key,mode) in self._scale_mode_subsets)
+            for subs in subsets:
+                self._scale_mode_subsets[(comp_mode_key,mode)].append(subs)
+
+
+    def set_scale_modes(self,comp_mode,scale_modes,subsets):
+        comp_mode_key = util.normalize_mode(comp_mode)
+        if not comp_mode_key in self._props:
+            raise Exception("not in comps <%s> : <%s>" % \
+                            (comp_mode_key,self._scale_modes))
+
+        scale_modes = list(map(lambda m: \
+                               util.normalize_mode(m),
+                               scale_modes))
+        for mode in scale_modes:
+            assert(not comp_mode_key in self._scale_modes or\
+                   not mode in self._scale_modes[comp_mode_key])
+            self._props[comp_mode_key][mode] = {}
+            self._coeffs[comp_mode_key][mode] = {}
+
+        for mode in scale_modes:
+            self._scale_mode_subsets[(comp_mode_key,mode)]= []
+            for subs in subsets:
+                self._scale_mode_subsets[(comp_mode_key,mode)].append(subs)
+
+        for mode in scale_modes:
+            if not comp_mode_key in self._scale_modes:
+                self._scale_modes[comp_mode_key] = []
+            self._scale_modes[comp_mode_key].append(mode)
 
         return self
 
@@ -236,10 +344,18 @@ class Block:
         data[out] = expr
         return self
 
+    def baseline(self,comp_mode):
+        return self._scale_models[comp_mode].baseline
+
     def scale_model(self,comp_mode):
+        raise NotImplementedError
         if not comp_mode in self._scale_models:
             raise Exception("block <%s> does not contain scale model for <%s>" % \
                             (self.name,comp_mode))
+
+        if not self.whitelist(comp_mode):
+            return
+
         return self._scale_models[comp_mode]
 
     def set_scale_model(self,comp_mode,model):

@@ -3,6 +3,7 @@ from ops.interval import Interval
 from ops.bandwidth import Bandwidth
 from compiler.common.data_symbolic import SymbolicModel
 import ops.op as ops
+import util.util as util
 
 class Labels(Enum):
     CONST_INPUT = 'const-inp';
@@ -27,13 +28,7 @@ class Config:
         self._snrs = {}
 
         # physical model data
-        self._gen_delays = {}
-        self._prop_delays = {}
-        self._mismatch_delays = {}
-        self._gen_noise = {}
-        self._prop_noise = {}
-        self._gen_biases = {}
-        self._prop_biases = {}
+        self._meta = {}
 
         # lut models
         self._injs = {}
@@ -47,6 +42,16 @@ class Config:
             return 1.0
         else:
             return self._injs[port]
+
+    def scale_vars(self):
+        for p,data in self._scfs.items():
+            for h,v in data.items():
+                yield (p,h),v
+
+
+    def inject_vars(self):
+        for p,val in self._injs.items():
+            yield p,val
 
     def set_expr(self,port,expr):
         self._exprs[port] = expr
@@ -66,7 +71,7 @@ class Config:
             repl[inj_port] = ops.Mult(ops.Const(value), \
                                   ops.Var(inj_port))
 
-        inj_out = self._injs[port]
+        inj_out = self._injs['out']
         return ops.Mult(
             ops.Const(inj_out),
             naked_expr.substitute(repl)
@@ -95,11 +100,11 @@ class Config:
     @staticmethod
     def from_json(obj):
         cfg = Config()
-        cfg._comp_mode = obj['compute-mode']
+        cfg._comp_mode = util.normalize_mode(obj['compute-mode'])
         if isinstance(cfg._comp_mode, list):
             cfg._comp_mode = tuple(cfg._comp_mode)
 
-        cfg._scale_mode = obj['scale-mode']
+        cfg._scale_mode = util.normalize_mode(obj['scale-mode'])
         if isinstance(cfg._scale_mode, list):
             cfg._scale_mode = tuple(cfg._scale_mode)
 
@@ -124,6 +129,7 @@ class Config:
 
         get_port_dict(cfg._injs, obj,'injvars')
         get_port_dict(cfg._dacs, obj,'dacs')
+        get_port_handle_dict(cfg._meta, obj,'meta')
         get_port_dict(cfg._labels, obj,'labels', \
                       lambda v: [v[0],Labels(v[1])])
         get_port_handle_dict(cfg._scfs, obj, 'scfs')
@@ -137,18 +143,6 @@ class Config:
                              lambda v: Bandwidth.from_json(v))
         get_port_dict(cfg._exprs, obj, 'exprs', \
                       lambda v: ops.Op.from_json(v))
-        get_port_dict(cfg._gen_noise, obj, 'gen-noise', \
-                      lambda v: SymbolicModel.from_json(v))
-        get_port_dict(cfg._prop_noise, obj, 'prop-noise', \
-                      lambda v: SymbolicModel.from_json(v))
-        get_port_dict(cfg._gen_biases, obj,'gen-bias', \
-                      lambda v: SymbolicModel.from_json(v))
-        get_port_dict(cfg._prop_biases, obj,'prop-bias', \
-                      lambda v: SymbolicModel.from_json(v))
-        get_port_dict(cfg._gen_delays, obj,'gen-delay', \
-                      lambda v: SymbolicModel.from_json(v))
-        get_port_dict(cfg._prop_delays, obj,'prop-delay', \
-                      lambda v: SymbolicModel.from_json(v))
         #get_port_dict(cfg._mismatch_delays, obj,'mismatch-delay')
         return cfg
 
@@ -171,6 +165,7 @@ class Config:
 
         set_port_dict('injvars',self._injs)
         set_port_dict('dacs',self._dacs)
+        set_port_handle_dict('meta',self._meta)
         set_port_dict('labels', self._labels,
                       lambda args: [args[0],args[1].value])
 
@@ -185,19 +180,6 @@ class Config:
 
         set_port_dict('exprs',self._exprs,
                       lambda value: value.to_json())
-        set_port_dict('gen-noise',self._gen_noise,
-                      lambda value: value.to_json())
-        set_port_dict('prop-noise',self._prop_noise,
-                      lambda value: value.to_json())
-        set_port_dict('gen-bias',self._gen_biases,
-                      lambda value: value.to_json())
-        set_port_dict('prop-bias',self._prop_biases,
-                      lambda value: value.to_json())
-        set_port_dict('gen-delay',self._gen_delays,
-                      lambda value: value.to_json())
-        set_port_dict('prop-delay',self._prop_delays,
-                      lambda value: value.to_json())
-        set_port_dict('mismatch-delay',self._mismatch_delays)
 
         return cfg
 
@@ -206,6 +188,7 @@ class Config:
       cfg._comp_mode = self._comp_mode
       cfg._scale_mode = self._scale_mode
       cfg._dacs = dict(self._dacs)
+      cfg._meta = dict(self._meta)
       cfg._labels = dict(self._labels)
       cfg._scfs = dict(self._scfs)
       cfg._intervals = dict(self._intervals)
@@ -230,6 +213,10 @@ class Config:
     def has_dac(self,v):
       return v in self._dacs
 
+    def dacs(self):
+        for port,value in self._dacs.items():
+            yield port,value
+
     def dac(self,v):
       if not v in self._dacs:
         return None
@@ -253,145 +240,30 @@ class Config:
       if not port in dict_:
         dict_[port] = {}
 
-    def clear_snrs(self):
-      self._snrs= {}
-
-
     def clear_bandwidths(self):
       self._bandwidths = {}
 
     def clear_intervals(self):
       self._intervals = {}
 
-    def generated_noise(self,port):
-      if not port in self._gen_noise:
+    def meta(self,port,key,handle=None):
+      #print("%s[%s].%s" % (port,handle,key))
+      if not port in self._meta:
           return None
-      return self._gen_noise[port]
-
-    def generated_noises(self):
-        for port,noise in self._gen_noise.items():
-            yield port,noise
-
-    def propagated_noise(self,port):
-      if not port in self._prop_noise:
+      if not handle in self._meta[port]:
           return None
-      return self._prop_noise[port]
-
-    def propagated_noises(self):
-        for port,value in self._prop_noise.items():
-            yield port,value
-
-    def propagated_bias(self,port):
-      if not port in self._prop_biases:
+      if not key in self._meta[port][handle]:
           return None
-      return self._prop_biases[port]
+      #print("%s[%s].%s : %s" % (port,handle,key, \
+      #                          self._meta[port][handle][key]))
+      return self._meta[port][handle][key]
 
-    def propagated_biases(self):
-        for port,value in self._prop_biases.items():
-            yield port,value
-
-    def generated_bias(self,port):
-      if not port in self._gen_biases:
-          return None
-      return self._gen_biases[port]
-
-    def generated_biases(self):
-        for port,bias in self._gen_biases.items():
-            yield port,bias
-
-    def propagated_delay(self,port):
-      if not port in self._prop_delays:
-          return None
-      return self._prop_delays[port]
-
-    def propagated_delays(self):
-        for port,delay in self._prop_delays.items():
-            yield port,delay
-
-    def delay_mismatch(self,port):
-      if not port in self._mismatch_delays:
-          return None
-      return self._mismatch_delays[port]
-
-    def delay_mismatches(self):
-        for port,value in self._mismatch_delays.items():
-            yield port,value
-
-    def generated_delay(self,port):
-      if not port in self._gen_delays:
-          return None
-      return self._gen_delays[port]
-
-    def generated_delays(self):
-        for port,delay in self._gen_delays.items():
-            yield port,delay
-
-    def set_propagated_noise(self,port,noise):
-      assert(noise.is_posynomial())
-      self._prop_noise[port] = noise
-
-    def set_propagated_bias(self,port,bias):
-        if not (bias.is_posynomial()):
-            raise Exception("not posynomial: %s" % bias)
-
-        self._prop_biases[port] = bias
-
-    def set_delay_mismatch(self,port,delay):
-      assert(delay.is_posynomial())
-      self._mismatch_delays[port] = delay
-
-    def set_propagated_delay(self,port,delay):
-      assert(delay.is_posynomial())
-      self._prop_delays[port] = delay
-
-    def set_generated_noise(self,port,noise):
-      if not (noise.is_posynomial()):
-          raise Exception("not posynomial: %s" % noise)
-
-      self._gen_noise[port] = noise
-
-    def set_generated_bias(self,port,bias):
-      if not (bias.is_posynomial()):
-          raise Exception("not posynomial: %s" % bias)
-
-      self._gen_biases[port] = bias
-
-    def set_generated_delay(self,port,delay):
-      assert(delay.is_posynomial())
-      self._gen_delays[port] = delay
-
-    def clear_noise_model(self):
-        def reset(key):
-            setattr(self,key,{})
-
-        reset('_gen_noise')
-        reset('_prop_noise')
-
-    def clear_physical_model(self):
-        def reset(key):
-            setattr(self,key,{})
-
-        reset('_gen_delays')
-        reset('_gen_noise')
-        reset('_gen_biases')
-        reset('_prop_delays')
-        reset('_prop_biases')
-        reset('_prop_noise')
-
-
-    def has_physical_model(self):
-        def test(key):
-            if len(getattr(self,key).keys()) == 0:
-                return False
-            else:
-                return True
-
-        return test('_gen_delays') and \
-            test('_gen_noise') and \
-            test('_gen_biases') and  \
-            test('_prop_delays') and \
-            test('_prop_biases') and \
-            test('_prop_noise')
+    def set_meta(self,port,key,value,handle=None):
+      if not port in self._meta:
+          self._meta[port] = {}
+      if not handle in self._meta[port]:
+          self._meta[port][handle] = {}
+      self._meta[port][handle][key] = value
 
     def set_bandwidth(self,port,bandwidth,handle=None):
       self._make(self._bandwidths,port)
@@ -405,8 +277,6 @@ class Config:
       self._op_ranges[port][handle] = op_range
 
 
-    def set_snr(self,port,snr):
-      self._snrs[port] = snr
 
     def set_interval(self,port,interval,handle=None):
       self._make(self._intervals,port)

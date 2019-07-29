@@ -22,6 +22,10 @@ def compute_params(conc_circ,entry,varname):
       if label == varname:
         LOC = (block_name,loc,port)
 
+  if LOC is None:
+    print(entry)
+    raise Exception("cannot find measurement port")
+
   block_name,loc,port = LOC
   cfg = conc_circ.config(block_name,loc)
   menv = menvs.get_math_env(entry.math_env)
@@ -34,33 +38,10 @@ def compute_params(conc_circ,entry,varname):
   params['runtime'] = params['simtime']/params['fmax']
   return params
 
-def compute_rank(conc_circ,entry,method=RankMethod.SKELTER):
-  if method == RankMethod.SKELTER:
-    skelter.clear_noise_model(conc_circ)
-    pnlib.compute(conc_circ)
-    return skelter.rank_model(conc_circ)
-
-  elif method == RankMethod.MAXSIGFAST:
-    return skelter.rank_maxsigfast_heuristic(conc_circ)
-
-  elif method == RankMethod.MAXSIGSLOW:
-    return skelter.rank_maxsigslow_heuristic(conc_circ)
-
-  elif method == RankMethod.SCALE:
-    return skelter.rank_scale_heuristic(conc_circ)
-
-  elif method == RankMethod.INTERVAL:
-    return skelter.rank_scale_heuristic(conc_circ)
-
-  elif method == RankMethod.HANDTUNED:
-    return skelter.rank_handtuned_heuristic(entry.bmark,conc_circ)
-
 
 
 def analyze(entry,conc_circ,method=RankMethod.SKELTER):
-  RANK = compute_rank(conc_circ,entry,method)
-  entry.set_rank(RANK)
-
+  params = None
   for output in entry.outputs():
     varname = output.varname
     params = compute_params(conc_circ,entry,
@@ -68,6 +49,8 @@ def analyze(entry,conc_circ,method=RankMethod.SKELTER):
     output.set_tau(params['tau'])
     output.set_fmax(params['fmax'])
     output.set_scf(params['scf'])
-    output.set_rank(RANK)
+    #output.set_rank(RANK)
+    print(output)
 
-  entry.set_runtime(params['runtime'])
+  if not params is None:
+    entry.set_runtime(params['runtime'])

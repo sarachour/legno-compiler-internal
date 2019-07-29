@@ -5,7 +5,7 @@ class JauntObjectiveFunction():
     self._cstrs = cstrs
     self._obj = obj
     self._tag = tag
-
+ 
   def tag(self):
     if self._tag is None:
       return self.name()

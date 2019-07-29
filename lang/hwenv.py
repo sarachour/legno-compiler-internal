@@ -18,6 +18,9 @@ class HWEnv:
       for chan,(low,high) in self._ranges.items():
         yield chan,low,high
 
+    def chan_range(self,chan):
+      return self._ranges[chan]
+
     def add_range(self,chan,low,high):
       self._ranges[chan] = (low,high)
 
@@ -35,6 +38,14 @@ class HWEnv:
     self._osc = None
     self._dacs = {}
     self._adcs = {}
+    self._manual = False
+
+  @property
+  def manual(self):
+    return self._manual
+
+  def set_manual(self,v):
+    self._manual = v
 
   def dac(self,handle):
     return self._dacs[handle]

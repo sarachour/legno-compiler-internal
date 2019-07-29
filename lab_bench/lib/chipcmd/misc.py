@@ -3,18 +3,49 @@ from enum import Enum
 from lab_bench.lib.chipcmd.use import UseCommand
 from lab_bench.lib.chipcmd.data import *
 from lab_bench.lib.chipcmd.common import *
+from lab_bench.lib.base_command import AnalogChipCommand
 import lab_bench.lib.util as util
 import construct
 
 
 
+class DefaultsCommand(ArduinoCommand):
 
-class WriteLUTCmd(UseCommand):
+    def __init__(self):
+        ArduinoCommand.__init__(self)
+
+    @staticmethod
+    def name():
+        return 'micro_defaults'
+
+    @staticmethod
+    def desc():
+        return "[microcontroller] set configs to default values."
+
+    def build_ctype(self):
+        return build_circ_ctype({
+            'type':enums.CircCmdType.DEFAULTS.name,
+            'data':{
+                'circ_loc':CircLoc(0,0,0).build_ctype()
+            }
+        })
+
+
+    @staticmethod
+    def parse(args):
+        return strict_do_parse("", args, DefaultsCommand)
+
+    def __repr__(self):
+        return self.name()
+
+
+class WriteLUTCmd(ArduinoCommand):
 
     def __init__(self,chip,tile,slice,variables,expr):
-        UseCommand.__init__(self,
-                            enums.BlockType.LUT,
-                            CircLoc(chip,tile,slice))
+        ArduinoCommand.__init__(self)
+        self._loc = CircLoc(chip,tile,slice)
+        self._block = enums.BlockType.LUT
+
 
         if not self._loc.index is None:
             self.fail("lut has no index <%d>" % loc.index)
@@ -25,9 +56,9 @@ class WriteLUTCmd(UseCommand):
             raise Exception('unexpected number of variables: %s' % variables)
 
 
-    def priority(self):
-        return Priority.FIRST
-
+    @property
+    def loc(self):
+        return self._loc
 
     @property
     def expr(self):
@@ -44,10 +75,11 @@ class WriteLUTCmd(UseCommand):
 
     @staticmethod
     def _parse(args,cls):
-        result = parse_pattern_block(args,0,0,0,
-                                     cls.name(),
-                                     source=None,
-                                     expr=True)
+        result = parse_pattern_use_block(args,0,0,0,
+                                         cls.name(),
+                                         source=None,
+                                         expr=True,
+                                         db=False)
         if result.success:
             data = result.value
             return cls(
@@ -94,24 +126,27 @@ class WriteLUTCmd(UseCommand):
 
 
 
-    def apply(self,state):
+    def execute_command(self,state):
         if state.dummy:
             return
 
-        values = [-256.0]*256
+        # ADCs are centered at 128, from [20,235]
+
+        values = [0.0]*256
+        # FIXME: hack. get the values from the cached dac
         for idx,v in enumerate(np.linspace(-1.0,1.0,256)):
             assigns = dict(zip(self._variables,[v]))
             value = util.eval_func(self.expr,assigns)
-            clamp_value = min(max(value,-1.0),0.99)
+            clamp_value = min(max(value,-1.0),1.0)
             values[idx] = float(clamp_value)
 
+        for idx,val in enumerate(values):
+            print("%s = %f" % (idx,val))
 
-        resp = ArduinoCommand.execute(self,state,
-                                        {
-                                            'raw_data':list(values),
-                                            'n_data_bytes':128,
-                                            'elem_size':4
-                                        })
+        resp = ArduinoCommand.execute_command(self,state,
+                                              raw_data=list(values),
+                                              n_data_bytes=256,
+                                              elem_size=4)
         return resp
 
 
@@ -130,9 +165,10 @@ class GetADCStatusCmd(AnalogChipCommand):
 
     @staticmethod
     def parse(args):
-        result = parse_pattern_block(args,0,0,0,
-                                     GetADCStatusCmd.name(),
-                                     debug=False)
+        result = parse_pattern_use_block(args,0,0,0,
+                                         GetADCStatusCmd.name(),
+                                         debug=False,
+                                         db=False)
         if result.success:
             data = result.value
             return GetADCStatusCmd(
@@ -157,11 +193,11 @@ class GetADCStatusCmd(AnalogChipCommand):
             }
         })
 
-    def apply(self,state):
+    def execute_command(self,state):
         if state.dummy:
             return
 
-        resp = AnalogChipCommand.apply(self,state)
+        resp = AnalogChipCommand.execute_command(self,state)
         handle = "adc.%s" % self.loc
         code = resp.data(0)
         print("status_val: %s" % code)
@@ -191,9 +227,10 @@ class GetIntegStatusCmd(AnalogChipCommand):
 
     @staticmethod
     def parse(args):
-        result = parse_pattern_block(args,0,0,0,
-                                     GetIntegStatusCmd.name(),
-                                     debug=False)
+        result = parse_pattern_use_block(args,0,0,0,
+                                         GetIntegStatusCmd.name(),
+                                         debug=False,
+                                         db=False)
         if result.success:
             data = result.value
             return GetIntegStatusCmd(
@@ -218,11 +255,11 @@ class GetIntegStatusCmd(AnalogChipCommand):
             }
         })
 
-    def apply(self,state):
+    def execute_command(self,state):
         if state.dummy:
             return
 
-        resp = AnalogChipCommand.apply(self,state)
+        resp = AnalogChipCommand.execute_command(self,state)
         handle = "integ.%s" % self.loc
         oflow = True if resp.data(0) == 1 else False
         print("status_val: %s" % oflow)

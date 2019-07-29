@@ -2,6 +2,13 @@ from scripts.db import ExperimentDB, ExperimentStatus, OutputStatus, MismatchSta
 import numpy as np
 from enum import Enum
 import seaborn as sns
+import util.util as util
+
+def get_path(filename):
+  path = "PAPER/%s" % filename
+  util.mkdir_if_dne("PAPER")
+  return path
+
 
 class Dataset:
 
@@ -9,7 +16,8 @@ class Dataset:
     self._key = key
     self._data = {}
     self._fields = ['ident','circ_ident','bmark', \
-                    'objective_fun', 'rank', 'mismatch',
+                    'objective_fun', 'model',\
+                    'rank', 'mismatch',
                     'jaunt_circ_file',
                     'quality','runtime','energy']
     self._metafields = ['quality_variance','quality_time_ratio']
@@ -58,7 +66,8 @@ class Dataset:
           .append(0)
 
     else:
-      qualities = list(map(lambda o: o.quality, entry.outputs()))
+      qualities = list(filter(lambda q: not q is None, \
+                              map(lambda o: o.quality, entry.outputs())))
       self._data[key][entry.mismatch]['quality_variance'] \
           .append(np.std(qualities))
 
@@ -80,23 +89,43 @@ def get_data(series_type='bmarks',executed_only=True):
   return data
 
 class BenchmarkVisualization:
-  BENCHMARK_ORDER = ['micro-osc-quarter',
+  BENCHMARK_ORDER = ['micro-osc',
                      'cosc',
                      'pend',
-                     'vanderpol',
-                     'sensor-fanout',
+                     'pend-nl',
                      'spring',
+                     'spring-nl',
+                     'vanderpol',
                      'robot',
-                     'heat1d-g6'
+                     'heat1d-g4',
+                     'heat1d-g8',
+                     'closed-forced-vanderpol',
+                     'kalman-const',
+                     'gentoggle'
   ]
   BENCHMARK_NAMES = {
-    'micro-osc-quarter': 'sin',
-    'cosc': 'damp',
-    'vanderpol': 'vanderpol',
-    'pend': 'pendulum',
-    'spring': 'blocks',
-    'heat1d-g6': 'heat6',
-    'sensor-fanout': 'linfit'
+    'micro-osc': 'sin',
+    'micro-osc-with-gain': 'sinw',
+    'cosc': 'dampened',
+    'vanderpol': 'vander',
+    'closed-forced-vanderpol': 'chaotic-vander',
+    'pend': 'pendl',
+    'pend-nl': 'pend',
+    'lotka': 'lotka-volterra',
+    'spring': 'springl',
+    'kalman-const': 'kalman',
+    'spring-nl': 'spring',
+    'robot': 'pid',
+    'gentoggle': 'gentoggle',
+    'bont': 'bont',
+    'epor': 'epor',
+    'heat1d-g2': 'heat2-1',
+    'heat1d-g4': 'heat4-2',
+    'heat1d-g4-wg': 'heat4-2-gain',
+    'heat1d-g6': 'heat6-3',
+    'heat1d-g6-wg': 'heat6-3-gain',
+    'heat1d-g8': 'heat8-4',
+    'kalman-const': 'kalman'
   }
 
   @staticmethod
@@ -110,8 +139,8 @@ class BenchmarkVisualization:
 
 class Plot(BenchmarkVisualization):
 
-  MARKERS = ['x','^',',','_','v','+','|','D','s']
-  COLORS = sns.color_palette()
+  MARKERS = ['x','^',',','_','v','+','|','D','s']*2
+  COLORS = list(sns.color_palette())*2
 
   MARKER_MAP = {}
   COLOR_MAP = {}
@@ -139,13 +168,18 @@ class Table(BenchmarkVisualization):
     HEADER = "header"
     DATA = "data"
 
-  def __init__(self,name,description,handle,layout,loc='tp'):
+  def __init__(self,name,description, \
+               handle,layout, \
+               loc='tp', \
+               benchmarks=True):
     BenchmarkVisualization.__init__(self)
     self._name = name
     self._handle = handle
     self._layout = layout
     self._loc = loc
+    self._benchmarks = benchmarks
     self._description = description
+    self.two_column = False
     self.lines = []
 
  
@@ -156,9 +190,10 @@ class Table(BenchmarkVisualization):
     self.lines.append((Table.LineType.HEADER,None))
 
   def data(self,bmark,fields):
-    paper_bmark = Table.BENCHMARK_NAMES[bmark]
-    assert(not 'benchmark' in fields)
-    fields['benchmark'] = paper_bmark
+    if self._benchmarks:
+      paper_bmark = Table.BENCHMARK_NAMES[bmark]
+      assert(not 'benchmark' in fields)
+      fields['benchmark'] = paper_bmark
     self.lines.append((Table.LineType.DATA,fields))
 
   @property
@@ -166,13 +201,20 @@ class Table(BenchmarkVisualization):
     return self._fields
 
   def set_fields(self,header):
-    self._fields = header
+    if self._benchmarks:
+      self._fields = ['benchmark'] + header
+    else:
+      self._fields = header
 
   def to_table(self):
     lines = []
-    hdr = ['benchmark']+self._fields
+    hdr = self._fields
     q = lambda l: lines.append(l)
-    q('table')
+    if self.two_column:
+      q('table*')
+    else:
+      q('table')
+
     q(self._loc)
     q(self._description)
     q('tbl:%s' % self._handle)

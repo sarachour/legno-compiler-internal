@@ -86,7 +86,52 @@ class Visitor:
           self.port(block_name,loc,port)
 
 
-  def all(self):
+  def all(self,inputs=False):
     circ = self._circ
     for block_name,loc,config in circ.instances():
       self.block(block_name,loc)
+
+    if inputs:
+      for block_name,loc,config in circ.instances():
+        block = circ.board.block(block_name)
+        for inp in block.inputs:
+          self.input_port(block_name,loc,inp)
+
+class ForwardVisitor(Visitor):
+
+  def __init__(self,circ):
+    Visitor.__init__(self,circ)
+
+
+  def output_port(self,block_name,loc,port):
+    circ = self._circ
+    block = circ.board.block(block_name)
+    config = circ.config(block_name,loc)
+
+    self.visit(block.name,loc,port)
+    for sblk,sloc,sport in \
+      circ.get_conns_by_src(block_name,loc,port):
+      if self.is_free(sblk,sloc,sport):
+        self.port(sblk,sloc,sport)
+
+
+  def input_port(self,block_name,loc,port):
+    circ = self._circ
+    block = circ.board.block(block_name)
+    config = circ.config(block_name,loc)
+
+    outputs = []
+    for output in block.outputs:
+      if not config.has_expr(output):
+        expr = block.get_dynamics(config.comp_mode,output)
+      else:
+        expr = config.expr(output,inject=False)
+
+      if port in expr.vars():
+        outputs.append(output)
+
+    free,bound = self.classify(block_name,loc,outputs)
+    self.visit(block.name,loc,port)
+    for free_var in free:
+      self.port(block.name,loc,free_var)
+

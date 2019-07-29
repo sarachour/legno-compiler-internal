@@ -6,6 +6,7 @@ import lab_bench.lib.chipcmd.data as chipcmd
 import chip.hcdc.globals as glb
 import chip.cont as cont
 import ops.op as ops
+from chip.hcdc.globals import CTX, GLProp
 
 def lut_continuous_model(xbar):
   csm = cont.ContinuousScaleModel()
@@ -23,15 +24,24 @@ def lut_continuous_model(xbar):
 
 block = Block("lut") \
            .add_inputs(props.DIGITAL,["in"]) \
-           .add_outputs(props.DIGITAL,["out"])
+           .add_outputs(props.DIGITAL,["out"]) \
+           .set_comp_modes(["*"], \
+                           glb.HCDCSubset.all_subsets()) \
+           .set_scale_modes("*",["*"], \
+                            glb.HCDCSubset.all_subsets()) \
+
 
 
 digital_props = util.make_dig_props(chipcmd.RangeType.MED,\
-                                    glb.DAC_MIN, glb.DAC_MAX,
-                                    glb.ANALOG_DAC_SAMPLES)
+                                    CTX.get(GLProp.DIGITAL_INTERVAL,
+                                            "lut","*","*",None),
+                                    CTX.get(GLProp.DIGITAL_QUANTIZE,
+                                            "lut","*","*",None)
+)
 
-digital_props.set_continuous(0,glb.MAX_FREQ_LUT,units.khz)
-block.set_scale_modes("*",["*"])
+digital_props.set_continuous(0,CTX.get(GLProp.MAX_FREQ, \
+                                       "lut","*","*",None))
+
 block.set_props("*","*",["in","out"],  digital_props)
 
 block.set_op("*","out",ops.Func(["in"],None)) \

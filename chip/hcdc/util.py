@@ -46,7 +46,8 @@ def build_oprange_cstr(cstrlst,scale):
         contcstrlst.append((var,cstr))
     return contcstrlst
 
-def make_ana_props(rng,lb,ub):
+def make_ana_props(rng,ival):
+    lb,ub = ival
     assert(lb < ub)
     prop = props.AnalogProperties() \
                 .set_interval(lb*rng.coeff(),
@@ -54,7 +55,8 @@ def make_ana_props(rng,lb,ub):
                               unit=units.uA)
     return prop
 
-def make_dig_props(rng,lb,ub,npts):
+def make_dig_props(rng,ival,npts):
+    lb,ub = ival
     start = lb*rng.coeff()
     end = ub*rng.coeff()
     hcdcv2_values = np.linspace(start,end,npts)

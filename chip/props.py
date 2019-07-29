@@ -17,6 +17,9 @@ class Properties:
     def type(self):
         return self._type
 
+    def analog(self):
+        return Properties.is_analog(self._type)
+
     @staticmethod
     def is_analog(typ):
         return typ == Properties.CURRENT or typ == Properties.VOLTAGE \
@@ -38,6 +41,14 @@ class AnalogProperties(Properties):
         Properties.__init__(self,Properties.ANALOG)
         self._bounds = (None,None,units.unknown)
         self._bandwidth = (None,None,units.unknown)
+        self._physical = False
+
+    def set_physical(self,v):
+        self._physical = v
+
+    @property
+    def is_physical(self):
+        return self._physical
 
     def set_bandwidth(self,lower,upper,unit):
         assert(lower is None or upper is None or lower <= upper)
@@ -64,12 +75,11 @@ class AnalogProperties(Properties):
         assert(not self._bounds[0] is None)
         assert(not self._bounds[1] is None)
         assert(not self._bounds[1] is units.unknown)
-        assert(not self._min[0] is None)
-        assert(not self._min[1] is units.unknown)
 
     def __repr__(self):
-        return "Analog(bounds=%s, bw=%s, min=%s)" \
-            % (self._bounds,self._bandwidth,self._min)
+        return "Analog(bounds=%s, bw=%s, phys=%s)" \
+            % (self._bounds,self._bandwidth, \
+               self._physical)
 
 class DigitalProperties(Properties):
     class ClockType(Enum):
@@ -91,23 +101,28 @@ class DigitalProperties(Properties):
         self._sample_rate = (None,units.unknown)
         # for continuous
         self._bandwidth = (None,None,units.unknown)
+        self._resolution = 1.0
 
     def __repr__(self):
-        clk = "Synch(kind=%s, rate=%s, samps=%s, bw=%s)" % \
-              (self._kind,self._sample_rate, self._max_samples,self._bandwidth)
+        clk = "Synch(kind=%s, rate=%s, bw=%s)" % \
+              (self._kind,self._sample_rate, self._bandwidth)
         dig = "Digital(min=%s, max=%s)" % (min(self._values), max(self._values))
         return dig + " " + clk
 
-    def set_continuous(self,lb,ub,unit):
+    def set_continuous(self,lb,ub,unit=1.0):
         self._kind = DigitalProperties.ClockType.CONTINUOUS
         self._bandwidth = (lb,ub,unit)
         return self
 
-    def set_clocked(self,sample_rate,max_samples,unit):
+    def set_clocked(self,sample_rate,max_samples,unit=1.0):
         self._kind = DigitalProperties.ClockType.CLOCKED
         self._sample_rate = (sample_rate,unit)
         self._max_samples = max_samples
         return self
+
+    def set_resolution(self,res):
+        assert(res >= 1.0)
+        self._resolution = res
 
     def interval(self):
         lb = min(self.values())
@@ -126,8 +141,15 @@ class DigitalProperties(Properties):
         return self._kind
 
     @property
+    def resolution(self):
+        return self._resolution
+
+
+    @property
     def sample_rate(self):
         rate,unit = self._sample_rate
+        if rate is None:
+            return None
         return rate*unit
 
 

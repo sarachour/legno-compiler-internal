@@ -26,12 +26,22 @@ def copy_signal(board,node,output,n_copies,label,max_fanouts):
                                                              mode='*',
                                                              prop=prop.CURRENT
                                      )
+
         for level,ports in free_ports.items():
             for port_node,port in ports:
                 port_node.config.set_label(port,label,kind=Labels.OUTPUT)
 
         new_node,ctx = node.copy()
         acirc.ANode.connect(new_node,output,c_node,c_input)
+
+        print("<< number copies %d >>" % n_copies)
+        total_copies = 0
+        for level,ports in free_ports.items():
+            total_copies += len(ports)
+        if(total_copies < n_copies):
+            print("WARNING: failed to build hierarchy %d<%d" \
+                  % (total_copies,n_copies))
+            continue
 
         yield free_ports,c_node
 
@@ -75,7 +85,8 @@ def cs2s_blockinst(board,node,outputs,stubs):
 def connect_stubs_to_sources(board,node_map,mapping):
     groups = arco_util.group_by(mapping, key=lambda args: args[0][0].id)
     for group in groups.values():
-        assert(arco_util.all_same(map(lambda n: n[0][0].id, group)))
+        assert(arco_util.all_same(map(lambda n: n[0][0].id,\
+                                      group)))
         node = group[0][0][0]
         outputs = list(map(lambda args: args[0][1],group))
         stubs = list(map(lambda args: args[1],group))
@@ -92,7 +103,7 @@ def connect_stubs_to_sources(board,node_map,mapping):
         #print(node.to_str())
         #input()
 
-    print("==========")
+    print("=== CONNECTED -> VALIDATING ====")
     for (node,output),inp in mapping:
         in_varmap = \
             any(map(lambda other_node: other_node.contains(inp), \
@@ -114,41 +125,79 @@ def match_stubs_to_sources(sources,stubs):
                 var_choices[var].append(lvl)
                 var_sources[(var,lvl)].append(src)
     # build final choice and stub maps
-    choices = []
-    all_stubs = []
+    choices = {}
+    all_stubs = {}
     for var_name,stubs in stubs.items():
+        if not var_name in all_stubs:
+            all_stubs[var_name] = []
+            choices[var_name] = []
+
         for stub in stubs:
             selection = []
             for choice in set(var_choices[stub.label]):
                 selection.append((stub.label,choice))
 
-            choices.append(selection)
-            all_stubs.append(stub)
+            choices[var_name].append(selection)
+            all_stubs[var_name].append(stub)
 
     # go through each choice
-    for choice in itertools.product(*choices):
-        outputs = []
-        indexes = {}
-        invalid = False
-        # compute output dictionary
-        for var_name,level in choice:
-            if not (var_name,level) in indexes:
-                indexes[(var_name,level)] = 0
+    for v in choices:
+        for stub,choice in zip(all_stubs[v],choices[v]):
+            print(stub,choice)
+        print("========")
 
-            idx = indexes[(var_name,level)]
-            outs_on_level = var_sources[(var_name,level)]
-            if idx >= len(outs_on_level):
-                invalid = True
-                break
+    def get_level_assignments(var_name,stubs,options):
+        for choice in itertools.product(*options):
+            outputs = []
+            indexes = {}
+            invalid = False
+            # compute output dictionary
+            for var_name,level in choice:
+                if not (var_name,level) in indexes:
+                    indexes[(var_name,level)] = 0
 
-            out_block,out_port = outs_on_level[idx]
-            outputs.append((out_block,out_port))
-            indexes[(var_name,level)] += 1
+                idx = indexes[(var_name,level)]
+                outs_on_level = var_sources[(var_name,level)]
+                if idx >= len(outs_on_level):
+                    invalid = True
+                    print("%s: in_use=%d level=%d" % (var_name, \
+                                                      len(outs_on_level),
+                                                      level))
+                    break
 
-        if not invalid:
-            for (outp,port),stub in zip(outputs,all_stubs):
-                print("%s port=%s :> %s" % (outp.name,port,stub))
-            yield list(zip(outputs,all_stubs))
+                out_block,out_port = outs_on_level[idx]
+                outputs.append((out_block,out_port))
+                indexes[(var_name,level)] += 1
+
+            if not invalid:
+                for (outp,port),stub in zip(outputs,stubs):
+                    print("%s port=%s :> %s" % (outp.name,port,stub))
+                yield list(zip(outputs,stubs))
+
+    assigns = []
+    variables = []
+    for var_name,choices in choices.items():
+        opts = []
+        for subassigns in get_level_assignments(var_name,
+                                                all_stubs[var_name],
+                                                choices):
+            opts.append(subassigns)
+
+        if len(opts) == 0:
+            print("NO MAPPINGS: %s" % var_name)
+            input()
+        assigns.append(opts)
+        variables.append(var_name)
+
+    for opt in itertools.product(*assigns):
+        assignment = []
+        for subopt in opt:
+            assignment += subopt
+
+        for (out,port),e in assignment:
+            print("%s.%s %s" % (out.name,port,e))
+        yield assignment
+
 
 
 def count_var_refs(frag_node_map):

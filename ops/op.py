@@ -4,6 +4,7 @@ import ops.interval as interval
 import ops.bandwidth as bandwidth
 from enum import Enum
 import numpy as np
+import random
 
 def to_python(e):
     if e.op == OpType.VAR:
@@ -32,9 +33,31 @@ def to_python(e):
         v = list(set(vs1+vs2))
         return v,"(%s)*(%s)" % (a1,a2)
 
+    elif e.op == OpType.CLAMP:
+        v,a = to_python(e.arg1)
+        ival = e.interval
+        a2 = "max(%f,%s)" % (ival.lower,a)
+        a3 = "min(%f,%s)" % (ival.upper,a2)
+        return v,a3
+
     elif e.op == OpType.SGN:
         v,a = to_python(e.arg(0))
         return v,"math.copysign(1,%s)" % a
+
+    elif e.op == OpType.RANDFUN:
+        v,a = to_python(e.arg(0))
+        fmt = "np.interp([{expr}],np.linspace(-1,1,{n}),randlist({seed},{n}))[0]" \
+              .format(
+                  expr=a,
+                  n=e.n,
+                  seed=e.seed
+              )
+        return v,fmt
+
+    elif e.op == OpType.RANDOM_VAR:
+        v = e.variance
+        return [],"np.random.uniform(%f,%f)" \
+            % (-v,v)
 
     elif e.op == OpType.UNIFNOISE:
         nmax = e.bound
@@ -44,11 +67,11 @@ def to_python(e):
 
     elif e.op == OpType.SIN:
         v,a = to_python(e.arg(0))
-        return v,"math.sin(%s)" % a
+        return v,"math.sin(%s.real)" % a
 
     elif e.op == OpType.COS:
         v,a = to_python(e.arg(0))
-        return v,"math.cos(%s)" % a
+        return v,"math.cos(%s.real)" % a
 
 
     elif e.op == OpType.SQRT:
@@ -58,6 +81,17 @@ def to_python(e):
     elif e.op == OpType.ABS:
         v,a = to_python(e.arg(0))
         return v,"abs(%s)" % a
+
+    elif e.op == OpType.CALL:
+        expr = e.func.expr
+        args = e.func.func_args
+        vals = e.values
+        assigns = dict(zip(args,vals))
+        conc_expr = expr.substitute(assigns)
+        return to_python(conc_expr)
+
+    elif e.op == OpType.EMIT:
+        return to_python(e.arg(0))
 
     else:
         raise Exception("unimpl: %s" % e)
@@ -83,13 +117,17 @@ class OpType(Enum):
     LN= "ln"
     EXP= "exp"
     SQUARE= "pow2"
+    RANDFUN = "randfun"
     UNIFNOISE = "uniformnz"
+    CLAMP="clamp"
+    RANDOM_VAR="rv"
 
 class Op:
 
     def __init__(self,op,args):
         for arg in args:
-            assert(isinstance(arg,Op))
+            if not (isinstance(arg,Op)):
+                raise Exception("not op: %s" % arg)
         self._args = args
         self._op = op
         self._is_associative = True \
@@ -195,6 +233,9 @@ class Op:
             return Cos.from_json(obj)
         elif op == OpType.ADD:
             return Add.from_json(obj)
+        elif op == OpType.RANDFUN:
+            return RandFun.from_json(obj)
+
 
         else:
             raise Exception("unimpl: %s" % obj)
@@ -308,6 +349,11 @@ class Integ(Op2):
         self._handle = handle
         pass
 
+    def substitute(self,bindings):
+        inp = self.arg(0).substitute(bindings)
+        ic = self.arg(1).substitute(bindings)
+        return Integ(inp,ic,self._handle)
+
     @property
     def handle(self):
         return self._handle
@@ -387,9 +433,10 @@ class Integ(Op2):
 
 class ExtVar(Op):
 
-    def __init__(self,name):
+    def __init__(self,name,loc=None):
         Op.__init__(self,OpType.EXTVAR,[])
         self._name = name
+        self._loc = loc
 
     def coefficient(self):
         return 1.0
@@ -399,6 +446,10 @@ class ExtVar(Op):
 
     def prod_terms(self):
         return [self]
+
+    @property
+    def loc(self):
+        return self._loc
 
     @property
     def name(self):
@@ -415,10 +466,6 @@ class ExtVar(Op):
         assert(self._name in bandwidths)
         return bandwidth.BandwidthCollection(bandwidths[self._name])
 
-    @staticmethod
-    def from_json(obj):
-        return ExtVar(obj['name'])
-
 
     @property
     def name(self):
@@ -433,12 +480,13 @@ class ExtVar(Op):
 
     @staticmethod
     def from_json(obj):
-        return ExtVar(obj['name'])
+        return ExtVar(obj['name'],obj['physical'])
 
 
     def to_json(self):
         obj = Op.to_json(self)
         obj['name'] = self._name
+        obj['physical'] = self._physical
         return obj
 
 class Var(Op):
@@ -486,6 +534,7 @@ class Var(Op):
 
     def infer_bandwidth(self,intervals,bandwidths={}):
         if not self.name in bandwidths:
+            print(bandwidths)
             raise Exception("unbound  bandwidth <%s>" % self.name)
 
         return bandwidth.BandwidthCollection(bandwidths[self.name])
@@ -580,9 +629,14 @@ class Const(Op):
 
 class Emit(Op):
 
-    def __init__(self,node):
+    def __init__(self,node,loc=None):
         Op.__init__(self,OpType.EMIT,[node])
+        self._loc = loc
         pass
+
+    @property
+    def loc(self):
+        return self._loc
 
     def infer_bandwidth(self,intervals,bandwidths={}):
         return self.arg(0).infer_bandwidth(intervals,bandwidths)
@@ -644,6 +698,13 @@ class Mult(Op2):
         bw2 = self.arg2.infer_bandwidth(intervals,bandwidths)
         return bw1.merge(bw2,
                          bw1.bandwidth.mult(bw2.bandwidth))
+
+    def compute_bandwidth(self,bandwidths):
+        bw1 = self.arg1.compute_bandwidth(bandwidths)
+        bw2 = self.arg2.compute_bandwidth(bandwidths)
+        return bw1.merge(bw2,
+                         bw1.bandwidth.mult(bw2.bandwidth))
+
 
     def match_op(self,expr):
         if expr.op == self._op:
@@ -803,6 +864,10 @@ class Func(Op):
         return self._expr.compute(bindings)
 
     @property
+    def expr(self):
+        return self._expr
+
+    @property
     def func_args(self):
         return self._vars
 
@@ -826,6 +891,40 @@ class Func(Op):
     def __repr__(self):
         pars = " ".join(map(lambda p: str(p), self._vars))
         return "lambd(%s).(%s)" % (pars,self._expr)
+
+class Clamp(Op):
+
+    def __init__(self,arg,ival):
+        Op.__init__(self,OpType.CLAMP,[arg])
+        self._interval = ival
+
+    @property
+    def arg1(self):
+        return self.arg(0)
+
+    @property
+    def interval(self):
+        return self._interval
+
+    def compute(self,bindings):
+        result = self.arg(0).compute(bindings)
+        return self._interval.clamp(result)
+
+    def __repr__(self):
+        return "clamp(%s,%s)" % (self.arg(0), \
+                              self._interval)
+
+class RandomVar(Op):
+    def __init__(self,variance):
+        Op.__init__(self,OpType.RANDOM_VAR,[])
+        self._variance = variance
+
+    @property
+    def variance(self):
+        return self._variance
+
+    def compute(self,bindings):
+        raise Exception("random variable")
 
 class Abs(Op):
 
@@ -857,6 +956,49 @@ class Abs(Op):
         bwcoll.update(bandwidth.InfBandwidth())
         return bwcoll
 
+
+class RandFun(Op):
+
+    def __init__(self,arg,n=100,seed=None):
+        Op.__init__(self,OpType.RANDFUN,[arg])
+        self.n = n
+        if seed is None:
+            self.seed = random.randint(0,1000000)
+        else:
+            self.seed = seed
+
+    @staticmethod
+    def from_json(obj):
+        rf = RandFun(Op.from_json(obj['args'][0]), \
+                     obj['n'], \
+                     obj['seed'])
+        return rf
+
+    def substitute(self,assigns):
+        rf = RandFun(self.arg(0).substitute(assigns), \
+                     self.n,self.seed)
+        return rf
+
+    def compute(self,bindings):
+        raise NotImplementedError
+
+    def infer_bandwidth(self,intervals,bandwidths):
+        bwcoll = self.arg(0).infer_bandwidth(intervals,bandwidths)
+        bwcoll.update(bandwidth.InfBandwidth())
+        return bwcoll
+ 
+    def compute_interval(self,ivals):
+        ivalcoll = self.arg(0).compute_interval(ivals)
+        new_ival = interval.Interval(-1,1)
+        ivalcoll.update(new_ival)
+        return ivalcoll
+
+
+    def to_json(self):
+        obj = Op.to_json(self)
+        obj['n'] = self.n
+        obj['seed'] = self.seed
+        return obj
 
 class Sgn(Op):
 
@@ -1138,6 +1280,6 @@ def mkadd(terms):
         return Add(terms[0],terms[1])
     else:
         curr = Add(terms[0],terms[1])
-        for t in range(2,len(terms)):
-            curr = Add(curr,t)
+        for i in range(2,len(terms)):
+            curr = Add(curr,terms[i])
         return curr

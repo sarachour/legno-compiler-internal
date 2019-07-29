@@ -1,41 +1,21 @@
 from enum import Enum
-from lab_bench.lib.base_command import ArduinoCommand
 import lab_bench.lib.cstructs as cstructs
 import lab_bench.lib.enums as enums
-
-class Priority(str,Enum):
-    FIRST = "first"
-    EARLY = "early"
-    NORMAL = "normal"
-    LATE = "late"
-    LAST = "last"
-
-    def priority(self):
-        if self == Priority.FIRST:
-            return 0
-        elif self == Priority.EARLY:
-            return 1
-        elif self == Priority.NORMAL:
-            return 2
-        elif self == Priority.LATE:
-            return 3
-        elif self == Priority.LAST:
-            return 4
 
 class LUTSourceType(str,Enum):
     EXTERN = 'extern'
     ADC0 = "adc0"
     ADC1 = "adc1"
-
+    CONTROLLER = "controller"
 
 
     def code(self):
         if self == LUTSourceType.EXTERN:
-            return 0
-        elif self == LUTSourceType.ADC0:
-            return 1
-        elif self == LUTSourceType.ADC1:
             return 2
+        elif self == LUTSourceType.ADC0:
+            return 0
+        elif self == LUTSourceType.ADC1:
+            return 1
         else:
             raise Exception("unknown: %s" % self)
 
@@ -114,6 +94,7 @@ class RangeType(str,Enum):
     MED = 'medium'
     HIGH = 'high'
     LOW = 'low'
+    UNKNOWN = "unknown"
 
     @staticmethod
     def option_names():
@@ -162,19 +143,83 @@ class RangeType(str,Enum):
             return "l"
         elif self == RangeType.HIGH:
             return "h"
+        elif self == RangeType.UNKNOWN:
+            return "?"
+        else:
+            raise Exception("unknown")
 
     def code(self):
         if self == RangeType.MED:
             return 1
         elif self == RangeType.LOW:
-            return 0
-        elif self == RangeType.HIGH:
             return 2
+        elif self == RangeType.HIGH:
+            return 0
+        elif self == RangeType.UNKNOWN:
+            return 3
         else:
             raise Exception("unknown")
 
     def __repr__(self):
         return self.name
+
+class BoolType(str,Enum):
+    TRUE = 'true'
+    FALSE = 'false'
+
+    def boolean(self):
+        if self == BoolType.TRUE:
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def from_bool(b):
+        if b:
+            return BoolType.TRUE
+        else:
+            return BoolType.FALSE
+
+    @staticmethod
+    def from_code(code):
+        if code == 0:
+            return BoolType.FALSE
+        else:
+            return BoolType.TRUE
+
+    def code(self):
+        if BoolType.TRUE == self:
+            return 1
+        else:
+            return 0
+
+class PortType(str,Enum):
+    IN0 = "in0"
+    IN1 = "in1"
+    OUT0 = "out0"
+    OUT1 = "out1"
+    OUT2 = "out2"
+
+    def to_code(self):
+        codes = {
+            PortType.IN0: 0,
+            PortType.IN1: 1,
+            PortType.OUT0: 2,
+            PortType.OUT1: 3,
+            PortType.OUT2: 4
+        }
+        return codes[self]
+
+    @staticmethod
+    def from_code(i):
+        codes = {
+            0: PortType.IN0,
+            1: PortType.IN1,
+            2: PortType.OUT0,
+            3: PortType.OUT1,
+            4: PortType.OUT2
+        }
+        return codes[i]
 
 class SignType(str,Enum):
     POS = 'pos'
@@ -244,6 +289,23 @@ class CircLoc:
         self.slice = slice;
         self.index = index;
 
+    @staticmethod
+    def from_json(obj):
+        return CircLoc(
+            chip=obj['chip'],
+            tile=obj['tile'],
+            slice=obj['slice'],
+            index=obj['index']
+        )
+
+    def to_json(self):
+        return {
+            'chip': self.chip,
+            'tile': self.tile,
+            'slice': self.slice,
+            'index': self.index
+        }
+
     def __hash__(self):
         return hash(str(self))
 
@@ -289,6 +351,12 @@ class CircPortLoc:
         assert(isinstance(port,int) or port is None)
         self.port = port
 
+    def to_json(self):
+        return {
+            'loc': self.loc.to_json(),
+            'port_id': self.port
+        }
+
     def build_ctype(self):
         if self.loc.index is None:
             loc = CircLoc(self.loc.chip,
@@ -317,81 +385,3 @@ class CircPortLoc:
     def __repr__(self):
         return "port(%s,%s)" % (self.loc,self.port)
 
-
-
-class AnalogChipCommand(ArduinoCommand):
-
-    def __init__(self):
-        ArduinoCommand.__init__(self,cstructs.cmd_t())
-
-    def specify_index(self,block,loc):
-        return (block == enums.BlockType.FANOUT) \
-            or (block == enums.BlockType.TILE_INPUT) \
-            or (block == enums.BlockType.TILE_OUTPUT) \
-            or (block == enums.BlockType.MULT)
-
-    def specify_output_port(self,block):
-        return (block == enums.BlockType.FANOUT)
-
-    def specify_input_port(self,block):
-        return (block == enums.BlockType.MULT)
-
-
-    def test_loc(self,block,loc):
-        NCHIPS = 2
-        NTILES = 4
-        NSLICES = 4
-        NINDICES_COMP = 2
-        NINDICES_TILE = 4
-        if not loc.chip in range(0,NCHIPS):
-            self.fail("unknown chip <%d>" % loc.chip)
-        if not loc.tile in range(0,NTILES):
-            self.fail("unknown tile <%d>" % loc.tile)
-        if not loc.slice in range(0,NSLICES):
-            self.fail("unknown slice <%d>" % loc.slice)
-
-        if (block == enums.BlockType.FANOUT) \
-            or (block == enums.BlockType.TILE_INPUT) \
-            or (block == enums.BlockType.TILE_OUTPUT) \
-            or (block == enums.BlockType.MULT):
-            indices = {
-                enums.BlockType.FANOUT: range(0,NINDICES_COMP),
-                enums.BlockType.MULT: range(0,NINDICES_COMP),
-                enums.BlockType.TILE_INPUT: range(0,NINDICES_TILE),
-                enums.BlockType.TILE_OUTPUT: range(0,NINDICES_TILE)
-            }
-            if loc.index is None:
-                self.fail("expected index <%s>" % block)
-
-            elif not loc.index in indices[block]:
-                self.fail("block <%s> index <%d> must be from indices <%s>" %\
-                          (block,loc.index,indices[block]))
-
-        elif not block is None:
-           if not loc.index is None:
-               self.fail("expected no index <%s> <%d>" %\
-                         (block,loc.index))
-
-        else:
-            self.fail("not in block list <%s>" % block)
-
-    def priority(self):
-        return Priority.EARLY
-
-    def analyze(self):
-        return None
-
-    def calibrate(self):
-        return None
-
-    def disable(self):
-        return None
-
-    def configure(self):
-        return None
-
-    def apply(self,state):
-        if state.dummy:
-            return
-        resp = ArduinoCommand.execute(self,state)
-        return resp

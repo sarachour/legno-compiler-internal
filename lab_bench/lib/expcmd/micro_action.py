@@ -199,7 +199,7 @@ class MicroSetSimTimeCmd(ArduinoCommand):
     def __init__(self,sim_time,input_time,frame_time=None):
         ArduinoCommand.__init__(self)
         if(sim_time <= 0):
-            self.fail("invalid simulation time: %s" % n_samples)
+            self.fail("invalid simulation time: %s" % sim_time)
 
         self._sim_time = sim_time
         self._input_time = input_time
@@ -223,12 +223,12 @@ class MicroSetSimTimeCmd(ArduinoCommand):
         return 'micro_set_sim_time'
 
     def __repr__(self):
-        return "%s %f %f" % (self.name(),self._sim_time,self._input_time)
+        return "%s %.3e %.3e" % (self.name(),self._sim_time,self._input_time)
 
 
     @staticmethod
     def parse(args):
-        return strict_do_parse("{sim_time:f} {input_time:f}", args, \
+        return strict_do_parse("{sim_time:g} {input_time:g}", args, \
                                MicroSetSimTimeCmd)
 
 
@@ -352,62 +352,6 @@ class MicroUseOscCmd(ArduinoCommand):
 
     def __repr__(self):
         return self.name()
-
-class MicroSetupChipCmd(ArduinoCommand):
-
-    def __init__(self):
-        ArduinoCommand.__init__(self)
-
-
-    @staticmethod
-    def name():
-        return 'micro_setup_chip'
-
-    @staticmethod
-    def desc():
-        return "[microcontroller] calibrate+setup blocks/conns in chip."
-
-    @staticmethod
-    def parse(args):
-        return strict_do_parse("",args,MicroSetupChipCmd)
-
-
-
-    def __repr__(self):
-        return self.name()
-
-
-    def execute(self,state):
-        for stmt in state.calibrate_chip():
-            stmt.apply(state)
-
-        for stmt in state.configure_chip():
-            stmt.apply(state)
-
-
-class MicroTeardownChipCmd(ArduinoCommand):
-
-    def __init__(self):
-        ArduinoCommand.__init__(self)
-
-    @staticmethod
-    def name():
-        return 'micro_teardown_chip'
-
-    @staticmethod
-    def desc():
-        return "[microcontroller] calibrate+teardown blocks/conns in chip."
-
-    @staticmethod
-    def parse(args):
-        return strict_do_parse("",args,MicroTeardownChipCmd)
-
-    def __repr__(self):
-        return self.name()
-
-    def execute(self,state):
-        for stmt in state.teardown_chip():
-            stmt.apply(state)
 
 
 class MicroRunCmd(ArduinoCommand):

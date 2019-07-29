@@ -99,6 +99,12 @@ def rank_model(circ):
     if not snr is None and snr > 0:
       snrs.append(snr)
 
+  score = 1.0
+  if len(snrs) == 0 or len(iface_snrs) == 0:
+    return 0.0
+
+  snrs = [1] if len(snrs) == 0 else snrs
+  iface_snrs [1] if len(iface_snrs) == 0 else iface_snrs
   score = np.log10(min(snrs)*min(iface_snrs))
   return score
 
@@ -106,20 +112,15 @@ def rank(circ):
   return rank_model(circ)
 
 def clear(circ):
-  for _,_,config in circ.instances():
-    config.clear_physical_model()
-
-def clear_noise_model(circ):
-  for _,_,config in circ.instances():
-    config.clear_noise_model()
+  pass
 
 def execute(circ):
   clear(circ)
-  print("<< compute noise >>")
-  prop_noise.compute(circ)
-  print("<< compute bias >>")
-  prop_bias.compute(circ)
-  print("<< compute delay >>")
-  prop_delay.compute(circ)
-  score = rank(circ)
-  print("score: %s" % score)
+  #print("<< compute noise >>")
+  #prop_noise.compute(circ)
+  #print("<< compute bias >>")
+  #prop_bias.compute(circ)
+  #print("<< compute delay >>")
+  #prop_delay.compute(circ)
+  #score = rank(circ)
+  #print("score: %s" % score)

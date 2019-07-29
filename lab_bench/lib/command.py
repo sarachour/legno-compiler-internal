@@ -5,10 +5,12 @@ from lab_bench.lib.chipcmd.use import *
 from lab_bench.lib.chipcmd.config import *
 from lab_bench.lib.chipcmd.conn import *
 from lab_bench.lib.chipcmd.calib import *
+from lab_bench.lib.chipcmd.profile import *
 from lab_bench.lib.chipcmd.misc import *
 from lab_bench.lib.expcmd.micro_action import *
 from lab_bench.lib.expcmd.micro_getter import *
 from lab_bench.lib.expcmd.osc import *
+from lab_bench.lib.expcmd.client import *
 '''
 ###################
 CIRCUIT COMMANDS
@@ -31,14 +33,15 @@ COMMANDS = [
     UseFanoutCmd,
     MakeConnCmd,
     # circuit commands that are automatically generated
-    #DisableCmd,
-    #BreakConnCmd,
-    #CalibrateCmd,
+    DisableCmd,
+    BreakConnCmd,
+    CalibrateCmd,
+    # offset commands
+    GetStateCmd,
+    ProfileCmd,
     # experiment commands dispatched to microcontroller
     MicroResetCmd,
     MicroRunCmd,
-    MicroTeardownChipCmd,
-    MicroSetupChipCmd,
     MicroGetStatusCmd,
     MicroUseOscCmd,
     MicroUseArdDACCmd,
@@ -55,9 +58,9 @@ COMMANDS = [
     OscGetValuesCmd,
     OscSetVoltageRangeCmd,
     OscSetupTrigger,
-    OscSetSimTimeCmd
+    OscSetSimTimeCmd,
     # virtual commands, deprecated
-    #SetReferenceFunction
+    WaitForKeypress
 ]
 
 
@@ -79,3 +82,68 @@ def parse(line):
 
     return None
 
+
+def profile(state,obj, \
+            recompute=False, \
+            clear=False, \
+            bootstrap=False, \
+            n=5):
+    if isinstance(obj,UseCommand):
+        dbkey = obj.to_key(targeted=False)
+        result = state.state_db.get(dbkey)
+        if result.success:
+            print(">> set state")
+            backup_cached = obj.cached
+            obj.cached = True
+            obj.execute(state)
+            print(">> profile")
+            ProfileCmd(obj.block_type,
+                       obj.loc.chip,
+                       obj.loc.tile,
+                       obj.loc.slice,
+                       index=obj.loc.index,
+                       clear=clear,
+                       bootstrap=bootstrap,
+                       n=n) \
+                       .execute(state)
+            obj.cached = backup_cached
+
+
+
+def calibrate(state,obj,recompute=False, \
+              targeted_calibrate=False, \
+              targeted_measure=False,
+              error_scale=1.0):
+    if isinstance(obj,UseCommand):
+        if obj.max_error*error_scale > 1.0:
+            return False
+
+        dbkey = obj.to_key(targeted=targeted_calibrate)
+        if not (state.state_db.has(dbkey)) or \
+           not state.state_db.get(dbkey).success or \
+           recompute:
+            obj.cached = False
+            obj.execute(state)
+            print(">> resetting defaults")
+            DefaultsCommand().execute(state)
+            print(">> set state")
+            obj.execute(state)
+            print(">> calibrate [%f]" % obj.max_error)
+            succ = CalibrateCmd(obj.block_type,
+                                obj.loc.chip,
+                                obj.loc.tile,
+                                obj.loc.slice,
+                                obj.loc.index,
+                                max_error=obj.max_error*error_scale,
+                                targeted=targeted_calibrate) \
+                                .execute(state)
+
+
+        result = state.state_db.get(dbkey)
+        if result.success:
+            print("[[SUCCESS!]]")
+            return True
+        else:
+            print("[[FAILURE]]")
+            return False
+    return None

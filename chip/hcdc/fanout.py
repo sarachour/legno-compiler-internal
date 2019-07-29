@@ -1,5 +1,4 @@
 from chip.block import Block, BlockType
-from chip.phys import PhysicalModel
 import chip.props as props
 import chip.hcdc.util as util
 import lab_bench.lib.chipcmd.data as chipcmd
@@ -9,6 +8,7 @@ import ops.op as ops
 import ops.nop as nops
 import itertools
 import chip.units as units
+from chip.hcdc.globals import CTX, GLProp
 
 def get_comp_modes():
     comp_options = [chipcmd.SignType.options(),
@@ -26,24 +26,9 @@ def get_scale_modes():
     return list(util.apply_blacklist(chipcmd.RangeType.options(), \
                                      blacklist))
 
-def blackbox_model(fanout):
-    def config_phys_model(phys,rng):
-        if rng == chipcmd.RangeType.MED:
-            new_phys =  PhysicalModel.read(util.datapath('fanout-m.bb'))
-        elif rng == chipcmd.RangeType.HIGH:
-            new_phys = PhysicalModel.read(util.datapath('fanout-h.bb'))
-        else:
-            raise Exception("unknown physical model: %s" % rng)
 
-        phys.set_to(new_phys)
-
-    comp_modes = get_comp_modes()
-    scale_modes = get_scale_modes()
-    for c_mode in comp_modes:
-        for rng in scale_modes:
-            config_phys_model(fanout.physical(c_mode,rng,"out0"),rng)
-            config_phys_model(fanout.physical(c_mode,rng,"out1"),rng)
-            config_phys_model(fanout.physical(c_mode,rng,"out2"),rng)
+def is_standard(mode):
+    return mode == chipcmd.RangeType.MED
 
 def continuous_scale_model(fanout):
     comp_modes = get_comp_modes()
@@ -51,45 +36,39 @@ def continuous_scale_model(fanout):
     for comp_mode in comp_modes:
         csm = ContinuousScaleModel()
         csm.set_baseline((chipcmd.RangeType.MED))
-        inp = csm.decl_var(CSMOpVar("in"))
-        outs = [None]*3
-        for i in range(0,3):
-            outs[i] = csm.decl_var(CSMOpVar("out%d" % i))
-            coeff = csm.decl_var(CSMCoeffVar("out%d" % i))
-            csm.eq(ops.Var(outs[i].varname), \
-                   ops.Mult(ops.Var(inp.varname),ops.Var(coeff.varname)))
-            csm.eq(ops.Var(outs[i].varname), ops.Var(inp.varname))
-
-        for scm in scale_modes:
-            csm.discrete.add_mode(scm)
-            csm.discrete.add_cstr(scm,inp,scm.coeff())
-            for i in range(0,3):
-                csm.discrete.add_cstr(scm,outs[i],scm.coeff())
-
         fanout.set_scale_model(comp_mode,csm)
 
 def scale_model(fanout):
     comp_modes = get_comp_modes()
     scale_modes = get_scale_modes()
     for comp_mode in comp_modes:
-        fanout.set_scale_modes(comp_mode,scale_modes)
+        std,nonstd = gutil.partition(is_standard,scale_modes)
+        fanout.set_scale_modes(comp_mode,std, \
+                               glb.HCDCSubset.all_subsets())
+        fanout.set_scale_modes(comp_mode,nonstd, \
+                               [glb.HCDCSubset.UNRESTRICTED, \
+                                glb.HCDCSubset.EXTENDED])
+
         for rng in scale_modes:
             # ERRATA: fanout doesn't scale
+            get_prop = lambda p : CTX.get(p, fanout.name,
+                                    '*',mode,None)
+            ana_props = util.make_ana_props(rng,
+                                            get_prop(GLProp.CURRENT_INTERVAL)
+            )
             fanout\
                 .set_coeff(comp_mode,rng,"out0",1.0) \
                 .set_coeff(comp_mode,rng,"out1",1.0) \
                 .set_coeff(comp_mode,rng,"out2",1.0)
             fanout\
                 .set_props(comp_mode,rng,["out0","out1","out2","in"],
-                        util.make_ana_props(rng,
-                                            glb.ANALOG_MIN, \
-                                            glb.ANALOG_MAX))
+                           ana_props)
 
     fanout.check()
 
 
 block = Block('fanout',type=BlockType.COPIER) \
-.set_comp_modes(get_comp_modes()) \
+.set_comp_modes(get_comp_modes(), glb.HCDCSubset.all_subsets()) \
 .add_outputs(props.CURRENT,["out1","out2","out0"]) \
 .add_inputs(props.CURRENT,["in"])
 
@@ -103,6 +82,5 @@ for mode in get_comp_modes():
     block.set_op(mode,"out1",do_sign(sign1))
     block.set_op(mode,"out2",do_sign(sign2))
 
-blackbox_model(block)
 scale_model(block)
 continuous_scale_model(block)

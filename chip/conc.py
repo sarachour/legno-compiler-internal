@@ -13,6 +13,7 @@ class ConcCirc:
         self._filename = filename
         #self._intervals = {}
         #self._bandwidths = {}
+        self.meta = {}
 
     def copy(self):
         circ = ConcCirc(self._board)
@@ -56,10 +57,12 @@ class ConcCirc:
 
 
     def use(self,block,loc,config=None):
-        if not self._board.is_block_at(block,loc):
+        if not self._board is None and\
+           not self._board.is_block_at(block,loc):
             for block in self._board.blocks_at(loc):
                 print(block.name)
-            raise Exception("no block <%s> at that location.")
+            raise Exception("no block <%s> at location <%s>." \
+                            % (block.name,loc))
 
         if not block in self._configs:
             self._configs[block] = {}
@@ -83,6 +86,16 @@ class ConcCirc:
             return False
 
         return True
+
+    def get_conns_by_src(self,tblk,tloc,tport):
+        assert(isinstance(tblk,str))
+        assert(isinstance(tloc,str))
+        assert(isinstance(tport,str))
+        if not (tblk,tloc,tport) in self._conns:
+            return []
+        else:
+            tup = self._conns[(tblk,tloc,tport)]
+            return [tup]
 
     def get_conns_by_dest(self,tblk,tloc,tport):
         assert(isinstance(tblk,str))
@@ -140,7 +153,8 @@ class ConcCirc:
             raise Exception("block <%s.%s> not in use" % (block1,loc1))
 
 
-        if not self._board.can_connect(block1,loc1,port1,
+        if not self._board is None and \
+           not self._board.can_connect(block1,loc1,port1,
                                        block2,loc2,port2):
             raise Exception("cannot connect <%s.%s.%s> to <%s.%s.%s>" % \
                             (block1,loc1,port1,block2,loc2,port2))
@@ -162,7 +176,8 @@ class ConcCirc:
         circ = ConcCirc(board)
         circ.set_tau(obj['tau'])
         for inst in obj['insts']:
-            assert(inst['board'] == board.name)
+            assert(board is None or \
+                   inst['board'] == board.name)
             config = Config.from_json(inst['config'])
             block,loc = inst['block'],inst['loc']
             circ.use(block,loc,config)
@@ -231,3 +246,5 @@ class ConcCirc:
         graphlib.write_graph(self,filename, \
                              color_method, \
                              write_png)
+
+

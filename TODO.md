@@ -1,76 +1,133 @@
-# TODO
+# Running Questions
 
-1. move positive/negative config to arco.
-   - integ, fanout -> fanout is tricky because it's a copier. maybe have a special negate function that finds configuration for copier that negates signal, input for negated signal.
-   - remove sign completely: dac
-   - augment arco to handle fanouts
+# Benchmark Status
+
+- vanderpol and sin require low-freq
+- lotka worked better with previous calibration scheme. What if we try programming with physical models.
+
+
+## Subsets
+
+sets of parameters
+
+#### Subsets
+standard = only the medium components
+extended = enables integrator hm
+extended2 = extended + integrator mh, hm, and dac+fan h
+unrestricted = everything
+
+#### Models 
+ideal = no minimum value constraints
+naive = assumes gain is 1.0, oprange is 1.0, uncertainty is 0.01 
+physical = minimum value constraints + quantization constraints
+
+#### limitations:
+- no adc for now (does dividing by 2 on input work?)
+- spring/pendulum are linear
+- max freq: 40 khz (tau*time constant)
+- subset of components that are well characterized. Working on enabling full set of modes.
+
+#### benchmarks:
+- spring, pend, cosc, vanderpol
+
+
+# TODO list
+
+- BUG: lotka can't scale up gain for multiplier going to output
+- BUG: spring has issues with conservation.
+
+# Calibration Failures
+
+use_integ 0 0 0 sgn + val 0.900000 rng m l debug update
+use_integ 0 0 0 sgn + val 0.900000 rng l l debug update
+use_integ 0 0 0 sgn + val 0.900000 rng l m debug update
+use_adc 0 0 0 rng m update
+
+
+
+1. ADC Issues Update: the ADC does not update with time. Use Simple-Osc with an ADC to test it with time varying signals.
+   - 1.0*in = ic*2
+   - 0.5*in = ic
+   - 0 = 0
+   - tested with time varying external function. Does not vary (stuckat 1)
+     - moved other components to different slice. no effect.
+     - moved other components to different tile. no effect.
+     - todo: move components to different chip? look at reference code?
+ 
+# Enumeration of Contributions
+
+## Compiler
+
+#### Arco
+- computational mode selection
+- component types (copiers, computation, buses)
+- bus components resolved at lower level.
+- current mode - kirchoff's rule, need copiers
+- voltage mode - unlimited fanout, need adders
+
+#### Jaunt
+- scaling mode selection
+- handle transfer function gains
+- minimum signal constraints, quantization constraints (resolution).
+- seamless integration of physical model.
+- bandwidth constraints
+
+#### Srcgen
+- low-level language, interpreter.
+- use naive models, physical models from hardware.
+
+#### Key result
+- able to compile simulations to chip, recover original dynamics.
+
+## Profiling and Simulator Production
+
+#### Conceptual
+
+- calibration -> global optimization to minimize error between specification and behavior.
+   - divide parameter space into $p_{hidden}$ and $p_{compiler}$, the compiler parameters are set by compiler, the hidden parameters are resolved during calibration. Anything with predictable static behavior should be set at compile time.
+   - build model per $p_{compiler}$ instance.
    
-2. remove positive/negative from jaunt scale config for fanout/integ.
-4. Test spring, test vanderpohl
-5. implement reprissilator
+- profiling -> gather data that characterizes gap between specification and behavior.
+   - potentially expensive.
+   - designers should consider how much of the unexpected behavior of the chip is externally profilable. 
+   
+- model inference -> build conceptual model between specification and behavior. Any unmodelable behavior is uncertainty.
+   - model inference is useful for validating ones own understanding of the hardware platform. Hardware designers choose a model that makes sense, given the physics of the platform. Any block that is poorly adhering to this model may need a hardware redesign/have calibration bug.
 
-- Changes to note
+- benefits of model inference: build space of models from blocks in a prototype, sample from model space to produce random hardware platforms. Automatically incorporate model in simulator.
 
-1. ic is scaled by output port
-2. constants with the scf tag are incorperated by Jaunt.
-3. Vanderpohl wasn't working at all.
+#### Artifacts
 
-# Bugs 
+- data elicitation engine. Chooses next set of points, given current knowledge. Especially useful for multipliers.
+     - grendel -> uses profiling to bridge gap between chip specification and behavior, chooses points to maximize information gained for model.
 
-1. smmrxn / circuit 18. Two wires to multiplier 0.0.1.0.
+- model inference engine: Infers model from data.
 
-# Compiler
+- analog chip simulator: simulation platform for analog chip.
 
-1. bundle version of gpkit programmed to work with python3
-2. Add support for f(t) inputs (special ast block)
-3. investigate integrator scaling (what mode is default?)
-4. what other components have scaling?
+- apply physics model to hardware specification.
 
-# Paper Contribution List
+#### Key results
 
-1. Noise Model Composition Analysis (Infer Noise Model Block From Other Block)
-2. Input Signal Inference (wishlist)
-3. Modelling Language for Signal dependent/independent noise
-4. Basic Model Inference Algorithm
-
-# Lab Bench
-
-1. add support for pluggable reference functions. I.e. if you connect A to B, compute the reference function.
-
-2. trim time-series signal to exclude transient behavior at start/end
-
-3. factor out input signal generation. general process: (1) execute with seed signals (2) compute noise model (3) generate additional inputs to refine noise.
-
-4. what do we need from noise model. In DAC there is clear input dependence for noise amplitude/bias.
-
-5. integrate analysis to prevent file glut. (use emp-data from_json). Emit frequency information of inputs, output, reference, noise and phase information.
-
-6. write ifft to reconstruct signal from frequency information.
-
-7. use info ben sent me to remove negative frequency phase|amplitude/negative amplitude 
-
-8. different model representations. spike bloom function (assumes no frequency band corrleations).
-
-# Chip / Voltage Divider 
-
-1. Improve noise characteristics of voltage divider. DONE
-
-2. Derive reference function for voltage divider from schematic description. DONE
-
-3. Bayesian Inference
-
-# Chip / Constant DAC
-
-1. Flash configurations for reading DAC values. DONE
-2. Use oscilloscope to quantify DAC noise
-3. Use DUE ADCs to quantify DUE ADC noise
-4. Flash configurations for reading multiplier. DONE
-5. Flash 
+- simulator adheres to hardware behavior on test points (not trained on).
 
 
-# Hardware Model Errata
+#### Srcgen
+- grendel profiling.
 
- - Cannot use DAC in same slice if mult is in use.
- - Multiplier does not support signal inversion
- - Constant value is two sided for DAC and ADC. Flipping DAC flips sign, but doesn't confer any benefits computationally.
- - 
+#### Key result
+- able to get better simulation results, recover original dynamics.
+
+# Enumeration of Contributions:
+
+## Calibration
+
+ - question, for scaling down, what is the appropriate error? It is not converging as is. Maybe test this?
+
+ - calibration / profiling loop for building parameter dataset.
+   - empirical analysis (noise is low, bias can be significant)
+   - found bugs with analog hardware guy's calibration routine. (nonlinear multiplier bug)
+   - 
+   - offline predictive techniques (TODO??)
+   
+ - *if necessary*: bias correction technique. 

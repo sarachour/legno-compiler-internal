@@ -7,9 +7,10 @@ import networkx as nx
 
 logger = logging.getLogger('jaunt')
 logger.setLevel(logging.ERROR)
+#logger.setLevel(logging.DEBUG)
 # create file handler which logs even debug messages
 fh = logging.FileHandler('jaunt.log')
-fh.setLevel(logging.DEBUG)
+fh.setLevel(logging.ERROR)
 # create console handler with a higher log level
 ch = logging.StreamHandler()
 ch.setLevel(logging.ERROR)
@@ -120,7 +121,7 @@ def upper_bound_constraint(jenv,expr,math_upper,hw_upper,annot):
 
     elif same_sign(math_upper,hw_upper) and \
          math_upper < 0 and hw_upper < 0:
-        jenv.lte(jop.JMult(expr,jop.JConst(-math_upper)),
+        jenv.gte(jop.JMult(expr,jop.JConst(-math_upper)),
                  jop.JConst(-hw_upper),annot)
 
     elif not same_sign(math_upper,hw_upper) and \

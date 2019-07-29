@@ -1,6 +1,7 @@
 import lab_bench.lib.enums as enums
 from lab_bench.lib.chipcmd.data import *
 from lab_bench.lib.chipcmd.common import *
+from lab_bench.lib.base_command import AnalogChipCommand
 
 
 
@@ -98,7 +99,7 @@ class BreakConnCmd(ConnectionCmd):
                                  data['dindex'])
 
 
-            return BrkConnCmd(
+            return BreakConnCmd(
                 data['sblk'],srcloc,
                 data['dblk'],dstloc)
 

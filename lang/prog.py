@@ -58,35 +58,14 @@ class MathProg:
         self._intervals = {}
         self._bandwidths= {}
         self._variables = []
-        self._snr = {}
-        self._analog_snr= 5.0
-        self._digital_snr= 5.0
         self._max_sim_time = 1.0
 
         self.__order = None
         self.__order_integs = None
         self.__types = None
 
-    def digital_snr(self):
-        return self._digital_snr
 
-    def analog_snr(self):
-        return self._analog_snr
 
-    def set_analog_snr(self,v):
-        self._analog_snr =v
-
-    def set_digital_snr(self,v):
-        self._digital_snr =v
-
-    def set_snr(self,var,snr):
-        self._snr[var] = snr
-
-    def snr(self,var):
-        if var in self._snr:
-            return self._snr[var]
-        else:
-            return self.analog_snr()
 
     def _compute_order(self):
         self.__order = []
@@ -119,53 +98,24 @@ class MathProg:
             assert(progress)
 
 
-    def _curr_state_map(self,menv,t,stvals):
-        stdict = dict(zip(self.__order_integs,stvals))
-        for var in self.__order:
-            typ = self.__types[var]
-            if typ == MathProg.ExprType.EXTERN:
-                extvar = self._bindings[var].name
-                stdict[var] = menv.input(extvar).compute({'t':t})
-            elif typ == MathProg.ExprType.FN:
-                stdict[var] = self._bindings[var].compute(stdict)
-            elif typ == MathProg.ExprType.INTEG:
-                continue
-            else:
-                raise Exception("unknown: %s" % var)
-
-        return stdict
-
-    @property
-    def variable_order(self):
-        return self.__order
-
-    def curr_state(self,menv,t,stvals):
-        m = self._curr_state_map(menv,t,stvals)
-        return list(map(lambda var: m[var], self.__order))
-
-    def next_deriv(self,menv,t,stvals):
-        stdict = self._curr_state_map(menv,t,stvals)
-        derivs = {}
-        for var in self.__order_integs:
-            derivs[var] = self._bindings[var].deriv.compute(stdict)
-
-        deriv_list = list(map(lambda q: derivs[q],self.__order_integs))
-        return deriv_list
-
-    def init_state(self,menv):
+    def build_ode_prob(self):
         ics = {}
+        fns = {}
+        derivs = {}
+        deriv_vars = []
+        fn_vars = []
         for var in self.__order:
             typ = self.__types[var]
             if typ == MathProg.ExprType.INTEG:
-                ics[var] = self._bindings[var].init_cond.value
-            elif typ == MathProg.ExprType.EXTERN:
-                extvar = self._bindings[var].name
-                ics[var] = menv.input(extvar).compute({'t':0})
-            elif typ == MathProg.ExprType.EXTERN:
-                ics[var] = self._binding[var].compute(ics)
+                _,ics[var] = op.to_python(self._bindings[var].init_cond)
+                _,derivs[var] = op.to_python(self._bindings[var].deriv)
+                deriv_vars.append(var)
+            else:
+                _,fns[var] = op.to_python(self._bindings[var])
+                fn_vars.append(var)
+        return deriv_vars,ics,derivs, \
+            fn_vars,fns
 
-
-        return list(map(lambda q: ics[q],self.__order_integs))
 
     def variables(self):
         return self._variables
@@ -252,8 +202,23 @@ class MathProg:
                         self._bandwidths[variable] = bwcoll.bandwidth
                         progress = True
 
-        assert(util.keys_in_dict(self._bindings.keys(), self._bandwidths))
-        assert(util.keys_in_dict(self._bindings.keys(), self._intervals))
+        if not (util.keys_in_dict(self._bindings.keys(), self._bandwidths)):
+            for k in self._bindings.keys():
+                if not k in self._bandwidths:
+                    print("  :no bw %s" % k)
+                else:
+                    print("  :bw %s" % k)
+            raise Exception("can't compile %s: missing bandwidths" % self.name)
+
+        if not (util.keys_in_dict(self._bindings.keys(), self._intervals)):
+            for k in self._bindings.keys():
+                if not k in self._intervals:
+                    print("  :no ival %s" % k)
+                else:
+                    print("  :ival %s" % k)
+            raise Exception("can't compile %s: missing intervals" % self.name)
+
+
         self._compute_order()
 
     @property

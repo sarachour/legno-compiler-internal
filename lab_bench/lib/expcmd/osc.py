@@ -41,11 +41,11 @@ class OscSetVoltageRangeCmd(Command):
         vdivs = state.oscilloscope.VALUE_DIVISIONS
         chan = state.oscilloscope.analog_channel(self._chan_id)
         volt_offset = -(self._low+self._high)/2.0
-        volts_per_div = (self._high- self._low)/vdivs
-        state.oscilloscope \
-            .set_voltage_offset(chan,volt_offset)
+        volts_per_div = (self._high-self._low)/vdivs
         state.oscilloscope \
              .set_volts_per_division(chan,volts_per_div)
+        state.oscilloscope \
+            .set_voltage_offset(chan,volt_offset)
 
 
 class OscGetValuesCmd(Command):
@@ -91,15 +91,38 @@ class OscGetValuesCmd(Command):
 
     def process_data(self,state,filename,variable,chan1,chan2):
         # compute differential or direct
+        #pos channel
+        #y = 1.0115x - 13.872
+        #R² = 0.99999
+        mV = 1.0/1000.0
+        CHAN1_SLOPE = 1.0115
+        CHAN1_OFFSET = -13.72*mV
+        #neg channel
+        #y = 1.0151x - 11.135
+        #R² = 0.99981
+        CHAN2_SLOPE = 1.0151
+        CHAN2_OFFSET = -11.135*mV
+
         if self._differential:
             out_t1,out_v1 = chan1
             out_t2,out_v2 = chan2
-            out_v = list(np.subtract(out_v1,out_v2))
+            def compute(i):
+                v1 = out_v1[i]*CHAN1_SLOPE+CHAN1_OFFSET
+                v2 = out_v2[i]*CHAN2_SLOPE+CHAN2_OFFSET
+                return v1-v2
+
+            n = len(out_v1)
+            out_v = list(map(lambda i: compute(i), range(n)))
             assert(all(np.equal(out_t1,out_t2)))
             out_t = out_t1
 
         else:
             out_t,out_v = chan1
+            def compute(i):
+                v1 = out_v[i]*CHAN1_SLOPE+CHAN1_OFFSET
+                return v
+
+            out_v = list(map(lambda i: compute(i), range(n)))
 
         theo_time_per_div = float(state.sim_time) / state.oscilloscope.TIME_DIVISIONS
         act_time_per_div = state.oscilloscope\
@@ -163,12 +186,12 @@ class OscSetSimTimeCmd(Command):
         return 'osc_set_sim_time'
 
     def __repr__(self):
-        return "%s %f" % (self.name(),self._sim_time)
+        return "%s %.3e" % (self.name(),self._sim_time)
 
 
     @staticmethod
     def parse(args):
-        return strict_do_parse("{sim_time:f}", args, \
+        return strict_do_parse("{sim_time:g}", args, \
                                OscSetSimTimeCmd)
 
 

@@ -1,4 +1,12 @@
+*.db
+.ipynb_checkpoints
+.#*
+build-*
 *.pyc
+*.elf
+*.bin
+*.grendel
+time_*.txt
 calibrate
 transform
 batch.grendel
