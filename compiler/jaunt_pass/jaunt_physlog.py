@@ -11,14 +11,16 @@ def log(circ,block_name,loc,config,comp_mode,scale_mode):
   backup_scm = config.scale_mode
   backup_cm = config.comp_mode
   block = circ.board.block(block_name)
+  log_cfg = config.copy()
+  log_cfg._dacs = {}
   if block.name == 'lut':
     return
-  config.set_scale_mode(scale_mode)
-  config.set_comp_mode(comp_mode)
+  log_cfg.set_scale_mode(scale_mode)
+  log_cfg.set_comp_mode(comp_mode)
   if scale_mode is None:
     return
 
-  srcgen.gen_block(PROG,circ,block,loc,config)
+  srcgen.gen_block(PROG,circ,block,loc,log_cfg)
   config.set_comp_mode(backup_cm)
   config.set_scale_mode(backup_scm)
 

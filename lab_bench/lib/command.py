@@ -2,7 +2,6 @@ import parse as parselib
 import lab_bench.lib.cstructs as cstructs
 import lab_bench.lib.enums as enums
 from lab_bench.lib.chipcmd.use import *
-from lab_bench.lib.chipcmd.config import *
 from lab_bench.lib.chipcmd.conn import *
 from lab_bench.lib.chipcmd.calib import *
 from lab_bench.lib.chipcmd.profile import *
@@ -19,15 +18,12 @@ CIRCUIT COMMANDS
 
 COMMANDS = [
     # dac/adc commands
-    ConfigDACCmd,
     UseDACCmd,
     UseADCCmd,
     UseLUTCmd,
     WriteLUTCmd,
     UseIntegCmd,
-    ConfigIntegCmd,
     UseMultCmd,
-    ConfigMultCmd,
     GetIntegStatusCmd,
     GetADCStatusCmd,
     UseFanoutCmd,

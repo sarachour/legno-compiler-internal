@@ -633,8 +633,9 @@ class UseMultCmd(UseCommand):
                  in0_range=RangeType.MED,
                  in1_range=RangeType.MED,
                  out_range=RangeType.MED,
-                 coeff=0,use_coeff=False,
-                 inv=SignType.POS,
+                 coeff=0, \
+                 use_coeff=False, \
+                 inv=SignType.POS, \
                  cached=False):
         UseCommand.__init__(self,
                             enums.BlockType.MULT,

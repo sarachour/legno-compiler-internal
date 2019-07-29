@@ -181,7 +181,7 @@ def infer_model(model,in0,in1,out,bias,noise, \
   bnd = {"in0":(None,None), "in1":(None,None)}
   has_outliers = True
   cnt = 0
-  max_prune = 1
+  max_prune = 0
   while True:
     n = len(in0_valid)
     inds = list(filter(lambda i: in_bounds(in0_valid[i],in1_valid[i],bnd),
