@@ -44,11 +44,13 @@ def infer(obj):
   insc,outsc = scm
   scale = outsc.coeff()/insc.coeff()
 
-  bnds_z = infer_fit.build_model(out_z,obj['dataset'],1)
+  bnds_z = infer_fit.build_model(out_z,obj['dataset'],1, \
+                                 0.04)
   #model_in.set_oprange_scale(*bnds_z['in0'])
   model_in.bias_uncertainty = out_z.bias_uncertainty/scale
 
-  bnds_ic = infer_fit.build_model(out_z0,obj['dataset'],0)
+  bnds_ic = infer_fit.build_model(out_z0,obj['dataset'],0, \
+                                  0.04)
   bnd = infer_util.normalize_bound(bnds_ic['in0'],insc)
   model_ic.set_oprange_scale(*bnd)
   model_ic.bias_uncertainty = out_z.bias_uncertainty

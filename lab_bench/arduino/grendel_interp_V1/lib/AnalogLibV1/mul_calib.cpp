@@ -329,9 +329,11 @@ void helper_find_pmos_mult(Fabric::Chip::Tile::Slice::Multiplier* mult,
                               stdevs[pmos],
                               errors[pmos]);
   }
+  error = -1.0;
   // find the pmos,gain combo with the lowest error
+  best_pmos = 0;
   for(int pmos=0; pmos<=7; pmos+=1){
-    if(pmos == 0 || stdevs[pmos] < stdevs[best_pmos]){
+    if(error < 0.0 || stdevs[pmos] < stdevs[best_pmos]){
       best_pmos = pmos;
       best_gain_cal = gain_cals[pmos];
       gain_stdev = stdevs[pmos];
@@ -371,8 +373,10 @@ void helper_find_pmos_vga(Fabric::Chip::Tile::Slice::Multiplier* mult,
   // find the pmos,gain combo with the lowest standard deviation of gains
   // this prevents the calibration routine for selecting parameter assignments
   // with no hot (high gain) or cold (low gain) areas
+  error = -1;
+  best_pmos = 0;
   for(int pmos=0; pmos<=7; pmos+=1){
-    if(pmos == 0 || errors[pmos] < errors[best_pmos]){
+    if(error < 0.0 || errors[pmos] < errors[best_pmos]){
       best_pmos = pmos;
       best_gain_cal = gain_cals[pmos];
       gain_stdev = stdevs[pmos];
