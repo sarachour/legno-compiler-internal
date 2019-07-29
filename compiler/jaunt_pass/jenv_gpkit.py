@@ -3,7 +3,7 @@ import ops.jop as jop
 import compiler.jaunt_pass.jaunt_util as jaunt_util
 import compiler.jaunt_pass.jenv as jenvlib
 import numpy as np
-import gpkit
+from gpkit import Variable,Model
 
 import util.config as CONFIG
 import signal
@@ -36,7 +36,7 @@ def build_gpkit_cstrs(circ,jenv):
   constraints = []
   blacklist = []
   for var in jenv.variables(in_use=True):
-    gpvar = gpkit.Variable(var)
+    gpvar = Variable(var)
     assert(not var in variables)
     variables[var] = gpvar
 
@@ -113,7 +113,7 @@ def build_gpkit_problem(circ,jenv,jopt):
       cstrs = list(gpkit_cstrs) + list(obj.constraints())
       ofun = obj.objective()
       jaunt_util.log_info(ofun)
-      model = gpkit.Model(ofun, cstrs)
+      model = Model(ofun, cstrs)
       yield variables,model,obj
 
 def solve_gpkit_problem_cvxopt(gpmodel,timeout=10):

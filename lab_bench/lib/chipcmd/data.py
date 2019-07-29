@@ -1,6 +1,5 @@
 from enum import Enum
-import lab_bench.lib.cstructs as cstructs
-import lab_bench.lib.enums as enums
+from lab_bench.lib import cstructs,enums
 
 class LUTSourceType(str,Enum):
     EXTERN = 'extern'

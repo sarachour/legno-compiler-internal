@@ -1,6 +1,6 @@
 import lab_bench.lib.enums as enums
-import lab_bench.lib.chipcmd.data as chipdata
-import lab_bench.lib.chipcmd.state as chipstate
+from lab_bench.lib.chipcmd import data as chipdata
+from lab_bench.lib.chipcmd import state as chipstate
 from lab_bench.lib.chipcmd.common import *
 from lab_bench.lib.chipcmd.data import *
 from enum import Enum

@@ -1,6 +1,5 @@
 from lab_bench.lib.enums import BlockType,ExpCmdType,CircCmdType,CmdType
-import lab_bench.lib.chipcmd.data as chipdata
-
+from lab_bench.lib.chipcmd import data as chipdata
 import construct as cstruct
 def lut_source_t():
     kwargs = {
