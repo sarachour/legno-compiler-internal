@@ -34,22 +34,24 @@ def build_config(meta):
   ic = PortModel('integrator',loc,'ic', \
                   comp_mode=comp_mode, \
                   scale_mode=scale_mode)
-  return inp,ic,out,out_z,out_z0,out_zp
+  return scale_mode,inp,ic,out,out_z,out_z0,out_zp
 
 
 def infer(obj):
-  model_in,model_ic,model_out, \
+  scm,model_in,model_ic,model_out, \
     out_z,out_z0,out_zp = build_config(obj['metadata'])
 
+  insc,outsc = scm
+  scale = outsc.coeff()/insc.coeff()
+
   bnds_z = infer_fit.build_model(out_z,obj['dataset'],1)
-  model_in.set_oprange_scale(*bnds_z['in0'])
-  #bnds_z['in0'] = [0.9,0.9]
-  # this causes scaling issues because there aren't enough degrees of freedom.
-  #out_z.gain = 1.0
+  #model_in.set_oprange_scale(*bnds_z['in0'])
+  model_in.bias_uncertainty = out_z.bias_uncertainty/scale
 
   bnds_ic = infer_fit.build_model(out_z0,obj['dataset'],0)
-  #bnds_ic['in0'] = [0.75,0.75]
-  model_ic.set_oprange_scale(*bnds_ic['in0'])
+  bnd = infer_util.normalize_bound(bnds_ic['in0'],insc)
+  model_ic.set_oprange_scale(*bnd)
+  model_ic.bias_uncertainty = out_z.bias_uncertainty
 
   yield model_in
   yield model_ic

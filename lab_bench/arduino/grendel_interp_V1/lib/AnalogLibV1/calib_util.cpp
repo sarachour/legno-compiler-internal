@@ -58,14 +58,7 @@ namespace cutil {
     if(aux_dac->m_codes.inv)
       aux_dac->setInv(false);
 
-    if(fabs(target) > 0.8){
-      aux_dac->setRange(RANGE_HIGH);
-      aux_dac->setConstant(-target/10.0);
-    }
-    else{
-      aux_dac->setRange(RANGE_MED);
-      aux_dac->setConstant(-target);
-    }
+    aux_dac->fastMakeValue(-target);
   }
   dac_code_t make_ref_dac(calibrate_t& calib,
                         Fabric::Chip::Tile::Slice::Dac * dac,

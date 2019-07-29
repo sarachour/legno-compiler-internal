@@ -108,358 +108,312 @@ bool helper_find_port_cal_in1(Fabric::Chip::Tile::Slice::Dac* dac,
 
 }
 
-// TODO: write utility functions for calibrating input*input multiplier
-bool helper_find_max_val(Fabric::Chip::Tile::Slice::Multiplier* mult,
-                         Fabric::Chip::Tile::Slice::Dac* ref_dac,
-                         dac_code_t& dref_targ_full,
-                         dac_code_t& dref_targ_half,
-                         float ref_full,
-                         float ref_half,
-                         float val_full,
-                         float val_half,
-                         Fabric::Chip::Tile::Slice::Dac* val1_dac,
-                         dac_code_t& dval1_full,
-                         dac_code_t& dval1_half,
-                         Fabric::Chip::Tile::Slice::Dac* val2_dac,
-                         dac_code_t& dval2_full,
-                         dac_code_t& dval2_half,
-                         float max_error){
-  Fabric::Chip::Connection conn_in0 =
-    Fabric::Chip::Connection(val1_dac->out0, mult->in0);
-  Fabric::Chip::Connection conn_in1 =
-    Fabric::Chip::Connection(val2_dac->out0, mult->in1);
-
-  ref_dac->update(dref_targ_full);
-  val1_dac->update(dval1_full);
-  val2_dac->update(dval2_full);
-  conn_in0.setConn();
-  conn_in1.setConn();
-  mult->setVga(false);
-  float measurement = util::meas_chip_out(mult);
-  float target = compute_out(mult->m_codes,val_full,val_full);
-  float error = fabs((target+ref_full)-measurement);
-  sprintf(FMTBUF, "calibrate-pmos target=%f ref=%f meas=%f err=%f",
-          target,
-          ref_full,
-          measurement,
-          error);
-  print_log(FMTBUF);
-
-  ref_dac->update(dref_targ_half);
-  val1_dac->update(dval1_half);
-  val2_dac->update(dval2_half);
-
-  float measurement_half = util::meas_chip_out(mult);
-  float target_half = compute_out(mult->m_codes,val_half,val_half);
-  error = fabs((target_half+ref_half)-measurement_half);
-  sprintf(FMTBUF, "calibrate-pmos target=%f ref=%f meas=%f err=%f",
-          target_half,
-          ref_half,
-          measurement_half,
-          error);
-  print_log(FMTBUF);
-  float targ_ratio = target/target_half;
-  float meas_ratio = (measurement-ref_full)/(measurement_half-ref_half);
-  float ratio_max = (target+max_error)/(target_half-max_error);
-  float ratio_min = (target-max_error)/(target_half+max_error);
-  sprintf(FMTBUF, "calibrate-pmos targ-ratio=%f meas-ratio=%f bnd=(%f,%f)",
-          targ_ratio,meas_ratio,ratio_min,ratio_max);
-  print_log(FMTBUF);
-
-  conn_in0.brkConn();
-  conn_in1.brkConn();
-  bool succ = ratio_min <= meas_ratio
-    && ratio_max >= meas_ratio;
-
-  return succ;
+float compute_gain(float value,float bias){
+  return (value+bias)/value;
 }
 
-bool helper_find_gain_cal_mult(Fabric::Chip::Tile::Slice::Multiplier* mult,
+#define N_MUL_CORNERS 4
+#define N_MUL_PTS (N_MUL_CORNERS*N_MUL_CORNERS)
+int helper_find_gain_cal_mult(Fabric::Chip::Tile::Slice::Multiplier* mult,
                                Fabric::Chip::Tile::Slice::Dac* ref_dac,
-                               dac_code_t& dref_targ_full,
-                               dac_code_t& dref_targ_half,
-                               float ref_full,
-                               float ref_half,
-                               float val_full,
-                               float val_half,
                                Fabric::Chip::Tile::Slice::Dac* val1_dac,
-                               dac_code_t& dval1_full,
-                               dac_code_t& dval1_half,
                                Fabric::Chip::Tile::Slice::Dac* val2_dac,
-                               dac_code_t& dval2_full,
-                               dac_code_t& dval2_half,
-                               float max_error)
+                               float & gain_stdev,
+                               float & average_error)
 {
   Fabric::Chip::Connection dac_to_mult_in0 =
-    Fabric::Chip::Connection ( val1_dac->out0, mult->in0 );
+    Fabric::Chip::Connection ( val1_dac->out0, mult->in0);
   Fabric::Chip::Connection dac_to_mult_in1 =
-    Fabric::Chip::Connection ( val2_dac->out0, mult->in1 );
-  bool calib_failed;
+    Fabric::Chip::Connection ( val2_dac->out0, mult->in1);
+  Fabric::Chip::Connection ref_to_tileout =
+    Fabric::Chip::Connection ( ref_dac->out0, mult->parentSlice->tileOuts[3].in0);
+  mult_code_t backup_codes = mult->m_codes;
   val1_dac->setEnable(true);
-  val1_dac->update(dval1_full);
   val2_dac->setEnable(true);
-  val2_dac->update(dval2_full);
-  ref_dac->update(dref_targ_full);
+  ref_dac->setEnable(true);
   mult->setVga(false);
   dac_to_mult_in0.setConn();
   dac_to_mult_in1.setConn();
-  float error;
-  bool succ = true;
-  float target = compute_out(mult->m_codes,val_full,val_full)+ref_full;
-  binsearch::find_bias(mult,target,
-                       mult->m_codes.gain_cal,
-                       error,
-                       MEAS_CHIP_OUTPUT);
-  // update nmos code
-  binsearch::test_stab(mult->m_codes.gain_cal,
-                       fabs(error),
-                       max_error,
-                       calib_failed);
-  succ &= !calib_failed;
-  sprintf(FMTBUF, "calibrate mul full gain=%f target=%f meas=%f max=%f succ=%s",
-          mult->m_codes.gain_val,
-          target,
-          target+error,
-          max_error,
-          calib_failed ? "no" : "yes");
-  print_log(FMTBUF);
+  ref_to_tileout.setConn();
+  float corners[N_MUL_CORNERS] = {0.9,-0.9,0.5,-0.5};
+  float deltas[N_MUL_PTS];
+  float values[N_MUL_PTS];
+  /*
+    this populates the bias table for the multiplier. Multipliers in multiply mode
+    are relatively insensitive to changes in the gain_cal parameter. We will use
+    this bias table to compute the standard deviation of the gain of these data points.
+    we do this because it is very difficult to correct for differences in the gain
+    depending on the quadrant of the inputs.
+  */
+  for(int i=0; i < N_MUL_CORNERS; i += 1){
+    for(int j=0; j < N_MUL_CORNERS; j+=1){
+      float in0_val = compute_in0(mult->m_codes,corners[i]);
+      float in1_val = compute_in1(mult->m_codes,corners[j]);
+      in0_val = val1_dac->fastMakeValue(in0_val);
+      in1_val = val2_dac->fastMakeValue(in1_val);
+      float pred_out_val = predict_out_mult(mult->m_codes,in0_val,in1_val);
+      cutil::fast_make_ref_dac(ref_dac, pred_out_val);
+      float ref_val = ref_dac->fastMeasureValue();
+      // the bias we're actually expecting
+      float targ = pred_out_val + ref_val;
+      //not sensitive to gain code
+      mult->m_codes.gain_cal = 32;
+      float bias = binsearch::bin_search_meas(mult,MEAS_CHIP_OUTPUT);
+      int idx =i*N_MUL_CORNERS+j;
+      deltas[idx] = bias-targ;
+      values[idx] = pred_out_val;
+      float gain = compute_gain(values[idx],deltas[idx]);
+      sprintf(FMTBUF,"PARS ins=(%f,%f) out=%f ref=%f offset=%f bias=%f gain=%f",
+              in0_val,in1_val,pred_out_val,ref_val,targ,
+              deltas[idx],gain);
+      print_info(FMTBUF);
+    }
+  }
 
-  // compute fidelity at midpoint. If this is truly an appropriate gain,
-  // it should be able to compute the gain at another value.
-  val1_dac->update(dval1_half);
-  val2_dac->update(dval2_half);
-  ref_dac->update(dref_targ_half);
-  target = compute_out(mult->m_codes,val_half,val_half)+ref_half;
-  error = util::meas_chip_out(mult) - target;
-  binsearch::test_stab(mult->m_codes.gain_cal,
-                       fabs(error),
-                       max_error,
-                       calib_failed);
-  succ &= !calib_failed;
-  sprintf(FMTBUF, "calibrate mul half gain=%f target=%f meas=%f max=%f succ=%s",
-          mult->m_codes.gain_val,
-          target,
-          target+error,
-          max_error,
-          calib_failed ? "no" : "yes");
+  int gain_code = -1;
+  float avg_error=0;
+  float avg_gain=0;
+  float stdev=0;
+  //compute average error, average gain, and standard deviation of gain.
+  for(int j=0; j < N_MUL_PTS; j += 1){
+    float gain = compute_gain(values[j],deltas[j]);
+    avg_error += fabs(deltas[j]);
+    avg_gain += gain;
 
-  print_log(FMTBUF);
-  print_log("---");
+  }
+  avg_error /= (N_MUL_PTS);
+  avg_gain /= (N_MUL_PTS);
+  for(int j=0; j < N_MUL_PTS; j += 1){
+    float gain = compute_gain(values[j],deltas[j]);
+    stdev += pow((gain - avg_gain),2.0);
+  }
+  stdev /= (N_MUL_PTS-1);
+  stdev = sqrt(stdev);
+  sprintf(FMTBUF,"code=%d avg_err=%f avg_gain=n(%f,%f)",
+          32,avg_error,avg_gain,stdev);
+  print_info(FMTBUF);
+
+  // update arguments that are passed by reference
+  gain_stdev = stdev;
+  average_error = avg_error;
+
+  //reset the state
+  mult->m_codes = backup_codes;
+  val1_dac->setEnable(false);
+  val2_dac->setEnable(false);
   dac_to_mult_in0.brkConn();
   dac_to_mult_in1.brkConn();
-  return succ;
+  ref_to_tileout.brkConn();
+  return 32;
 }
-bool helper_find_gain_cal_vga(Fabric::Chip::Tile::Slice::Multiplier* mult,
-                          Fabric::Chip::Tile::Slice::Dac* ref_dac,
-                          dac_code_t& dref_targ_full,
-                          dac_code_t& dref_targ_half,
-                          float ref_full,
-                          float ref_half,
-                          float val_full,
-                          float val_half,
-                          Fabric::Chip::Tile::Slice::Dac* val_dac,
-                          dac_code_t& dval_full,
-                          dac_code_t& dval_half,
-                          float max_error){
-
+#define N_VGA_CORNERS 4
+#define N_VGA_PTS (N_VGA_CORNERS*N_VGA_CORNERS)
+int helper_find_generic_gain_cal_vga(Fabric::Chip::Tile::Slice::Multiplier* mult,
+                                      Fabric::Chip::Tile::Slice::Dac* ref_dac,
+                                      Fabric::Chip::Tile::Slice::Dac* val_dac,
+                                      float& percent_stdev,
+                                      float& average_error){
   Fabric::Chip::Connection dac_to_mult_in0 =
     Fabric::Chip::Connection ( val_dac->out0, mult->in0 );
-  bool calib_failed;
+  Fabric::Chip::Connection ref_to_tileout =
+    Fabric::Chip::Connection ( ref_dac->out0, mult->parentSlice->tileOuts[3].in0);
+  mult_code_t backup_codes = mult->m_codes;
+  // setup input, reference signal
   val_dac->setEnable(true);
-  val_dac->update(dval_full);
-  ref_dac->update(dref_targ_full);
+  ref_dac->setEnable(true);
   mult->setVga(true);
-  mult->setGain(mult->m_codes.gain_val);
   dac_to_mult_in0.setConn();
-  float error;
-  bool succ = true;
-  float target = compute_out(mult->m_codes,val_full,val_full)+ref_full;
-  binsearch::find_bias(mult,target,
-                       mult->m_codes.gain_cal,
-                       error,
-                       MEAS_CHIP_OUTPUT);
-  // update nmos code
-  binsearch::test_stab(mult->m_codes.gain_cal,
-                       fabs(error),
-                       max_error,
-                       calib_failed);
-  succ &= !calib_failed;
-  sprintf(FMTBUF, "calibrate vga full gain=%f target=%f meas=%f max=%f succ=%s",
-          mult->m_codes.gain_val,
-          target,
-          target+error,
-          max_error,
-          calib_failed ? "no" : "yes");
-  print_log(FMTBUF);
-
-  // compute fidelity at midpoint. If this is truly an appropriate gain,
-  // it should be able to compute the gain at another value.
-  val_dac->update(dval_half);
-  ref_dac->update(dref_targ_half);
-  target = compute_out(mult->m_codes,val_half,val_half)+ref_half;
-  error = util::meas_chip_out(mult) - target;
-  binsearch::test_stab(mult->m_codes.gain_cal,
-                       fabs(error),
-                       max_error,
-                       calib_failed);
-  succ &= !calib_failed;
-  sprintf(FMTBUF, "calibrate vga half gain=%f target=%f meas=%f max=%f succ=%s",
-          mult->m_codes.gain_val,
-          target,
-          target+error,
-          max_error,
-          calib_failed ? "no" : "yes");
-
-  print_log(FMTBUF);
-  print_log("---");
+  ref_to_tileout.setConn();
+  float corners[N_MUL_CORNERS] = {0.9,-0.9,0.5,-0.5};
+  float deltas[64][N_VGA_PTS];
+  float values[N_VGA_PTS];
+  /*
+    the bias table is per-gain code, because the vga block is dependent on
+    the gain_cal code
+   */
+  for(int i=0; i < N_VGA_CORNERS; i += 1){
+    for(int j=0; j < N_VGA_CORNERS; j+=1){
+      // measure the bias of this input output pair
+      float in0_val = compute_in0(mult->m_codes,corners[i]);
+      float gain_val = corners[j];
+      mult->setGain(gain_val);
+      in0_val = val_dac->fastMakeValue(in0_val);
+      float pred_out_val = predict_out_vga(mult->m_codes,in0_val);
+      cutil::fast_make_ref_dac(ref_dac, pred_out_val);
+      float ref_val = ref_dac->fastMeasureValue();
+      float targ = pred_out_val + ref_val;
+      int idx =i*N_MUL_CORNERS+j;
+      values[idx] = pred_out_val;
+      sprintf(FMTBUF,"PARS ins=(%f,%f) out=%f ref=%f offset=%f",
+              in0_val,gain_val,pred_out_val,ref_val,targ);
+      print_info(FMTBUF);
+      for(int k=0; k < 64; k++){
+        mult->m_codes.gain_cal = k;
+        float bias = binsearch::bin_search_meas(mult,MEAS_CHIP_OUTPUT);
+        deltas[k][idx] = bias-targ;
+      }
+    }
+  }
+  int best_gain_code = -1;
+  float best_error = -1;
+  float best_stdev_gain = -1;
+  float best_avg_gain = -1;
+  /*
+    choose the gain_cal code that is the closest to unity gain.
+   */
+  for(int i=0; i < 64; i++){
+    float avg_error=0;
+    float avg_gain=0;
+    float stdev_gain=0;
+    for(int j=0; j < N_VGA_PTS; j += 1){
+      float gain = compute_gain(values[j],deltas[i][j]);
+      avg_error += fabs(deltas[i][j]);
+      avg_gain += gain;
+    }
+    avg_error /= (N_VGA_PTS);
+    avg_gain /= (N_VGA_PTS);
+    for(int j=0; j < N_VGA_PTS; j += 1){
+      float gain = compute_gain(values[j],deltas[i][j]);
+      stdev_gain += pow(gain - avg_gain,2.0);
+    }
+    stdev_gain = sqrt(stdev_gain/(N_VGA_PTS-1));
+    sprintf(FMTBUF,"code=%d gain=n(%f,%f) error=%f",
+            i,avg_gain,stdev_gain,avg_error);
+    print_info(FMTBUF);
+    if(best_gain_code < 0
+        || avg_error < best_error){
+      best_error = avg_error;
+      best_stdev_gain = stdev_gain;
+      best_avg_gain = avg_gain;
+      best_gain_code = i;
+    }
+  }
+  sprintf(FMTBUF,"BEST code=%d gain=n(%f,%f) error=%f",
+          best_gain_code,
+          best_avg_gain,
+          best_stdev_gain,
+          best_error);
+  print_info(FMTBUF);
+  //update global state
+  percent_stdev = best_stdev_gain;
+  average_error = best_error;
+  //restore state
+  mult->m_codes = backup_codes;
+  val_dac->setEnable(false);
   dac_to_mult_in0.brkConn();
-  return succ;
+  ref_to_tileout.brkConn();
+  return best_gain_code;
 }
 
-bool helper_find_pmos_mult(Fabric::Chip::Tile::Slice::Multiplier* mult,
+void helper_find_pmos_mult(Fabric::Chip::Tile::Slice::Multiplier* mult,
                            Fabric::Chip::Tile::Slice::Dac* ref_dac,
-                           dac_code_t& dref_targ_full,
-                           dac_code_t& dref_targ_half,
-                           float ref_full,
-                           float ref_half,
-                           float val_full,
-                           float val_half,
                            Fabric::Chip::Tile::Slice::Dac* val1_dac,
-                           dac_code_t& dval1_full,
-                           dac_code_t& dval1_half,
                            Fabric::Chip::Tile::Slice::Dac* val2_dac,
-                           dac_code_t& dval2_full,
-                           dac_code_t& dval2_half,
-                           float max_error){
+                            uint8_t& best_pmos,
+                            uint8_t& best_gain_cal,
+                            float& gain_stdev,
+                            float& error){
 
-  float error = 0.04;
-  if(mult->m_codes.range[out0Id] == RANGE_HIGH){
-    error *= 10.0;
-  }
+  float stdevs[7];
+  float errors[7];
+  int gain_cals[7];
   for(int pmos=0; pmos<=7; pmos+=1){
     sprintf(FMTBUF,"mult pmos=%d",pmos);
     print_info(FMTBUF);
     mult->m_codes.pmos = pmos;
     mult->update(mult->m_codes);
-    bool succ = helper_find_max_val(mult,
-                                    ref_dac,
-                                    dref_targ_full,
-                                    dref_targ_half,
-                                    ref_full,
-                                    ref_half,
-                                    val_full,
-                                    val_half,
-                                    val1_dac,
-                                    dval1_full,
-                                    dval1_half,
-                                    val2_dac,
-                                    dval2_full,
-                                    dval2_half,
-                                    error);
-    if(succ)
-      succ = helper_find_gain_cal_vga(mult,
-                                       ref_dac,
-                                       dref_targ_full,
-                                       dref_targ_full,
-                                       ref_full,
-                                       ref_full,
-                                       val_full,
-                                       val_full,
-                                       val1_dac,
-                                       dval1_full,
-                                       dval1_full,
-                                       error);
-
-    if(succ)
-      return true;
+    gain_cals[pmos] = helper_find_gain_cal_mult(mult,
+                              ref_dac,
+                              val1_dac,
+                              val2_dac,
+                              stdevs[pmos],
+                              errors[pmos]);
   }
-  return false;
+  // find the pmos,gain combo with the lowest error
+  for(int pmos=0; pmos<=7; pmos+=1){
+    if(pmos == 0 || stdevs[pmos] < stdevs[best_pmos]){
+      best_pmos = pmos;
+      best_gain_cal = gain_cals[pmos];
+      gain_stdev = stdevs[pmos];
+      error = errors[pmos];
+    }
+  }
+  sprintf(FMTBUF,"BEST-PMOS pmos=%d gain_cal=%d stdev=%f error=%f",
+          best_pmos,
+          gain_cals[best_pmos],
+          stdevs[best_pmos],
+          errors[best_pmos]);
+  print_info(FMTBUF);
 }
 
 
-bool helper_find_pmos_vga(Fabric::Chip::Tile::Slice::Multiplier* mult,
+void helper_find_pmos_vga(Fabric::Chip::Tile::Slice::Multiplier* mult,
                           Fabric::Chip::Tile::Slice::Dac* ref_dac,
-                          dac_code_t& dref_targ_full,
-                          dac_code_t& dref_targ_half,
-                          float ref_full,
-                          float ref_half,
-                          float val_full,
-                          float val_half,
                           Fabric::Chip::Tile::Slice::Dac* val1_dac,
-                          dac_code_t& dval1_full,
-                          dac_code_t& dval1_half,
-                          float max_error){
-
+                          uint8_t& best_pmos,
+                          uint8_t& best_gain_cal,
+                          float& gain_stdev,
+                          float& error){
+  float stdevs[7];
+  float errors[7];
+  int gain_cals[7];
   for(int pmos=0; pmos<=7; pmos+=1){
     sprintf(FMTBUF,"vga pmos=%d",pmos);
     print_info(FMTBUF);
     mult->m_codes.pmos = pmos;
     mult->update(mult->m_codes);
-    bool succ = helper_find_gain_cal_vga(mult,
-                                     ref_dac,
-                                     dref_targ_full,
-                                     dref_targ_half,
-                                     ref_full,
-                                     ref_half,
-                                     val_full,
-                                     val_half,
-                                     val1_dac,
-                                     dval1_full,
-                                     dval1_half,
-                                     max_error);
-    if(succ){
-      return true;
+    gain_cals[pmos] = helper_find_generic_gain_cal_vga(mult,
+                                                       ref_dac,
+                                                       val1_dac,
+                                                       stdevs[pmos],
+                                                       errors[pmos]);
+  }
+  // find the pmos,gain combo with the lowest standard deviation of gains
+  // this prevents the calibration routine for selecting parameter assignments
+  // with no hot (high gain) or cold (low gain) areas
+  for(int pmos=0; pmos<=7; pmos+=1){
+    if(pmos == 0 || errors[pmos] < errors[best_pmos]){
+      best_pmos = pmos;
+      best_gain_cal = gain_cals[pmos];
+      gain_stdev = stdevs[pmos];
+      error = errors[pmos];
     }
   }
-  return false;
+  sprintf(FMTBUF,"BEST-PMOS pmos=%d gain_cal=%d stdev=%f error=%f",
+          best_pmos,
+          gain_cals[best_pmos],
+          stdevs[best_pmos],
+          errors[best_pmos]);
+  print_info(FMTBUF);
 }
 
-bool helper_find_pmos(Fabric::Chip::Tile::Slice::Multiplier* mult,
-                      Fabric::Chip::Tile::Slice::Dac* ref_dac,
-                      dac_code_t& dref_targ_full,
-                      dac_code_t& dref_targ_half,
-                      float ref_full,
-                      float ref_half,
-                      float val_full,
-                      float val_half,
-                      Fabric::Chip::Tile::Slice::Dac* val1_dac,
-                      dac_code_t& dval1_full,
-                      dac_code_t& dval1_half,
-                      Fabric::Chip::Tile::Slice::Dac* val2_dac,
-                      dac_code_t& dval2_full,
-                      dac_code_t& dval2_half,
-                      float max_error)
+void helper_find_pmos(Fabric::Chip::Tile::Slice::Multiplier* mult,
+                       Fabric::Chip::Tile::Slice::Dac* ref_dac,
+                       Fabric::Chip::Tile::Slice::Dac* val1_dac,
+                       Fabric::Chip::Tile::Slice::Dac* val2_dac,
+                       uint8_t &pmos,
+                       uint8_t &gain_cal,
+                       float &gain_stdev,
+                       float &error)
 {
   if(mult->m_codes.vga){
-    return helper_find_pmos_vga(mult,
+    helper_find_pmos_vga(mult,
                                 ref_dac,
-                                dref_targ_full,
-                                dref_targ_half,
-                                ref_full,
-                                ref_half,
-                                val_full,
-                                val_half,
                                 val1_dac,
-                                dval1_full,
-                                dval1_half,
-                                max_error);
+                                pmos,
+                                gain_cal,
+                                gain_stdev,
+                                error);
   }
   else{
-    return helper_find_pmos_mult(mult,
-                                 ref_dac,
-                                 dref_targ_full,
-                                 dref_targ_half,
-                                 ref_full,
-                                 ref_half,
-                                 val_full,
-                                 val_half,
-                                 val1_dac,
-                                 dval1_full,
-                                 dval1_half,
-                                 val2_dac,
-                                 dval2_full,
-                                 dval2_half,
-                                 max_error);
+    helper_find_pmos_mult(mult,
+                          ref_dac,
+                          val1_dac,
+                          val2_dac,
+                          pmos,
+                          gain_cal,
+                          gain_stdev,
+                          error);
   }
 
 }
@@ -503,63 +457,26 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (profile_t& result, 
 
   mult_to_tileout.setConn();
 	tileout_to_chipout.setConn();
-
   dac_code_t dval1_0;
-  dac_code_t dval2_0;
-  dac_code_t dval1_full;
-  dac_code_t dval1_half;
-  dac_code_t dval2_full;
-  dac_code_t dval2_half;
-  dac_code_t dref_targ_full; // reference signal, for full range
-  dac_code_t dref_targ_half; // reference signal, for half range
-  float ref_full,ref_half;
-  float val_full=0.90;
-  float val_half= m_codes.vga ? 0.50 : 0.707;
-
-  float target = compute_out(m_codes,val_full,val_full);
-  float half = compute_out(m_codes,val_half,val_half);
-  print_info("CALIBRATE REFERENCE SIGNALS");
-  dref_targ_full = cutil::make_ref_dac(calib,
-                                        ref_dac,
-                                        -target,
-                                        ref_full);
-  dref_targ_half = cutil::make_ref_dac(calib,
-                                        ref_dac,
-                                        -half,
-                                        ref_half);
-  sprintf(FMTBUF, "target ref-full=%f ref-half=%f",
-          ref_full,ref_half);
-  print_info(FMTBUF);
-  print_info("CALIBRATE VALUE SIGNALS");
-  sprintf(FMTBUF, "target val-full=%f val-half=%f",
-          val_full, val_half);
-  print_info(FMTBUF);
   dval1_0 = cutil::make_zero_dac(calib,val1_dac);
-
-  dval1_full = cutil::make_val_dac(calib,
-                                   val1_dac,
-                                   compute_in0(m_codes,val_full));
-  dval1_half= cutil::make_val_dac(calib,
-                                  val1_dac,
-                                  compute_in0(m_codes,val_half));
-  if(!m_codes.vga){
-    dval2_full = cutil::make_val_dac(calib,
-                                     val2_dac,
-                                     compute_in1(m_codes,val_full));
-    dval2_half= cutil::make_val_dac(calib,
-                                    val2_dac,
-                                    compute_in1(m_codes,val_half));
-  }
 
   bool found_code = false;
   mult_code_t best_code = m_codes;
-	m_codes.nmos = 0;
-	setAnaIrefNmos ();
+
   print_info("=== calibrate multiplier ===");
-	do {
-    if(found_code or !calib.success){
-      break;
+
+  float errors[7];
+  float stdevs[7];
+  mult_code_t configs[7];
+  float pmos[7];
+  bool succs[7];
+	for(int nmos=0; nmos < 7; nmos += 1) {
+    errors[nmos] = -1;
+    if(!calib.success){
+      continue;
     }
+    m_codes.nmos = nmos;
+    setAnaIrefNmos ();
     bool succ = true;
     //calibrate bias, no external input
     sprintf(FMTBUF, "execute nmos=%d", m_codes.nmos);
@@ -575,38 +492,58 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (profile_t& result, 
     }
     if(succ){
       m_codes.vga = codes_self.vga;
-      ref_to_tileout.setConn();
       if(m_codes.vga){
         setGain(codes_self.gain_val);
       }
-      succ &= helper_find_pmos(this,
-                               ref_dac,
-                               dref_targ_full,
-                               dref_targ_half,
-                               ref_full,
-                               ref_half,
-                               val_full,
-                               val_half,
-                               val1_dac,
-                               dval1_full,
-                               dval1_half,
-                               val2_dac,
-                               dval2_full,
-                               dval2_half,
-                               max_error);
-      ref_to_tileout.brkConn();
-    }
-    if(succ){
-      best_code = m_codes;
-      found_code = true;
+      configs[nmos] = m_codes;
+      helper_find_pmos(this,
+                       ref_dac,
+                       val1_dac,
+                       val2_dac,
+                       configs[nmos].pmos,
+                       configs[nmos].gain_cal,
+                       stdevs[nmos],
+                       errors[nmos]);
     }
     parentSlice->dac->setEnable(false);
-
-    m_codes.nmos += 1;
-    if(m_codes.nmos <= 7){
-      setAnaIrefNmos ();
+    succs[nmos] = succ;
+	}
+  int best_nmos = -1;
+  if(codes_self.vga)
+    {
+      // the best vga codes fall within the maximum error, while also reaching the minimum
+      // standard deviation.
+      for(int i=0; i < 7; i += 1){
+        if(succs[i] && (best_nmos < 0
+                        || (stdevs[i] <= stdevs[best_nmos] &&
+                            errors[i] <= max_error)
+                        ))
+          {
+            best_nmos = i;
+          }
+      }
     }
-	} while (m_codes.nmos <= 7 && !found_code);
+  else
+    {
+      for(int i=0; i < 7; i += 1){
+        if(succs[i] && (best_nmos < 0
+                        || stdevs[i] < stdevs[best_nmos])){
+          best_nmos = i;
+        }
+      }
+    }
+  if(best_nmos >= 0 && errors[best_nmos] < max_error){
+    best_code = configs[best_nmos];
+    found_code = true;
+  }
+  print_info("==== BEST CODE ======");
+  sprintf(FMTBUF, "nmos=%d pmos=%d gain_cal=%d error=%f gain-std=%f",
+          best_code.nmos,
+          best_code.pmos,
+          best_code.gain_cal,
+          errors[best_code.nmos],
+          stdevs[best_code.nmos]);
+  print_info(FMTBUF);
   // update the result to use the best code.
   m_codes = best_code;
   update(m_codes);

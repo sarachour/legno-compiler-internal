@@ -165,6 +165,9 @@ namespace binsearch {
                           float & delta,
                           meas_method_t method
      );
+  float bin_search_meas(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                 meas_method_t method);
+
   void find_bias(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                  float target,
                  unsigned char & code,

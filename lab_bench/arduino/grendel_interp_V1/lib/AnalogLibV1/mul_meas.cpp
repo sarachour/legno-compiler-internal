@@ -171,7 +171,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_mult(float in0val, floa
                                       target_mult,
                                       target_in0,
                                       target_in1,
-                                      mean-(target_mult+ref),
+                                      bias,
                                       variance);
 
   if(!calib.success){

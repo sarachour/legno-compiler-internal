@@ -57,7 +57,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeMedValue(float target,
   this_dac_to_tile.setConn();
   tile_to_chip.setConn();
 
-  print_info(FMTBUF);
+  print_debug(FMTBUF);
   // start at what the value would be if the gain was one.
   this->setConstant(target);
   // start out with no code offset
@@ -79,7 +79,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeMedValue(float target,
     sprintf(FMTBUF,"DIFF delta=%d targ=%f meas=%f err=%f max_err=%f suc=%s",
             next_code,target,mean,fabs(mean-target),max_error,
             fabs(mean-target) > max_error ? "n" : "y");
-    print_info(FMTBUF);
+    print_debug(FMTBUF);
     delta += target < mean ? -1 : +1;
   }
   this_dac_to_tile.brkConn();
@@ -177,7 +177,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
             mean,
             dac_value,
             ref_value);
-    print_info(FMTBUF);
+    print_debug(FMTBUF);
     update_ref = !update_ref;
   }
   // compute the expected difference, with respect to this
@@ -186,7 +186,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
   sprintf(FMTBUF,"C target=%f ref=%f diff=%f",
           target,ref_dac->m_codes.const_val,
           target_diff);
-  print_info(FMTBUF);
+  print_debug(FMTBUF);
   // start at what the value would be if the gain was one.
   this->setConstant(target*0.1);
   // start out with no code offset
@@ -208,7 +208,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
     sprintf(FMTBUF,"DIFF delta=%d targ=%f meas=%f err=%f max_err=%f suc=%s",
             next_code,target_diff,mean,fabs(mean-target_diff),max_error,
             fabs(mean-target_diff) > max_error ? "n" : "y");
-    print_info(FMTBUF);
+    print_debug(FMTBUF);
     delta += target_diff < mean ? -1 : +1;
   }
 
@@ -278,7 +278,6 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(){
                                          parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
 
-  ref_dac->setEnable(true);
   this->setEnable(true);
   this->setRange(RANGE_HIGH);
   this->setSource(DSRC_MEM);
@@ -286,20 +285,20 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(){
   ref_dac->setEnable(true);
   ref_dac->setRange(RANGE_HIGH);
   ref_dac->setSource(DSRC_MEM);
+  fast_calibrate_dac(ref_dac);
 
   this_dac_to_tile.setConn();
   ref_dac_to_tile.setConn();
   tile_to_chip.setConn();
-  float value = this->m_codes.const_val*10.0;
-  float step = 0.9;
+  //compute the floating point value from the dac code.
+  float value = ((this->m_codes.const_code-128.0)/128.0)*10.0;
+  float step = 1.0;
   float total = 0.0;
   bool update_ref = true;
-  this->setConstant(value/10.0);
-
   while(fabs(value) >= step){
     float old_value = value;
+    value= -(value< 0 ? value+ step : value-step);
     //telescope the value
-    value = -(value < 0 ? value + step : value-step);
     //alternate between updating the reference.
     if(update_ref){
       ref_dac->setConstant(value/10.0);
@@ -308,13 +307,31 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(){
       this->setConstant(value/10.0);
     }
     float mean = util::meas_chip_out(this);
+    /*
+      if we can't measure the difference, adjust
+      the value of the dac we're tuning until we're
+      in a measurable range.
+    */
+    while(fabs(mean) > 1.2 &&
+          fabs(value) < 10.0){
+      // this value is too negative
+      value += mean < -1.2 ? step*0.1 : -step*0.1;
+      if(update_ref){
+        ref_dac->setConstant(value/10.0);
+      }
+      else{
+        this->setConstant(value/10.0);
+      }
+      mean = util::meas_chip_out(this);
+    }
     total += fabs(mean);
-    sprintf(FMTBUF, "A old=%f new=%f mean=%f total=%f",
+    sprintf(FMTBUF, "%s old=%f new=%f mean=%f total=%f",
+            update_ref ? "R" : "D",
             old_value,
             value,
             mean,
             total);
-    print_info(FMTBUF);
+    print_debug(FMTBUF);
     update_ref = !update_ref;
   }
   if(update_ref){
@@ -330,7 +347,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(){
           0.0,
           mean,
           total);
-  print_info(FMTBUF);
+  print_debug(FMTBUF);
   total = this->m_codes.const_val > 0 ? total : -total;
   ref_dac_to_tile.brkConn();
   this_dac_to_tile.brkConn();

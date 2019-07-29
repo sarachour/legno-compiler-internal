@@ -27,15 +27,16 @@ def model():
     }
     #Y = parse_diffeq('(Y*{mu}*(1.0-{onehack}*X*X) - {onehack}*X)','Y0',':v',params)
     #X = parse_diffeq('{onehack}*Y','X0',':u',params)
-    Y = parse_diffeq('Y*{mu}*(1.0+(-X)*X) + {onehack}*(-X)','Y0',':v',params)
-    X = parse_diffeq('Y','X0',':u',params)
+    Y = parse_diffeq('(Y*{mu}*(1.0+(-X)*X) + {onehack}*(-X))', \
+                     'Y0',':v',params)
+    X = parse_diffeq('{onehack}*(Y)','X0',':u',params)
 
     prob.bind("Y",Y)
     prob.bind("X",X)
     measure_var(prob,"X","OUTX")
-    prob.set_interval("X",-2.0,2.0)
-    prob.set_interval("Y",-2.0,2.0)
-    prob.set_interval("OUTX",-2.0,2.0)
+    prob.set_interval("X",-2.5,2.5)
+    prob.set_interval("Y",-2.5,2.5)
+    prob.set_interval("OUTX",-2.5,2.5)
     prob.set_max_sim_time(50)
     prob.compile()
     menv = menvs.get_math_env('t50')
@@ -43,8 +44,7 @@ def model():
 
 def execute():
   menv,prob = model()
-  T,Y = run_diffeq(menv,prob)
-  plot_diffeq(menv,prob,T,Y)
+  plot_diffeq(menv,prob)
 
 
 if __name__ == "__main__":

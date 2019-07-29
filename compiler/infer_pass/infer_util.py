@@ -5,8 +5,12 @@ import itertools
 import util.util as util
 
 def tightest_bounds(bnds):
-    lb = min(map(lambda b: b[0], bnds))
-    ub = min(map(lambda b: b[1], bnds))
+    lb = min(map(lambda b: b[0] \
+                 if not b[0] is None \
+                 else 1e6, bnds))
+    ub = min(map(lambda b: b[1] \
+                 if not b[1] is None \
+                 else 1e6, bnds))
     return (lb,ub)
 
 def apply_model(model,xdata):
@@ -64,17 +68,17 @@ def get_directory(model):
 
 def normalize_bound(bnds,scm):
   lb,ub = bnds
-  if scm == chipcmd.RangeType.HIGH:
-      coeff = 0.1
-  elif scm == chipcmd.RangeType.LOW:
-      coeff = 10.0
-  elif scm == chipcmd.RangeType.MED:
-      coeff = 1.0
+  if not lb is None:
+      nlb = lb*1.0/scm.coeff()
   else:
-      raise Exception("unknown mode <%s>" % scm)
+      nlb = 1.0
 
+  if not ub is None:
+      nub = ub*1.0/scm.coeff()
+  else:
+      nub = 1.0
 
   def clamp(v):
-      return min(max(v,0.9),1.0)
+      return min(max(v,0.5),1.0)
 
-  return [clamp(lb*coeff),clamp(ub*coeff)]
+  return [clamp(nlb),clamp(nub)]

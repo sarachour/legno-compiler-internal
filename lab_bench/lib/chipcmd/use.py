@@ -662,7 +662,15 @@ class UseMultCmd(UseCommand):
         if(self._use_coeff):
             val *= self._coeff
 
-        return max(abs(0.02*val),0.02)
+        if self._use_coeff:
+            # we want the vga to fall within 4 percent error.
+            base = 0.04
+        else:
+            # we don't really care what the base value
+            # is if this is pure multiplication
+            base = 0.4
+
+        return max(abs(base*val),base)
 
     def update_state(self,state):
         state.update_gain(self._coeff)

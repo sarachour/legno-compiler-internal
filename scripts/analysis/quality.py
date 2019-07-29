@@ -146,7 +146,6 @@ def analyze(entry,recompute=False,no_reference=False):
 
     TMEAS,YMEAS = read_meas_data(output.out_file)
     common.simple_plot(output,path_h,output.trial,'meas',TMEAS,YMEAS)
-
     if no_reference:
       QUALITIES.append(-1)
       continue

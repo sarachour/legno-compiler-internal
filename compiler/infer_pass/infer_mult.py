@@ -11,10 +11,15 @@ def build_config(meta):
   if comp_mode == 'vga':
     scale_mode = (infer_util.to_range(meta['ranges']['in0']), \
                   infer_util.to_range(meta['ranges']['out0']))
+    _,out = scale_mode
+    max_unc = out.coeff()*0.04
+
   else:
     scale_mode = (infer_util.to_range(meta['ranges']['in0']), \
                   infer_util.to_range(meta['ranges']['in1']), \
                   infer_util.to_range(meta['ranges']['out0']))
+    _,_,out = scale_mode
+    max_unc = out.coeff()*0.05
 
   out = PortModel('multiplier',loc,'out', \
                   comp_mode=comp_mode, \
@@ -29,23 +34,30 @@ def build_config(meta):
   coeff = PortModel('multiplier',loc,'coeff', \
                     comp_mode=comp_mode, \
                     scale_mode=scale_mode)
-  return out,in0,in1,coeff
+  return scale_mode,max_unc,out,in0,in1,coeff
 
 
 def infer(obj):
   result = build_config(obj['metadata'])
-  model_out,model_in0,model_in1,model_coeff = result
-  bnds = infer_fit.build_model(model_out,obj['dataset'],0)
-
-  scm = model_out.scale_mode
-  #model_out.gain = 1.0
-  #bnds['in0'] = [0.90,0.90]
-  #bnds['in1'] = [0.90,0.90]
-  bnd = infer_util.normalize_bound(bnds['in0'],scm[0])
-  model_in0.set_oprange_scale(*bnd)
-  if model_out.comp_mode == 'vga':
-    model_coeff.set_oprange_scale(*bnds['in1'])
+  scm,max_unc,model_out,model_in0,model_in1,model_coeff = result
+  bnds = infer_fit.build_model(model_out,obj['dataset'],0,max_unc)
+  cm = model_out.comp_mode
+  if cm == 'vga':
+    sci,sco = scm
+    scale = sco.coeff()/sci.coeff()
+    model_in0.bias_uncertainty = model_out.bias_uncertainty/scale
+    bnd = infer_util.normalize_bound(bnds['in0'],scm[0])
+    model_in0.set_oprange_scale(*bnd)
+    bnd = infer_util.normalize_bound(bnds['in1'],chipdata.RangeType.MED)
+    model_coeff.set_oprange_scale(*bnd)
   else:
+    sci0,sci1,sco = scm
+    scale0 = sco.coeff()/(sci0.coeff())
+    model_in0.bias_uncertainty = model_out.bias_uncertainty/scale0
+    bnd = infer_util.normalize_bound(bnds['in0'],scm[0])
+    model_in0.set_oprange_scale(*bnd)
+    scale1 = sco.coeff()/(sci1.coeff())
+    model_in1.bias_uncertainty = model_out.bias_uncertainty/scale1
     bnd = infer_util.normalize_bound(bnds['in1'],scm[1])
     model_in1.set_oprange_scale(*bnd)
 

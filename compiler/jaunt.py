@@ -154,12 +154,18 @@ def scale(prog,circ,nslns, \
           digital_error=0.05, \
           analog_error=0.05, \
           max_freq=None, \
-          do_log=True):
+          do_log=True,
+          also_emit_naive=True):
     infer.clear(circ)
     infer.infer_intervals(prog,circ)
     infer.infer_bandwidths(prog,circ)
     objs = JauntObjectiveFunctionManager.basic_methods()
     n_missing = 0
+    models_to_gen = {
+        'physical': ['physical','partial','naive'],
+        'partial': ['partial','naive'],
+        'naive': ['naive']
+    }
     for idx,infer_circ in enumerate(jaunt_infer.infer_scale_config(prog, \
                                                                    circ, \
                                                                    nslns, \
@@ -169,23 +175,27 @@ def scale(prog,circ,nslns, \
                                                                    analog_error=analog_error)):
 
         for obj in objs:
-            jenv = jenvlib.JauntEnv(model=model, \
-                                    max_freq=max_freq, \
-                                    digital_error=digital_error, \
-                                    analog_error=analog_error)
+            for this_model in models_to_gen[model]:
+                jenv = jenvlib.JauntEnv(model=this_model, \
+                                        max_freq=max_freq, \
+                                        digital_error=digital_error, \
+                                        analog_error=analog_error)
 
-            if model == jenvlib.JauntEnvParams.Model.PHYSICAL and \
-               len(ModelDB.MISSING) > n_missing:
-                jenv.fail(msg)
+                if this_model == jenvlib.JauntEnvParams.Model.PHYSICAL and \
+                   len(ModelDB.MISSING) > n_missing:
+                    jenv.fail(msg)
 
-            print("missing: %d -> %d" % (n_missing, len(ModelDB.MISSING)))
-            n_missing = len(ModelDB.MISSING)
-            infer.infer_costs(infer_circ, \
-                              propagate_cost=jenv.params.propagate_uncertainty, \
-                              model=jenv.params.model)
+                print("missing: %d -> %d" % (n_missing, len(ModelDB.MISSING)))
+                n_missing = len(ModelDB.MISSING)
 
-            for final_obj,final_circ in compute_scale(jenv,prog,infer_circ,obj):
-                yield idx,final_obj.tag(),jenv.params.tag(),final_circ
+
+                infer.infer_costs(infer_circ, \
+                                  propagate_cost=jenv.params.propagate_uncertainty, \
+                                  model=jenv.params.model)
+
+                for final_obj,final_circ in compute_scale(jenv,prog,infer_circ,obj):
+                    yield idx,final_obj.tag(),jenv.params.tag(),final_circ
+
 
     print("logging: %s" % do_log)
     if do_log:

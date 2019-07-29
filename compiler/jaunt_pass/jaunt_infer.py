@@ -155,11 +155,11 @@ def sc_coalesce_connections(circ):
     conns = []
 
     def get_ancestors(blk,loc,port,visited=[]):
-        visited = visited +[(blk,loc,port)]
         if not (blk,loc,port) in backward_links or \
            (blk,loc,port) in visited:
             return []
         else:
+            visited = visited +[(blk,loc,port)]
             lst = backward_links[(blk,loc,port)]
             for sb,sl,sp in backward_links[(blk,loc,port)]:
                 lst += get_ancestors(sb,sl,sp)
@@ -212,11 +212,10 @@ def sc_coalesce_connections(circ):
             n = len(backward_links[(db,dl,dp)])
             backward_links[(db,dl,dp)] = get_ancestors(db,dl,dp)
             m = len(backward_links[(db,dl,dp)])
+            assert(m >= n)
             is_steady_state &= (n == m)
-            #print("%d -> %d" % (n,m))
         #print("iterate")
 
-    #print("=== extract connections ===")
     for dblk,dloc,dport in dest_links:
         for sblk,sloc,sport in backward_links[(dblk,dloc,dport)]:
             if not (sblk,sloc,sport) in source_links:
@@ -249,10 +248,17 @@ def sc_build_connection_constraints(jenv,circ):
                                             dloc, \
                                             dport)
             dest_max = get_range(dblk,dloc,dport)
-            jenv.lte( \
+            if dblk == "integrator":
+                jenv.lte( \
+                         jop.JMult(jop.JVar(src_ov),jop.JConst(src_max)), \
+                     jop.JMult(jop.JVar(dest_ov),jop.JConst(dest_max)), \
+                     'jc-match-scale-modes')
+            else:
+                jenv.eq( \
                      jop.JMult(jop.JVar(src_ov),jop.JConst(src_max)), \
                      jop.JMult(jop.JVar(dest_ov),jop.JConst(dest_max)), \
                      'jc-match-scale-modes')
+
 
 
     return True

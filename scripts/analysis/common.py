@@ -32,6 +32,7 @@ def compare_plot(entry,path_h,trial,tag,tpred,xpred,tobs,xobs):
                          entry.math_env,
                          entry.hw_env,
                          '%s-%d-%s' % (entry.varname,trial,tag))
+  print(filename)
   plt.savefig(filename)
   plt.clf()
 
@@ -49,6 +50,7 @@ def simple_plot(entry,path_h,trial,tag,t,x):
                          entry.math_env,
                          entry.hw_env,
                          '%s-%d-%s' % (entry.varname,trial,tag))
+  print(filename)
   plt.savefig(filename)
   plt.clf()
 

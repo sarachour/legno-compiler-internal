@@ -92,7 +92,6 @@ def infer(args,dump_db=True):
     populate_default_models(hdacv2_board)
     sys.exit(0)
 
-  dump_db = False
   if dump_db:
     cmd = "python3 grendel.py --dump-db calibrate.grendel"
     print(cmd)
