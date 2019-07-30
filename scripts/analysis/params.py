@@ -50,7 +50,6 @@ def analyze(entry,conc_circ,method=RankMethod.SKELTER):
     output.set_fmax(params['fmax'])
     output.set_scf(params['scf'])
     #output.set_rank(RANK)
-    print(output)
 
   if not params is None:
     entry.set_runtime(params['runtime'])

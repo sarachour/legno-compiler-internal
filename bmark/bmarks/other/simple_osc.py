@@ -26,16 +26,16 @@ def make_output(prob,out,var,adc=False):
 
 # we introduce an oscillator with gain to better understand how physical models work.
 def model_with_gain(menv_name='t20', adc=False):
-    omega = 1.0
+    omega = 0.75
     params = {
         'P0': 0.1,
         'V0' :0.0,
-        'omega': -1*omega*omega
+        'omega': omega*omega
     }
     # t20
     prob = MathProg("micro-osc-with-gain")
-    P = parse_diffeq("0.9999*V", "P0", ":a", params)
-    V = parse_diffeq("(-P)", "V0", ":b", params)
+    P = parse_diffeq("0.999*V", "P0", ":a", params)
+    V = parse_diffeq("{omega}*(-P)", "V0", ":b", params)
     #V = parse_diffeq("{omega}*P", "V0", ":b", params)
 
     scf = omega

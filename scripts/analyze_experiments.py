@@ -26,7 +26,7 @@ def missing_params(entry):
   return entry.rank is None or \
     entry.runtime is None
 
-def execute_once(args,debug=True):
+def execute_once(args,debug=False):
   recompute_params = args.recompute_params
   recompute_quality = args.recompute_quality
   recompute_energy = args.recompute_energy
@@ -48,9 +48,6 @@ def execute_once(args,debug=True):
 
       if not args.subset is None and not entry.subset == args.subset:
         continue
-
-      if debug:
-        print(entry)
 
       if not entry.subset in BOARD_CACHE:
         board = make_board[entry.subset]
@@ -81,9 +78,6 @@ def execute_once(args,debug=True):
 
     if not args.obj is None and entry.objective_fun != args.obj:
       continue
-
-    if debug:
-      print(entry)
 
     if not entry.subset in BOARD_CACHE:
       board = make_board(entry.subset)

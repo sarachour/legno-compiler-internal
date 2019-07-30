@@ -160,10 +160,14 @@ def sc_coalesce_connections(circ):
             return []
         else:
             visited = visited +[(blk,loc,port)]
-            lst = backward_links[(blk,loc,port)]
-            for sb,sl,sp in backward_links[(blk,loc,port)]:
-                lst += get_ancestors(sb,sl,sp)
-            return list(set(lst))
+            lst = children = backward_links[(blk,loc,port)]
+            for sb,sl,sp in children:
+                for db,dl,dp in get_ancestors(sb,sl,sp, \
+                                              visited=visited):
+                    if not (db,dl,dp) in lst:
+                        lst.append((db,dl,dp))
+
+            return lst
 
 
     for blkname,loc,_ in circ.instances():
@@ -182,15 +186,12 @@ def sc_coalesce_connections(circ):
         if not (dblkname,dloc,dport) in backward_links:
             backward_links[(dblkname,dloc,dport)] = []
 
-        backward_links[(dblkname,dloc,dport)] \
-            .append((sblkname,sloc,sport))
-
 
         backward_links[(dblkname,dloc,dport)] = list(set( \
                                                      backward_links[(dblkname,dloc,dport)] +
                                                      [(sblkname,sloc,sport)] + \
                                                      get_ancestors(sblkname,sloc,sport) \
-        ))
+    ))
 
         # mark this block as a source
         if sblk.type != blocklib.BlockType.BUS:
@@ -210,7 +211,8 @@ def sc_coalesce_connections(circ):
         is_steady_state = True
         for db,dl,dp in backward_links:
             n = len(backward_links[(db,dl,dp)])
-            backward_links[(db,dl,dp)] = get_ancestors(db,dl,dp)
+            new_links = get_ancestors(db,dl,dp)
+            backward_links[(db,dl,dp)] = new_links
             m = len(backward_links[(db,dl,dp)])
             assert(m >= n)
             is_steady_state &= (n == m)

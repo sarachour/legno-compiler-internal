@@ -193,6 +193,9 @@ def infer_model(model,in0,in1,out,bias,noise, \
     in0_valid = np.array(list(map(lambda i: in0_valid[i], inds)))
     in1_valid = np.array(list(map(lambda i: in1_valid[i], inds)))
     noise_valid = np.array(list(map(lambda i: noise_valid[i], inds)))
+    if m == 0:
+      print(model)
+      raise Exception("no data")
     (new_gain,new_offset),corrs= scipy \
                           .optimize.curve_fit(apply_params, \
                                               out_valid, meas_valid)
@@ -228,9 +231,11 @@ def infer_model(model,in0,in1,out,bias,noise, \
 def build_model(model,dataset,mode,max_uncertainty,adc=False):
   bias,noise,in0,in1,out = infer_util \
                            .get_data_by_mode(dataset,mode)
-  infer_vis.plot_bias(infer_vis.get_plot_name(model,'bias'), \
+  infer_vis.plot_bias(model,\
+                      infer_vis.get_plot_name(model,'bias'), \
                       in0,in1,out,bias)
-  infer_vis.plot_noise(infer_vis.get_plot_name(model,'noise'), \
+  infer_vis.plot_noise(model, \
+                       infer_vis.get_plot_name(model,'noise'), \
                        in0,in1,out,noise)
   bnd= infer_model(model,in0,in1,out, \
                         bias,noise,max_uncertainty,adc=adc)
@@ -239,4 +244,5 @@ def build_model(model,dataset,mode,max_uncertainty,adc=False):
                                   model,None,in0,in1,out,bias)
   infer_vis.plot_prediction_error(infer_vis.get_plot_name(model,'bnd'), \
                                   model,bnd,in0,in1,out,bias)
+  plt.close('all')
   return bnd

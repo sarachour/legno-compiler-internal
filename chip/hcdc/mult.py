@@ -74,7 +74,8 @@ def is_extended_vga(mode):
                   o == chipcmd.RangeType.HIGH)
   not_high = not (i == chipcmd.RangeType.HIGH and \
                   o == chipcmd.RangeType.HIGH)
-  return not_low and not_ampl and not_high
+  #return not_low and not_ampl and not_high
+  return not_low and not_ampl
   #return not_low
 # it works with high.
 
