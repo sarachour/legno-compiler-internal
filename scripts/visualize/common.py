@@ -18,6 +18,7 @@ class Dataset:
     self._fields = ['ident','circ_ident','bmark', \
                     'objective_fun', 'model',\
                     'rank', 'mismatch',
+                    'subset',
                     'jaunt_circ_file',
                     'quality','runtime','energy']
     self._metafields = ['quality_variance','quality_time_ratio']
@@ -89,20 +90,17 @@ def get_data(series_type='bmarks',executed_only=True):
   return data
 
 class BenchmarkVisualization:
-  BENCHMARK_ORDER = ['micro-osc',
-                     'cosc',
-                     'pend',
+  BENCHMARK_ORDER = ['cosc',
                      'pend-nl',
-                     'spring',
                      'spring-nl',
                      'vanderpol',
                      'robot',
-                     'heat1d-g4',
                      'heat1d-g8',
                      'closed-forced-vanderpol',
                      'kalman-const',
                      'gentoggle',
-                     'smmrxn'
+                     'smmrxn',
+                     'bont'
   ]
   BENCHMARK_NAMES = {
     'micro-osc': 'sin',
@@ -127,6 +125,7 @@ class BenchmarkVisualization:
     'heat1d-g6': 'heat6-3',
     'heat1d-g6-wg': 'heat6-3-gain',
     'heat1d-g8': 'heat8-4',
+    'heat1d-g8-wg': 'heat8-4-gain',
     'kalman-const': 'kalman'
   }
 

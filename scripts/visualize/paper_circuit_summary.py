@@ -122,14 +122,14 @@ def average_scale_factor_count(circs,models):
     return summary
 
 def to_jaunt_table(circuits,models):
-  desc = "statistics for Jaunt compilation pass"
+  desc = "statistics for \jaunt compilation pass"
   table = common.Table('Circuit Configurations', \
-                       desc, 'circjaunt','|c|cc|c|cccc|')
+                       desc, 'circjaunt','|c|ccc|ccccc|')
 
   fields = [
-    'minimum digital snr',
-    'minimum analog snr',
-    'maximum bandwidth',
+    'digital snr',
+    'analog snr',
+    'max freq',
     'time constant',
     'scale vars',
     'unique scale values',
@@ -149,9 +149,9 @@ def to_jaunt_table(circuits,models):
     summary = average_scale_factor_count(circuits[bmark], \
                                          models[bmark])
     row = {}
-    row['minimum digital snr'] = "%.3f" % summary['digital_snr']
-    row['minimum analog snr'] = "%.3f" % summary['analog_snr']
-    row['maximum bandwidth'] = "%.3f" % summary['bandwidth']
+    row['digital snr'] = "%.3f" % summary['digital_snr']
+    row['analog snr'] = "%.3f" % summary['analog_snr']
+    row['max freq'] = "%dk" % int(summary['bandwidth']/1000)
     row['time constant'] = "%.2f" % summary['tau']
     row['scale vars'] = "%d" % summary['scvars']
     row['unique scale values'] = "%d" % summary['scvals']
@@ -167,16 +167,22 @@ def visualize():
   circuits = {}
   models = {}
   for ser in data.series():
-    fields = ['jaunt_circ_file','model','bmark']
-    conc_circ_files,model,bmarks = data.get_data(ser, fields, \
+    fields = ['jaunt_circ_file','model','bmark','subset']
+    conc_circ_files,bmark_models,bmarks,subsets = data.get_data(ser, fields, \
                                     [MismatchStatus.UNKNOWN,
                                      MismatchStatus.IDEAL])
     conc_circs = conc_circ_files
     bmark = bmarks[0]
+    n = len(conc_circs)
+    valid_indices = list(filter(lambda i: subsets[i] == 'extended' and \
+                           "n" in bmark_models[i], \
+                           range(n)))
+    if len(valid_indices) == 0:
+      continue
 
-    circuits[bmark] = list(map(lambda  c: ConcCirc.read(None,c), \
-                               conc_circs))
-    models[bmark] = model
+    circuits[bmark] = list(map(lambda  i: ConcCirc.read(None,conc_circs[i]), \
+                               valid_indices))
+    models[bmark] = bmark_models
 
   to_arco_table(circuits)
   to_jaunt_table(circuits,models)

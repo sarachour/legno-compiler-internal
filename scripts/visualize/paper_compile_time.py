@@ -45,7 +45,7 @@ def to_runtime_table(summary):
 
   desc = "compilation time, broken down by compilation pass"
   table = common.Table('Compilation Times', \
-                       desc, 'comptime','|c|ccccccc|c|')
+                       desc, 'comptime','|c|ccc|')
   table.set_fields(['arco','jaunt','srcgen'])
   table.horiz_rule()
   table.header()

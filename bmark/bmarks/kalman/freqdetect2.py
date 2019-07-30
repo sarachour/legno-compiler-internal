@@ -17,7 +17,8 @@ def model():
     'W0':0.5,
     'V0':0.0,
     'X0':0.0,
-    'Pinit':0.1
+    'Pinit':0.1,
+    'one':0.9999
   }
   prob = MathProg("kalman-freq2")
 
@@ -30,15 +31,15 @@ def model():
   params['Z'] = ZP
 
   E = parse_fn("{Rinv}*({Z}+(-X))",params)
-  dW = parse_diffeq("P13*E", \
+  dW = parse_diffeq("{one}*P13*E", \
                     "W0", \
                     ':w', \
                     params)
-  dV = parse_diffeq("X*(-W) + (P23)*E", \
+  dV = parse_diffeq("{one}*X*(-W) + {one}*(P23)*E", \
                     "V0", \
                     ":v", \
                     params)
-  dX = parse_diffeq("V + (P33)*E",\
+  dX = parse_diffeq("{one}*V + {one}*(P33)*E",\
                     "X0", \
                     ":x", \
                     params)
@@ -46,34 +47,34 @@ def model():
   #square_fun = op.Func(['V'], op.Mult(op.Var('V'),\
   #                                  op.Var('V')))
 
-  dP11 = parse_diffeq("{Q}+{nRinv}*(P13*P13)",
+  dP11 = parse_diffeq("{nRinv}*(P13*P13)",
                     "Pinit",
                     ":p11",
                     params)
 
 
-  dP12 = parse_diffeq("{Q}+P11*(-X)+P13*(-W)+{nRinv}*(P13*P23)",
+  dP12 = parse_diffeq("{one}*P11*(-X)+P13*(-W)+{nRinv}*(P13*P23)",
                    "Pinit",
                     ":p12",
                     params)
 
 
-  dP13 = parse_diffeq("{Q}+P12 + {nRinv}*(P13*P33)",
+  dP13 = parse_diffeq("{one}*P12 + {nRinv}*(P13*P33)",
                     "Pinit",
                     ":p13",
                     params)
 
-  dP22 = parse_diffeq("{Q}+2.0*(P12*(-X)+P23*(-W)) + {nRinv}*(P23*P23)",
+  dP22 = parse_diffeq("2.0*P12*(-X)+2.0*P23*(-W) + {nRinv}*(P23*P23)",
                     "Pinit",
                     ":p22",
                     params)
 
-  dP23 = parse_diffeq("{Q}+P13*(-X) + P33*(-W)+ P22 + {nRinv}*(P23*P33)",
+  dP23 = parse_diffeq("{one}*P13*(-X) + {one}*P33*(-W)+ {one}*P22 + {nRinv}*(P23*P33)",
                     "Pinit",
                     ":p23",
                     params)
 
-  dP33 = parse_diffeq("{Q}+2.0*P23 + {nRinv}*(P33*P33)",
+  dP33 = parse_diffeq("2.0*P23 + {nRinv}*(P33*P33)",
                     "Pinit",
                     ":p33",
                     params)

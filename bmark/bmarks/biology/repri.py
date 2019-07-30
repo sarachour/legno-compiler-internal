@@ -35,24 +35,24 @@ def model(closed_form=True):
   }
 
   # reparametrization
-  K = 1.0
+  K = 0.1
   params = {
     'LacLm0':0.5,
     'clm0':0.25,
     'TetRm0':0.30,
-    'LacLp0':3.0,
-    'clp0':1.0,
-    'TetRp0':2.0,
+    'LacLp0':0.80,
+    'clp0':0.40,
+    'TetRp0':0.60,
     'K':K,
     'n':2.0,
     'a_tr':0.75,
     'kd_mrna' : 0.40,
     'a0_tr':0.0,
-    'k_tl': 0.901029995664,
+    'k_tl': 0.201029995664,
     'kd_prot': 0.30,
     'one': 0.9999999,
-    'mrna_bnd':1.2,
-    'prot_bnd':3.5
+    'mrna_bnd':1.5,
+    'prot_bnd':1.0
   }
   assert(closed_form)
   prob = MathProg("repri")
@@ -124,10 +124,10 @@ def model(closed_form=True):
   prob.set_interval("ALacL",0,act_bnd)
   prob.set_interval("Aclp",0,act_bnd)
   prob.set_interval("ATetR",0,act_bnd)
-  prob.set_max_sim_time(2000)
+  prob.set_max_sim_time(200)
   prob.compile()
   #menv = menvs.get_math_env('t200')
-  menv = menvs.get_math_env('t2k')
+  menv = menvs.get_math_env('t200')
   return menv,prob
 
 def execute(closed_form=False):
