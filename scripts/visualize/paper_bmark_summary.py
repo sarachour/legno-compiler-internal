@@ -16,6 +16,10 @@ DESCRIPTIONS = {
   'robot': 'PID control system',
   'gentoggle': 'genetic toggle switch',
   'kalman-const': 'kalman filter',
+  'smmrxn': 'michaelis menten reaction',
+  'bont': 'botulism neurotoxin model (reparametrized)',
+  'repri': 'reprissilator (reparametrized)',
+  'gentoggle': 'genetic toggle switch',
   'closed-forced-vanderpol':'chaotic vanderpol oscillator'
 
 }
@@ -30,6 +34,9 @@ OBSERVATIONS = {
   'repri': 'chemical compounds',
   'heat1d': 'heat at point',
   'gentoggle': 'concentration of protein',
+  'repri': 'concentration of protein',
+  'bont': 'concentration of protein',
+  'smmrxn': 'concentration of protein',
   'kalman-const': 'state estimation'
 }
 NONLINEAR = {
@@ -42,7 +49,9 @@ NONLINEAR = {
   'closed-forced-vanderpol': True,
   'gentoggle': True,
   'kalman-const': True,
-  'cosc': False
+  'cosc': False,
+  'bont': True,
+  'smmrxn': True
 }
 def visualize():
   header = ['description', 'observation','time','diffeqs','funcs','nonlinear']

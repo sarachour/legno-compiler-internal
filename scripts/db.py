@@ -382,6 +382,11 @@ class ExperimentEntry:
     self._columns = None
 
   @property
+  def arco_indices(self):
+    return self._arco_indices
+
+
+  @property
   def rank(self):
     return self._rank
 

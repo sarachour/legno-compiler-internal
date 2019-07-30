@@ -101,7 +101,8 @@ class BenchmarkVisualization:
                      'heat1d-g8',
                      'closed-forced-vanderpol',
                      'kalman-const',
-                     'gentoggle'
+                     'gentoggle',
+                     'smmrxn'
   ]
   BENCHMARK_NAMES = {
     'micro-osc': 'sin',
@@ -116,6 +117,7 @@ class BenchmarkVisualization:
     'kalman-const': 'kalman',
     'spring-nl': 'spring',
     'robot': 'pid',
+    'smmrxn': 'mmrxn',
     'gentoggle': 'gentoggle',
     'bont': 'bont',
     'epor': 'epor',

@@ -89,7 +89,7 @@ def to_arco_table(circuits):
 
 def count_scaling_factors(circ,model):
   #conc_circ = ConcCirc.read(board,conc_circ)
-  model,dig_error,ana_error,bandwidth = common.unpack_tag(model)
+  model,dig_error,ana_error,bandwidth = util.unpack_tag(model)
   scvals = []
   injvals = []
   n_injvars = 0

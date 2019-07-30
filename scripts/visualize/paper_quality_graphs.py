@@ -69,6 +69,7 @@ YLABELS = {
   'heat1d-g8-wg': 'heat',
   'gentoggle':'conc',
   'bont':'conc',
+  'smmrxn':'conc',
   'epor':'conc',
   'kalman-const':'state'
 }
@@ -94,9 +95,9 @@ def plot_preamble(entry,TREF,YREF):
           color='#EE5A24')
   return ax
 
-def plot_quality(bmark,subset,model,experiments):
-  print("%s %s %s %d" % (bmark,subset,model,len(experiments)))
+def plot_quality(identifier,experiments):
 
+  print(identifier)
   def plot_waveform(out,alpha):
     TMEAS,YMEAS = read_meas_data(out.out_file)
     xform = out.transform
@@ -136,7 +137,7 @@ def plot_quality(bmark,subset,model,experiments):
       plot_waveform(out,0.6/n_execs+0.4)
 
   plt.tight_layout()
-  filename = "paper-%s-%s-%s-all.pdf" % (subset,bmark,model)
+  filename = "paper-%s-all.pdf" % (identifier)
   filepath = common.get_path(filename)
   plt.savefig(filepath)
   plt.clf()
@@ -153,10 +154,16 @@ def plot_quality(bmark,subset,model,experiments):
     key=lambda o: o.quality)
   plot_waveform(best_output,1.0)
   plt.tight_layout()
-  filename = "paper-%s-%s-%s-best.pdf" % (subset,bmark,model)
+  filename = "paper-%s-best.pdf" % (identifier)
   filepath = common.get_path(filename)
   plt.savefig(filepath)
   plt.clf()
+
+def to_identifier(exp):
+  mode,_,_,bw = util.unpack_tag(exp.model)
+  inds = "x".join(map(lambda i: str(i), exp.arco_indices))
+  key = "%s-%s-%s-%s" % (exp.bmark,exp.subset,inds,mode)
+  return key
 
 def visualize():
   db = ExperimentDB()
@@ -165,13 +172,12 @@ def visualize():
     if exp.quality is None:
       continue
 
-    key = (exp.bmark,exp.subset,exp.model)
-    print(key)
+    key = to_identifier(exp)
     if not key in by_bmark:
       by_bmark[key] = []
 
     by_bmark[key].append(exp)
 
 
-  for (bmark,subset,model),experiments in by_bmark.items():
-    plot_quality(bmark,subset,model,experiments)
+  for identifier,experiments in by_bmark.items():
+    plot_quality(identifier,experiments)
