@@ -140,9 +140,7 @@ def compute_scale(jenv,prog,infer_circ,objfun):
 
 def report_missing_models(model,circ):
     for block,loc,port,comp_mode,scale_mode in ModelDB.MISSING:
-        config = circ.config(block,loc)
         jaunt_physlog.log(circ,block,loc, \
-                          config,
                           comp_mode,
                           scale_mode)
         msg = "NO model: %s[%s].%s %s %s error" % \

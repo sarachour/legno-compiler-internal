@@ -1,28 +1,24 @@
 import util.config as CONFIG
 from compiler import srcgen
 from lab_bench.lib.chipcmd.use import *
+from chip.config import Config
 import lab_bench.lib.command as cmd
 
 import os
 
 PROG = srcgen.GrendelProg()
 
-def log(circ,block_name,loc,config,comp_mode,scale_mode):
-  backup_scm = config.scale_mode
-  backup_cm = config.comp_mode
+def log(circ,block_name,loc,comp_mode,scale_mode):
   block = circ.board.block(block_name)
-  log_cfg = config.copy()
-  log_cfg._dacs = {}
   if block.name == 'lut':
     return
+  log_cfg = Config()
   log_cfg.set_scale_mode(scale_mode)
   log_cfg.set_comp_mode(comp_mode)
   if scale_mode is None:
     return
 
   srcgen.gen_block(PROG,circ,block,loc,log_cfg)
-  config.set_comp_mode(backup_cm)
-  config.set_scale_mode(backup_scm)
 
 def is_empty():
   return len(PROG.stmts) == 0
