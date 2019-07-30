@@ -20,7 +20,7 @@ float compute_output(integ_code_t& m_codes,float val){
 
 float compute_steady_state_input(integ_code_t& m_codes, float in_val){
   float coeff = util::range_to_coeff(m_codes.range[in0Id]);
-  float output_scale = util::range_to_coeff(m_codes.range[out0Id]); 
+  float output_scale = util::range_to_coeff(m_codes.range[out0Id]);
   while(true) {
     float ss_out = predict_steady_state_output(m_codes, coeff);
     if(fabs(ss_out) > output_scale){

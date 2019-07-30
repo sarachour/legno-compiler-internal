@@ -14,13 +14,19 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure(char mode, float input)
 }
 
 void make_feedback_fanout(Fabric::Chip::Tile::Slice::Fanout * fanout,
-                          range_t out_range){
+                          range_t out_range, bool is_positive){
   fanout->m_codes.range[in0Id] = out_range;
   fanout->m_codes.range[out0Id] = out_range;
   fanout->m_codes.range[out1Id] = out_range;
   fanout->m_codes.range[out2Id] = out_range;
-  fanout->m_codes.inv[out0Id] = false;
-  fanout->m_codes.inv[out1Id] = true;
+  if(is_positive){
+    fanout->m_codes.inv[out0Id] = false;
+    fanout->m_codes.inv[out1Id] = true;
+  }
+  else{
+    fanout->m_codes.inv[out0Id] = true;
+    fanout->m_codes.inv[out1Id] = false;
+  }
   fanout->m_codes.enable = true;
   fanout->update(fanout->m_codes);
   fanout->calibrate(prof::TEMP, 0.01);
@@ -65,7 +71,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
                                          ->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
 
-  make_feedback_fanout(fanout, integ_codes.range[out0Id]);
+  make_feedback_fanout(fanout, integ_codes.range[out0Id], !integ_codes.inv[out0Id]);
 
   // make an approximate input value
   float target_input = compute_steady_state_input(m_codes,input);
