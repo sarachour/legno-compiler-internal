@@ -12,12 +12,12 @@ import bmark.menvs as menvs
 def model(tag='simple'):
     prob = MathProg("lotka-%s" % tag)
     params = {
-      'rabbit_spawn':0.01,
+      'rabbit_spawn':0.3,
       'fox_death': 0.2,
-      'rabbit_kill': 0.1,
-      'fox_reproduce': 0.20,
+      'rabbit_kill': 0.8,
+      'fox_reproduce': 0.50,
       "fox_init": 1.0,
-      "rabbit_init": 5.0,
+      "rabbit_init": 1.0,
       'one':0.999999
     }
     params['fox_spawn'] = params['fox_reproduce']*params['rabbit_kill']
@@ -32,14 +32,14 @@ def model(tag='simple'):
     prob.bind("FOX",Y)
     measure_var(prob,"RABBIT", "PREY")
 
-    rabbit_ival = 8.0
-    fox_ival = 2.0
+    rabbit_ival = 2.0
+    fox_ival = 1.4
     prob.set_interval("RABBIT",0,rabbit_ival)
     prob.set_interval("FOX",0,fox_ival)
-    prob.set_interval("FIGHT",0,5.5)
-    prob.set_max_sim_time(50)
+    prob.set_interval("FIGHT",0,1.5)
+    prob.set_max_sim_time(200)
     prob.compile()
-    menv = menvs.get_math_env('t50')
+    menv = menvs.get_math_env('t200')
     return menv,prob
 
 

@@ -20,6 +20,10 @@ use_fanout 0 1 0 1 sgn + - + rng m two update
 use_fanout 0 1 0 1 sgn + - + rng h two update
 use_fanout 0 1 1 0 sgn - + - rng m three update
 use_fanout 0 1 1 0 sgn - + - rng h three update
+use_dac 1 3 0 src mem sgn + val 0.0 rng m cached
+use_dac 1 3 0 src mem sgn + val 0.0 rng h cached
+use_fanout 1 3 0 0 sgn - + - rng m three update
+use_fanout 1 3 0 0 sgn - + - rng h three update
 use_integ 0 0 0 sgn - val 0.000000 rng m m debug cached
 use_integ 0 0 0 sgn - val 0.000000 rng h h debug cached
 use_integ 0 0 0 sgn - val 0.000000 rng h m debug cached
@@ -36,3 +40,5 @@ use_integ 1 3 0 sgn + val 0.000000 rng h m debug cached
 use_integ 1 3 0 sgn + val 0.000000 rng m h debug cached
 use_dac 1 3 0 src lut0 sgn + val 0.0 rng m cached
 use_dac 1 3 0 src lut0 sgn + val 0.0 rng h cached
+use_fanout 1 3 0 0 sgn - + - rng m three update
+use_fanout 1 3 0 0 sgn - + - rng h three update
