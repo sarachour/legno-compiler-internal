@@ -46,6 +46,7 @@ def infer(obj):
 
   bnds_z = infer_fit.build_model(out_z,obj['dataset'],1, \
                                  0.04)
+  out_z.gain = 1.0
   bnd = infer_util.normalize_bound(bnds_z['in0'],insc)
   model_in.set_oprange_scale(*bnd)
   model_in.bias_uncertainty = out_z.bias_uncertainty/scale

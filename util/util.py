@@ -38,7 +38,7 @@ def unpack_tag(handle):
       bandwidth = 200
   else:
       bandwidth = float(handle[i:].split('k')[0])
-      bandwidth *= 10000
+      bandwidth *= 1000
   return method,analog,digital,bandwidth
 
 def randlist(seed,n):

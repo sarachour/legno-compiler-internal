@@ -99,9 +99,10 @@ if not params['max-freq'] is None:
 
 if succ and not args.srcgen:
   succ = execute(jaunt_args,params,'jaunt.log')
-  if succ:
-    graph_args = "--subset {subset} {bmark} graph"
-    execute(graph_args,params,'graph.log')
+
+if succ or args.srcgen:
+  graph_args = "--subset {subset} {bmark} graph"
+  execute(graph_args,params,'graph.log')
 
 srcgen_args = \
   "--subset {subset} {bmark} srcgen {hwenv} --recompute --trials 1"

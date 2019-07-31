@@ -25,18 +25,35 @@ def model(n,obs_idx,with_gain=False):
 
   for i in range(1,n):
     params['curr'] = "u%d" % (i)
-    params['prev'] = "u%d" % (i-1) if i-1 >= 1 else 0.0
+    params['prev'] = "u%d" % (i-1) if i-1 >= 1 else None
     params['next'] = "u%d" % (i+1) if i+1 < n else params['init_heat']
-    if with_gain:
-      eqn=parse_diffeq('{one}*({prev} +(-{curr}) +(-{curr})+ {next})',\
-                       'ic', \
-                       ':q%d' % i, params)
+    expr = "({prev} +(-{curr}) +(-{curr})+ {next})"
+    if params['prev'] is None:
+      if with_gain:
+        expr = "2.0*(-{curr})+ {one}*{next}"
+      else:
+        expr = "(-{curr}) +(-{curr})+ {next}"
+
+    elif params['next'] == params['init_heat']:
+      if with_gain:
+        expr = "{one}*{prev} + 2.0*(-{curr})+ {next}"
+      else:
+        expr = "{prev} + (-{curr}) +(-{curr})+ {next}"
+
     else:
-      eqn=parse_diffeq('({prev} +(-{curr}) +(-{curr})+ {next})',\
-                        'ic', \
-                        ':q%d' % i, params)
+      if with_gain:
+        expr = "{one}*{prev}+2.0*(-{curr})+ {one}*{next}"
+      else:
+        expr = "{prev} +(-{curr}) +(-{curr})+ {next}"
+
+    eqn=parse_diffeq(expr,\
+                     'ic', \
+                     ':q%d' % i, params)
+
     prob.bind(params['curr'], eqn)
-    prob.set_interval(params['curr'],0,params['init_heat'])
+    prob.set_interval(params['curr'], \
+                      -params['init_heat'], \
+                      params['init_heat'])
 
   measure_var(prob,"u%d" % obs_idx,'POINT')
   prob.set_max_sim_time(200)
@@ -44,12 +61,13 @@ def model(n,obs_idx,with_gain=False):
   menv = menvs.get_math_env('t200')
   return menv,prob
 
-def execute(n,o):
-  menv,prob = model(n,o)
+def execute(n,o,with_gain=False):
+  menv,prob = model(n,o,with_gain)
   plot_diffeq(menv,prob)
 
 
 if __name__ == "__main__":
   execute(4,2)
+  execute(4,2,with_gain=True)
   execute(8,7)
   execute(16,15)

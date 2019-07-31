@@ -196,9 +196,11 @@ def infer_model(model,in0,in1,out,bias,noise, \
     if m == 0:
       print(model)
       raise Exception("no data")
-    (new_gain,new_offset),corrs= scipy \
-                          .optimize.curve_fit(apply_params, \
-                                              out_valid, meas_valid)
+    new_gain,new_offset,r_value,p_value,std_err = \
+                                  stats.linregress(out_valid,meas_valid)
+    print(r_value)
+    print(p_value)
+    input()
     pred_valid = np.array(list(map(lambda i: \
                                     apply_params(out_valid[i], \
                                                 new_gain, \

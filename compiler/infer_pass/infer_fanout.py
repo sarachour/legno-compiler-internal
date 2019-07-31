@@ -56,10 +56,15 @@ def infer(obj):
                                    model_out1.bias_uncertainty, \
                                    model_out2.bias_uncertainty, \
   )
+
+  #print(model_out0.gain, \
+  #      model_out1.gain, \
+  #      model_out2.gain)
   # this causes scaling issues because there aren't enough degrees of freedom.
-  #model_out0.gain = 1.0
-  #model_out1.gain = 1.0
-  #model_out2.gain = 1.0
+  model_out0.gain = 1.0
+  model_out1.gain = 1.0
+  model_out2.gain = 1.0
+
   yield model_in
   yield model_out0
   yield model_out1

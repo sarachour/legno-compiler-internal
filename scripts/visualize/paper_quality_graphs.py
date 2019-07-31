@@ -87,6 +87,10 @@ def plot_preamble(entry,TREF,YREF):
   ax.set_title(title,fontsize=20)
   #ax.set_grid(False)
   ax.set_xlim((min(TREF),max(TREF)))
+  margin = (max(YREF)-min(YREF))*0.1
+  lb= min(YREF)-margin
+  ub = max(YREF)+margin
+  ax.set_ylim((lb,ub))
   ax.grid(False)
 
   ax.plot(TREF,YREF,label='reference',
@@ -115,6 +119,12 @@ def plot_quality(identifier,experiments):
             color='#5758BB', \
             linewidth=4.0, \
             linestyle='--')
+
+    clb,cub = ax.get_ylim()
+    margin = (max(YSCR)-min(YSCR))*0.1
+    lb= min(YSCR)-margin
+    ub = max(YSCR)+margin
+    ax.set_ylim(min(lb,clb),max(ub,cub))
 
   # compute reference using information from first element
   entry = experiments[0]

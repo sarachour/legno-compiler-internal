@@ -9,7 +9,7 @@ from bmark.bmarks.common import *
 import bmark.menvs as menvs
 
 def emit(v):
-  return op.Emit(op.Mult(op.Const(0.99999), v))
+  return op.Emit(op.Mult(op.Const(0.99999), v),loc="A0")
 
 
 def model(closed_form=True):
@@ -35,24 +35,24 @@ def model(closed_form=True):
   }
 
   # reparametrization
-  K = 0.1
+  K = 0.35
   params = {
-    'LacLm0':0.5,
-    'clm0':0.25,
-    'TetRm0':0.30,
-    'LacLp0':0.80,
-    'clp0':0.40,
-    'TetRp0':0.60,
+    'LacLm0':0.0,
+    'clm0':0.0,
+    'TetRm0':0.0,
+    'LacLp0':0.0,
+    'clp0':0.2,
+    'TetRp0':0.0,
     'K':K,
     'n':2.0,
-    'a_tr':0.75,
+    'a_tr':0.99,
     'kd_mrna' : 0.40,
-    'a0_tr':0.0,
     'k_tl': 0.201029995664,
     'kd_prot': 0.30,
     'one': 0.9999999,
     'mrna_bnd':1.5,
-    'prot_bnd':1.0
+    'prot_bnd':1.5,
+    'gene_bnd':1.0
   }
   assert(closed_form)
   prob = MathProg("repri")
@@ -66,13 +66,13 @@ def model(closed_form=True):
                      'clm0',':b',params)
   TetRm = parse_diffeq('{a_tr}*ATetR+{kd_mrna}*(-TetRm)', \
                        'TetRm0',':c',params)
-  mrna_bnd = params['mrna_bnd']
   prob.bind("LacLm",LacLm)
   prob.bind("clm",clm)
   prob.bind("TetRm",TetRm)
-  prob.set_interval("LacLm",0,mrna_bnd)
-  prob.set_interval("clm",0,mrna_bnd)
-  prob.set_interval("TetRm",0,mrna_bnd)
+  mrna_bnd = params['mrna_bnd']
+  prob.set_interval("LacLm",-mrna_bnd,mrna_bnd)
+  prob.set_interval("clm",-mrna_bnd,mrna_bnd)
+  prob.set_interval("TetRm",-mrna_bnd,mrna_bnd)
 
   LacLp = parse_diffeq('{k_tl}*LacLm + {kd_prot}*(-LacLp)', \
                        'LacLp0',':d',params)
@@ -81,14 +81,13 @@ def model(closed_form=True):
   TetRp = parse_diffeq('{k_tl}*TetRm + {kd_prot}*(-TetRp)', \
                        'TetRp0',':f',params)
 
-  prot_bnd = params['prot_bnd']
   prob.bind("LacLp",LacLp)
   prob.bind("clp",clp)
   prob.bind("TetRp",TetRp)
-  prob.set_interval("LacLp",0,prot_bnd)
-  prob.set_interval("clp",0,prot_bnd)
-  prob.set_interval("TetRp",0,prot_bnd)
-  
+  prot_bnd = params['prot_bnd']
+  prob.set_interval("LacLp",-prot_bnd,prot_bnd)
+  prob.set_interval("clp",-prot_bnd,prot_bnd)
+  prob.set_interval("TetRp",-prot_bnd,prot_bnd)
 
   K = params['K']
   n = params['n']
@@ -120,10 +119,10 @@ def model(closed_form=True):
   prob.bind("ATetR",ATetR)
   prob.bind("OBS",emit(op.Var('Aclp')))
 
-  act_bnd = params['a_tr']
-  prob.set_interval("ALacL",0,act_bnd)
-  prob.set_interval("Aclp",0,act_bnd)
-  prob.set_interval("ATetR",0,act_bnd)
+  act_bnd = params['gene_bnd']
+  prob.set_interval("ALacL",-act_bnd,act_bnd)
+  prob.set_interval("Aclp",-act_bnd,act_bnd)
+  prob.set_interval("ATetR",-act_bnd,act_bnd)
   prob.set_max_sim_time(200)
   prob.compile()
   #menv = menvs.get_math_env('t200')
