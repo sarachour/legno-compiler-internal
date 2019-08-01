@@ -314,20 +314,21 @@ void helper_find_pmos_mult(Fabric::Chip::Tile::Slice::Multiplier* mult,
                             float& gain_stdev,
                             float& error){
 
-  float stdevs[7];
-  float errors[7];
-  int gain_cals[7];
+  float stdevs[8];
+  float errors[8];
+  int gain_cals[8];
   for(int pmos=0; pmos<=7; pmos+=1){
-    sprintf(FMTBUF,"mult pmos=%d",pmos);
-    print_info(FMTBUF);
     mult->m_codes.pmos = pmos;
     mult->update(mult->m_codes);
-    gain_cals[pmos] = helper_find_gain_cal_mult(mult,
-                              ref_dac,
-                              val1_dac,
-                              val2_dac,
-                              stdevs[pmos],
-                              errors[pmos]);
+    int gain_cal = helper_find_gain_cal_mult(mult,
+                                             ref_dac,
+                                             val1_dac,
+                                             val2_dac,
+                                             stdevs[pmos],
+                                             errors[pmos]);
+    sprintf(FMTBUF,"mult pmos=%d gain-cal=%d",pmos,gain_cal);
+    print_info(FMTBUF);
+    gain_cals[pmos] = gain_cal;
   }
   error = -1.0;
   // find the pmos,gain combo with the lowest error
@@ -356,9 +357,9 @@ void helper_find_pmos_vga(Fabric::Chip::Tile::Slice::Multiplier* mult,
                           uint8_t& best_gain_cal,
                           float& gain_stdev,
                           float& error){
-  float stdevs[7];
-  float errors[7];
-  int gain_cals[7];
+  float stdevs[8];
+  float errors[8];
+  int gain_cals[8];
   for(int pmos=0; pmos<=7; pmos+=1){
     sprintf(FMTBUF,"vga pmos=%d",pmos);
     print_info(FMTBUF);
@@ -369,6 +370,8 @@ void helper_find_pmos_vga(Fabric::Chip::Tile::Slice::Multiplier* mult,
                                                        val1_dac,
                                                        stdevs[pmos],
                                                        errors[pmos]);
+    sprintf(FMTBUF,"mult pmos=%d gain-cal=%d",pmos,gain_cals[pmos]);
+    print_info(FMTBUF);
   }
   // find the pmos,gain combo with the lowest standard deviation of gains
   // this prevents the calibration routine for selecting parameter assignments

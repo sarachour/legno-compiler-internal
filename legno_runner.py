@@ -100,7 +100,7 @@ if not params['max-freq'] is None:
 if succ and not args.srcgen:
   succ = execute(jaunt_args,params,'jaunt.log')
 
-if succ or args.srcgen:
+if succ and not args.srcgen:
   graph_args = "--subset {subset} {bmark} graph"
   execute(graph_args,params,'graph.log')
 

@@ -17,7 +17,7 @@ def model():
       'P0': 9,
       'one':0.9999
     }
-    V = parse_diffeq('0.22*(-V) + 0.84*(-P)', 'P0', ':a', params)
+    V = parse_diffeq('0.22*(-V) + 0.84*(-P)', 'V0', ':a', params)
     P = parse_diffeq('{one}*V', 'P0', ':b', params)
 
     prob.bind('V', V)
@@ -36,8 +36,7 @@ def model():
 
 def execute():
   menv,prob = model()
-  T,Y = run_diffeq(menv,prob)
-  plot_diffeq(menv,prob,T,Y)
+  plot_diffeq(menv,prob)
 
 
 if __name__ == "__main__":

@@ -120,11 +120,12 @@ def plot_quality(identifier,experiments):
             linewidth=4.0, \
             linestyle='--')
 
-    clb,cub = ax.get_ylim()
-    margin = (max(YSCR)-min(YSCR))*0.1
-    lb= min(YSCR)-margin
-    ub = max(YSCR)+margin
-    ax.set_ylim(min(lb,clb),max(ub,cub))
+    if 'standard' in identifier:
+      clb,cub = ax.get_ylim()
+      margin = (max(YSCR)-min(YSCR))*0.1
+      lb= min(YSCR)-margin
+      ub = max(YSCR)+margin
+      ax.set_ylim(min(lb,clb),max(ub,cub))
 
   # compute reference using information from first element
   entry = experiments[0]
@@ -186,8 +187,8 @@ def visualize():
     if not key in by_bmark:
       by_bmark[key] = []
 
-    by_bmark[key].append(exp)
 
+    by_bmark[key].append(exp)
 
   for identifier,experiments in by_bmark.items():
     plot_quality(identifier,experiments)

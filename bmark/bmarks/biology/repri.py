@@ -36,7 +36,7 @@ def model(closed_form=True):
 
   # reparametrization
   K = 0.35
-  scale = 1.5
+  scale = 1.0
   params = {
     'LacLm0':0.5,
     'clm0':0.25,
@@ -120,8 +120,8 @@ def model(closed_form=True):
     prob.bind("ATetR",ATetR)
   else:
     subparams = {
-      'Kd': 1.0/K**n,
-      'speed':1.0
+      'Kd': 1.0/(K**n),
+      'speed':4.0
     }
     subparams['kf'] = subparams['Kd']*subparams['speed']
     subparams['kr'] = params['one']*subparams['speed']
@@ -131,7 +131,9 @@ def model(closed_form=True):
     def mkrxn(prot,name):
       subparams['L'] = "A%s" % name
       subparams['P'] = prot
-      expr = "{kr}*({L0}+(-{L})) + ({kf}*{P})*{P}*(-{L})"
+      subparams['one'] = 0.9999999
+      subparams['krL0'] = subparams['kr']*subparams['L0']
+      expr = "{krL0}+{kr}*(-{L}) + {kf}*({one}*{P}*{P})*(-{L})"
       eqn = parse_diffeq(expr, \
                          'L0', \
                          ':l%s'%prot, \
@@ -161,5 +163,5 @@ def execute(closed_form=False):
 
 
 if __name__ == "__main__":
-  #execute(closed_form=True)
+  execute(closed_form=True)
   execute(closed_form=False)

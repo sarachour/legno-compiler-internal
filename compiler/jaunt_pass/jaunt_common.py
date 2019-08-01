@@ -281,7 +281,7 @@ def digital_quantize_constraint(jenv,circ,block,loc,port,handle,annot=""):
 def max_sim_time_constraint(jenv,prob,circ):
     max_sim_time = _to_phys_time(circ,prob.max_sim_time)
     # 100 ms.
-    max_time = 0.1
+    max_time = 0.05
     tau_inv = jop.JVar(jenv.tau(),exponent=-1.0)
     hw_time = jop.JMult(
         jop.JConst(max_sim_time), tau_inv
@@ -290,6 +290,7 @@ def max_sim_time_constraint(jenv,prob,circ):
 
 
 def digital_bandwidth_constraint(jenv,prob,circ,block,loc,port,handle,annot):
+    max_sim_time = _to_phys_time(circ,prob.max_sim_time)
     tau = jop.JVar(jenv.tau())
     tau_inv = jop.JVar(jenv.tau(),exponent=-1.0)
     pars = get_parameters(jenv,circ,block,loc,port,handle)
@@ -322,15 +323,12 @@ def digital_bandwidth_constraint(jenv,prob,circ,block,loc,port,handle,annot):
                          'jcom-digital-maxbw-%s' % annot
                 )
 
+        # maximum runtime of 50 ms
+        max_sim_time_constraint(jenv,prob,circ)
+
         if not prop.max_samples is None:
-            # (max_sim_time/tau)*(sim_sample_freq*tau)
-            # max_sim_time*sim_sample_freq < hw_max_samples
-            max_sim_time = _to_phys_time(circ,prob.max_sim_time)
             sim_max_samples = max_sim_time*sim_sample_freq
             hw_max_samples = prop.max_samples
-
-            #print("max_samples=%s n_samples=%s" % \
-            #      (hw_max_samples, sim_max_samples))
 
             if sim_max_samples > hw_max_samples:
                 raise Exception("[error] not enough storage in arduino to record data")
