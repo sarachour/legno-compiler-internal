@@ -7,6 +7,7 @@ def get_benchmarks():
     bont.model(),
     epor.model(),
     repri.model(),
+    repri.model(closed_form=False),
     compinh.model(),
     smmrxn.model(True),
     smmrxn.model(False),

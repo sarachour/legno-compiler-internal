@@ -31,15 +31,15 @@ def model():
   params['Z'] = ZP
 
   E = parse_fn("{Rinv}*({Z}+(-X))",params)
-  dW = parse_diffeq("{one}*P13*E", \
+  dW = parse_diffeq("P13*E", \
                     "W0", \
                     ':w', \
                     params)
-  dV = parse_diffeq("{one}*X*(-W) + {one}*(P23)*E", \
+  dV = parse_diffeq("X*(-W) + (P23)*E", \
                     "V0", \
                     ":v", \
                     params)
-  dX = parse_diffeq("{one}*V + {one}*(P33)*E",\
+  dX = parse_diffeq("V + (P33)*E",\
                     "X0", \
                     ":x", \
                     params)
@@ -53,13 +53,13 @@ def model():
                     params)
 
 
-  dP12 = parse_diffeq("{one}*P11*(-X)+P13*(-W)+{nRinv}*(P13*P23)",
+  dP12 = parse_diffeq("P11*(-X)+P13*(-W)+{nRinv}*(P13*P23)",
                    "Pinit",
                     ":p12",
                     params)
 
 
-  dP13 = parse_diffeq("{one}*P12 + {nRinv}*(P13*P33)",
+  dP13 = parse_diffeq("P12 + {nRinv}*(P13*P33)",
                     "Pinit",
                     ":p13",
                     params)
@@ -69,7 +69,7 @@ def model():
                     ":p22",
                     params)
 
-  dP23 = parse_diffeq("{one}*P13*(-X) + {one}*P33*(-W)+ {one}*P22 + {nRinv}*(P23*P33)",
+  dP23 = parse_diffeq("P13*(-X) + P33*(-W)+ P22 + {nRinv}*(P23*P33)",
                     "Pinit",
                     ":p23",
                     params)

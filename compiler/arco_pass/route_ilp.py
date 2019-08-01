@@ -435,4 +435,8 @@ def route(board,prob,node_map):
 
   for assigns in find_slices.random_locs(board,locs,conns,tile_assigns):
     for routes in find_slices.find_routes(board,locs,conns,assigns):
-      return find_slices.make_concrete_circuit(board,routes,assigns,configs)
+      ccirc = find_slices.make_concrete_circuit(board, \
+                                                routes, \
+                                                assigns, \
+                                                configs)
+      return ccirc

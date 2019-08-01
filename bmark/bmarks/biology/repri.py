@@ -36,13 +36,14 @@ def model(closed_form=True):
 
   # reparametrization
   K = 0.35
+  scale = 1.5
   params = {
-    'LacLm0':0.0,
-    'clm0':0.0,
-    'TetRm0':0.0,
-    'LacLp0':0.0,
+    'LacLm0':0.5,
+    'clm0':0.25,
+    'TetRm0':0.12,
+    'LacLp0':0.6,
     'clp0':0.2,
-    'TetRp0':0.0,
+    'TetRp0':0.4,
     'K':K,
     'n':2.0,
     'a_tr':0.99,
@@ -50,13 +51,16 @@ def model(closed_form=True):
     'k_tl': 0.201029995664,
     'kd_prot': 0.30,
     'one': 0.9999999,
-    'mrna_bnd':1.5,
-    'prot_bnd':1.5,
+    'mrna_bnd':1.3*scale,
+    'prot_bnd':0.85*scale,
     'gene_bnd':1.0
   }
-  assert(closed_form)
-  prob = MathProg("repri")
-  ##
+  if not closed_form:
+    prob = MathProg("crepri")
+  else:
+    prob = MathProg("repri")
+
+    ##
   #LacLm  = parse_diffeq('{a0_tr}+{a_tr}*ALacL+{kd_mrna}*(-LacLm)', \
   #                      'LacLm0',':a',params)
   LacLm  = parse_diffeq('{a_tr}*ALacL+{kd_mrna}*(-LacLm)', \
@@ -70,9 +74,9 @@ def model(closed_form=True):
   prob.bind("clm",clm)
   prob.bind("TetRm",TetRm)
   mrna_bnd = params['mrna_bnd']
-  prob.set_interval("LacLm",-mrna_bnd,mrna_bnd)
-  prob.set_interval("clm",-mrna_bnd,mrna_bnd)
-  prob.set_interval("TetRm",-mrna_bnd,mrna_bnd)
+  prob.set_interval("LacLm",0,mrna_bnd)
+  prob.set_interval("clm",0,mrna_bnd)
+  prob.set_interval("TetRm",0,mrna_bnd)
 
   LacLp = parse_diffeq('{k_tl}*LacLm + {kd_prot}*(-LacLp)', \
                        'LacLp0',':d',params)
@@ -85,9 +89,9 @@ def model(closed_form=True):
   prob.bind("clp",clp)
   prob.bind("TetRp",TetRp)
   prot_bnd = params['prot_bnd']
-  prob.set_interval("LacLp",-prot_bnd,prot_bnd)
-  prob.set_interval("clp",-prot_bnd,prot_bnd)
-  prob.set_interval("TetRp",-prot_bnd,prot_bnd)
+  prob.set_interval("LacLp",0,prot_bnd)
+  prob.set_interval("clp",0,prot_bnd)
+  prob.set_interval("TetRp",0,prot_bnd)
 
   K = params['K']
   n = params['n']
@@ -111,18 +115,40 @@ def model(closed_form=True):
       [op.Var('TetRp')],
       bind_fxn
     )
+    prob.bind("ALacL",ALacL)
+    prob.bind("Aclp",Aclp)
+    prob.bind("ATetR",ATetR)
   else:
-    raise Exception("no diffeq impl")
+    subparams = {
+      'Kd': 1.0/K**n,
+      'speed':1.0
+    }
+    subparams['kf'] = subparams['Kd']*subparams['speed']
+    subparams['kr'] = params['one']*subparams['speed']
+    subparams['L0'] = 1.0
 
-  prob.bind("ALacL",ALacL)
-  prob.bind("Aclp",Aclp)
-  prob.bind("ATetR",ATetR)
-  prob.bind("OBS",emit(op.Var('Aclp')))
+    # L' = kr*(L0-L) - kf*P*P*L
+    def mkrxn(prot,name):
+      subparams['L'] = "A%s" % name
+      subparams['P'] = prot
+      expr = "{kr}*({L0}+(-{L})) + ({kf}*{P})*{P}*(-{L})"
+      eqn = parse_diffeq(expr, \
+                         'L0', \
+                         ':l%s'%prot, \
+                         subparams)
+      prob.bind(subparams['L'],eqn)
+      prob.set_interval(subparams['L'],0,subparams['L0'])
+
+    mkrxn(prot="clp",name='LacL')
+    mkrxn(prot="LacLp",name='TetR')
+    mkrxn(prot="TetRp",name='clp')
+
+  prob.bind("OBS",emit(op.Var('LacLp')))
 
   act_bnd = params['gene_bnd']
-  prob.set_interval("ALacL",-act_bnd,act_bnd)
-  prob.set_interval("Aclp",-act_bnd,act_bnd)
-  prob.set_interval("ATetR",-act_bnd,act_bnd)
+  prob.set_interval("ALacL",0,act_bnd)
+  prob.set_interval("Aclp",0,act_bnd)
+  prob.set_interval("ATetR",0,act_bnd)
   prob.set_max_sim_time(200)
   prob.compile()
   #menv = menvs.get_math_env('t200')
@@ -135,5 +161,5 @@ def execute(closed_form=False):
 
 
 if __name__ == "__main__":
-  execute(closed_form=True)
-  #execute(closed_form=False)
+  #execute(closed_form=True)
+  execute(closed_form=False)

@@ -8,6 +8,7 @@ from scipy.interpolate import interp2d
 import scipy.optimize
 import math
 import sklearn.tree as tree
+from scipy import stats
 
 def apply(lambd, data, classes):
   n = len(data)
@@ -198,9 +199,6 @@ def infer_model(model,in0,in1,out,bias,noise, \
       raise Exception("no data")
     new_gain,new_offset,r_value,p_value,std_err = \
                                   stats.linregress(out_valid,meas_valid)
-    print(r_value)
-    print(p_value)
-    input()
     pred_valid = np.array(list(map(lambda i: \
                                     apply_params(out_valid[i], \
                                                 new_gain, \
