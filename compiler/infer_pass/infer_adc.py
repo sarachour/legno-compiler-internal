@@ -18,11 +18,10 @@ def build_config(meta):
                   comp_mode=comp_mode, \
                   scale_mode=scale_mode)
 
-  return inp,out
+  return scale_mode,inp,out
 
 def infer(obj):
-  model_in,model_out = build_config(obj['metadata'])
-  scm = model_out.scale_mode
+  scm,model_in,model_out = build_config(obj['metadata'])
 
   bnds = infer_fit.build_model(model_out,obj['dataset'],0,0.04,adc=True)
   bnd = infer_util.normalize_bound(bnds['in0'],scm)

@@ -62,7 +62,7 @@ def remove_outliers(model,in0,in1,classes):
                     error(classes[i],preds[i]), range(n)))
     return score
 
-  scf = 0.75
+  scf = 0.95
   bounds = [
     (min(in0),min(in0)*scf),
     (max(in0)*scf,max(in0)),
@@ -72,7 +72,12 @@ def remove_outliers(model,in0,in1,classes):
   result = scipy.optimize.brute(cost, bounds, \
                                 finish=scipy.optimize.fmin,
                                 Ns=5)
-  return (result[0],result[1]),(result[2],result[3])
+
+  clipped = []
+  for (l,u),r in zip(bounds,result):
+    cr = min(max(l,r),u)
+    clipped.append(cr)
+  return (clipped[0],clipped[1]),(clipped[2],clipped[3])
 
 def get_outlier_classifier(error):
   Q1 = np.percentile(error, 25)
@@ -167,22 +172,22 @@ def infer_model(model,in0,in1,out,bias,noise, \
     out = np.array(list(map(lambda i: out[i], idxs)))
     n = len(out)
 
+  bnd = {"in0":(None,None), "in1":(None,None)}
   if n == 1:
     model.gain = 1.0
     model.bias = bias[0]
     model.uncertainty_bias = 0.0
     model.noise= math.sqrt(sum(map(lambda n: n**2.0, noise))/n)
-    return model
+    return bnd
 
   in0_valid = in0
   in1_valid = in1
   out_valid = out
   noise_valid = noise
   bias_valid = bias
-  bnd = {"in0":(None,None), "in1":(None,None)}
   has_outliers = True
-  cnt = 0
-  max_prune = 0
+  cnt =0
+  max_prune =0
   while True:
     n = len(in0_valid)
     inds = list(filter(lambda i: in_bounds(in0_valid[i],in1_valid[i],bnd),

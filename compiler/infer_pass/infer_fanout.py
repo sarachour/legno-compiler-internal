@@ -46,21 +46,17 @@ def infer(obj):
                                 obj['dataset'],1,max_uncs[1])
   bnds2 = infer_fit.build_model(model_out2, \
                                 obj['dataset'],2,max_uncs[2])
-  bnds = infer_util.tightest_bounds([bnds0['in0'], \
-                                     bnds1['in0'], \
-                                     bnds2['in0']])
-  bnds = infer_util.normalize_bound(bnds,chipcmd.RangeType.MED)
-  model_in.set_oprange_scale(*bnds)
+  #bnds = infer_util.tightest_bounds([bnds0['in0'], \
+  #                                   bnds1['in0'], \
+  #                                   bnds2['in0']])
+  #bnds = infer_util.normalize_bound(bnds,chipcmd.RangeType.MED)
+  #model_in.set_oprange_scale(*bnds)
   model_in.uncertainty_bias = max( \
                                    model_out0.bias_uncertainty, \
                                    model_out1.bias_uncertainty, \
                                    model_out2.bias_uncertainty, \
   )
 
-  #print(model_out0.gain, \
-  #      model_out1.gain, \
-  #      model_out2.gain)
-  # this causes scaling issues because there aren't enough degrees of freedom.
   model_out0.gain = 1.0
   model_out1.gain = 1.0
   model_out2.gain = 1.0

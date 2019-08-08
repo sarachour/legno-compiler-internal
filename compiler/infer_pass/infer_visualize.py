@@ -37,9 +37,11 @@ def heatmap(in0,in1,value,bnd=None):
                                         values=value, \
                                         xi=(grid_x,grid_y),
                                         method="cubic")
+    aspect = (max(in0)-min(in0))/(max(in1)-min(in1))
     plt.imshow(grid_z.T,
                extent=(min(in0),max(in0), \
                        min(in1),max(in1)), \
+               aspect=aspect,
                origin='lower', \
                norm=Normalize(vmin,vmax),
                cmap=style)
@@ -65,20 +67,25 @@ def heatmap(in0,in1,value,bnd=None):
     grid_x, grid_y = np.mgrid[min(in0):max(in0):100j, \
                               0:ymax:20j]
 
-    grid_z = scipy.interpolate.griddata(points=xs, \
-                                        values=zs, \
-                                        xi=(grid_x,grid_y),
-                                        method="cubic")
-    fig = plt.gca()
-    plt.imshow(grid_z.T,
-               extent=(min(in0),max(in0),0,ymax), \
-               origin='lower', \
-               norm=Normalize(vmin,vmax),
-               cmap=style)
-    plt.ylim((0.25*ymax,0.75*ymax))
-    plt.xlabel("input 0")
-    fig.axes.yaxis.set_ticklabels([])
-    plt.colorbar(orientation='horizontal')
+    try:
+      grid_z = scipy.interpolate.griddata(points=xs, \
+                                          values=zs, \
+                                          xi=(grid_x,grid_y),
+                                          method="cubic")
+      fig = plt.gca()
+      aspect = 1
+      plt.imshow(grid_z.T,
+                 extent=(min(in0),max(in0),0,ymax), \
+                 aspect=aspect, \
+                 origin='lower', \
+                 norm=Normalize(vmin,vmax), \
+                 cmap=style)
+      plt.ylim((0.25*ymax,0.75*ymax))
+      plt.xlabel("input 0")
+      fig.axes.yaxis.set_ticklabels([])
+      plt.colorbar(orientation='horizontal')
+    except Exception as e:
+      return
 
 def make_block_identifier(model):
   loc = model.loc.replace("HDACv2,","")
