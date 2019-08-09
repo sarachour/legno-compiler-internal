@@ -16,9 +16,10 @@ from bmark.bmarks.other.closed_form \
 def model():
   params = {
     'meas_noise':0.01,
-    'proc_noise':10.0,
-    'W0':0.9,
-    'P0':0.9
+    'proc_noise':0.99999,
+    'W0':0.707,
+    'P0':0.1,
+    'one':0.9999
   }
  
   prob = MathProg("kalman-freq-small")
@@ -26,17 +27,17 @@ def model():
   params['nRinv'] = -params['Rinv']
   params['Q'] = params['meas_noise']
 
-  build_cos(prob,"0.5",1.0,"BB")
+  build_cos(prob,"0.5",0.5,"BB")
   build_sin_and_cos(prob, \
                     "WSQ","W", \
-                    1.0, \
+                    3.0, \
                     "COSW","WSINW",
                     normalize=False)
 
   WSq = parse_fn("W*W", params)
   SINW2 = parse_fn("WSINW*WSINW",params)
 
-  dW = parse_diffeq('{nRinv}*P*WSINW*(BB-COSW)', \
+  dW = parse_diffeq('{nRinv}*P*WSINW*({one}*BB-{one}*COSW)', \
                     "W0",
                     ":w",
                     params)
@@ -58,7 +59,7 @@ def model():
   measure_var(prob,"WSQ","FREQ")
   prob.set_max_sim_time(200)
   prob.compile()
-  menv = menvs.get_math_env('t2k')
+  menv = menvs.get_math_env('t200')
   return menv,prob
 
 

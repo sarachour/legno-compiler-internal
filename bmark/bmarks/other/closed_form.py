@@ -55,10 +55,11 @@ def build_sin_and_cos(prob,freq_expr, \
   prob.bind(params['V'], V)
   prob.bind(sinvar, negD)
   base_bnd = params['P0']*1.0
-  prob.set_interval(params['P'],-1.0,1.0)
+  slack = 1.2
+  prob.set_interval(params['P'],-1.0*slack,1.0*slack)
   prob.set_interval(params['V'], \
-                    -1.0*freq_ampl, \
-                    1.0*freq_ampl)
+                    -1.0*freq_ampl*slack, \
+                    1.0*freq_ampl*slack)
 
 
 def build_cos(prob,freq_expr,freq_ampl,varname):
@@ -84,11 +85,11 @@ def build_cos(prob,freq_expr,freq_ampl,varname):
 
   prob.bind(params['P'], P)
   prob.bind(params['V'], V)
-  base_bnd = params['P0']*1.0
-  prob.set_interval(params['P'],-1.0,1.0)
+  slack = 1.2
+  prob.set_interval(params['P'],-1.0*slack,1.0*slack)
   prob.set_interval(params['V'], \
-                    -1.0*freq_ampl, \
-                    1.0*freq_ampl)
+                    -1.0*freq_ampl*slack, \
+                    1.0*freq_ampl*slack)
 
 
 

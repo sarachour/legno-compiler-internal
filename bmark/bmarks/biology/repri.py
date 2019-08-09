@@ -36,7 +36,7 @@ def model(closed_form=True):
 
   # reparametrization
   K = 0.35
-  scale = 1.0
+  scale = 1.1
   params = {
     'LacLm0':0.5,
     'clm0':0.25,
@@ -53,7 +53,7 @@ def model(closed_form=True):
     'one': 0.9999999,
     'mrna_bnd':1.3*scale,
     'prot_bnd':0.85*scale,
-    'gene_bnd':1.0
+    'gene_bnd':1.0*scale
   }
   if not closed_form:
     prob = MathProg("crepri")
@@ -133,7 +133,8 @@ def model(closed_form=True):
       subparams['P'] = prot
       subparams['one'] = 0.9999999
       subparams['krL0'] = subparams['kr']*subparams['L0']
-      expr = "{krL0}+{kr}*(-{L}) + {kf}*({one}*{P}*{P})*(-{L})"
+      #expr = "{krL0} + {kr}*(-{L}) + {kf}*({one}*({P}*({one}*{P})))*(-{L})"
+      expr = "{kr}*(-{L}) + {kf}*({one}*({P}*({one}*{P})))*(-{L})"
       eqn = parse_diffeq(expr, \
                          'L0', \
                          ':l%s'%prot, \
