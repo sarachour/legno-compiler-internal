@@ -57,9 +57,9 @@ def infer(obj):
                                    model_out2.bias_uncertainty, \
   )
 
-  model_out0.gain = 1.0
-  model_out1.gain = 1.0
-  model_out2.gain = 1.0
+  #model_out0.gain = 1.0
+  #model_out1.gain = 1.0
+  #model_out2.gain = 1.0
 
   yield model_in
   yield model_out0

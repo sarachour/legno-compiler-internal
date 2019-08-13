@@ -111,9 +111,6 @@ def calibrate(state,obj,recompute=False, \
               targeted_measure=False,
               error_scale=1.0):
     if isinstance(obj,UseCommand):
-        if obj.max_error*error_scale > 1.0:
-            return False
-
         dbkey = obj.to_key(targeted=targeted_calibrate)
         if not (state.state_db.has(dbkey)) or \
            not state.state_db.get(dbkey).success or \

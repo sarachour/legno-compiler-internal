@@ -1,5 +1,3 @@
-
-python3 exp_driver.py visualize paper-quality-graphs
 python3 exp_driver.py visualize paper-circuit-summary
 echo "chip summary"
 python3 exp_driver.py visualize paper-chip-summary

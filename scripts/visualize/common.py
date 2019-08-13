@@ -95,7 +95,7 @@ class BenchmarkVisualization:
                      'spring-nl',
                      'vanderpol',
                      'robot',
-                     'heat1d-g8',
+                     'heat1d-g4',
                      'closed-forced-vanderpol',
                      'kalman-const',
                      'gentoggle',
@@ -105,7 +105,7 @@ class BenchmarkVisualization:
   BENCHMARK_NAMES = {
     'micro-osc': 'sin',
     'micro-osc-with-gain': 'sinw',
-    'cosc': 'dampened',
+    'cosc': 'cosc',
     'vanderpol': 'vander',
     'closed-forced-vanderpol': 'chaotic-vander',
     'pend': 'pendl',

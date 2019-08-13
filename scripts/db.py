@@ -737,6 +737,11 @@ class ExperimentDB:
     for entry in self._get_experiment_rows(where_clause):
       yield entry
 
+  def get_by_bmark(self,bmark):
+    where_clause = "WHERE bmark=\"%s\"" % bmark
+    for entry in self._get_experiment_rows(where_clause):
+      yield entry
+
   def to_where_clause(self,subset,bmark,arco_inds,jaunt_inds,model,opt, \
                       menv_name,hwenv_name,varname=None,trial=None):
     cmd = '''WHERE

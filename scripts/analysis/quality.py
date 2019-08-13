@@ -11,6 +11,7 @@ import bmark.diffeqs as diffeqs
 from bmark.bmarks.common import run_system
 import chip.hcdc.globals as glbls
 import util.util as util
+import matplotlib.pyplot as plt
 
 import scripts.analysis.common as common
 
@@ -66,12 +67,15 @@ def apply_model_to_obs(pred_t,meas_t,meas_x,model):
     return rt,rx
 
 def out_of_bounds(bounds,result):
+  new_result = []
+  assert(len(bounds) == len(result))
   for (lb,ub),r in zip(bounds,result):
     if r < lb or r > ub:
       print("%s not in (%s,%s)" % (r,lb,ub))
-      continue
-      #return True
-  return False
+    new_result.append(max(min(r,ub),lb))
+
+  assert(len(new_result) == len(result))
+  return new_result
 
 def fit(_tref,_yref,_tmeas,_ymeas):
   # apply transform to turn ref -> pred
@@ -87,17 +91,15 @@ def fit(_tref,_yref,_tmeas,_ymeas):
 
   bounds = [
     (0.97,1.13),
-    (0.0,max(tmeas)*0.10),
+    (0.0,max(tmeas)*0.10)
   ]
   print("=== finding transform ===")
   #n = 5
   n = 10
   result = optimize.brute(compute_loss, bounds, Ns=n)
+  result = out_of_bounds(bounds,result)
   model = [result[0],result[1],1.0,0.0]
   print(model)
-  if out_of_bounds(bounds,result):
-    return None,None,model
-
   infer_t,infer_x = apply_model_to_obs(tref,tmeas,ymeas,model)
   return infer_t,infer_x,model
 
@@ -109,29 +111,29 @@ def apply_model(_tref,_yref,_tmeas,_ymeas,model):
   ymeas = np.array(_ymeas)
   print(model)
 
-  infer_t,infer_x = apply_model_to_obs(tref,tmeas,ymeas,model)
+  infer_t,infer_x = apply_model_to_obs(tref,tmeas, \
+                                       ymeas,model)
   return infer_t,infer_x
 
-def compute_quality(_tobs,_yobs,_tpred,_ypred):
+def compute_quality(_tobs,_yobs,_tref,_yref,tau,scf):
   def compute_error(ypred,yobs):
     return (ypred-yobs)**2
 
-  tpred,ypred = np.array(_tpred), np.array(_ypred)
-  tobs,yobs = np.array(_tobs), np.array(_yobs)
-  n = len(tobs)
-  ypred_flow = np.interp(tobs, tpred, ypred, left=0, right=0)
-  errors = np.array(list(map(lambda i: compute_error(ypred_flow[i], \
-                                                     yobs[i]), range(n))))
+  tref,yref= np.array(_tref), np.array(_yref)
+  tobs = np.array(list(map(lambda t: t*tau*glbls.TIME_FREQUENCY, _tobs)))
+  yobs = np.array(list(map(lambda y: y/scf, _yobs)))
+  plt.plot(tobs,yobs)
+  plt.plot(tref,yref)
+  plt.savefig("debug.png")
+  plt.clf()
+  n = len(tref)
+  yobs_flow = np.interp(tref, tobs, yobs, left=0, right=0)
+  errors = np.array(list(map(lambda i: compute_error(yobs_flow[i], \
+                                                     yref[i]), range(n))))
 
-  # SSQE
-  if n == 0:
-    return -1
-  ssqe = math.sqrt(sum(errors)/n)
-  print("mean (errors): %s" % ssqe)
-  max_val = max(map(lambda v: abs(v), ypred))
-  norm_ssqe = ssqe/max_val
-  print("norm mean (errors): %s" % norm_ssqe)
-  return norm_ssqe,tobs,errors
+  score = sum(errors)
+  print("score: %s" % score)
+  return score,tref,errors
 
 def analyze(entry,recompute=False,no_reference=False):
   path_h = paths.PathHandler(entry.subset,entry.bmark)
@@ -171,7 +173,8 @@ def analyze(entry,recompute=False,no_reference=False):
 
     common.simple_plot(output,path_h,output.trial,'obs',TFIT,YFIT)
     common.compare_plot(output,path_h,output.trial,'comp',TPRED,YPRED,TFIT,YFIT)
-    RESULT = compute_quality(TFIT,YFIT,TPRED,YPRED)
+    RESULT = compute_quality(TFIT,YFIT,TREF,YREF, \
+                             output.tau,output.scf)
     if RESULT == -1:
       QUALITIES.append(RESULT)
       continue

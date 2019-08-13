@@ -53,8 +53,8 @@ def model():
   prob.bind("WSQ",WSq)
   prob.bind("WSINW2",SINW2)
 
-  prob.set_interval("W",-2,2)
-  prob.set_interval("P",-1,1)
+  prob.set_interval("W",-10,10)
+  prob.set_interval("P",-0.3,0.3)
 
   measure_var(prob,"WSQ","FREQ")
   prob.set_max_sim_time(200)
