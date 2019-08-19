@@ -125,8 +125,10 @@ class BenchmarkVisualization:
     'heat1d-g6': 'heat6-3',
     'heat1d-g6-wg': 'heat6-3-gain',
     'heat1d-g8': 'heat8-4',
+    'heat1d-g9': 'heat9-2',
     'heat1d-g8-wg': 'heat8-4-gain',
-    'kalman-const': 'kalman'
+    'kalman-const': 'kalman',
+    'kalman-freq-small': 'kalman-freq',
   }
 
   @staticmethod

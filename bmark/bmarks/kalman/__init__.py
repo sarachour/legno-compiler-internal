@@ -1,12 +1,28 @@
-from bmark.bmarks.kalman import constant, \
-  freqdetect, \
-  freqdetect_small, \
-  freqdetect_simple
+from bmark.bmarks.kalman import  \
+  constant_detect, \
+  water, \
+  water_influx, \
+  water_leak, \
+  amplitude_modulation, \
+  phase_match, \
+  amplitude_detect_square, \
+  amplitude_detect_cos
 
 def get_benchmarks():
   return [
-    constant.model(),
-    freqdetect.model(),
-    freqdetect_small.model(),
-    freqdetect_simple.model()
+    # don't know
+    amplitude_modulation.model(),
+    phase_match.model(),
+    # works
+    constant_detect.model(),
+    amplitude_detect_square.model(),
+    amplitude_detect_cos.model(),
+    water.model(),
+    # doesn't work
+    water_influx.model(),
+    water_leak.model(),
+    # deprecated
+    #freqdetect.model(),
+    #freqdetect_small.model(),
+    #freqdetect_simple.model()
   ]

@@ -11,11 +11,10 @@ def visualize():
              MismatchStatus.IDEAL]
   data = common.get_data(series_type='bmark')
   desc = "performance, energy and quality for HDACv2 Board"
-  table = common.Table("Results", desc, "tblres", \
-                       layout = "|c|c|ccc|")
+  table = common.Table("Results", desc, "tbl:performance", \
+                       layout = "|c|c|cc|")
   table.two_column = False
   header = [
-          'bandwidth', \
           'runtime', \
           'power', \
           'energy' \

@@ -66,12 +66,14 @@ YLABELS = {
   'heat1d-g4': 'heat',
   'heat1d-g4-wg': 'heat',
   'heat1d-g8': 'heat',
+  'heat1d-g9': 'heat',
   'heat1d-g8-wg': 'heat',
   'gentoggle':'conc',
   'bont':'conc',
   'smmrxn':'conc',
   'epor':'conc',
-  'kalman-const':'state'
+  'kalman-const':'state',
+  'kalman-freq-small':'state'
 }
 
 def plot_preamble(entry,TREF,YREF):

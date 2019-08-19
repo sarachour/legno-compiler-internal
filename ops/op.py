@@ -806,6 +806,9 @@ class Call(Op):
         Op.__init__(self,OpType.CALL,params+[self._expr])
         assert(expr.op == OpType.FUNC)
 
+    def coefficient(self):
+        raise Exception("bind call function to its own variable please")
+
     def compute(self,bindings):
         new_bindings = {}
         for func_arg,var in zip(self._func.func_args,self._params):

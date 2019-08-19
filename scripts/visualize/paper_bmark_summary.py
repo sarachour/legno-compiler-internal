@@ -9,7 +9,9 @@ import ops.op as op
 DESCRIPTIONS = {
   'micro-osc': 'differential equation representation of sin function',
   'pend': 'pendulum simulation.$\dagger$',
+  'pend-nl': 'pendulum simulation.$\dagger$',
   'spring': 'simulation of box-spring system.$\dagger$',
+  'spring-nl': 'simulation of box-spring system.$\dagger$',
   'vanderpol': 'stiff vanderpol oscillator',
   'cosc': 'dampened spring physics simulation',
   'heat1d': 'movement of heat through lattice',
@@ -25,8 +27,9 @@ DESCRIPTIONS = {
 }
 OBSERVATIONS = {
   'micro-osc': '',
-  'pend': 'position of pendulum',
+  'pend-nl': 'position of pendulum',
   'spring': 'position of block 1',
+  'spring-nl': 'position of block 1',
   'vanderpol': '',
   'closed-forced-vanderpol': '',
   'cosc': '',
@@ -42,9 +45,11 @@ OBSERVATIONS = {
 NONLINEAR = {
   'micro-osc': False,
   'pend': True,
+  'pend-nl': True,
   'robot': False,
   'heat1d': False,
   'spring': True,
+  'spring-nl': True,
   'vanderpol': True,
   'closed-forced-vanderpol': True,
   'gentoggle': True,
@@ -64,9 +69,6 @@ def visualize():
   table.header()
   table.horiz_rule()
   for bmark in table.benchmarks():
-    if bmark == 'pend-nl' or bmark == 'spring-nl':
-      continue
-
     bmark_name = bmark
     if 'heat1d' in bmark:
       bmark_name = 'heat1d'

@@ -55,6 +55,7 @@ class AOp:
         nodes = []
         for n_rules_left, new_inps in \
             self._xform_inputs(self.inputs,rules,n_rules):
+            print(self)
             this_node = self.make(new_inps)
             if not str(this_node) in nodes:
                 yield n_rules,this_node
@@ -228,14 +229,17 @@ class AProd(AOp):
     @staticmethod
     def make(inputs):
         terms = []
+        print(inputs)
         for inp in inputs:
             for t in AProd.terms(inp):
                 terms.append(t)
 
         if len(terms) > 1:
             return AProd(terms)
-        else:
+        elif len(terms) == 1:
             return terms[0]
+        else:
+            raise Exception("cannot make product with 0 terms")
 
 
 class ASum(AOp):
