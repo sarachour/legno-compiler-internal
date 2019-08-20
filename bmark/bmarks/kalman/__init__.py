@@ -3,7 +3,8 @@ from bmark.bmarks.kalman import  \
   water, \
   water_influx, \
   water_leak, \
-  amplitude_modulation, \
+  amplitude_modulate, \
+  freq_modulate, \
   phase_match, \
   amplitude_detect_square, \
   amplitude_detect_cos
@@ -11,7 +12,8 @@ from bmark.bmarks.kalman import  \
 def get_benchmarks():
   return [
     # don't know
-    amplitude_modulation.model(),
+    amplitude_modulate.model(),
+    freq_modulate.model(),
     phase_match.model(),
     # works
     constant_detect.model(),

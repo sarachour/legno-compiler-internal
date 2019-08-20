@@ -15,7 +15,7 @@ from bmark.bmarks.other.closed_form \
 
 def model():
   params = {
-    'meas_noise':0.01,
+    'meas_noise':0.3,
     'proc_noise':0.99999,
     'W0':0.707,
     'P0':0.1,
@@ -43,7 +43,7 @@ def model():
                     params)
 
   #{Q} + {nRinv}*WSINW2*P*P"
-  dP = parse_diffeq("{nRinv}*WSINW2*P*P", \
+  dP = parse_diffeq("{Q}+{nRinv}*WSINW2*P*P", \
                     "P0", \
                     ":p", \
                     params)
