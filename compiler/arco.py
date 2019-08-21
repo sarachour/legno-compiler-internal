@@ -45,16 +45,15 @@ def compile_compute_fragments(board,prob,n_xforms):
         frag_node_map[var] = []
         frag_output_map[var] = []
         xform_map[var] = []
-        for dist_abs_expr in arcolib_aop.distribute_consts(abs_expr):
-            for n_xforms,xform_abs_expr in dist_abs_expr.xform(rules,n_xforms):
-                xform_map[var].append(xform_abs_expr)
-                for node,output in arcolib_acirc.to_abs_circ(board,xform_abs_expr):
-                    if isinstance(node,acirc.ABlockInst):
-                        node.config.set_label(output,var,kind=Labels.OUTPUT)
+        for n_xforms,xform_abs_expr in abs_expr.xform(rules,n_xforms):
+            xform_map[var].append(xform_abs_expr)
+            for node,output in arcolib_acirc.to_abs_circ(board,xform_abs_expr):
+                if isinstance(node,acirc.ABlockInst):
+                    node.config.set_label(output,var,kind=Labels.OUTPUT)
 
-                    if acirc.AbsCirc.feasible(board,[node]):
-                        frag_node_map[var].append(node)
-                        frag_output_map[var].append(output)
+                if acirc.AbsCirc.feasible(board,[node]):
+                    frag_node_map[var].append(node)
+                    frag_output_map[var].append(output)
 
 
     return xform_map,frag_node_map,frag_output_map
@@ -183,9 +182,13 @@ def compile(board,prob,depth=3, \
                                 (n_conc,max_conc_circs))
                     break
                 logger.info(">>> connect stubs to sources <<<")
-                arcolib_mkfan.connect_stubs_to_sources(board,
-                                                       node_map, \
-                                                       mapping)
+                succ = arcolib_mkfan.connect_stubs_to_sources(board,
+                                                              node_map, \
+                                                              mapping)
+                if not succ:
+                    logger.info("=> FAILED TO CONNECT")
+                    input("[press any key to continue]")
+                    continue
 
                 logger.info(">>> bind namespaces <<<")
                 for var,node in node_map.items():

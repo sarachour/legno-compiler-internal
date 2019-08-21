@@ -9,6 +9,7 @@ class AOpType(Enum):
     VPROD = "*"
     CPROD = ".*"
     VAR = "v"
+    PREC = "prec"
     CONST = "c"
     SQUARE = "sq"
     SQRT = "sqrt"
@@ -274,6 +275,15 @@ class ASum(AOp):
                 terms.append(t)
 
         return ASum(terms)
+
+
+class APrec(AOp):
+
+    def __init__(self,expr):
+        AOp.__init__(self,AOpType.PREC,[expr])
+
+    def make(self,inputs):
+        return APrec(inputs[0])
 
 
 class AInteg(AOp):
