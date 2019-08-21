@@ -348,9 +348,12 @@ class OutputEntry:
     s = "{\n"
     s += "ident=%s\n" % self.ident
     s += "status=%s\n" % (self._status.value)
+    s += "varname=<%s>\n" % (self._varname)
+    s += "trial=%d\n" % (self._trial)
     s += "out_file=%s\n" % (self._out_file)
     s += "rank=%s\n" % (self._rank)
     s += "tau=%s\n" % (self._tau)
+    s += "scf=%s\n" % (self._scf)
     s += "fmax=%s\n" % (self._fmax)
     s += "quality=%s\n" % (self._quality)
     s += "transform=%s\n" % (self._transform)
@@ -472,6 +475,7 @@ class ExperimentEntry:
       return
 
     clear_computed = False
+    not_done = False
     for output in self.outputs():
       if os.path.isfile(output.out_file):
         if output.status == OutputStatus.PENDING:
@@ -480,9 +484,9 @@ class ExperimentEntry:
         if output.status == OutputStatus.RAN:
           output.set_status(OutputStatus.PENDING)
 
+      not_done = not_done or \
+                 (output.status == OutputStatus.PENDING)
 
-    not_done = any(map(lambda out: out.status == OutputStatus.PENDING, \
-                      self.outputs()))
     if not not_done:
       self.set_status(ExperimentStatus.RAN)
     else:
@@ -593,10 +597,11 @@ class ExperimentEntry:
 
   @property
   def ident(self):
-    return "%s[%s](%s,%s)" % (self.circ_ident,
-                              self._objective_fun,
-                              self._math_env,
-                              self._hw_env)
+    return "%s[%s,%s](%s,%s)" % (self.circ_ident, \
+                                 self._objective_fun, \
+                                 self._model, \
+                                 self._math_env, \
+                                 self._hw_env)
 
   def __repr__(self):
     s = "{\n"
@@ -675,7 +680,7 @@ class ExperimentDB:
     opt text NOT NULL,
     menv text NOT NULL,
     hwenv text NOT NULL,
-    varname text NOT NULL,
+    variable text NOT NULL,
     trial int NOT NULL,
     out_file text,
     rank real,
@@ -686,7 +691,7 @@ class ExperimentDB:
     scf real,
     modif timestamp,
     PRIMARY KEY (subset,bmark,arco0,arco1,arco2,arco3,jaunt,
-                 model,opt,menv,hwenv,varname,trial)
+                 model,opt,menv,hwenv,variable,trial)
     FOREIGN KEY (subset,bmark,arco0,arco1,arco2,arco3,jaunt,
                  model,opt,menv,hwenv)
     REFERENCES experiments(subset,bmark,arco0,arco1,arco2,arco3,jaunt,
@@ -759,13 +764,39 @@ class ExperimentDB:
     '''
     args = make_args(subset,bmark,arco_inds,jaunt_inds,model,opt, \
                      menv_name,hwenv_name)
-    if not varname is None:
-      cmd += "AND varname = \"{varname}\""
-      args['varname'] = varname
-    if not trial is None:
-      cmd += "AND trial = {trial}"
-      args['trial'] = trial
-
+    args['varname'] = varname
+    args['trial'] = trial
+    if not varname is None  \
+       and not trial is None:
+      cmd = '''WHERE
+      subset = "{subset}"
+      AND bmark = "{bmark}"
+      AND arco0 = {arco0}
+      AND arco1 = {arco1}
+      AND arco2 = {arco2}
+      AND arco3 = {arco3}
+      AND jaunt = {jaunt}
+      AND model = "{model}"
+      AND opt = "{opt}"
+      AND menv = "{menv}"
+      AND hwenv = "{hwenv}"
+      AND variable = "{varname}"
+      AND trial = {trial}
+      '''
+    else:
+      cmd = '''WHERE
+      subset = "{subset}"
+      AND bmark = "{bmark}"
+      AND arco0 = {arco0}
+      AND arco1 = {arco1}
+      AND arco2 = {arco2}
+      AND arco3 = {arco3}
+      AND jaunt = {jaunt}
+      AND model = "{model}"
+      AND opt = "{opt}"
+      AND menv = "{menv}"
+      AND hwenv = "{hwenv}"
+      '''
 
     conc_cmd = cmd.format(**args)
     return conc_cmd
@@ -798,6 +829,8 @@ class ExperimentDB:
     conc_cmd = cmd.format(where_clause=where_clause, \
                           assign_clause=assign_clause)
     self._curs.execute(conc_cmd)
+    if self._curs.rowcount == 0:
+      raise Exception("Query Failed:\n%s" % conc_cmd)
     self._conn.commit()
 
 
@@ -824,6 +857,9 @@ class ExperimentDB:
     conc_cmd = cmd.format(where_clause=where_clause, \
                           assign_clause=assign_clause)
     self._curs.execute(conc_cmd)
+    if self._curs.rowcount == 0:
+      raise Exception("Query Failed:\n%s" % conc_cmd)
+
     self._conn.commit()
 
 
@@ -919,7 +955,7 @@ class ExperimentDB:
     cmd = '''
       INSERT INTO outputs (
          subset,bmark,arco0,arco1,arco2,arco3,jaunt,
-         model,opt,menv,hwenv,out_file,status,modif,varname,trial
+         model,opt,menv,hwenv,out_file,status,modif,variable,trial
       ) VALUES
       (
          "{subset}",
@@ -948,6 +984,9 @@ class ExperimentDB:
                                                            trial)
     conc_cmd = cmd.format(**args)
     self._curs.execute(conc_cmd)
+    if self._curs.rowcount == 0:
+      raise Exception("Query Failed:\n%s" % conc_cmd)
+
     self._conn.commit()
 
   def add_experiment(self,subset,bmark,arco_inds, \
