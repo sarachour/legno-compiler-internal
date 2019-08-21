@@ -33,6 +33,8 @@ def compute_params(conc_circ,entry,varname):
   params = {}
   params['scf'] = cfg.scf(port)
   params['tau']= (conc_circ.tau)
+  assert(not params['scf'] is None)
+  assert(not params['tau'] is None)
   params['fmax']= (conc_circ.tau)*conc_circ.board.time_constant
   params['simtime'] = menv.sim_time
   params['runtime'] = params['simtime']/params['fmax']
@@ -49,7 +51,6 @@ def analyze(entry,conc_circ,method=RankMethod.SKELTER):
     output.set_tau(params['tau'])
     output.set_fmax(params['fmax'])
     output.set_scf(params['scf'])
-    #output.set_rank(RANK)
 
   if not params is None:
     entry.set_runtime(params['runtime'])
