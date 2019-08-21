@@ -28,7 +28,8 @@ def get_modes():
     chipcmd.RangeType.options()
   ]
   blacklist_vga = [
-    (chipcmd.RangeType.LOW,chipcmd.RangeType.HIGH)
+    (chipcmd.RangeType.LOW,chipcmd.RangeType.HIGH),
+    (chipcmd.RangeType.HIGH,chipcmd.RangeType.LOW)
   ]
   blacklist_mult = [
     (chipcmd.RangeType.LOW,chipcmd.RangeType.LOW, \

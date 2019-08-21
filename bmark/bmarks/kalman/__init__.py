@@ -5,6 +5,7 @@ from bmark.bmarks.kalman import  \
   water_leak, \
   amplitude_modulate, \
   freq_modulate, \
+  yshift_modulate, \
   phase_match, \
   amplitude_detect_square, \
   amplitude_detect_cos
@@ -13,6 +14,7 @@ def get_benchmarks():
   return [
     # don't know
     amplitude_modulate.model(),
+    yshift_modulate.model(),
     freq_modulate.model(),
     phase_match.model(),
     # works
