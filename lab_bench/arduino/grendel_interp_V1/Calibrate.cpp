@@ -6,6 +6,10 @@
 #include "profile.h"
 
 namespace calibrate {
+  calib_objective_t get_objective(){
+    return CALIB_MINIMIZE_ERROR;
+    //return CALIB_MAXIMIZE_DELTA_FIT;
+  }
 
   profile_t measure(Fabric* fab,
                          uint16_t blk,
@@ -54,10 +58,7 @@ namespace calibrate {
     }
   }
 
-  calib_objective_t get_objective(){
-    //return CALIB_MINIMIZE_ERROR;
-    return CALIB_MAXIMIZE_DELTA_FIT;
-  }
+ 
 
   bool calibrate(Fabric* fab,
                  profile_t& result,
@@ -75,7 +76,8 @@ namespace calibrate {
     switch(blk){
     case circ::block_type_t::FANOUT:
       fanout = common::get_fanout(fab,loc);
-      return fanout->calibrate(result,max_error);
+      fanout->calibrate(obj);
+      return true;
       break;
 
     case circ::block_type_t::MULT:

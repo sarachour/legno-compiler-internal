@@ -19,7 +19,6 @@ typedef enum {
 
 
 
-
 class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
 
@@ -50,14 +49,14 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
     float fastMakeValue(float value);
     void defaults();
 
-    static float compute_output(dac_code_t& codes);
+    static float computeOutput(dac_code_t& codes);
     dac_code_t m_codes;
     dac_code_t calib_codes;
     bool calibrated;
 	private:
     //fast calibration utility
-    float calibrateMinError(Fabric::Chip::Tile::Slice::Dac * ref_dac);
-    float calibrateMaxDeltaFit(Fabric::Chip::Tile::Slice::Dac * ref_dac);
+    float calibrateMinError();
+    float calibrateMaxDeltaFit();
     //fast set source/measure utilities
     float fastMakeHighValue(float value, float max_error);
     float fastMakeMedValue(float value, float max_error);

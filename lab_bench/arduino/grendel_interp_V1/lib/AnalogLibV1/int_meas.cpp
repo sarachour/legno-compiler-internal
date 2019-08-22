@@ -29,7 +29,7 @@ void make_feedback_fanout(Fabric::Chip::Tile::Slice::Fanout * fanout,
   }
   fanout->m_codes.enable = true;
   fanout->update(fanout->m_codes);
-  fanout->calibrate(prof::TEMP, 0.01);
+  fanout->calibrate(CALIB_MINIMIZE_ERROR);
 }
 
 profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){

@@ -134,59 +134,7 @@ typedef enum {
   MEAS_ADC
 } meas_method_t;
 
-namespace util {
 
-  const char * ifc_to_string(ifc id);
-
-  float range_to_coeff(range_t range);
-  float sign_to_coeff(bool inv);
-
-  void distribution(float * values, int size, float& mean, float& variance);
-  void save_conns(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                  int& n,
-                  int n_max);
-
-  void meas_dist_adc(Fabric::Chip::Tile::Slice::ChipAdc* fu,
-                          float& mean, float& variance);
-
-  float meas_adc(Fabric::Chip::Tile::Slice::ChipAdc* fu);
-  float meas_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu);
-  void meas_dist_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                          float& mean, float& variance);
-  void meas_steady_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                            float& mean, float& variance);
-
-  void test_iref(unsigned char code);
-  bool is_valid_iref(unsigned char code);
-
-}
-
-namespace binsearch {
-  bool find_bias_and_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                          float target,
-                          const float max_error,
-                          unsigned char & code,
-                          unsigned char & nmos,
-                          float & delta,
-                          meas_method_t method
-     );
-  float bin_search_meas(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                 meas_method_t method);
-
-  void find_bias(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                 float target,
-                 unsigned char & code,
-                 float & error,
-                 meas_method_t method);
-
-  float get_bias(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                float target,
-                meas_method_t method);
-  void test_stab(unsigned char code,
-                 float error,
-                 const float max_error,
-                 bool& calib_failed);
-}
 
 
 class Fabric::Chip::Tile::Slice::FunctionUnit {

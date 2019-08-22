@@ -51,6 +51,28 @@ namespace util {
     variance /= (float) (samples);
   }
 
+
+  int find_maximum(float* values, int n){
+    int best_index=0;
+    assert(n >= 1);
+    for(int i=0; i < n; i+=1){
+      if(values[i] > values[best_index]){
+        best_index = i;
+      }
+    }
+    return best_index;
+  }
+  int find_minimum(float* values, int n){
+    int best_index=0;
+    assert(n >= 1);
+    for(int i=0; i < n; i+=1){
+      if(values[i] < values[best_index]){
+        best_index = i;
+      }
+    }
+    return best_index;
+  }
+
   void meas_dist_adc(Fabric::Chip::Tile::Slice::ChipAdc* fu,
                       float& mean, float& variance){
     Fabric* fab = fu->getFabric();

@@ -18,8 +18,8 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
 			bool third // whether third output is on
 		);
 		void characterize(profile_t& result);
-		bool calibrate (profile_t& result,
-                    const float max_error);
+    static float computeOutput(fanout_code_t& codes,ifc index,float in);
+		void calibrate (calib_objective_t obj);
     void defaults();
     void update(fanout_code_t codes){
       m_codes = codes;
@@ -36,6 +36,12 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
 			delete out1;
 			delete out2;
 		};
+    float calibrateMinError(Fabric::Chip::Tile::Slice::Dac * val_dac,
+                            Fabric::Chip::Tile::Slice::Dac * ref_dac,
+                            ifc out_id);
+    float calibrateMaxDeltaFit(Fabric::Chip::Tile::Slice::Dac * val_dac,
+                               Fabric::Chip::Tile::Slice::Dac * ref_dac,
+                               ifc out_id);
 		/*Set enable, range*/
 		void setParam0 () const override;
 		/*Set calDac1, invert output 1*/

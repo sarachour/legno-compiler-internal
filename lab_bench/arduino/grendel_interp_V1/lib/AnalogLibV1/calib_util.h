@@ -7,11 +7,6 @@
 #include "profile.h"
 #include <float.h>
 
-
-#define MAX_NMOS 7
-#define MAX_PMOS 7
-#define MAX_GAIN_CAL 64
-
 namespace cutil {
 
   #define MAX_CONNS 10

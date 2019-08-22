@@ -38,10 +38,10 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
       float score = 0;
       switch(obj){
       case CALIB_MINIMIZE_ERROR:
-        score = calibrateMinError(NULL);
+        score = calibrateMinError();
         break;
       case CALIB_MAXIMIZE_DELTA_FIT:
-        score = calibrateMaxDeltaFit(NULL);
+        score = calibrateMaxDeltaFit();
         break;
       }
       calib_table[nmos][gain_cal] = score;
@@ -63,6 +63,7 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
       }
     }
   }
+  best_score = calib_table[best_nmos][best_gain_cal];
   print_info("======");
   sprintf(FMTBUF,"BEST nmos=%d\tgain_cal=%d\tscore=%f",
           best_nmos,best_gain_cal,best_score);
@@ -81,7 +82,7 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
   return;
 }
 
-float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(Fabric::Chip::Tile::Slice::Dac * ref_dac){
+float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(){
   const int NPTS = 5;
   float test_points[5] = {0,1,-1,0.5,-0.5};
   float gains[5];
@@ -89,7 +90,7 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(Fabric::Chip::Tile::S
   for(int i=0; i < NPTS; i += 1){
     float const_val = test_points[i];
     this->setConstant(const_val);
-    float target = Fabric::Chip::Tile::Slice::Dac::compute_output(this->m_codes);
+    float target = Fabric::Chip::Tile::Slice::Dac::computeOutput(this->m_codes);
     float mean,variance;
     mean = this->fastMeasureValue(variance);
     if(fabs(target) > 0.0){
@@ -108,14 +109,14 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(Fabric::Chip::Tile::S
   return score;
 
 }
-float Fabric::Chip::Tile::Slice::Dac::calibrateMinError(Fabric::Chip::Tile::Slice::Dac * ref_dac){
+float Fabric::Chip::Tile::Slice::Dac::calibrateMinError(){
   const int NPTS = 5;
   float test_points[5] = {0,1,-1,0.5,-0.5};
   float score_total = 0;
   for(int i=0; i < NPTS; i += 1){
     float const_val = test_points[i];
     this->setConstant(const_val);
-    float target = Fabric::Chip::Tile::Slice::Dac::compute_output(this->m_codes);
+    float target = Fabric::Chip::Tile::Slice::Dac::computeOutput(this->m_codes);
     float mean,variance;
     mean = this->fastMeasureValue(variance);
     score_total += fabs(target-mean);

@@ -37,7 +37,7 @@ profile_t Fabric::Chip::Tile::Slice::Dac::measure(float in)
 
   dac_to_tile.setConn();
 	tile_to_chip.setConn();
-  float target =Fabric::Chip::Tile::Slice::Dac::compute_output(this->m_codes);
+  float target =Fabric::Chip::Tile::Slice::Dac::computeOutput(this->m_codes);
   float mean,variance;
   mean = this->fastMeasureValue(variance);
   sprintf(FMTBUF,"PARS target=%f mean=%f variance",

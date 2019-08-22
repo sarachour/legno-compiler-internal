@@ -30,8 +30,6 @@ namespace cutil {
     float ref_dac_val;
 
     ref_dac_val = fast_make_dac(ref_dac, -target);
-    print_info("finished fast make dac");
-    // Serial.print("\nFanout interface calibration");
     do {
       if(steady){
         util::meas_steady_chip_out(fu,measurement,variance);
@@ -39,9 +37,11 @@ namespace cutil {
       else{
         util::meas_dist_chip_out(fu,measurement,variance);
       }
-      sprintf(FMTBUF,"MEASUREMENT ref=%f delta=%f measurement=%f variance=%f",
-              ref_dac_val,delta,measurement,variance);
+      /*
+      sprintf(FMTBUF,"MEASUREMENT targ=%f ref=%f delta=%f measurement=%f variance=%f",
+              target,ref_dac_val,delta,measurement,variance);
       print_info(FMTBUF);
+      */
       if(fabs(measurement) > thresh){
         delta += measurement < 0 ? -step : step;
         ref_dac_val = fast_make_dac(ref_dac, -(target+delta));
@@ -68,10 +68,7 @@ namespace cutil {
     if(ref_dac->m_codes.inv)
       ref_dac->setInv(false);
 
-    print_info("creating dac");
     float val = ref_dac->fastMakeValue(target);
-    sprintf(FMTBUF,"created dac value=%f",val);
-    print_info(FMTBUF);
     return val;
   }
   dac_code_t make_ref_dac(calibrate_t& calib,

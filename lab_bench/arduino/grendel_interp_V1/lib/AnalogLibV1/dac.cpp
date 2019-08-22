@@ -6,11 +6,11 @@
 #include "dac.h"
 
 
-float Fabric::Chip::Tile::Slice::Dac::compute_output(dac_code_t& codes){
+float Fabric::Chip::Tile::Slice::Dac::computeOutput(dac_code_t& codes){
   float sign = util::sign_to_coeff(codes.inv);
   float rng = util::range_to_coeff(codes.range);
   float gain = (codes.const_code - 128.0)/128.0;
-  return gain;
+  return sign*rng*gain;
 }
 void Fabric::Chip::Tile::Slice::Dac::update(dac_code_t codes){
   m_codes = codes;

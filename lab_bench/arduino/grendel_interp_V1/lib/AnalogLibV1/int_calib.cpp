@@ -138,7 +138,7 @@ void find_zero(Fabric::Chip::Tile::Slice::Integrator* integ, float max_error,
   cutil::initialize(calib);
 
   print_info("===== CALIBRATE FANOUT =====");
-  calib.success &= fanout->calibrate(prof::TEMP,0.01);
+  fanout->calibrate(CALIB_MINIMIZE_ERROR);
   print_info("===== FIND ZERO =====");
 
   integ->setInitial(0.0);

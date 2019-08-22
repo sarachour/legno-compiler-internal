@@ -6,6 +6,14 @@
 
 extern size_t dynamic_memory;
 
+
+
+#define MAX_NMOS 8
+#define MAX_PMOS 8
+#define MAX_GAIN_CAL 64
+#define MAX_BIAS_CAL 64
+
+
 #define LEVEL 3
 
 #define LOG_LEVEL 2
@@ -97,10 +105,8 @@ static void error (
 #include "slice.h"
 #endif
 
-#ifndef _FU
-#define _FU
 #include "fu.h"
-#endif
+#include "util.h"
 
 #ifndef _CHIP_INOUT
 #define _CHIP_INOUT

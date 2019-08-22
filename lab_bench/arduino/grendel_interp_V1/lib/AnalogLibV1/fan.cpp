@@ -1,6 +1,21 @@
 #include "AnalogLib.h"
 #include "assert.h"
 #include "calib_util.h"
+
+
+float Fabric::Chip::Tile::Slice::Fanout::computeOutput(fanout_code_t& codes,
+                                                     ifc out_id, float in){
+  float sign;
+  switch(out_id){
+  case out0Id:
+  case out1Id:
+  case out2Id:
+    sign=util::sign_to_coeff(codes.inv[out_id]); break;
+  default:
+    error("Fanout::compute_out unknown out_id");
+  }
+  return sign*in;
+}
 void Fabric::Chip::Tile::Slice::Fanout::setEnable (
 	bool enable
 ) {
@@ -30,9 +45,9 @@ void Fabric::Chip::Tile::Slice::Fanout::setRange (
 }
 
 void Fabric::Chip::Tile::Slice::Fanout::setInv (
-                                                           ifc port,
-                                                           bool inverse // whether output is negated
-) {
+                                                ifc port,
+                                                bool inverse // whether output is negated
+                                                ) {
   if(!(port == out0Id || port == out1Id || port == out2Id)){
     error("unexpected range");
   }
