@@ -138,6 +138,7 @@ int helper_find_gain_cal_mult(Fabric::Chip::Tile::Slice::Multiplier* mult,
   float corners[N_MUL_CORNERS] = {0.9,-0.9,0.5,-0.5};
   float deltas[N_MUL_PTS];
   float values[N_MUL_PTS];
+  float dummy;
   /*
     this populates the bias table for the multiplier. Multipliers in multiply mode
     are relatively insensitive to changes in the gain_cal parameter. We will use
@@ -153,7 +154,7 @@ int helper_find_gain_cal_mult(Fabric::Chip::Tile::Slice::Multiplier* mult,
       in1_val = val2_dac->fastMakeValue(in1_val);
       float pred_out_val = predict_out_mult(mult->m_codes,in0_val,in1_val);
       cutil::fast_make_dac(ref_dac, -pred_out_val);
-      float ref_val = ref_dac->fastMeasureValue();
+      float ref_val = ref_dac->fastMeasureValue(dummy);
       // the bias we're actually expecting
       float targ = pred_out_val + ref_val;
       //not sensitive to gain code
@@ -227,6 +228,7 @@ int helper_find_generic_gain_cal_vga(Fabric::Chip::Tile::Slice::Multiplier* mult
   float corners[N_MUL_CORNERS] = {0.9,-0.9,0.5,-0.5};
   float deltas[64][N_VGA_PTS];
   float values[N_VGA_PTS];
+  float dummy;
   /*
     the bias table is per-gain code, because the vga block is dependent on
     the gain_cal code
@@ -240,7 +242,7 @@ int helper_find_generic_gain_cal_vga(Fabric::Chip::Tile::Slice::Multiplier* mult
       in0_val = val_dac->fastMakeValue(in0_val);
       float pred_out_val = predict_out_vga(mult->m_codes,in0_val);
       cutil::fast_make_dac(ref_dac, -pred_out_val);
-      float ref_val = ref_dac->fastMeasureValue();
+      float ref_val = ref_dac->fastMeasureValue(dummy);
       float targ = pred_out_val + ref_val;
       int idx =i*N_MUL_CORNERS+j;
       values[idx] = pred_out_val;

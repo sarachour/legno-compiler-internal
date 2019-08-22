@@ -55,7 +55,8 @@ namespace calibrate {
   }
 
   calib_objective_t get_objective(){
-    return CALIB_MINIMIZE_ERROR;
+    //return CALIB_MINIMIZE_ERROR;
+    return CALIB_MAXIMIZE_DELTA_FIT;
   }
 
   bool calibrate(Fabric* fab,

@@ -46,7 +46,7 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
     //calibration function
     void calibrate(calib_objective_t obj);
     // fast measurement and make functions
-    float fastMeasureValue();
+    float fastMeasureValue(float& noise);
     float fastMakeValue(float value);
     void defaults();
 
@@ -61,8 +61,8 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
     //fast set source/measure utilities
     float fastMakeHighValue(float value, float max_error);
     float fastMakeMedValue(float value, float max_error);
-    float fastMeasureHighValue();
-    float fastMeasureMedValue();
+    float fastMeasureHighValue(float& noise);
+    float fastMeasureMedValue(float& noise);
 
 		Dac (Slice * parentSlice);
 		~Dac () override { delete out0; };

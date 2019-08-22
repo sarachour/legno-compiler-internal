@@ -221,16 +221,16 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
   return mean - ref_value;
 }
 
-float Fabric::Chip::Tile::Slice::Dac::fastMeasureValue(){
+float Fabric::Chip::Tile::Slice::Dac::fastMeasureValue(float& variance){
   if(this->m_codes.range == RANGE_HIGH){
-    return fastMeasureHighValue();
+    return fastMeasureHighValue(variance);
   }
   else {
-    return fastMeasureMedValue();
+    return fastMeasureMedValue(variance);
   }
 }
 
-float Fabric::Chip::Tile::Slice::Dac::fastMeasureMedValue(){
+float Fabric::Chip::Tile::Slice::Dac::fastMeasureMedValue(float& variance){
   dac_code_t codes_dac = m_codes;
   cutil::calibrate_t calib;
   cutil::initialize(calib);
@@ -246,7 +246,10 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureMedValue(){
 
   this_dac_to_tile.setConn();
   tile_to_chip.setConn();
-  float mean = util::meas_chip_out(this);
+  // measure mean and variance of signal
+  float mean;
+  util::meas_dist_chip_out(this,mean,variance);
+
   this_dac_to_tile.brkConn();
   tile_to_chip.brkConn();
   cutil::restore_conns(calib);
@@ -256,7 +259,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureMedValue(){
 
 }
 // very quickly measures a value using uncalibrated dacs.
-float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(){
+float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
 
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   Dac * ref_dac = parentSlice->parentTile->slices[next_slice].dac;
@@ -340,7 +343,8 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(){
   else{
     this_dac_to_tile.brkConn();
   }
-  float mean = util::meas_chip_out(this);
+  float mean;
+  util::meas_dist_chip_out(this,mean,variance);
   total += fabs(mean);
   sprintf(FMTBUF, "B old=%f new=%f mean=%f total=%f",
           value,

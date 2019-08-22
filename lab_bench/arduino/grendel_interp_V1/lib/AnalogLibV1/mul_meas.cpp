@@ -58,7 +58,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_vga(float in0val,float 
   tileout_to_chipout.setConn();
   ref_to_tileout.setConn();
 
-  float mean,variance;
+  float mean,variance,dummy;
   calib.success &= cutil::measure_signal_robust(this,
                                                 ref_dac,
                                                 target_vga,
@@ -66,7 +66,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_vga(float in0val,float 
                                                 mean,
                                                 variance);
 
-  float ref = ref_dac->fastMeasureValue();
+  float ref = ref_dac->fastMeasureValue(dummy);
   float bias = (mean-(target_vga+ref));
   sprintf(FMTBUF,"PARS target=%f ref=%f mean=%f",
           target_vga,ref,mean);
@@ -157,9 +157,9 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_mult(float in0val, floa
                                                   mean,
                                                   variance);
 
-  float ref;
+  float ref,dummy;
   if(calib.success)
-    ref = ref_dac->fastMeasureValue();
+    ref = ref_dac->fastMeasureValue(dummy);
 
   sprintf(FMTBUF,"PARS target=%f ref=%f mean=%f",
           target_mult,ref,mean);

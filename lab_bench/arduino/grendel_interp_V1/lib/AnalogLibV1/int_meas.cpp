@@ -90,7 +90,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
   fan_to_integ.setConn();
   valdac_to_integ.setConn();
   tile_to_chip.setConn();
-  float mean,variance;
+  float mean,variance,dummy;
   calib.success &= cutil::measure_signal_robust(this,
                                                 ref_dac,
                                                 target_output,
@@ -98,7 +98,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
                                                 mean,
                                                 variance);
 
-  float ref = ref_dac->fastMeasureValue();
+  float ref = ref_dac->fastMeasureValue(dummy);
   sprintf(FMTBUF,"PARS target=%f ref=%f mean=%f",
           target_output,ref,mean);
   print_info(FMTBUF);
@@ -170,7 +170,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ic(float input)
   integ_to_tile.setConn();
 	tile_to_chip.setConn();
   update(m_codes);
-  float mean,variance;
+  float mean,variance,dummy;
   calib.success &= cutil::measure_signal_robust(this,
                                                 aux_dac,
                                                 target,
@@ -178,7 +178,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ic(float input)
                                                 mean,
                                                 variance);
 
-  float ref = aux_dac->fastMeasureValue();
+  float ref = aux_dac->fastMeasureValue(dummy);
   sprintf(FMTBUF,"PARS target=%f ref=%f mean=%f",
           target,ref,mean);
   print_info(FMTBUF);

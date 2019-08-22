@@ -34,7 +34,7 @@ namespace cutil {
   // this is a special high-to-medium converter specifically for
   // the multiplier, since we want to be able to scale down signals
   //
-  void fast_make_dac(Fabric::Chip::Tile::Slice::Dac* dac,
+  float fast_make_dac(Fabric::Chip::Tile::Slice::Dac* dac,
                         float value);
 
   /* DEPRECATED START*/

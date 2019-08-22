@@ -5,6 +5,7 @@
 
 namespace util {
 
+  /* validity testing */
   bool is_valid_iref(unsigned char code){
     return (code <= 7 && code >= 0);
   }
@@ -17,6 +18,7 @@ namespace util {
     return "?";
   }
 
+  /* helper functions for building block functions */
   float sign_to_coeff(bool inv){
     return inv ? -1.0 : 1.0;
   }
@@ -32,6 +34,7 @@ namespace util {
     error("unknown range");
     return -1.0;
   }
+
 
 
   void distribution(float* values, int samples,

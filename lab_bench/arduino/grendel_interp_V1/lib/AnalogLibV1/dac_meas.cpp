@@ -6,13 +6,6 @@
 #include "dac.h"
 
 
-void dmeas_make_ref_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac,float target){
-  aux_dac->setEnable(true);
-  aux_dac->setRange(RANGE_HIGH);
-  aux_dac->setSource(DSRC_MEM);
-  aux_dac->setInv(false);
-  aux_dac->setConstant(-target/10.0);
-}
 
 profile_t Fabric::Chip::Tile::Slice::Dac::measure(float in)
 {
@@ -25,57 +18,44 @@ profile_t Fabric::Chip::Tile::Slice::Dac::measure(float in)
   cutil::initialize(calib);
 
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
-  Dac * ref_dac = parentSlice->parentTile->slices[next_slice].dac;
   dac_code_t codes_dac = m_codes;
-  dac_code_t codes_ref = ref_dac->m_codes;
 
   m_codes.source = DSRC_MEM;
   setConstant(in);
   update(m_codes);
 
   cutil::buffer_dac_conns(calib,this);
-  cutil::buffer_dac_conns(calib,ref_dac);
   cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
-  cutil::buffer_chipout_conns(calib,parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput);
+  cutil::buffer_chipout_conns(calib,parentSlice->parentTile
+                              ->parentChip->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
-	Connection ref_to_tile = Connection ( ref_dac->out0,
-                                        parentSlice->tileOuts[3].in0 );
 
 	Connection dac_to_tile = Connection ( out0, parentSlice->tileOuts[3].in0 );
 	Connection tile_to_chip = Connection ( parentSlice->tileOuts[3].out0,
-                                         parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
+                                         parentSlice->parentTile
+                                         ->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
-  ref_to_tile.setConn();
   dac_to_tile.setConn();
 	tile_to_chip.setConn();
-  float mean,variance;
-  bool steady = false;
   float target =Fabric::Chip::Tile::Slice::Dac::compute_output(this->m_codes);
-  calib.success &= cutil::measure_signal_robust(this,
-                                                ref_dac,
-                                                target,
-                                                steady,
-                                                mean,
-                                                variance);
-
-
-  float ref = ref_dac->fastMeasureValue();
-  sprintf(FMTBUF,"PARS target=%f ref=%f mean=%f",
-          target,ref,mean);
+  float mean,variance;
+  mean = this->fastMeasureValue(variance);
+  sprintf(FMTBUF,"PARS target=%f mean=%f variance",
+          target,mean,variance);
   print_info(FMTBUF);
-  float bias = (mean-(target+ref));
+  float bias = (mean-target);
+  const int mode = 0;
+  const float in1 = 0.0;
   profile_t result = prof::make_profile(out0Id,
-                                        0,
-                                        m_codes.const_val*scf,
-                                        m_codes.const_val,
-                                        0.0,
+                                        mode,
+                                        target,
+                                        in,
+                                        in1,
                                         bias,
                                         variance);
   if(!calib.success){
     result.mode = 255;
   }
-  ref_to_tile.brkConn();
-  ref_dac->update(codes_ref);
 	tile_to_chip.brkConn();
   dac_to_tile.brkConn();
 

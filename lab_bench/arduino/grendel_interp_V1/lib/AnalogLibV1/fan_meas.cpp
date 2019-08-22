@@ -74,14 +74,14 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
   cutil::fast_make_dac(ref_dac, -out_target);
   ref_to_tile.setConn();
 
-  float mean,variance;
+  float mean,variance,dummy;
   calib.success &= cutil::measure_signal_robust(this,
                                                 ref_dac,
                                                 out_target,
                                                 false,
                                                 mean,
                                                 variance);
-  float ref = ref_dac->fastMeasureValue();
+  float ref = ref_dac->fastMeasureValue(dummy);
   sprintf(FMTBUF,"PARS target=%f ref=%f mean=%f",
           out_target,ref,mean);
   print_info(FMTBUF);
