@@ -104,12 +104,8 @@ namespace calibrate {
 
     case circ::block_type_t::INTEG:
       integ = common::get_slice(fab,loc.loc)->integrator;
-      if(targeted){
-        return integ->calibrateTarget(result,max_error);
-      }
-      else{
-        return integ->calibrate(result,max_error);
-      }
+      integ->calibrate(obj);
+      return true;
       break;
 
     default:

@@ -17,7 +17,6 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
 		void setThird (
 			bool third // whether third output is on
 		);
-		void characterize(profile_t& result);
     static float computeOutput(fanout_code_t& codes,ifc index,float in);
 		void calibrate (calib_objective_t obj);
     void defaults();
@@ -26,6 +25,7 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
       updateFu();
     }
 		profile_t measure(char mode, float input);
+    void measureZero(float& bias0, float& bias1, float& bias2);
     fanout_code_t m_codes;
 	private:
 		class FanoutOut;

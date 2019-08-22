@@ -2,6 +2,41 @@
 #include "assert.h"
 #include "calib_util.h"
 
+void Fabric::Chip::Tile::Slice::Fanout::measureZero(float &out0bias,
+                                                    float &out1bias,
+                                                    float &out2bias){
+  // backup and clobber state.
+  cutil::calibrate_t calib;
+  fanout_code_t codes_fan = this->m_codes;
+  cutil::initialize(calib);
+  cutil::buffer_fanout_conns(calib,this);
+  cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
+  cutil::buffer_chipout_conns(calib,
+                              parentSlice->parentTile->parentChip
+                              ->tiles[3].slices[2].chipOutput);
+  cutil::break_conns(calib);
+  Connection tileout_to_chipout = Connection (parentSlice->tileOuts[3].out0,
+                                              parentSlice->parentTile->parentChip
+                                              ->tiles[3].slices[2].chipOutput->in0);
+  Connection conn_out0 = Connection (this->out0,parentSlice->tileOuts[3].in0);
+  Connection conn_out1 = Connection (this->out1,parentSlice->tileOuts[3].in0);
+  Connection conn_out2 = Connection (this->out2,parentSlice->tileOuts[3].in0);
+  tileout_to_chipout.setConn();
+
+  conn_out0.setConn();
+  out0bias = util::meas_chip_out(this);
+  conn_out0.brkConn();
+  conn_out1.setConn();
+  out1bias = util::meas_chip_out(this);
+  conn_out1.brkConn();
+  conn_out2.setConn();
+  out2bias = util::meas_chip_out(this);
+  conn_out2.brkConn();
+  tileout_to_chipout.brkConn();
+
+  this->update(codes_fan);
+  cutil::restore_conns(calib);
+}
 void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
   //backup state
   cutil::calibrate_t calib;
@@ -34,6 +69,9 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
   Fabric::Chip::Connection val_to_fanout =
     Fabric::Chip::Connection ( val_dac->out0, this->in0);
 
+  // always enable third output so all of them can be calibrated
+  this->setThird(true);
+  //enable dacs
   ref_dac->setEnable(true);
   val_dac->setEnable(true);
   ref_to_tileout.setConn();
@@ -112,8 +150,8 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
     best_scores[2] = scores[calib_table_codes[nmos][2]];
     conn_out2.brkConn();
 
-    calib_table[nmos] = util::find_maximum(best_scores,3);
-    sprintf(FMTBUF,"nmos=%d bias_codes=[%d,%d,%d] score=%f", nmos,
+    calib_table[nmos] = best_scores[util::find_maximum(best_scores,3)];
+    sprintf(FMTBUF,"nmos=%d bias_codes=(%d,%d,%d) score=%f", nmos,
             calib_table_codes[nmos][0],
             calib_table_codes[nmos][1],
             calib_table_codes[nmos][2],

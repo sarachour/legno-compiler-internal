@@ -3,8 +3,6 @@
 #include "calib_util.h"
 
 
-
-
 profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
 
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
@@ -56,7 +54,6 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
   default:
     error("unknown mode");
   }
-
   float out_target = Fabric::Chip::Tile::Slice::Fanout::computeOutput(this->m_codes,
                                                                 port,
                                                                 in_target);

@@ -43,6 +43,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
   dac_code_t ref_dac_codes = ref_dac->m_codes;
   integ_code_t integ_codes = this->m_codes;
 
+  error("redo everything");
   cutil::calibrate_t calib;
   cutil::initialize(calib);
   cutil::buffer_fanout_conns(calib,fanout);
@@ -74,11 +75,12 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
   make_feedback_fanout(fanout, integ_codes.range[out0Id], !integ_codes.inv[out0Id]);
 
   // make an approximate input value
+  /*
   float target_input = compute_steady_state_input(m_codes,input);
   target_input = val_dac->fastMakeValue(target_input);
   float target_output = predict_steady_state_output(m_codes,target_input);
-
-
+  */
+  float target_input, target_output;
   cutil::fast_make_dac(ref_dac,-target_output);
 
   setInitial(0.0);
@@ -164,7 +166,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ic(float input)
 
   float target;
   mult_code_t scd_codes;
-  target = compute_init_cond(m_codes);
+  target = this->computeInitCond(m_codes);
   cutil::fast_make_dac(aux_dac,-target);
   aux_to_tile.setConn();
   integ_to_tile.setConn();

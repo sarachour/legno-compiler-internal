@@ -52,6 +52,29 @@ namespace util {
   }
 
 
+  void linear_regression(float* times, float * values, int n,
+                         float& alpha, float& beta ,float& Rsquare){
+    float avg_time,avg_value,dummy;
+    distribution(times,n,avg_time,dummy);
+    distribution(values,n,avg_value,dummy);
+    float slope_numer=0.0;
+    float slope_denom=0.0;
+    for(int i=0; i < n; i += 1){
+      slope_numer += (times[i]-avg_time)*(values[i]-avg_value);
+      slope_denom += pow(times[i]-avg_time,2);
+    }
+    alpha = slope_numer/slope_denom;
+    beta = avg_value - alpha*avg_time;
+
+    float SSRES = 0.0;
+    float SSTOT = 0.0;
+    for(int i=0; i < n; i += 1){
+      float pred = alpha*times[i]+beta;
+      SSRES += pow(values[i]-pred,2);
+      SSTOT += pow(values[i]-avg_value,2);
+    }
+    Rsquare = 1.0 - SSRES/SSTOT;
+  }
   int find_maximum(float* values, int n){
     int best_index=0;
     assert(n >= 1);
@@ -113,6 +136,17 @@ namespace util {
       ->analogDist(mean,variance);
   }
 
+  void meas_transient_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                               float * times, float* values,
+                               int samples){
+    Fabric* fab = fu->getFabric();
+    fu->updateFu();
+    fab->cfgCommit();
+    fab->execStart();
+    fu->getChip()->tiles[3].slices[2].chipOutput
+      ->analogSeq(times,values,samples);
+    fab->execStop();
+  }
   void meas_steady_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                             float& mean, float& variance){
     Fabric* fab = fu->getFabric();

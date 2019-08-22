@@ -4,50 +4,27 @@
 #include "fu.h"
 #include "assert.h"
 
-float Fabric::Chip::Tile::Slice::Integrator::compute_init_cond(integ_code_t& m_codes){
+float Fabric::Chip::Tile::Slice::Integrator::computeInitCond(integ_code_t& m_codes){
   float sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
   float rng = util::range_to_coeff(m_codes.range[out0Id]);
   float ic = m_codes.ic_val;
   return rng*sign*ic;
 }
 
-float Fabric::Chip::Tile::Slice::Integrator::compute_output(integ_code_t& m_codes,float val){
+float Fabric::Chip::Tile::Slice::Integrator::computeOutput(integ_code_t& m_codes,float val){
   float sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
   float rng = util::range_to_coeff(m_codes.range[out0Id])
     /util::range_to_coeff(m_codes.range[in0Id]);
   return rng*sign*val;
 }
 
-float Fabric::Chip::Tile::Slice::Integrator::compute_steady_state_input(integ_code_t& m_codes, float in_val){
-  float coeff = util::range_to_coeff(m_codes.range[in0Id]);
-  float output_scale = util::range_to_coeff(m_codes.range[out0Id]);
-  while(true) {
-    float ss_out = predict_steady_state_output(m_codes, coeff);
-    if(fabs(ss_out) > output_scale){
-      coeff /= 10.0;
-    }
-    else{
-      break;
-    }
-  }
-  // at this point,
-  sprintf(FMTBUF,"comp-ss-in target=%f coeff=%f input=%f",
-          coeff*in_val,
-          coeff,
-          in_val
-          );
-  print_info(FMTBUF);
-  return coeff*in_val;
-}
-float Fabric::Chip::Tile::Slice::Integrator::predict_steady_state_output(integ_code_t& m_codes, float in_val){
-  return in_val;
-}
 
-float Fabric::Chip::Tile::Slice::Integrator::compute_steady_state_output(integ_code_t& m_codes, float in_val){
-  float target_input = compute_steady_state_input(m_codes,in_val);
-  return predict_steady_state_output(m_codes,target_input);
+float Fabric::Chip::Tile::Slice::Integrator::computeTimeConstant(integ_code_t& m_codes){
+  float rng = util::range_to_coeff(m_codes.range[out0Id])
+    /util::range_to_coeff(m_codes.range[in0Id]);
+  const float TIME_CONSTANT = 126000.0;
+  return TIME_CONSTANT*rng;
 }
-
 
 
 

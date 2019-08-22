@@ -31,21 +31,17 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 		);
 
 
-    static float compute_init_cond(integ_code_t& m_codes);
-    static float compute_output(integ_code_t& m_codes,float val);
-    static float compute_steady_state_input(integ_code_t& m_codes,float out_val);
-    static float compute_steady_state_output(integ_code_t& m_codes,float in_val);
-    static float predict_steady_state_output(integ_code_t& m_codes,float actual_in_val);
+    static float computeInitCond(integ_code_t& m_codes);
+    static float computeOutput(integ_code_t& m_codes,float input);
+    static float computeTimeConstant(integ_code_t& m_codes);
+    // z' = x - z
 
 		bool getException() const;
     void setInv (ifc port, bool inverse ); // whether output is negated
 		void setRange (ifc port, range_t range);
     void update(integ_code_t codes);
     integ_code_t m_codes;
-		bool calibrateTarget (profile_t& result,
-                          const float max_error);
-		bool calibrate (profile_t& result,
-                    const float max_error);
+		void calibrate (calib_objective_t obj);
 		profile_t measure(char mode, float input);
     void defaults();
 
@@ -56,6 +52,16 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
     bool calibrateTargetHelper(profile_t& result,
                                const float max_error,
                                bool change_code);
+
+    void calibrateOpenLoopCircuit(calib_objective_t obj,
+                                  Dac * val_dac,
+                                  float (&scores)[MAX_NMOS],
+                                  int (&codes)[MAX_NMOS],
+                                  int (&bias_codes)[MAX_NMOS][2]);
+    void calibrateClosedLoopCircuit(calib_objective_t obj,
+                                    Fanout * fan,
+                                    float (&scores)[MAX_NMOS],
+                                    int (&codes)[MAX_NMOS][2]);
 
 		Integrator (Slice * parentSlice);
 		~Integrator () override { delete in0; delete out0; };

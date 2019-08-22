@@ -41,7 +41,8 @@ namespace util {
   void distribution(float * values, int size, float& mean, float& variance);
   int find_minimum(float * values, int size);
   int find_maximum(float * values, int size);
-
+  void linear_regression(float* times, float * values, int n,
+                         float& alpha, float& beta ,float& Rsquare);
 
   // utility for saving state
   void save_conns(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
@@ -57,7 +58,9 @@ namespace util {
                           float& mean, float& variance);
   void meas_steady_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                             float& mean, float& variance);
-
+  void meas_transient_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+                               float * times, float * values,
+                               int n_samples);
   void test_iref(unsigned char code);
   bool is_valid_iref(unsigned char code);
 
