@@ -12,7 +12,7 @@ void fast_calibrate_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac){
     aux_dac->setEnable(true);
     aux_dac->setRange(RANGE_MED);
     aux_dac->setInv(false);
-    aux_dac->calibrate(prof::TEMP,0.02);
+    aux_dac->calibrate(CALIB_MINIMIZE_ERROR);
     aux_dac->calibrated = true;
     aux_dac->calib_codes = aux_dac->m_codes;
     aux_dac->m_codes = codes;

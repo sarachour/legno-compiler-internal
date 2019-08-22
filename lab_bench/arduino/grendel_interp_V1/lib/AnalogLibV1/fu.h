@@ -39,6 +39,11 @@ typedef enum {
   LSRC_CONTROLLER,
 } lut_source_t;
 
+typedef enum {
+  CALIB_MINIMIZE_ERROR,
+  CALIB_MAXIMIZE_DELTA_FIT
+} calib_objective_t;
+
 typedef struct {
   bool test_en;
   bool test_adc;

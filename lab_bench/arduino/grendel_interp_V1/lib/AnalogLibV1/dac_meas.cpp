@@ -38,27 +38,23 @@ profile_t Fabric::Chip::Tile::Slice::Dac::measure(float in)
   cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
   cutil::buffer_chipout_conns(calib,parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
-  // conn0
 	Connection ref_to_tile = Connection ( ref_dac->out0,
                                         parentSlice->tileOuts[3].in0 );
 
-  // conn2
 	Connection dac_to_tile = Connection ( out0, parentSlice->tileOuts[3].in0 );
-  // conn3
 	Connection tile_to_chip = Connection ( parentSlice->tileOuts[3].out0,
                                          parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
-  dac_code_t base_code;
-  float target = m_codes.const_val*scf;
   ref_to_tile.setConn();
-  cutil::fast_make_ref_dac(ref_dac,target);
   dac_to_tile.setConn();
 	tile_to_chip.setConn();
   float mean,variance;
+  bool steady = false;
+  float target =Fabric::Chip::Tile::Slice::Dac::compute_output(this->m_codes);
   calib.success &= cutil::measure_signal_robust(this,
                                                 ref_dac,
                                                 target,
-                                                false,
+                                                steady,
                                                 mean,
                                                 variance);
 

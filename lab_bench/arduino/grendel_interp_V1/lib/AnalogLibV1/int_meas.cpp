@@ -79,7 +79,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ss(float input){
   float target_output = predict_steady_state_output(m_codes,target_input);
 
 
-  cutil::fast_make_ref_dac(ref_dac,target_output);
+  cutil::fast_make_dac(ref_dac,-target_output);
 
   setInitial(0.0);
   update(m_codes);
@@ -165,7 +165,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure_ic(float input)
   float target;
   mult_code_t scd_codes;
   target = compute_init_cond(m_codes);
-  cutil::fast_make_ref_dac(aux_dac,target);
+  cutil::fast_make_dac(aux_dac,-target);
   aux_to_tile.setConn();
   integ_to_tile.setConn();
 	tile_to_chip.setConn();

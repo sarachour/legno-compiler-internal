@@ -13,6 +13,10 @@ namespace cutil {
     cal.nconns = 0;
   }
 
+  /*
+    measures the initial or steady state of a signal, adjusting the
+    reference dac until the measurement is within range.
+  */
   bool measure_signal_robust(Fabric::Chip::Tile::Slice::FunctionUnit * fu,
                              Fabric::Chip::Tile::Slice::Dac * ref_dac,
                              float target,
@@ -35,7 +39,7 @@ namespace cutil {
       print_info(FMTBUF);
       if(fabs(mean) > thresh){
         delta += mean < 0 ? -step : step;
-        fast_make_ref_dac(ref_dac, target+delta);
+        fast_make_dac(ref_dac, -(target+delta));
       }
     } while(fabs(mean) > thresh &&
             fabs(target + delta) < 10.0);
@@ -47,7 +51,7 @@ namespace cutil {
     this is different from making a true reference dac. This does
     a lazy calibration of the dac (to ~0.9), then 
    */
-  void fast_make_ref_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac,
+  void fast_make_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac,
                                float target){
     if(!aux_dac->m_codes.enable)
       aux_dac->setEnable(true);
@@ -58,60 +62,22 @@ namespace cutil {
     if(aux_dac->m_codes.inv)
       aux_dac->setInv(false);
 
-    aux_dac->fastMakeValue(-target);
+    aux_dac->fastMakeValue(target);
   }
   dac_code_t make_ref_dac(calibrate_t& calib,
                         Fabric::Chip::Tile::Slice::Dac * dac,
                           float value,
                           float& ref){
 
-    if(fabs(value) > 0.9){
-      ref = value;
-      return make_val_dac(calib,dac,value);
-    }
-    else {
-      ref = 0.0;
-      return make_zero_dac(calib,dac);
-    }
+    error("make_ref_dac: deprecated");
+    return dac->m_codes;
   }
 
   dac_code_t make_val_dac(calibrate_t& calib,
                           Fabric::Chip::Tile::Slice::Dac * dac,
                           float value){
-    dac_code_t backup = dac->m_codes;
-    dac_code_t result = dac->m_codes;
-    dac->setEnable(true);
-    if(fabs(value) > 0.9){
-      dac->setRange(RANGE_HIGH);
-      if(!dac->setConstant(value/10.0)){
-        sprintf(FMTBUF, "could not set constant: %f/10", value);
-        error(FMTBUF);
-      }
-    }
-    else{
-      dac->setRange(RANGE_MED);
-      if(!dac->setConstant(value)){
-        sprintf(FMTBUF, "could not set constant: %f", value);
-        error(FMTBUF);
-      }
-    }
-    dac->setSource(DSRC_MEM);
-    dac->setInv(false);
-    sprintf(FMTBUF, "dac calibrate %f", value);
-    print_log(FMTBUF);
-    if(!dac->calibrateTarget(prof::TEMP,0.01)){
-      sprintf(FMTBUF, "dac-aux: cannot set DAC=%f", value);
-      print_log(FMTBUF);
-      calib.success = false;
-    }
-    else{
-      sprintf(FMTBUF, "dac-aux: set DAC=%f", value);
-      print_log(FMTBUF);
-    }
-    result = dac->m_codes;
-    dac->update(backup);
-    return result;
-
+    error("make_ref_dac: deprecated");
+    return dac->m_codes;
   }
   dac_code_t make_zero_dac(calibrate_t& calib,
                            Fabric::Chip::Tile::Slice::Dac * dac){

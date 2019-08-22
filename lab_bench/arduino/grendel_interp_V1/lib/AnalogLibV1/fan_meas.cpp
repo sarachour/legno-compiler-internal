@@ -71,7 +71,7 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
   dac_to_fan.setConn();
 	tile_to_chip.setConn();
 
-  cutil::fast_make_ref_dac(ref_dac, out_target);
+  cutil::fast_make_dac(ref_dac, -out_target);
   ref_to_tile.setConn();
 
   float mean,variance;

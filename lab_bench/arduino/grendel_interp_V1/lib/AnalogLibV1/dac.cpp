@@ -6,26 +6,12 @@
 #include "dac.h"
 
 
-float make_reference_dac(cutil::calibrate_t& calib,
-                         dac_code_t& config,
-                         Fabric::Chip::Tile::Slice::Dac* dac,
-                         Fabric::Chip::Tile::Slice::Dac* ref_dac){
-
-  // determine reference
-  float base_constant = floor((fabs(dac->m_codes.const_val)-1e-5)*10.0)-0.1;
-  base_constant *= dac->m_codes.const_val < 0 ? 1.0 : -1.0;
-  float target = dac->m_codes.const_val*10.0 + base_constant;
-  if(dac_cache::get_cached(ref_dac,base_constant,config)){
-    ref_dac->update(config);
-    return target;
-  }
-  config = cutil::make_val_dac(calib, ref_dac,
-                               base_constant);
-  dac_cache::cache(ref_dac,base_constant,config);
-  ref_dac->update(config);
-  return target;
+float Fabric::Chip::Tile::Slice::Dac::compute_output(dac_code_t& codes){
+  float sign = util::sign_to_coeff(codes.inv);
+  float rng = util::range_to_coeff(codes.range);
+  float gain = (codes.const_code - 128.0)/128.0;
+  return gain;
 }
-
 void Fabric::Chip::Tile::Slice::Dac::update(dac_code_t codes){
   m_codes = codes;
   updateFu();
@@ -141,7 +127,6 @@ Fabric::Chip::Tile::Slice::Dac::Dac (
 	out0 = new Interface(this, out0Id);
 	tally_dyn_mem <Interface> ("DacOut");
   defaults();
-  dac_cache::initialize();
 }
 
 /*Set enable, invert, range, clock select*/

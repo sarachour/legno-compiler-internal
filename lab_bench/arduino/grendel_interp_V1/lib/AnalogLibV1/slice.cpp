@@ -86,6 +86,8 @@ int slice_to_int(const slice slc){
 bool Fabric::Chip::Tile::Slice::calibrateTarget () const {
 	print_log("Calib.TARGET DAC");
   Serial.flush();
+  /*
+    TODO
 	if (!dac->calibrateTarget(prof::TEMP,0.01)) return false;
 	print_log("Calib.TARGET Multiplier 0");
   Serial.flush();
@@ -98,6 +100,7 @@ bool Fabric::Chip::Tile::Slice::calibrateTarget () const {
 	if (!integrator->calibrateTarget(prof::TEMP,0.01)) return false;
 	print_log("Done");
   Serial.flush();
+  */
 	return true;
 
 }
@@ -228,6 +231,7 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
   else {
 		error("HCDC_DEMO_BOARD # not recognized. Only 1,2,3,4,5 are valid.");
 	}
+  /*
 	print_log("Calibrating DAC");
 	if (!dac->calibrate(prof::TEMP,0.01)) return false;
 	print_log("Calibrating Fanout 0");
@@ -241,6 +245,7 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
 	print_log("Calibrating Integrator");
 	if (!integrator->calibrate(prof::TEMP,0.01)) return false;
 	print_log("Done");
+  */
 	return true;
 
 }

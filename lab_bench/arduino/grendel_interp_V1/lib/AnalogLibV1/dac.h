@@ -20,36 +20,6 @@ typedef enum {
 
 
 
-#define NCACHE_ELS 10
-#define NCACHE_SLOTS 4
-
-
-typedef struct {
-  dac_code_t cache[NCACHE_SLOTS][NCACHE_ELS];
-  bool is_cached[NCACHE_SLOTS][NCACHE_ELS];
-  Fabric::Chip::Tile::Slice::Dac* owners[NCACHE_SLOTS];
-  int lru_dac[NCACHE_SLOTS];
-  int lru_val[NCACHE_SLOTS][NCACHE_ELS];
-} dac_cache_t;
-
-extern dac_cache_t DAC_CACHE;
-
-float make_reference_dac(cutil::calibrate_t& calib,
-                         dac_code_t& config,
-                         Fabric::Chip::Tile::Slice::Dac* dac,
-                         Fabric::Chip::Tile::Slice::Dac* ref_dac);
-
-namespace dac_cache {
-
-  void initialize();
-  bool get_cached(Fabric::Chip::Tile::Slice::Dac* dac,
-                    float value,
-                    dac_code_t& this_code);
-  void cache(Fabric::Chip::Tile::Slice::Dac* dac,
-              float value,
-              dac_code_t& this_code);
-
-}
 class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
 
@@ -61,7 +31,8 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 		);
 		void setSource (dac_source_t src);
 		void setConstantCode (
-			unsigned char constantCode // fixed point representation of desired constant
+			unsigned char constantCode
+      // fixed point representation of desired constant
 			// 0 to 255 are valid
 		);
     bool setConstant (
@@ -70,19 +41,24 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 		);
     void update(dac_code_t codes);
 		void setInv (bool inverse ); // whether output is negated
+    //measurement function
     profile_t measure(float input);
-    bool calibrate (profile_t& result,
-                    const float max_error);
-		bool calibrateTarget (profile_t& result,
-                          const float max_error);
+    //calibration function
+    void calibrate(calib_objective_t obj);
+    // fast measurement and make functions
     float fastMeasureValue();
     float fastMakeValue(float value);
     void defaults();
 
+    static float compute_output(dac_code_t& codes);
     dac_code_t m_codes;
     dac_code_t calib_codes;
     bool calibrated;
 	private:
+    //fast calibration utility
+    float calibrateMinError(Fabric::Chip::Tile::Slice::Dac * ref_dac);
+    float calibrateMaxDeltaFit(Fabric::Chip::Tile::Slice::Dac * ref_dac);
+    //fast set source/measure utilities
     float fastMakeHighValue(float value, float max_error);
     float fastMakeMedValue(float value, float max_error);
     float fastMeasureHighValue();

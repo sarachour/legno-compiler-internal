@@ -69,7 +69,7 @@ bool helper_find_cal_gain(Fabric::Chip::Tile::Slice::Integrator * integ,
 
   int delta = 0;
   bool succ = false;
-  float ic_val = compute_init_cond(integ->m_codes);
+  float ic_val = Fabric::Chip::Tile::Slice::Integrator::compute_init_cond(integ->m_codes);
   float target = ic_val + ref;
   float error;
   //how to identify the magnitude of the signal needs to be increased.

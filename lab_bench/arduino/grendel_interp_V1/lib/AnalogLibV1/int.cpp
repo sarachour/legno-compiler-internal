@@ -4,21 +4,21 @@
 #include "fu.h"
 #include "assert.h"
 
-float compute_init_cond(integ_code_t& m_codes){
+float Fabric::Chip::Tile::Slice::Integrator::compute_init_cond(integ_code_t& m_codes){
   float sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
   float rng = util::range_to_coeff(m_codes.range[out0Id]);
   float ic = m_codes.ic_val;
   return rng*sign*ic;
 }
 
-float compute_output(integ_code_t& m_codes,float val){
+float Fabric::Chip::Tile::Slice::Integrator::compute_output(integ_code_t& m_codes,float val){
   float sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
   float rng = util::range_to_coeff(m_codes.range[out0Id])
     /util::range_to_coeff(m_codes.range[in0Id]);
   return rng*sign*val;
 }
 
-float compute_steady_state_input(integ_code_t& m_codes, float in_val){
+float Fabric::Chip::Tile::Slice::Integrator::compute_steady_state_input(integ_code_t& m_codes, float in_val){
   float coeff = util::range_to_coeff(m_codes.range[in0Id]);
   float output_scale = util::range_to_coeff(m_codes.range[out0Id]);
   while(true) {
@@ -39,11 +39,11 @@ float compute_steady_state_input(integ_code_t& m_codes, float in_val){
   print_info(FMTBUF);
   return coeff*in_val;
 }
-float predict_steady_state_output(integ_code_t& m_codes, float in_val){
+float Fabric::Chip::Tile::Slice::Integrator::predict_steady_state_output(integ_code_t& m_codes, float in_val){
   return in_val;
 }
 
-float compute_steady_state_output(integ_code_t& m_codes, float in_val){
+float Fabric::Chip::Tile::Slice::Integrator::compute_steady_state_output(integ_code_t& m_codes, float in_val){
   float target_input = compute_steady_state_input(m_codes,in_val);
   return predict_steady_state_output(m_codes,target_input);
 }

@@ -51,7 +51,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_vga(float in0val,float 
     sprintf(FMTBUF, "can't fit %f", target_vga);
     error(FMTBUF);
   }
-  cutil::fast_make_ref_dac(ref_dac,target_vga);
+  cutil::fast_make_dac(ref_dac,-target_vga);
 
   dac_to_in0.setConn();
   mult_to_tileout.setConn();
@@ -146,7 +146,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_mult(float in0val, floa
     calib.success = false;
   }
   if(calib.success)
-    cutil::fast_make_ref_dac(ref_dac, target_mult);
+    cutil::fast_make_dac(ref_dac, -target_mult);
 
   float mean,variance;
   if(calib.success)

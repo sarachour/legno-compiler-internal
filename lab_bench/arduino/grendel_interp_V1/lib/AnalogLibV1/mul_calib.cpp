@@ -152,7 +152,7 @@ int helper_find_gain_cal_mult(Fabric::Chip::Tile::Slice::Multiplier* mult,
       in0_val = val1_dac->fastMakeValue(in0_val);
       in1_val = val2_dac->fastMakeValue(in1_val);
       float pred_out_val = predict_out_mult(mult->m_codes,in0_val,in1_val);
-      cutil::fast_make_ref_dac(ref_dac, pred_out_val);
+      cutil::fast_make_dac(ref_dac, -pred_out_val);
       float ref_val = ref_dac->fastMeasureValue();
       // the bias we're actually expecting
       float targ = pred_out_val + ref_val;
@@ -239,7 +239,7 @@ int helper_find_generic_gain_cal_vga(Fabric::Chip::Tile::Slice::Multiplier* mult
       mult->setGain(gain_val);
       in0_val = val_dac->fastMakeValue(in0_val);
       float pred_out_val = predict_out_vga(mult->m_codes,in0_val);
-      cutil::fast_make_ref_dac(ref_dac, pred_out_val);
+      cutil::fast_make_dac(ref_dac, -pred_out_val);
       float ref_val = ref_dac->fastMeasureValue();
       float targ = pred_out_val + ref_val;
       int idx =i*N_MUL_CORNERS+j;

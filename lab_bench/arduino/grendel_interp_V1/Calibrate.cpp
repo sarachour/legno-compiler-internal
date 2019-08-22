@@ -20,7 +20,6 @@ namespace calibrate {
     Fabric::Chip::Tile::Slice::Dac * dac;
     Fabric::Chip::Tile::Slice::Integrator * integ;
     Fabric::Chip::Tile::Slice::LookupTable * lut;
-
     switch(blk){
     case circ::block_type_t::FANOUT:
       fanout = common::get_fanout(fab,loc);
@@ -55,6 +54,9 @@ namespace calibrate {
     }
   }
 
+  calib_objective_t get_objective(){
+    return CALIB_MINIMIZE_ERROR;
+  }
 
   bool calibrate(Fabric* fab,
                  profile_t& result,
@@ -68,7 +70,7 @@ namespace calibrate {
     Fabric::Chip::Tile::Slice::ChipAdc * adc;
     Fabric::Chip::Tile::Slice::Dac * dac;
     Fabric::Chip::Tile::Slice::Integrator * integ;
-    Fabric::Chip::Tile::Slice::LookupTable * lut;
+    calib_objective_t obj = get_objective();
     switch(blk){
     case circ::block_type_t::FANOUT:
       fanout = common::get_fanout(fab,loc);
@@ -93,17 +95,9 @@ namespace calibrate {
 
     case circ::block_type_t::TILE_DAC:
       dac = common::get_slice(fab,loc.loc)->dac;
-      if(dac->m_codes.source == dac_source_t::DSRC_MEM and targeted){
-        return dac->calibrateTarget(result,max_error);
-      }
-      else{
-        return dac->calibrate(result,max_error);
-      }
-      break;
-
-    case circ::block_type_t::LUT:
-      lut = common::get_slice(fab,loc.loc)->lut;
+      dac->calibrate(obj);
       return true;
+      break;
 
     case circ::block_type_t::INTEG:
       integ = common::get_slice(fab,loc.loc)->integrator;
@@ -116,7 +110,7 @@ namespace calibrate {
       break;
 
     default:
-      comm::error("get_offset_code: unexpected block");
+      comm::error("calibrate: unexpected block");
 
     }
     return false;

@@ -8,6 +8,10 @@
 #include <float.h>
 
 
+#define MAX_NMOS 7
+#define MAX_PMOS 7
+#define MAX_GAIN_CAL 64
+
 namespace cutil {
 
   #define MAX_CONNS 10
@@ -30,8 +34,10 @@ namespace cutil {
   // this is a special high-to-medium converter specifically for
   // the multiplier, since we want to be able to scale down signals
   //
-  void fast_make_ref_dac(Fabric::Chip::Tile::Slice::Dac* dac,
+  void fast_make_dac(Fabric::Chip::Tile::Slice::Dac* dac,
                         float value);
+
+  /* DEPRECATED START*/
   dac_code_t make_ref_dac(calibrate_t& calib,
                            Fabric::Chip::Tile::Slice::Dac* dac,
                           float value,
@@ -44,6 +50,7 @@ namespace cutil {
   dac_code_t make_val_dac(calibrate_t& calib,
                           Fabric::Chip::Tile::Slice::Dac * dac,
                           float value);
+  /* DEPRECATED START*/
 
   void buffer_fanout_conns( calibrate_t& calib,
                             Fabric::Chip::Tile::Slice::Fanout* fu);
