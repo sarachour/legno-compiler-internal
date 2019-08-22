@@ -34,7 +34,7 @@ class ExecuteInput(AnalogChipCommand):
                 'prof':{
                   'blk': self._blk.code(),
                   'loc': loc_type,
-                  'in0': self._inputs[0],
+                  'in0': self._inputs[0] if len(self._inputs) > 0 else 0.0,
                   'in1': self._inputs[1] if len(self._inputs) > 1 else 0.0,
                   'mode': self._mode
                 }
@@ -159,6 +159,9 @@ class ProfileCmd(Command):
     def execute_command(self,env):
       if self._n_inputs == 1:
         if self._blk == enums.BlockType.INTEG:
+            self.get_output(env,[],mode=1)
+            self.get_output(env,[],mode=2)
+            self.get_output(env,[],mode=3)
             if self._bootstrap:
                 for x0 in [0]:
                     if self.get_output(env,[x0],mode=0):
@@ -170,16 +173,6 @@ class ProfileCmd(Command):
                 x0 = sample_reverse_normal()
                 if self.get_output(env,[x0],mode=0):
                     break
-
-            if self._bootstrap:
-                for x0 in [0]:
-                    if self.get_output(env,[x0],mode=1):
-                        return
-
-            for i in range(0,self._n):
-                x0 = sample_reverse_normal()
-                if self.get_output(env,[x0],mode=1):
-                    return
 
         elif self._blk == enums.BlockType.FANOUT:
             if self._bootstrap:

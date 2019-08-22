@@ -7,45 +7,56 @@ this function performs linear regressions on the two datasets to estimate
 the time constant. A known input k_value is applied to the integrator, which has an unknown
 bias.
  */
-float estimate_time_constant(calib_objective_t obj,
-                             float k_value, float target_tc,
+time_constant_stats estimate_time_constant(float k_value,
                              int n,
                              float * nom_times,float * nom_vals,
-                             float * k_times, float * k_vals,
-                             float& score){
+                             float * k_times, float * k_vals){
   float nom_alpha,nom_beta,nom_Rsq;
   float k_alpha,k_beta,k_Rsq;
+  time_constant_stats stats;
+
   util::linear_regression(nom_times,nom_vals,n,
                           nom_alpha,nom_beta,nom_Rsq);
   util::linear_regression(k_times,k_vals,n,
                           k_alpha,k_beta,k_Rsq);
   float alpha_k = k_alpha - nom_alpha;
-  float meas_tc = alpha_k/k_value;
-  float time_scale = meas_tc/target_tc;
-  sprintf(FMTBUF,"time-const=%f confidence=(%f,%f)",
-          time_scale,
-          k_Rsq,nom_Rsq);
-  print_info(FMTBUF);
+  stats.k = k_value;
+  stats.tc = alpha_k/k_value;
+  stats.eps = nom_alpha/stats.tc;
+  stats.R2_eps = nom_Rsq;
+  stats.R2_k = k_Rsq;
   /*
-  sprintf(FMTBUF,"  nominal alpha=%f beta=%f R2=%f",
-          nom_alpha,nom_beta,nom_Rsq);
-  print_info(FMTBUF);
-  sprintf(FMTBUF,"  const alpha=%f beta=%f R2=%f",
-          k_alpha,k_beta,k_Rsq);
-  print_info(FMTBUF);
+    sprintf(FMTBUF,"  nominal alpha=%f beta=%f R2=%f",
+    nom_alpha,nom_beta,nom_Rsq);
+    print_info(FMTBUF);
+    sprintf(FMTBUF,"  const alpha=%f beta=%f R2=%f",
+    k_alpha,k_beta,k_Rsq);
+    print_info(FMTBUF);
   */
+  return stats;
+}
+
+float compute_score(calib_objective_t obj,
+                    float target_tc,
+                    time_constant_stats stats){
+  float time_scale = stats.tc/target_tc;
+  sprintf(FMTBUF,"time-const=%f eps=%f confidence=(%f,%f)",
+          time_scale,
+          stats.eps,
+          stats.R2_k,
+          stats.R2_eps);
+  print_info(FMTBUF);
   switch(obj){
   case CALIB_MINIMIZE_ERROR:
     // try to minimize the error between the expected and observed
     // time constant
-    score = fabs(time_scale- 1.0);
+    return fabs(time_scale- 1.0);
     break;
   case CALIB_MAXIMIZE_DELTA_FIT:
     // try and choose time constants that produce good fits.
-    score = 1.0-max(k_Rsq, nom_Rsq);
+    return fabs(stats.eps);
     break;
   }
-  return time_scale;
 }
 
 void Fabric::Chip::Tile::Slice::Integrator::calibrateOpenLoopCircuit(calib_objective_t obj,
@@ -105,11 +116,11 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateOpenLoopCircuit(calib_objec
                                     nom_times, nom_values,
                                     n_samples);
 
-      estimate_time_constant(obj,input,target_tc,
-                             n_samples,
-                             nom_times,nom_values,
-                             k_times,k_values,
-                             scores_gain[gain_cal]);
+      time_constant_stats tc_stats = estimate_time_constant(input,
+                                                            n_samples,
+                                                            nom_times,nom_values,
+                                                            k_times,k_values);
+      scores_gain[gain_cal] = compute_score(obj,target_tc,tc_stats);
     }
 
     codes[nmos] = util::find_minimum(scores_gain, MAX_GAIN_CAL);
@@ -230,10 +241,9 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateClosedLoopCircuit(calib_obj
   conn_fan1_to_tileout.brkConn();
   fan->update(backup_codes);
 }
-void Fabric::Chip::Tile::Slice::Integrator::calibrate(calib_objective_t obj){
-  cutil::calibrate_t calib;
-  cutil::initialize(calib);
 
+
+void Fabric::Chip::Tile::Slice::Integrator::calibrate(calib_objective_t obj){
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   Dac * val_dac = parentSlice->dac;
   Fabric::Chip::Tile::Slice::Fanout * fan = &this->parentSlice->fans[0];
@@ -242,6 +252,8 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrate(calib_objective_t obj){
   dac_code_t codes_val_dac = val_dac->m_codes;
   integ_code_t codes_integ = this->m_codes;
 
+  cutil::calibrate_t calib;
+  cutil::initialize(calib);
   cutil::buffer_fanout_conns(calib,fan);
   cutil::buffer_dac_conns(calib,val_dac);
   cutil::buffer_integ_conns(calib,this);
@@ -274,7 +286,7 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrate(calib_objective_t obj){
   print_info("==== FINAL SCORES ====");
   for(int i=0; i < MAX_NMOS; i += 1){
     scores[i] = cl_scores[i]*ol_scores[i];
-    sprintf(FMTBUF,"nmos=%d closed=%f open=%f final=%f",
+    sprintf(FMTBUF,"nmos=%d closed=%f open=%e final=%e",
             cl_scores[i],ol_scores[i],scores[i]);
     print_info(FMTBUF);
   }
@@ -283,7 +295,9 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrate(calib_objective_t obj){
   int best_gain_cal = ol_codes[best_nmos];
   int best_port_cal_in0 = cl_codes[best_nmos][0];
   int best_port_cal_out0 = cl_codes[best_nmos][1];
-
+  sprintf(FMTBUF,"BEST nmos=%d gain_cal=%d port_cals=(%d,%d)",
+          best_nmos,best_gain_cal,best_port_cal_in0,best_port_cal_out0);
+  print_info(FMTBUF);
   val_dac->update(codes_val_dac);
   fan->update(codes_fanout);
 	tileout_to_chipout.brkConn();

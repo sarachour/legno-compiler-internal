@@ -4,6 +4,9 @@ import lab_bench.lib.chipcmd.data as chipcmd
 import itertools
 import util.util as util
 
+def about_one(gain):
+    return gain >= 0.990 and gain <= 1.10
+
 def tightest_bounds(bnds):
     lb = min(map(lambda b: b[0] \
                  if not b[0] is None \

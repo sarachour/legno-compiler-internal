@@ -14,6 +14,24 @@ typedef enum {
 	lGainMRng = 6  /*-20 to 20 uA input, gain = .1,  -2 to 2  uA output*/
 } intRange;
 
+typedef struct {
+  float eps;
+  float k;
+  float tc;
+  float R2_eps;
+  float R2_k;
+} time_constant_stats;
+
+typedef enum {
+  OPENLOOP_TC,
+  OPENLOOP_BIAS,
+} open_loop_prop_t;
+
+time_constant_stats estimate_time_constant(
+                                           float k_value,
+                                           int n,
+                                           float * nom_times,float * nom_vals,
+                                           float * k_times, float * k_vals);
 
 class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
@@ -47,8 +65,10 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 
 
 	private:
-		profile_t measure_ss(float input);
-		profile_t measure_ic(float input);
+		profile_t measureInitialCond(float input);
+		profile_t measureClosedLoopCircuit();
+		profile_t measureOpenLoopCircuit(open_loop_prop_t prop);
+
     bool calibrateTargetHelper(profile_t& result,
                                const float max_error,
                                bool change_code);

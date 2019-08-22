@@ -57,16 +57,14 @@ def infer(obj):
                                    model_out2.bias_uncertainty, \
   )
 
-  def about_one(gain):
-    return gain >= 0.985 and gain <= 1.15
 
-  if about_one(model_out0.gain):
+  if infer_util.about_one(model_out0.gain):
     model_out0.gain = 1.0
 
-  if about_one(model_out1.gain):
+  if infer_util.about_one(model_out1.gain):
     model_out1.gain = 1.0
 
-  if about_one(model_out2.gain):
+  if infer_util.about_one(model_out2.gain):
     model_out2.gain = 1.0
 
   yield model_in
