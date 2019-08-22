@@ -43,6 +43,10 @@ def make_abstract(ast):
     elif ast.op == mop.OpType.ADD:
       return mab_sum(ast)
 
+    elif ast.op == mop.OpType.PAREN:
+      arg = make_abstract(ast.args[0])
+      return aop.APrec(arg)
+
     elif ast.op == mop.OpType.CONST:
       return aop.AConst(ast.value)
 
@@ -67,7 +71,7 @@ def make_abstract(ast):
 
 
 
-
+'''
 def distribute_consts(ast,const=None):
     if ast.op == aop.AOpType.CPROD:
       value = ast.value if const is None else \
@@ -109,6 +113,12 @@ def distribute_consts(ast,const=None):
       else:
         yield ast
 
+    elif ast.op == aop.AOpType.PREC:
+      if not const is None:
+        return aop.AGain(const,ast)
+      else:
+        yield ast
+
     elif ast.op == aop.AOpType.EXTVAR:
       if not const is None:
         yield aop.AGain(const, ast)
@@ -139,4 +149,5 @@ def distribute_consts(ast,const=None):
 
     else:
         raise Exception(ast)
+'''
 

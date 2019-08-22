@@ -106,6 +106,7 @@ class OpType(Enum):
     POW= "pow"
     EMIT= "emit"
     EXTVAR= "extvar"
+    PAREN = "paren"
 
     FUNC = "func"
     CALL = "call"
@@ -459,7 +460,7 @@ class ExtVar(Op):
         return interval.IntervalCollection(bindings[self._name])
 
 
-    def infer_bandwidth(self,intervals,bandwidths):
+    def infer_bandwidth(self,intervals,bandwidths={}):
         return bandwidth.BandwidthCollection(bandwidths[self._name])
 
     def compute_bandwidth(self,bandwidths):
@@ -601,7 +602,7 @@ class Const(Op):
             interval.IValue(self._value)
         )
 
-    def infer_bandwidth(self,intervals,bandwidths):
+    def infer_bandwidth(self,intervals,bandwidths={}):
         return self.compute_bandwidth(bandwidths)
 
     def compute_bandwidth(self,bandwidths):
@@ -693,7 +694,7 @@ class Mult(Op2):
         return is1.merge(is2,
                   is1.interval.mult(is2.interval))
 
-    def infer_bandwidth(self,intervals,bandwidths):
+    def infer_bandwidth(self,intervals,bandwidths={}):
         bw1 = self.arg1.infer_bandwidth(intervals,bandwidths)
         bw2 = self.arg2.infer_bandwidth(intervals,bandwidths)
         return bw1.merge(bw2,
@@ -929,6 +930,32 @@ class RandomVar(Op):
     def compute(self,bindings):
         raise Exception("random variable")
 
+class Paren(Op):
+
+    def __init__(self,arg):
+        Op.__init__(self,OpType.PAREN,[arg])
+        pass
+
+    @staticmethod
+    def from_json(obj):
+        return Paren(Op.from_json(obj['args'][0]))
+
+    def compute(self,bindings):
+        return self.arg(0).compute(bindings)
+
+
+    def substitute(self,args):
+        return Paren(self.arg(0).substitute(args))
+
+    def compute_interval(self,ivals):
+        return self.arg(0).compute_interval(ivals)
+
+
+    # bandwidth is infinite if number is ever negative
+    def infer_bandwidth(self,ivals,bandwidths={}):
+        return self.arg(0).infer_bandwidth(ivals,bandwidths)
+
+
 class Abs(Op):
 
     def __init__(self,arg):
@@ -953,8 +980,8 @@ class Abs(Op):
 
 
     # bandwidth is infinite if number is ever negative
-    def infer_bandwidth(self,ivals,bws):
-        bwcoll = self.arg(0).infer_bandwidth(ivals,bws)
+    def infer_bandwidth(self,ivals,bandwidths={}):
+        bwcoll = self.arg(0).infer_bandwidth(ivals,bandwidths)
         # 2*sin(pi*a/2)*gamma(alpha+1)/(2*pi*eta)^{alpha+1}
         bwcoll.update(bandwidth.InfBandwidth())
         return bwcoll

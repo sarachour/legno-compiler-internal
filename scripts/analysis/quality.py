@@ -18,6 +18,8 @@ import scripts.analysis.common as common
 CACHE = {}
 
 def scale_ref_data(tau,scf,tref,yref):
+  assert(not tau is None)
+  assert(not scf is None)
   thw = list(map(lambda t: t/tau*1.0/glbls.TIME_FREQUENCY, tref))
   yhw = list(map(lambda x: x*scf, yref))
   return thw, yhw
@@ -40,7 +42,6 @@ def read_meas_data(filename):
     obj = util.decompress_json(fh.read())
     T,V = obj['times'], obj['values']
     T_REFLOW = np.array(T) - min(T)
-    print("mean: %s" % np.mean(V))
     return T_REFLOW,V
 
 def make_prediction(t_ref,x_ref,model):
@@ -99,7 +100,6 @@ def fit(_tref,_yref,_tmeas,_ymeas):
   result = optimize.brute(compute_loss, bounds, Ns=n)
   result = out_of_bounds(bounds,result)
   model = [result[0],result[1],1.0,0.0]
-  print(model)
   infer_t,infer_x = apply_model_to_obs(tref,tmeas,ymeas,model)
   return infer_t,infer_x,model
 
@@ -109,7 +109,6 @@ def apply_model(_tref,_yref,_tmeas,_ymeas,model):
   yref = np.array(_yref)
   tmeas = np.array(_tmeas)
   ymeas = np.array(_ymeas)
-  print(model)
 
   infer_t,infer_x = apply_model_to_obs(tref,tmeas, \
                                        ymeas,model)
@@ -132,19 +131,17 @@ def compute_quality(_tobs,_yobs,_tref,_yref,tau,scf):
                                                      yref[i]), range(n))))
 
   score = sum(errors)
-  print("score: %s" % score)
+  print("SCORE: %s" % score)
   return score,tref,errors
 
 def analyze(entry,recompute=False,no_reference=False):
   path_h = paths.PathHandler(entry.subset,entry.bmark)
   QUALITIES = []
-  print(entry)
   VARS = set(map(lambda o: o.varname, entry.outputs()))
   MODEL = None
   for output in entry.outputs():
     varname = output.varname
     trial = output.trial
-    print(output)
 
     TMEAS,YMEAS = read_meas_data(output.out_file)
     common.simple_plot(output,path_h,output.trial,'meas',TMEAS,YMEAS)

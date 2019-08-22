@@ -50,13 +50,16 @@ def negate(expr):
   else:
     return op.Mult(op.Const(-1), expr)
 
+def paren(expr):
+  return op.Paren(expr)
+
 def from_infix(infix):
   if isinstance(infix,str):
     return op.Var(infix)
   elif isinstance(infix,float):
     return op.Const(infix)
   elif len(infix) == 1:
-    return from_infix(infix[0])
+    return paren(from_infix(infix[0]))
   elif len(infix) == 2 and infix[0] == '-':
     return negate(from_infix(infix[1]))
 

@@ -49,7 +49,7 @@ def model():
                     params)
 
 
-  measure_var(prob,"X","MODEL")
+  measure_var(prob,"X","STATE")
 
   prob.bind("E",E)
   prob.bind("P",dP)

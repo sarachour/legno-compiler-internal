@@ -40,6 +40,10 @@ class Block:
 
     def whitelist(self,comp_mode,scale_mode=None):
         comp_mode_key = util.normalize_mode(comp_mode)
+        if not comp_mode in self._comp_mode_subsets:
+            raise Exception("block [%s] : no subsets defined for comp_mode=%s" \
+                            % (self.name,comp_mode))
+
         subs = self._comp_mode_subsets[comp_mode]
         if self._subset is None:
             return True

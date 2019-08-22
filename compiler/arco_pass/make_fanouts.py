@@ -13,10 +13,16 @@ def copy_signal(board,node,output,n_copies,label,max_fanouts):
         return
 
     fanout = board.block("fanout")
+    fanout_modes={}
+    for mode in fanout.comp_modes:
+        fanout_modes[mode] = {}
+        for out in fanout.outputs:
+            fanout_modes[mode][out] = fanout.get_dynamics(mode,out).coefficient()
+
     for levels in arco_util.enumerate_tree(fanout,n_copies,
                                  max_blocks=max_fanouts,
                                  permute_input=False):
-        free_ports,c_node,c_input = arco_util\
+        free_ports,c_node,c_input,fanout_nodes = arco_util\
                                      .build_tree_from_levels(board,
                                                              levels,
                                                              fanout,
@@ -27,9 +33,20 @@ def copy_signal(board,node,output,n_copies,label,max_fanouts):
                                                              prop=prop.CURRENT
                                      )
 
+        n_free_ports = dict(map(lambda node_id: (node_id,0),fanout_nodes.keys()))
         for level,ports in free_ports.items():
             for port_node,port in ports:
                 port_node.config.set_label(port,label,kind=Labels.OUTPUT)
+                n_free_ports[port_node.id] += 1
+
+        for bound_node_id,bound_node in fanout_nodes.items():
+            if n_free_ports[bound_node_id] == 0:
+                signs = dict(map(lambda out: (out,1), fanout.outputs))
+                valid_modes = list(get_valid_modes(fanout_modes,signs))
+                bound_node.config.set_comp_mode(valid_modes[0])
+        # if there are no free ports on this copier,
+        # then this block must only produce positive signals
+        # since it's providing signals for the other copiers.
 
         new_node,ctx = node.copy()
         acirc.ANode.connect(new_node,output,c_node,c_input)
@@ -70,20 +87,35 @@ def cs2s_blockinst(board,node,outputs,stubs):
     for output,stub in zip(outputs,stubs):
         coeffs[output] = stub.coefficient
 
-    scfs = dict(map(lambda mode: (mode,{}) ,block.comp_modes))
+    # fill missing coefficients with 1.
+    for out in block.outputs:
+        if not out in coeffs:
+            coeffs[out] = 1.0
+
+    # fill in unbound scaling factors.
+    scfs={}
     for mode in block.comp_modes:
+        if not config.comp_mode == "*" and \
+           not config.comp_mode == mode:
+            continue
+
+        scfs[mode] = {}
         for out in block.outputs:
             scfs[mode][out] = block.get_dynamics(mode,out).coefficient()
 
-
     # find a computation mode for fanout that fits the negations of the inputs.
     valid_modes = list(get_valid_modes(scfs,coeffs))
-    assert(len(valid_modes) > 0)
-    config.set_comp_mode(valid_modes[0])
+    if len(valid_modes) > 0:
+        config.set_comp_mode(valid_modes[0])
+    else:
+        print(scfs,coeffs,stubs)
+        input()
 
+    return len(valid_modes) > 0
 
 def connect_stubs_to_sources(board,node_map,mapping):
     groups = arco_util.group_by(mapping, key=lambda args: args[0][0].id)
+    succ = True
     for group in groups.values():
         assert(arco_util.all_same(map(lambda n: n[0][0].id,\
                                       group)))
@@ -94,7 +126,7 @@ def connect_stubs_to_sources(board,node_map,mapping):
             input_stub.set_source(node,output)
 
         if isinstance(node,acirc.ABlockInst):
-            cs2s_blockinst(board,node,outputs,stubs)
+            succ &= cs2s_blockinst(board,node,outputs,stubs)
 
         elif isinstance(node,acirc.AJoin):
             cs2s_join(board,node,outputs,stubs)
@@ -110,6 +142,8 @@ def connect_stubs_to_sources(board,node_map,mapping):
                     node_map.values()))
         assert(in_varmap)
 
+
+    return succ
 
 # var_map,source_map
 def match_stubs_to_sources(sources,stubs):

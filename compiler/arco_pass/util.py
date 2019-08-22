@@ -181,9 +181,12 @@ def bitree_split(fan,levels_):
 
 
 def build_input_tree_from_levels(board,levels,block,inports,outport,mode='?'):
+  nodes = {}
+
   def mknode():
     node = acirc.ANode.make_node(board,block.name)
     node.config.set_comp_mode(mode)
+    nodes[node.id] = node
     return node
 
   def recurse(levels,depth=0):
@@ -219,13 +222,15 @@ def build_input_tree_from_levels(board,levels,block,inports,outport,mode='?'):
       free_port_levels[level] = []
     free_port_levels[level].append((node,port))
 
-  return free_port_levels,curr_node,outport
+  return free_port_levels,curr_node,outport,nodes
 
 
 def build_output_tree_from_levels(board,levels,block,outports,inport,mode='?'):
+  nodes = {}
   def mknode():
     node = acirc.ANode.make_node(board,block.name)
     node.config.set_comp_mode(mode)
+    nodes[node.id] = node
     return node
 
   def recurse(levels,depth=0):
@@ -261,7 +266,7 @@ def build_output_tree_from_levels(board,levels,block,outports,inport,mode='?'):
     free_port_levels[level].append((node,port))
 
 
-  return free_port_levels,curr_node,inport
+  return free_port_levels,curr_node,inport,nodes
 
 
 def build_tree_from_levels(board,levels,block,inputs,output,
@@ -272,10 +277,10 @@ def build_tree_from_levels(board,levels,block,inputs,output,
     free_ports = {}
 
     if input_tree:
-      free_ports,root_node,root_port = \
+      free_ports,root_node,root_port,nodes = \
         build_input_tree_from_levels(board,levels,block,inputs,output,mode=mode)
     else:
-      free_ports,root_node,root_port = \
+      free_ports,root_node,root_port,nodes = \
         build_output_tree_from_levels(board,levels,block,inputs,output,mode=mode)
 
     for level in free_ports:
@@ -284,7 +289,7 @@ def build_tree_from_levels(board,levels,block,inputs,output,
           raise Exception("level: <%s> not in <%s>" % \
                           (node,root_node))
 
-    return free_ports,root_node,root_port
+    return free_ports,root_node,root_port,nodes
 
 
 def input_level_combos(level_inputs,sources):

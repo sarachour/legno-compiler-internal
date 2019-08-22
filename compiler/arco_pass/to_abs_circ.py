@@ -38,7 +38,7 @@ def tac_vprod(board,ast):
                                   ast.inputs))
             # for each combination of inputs
             for combo in itertools.product(*new_inputs):
-                free_ports,out_block,out_port = \
+                free_ports,out_block,out_port,_ = \
                                                 arco_util.build_tree_from_levels(
                                                     board,
                                                     levels,
@@ -110,6 +110,10 @@ def to_abs_circ(board,ast):
         node.config.set_comp_mode('*')
         node.config.set_dac("in",ast.value)
         yield node,"out"
+
+    elif ast.op == aop.AOpType.PREC:
+        for opt in to_abs_circ(board,ast.input(0)):
+            yield opt
 
     elif ast.op == aop.AOpType.VAR:
         stub = acirc.AInput(ast.name,ast.coefficient)
