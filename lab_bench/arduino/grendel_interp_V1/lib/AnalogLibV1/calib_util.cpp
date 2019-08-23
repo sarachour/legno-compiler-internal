@@ -179,12 +179,9 @@ namespace cutil {
     buffer_conns(calib,fu,1,0);
   }
   void break_conns(calibrate_t& calib){
-    sprintf(FMTBUF, "nconns %d", calib.nconns);
     for(int i=0; i < calib.nconns; i+=1){
       Fabric::Chip::Connection c = Fabric::Chip::Connection(calib.conn_buf[i][0],
                                                             calib.conn_buf[i][1]);
-      sprintf(FMTBUF, "break %d", i);
-      print_debug(FMTBUF);
       c.brkConn();
     }
   }
@@ -192,8 +189,6 @@ namespace cutil {
     for(int i=0; i < calib.nconns; i+=1){
       Fabric::Chip::Connection c = Fabric::Chip::Connection(calib.conn_buf[i][0],
                                                             calib.conn_buf[i][1]);
-      sprintf(FMTBUF, "restore %d", i);
-      print_debug(FMTBUF);
       c.setConn();
     }
   }

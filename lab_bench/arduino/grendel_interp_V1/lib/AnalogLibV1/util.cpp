@@ -117,6 +117,17 @@ namespace util {
   }
 
 
+  float meas_fast_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu){
+    Fabric* fab = fu->getFabric();
+    fu->updateFu();
+    fab->cfgCommit();
+    float value = fu->getChip()->tiles[3].slices[2].chipOutput
+      ->fastAnalogAvg();
+    return value;
+  }
+
+
+
   float meas_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu){
     Fabric* fab = fu->getFabric();
     fu->updateFu();

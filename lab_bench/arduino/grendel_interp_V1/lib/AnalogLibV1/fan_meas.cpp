@@ -27,7 +27,6 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
   cutil::break_conns(calib);
 
   float in_target = input*util::range_to_coeff(m_codes.range[in0Id]);
-  in_target = val_dac->fastMakeValue(in_target);
 
   Connection dac_to_fan = Connection ( val_dac->out0, in0 );
   Connection tile_to_chip = Connection (parentSlice->tileOuts[3].out0,
@@ -54,6 +53,7 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
   default:
     error("unknown mode");
   }
+  in_target = val_dac->fastMakeValue(in_target);
   float out_target = Fabric::Chip::Tile::Slice::Fanout::computeOutput(this->m_codes,
                                                                 port,
                                                                 in_target);

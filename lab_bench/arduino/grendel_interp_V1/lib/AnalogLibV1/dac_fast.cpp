@@ -76,10 +76,12 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeMedValue(float target,
     this->m_codes.const_code = next_code;
     update(this->m_codes);
     mean = util::meas_chip_out(this);
+    /*
     sprintf(FMTBUF,"DIFF delta=%d targ=%f meas=%f err=%f max_err=%f suc=%s",
             next_code,target,mean,fabs(mean-target),max_error,
             fabs(mean-target) > max_error ? "n" : "y");
     print_debug(FMTBUF);
+    */
     delta += target < mean ? -1 : +1;
   }
   this_dac_to_tile.brkConn();
@@ -170,6 +172,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
       dac_value = -ref_value + mean;
     }
     // emit information
+    /*
     sprintf(FMTBUF, "%s dac_val=%f ref_val=%f mean=%f dac=%f ref=%f",
             update_ref ? "R" : "D",
             this->m_codes.const_val,
@@ -178,6 +181,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
             dac_value,
             ref_value);
     print_debug(FMTBUF);
+    */
     update_ref = !update_ref;
   }
   // compute the expected difference, with respect to this
@@ -204,11 +208,13 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
     }
     this->m_codes.const_code = next_code;
     update(this->m_codes);
-    mean = util::meas_chip_out(this);
+    mean = util::meas_fast_chip_out(this);
+    /*
     sprintf(FMTBUF,"DIFF delta=%d targ=%f meas=%f err=%f max_err=%f suc=%s",
             next_code,target_diff,mean,fabs(mean-target_diff),max_error,
             fabs(mean-target_diff) > max_error ? "n" : "y");
     print_debug(FMTBUF);
+    */
     delta += target_diff < mean ? -1 : +1;
   }
 
@@ -258,6 +264,48 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureMedValue(float& variance){
 
 
 }
+
+/*
+utility function for fastMeasureHighValue
+
+futz with the value of the dac until the measured signal
+is within range.
+
+*/
+float tune_dac_value(Fabric::Chip::Tile::Slice::Dac* dac,
+                     float init_value,
+                     float max_meas,
+                     float& meas){
+  float step = init_value < 0 ? 3 : -3;
+  meas = util::meas_fast_chip_out(dac);
+  do {
+    int next_code = dac->m_codes.const_code + step;
+    if(next_code < 0 || next_code > 255){
+      break;
+    }
+    dac->setConstantCode(next_code);
+    meas = util::meas_fast_chip_out(dac);
+  } while(fabs(meas) < max_meas);
+
+  return Fabric::Chip::Tile::Slice::Dac::computeOutput(dac->m_codes);
+}
+float find_ref_dac_code(Fabric::Chip::Tile::Slice::Dac* dac,
+                        int code, float max_meas){
+
+  dac->setConstantCode(code);
+  float meas = util::meas_fast_chip_out(dac);
+  const int step = 3;
+  while(fabs(meas) > max_meas){
+    code += meas < 0 ? step : -step;
+    if(code < 0 || code > 255){
+      error("can't set ref dac.");
+    }
+    dac->setConstantCode(code);
+    meas = util::meas_fast_chip_out(dac);
+  }
+  return meas;
+}
+
 // very quickly measures a value using uncalibrated dacs.
 float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
 
@@ -288,76 +336,70 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
   ref_dac->setEnable(true);
   ref_dac->setRange(RANGE_HIGH);
   ref_dac->setSource(DSRC_MEM);
+  //calibrate reference
   fast_calibrate_dac(ref_dac);
 
   this_dac_to_tile.setConn();
   ref_dac_to_tile.setConn();
   tile_to_chip.setConn();
+
+  const float max_meas_val = 0.8;
+  const float max_ref_dist = 0.8;
+  const float max_meas = 1.2;
   //compute the floating point value from the dac code.
-  float value = ((this->m_codes.const_code-128.0)/128.0)*10.0;
-  float step = 1.0;
-  float total = 0.0;
+  float dval_value = computeOutput(this->m_codes);
+  float dref_value;
+  float val_meas = 0.0;
   bool update_ref = true;
-  while(fabs(value) >= step){
-    float old_value = value;
-    value= -(value< 0 ? value+ step : value-step);
+  float eps[2];
+
+  sprintf(FMTBUF,"target=%f",dval_value);
+  print_info(FMTBUF);
+
+  // keep telescoping until we can measure the value
+  // telescope one more time if we haven't finished a measurement.
+  while(fabs(dval_value) > max_meas_val){
     //telescope the value
     //alternate between updating the reference.
+    float meas;
     if(update_ref){
-      ref_dac->setConstant(value/10.0);
+      meas = find_ref_dac_code(ref_dac,
+                                 ref_dac->m_codes.const_code,
+                                 max_ref_dist);
+      eps[0] = meas;
+      dref_value = computeOutput(ref_dac->m_codes);
     }
     else{
-      this->setConstant(value/10.0);
+      dval_value = tune_dac_value(this,dval_value,max_meas,meas);
+      eps[1] = meas;
+      val_meas +=  eps[0]-eps[1];
     }
-    float mean = util::meas_chip_out(this);
-    /*
-      if we can't measure the difference, adjust
-      the value of the dac we're tuning until we're
-      in a measurable range.
-    */
-    while(fabs(mean) > 1.2 &&
-          fabs(value) < 10.0){
-      // this value is too negative
-      value += mean < -1.2 ? step*0.1 : -step*0.1;
-      if(update_ref){
-        ref_dac->setConstant(value/10.0);
-      }
-      else{
-        this->setConstant(value/10.0);
-      }
-      mean = util::meas_chip_out(this);
-    }
-    total += fabs(mean);
-    sprintf(FMTBUF, "%s old=%f new=%f mean=%f total=%f",
+    sprintf(FMTBUF, "%s val_dac=%f ref_dac=%f eps=%f val_meas=%f",
             update_ref ? "R" : "D",
-            old_value,
-            value,
-            mean,
-            total);
-    print_debug(FMTBUF);
+            dval_value,
+            dref_value,
+            meas,
+            val_meas);
+    print_info(FMTBUF);
     update_ref = !update_ref;
   }
-  if(update_ref){
-    ref_dac_to_tile.brkConn();
+  if(!update_ref){
+    error("expected update ref");
   }
-  else{
-    this_dac_to_tile.brkConn();
-  }
+  ref_dac_to_tile.brkConn();
+
   float mean;
   util::meas_dist_chip_out(this,mean,variance);
-  total += fabs(mean);
-  sprintf(FMTBUF, "B old=%f new=%f mean=%f total=%f",
-          value,
-          0.0,
+  val_meas += mean;
+  sprintf(FMTBUF, "B mean=%f meas=%f",
           mean,
-          total);
-  print_debug(FMTBUF);
-  total = this->m_codes.const_val > 0 ? total : -total;
+          val_meas);
+  print_info(FMTBUF);
   ref_dac_to_tile.brkConn();
   this_dac_to_tile.brkConn();
   tile_to_chip.brkConn();
   cutil::restore_conns(calib);
   update(codes_dac);
   ref_dac->update(codes_ref);
-  return total;
+  return val_meas;
 }

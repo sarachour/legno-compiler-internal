@@ -44,18 +44,21 @@ void measure_seq(int ardAnaDiffChan,float* times, float* values, int n){
     times[index] = (codes[index]-base_time)*1e-6;
   }
 }
-float measure_dist(int ardAnaDiffChan, float& variance){
+float measure_dist(int ardAnaDiffChan, float& variance,int n){
   unsigned int pos[SAMPLES];
   unsigned int neg[SAMPLES];
-  const unsigned int samples = SAMPLES;
+  const unsigned int samples = n;
   unsigned int pinmap[] = {7,6,5,4,3,2,1,0};
-  for(unsigned int index = 0; index < SAMPLES; index++){
+  if(n > SAMPLES){
+    error("measure_dist: not enough room in buffers to store values");
+  }
+  for(unsigned int index = 0; index < n; index++){
     pos[index] = analogRead(pinmap[ardAnaDiffChan+1]);
     neg[index] = analogRead(pinmap[ardAnaDiffChan]);
   }
 
   float values[SAMPLES];
-  for(unsigned int index = 0; index < SAMPLES; index++){
+  for(unsigned int index = 0; index < n; index++){
     values[index] = to_diff_voltage(pos[index],neg[index]);
   }
   float mean;
@@ -69,7 +72,7 @@ float measure_dist(int ardAnaDiffChan, float& variance){
 
 
 
-float measure(int ardAnaDiffChan){
+float measure(int ardAnaDiffChan, int n){
   unsigned long adcPos = 0;
   unsigned long adcNeg = 0;
   unsigned int pinmap[] = {7,6,5,4,3,2,1,0};
@@ -79,7 +82,7 @@ float measure(int ardAnaDiffChan){
     P  N  P  N  P  N  P  N
     7  6  5  4  3  2  1  0
   */
-  const unsigned int samples = SAMPLES;
+  const unsigned int samples = n;
   for(unsigned int index = 0; index < samples; index++){
     adcPos += analogRead(pinmap[ardAnaDiffChan+1]);
     adcNeg += analogRead(pinmap[ardAnaDiffChan]);
@@ -104,13 +107,18 @@ void Fabric::Chip::Tile::Slice::ChipOutput::analogDist (
                                                         ) const {
 
 
-  mean = measure_dist(ardAnaDiffChan,variance);
+  mean = measure_dist(ardAnaDiffChan,variance,SAMPLES);
 }
 
 
 /*Measure the reading of an ADC from multiple samples*/
+float Fabric::Chip::Tile::Slice::ChipOutput::fastAnalogAvg () const
+{
+  return measure(ardAnaDiffChan,10);
+}
+/*Measure the reading of an ADC from multiple samples*/
 float Fabric::Chip::Tile::Slice::ChipOutput::analogAvg () const
 {
-  return measure(ardAnaDiffChan);
+  return measure(ardAnaDiffChan,SAMPLES);
 }
 #endif

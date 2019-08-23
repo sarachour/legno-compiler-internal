@@ -60,59 +60,50 @@ namespace calibrate {
 
  
 
-  bool calibrate(Fabric* fab,
+  void calibrate(Fabric* fab,
                  profile_t& result,
                  uint16_t blk,
-                 circ::circ_loc_idx1_t loc,
-                 const float max_error,
-                 bool targeted)
+                 circ::circ_loc_idx1_t loc)
   {
     Fabric::Chip::Tile::Slice::Fanout * fanout;
     Fabric::Chip::Tile::Slice::Multiplier * mult;
     Fabric::Chip::Tile::Slice::ChipAdc * adc;
     Fabric::Chip::Tile::Slice::Dac * dac;
     Fabric::Chip::Tile::Slice::Integrator * integ;
+    float max_error = -1.0;
     calib_objective_t obj = get_objective();
     switch(blk){
     case circ::block_type_t::FANOUT:
       fanout = common::get_fanout(fab,loc);
       fanout->calibrate(obj);
-      return true;
       break;
 
     case circ::block_type_t::MULT:
       // TODO: indicate if input or output.
       mult = common::get_mult(fab,loc);
-      if(mult->m_codes.vga and targeted){
-        return mult->calibrateTarget(result,max_error);
-      }
-      else{
-        return mult->calibrate(result,max_error);
-      }
+      mult->calibrate(result,max_error);
       break;
 
     case circ::block_type_t::TILE_ADC:
       adc = common::get_slice(fab,loc.loc)->adc;
-      return adc->calibrate(result,max_error);
+      adc->calibrate(result,max_error);
       break;
 
     case circ::block_type_t::TILE_DAC:
       dac = common::get_slice(fab,loc.loc)->dac;
       dac->calibrate(obj);
-      return true;
+      print_info("done calibrating");
       break;
 
     case circ::block_type_t::INTEG:
       integ = common::get_slice(fab,loc.loc)->integrator;
       integ->calibrate(obj);
-      return true;
       break;
 
     default:
       comm::error("calibrate: unexpected block");
 
     }
-    return false;
   }
 
   void set_codes(Fabric* fab,

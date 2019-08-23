@@ -271,6 +271,10 @@ namespace circ {
       Serial.print(state.fanout.pmos);
       Serial.print(" nmos=");
       Serial.print(state.fanout.nmos);
+      Serial.print(" port_cal=");
+      print3(state.fanout.port_cal[out0Id],
+             state.fanout.port_cal[out1Id],
+             state.fanout.port_cal[out2Id]);
       break;
 
     case block_type_t::TILE_ADC:

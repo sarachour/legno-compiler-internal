@@ -220,12 +220,10 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
 
   case cmd_type_t::CALIBRATE:
     print_log("calibrating...");
-    succ = calibrate::calibrate(fab,
-                                result.result,
-                                cmd.data.calib.blk,
-                                cmd.data.calib.loc,
-                                cmd.data.calib.max_error,
-                                cmd.data.calib.targeted);
+    calibrate::calibrate(fab,
+                         result.result,
+                         cmd.data.calib.blk,
+                         cmd.data.calib.loc);
     print_log("getting codes...");
     calibrate::get_codes(fab,
                          cmd.data.calib.blk,
@@ -238,7 +236,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     comm::payload();
     Serial.print(sizeof(state));
     Serial.print(" ");
-    Serial.print(succ ? 1 : 0);
+    Serial.print(true ? 1 : 0);
     for(int i=0; i < sizeof(state); i+=1){
       Serial.print(" ");
       Serial.print(state.charbuf[i]);
