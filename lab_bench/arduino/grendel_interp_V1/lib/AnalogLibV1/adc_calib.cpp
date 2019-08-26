@@ -63,6 +63,7 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMinError(Fabric::Chip::Tile::
   return score_total/CALIB_NPTS;
 }
 float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMaxDeltaFit(Fabric::Chip::Tile::Slice::Dac * val_dac){
+  error("unimplemented: integ max_delta_fit");
   return 0.0;
 }
 

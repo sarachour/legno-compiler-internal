@@ -403,7 +403,6 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
       eps[1] = meas;
       val_meas +=  eps[0]-eps[1];
     }
-    /*
     sprintf(FMTBUF, "%s val_dac=%f ref_dac=%f eps=%f val_meas=%f",
             update_ref ? "R" : "D",
             dval_value,
@@ -411,7 +410,6 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
             meas,
             val_meas);
     print_info(FMTBUF);
-    */
     update_ref = !update_ref;
   }
   if(!update_ref){

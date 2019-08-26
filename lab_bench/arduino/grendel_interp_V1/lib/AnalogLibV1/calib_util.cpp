@@ -92,11 +92,9 @@ namespace cutil {
 
     float dummy;
     ref_dac_val = ref_dac->fastMeasureValue(dummy);
-    /*
-    sprintf(FMTBUF,"MEAS2 targ=%f ref=%f delta=%f measurement=%f variance=%f",
-            target,ref_dac_val,delta,measurement,variance);
+    sprintf(FMTBUF,"MEAS2 targ=%f ref-targ=%f ref-meas=%f measurement=%f variance=%f",
+            target,targ_dac_val,ref_dac_val,measurement,variance);
     print_info(FMTBUF);
-    */
     mean = measurement-ref_dac_val;
     variance = variance;
 

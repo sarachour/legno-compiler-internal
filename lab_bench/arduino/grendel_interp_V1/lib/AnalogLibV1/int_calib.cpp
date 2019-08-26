@@ -23,15 +23,44 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMinError(Fabric::C
                                              measure_steady_state,
                                              mean,
                                              dummy);
-    sprintf(FMTBUF,"  test=%f meas=%f",target,mean);
-    print_info(FMTBUF);
-    score_total += fabs(target-mean);
-    total += 1;
+    if(succ){
+      sprintf(FMTBUF,"  test=%f meas=%f",target,mean);
+      print_info(FMTBUF);
+      score_total += fabs(target-mean);
+      total += 1;
+    }
   }
   return score_total/total;
 }
-float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * val_dac){
-  return 0;
+float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * ref_dac){
+  error("unimplemented: integ max_delta_fit");
+  float gains[CALIB_NPTS];
+  float bias = 0;
+  int m = 0;
+  for(int i=0; i < CALIB_NPTS; i += 1){
+    float ic_val = TEST_POINTS[i];
+    this->setInitial(ic_val);
+    float target = Fabric::Chip::Tile::Slice::Integrator::computeInitCond(this->m_codes);
+    bool measure_steady_state = false;
+    float mean,dummy;
+    bool succ = cutil::measure_signal_robust(this,
+                                             ref_dac,
+                                             target,
+                                             measure_steady_state,
+                                             mean,
+                                             dummy);
+    if(succ && target != 0.0){
+      gains[m] = mean/target;
+      m += 1;
+    }
+    else{
+      bias = mean;
+    }
+  }
+  float avg_gain, gain_variance;
+  util::distribution(gains,m,avg_gain,gain_variance);
+  sprintf(FMTBUF," gain=N(%f,%f) bias=%f", avg_gain,gain_variance,bias);
+  return gain_variance;
 }
 
 void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t obj,
