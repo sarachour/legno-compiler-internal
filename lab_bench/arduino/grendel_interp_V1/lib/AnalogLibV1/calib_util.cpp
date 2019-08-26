@@ -104,7 +104,8 @@ namespace cutil {
   /*
     this is different from making a true reference dac. This does
     a lazy calibration of the dac (to ~0.9), then 
-   */
+   *
+   /*
   float fast_make_dac(Fabric::Chip::Tile::Slice::Dac * ref_dac,
                                float target){
     error("deprecated");
@@ -143,6 +144,7 @@ namespace cutil {
                           Fabric::Chip::Tile::Slice::Dac * dac){
     return make_val_dac(calib,dac,1.0);
   }
+  */
   void buffer_conn(calibrate_t& calib, Fabric::Chip::Connection& conn){
     if(calib.nconns < MAX_CONNS){
       int i = calib.nconns;

@@ -29,14 +29,12 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
     mult_code_t m_codes;
     void update(mult_code_t codes);
     void defaults();
-    bool calibrate (profile_t& result,
-                    const float max_error);
-		bool calibrateTarget(profile_t& result,
-                         const float max_error);
+    static float computeOutput(mult_code_t& m_codes, float in0, float in1);
+    void calibrate (calib_objective_t obj);
     profile_t measure(float in0, float in1);
 	private:
-    profile_t measure_vga(float in0,float gain);
-    profile_t measure_mult(float in0,float in1);
+    profile_t measureVga(float in0,float gain);
+    profile_t measureMult(float in0,float in1);
 
 
 		Multiplier (Slice * parentSlice, unit unitId);

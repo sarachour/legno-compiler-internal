@@ -97,7 +97,7 @@ namespace calibrate {
     case circ::block_type_t::MULT:
       // TODO: indicate if input or output.
       mult = common::get_mult(fab,loc);
-      mult->calibrate(result,max_error);
+      mult->calibrate(obj);
       break;
 
     case circ::block_type_t::TILE_ADC:

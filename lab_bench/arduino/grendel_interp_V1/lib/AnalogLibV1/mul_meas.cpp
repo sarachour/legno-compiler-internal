@@ -6,14 +6,14 @@
 
 profile_t Fabric::Chip::Tile::Slice::Multiplier::measure(float in0val,float in1val) {
   if(this->m_codes.vga){
-    return measure_vga(in0val,in1val);
+    return measureVga(in0val,in1val);
   }
   else{
-    return measure_mult(in0val,in1val);
+    return measureMult(in0val,in1val);
   }
 
 }
-profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_vga(float in0val,float gain) {
+profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float in0val,float gain) {
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   Dac * ref_dac = parentSlice->parentTile->slices[next_slice].dac;
   Dac * val1_dac = parentSlice->dac;
@@ -44,35 +44,38 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_vga(float in0val,float 
   Connection ref_to_tileout = Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0 );
 
 
-  float target_in0 = compute_in0(m_codes, in0val);
-  target_in0 = val1_dac->fastMakeValue(target_in0);
-  float target_vga = compute_out_vga(m_codes, in0val);
+  float dummy;
+  val1_dac->setConstant(in0val);
+  float target_in0 = val1_dac->fastMeasureValue(dummy);
+
+  float target_vga = computeOutput(this->m_codes,
+                                   Dac::computeInput(val1_dac->m_codes,target_in0),0.0);
   if(fabs(target_vga) > 10.0){
     sprintf(FMTBUF, "can't fit %f", target_vga);
     error(FMTBUF);
   }
-  cutil::fast_make_dac(ref_dac,-target_vga);
 
   dac_to_in0.setConn();
   mult_to_tileout.setConn();
   tileout_to_chipout.setConn();
   ref_to_tileout.setConn();
 
-  float mean,variance,dummy;
+  float mean,variance;
+  bool meas_steady = false;
   calib.success &= cutil::measure_signal_robust(this,
                                                 ref_dac,
                                                 target_vga,
-                                                false,
+                                                meas_steady,
                                                 mean,
                                                 variance);
 
-  float ref = ref_dac->fastMeasureValue(dummy);
-  float bias = (mean-(target_vga+ref));
-  sprintf(FMTBUF,"PARS target=%f ref=%f mean=%f",
-          target_vga,ref,mean);
+  float bias = (mean-target_vga);
+  sprintf(FMTBUF,"PARS target=%f meas=%f",
+          target_vga,mean);
   print_info(FMTBUF);
+  const int mode = 0;
   profile_t prof = prof::make_profile(out0Id,
-                                      0,
+                                      mode,
                                       target_vga,
                                       target_in0,
                                       gain,
@@ -94,7 +97,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_vga(float in0val,float 
 }
 
 
-profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_mult(float in0val, float in1val) {
+profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(float in0val, float in1val) {
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   int next2_slice = (slice_to_int(parentSlice->sliceId) + 2) % 4;
   Dac * val2_dac = parentSlice->parentTile->slices[next_slice].dac;
@@ -134,40 +137,39 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure_mult(float in0val, floa
   tileout_to_chipout.setConn();
   ref_to_tileout.setConn();
 
-  float target_in0 = compute_in0(m_codes,in0val);
-  float target_in1 = compute_in1(m_codes,in1val);
 
-  target_in0 = val1_dac->fastMakeValue(target_in0);
-  target_in1 = val2_dac->fastMakeValue(target_in1);
-  float target_mult = predict_out_mult(m_codes,target_in0,target_in1);
-
+  float dummy;
+  val1_dac->setConstant(in0val);
+  val2_dac->setConstant(in1val);
+  float target_in0 = val1_dac->fastMeasureValue(dummy);
+  float target_in1 = val2_dac->fastMeasureValue(dummy);
+  float target_mult = computeOutput(m_codes,
+                                 Dac::computeInput(val1_dac->m_codes,target_in0),
+                                 Dac::computeInput(val2_dac->m_codes,target_in1)
+                                 );
 
   if(fabs(target_mult) > 10.0){
     calib.success = false;
   }
-  if(calib.success)
-    cutil::fast_make_dac(ref_dac, -target_mult);
-
   float mean,variance;
+  const bool meas_steady;
   if(calib.success)
     calib.success &= cutil::measure_signal_robust(this,
                                                   ref_dac,
                                                   target_mult,
-                                                  false,
+                                                  meas_steady,
                                                   mean,
                                                   variance);
 
-  float ref,dummy;
-  if(calib.success)
-    ref = ref_dac->fastMeasureValue(dummy);
 
-  sprintf(FMTBUF,"PARS target=%f ref=%f mean=%f",
-          target_mult,ref,mean);
+  sprintf(FMTBUF,"PARS target=%f mean=%f",
+          target_mult,mean);
   print_info(FMTBUF);
 
-  float bias = mean-(target_mult+ref);
+  float bias = mean-target_mult;
+  const int mode = 0;
   profile_t prof = prof::make_profile(out0Id,
-                                      0,
+                                      mode,
                                       target_mult,
                                       target_in0,
                                       target_in1,

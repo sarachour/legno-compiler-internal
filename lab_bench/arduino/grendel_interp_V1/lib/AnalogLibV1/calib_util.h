@@ -42,6 +42,7 @@ namespace cutil {
   // the multiplier, since we want to be able to scale down signals
   //
   /* DEPRECATED START*/
+  /*
   float fast_make_dac(Fabric::Chip::Tile::Slice::Dac* dac,
                         float value);
 
@@ -57,8 +58,8 @@ namespace cutil {
   dac_code_t make_val_dac(calibrate_t& calib,
                           Fabric::Chip::Tile::Slice::Dac * dac,
                           float value);
-  /* DEPRECATED START*/
 
+  */
   void buffer_fanout_conns( calibrate_t& calib,
                             Fabric::Chip::Tile::Slice::Fanout* fu);
   void buffer_mult_conns( calibrate_t& calib,

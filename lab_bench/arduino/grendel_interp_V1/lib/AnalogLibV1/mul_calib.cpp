@@ -5,8 +5,9 @@
 #include <float.h>
 
 
-bool Fabric::Chip::Tile::Slice::Multiplier::calibrate (profile_t& result, float max_error) {
+void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   mult_code_t codes_self = m_codes;
+  /*
   if(m_codes.vga)
     setGain(1.0);
   bool succ = calibrateTarget(result,max_error);
@@ -17,9 +18,10 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrate (profile_t& result, float 
   codes_self.port_cal[out0Id] = m_codes.port_cal[out0Id];
   codes_self.gain_cal = m_codes.gain_cal;
   update(codes_self);
-	return succ;
+  */
 }
 
+/*
 bool helper_find_port_cal_out0(Fabric::Chip::Tile::Slice::Dac* dac,
                                Fabric::Chip::Tile::Slice::Multiplier* mult,
                                float max_error){
@@ -80,7 +82,6 @@ bool helper_find_port_cal_in1(Fabric::Chip::Tile::Slice::Dac* dac,
                               dac_code_t& dac_code_0,
                               float max_error){
   //in1id
-  /* find bias by minimizing error of 0*0 */
   float delta;
   bool calib_failed;
   Fabric::Chip::Connection conn_in1 = \
@@ -139,13 +140,6 @@ int helper_find_gain_cal_mult(Fabric::Chip::Tile::Slice::Multiplier* mult,
   float deltas[N_MUL_PTS];
   float values[N_MUL_PTS];
   float dummy;
-  /*
-    this populates the bias table for the multiplier. Multipliers in multiply mode
-    are relatively insensitive to changes in the gain_cal parameter. We will use
-    this bias table to compute the standard deviation of the gain of these data points.
-    we do this because it is very difficult to correct for differences in the gain
-    depending on the quadrant of the inputs.
-  */
   for(int i=0; i < N_MUL_CORNERS; i += 1){
     for(int j=0; j < N_MUL_CORNERS; j+=1){
       float in0_val = compute_in0(mult->m_codes,corners[i]);
@@ -229,10 +223,6 @@ int helper_find_generic_gain_cal_vga(Fabric::Chip::Tile::Slice::Multiplier* mult
   float deltas[64][N_VGA_PTS];
   float values[N_VGA_PTS];
   float dummy;
-  /*
-    the bias table is per-gain code, because the vga block is dependent on
-    the gain_cal code
-   */
   for(int i=0; i < N_VGA_CORNERS; i += 1){
     for(int j=0; j < N_VGA_CORNERS; j+=1){
       // measure the bias of this input output pair
@@ -260,9 +250,7 @@ int helper_find_generic_gain_cal_vga(Fabric::Chip::Tile::Slice::Multiplier* mult
   float best_error = -1;
   float best_stdev_gain = -1;
   float best_avg_gain = -1;
-  /*
-    choose the gain_cal code that is the closest to unity gain.
-   */
+
   for(int i=0; i < 64; i++){
     float avg_error=0;
     float avg_gain=0;
@@ -556,7 +544,6 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (profile_t& result, 
   // update the result to use the best code.
   m_codes = best_code;
   update(m_codes);
-	/*teardown*/
 	tileout_to_chipout.brkConn();
 	mult_to_tileout.brkConn();
   cutil::restore_conns(calib);
@@ -575,3 +562,4 @@ bool Fabric::Chip::Tile::Slice::Multiplier::calibrateTarget (profile_t& result, 
 
 	return found_code && calib.success;
 }
+*/
