@@ -70,12 +70,8 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t 
 
   dac_code_t backup_codes = ref_dac->m_codes;
 
-  ref_dac->setEnable(true);
   ref_dac->setRange(this->m_codes.range[out0Id]);
-  ref_dac->setInv(false);
-  ref_dac->setConstant(0.0);
-  ref_dac->update(ref_dac->m_codes);
-
+  fast_calibrate_dac(ref_dac);
   // set the relevant connections
   Connection ref_to_tile = Connection ( ref_dac->out0,
                                         parentSlice->tileOuts[3].in0 );
@@ -187,7 +183,6 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateOpenLoopCircuit(calib_objec
   val_dac->setInv(false);
   val_dac->setConstantCode(129);
   val_dac->update(val_dac->m_codes);
-
   // determine the rate of change of the open loop system.
   float dummy;
   float input = val_dac->fastMeasureValue(dummy);

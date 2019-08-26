@@ -65,14 +65,12 @@ namespace cutil {
 
     // configure reference dac to maximize gain
     ref_dac->setRange(fabs(target) > 1.0 ? RANGE_HIGH : RANGE_MED);
-    ref_dac->setInv(false);
-    ref_dac->m_codes.nmos = 7;
-    ref_dac->m_codes.gain_cal = 63;
+    fast_calibrate_dac(ref_dac);
+
     // choose the best input
     targ_dac_val = Fabric::Chip::Tile::Slice::Dac::computeInput(ref_dac->m_codes,
                                                                 -target);
     ref_dac->setConstant(targ_dac_val);
-    ref_dac->update(ref_dac->m_codes);
 
     do {
       if(steady){
@@ -92,9 +90,11 @@ namespace cutil {
 
     float dummy;
     ref_dac_val = ref_dac->fastMeasureValue(dummy);
-    sprintf(FMTBUF,"MEAS2 targ=%f ref-targ=%f ref-meas=%f measurement=%f variance=%f",
+    /*
+    sprintf(FMTBUF,"  MEAS targ=%f ref-targ=%f ref-meas=%f measurement=%f variance=%f",
             target,targ_dac_val,ref_dac_val,measurement,variance);
     print_info(FMTBUF);
+    */
     mean = measurement-ref_dac_val;
     variance = variance;
 

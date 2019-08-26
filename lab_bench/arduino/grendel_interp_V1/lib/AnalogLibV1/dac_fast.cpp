@@ -78,10 +78,12 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeMedValue(float target,
     this->m_codes.const_code = next_code;
     update(this->m_codes);
     mean = util::meas_chip_out(this);
+    /*
     sprintf(FMTBUF,"DIFF delta=%d targ=%f meas=%f err=%f max_err=%f suc=%s",
             next_code,target,mean,fabs(mean-target),max_error,
             fabs(mean-target) > max_error ? "n" : "y");
     print_info(FMTBUF);
+    */
     delta += target < mean ? -1 : +1;
   }
   this_dac_to_tile.brkConn();
@@ -403,6 +405,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
       eps[1] = meas;
       val_meas +=  eps[0]-eps[1];
     }
+    /*
     sprintf(FMTBUF, "%s val_dac=%f ref_dac=%f eps=%f val_meas=%f",
             update_ref ? "R" : "D",
             dval_value,
@@ -410,6 +413,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
             meas,
             val_meas);
     print_info(FMTBUF);
+    */
     update_ref = !update_ref;
   }
   if(!update_ref){

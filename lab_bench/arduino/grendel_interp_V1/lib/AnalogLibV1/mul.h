@@ -27,7 +27,14 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 	private:
     profile_t measureVga(float in0,float gain);
     profile_t measureMult(float in0,float in1);
-
+    float calibrateMinError(Dac * val0_dac,
+                            Dac * val1_dac,
+                            Dac * ref_dac);
+    float calibrateMinErrorVga(Dac * val_dac,
+                               Dac * ref_dac);
+    float calibrateMinErrorMult(Dac * val0_dac,
+                                Dac * val1_dac,
+                                Dac * ref_dac);
 
 		Multiplier (Slice * parentSlice, unit unitId);
 		~Multiplier () override {

@@ -49,7 +49,8 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float in0val,float g
   float target_in0 = val1_dac->fastMeasureValue(dummy);
 
   float target_vga = computeOutput(this->m_codes,
-                                   Dac::computeInput(val1_dac->m_codes,target_in0),0.0);
+                                   Dac::computeInput(val1_dac->m_codes,target_in0),
+                                   0.0);
   if(fabs(target_vga) > 10.0){
     sprintf(FMTBUF, "can't fit %f", target_vga);
     error(FMTBUF);

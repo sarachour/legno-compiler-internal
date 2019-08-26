@@ -18,6 +18,7 @@ typedef enum {
 } dacSel;
 
 
+void fast_calibrate_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac);
 
 class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
