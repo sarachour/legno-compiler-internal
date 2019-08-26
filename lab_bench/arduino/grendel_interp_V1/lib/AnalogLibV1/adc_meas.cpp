@@ -3,12 +3,7 @@
 #include "fu.h"
 #include "calib_util.h"
 
-float predict_out_adc(adc_code_t& m_codes,float target_input){
-  float coeff = util::range_to_coeff(m_codes.range);
-  float target_out = target_input/coeff*128.0;
-  target_out += 128.0;
-  return round(target_out);
-}
+
 
 float compute_in_adc(adc_code_t& m_codes,float target_input){
   float coeff = util::range_to_coeff(m_codes.range);
@@ -35,18 +30,22 @@ profile_t Fabric::Chip::Tile::Slice::ChipAdc::measure(float input){
 	conn0.setConn();
 	setEnable (true);
   val_dac->setEnable(true);
-
-  float target_input = compute_in_adc(this->m_codes,input);
+  val_dac->setRange(this->m_codes.range);
+  val_dac->setInv(false);
+  val_dac->setConstant(input);
+  float target_input = Fabric::Chip::Tile::Slice::Dac::computeOutput(val_dac->m_codes);
   target_input = val_dac->fastMakeValue(target_input);
-  float target_output = predict_out_adc(m_codes,target_input);
+  float target_output = computeOutput(m_codes,target_input);
 
   float mean,variance;
   util::meas_dist_adc(this,mean,variance);
+  const int mode = 0;
+  const int in1 = 0.0;
   profile_t prof = prof::make_profile(out0Id,
-                                      0,
+                                      mode,
                                       target_output,
                                       target_input,
-                                      0.0,
+                                      in1,
                                       mean-target_output,
                                       variance);
 

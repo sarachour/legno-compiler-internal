@@ -36,18 +36,23 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 			// default is 2uA mode
 			range_t range // 20 uA mode
 		);
+    static float computeOutput(adc_code_t& config, float input);
 		unsigned char getData () const;
 		unsigned char getStatusCode() const;
 		bool getException() const;
     void update(adc_code_t codes){m_codes = codes; updateFu();}
     adc_code_t m_codes;
-		bool calibrate (profile_t& result,
-                    const float max_error);
+		void calibrate (calib_objective_t obj);
 
 		profile_t measure(float input);
     void defaults();
 		void setAnaIrefNmos () const override;
 	private:
+    bool testValidity(Fabric::Chip::Tile::Slice::Dac * val_dac);
+    float calibrateMinError(Fabric::Chip::Tile::Slice::Dac * val_dac);
+    float calibrateMaxDeltaFit(Fabric::Chip::Tile::Slice::Dac * val_dac);
+    float calibrateFast(Fabric::Chip::Tile::Slice::Dac * val_dac);
+
 		ChipAdc (Slice * parentSlice);
 		~ChipAdc () override { delete in0; };
     void setTestParams (

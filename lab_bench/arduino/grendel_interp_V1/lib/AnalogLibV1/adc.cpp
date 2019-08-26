@@ -3,6 +3,14 @@
 #include "fu.h"
 #include "calib_util.h"
 
+float Fabric::Chip::Tile::Slice::ChipAdc::computeOutput (adc_code_t& config,
+                                                         float input){
+  float range = config.range;
+  float dec = input/range;
+  return (dec*128 + 128.0);
+}
+
+
 void Fabric::Chip::Tile::Slice::ChipAdc::setEnable (
 	bool enable
 ) {

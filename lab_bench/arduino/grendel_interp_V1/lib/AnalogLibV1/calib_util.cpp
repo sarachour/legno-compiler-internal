@@ -13,6 +13,37 @@ namespace cutil {
     cal.nconns = 0;
   }
 
+  calib_table_t make_calib_table(){
+    calib_table_t st;
+    st.set = false;
+    for(int i=0; i < MAX_HIDDEN_STATE; i+=1){
+      st.state[i]=0;
+    }
+    return st;
+  }
+
+  void update_calib_table(calib_table_t& table, float new_score, int n, ...){
+    va_list valist;
+    va_start(valist, n);
+    if(not table.set || table.score > new_score){
+      table.set = true;
+      table.score = new_score;
+      if(n >= MAX_HIDDEN_STATE){
+        error("not enough space in table");
+      }
+      for(int i=0; i < n; i += 1){
+        table.state[i] = va_arg(valist, int);
+      }
+    }
+    va_end(valist);
+  }
+
+  bool perfect_score(calib_table_t& table){
+    return table.set && table.score == 0.0;
+
+  }
+
+
   /*
     measures the initial or steady state of a signal, adjusting the
     reference dac until the measurement is within range.
@@ -28,8 +59,21 @@ namespace cutil {
     float step = 0.25;
     float measurement = 0;
     float ref_dac_val;
+    float targ_dac_val;
 
-    ref_dac_val = fast_make_dac(ref_dac, -target);
+    dac_code_t codes_dac = ref_dac->m_codes;
+
+    // configure reference dac to maximize gain
+    ref_dac->setRange(fabs(target) > 1.0 ? RANGE_HIGH : RANGE_MED);
+    ref_dac->setInv(false);
+    ref_dac->m_codes.nmos = 7;
+    ref_dac->m_codes.gain_cal = 63;
+    // choose the best input
+    targ_dac_val = Fabric::Chip::Tile::Slice::Dac::computeInput(ref_dac->m_codes,
+                                                                -target);
+    ref_dac->setConstant(targ_dac_val);
+    ref_dac->update(ref_dac->m_codes);
+
     do {
       if(steady){
         util::meas_steady_chip_out(fu,measurement,variance);
@@ -37,20 +81,26 @@ namespace cutil {
       else{
         util::meas_dist_chip_out(fu,measurement,variance);
       }
-      /*
-      sprintf(FMTBUF,"MEASUREMENT targ=%f ref=%f delta=%f measurement=%f variance=%f",
-              target,ref_dac_val,delta,measurement,variance);
-      print_info(FMTBUF);
-      */
       if(fabs(measurement) > thresh){
         delta += measurement < 0 ? -step : step;
-        ref_dac_val = fast_make_dac(ref_dac, -(target+delta));
+        targ_dac_val = Fabric::Chip::Tile::Slice::Dac::computeInput(ref_dac->m_codes,
+                                                                    -(target+delta));
+        ref_dac->setConstant(targ_dac_val);
       }
     } while(fabs(measurement) > thresh &&
             fabs(ref_dac_val) < 10.0);
 
+    float dummy;
+    ref_dac_val = ref_dac->fastMeasureValue(dummy);
+    /*
+    sprintf(FMTBUF,"MEASUREMENT targ=%f ref=%f delta=%f measurement=%f variance=%f",
+            target,ref_dac_val,delta,measurement,variance);
+    print_info(FMTBUF);
+    */
     mean = measurement-ref_dac_val;
     variance = variance;
+
+    ref_dac->update(codes_dac);
     return fabs(measurement) <= thresh;
   }
   /*
@@ -59,6 +109,7 @@ namespace cutil {
    */
   float fast_make_dac(Fabric::Chip::Tile::Slice::Dac * ref_dac,
                                float target){
+    error("deprecated");
     if(!ref_dac->m_codes.enable)
       ref_dac->setEnable(true);
 

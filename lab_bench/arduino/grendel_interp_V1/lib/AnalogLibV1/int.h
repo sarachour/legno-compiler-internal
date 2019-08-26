@@ -3,6 +3,7 @@
 
 #include "fu.h"
 #include "profile.h"
+#include "calib_util.h"
 
 typedef enum {
 	mGainMRng = 0, /* -2 to 2  uA input, gain = 1,   -2 to 2  uA output*/
@@ -73,15 +74,22 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
                                const float max_error,
                                bool change_code);
 
+    void calibrateInitCond(calib_objective_t obj,
+                           Dac * val_dac,
+                           cutil::calib_table_t (&openloop_calib_table)[MAX_NMOS],
+                           cutil::calib_table_t (&closedloop_calib_table)[MAX_NMOS]
+                           );
+
+    float calibrateInitCondMinError(Dac * val_dac);
+    float calibrateInitCondMaxDeltaFit(Dac * val_dac);
     void calibrateOpenLoopCircuit(calib_objective_t obj,
                                   Dac * val_dac,
-                                  float (&scores)[MAX_NMOS],
-                                  int (&codes)[MAX_NMOS],
-                                  int (&bias_codes)[MAX_NMOS][2]);
+                                  cutil::calib_table_t (&openloop_calib_table)[MAX_NMOS],
+                                  cutil::calib_table_t (&closedloop_calib_table)[MAX_NMOS]
+                                  );
     void calibrateClosedLoopCircuit(calib_objective_t obj,
                                     Fanout * fan,
-                                    float (&scores)[MAX_NMOS],
-                                    int (&codes)[MAX_NMOS][2]);
+                                    cutil::calib_table_t (&closedloop_calib_table)[MAX_NMOS]);
 
 		Integrator (Slice * parentSlice);
 		~Integrator () override { delete in0; delete out0; };

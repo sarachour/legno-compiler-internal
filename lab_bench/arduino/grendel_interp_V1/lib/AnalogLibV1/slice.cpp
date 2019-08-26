@@ -121,6 +121,7 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
 
   print_log("Calibrating ADC");
   Serial.flush();
+  /*
 	if (HCDC_DEMO_BOARD==1) {
 
 		if (sliceId==slice0 || sliceId==slice2) {
@@ -134,21 +135,6 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
 			else
 			if (!adc->calibrate(prof::TEMP,0.01)) return false;
 		}
-		// if (
-		// 	sliceId==slice2
-		// 	&& parentTile->tileRowId==tileRow0
-		// 	&& parentTile->tileColId==tileCol1
-		// 	&& parentTile->parentChip->chipRowId==chipRow0
-		// 	&& parentTile->parentChip->chipColId==chipCol0
-                // ) SerialUSB.println("SKIPPING THIS DAC");
-		// else if (
-		// 	sliceId==slice3
-		// 	&& parentTile->tileRowId==tileRow0
-		// 	&& parentTile->tileColId==tileCol1
-		// 	&& parentTile->parentChip->chipRowId==chipRow0
-		// 	&& parentTile->parentChip->chipColId==chipCol0
-                // ) SerialUSB.println("SKIPPING THIS DAC");
-		// else if (!dac->findBiasAdc (dac->negGainCalCode)) return false;
 
 	} else if (HCDC_DEMO_BOARD==2) {
 
@@ -231,6 +217,7 @@ bool Fabric::Chip::Tile::Slice::calibrate () const {
   else {
 		error("HCDC_DEMO_BOARD # not recognized. Only 1,2,3,4,5 are valid.");
 	}
+  */
   /*
 	print_log("Calibrating DAC");
 	if (!dac->calibrate(prof::TEMP,0.01)) return false;

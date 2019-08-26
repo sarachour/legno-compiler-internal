@@ -42,6 +42,14 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
     float calibrateMaxDeltaFit(Fabric::Chip::Tile::Slice::Dac * val_dac,
                                Fabric::Chip::Tile::Slice::Dac * ref_dac,
                                ifc out_id);
+    float calibrateFast(Fabric::Chip::Tile::Slice::Dac * val_dac,
+                        Fabric::Chip::Tile::Slice::Dac * ref_dac,
+                        ifc out_id);
+    float getScore(calib_objective_t obj,
+                   Fabric::Chip::Tile::Slice::Dac * val_dac,
+                   Fabric::Chip::Tile::Slice::Dac * ref_dac,
+                   ifc out_id);
+
 		/*Set enable, range*/
 		void setParam0 () const override;
 		/*Set calDac1, invert output 1*/

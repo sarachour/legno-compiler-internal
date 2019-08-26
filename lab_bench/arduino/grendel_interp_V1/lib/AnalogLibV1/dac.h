@@ -50,6 +50,7 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
     void defaults();
 
     static float computeOutput(dac_code_t& codes);
+    static float computeInput(dac_code_t& codes,float output);
     dac_code_t m_codes;
     dac_code_t calib_codes;
     bool calibrated;

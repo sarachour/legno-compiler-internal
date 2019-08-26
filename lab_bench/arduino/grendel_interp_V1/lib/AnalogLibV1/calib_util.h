@@ -1,21 +1,33 @@
 #ifndef CUTIL_H
 #define CUTIL_H
-#include "AnalogLib.h"
 #include "fu.h"
 #include "connection.h"
-#include "calib_util.h"
 #include "profile.h"
 #include <float.h>
 
 namespace cutil {
 
   #define MAX_CONNS 10
+  #define MAX_HIDDEN_STATE 7
+  #define DAC_CACHE_SIZE 7
+
+  typedef struct {
+    unsigned char state[MAX_HIDDEN_STATE];
+    float score;
+    bool set;
+  } calib_table_t;
 
   typedef struct _CALIBRATE_T {
     Fabric::Chip::Tile::Slice::FunctionUnit::Interface* conn_buf[MAX_CONNS][2];
     int nconns;
     bool success;
   } calibrate_t;
+
+  calib_table_t make_calib_table();
+  void update_calib_table(calib_table_t& table, float new_score, int n, ...);
+  bool perfect_score(calib_table_t& table);
+
+
 
   bool measure_signal_robust(Fabric::Chip::Tile::Slice::FunctionUnit * fu,
                              Fabric::Chip::Tile::Slice::Dac * ref_dac,
@@ -29,10 +41,10 @@ namespace cutil {
   // this is a special high-to-medium converter specifically for
   // the multiplier, since we want to be able to scale down signals
   //
+  /* DEPRECATED START*/
   float fast_make_dac(Fabric::Chip::Tile::Slice::Dac* dac,
                         float value);
 
-  /* DEPRECATED START*/
   dac_code_t make_ref_dac(calibrate_t& calib,
                            Fabric::Chip::Tile::Slice::Dac* dac,
                           float value,

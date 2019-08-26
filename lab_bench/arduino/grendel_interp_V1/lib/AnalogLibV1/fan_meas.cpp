@@ -26,7 +26,12 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
                               ->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
 
-  float in_target = input*util::range_to_coeff(m_codes.range[in0Id]);
+  val_dac->setEnable(true);
+  val_dac->setRange(this->m_codes.range[in0Id]);
+  val_dac->setInv(false);
+  val_dac->setConstant(input);
+
+  float in_target = Dac::computeOutput(val_dac->m_codes);
 
   Connection dac_to_fan = Connection ( val_dac->out0, in0 );
   Connection tile_to_chip = Connection (parentSlice->tileOuts[3].out0,

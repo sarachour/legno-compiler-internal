@@ -41,7 +41,8 @@ typedef enum {
 
 typedef enum {
   CALIB_MINIMIZE_ERROR,
-  CALIB_MAXIMIZE_DELTA_FIT
+  CALIB_MAXIMIZE_DELTA_FIT,
+  CALIB_FAST
 } calib_objective_t;
 
 typedef struct {

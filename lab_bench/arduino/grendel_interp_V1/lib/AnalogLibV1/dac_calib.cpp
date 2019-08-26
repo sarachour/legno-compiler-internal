@@ -6,35 +6,6 @@
 #include "dac.h"
 #include "Arduino.h"
 
-#define MAX_HIDDEN_STATE 5
-typedef struct {
-  unsigned char state[MAX_HIDDEN_STATE];
-  float score;
-  bool set;
-} calib_table_t;
-
-calib_table_t make_calib_table(){
-  calib_table_t st;
-  st.set = false;
-  for(int i=0; i < MAX_HIDDEN_STATE; i+=1){
-    st.state[i]=0;
-  }
-  return st;
-}
-
-void update_calib_table(calib_table_t& table, float new_score, int n, ...){
-  va_list valist;
-  va_start(valist, n);
-  if(not table.set || table.score > new_score){
-    table.set = true;
-    table.score = new_score;
-    assert(n < MAX_HIDDEN_STATE);
-    for(int i=0; i < n; i += 1){
-      table.state[i] = va_arg(valist, int);
-    }
-  }
-  va_end(valist);
-}
 
 void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
 {
@@ -59,7 +30,7 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
 	tile_to_chip.setConn();
 
   //populate calibration table
-  calib_table_t calib_table = make_calib_table();
+  cutil::calib_table_t calib_table = cutil::make_calib_table();
   for(int nmos=0; nmos < MAX_NMOS; nmos += 1){
     this->m_codes.nmos = nmos;
     for(int gain_cal=0; gain_cal < MAX_GAIN_CAL; gain_cal += 1){
@@ -73,8 +44,11 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
       case CALIB_MAXIMIZE_DELTA_FIT:
         score = calibrateMaxDeltaFit();
         break;
+      default:
+        error("unimplemented adc");
+        break;
       }
-      update_calib_table(calib_table,score,2,nmos,gain_cal);
+      cutil::update_calib_table(calib_table,score,2,nmos,gain_cal);
       sprintf(FMTBUF,"nmos=%d\tgain_cal=%d\tscore=%f",nmos,gain_cal,score);
       print_info(FMTBUF);
     }

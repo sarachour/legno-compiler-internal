@@ -12,7 +12,9 @@ void fast_calibrate_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac){
     aux_dac->setEnable(true);
     aux_dac->setRange(RANGE_MED);
     aux_dac->setInv(false);
-    aux_dac->calibrate(CALIB_MINIMIZE_ERROR);
+    // basically a heuristic that maximizes dynamic range of dac.
+    aux_dac->m_codes.nmos = 7;
+    aux_dac->m_codes.gain_cal = 63;
     aux_dac->calibrated = true;
     aux_dac->calib_codes = aux_dac->m_codes;
     aux_dac->m_codes = codes;
@@ -57,7 +59,6 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeMedValue(float target,
   this_dac_to_tile.setConn();
   tile_to_chip.setConn();
 
-  print_debug(FMTBUF);
   // start at what the value would be if the gain was one.
   this->setConstant(target);
   // start out with no code offset
@@ -76,12 +77,10 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeMedValue(float target,
     this->m_codes.const_code = next_code;
     update(this->m_codes);
     mean = util::meas_chip_out(this);
-    /*
     sprintf(FMTBUF,"DIFF delta=%d targ=%f meas=%f err=%f max_err=%f suc=%s",
             next_code,target,mean,fabs(mean-target),max_error,
             fabs(mean-target) > max_error ? "n" : "y");
-    print_debug(FMTBUF);
-    */
+    print_info(FMTBUF);
     delta += target < mean ? -1 : +1;
   }
   this_dac_to_tile.brkConn();

@@ -6,11 +6,27 @@
 #include "profile.h"
 
 namespace calibrate {
-  calib_objective_t get_objective(){
-    return CALIB_MINIMIZE_ERROR;
-    //return CALIB_MAXIMIZE_DELTA_FIT;
+  calib_objective_t get_objective_max_delta(uint16_t blk){
+    switch(blk){
+    case circ::block_type_t::FANOUT:
+    case circ::block_type_t::TILE_ADC:
+      return CALIB_FAST;
+    default:
+      return CALIB_MAXIMIZE_DELTA;
+    }
   }
-
+  calib_objective_t get_objective_min_error(uint16_t blk){
+    switch(blk){
+    case circ::block_type_t::FANOUT:
+    case circ::block_type_t::TILE_ADC:
+      return CALIB_FAST;
+    default:
+      return CALIB_MINIMIZE_ERROR;
+    }
+  }
+  calib_objective_t get_objective(uint16_t blk){
+    return get_objective_min_error(blk);
+  }
   profile_t measure(Fabric* fab,
                          uint16_t blk,
                          circ::circ_loc_idx1_t loc,
@@ -71,7 +87,7 @@ namespace calibrate {
     Fabric::Chip::Tile::Slice::Dac * dac;
     Fabric::Chip::Tile::Slice::Integrator * integ;
     float max_error = -1.0;
-    calib_objective_t obj = get_objective();
+    calib_objective_t obj = get_objective(blk);
     switch(blk){
     case circ::block_type_t::FANOUT:
       fanout = common::get_fanout(fab,loc);
@@ -86,13 +102,12 @@ namespace calibrate {
 
     case circ::block_type_t::TILE_ADC:
       adc = common::get_slice(fab,loc.loc)->adc;
-      adc->calibrate(result,max_error);
+      adc->calibrate(obj);
       break;
 
     case circ::block_type_t::TILE_DAC:
       dac = common::get_slice(fab,loc.loc)->dac;
       dac->calibrate(obj);
-      print_info("done calibrating");
       break;
 
     case circ::block_type_t::INTEG:
