@@ -89,6 +89,19 @@ class DACSourceType(str,Enum):
             raise Exception("not handled: %s" % self)
 
 
+class CalibType(str,Enum):
+    MIN_ERROR = "min_error"
+    MAX_DELTA_FIT = "max_fit"
+    FAST = "fast"
+
+    def code(self):
+        if self == CalibType.MIN_ERROR:
+            return 0
+        elif self == CalibType.MAX_DELTA_FIT:
+            return 1
+        elif self == CalibType.FAST:
+            return 2
+
 class RangeType(str,Enum):
     MED = 'medium'
     HIGH = 'high'

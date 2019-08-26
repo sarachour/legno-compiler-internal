@@ -132,15 +132,14 @@ class GetStateCmd(AnalogChipCommand):
 
 class CalibrateCmd(AnalogChipCommand):
 
-    def __init__(self,blk,chip,tile,slice,index=None,max_error=0.01,
-                 targeted=True):
+    def __init__(self,blk,chip,tile,slice,index=None,
+                 calib_mode=CalibType.MIN_ERROR):
         AnalogChipCommand.__init__(self)
         self._loc = CircLoc(chip,tile,slice,index=0 if index is None \
                             else index)
         self._blk = enums.BlockType(blk)
         self.test_loc(self._blk,self._loc)
-        self._max_error = max_error
-        self._targeted = targeted
+        self._calib_mode = calib_mode
 
     @staticmethod
     def name():
@@ -158,8 +157,7 @@ class CalibrateCmd(AnalogChipCommand):
                 'calib':{
                     'blk': self._blk.code(),
                     'loc': loc_type,
-                    'max_error': self._max_error,
-                    'targeted': BoolType.from_bool(self._targeted).code()
+                    'calib_mode': self._calib_mode.code()
                 }
             }
         })
@@ -188,18 +186,14 @@ class CalibrateCmd(AnalogChipCommand):
         datum = self._loc.to_json()
         datum['block_type'] = self._blk.value
         state_size = int(resp.data(0)[1]);
-        success = BoolType.from_code(resp.data(0)[1]).boolean()
-        print("success=%s" % success)
         base=2
         data = bytes(resp.data(0)[base:])
         st = chipstate.BlockState \
                       .toplevel_from_cstruct(self._blk,
                                              self._loc,
                                              data,
-                                             targeted=self._targeted)
-        env.state_db.put(st,self._targeted,
-                         success=success,max_error=self._max_error)
-        return success
+                                             calib_mode=self._calib_mode)
+        env.state_db.put(st)
 
 
     def __repr__(self):

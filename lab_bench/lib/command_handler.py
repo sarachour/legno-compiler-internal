@@ -1,4 +1,5 @@
 import lab_bench.lib.command as cmd
+from lab_bench.lib.chipcmd.data import CalibType
 import sys
 
 
@@ -48,11 +49,15 @@ def main_dump_db(state):
     keys = {}
     for data in state.state_db.get_all():
         key = (data.block,data.loc)
-        if not key in keys:
-            keys[key] = data
+        if not data.calib_mode in keys:
+            keys[data.calib_mode] = {}
 
-    for key,obj in keys.items():
-        obj.write_dataset(state.state_db)
+        if not key in keys[data.calib_mode]:
+            keys[data.calib_mode][key] = data
+
+    for calib_mode,ds in keys.items():
+        for _,obj in ds.items():
+            obj.write_dataset(state.state_db)
 
 
 def main_script_profile(state,filename, \
@@ -69,43 +74,16 @@ def main_script_profile(state,filename, \
 
 
 def main_script_calibrate(state,filename, \
-                          characterize=True,
                           recompute=False,
-                          targeted=False):
+                          calib_mode=CalibType.MIN_ERROR):
     successes = []
     failures = []
     for command_obj in read_script(filename):
-        succ = cmd.calibrate(state,command_obj, \
+        cmd.calibrate(state,command_obj, \
                              recompute=recompute,
-                             targeted_calibrate=targeted,
-                             targeted_measure=targeted)
-        if succ is None:
-            continue
-        scale = 2.0
-        while not succ and scale < 200.0:
-            succ = cmd.calibrate(state,command_obj, \
-                                 recompute=recompute,
-                                 targeted_calibrate=targeted,
-                                 targeted_measure=targeted,
-                                 error_scale=scale)
-            scale *= 2.0
+                             calib_mode=calib_mode)
 
-
-        if succ:
-            successes.append(command_obj)
-        else:
-            failures.append(command_obj)
-
-    total = len(successes) + len(failures)
-    print("=== Successes [%d/%d] ===" % (len(successes), total))
-    for succ in successes:
-        print(succ)
-
-    print("=== Failures [%d/%d] ===" % (len(failures),total))
-    for fail in failures:
-        print(fail)
-
-    return len(failures) == 0
+    return True
 
 def main_script(state,filename):
     for command_obj in read_script(filename):

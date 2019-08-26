@@ -449,10 +449,8 @@ namespace circ {
       print_block(cmd.data.calib.blk);
       Serial.print(" ");
       print_idx_loc(cmd.data.calib.loc);
-      Serial.print(" max_error=");
-      Serial.print(cmd.data.calib.max_error);
-      Serial.print(" targeted=");
-      Serial.print(cmd.data.calib.targeted ? "yes" : "no");
+      Serial.print(" mode=");
+      Serial.print(cmd.data.calib.calib_mode);
       break;
 
     case cmd_type_t::CHARACTERIZE:

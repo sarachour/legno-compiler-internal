@@ -99,8 +99,8 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
   update(this->m_codes);
 }
 
-#define CALIB_NPTS 2
-const float TEST_POINTS[CALIB_NPTS] = {0,0.8};
+#define CALIB_NPTS 4
+const float TEST_POINTS[CALIB_NPTS] = {0,0.8,0.5,-0.8};
 
 float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(){
   float gains[CALIB_NPTS];
@@ -125,7 +125,7 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(){
   util::distribution(gains,m,
                      gain_mean,
                      gain_variance);
-  float score = gain_variance/gain_mean;
+  float score = max(sqrt(gain_variance),fabs(bias));
   return score;
 
 }

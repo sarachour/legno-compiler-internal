@@ -34,7 +34,6 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   serializable_profile_t result;
   uint8_t byteval;
   char buf[32];
-  bool succ;
   Fabric::Chip::Tile::Slice* slice;
   Fabric::Chip::Tile::Slice::Dac* dac;
   Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -188,11 +187,11 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   case cmd_type_t::CHARACTERIZE:
     print_log("characterizing...");
     result.result = calibrate::measure(fab,
-                                            cmd.data.prof.blk,
-                                            cmd.data.prof.loc,
-                                            cmd.data.prof.mode,
-                                            cmd.data.prof.in0,
-                                            cmd.data.prof.in1);
+                                       cmd.data.prof.blk,
+                                       cmd.data.prof.loc,
+                                       cmd.data.prof.mode,
+                                       cmd.data.prof.in0,
+                                       cmd.data.prof.in1);
     print_log("getting codes...");
     calibrate::get_codes(fab,
                          cmd.data.calib.blk,
@@ -221,9 +220,9 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   case cmd_type_t::CALIBRATE:
     print_log("calibrating...");
     calibrate::calibrate(fab,
-                         result.result,
                          cmd.data.calib.blk,
-                         cmd.data.calib.loc);
+                         cmd.data.calib.loc,
+                         cmd.data.calib.calib_mode);
     print_log("getting codes...");
     calibrate::get_codes(fab,
                          cmd.data.calib.blk,

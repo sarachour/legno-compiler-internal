@@ -17,13 +17,15 @@ class ExecuteInput(AnalogChipCommand):
     def __init__(self,blk,chip,tile,slce, \
                  inputs, \
                  index=None, \
-                 mode=0):
+                 mode=0,
+                 calib_mode=chipstate.CalibType.MIN_ERROR):
         AnalogChipCommand.__init__(self)
         self._blk = enums.BlockType(blk)
         self._loc = CircLoc(chip,tile,slce,index=0 if index is None \
                             else index)
         self._inputs = inputs
         self._mode = mode
+        self._calib_mode = calib_mode
         self.test_loc(self._blk, self._loc)
 
     def build_ctype(self):
@@ -55,7 +57,7 @@ class ExecuteInput(AnalogChipCommand):
                     .toplevel_from_cstruct(self._blk,
                                            self._loc,
                                            state_data,
-                                           targeted=False)
+                                           self._calib_mode)
       print(result)
       bias = result.bias
       noise = result.noise
@@ -124,17 +126,16 @@ class ProfileCmd(Command):
                            self._loc.slice, \
                            index=self._loc.index, \
                            inputs=inputs,
-                           mode=mode)
+                           mode=mode,
+                           calib_mode=env.calib_mode)
         state,profile = cmd.execute(env)
         n = self.update_database(env,state,profile)
         return n >= self._max_n
 
     def clear_database(self,env,state):
         entry = env.state_db.get(state.key)
-        env.state_db.put(state,entry.targeted,
-                         profile=[],
-                         success=entry.success,
-                         max_error=entry.tolerance)
+        env.state_db.put(state,
+                         profile=[])
 
     def update_database(self,env,state,profile):
         entry = env.state_db.get(state.key)
@@ -144,10 +145,8 @@ class ProfileCmd(Command):
             entry.profile = []
             self._clear = False
 
-        env.state_db.put(state,entry.targeted,
-                         profile=[profile] + entry.profile,
-                         success=entry.success,
-                         max_error=entry.tolerance)
+        env.state_db.put(state,
+                         profile=[profile] + entry.profile)
         return len(entry.profile+[profile])
 
     def insert_result(self,env,resp):
@@ -246,8 +245,7 @@ class ProfileCmd(Command):
                                    data['chip'],
                                    data['tile'],
                                    data['slice'],
-                                   data['index'],
-                                   targeted=data['targeted'])
+                                   data['index'])
 
         else:
             print(result.message)

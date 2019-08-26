@@ -99,7 +99,8 @@ def infer(args,dump_db=True):
     if retcode != 0:
       raise Exception("could not dump database: retcode=%d" % retcode)
 
-  for dirname, subdirlist, filelist in os.walk(CONFIG.DATASET_DIR):
+  filepath = "%s/%s" % (CONFIG.DATASET_DIR,args.calib_mode)
+  for dirname, subdirlist, filelist in os.walk(filepath):
     for fname in filelist:
       if fname.endswith('.json'):
         fpath = "%s/%s" % (dirname,fname)
@@ -149,9 +150,10 @@ infer_subp.add_argument('--populate-crossbars',action='store_true',
                     help='insert default models for connection blocks')
 infer_subp.add_argument('--visualize',action='store_true',
                     help='emit visualizations for models')
-
+infer_subp.add_argument('--calib-mode',type=str,default='min_error',
+                        help='calibration objective function to get datasets for')
 analyze_subp = subparsers.add_parser('analyze', \
-                              help='scale circuit parameters.')
+                              help='return delta models for circuit')
 analyze_subp.add_argument('circ_file',
                     help='circ file to analyze')
 

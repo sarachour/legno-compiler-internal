@@ -6,7 +6,7 @@
 #include "profile.h"
 
 namespace calibrate {
-  calib_objective_t get_objective_max_delta(uint16_t blk){
+  calib_objective_t get_objective_max_delta_fit(uint16_t blk){
     switch(blk){
       //case circ::block_type_t::FANOUT:
     case circ::block_type_t::TILE_ADC:
@@ -24,8 +24,15 @@ namespace calibrate {
       return CALIB_MINIMIZE_ERROR;
     }
   }
-  calib_objective_t get_objective(uint16_t blk){
-    return get_objective_min_error(blk);
+  calib_objective_t get_objective(uint16_t blk, calib_objective_t macro_obj){
+    switch(macro_obj){
+    case CALIB_MINIMIZE_ERROR:
+      return get_objective_min_error(blk); break;
+    case CALIB_MAXIMIZE_DELTA_FIT:
+      return get_objective_max_delta_fit(blk); break;
+    default:
+      error("unsupported macro obj function.");
+    }
   }
   profile_t measure(Fabric* fab,
                          uint16_t blk,
@@ -77,9 +84,9 @@ namespace calibrate {
  
 
   void calibrate(Fabric* fab,
-                 profile_t& result,
                  uint16_t blk,
-                 circ::circ_loc_idx1_t loc)
+                 circ::circ_loc_idx1_t loc,
+                 calib_objective_t macro_obj)
   {
     Fabric::Chip::Tile::Slice::Fanout * fanout;
     Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -87,7 +94,7 @@ namespace calibrate {
     Fabric::Chip::Tile::Slice::Dac * dac;
     Fabric::Chip::Tile::Slice::Integrator * integ;
     float max_error = -1.0;
-    calib_objective_t obj = get_objective(blk);
+    calib_objective_t obj = get_objective(blk,macro_obj);
     switch(blk){
     case circ::block_type_t::FANOUT:
       fanout = common::get_fanout(fab,loc);

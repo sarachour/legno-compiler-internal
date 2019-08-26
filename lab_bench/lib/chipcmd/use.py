@@ -53,7 +53,7 @@ class UseCommand(AnalogChipCommand):
         AnalogChipCommand.execute_command(self,env)
 
         if self.cached:
-            dbkey = self.to_key(targeted=True)
+            dbkey = self.to_key(calib_mode=env.calib_mode)
             assert(isinstance(dbkey, state.BlockState.Key))
             if env.state_db.has(dbkey):
                 blockstate = env.state_db.get(dbkey)
@@ -301,7 +301,7 @@ class UseDACCmd(UseCommand):
     def parse(args):
         return UseDACCmd._parse(args,UseDACCmd)
 
-    def to_key(self,targeted=False):
+    def to_key(self,calib_mode):
         loc = CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
@@ -312,7 +312,7 @@ class UseDACCmd(UseCommand):
                                        rng=self._out_range,
                                        source=self._source,
                                        const_val=self._value,
-                                       targeted=targeted)
+                                       calib_mode=calib_mode)
 
 
     def update_state(self,state):

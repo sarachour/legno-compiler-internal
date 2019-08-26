@@ -13,10 +13,10 @@ namespace calibrate {
                          float in1);
 
 
-  bool calibrate(Fabric * fab,
-                 profile_t& result,
+  void calibrate(Fabric * fab,
                  uint16_t blk,
-                 circ::circ_loc_idx1_t loc);
+                 circ::circ_loc_idx1_t loc,
+                 calib_objective_t obj);
 
 
   void get_codes(Fabric * fab,

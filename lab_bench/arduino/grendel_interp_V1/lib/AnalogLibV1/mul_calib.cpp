@@ -244,6 +244,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
             this->m_codes.port_cal[out0Id],
             this->m_codes.gain_cal,
             score);
+    print_info(FMTBUF);
   }
   val0_dac->update(codes_dac_val0);
   val1_dac->update(codes_dac_val1);

@@ -46,6 +46,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float in0val,float g
 
   float dummy;
   val1_dac->setConstant(in0val);
+  fast_calibrate_dac(val1_dac);
   float target_in0 = val1_dac->fastMeasureValue(dummy);
 
   float target_vga = computeOutput(this->m_codes,

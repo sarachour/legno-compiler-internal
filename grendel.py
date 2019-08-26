@@ -4,6 +4,7 @@ import os
 import util.config as CONFIG
 #sys.path.insert(0,os.path.abspath("."))
 
+from lab_bench.lib.chipcmd.data import CalibType
 from lab_bench.lib.command_handler import main_stdout,  \
     main_script, \
     main_script_calibrate, \
@@ -29,10 +30,11 @@ parser.add_argument("--validate", action='store_true', \
                     help="validate script")
 parser.add_argument("--debug", action='store_true', \
                     help="debug script")
+
 parser.add_argument("--calibrate", action='store_true', \
                     help="calibrate uncalibrated components")
-parser.add_argument("--targeted", action='store_true', \
-                    help="targeted calibration of uncalibrated components")
+parser.add_argument("--calib-mode", type=str, default="min_error",\
+                    help="what optimization function to use for calibration")
 
 parser.add_argument("--profile", action='store_true', \
                     help="profile components on chip")
@@ -74,8 +76,9 @@ elif args.no_oscilloscope:
     ip = None
 
 state = GrendelEnv(ip,args.port,
-              ard_native=args.native,
-              validate=args.validate)
+                   ard_native=args.native,
+                   validate=args.validate,
+                   calib_mode=CalibType(args.calib_mode))
 
 state.initialize()
 
@@ -83,7 +86,7 @@ if args.calibrate:
     assert(args.script != None)
     succ = main_script_calibrate(state,args.script, \
                                  recompute=args.recompute,
-                                 targeted=args.targeted)
+                                 calib_mode=CalibType(args.calib_mode))
     if not succ:
         print("[ERROR] some calibration steps failed..")
         sys.exit(1)

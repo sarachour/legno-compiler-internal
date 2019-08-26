@@ -45,9 +45,7 @@ class BlockStateDatabase:
     tile int NOT NULL,
     slice int NOT NULL,
     idx int NOT NULL,
-    status text NOT NULL,
-    targeted int NOT NULL,
-    max_error real NOT NULL,
+    calib_mode text NOT NULL,
     state text NOT NULL,
     profile text NOT NULL,
     PRIMARY KEY (cmdkey)
@@ -57,8 +55,7 @@ class BlockStateDatabase:
     self._conn.commit()
     self.keys = ['cmdkey','block',
                  'chip','tile','slice','idx',
-                 'status','targeted',
-                 'max_error',
+                 'calib_mode',
                  'state','profile']
 
   def get_all(self):
@@ -73,26 +70,29 @@ class BlockStateDatabase:
 
       yield result
 
-  def get_by_instance(self,blk,chip,tile,slice,index):
+  def get_by_instance(self,blk,chip,tile,slice,index, \
+                      calib_mode=CalibType.MIN_ERROR):
     cmd = '''
     SELECT * from states WHERE block = "{block}" AND
                                chip = {chip} AND
                                tile = {tile} AND
                                slice = {slice} AND
-                               idx = {index};
+                               idx = {index} AND
+                               calib_mode = "{calib_mode}";
     '''.format(
       block=blk.value,
       chip=chip,
       tile=tile,
       slice=slice,
-      index=index)
+      index=index,
+      calib_mode=calib_mode.value)
 
     for values in self._curs.execute(cmd):
       data = dict(zip(self.keys,values))
       result = self._process(data)
       yield result
 
-  def put(self,blockstate,targeted,success=True,max_error=-1,profile=[]):
+  def put(self,blockstate,profile=[]):
     assert(isinstance(blockstate,BlockState))
     key = blockstate.key.to_key()
     cmd = '''DELETE FROM states WHERE cmdkey="{cmdkey}"''' \
@@ -103,16 +103,11 @@ class BlockStateDatabase:
     print("PUT %s" % key)
     state_bits = blockstate.to_cstruct().hex()
     profile_bits = bytes(json.dumps(profile), 'utf-8').hex();
-
-    status = BlockStateDatabase.Status.SUCCESS \
-             if success else BlockStateDatabase.Status.FAILURE
-    targeted = BoolType.TRUE \
-               if targeted else BoolType.FALSE
     cmd = '''
     INSERT INTO states (cmdkey,block,chip,tile,slice,idx,
-                        status,targeted,max_error,state,profile)
+                        calib_mode,state,profile)
     VALUES ("{cmdkey}","{block}",{chip},{tile},{slice},{index},
-            "{status}",{targeted},{max_error},"{state}","{profile}")
+            "{calib_mode}","{state}","{profile}")
     '''.format(
       cmdkey=key,
       block=blockstate.block.value,
@@ -120,9 +115,7 @@ class BlockStateDatabase:
       tile=blockstate.loc.tile,
       slice=blockstate.loc.slice,
       index=blockstate.loc.index,
-      status=status.value,
-      targeted=targeted.code(),
-      max_error=max_error,
+      calib_mode=blockstate.calib_mode.value,
       state=state_bits,
       profile=profile_bits
     )
@@ -159,19 +152,17 @@ class BlockStateDatabase:
                   data['idx'])
 
     blk = enums.BlockType(data['block'])
-    targeted = chipdata.BoolType.from_code(data['targeted']).boolean()
+    calib_mode = chipdata.CalibType(data['calib_mode'])
     try:
       obj = BlockState \
-            .toplevel_from_cstruct(blk,loc,bytes.fromhex(state), \
-                                   targeted)
+            .toplevel_from_cstruct(blk,loc, \
+                                   bytes.fromhex(state), \
+                                   calib_mode)
     except ValueError:
       return None
 
     obj.profile = json.loads(bytes.fromhex(data['profile']) \
                              .decode('utf-8'))
-    obj.success = (data['status'] == \
-                   BlockStateDatabase.Status.SUCCESS.value)
-    obj.tolerance = data['max_error']
     return obj
 
 
@@ -189,11 +180,11 @@ class BlockStateDatabase:
 class BlockState:
 
   class Key:
-    def __init__(self,blk,loc,targeted=False):
-      assert(isinstance(targeted,bool))
+    def __init__(self,blk,loc,calib_mode=CalibType.MIN_ERROR):
+      assert(isinstance(calib_mode,CalibType))
       self.block = blk
       self.loc = loc
-      self.targeted = targeted
+      self.calib_mode = calib_mode
 
     @property
     def targeted_keys(self):
@@ -214,7 +205,7 @@ class BlockState:
         ident = ""
         for key in keys:
           value = obj[key]
-          if key in self.targeted_keys and not self.targeted:
+          if key in self.targeted_keys:
             continue
 
           ident += "%s=" % key
@@ -231,24 +222,23 @@ class BlockState:
 
       return dict_to_key(obj)
 
-  def __init__(self,block_type,loc,state,targeted=False):
+  def __init__(self,block_type,loc,state,calib_mode=CalibType.MIN_ERROR):
     self.block = block_type
     self.loc = loc
-    self.success = None
-    self.tolerance = None
-    self.targeted = targeted
+    self.calib_mode =calib_mode
     self.profile = []
     self.state = state
     if state != None:
       self.from_cstruct(state)
 
-  def get_dataset(self,db):
+  def get_dataset(self,db,calib_mode):
     for obj in db.get_by_instance(
         self.block,
         self.loc.chip,
         self.loc.tile,
         self.loc.slice,
-        self.loc.index):
+        self.loc.index,
+        calib_mode):
       if len(obj.profile) == 0:
         continue
 
@@ -264,18 +254,20 @@ class BlockState:
       }
 
   def write_dataset(self,db):
-    filename = "%s/%s_%d_%d_%d_%d.json" % (CFG.DATASET_DIR,
+    filepath = "%s/%s" % (CFG.DATASET_DIR, \
+                          self.calib_mode.value)
+    filename = "%s/%s_%d_%d_%d_%d.json" % (filepath,
                                            self.block.value,
                                            self.loc.chip,
                                            self.loc.tile,
                                            self.loc.slice,
                                            self.loc.index)
     dataset= []
-    for datum in self.get_dataset(db):
+    for datum in self.get_dataset(db,self.calib_mode):
       dataset.append(datum)
 
     objstr = json.dumps(dataset)
-    util.mkdir_if_dne(CFG.DATASET_DIR)
+    util.mkdir_if_dne(filepath)
     with open(filename,'w') as fh:
       fh.write(objstr)
 
@@ -301,21 +293,21 @@ class BlockState:
     return obj
 
   @staticmethod
-  def toplevel_from_cstruct(blk,loc,data,targeted):
+  def toplevel_from_cstruct(blk,loc,data,calib_mode):
     obj = BlockState.decode_cstruct(blk,data)
-    assert(isinstance(targeted,bool))
+    assert(isinstance(calib_mode,CalibType))
     if blk == enums.BlockType.FANOUT:
-      st = FanoutBlockState(loc,obj)
+      st = FanoutBlockState(loc,obj,calib_mode)
     elif blk == enums.BlockType.INTEG:
-      st = IntegBlockState(loc,obj,targeted)
+      st = IntegBlockState(loc,obj,calib_mode)
     elif blk == enums.BlockType.MULT:
-      st = MultBlockState(loc,obj,targeted)
+      st = MultBlockState(loc,obj,calib_mode)
     elif blk == enums.BlockType.DAC:
-      st = DacBlockState(loc,obj,targeted)
+      st = DacBlockState(loc,obj,calib_mode)
     elif blk == enums.BlockType.ADC:
-      st = AdcBlockState(loc,obj)
+      st = AdcBlockState(loc,obj,calib_mode)
     elif blk == enums.BlockType.LUT:
-      st = LutBlockState(loc,obj)
+      st = LutBlockState(loc,obj,calib_mode)
 
     else:
       raise Exception("unimplemented block : <%s>" \
@@ -352,8 +344,8 @@ class LutBlockState(BlockState):
     def targeted_keys(self):
       return []
 
-  def __init__(self,loc,state):
-    BlockState.__init__(self,enums.BlockType.LUT,loc,state)
+  def __init__(self,loc,state,calib_mode):
+    BlockState.__init__(self,enums.BlockType.LUT,loc,state,calib_mode)
 
   @property
   def key(self):
@@ -382,8 +374,8 @@ class DacBlockState(BlockState):
 
   class Key(BlockState.Key):
 
-    def __init__(self,loc,inv,rng,source,const_val,targeted):
-      BlockState.Key.__init__(self,enums.BlockType.DAC,loc,targeted)
+    def __init__(self,loc,inv,rng,source,const_val,calib_mode):
+      BlockState.Key.__init__(self,enums.BlockType.DAC,loc,calib_mode)
       self.inv = inv
       self.rng = rng
       self.source = source
@@ -394,10 +386,9 @@ class DacBlockState(BlockState):
     def targeted_keys(self):
       return ["const_val"]
 
-  def __init__(self,loc,state,targeted):
+  def __init__(self,loc,state,calib_mode):
     BlockState.__init__(self,enums.BlockType.DAC,loc, \
-                        state,targeted)
-    self.targeted = targeted
+                        state,calib_mode)
 
   @property
   def key(self):
@@ -406,7 +397,7 @@ class DacBlockState(BlockState):
                              self.rng,
                              self.source,
                              self.const_val,
-                             self.targeted)
+                             self.calib_mode)
 
 
 
@@ -478,8 +469,9 @@ class MultBlockState(BlockState):
                  invs,
                  ranges,
                  gain_val=None,
-                 targeted=False):
-      BlockState.Key.__init__(self,enums.BlockType.MULT,loc,targeted)
+                 calib_mode=CalibType.MIN_ERROR):
+      BlockState.Key.__init__(self,enums.BlockType.MULT, \
+                              loc,calib_mode)
       assert(isinstance(vga,chipdata.BoolType))
       self.invs = invs
       self.ranges = ranges
@@ -491,9 +483,9 @@ class MultBlockState(BlockState):
     def targeted_keys(self):
       return ['gain_val']
 
-  def __init__(self,loc,state,targeted):
-    assert(isinstance(targeted,bool))
-    BlockState.__init__(self,enums.BlockType.MULT,loc,state,targeted)
+  def __init__(self,loc,state,calib_mode):
+    assert(isinstance(targeted,CalibType))
+    BlockState.__init__(self,enums.BlockType.MULT,loc,state,calib_mode)
 
   def header(self):
     GH = keys(self.invs,prefix='inv-') + \
@@ -545,7 +537,7 @@ class MultBlockState(BlockState):
                               self.invs,
                               self.ranges,
                               self.gain_val,
-                              self.targeted)
+                              self.calib_mode)
 
 
 
