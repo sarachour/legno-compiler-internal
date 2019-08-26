@@ -33,7 +33,7 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
   cutil::calib_table_t calib_table = cutil::make_calib_table();
   for(int nmos=0; nmos < MAX_NMOS; nmos += 1){
     this->m_codes.nmos = nmos;
-    for(int gain_cal=0; gain_cal < MAX_GAIN_CAL; gain_cal += 1){
+    for(int gain_cal=0; gain_cal < MAX_GAIN_CAL; gain_cal += 16){
       this->m_codes.gain_cal=gain_cal;
       //compute score for combo
       float score = 0;
@@ -44,8 +44,11 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
       case CALIB_MAXIMIZE_DELTA_FIT:
         score = calibrateMaxDeltaFit();
         break;
+      case CALIB_FAST:
+        score = calibrateFast();
+        break;
       default:
-        error("unimplemented adc");
+        error("unimplemented dac");
         break;
       }
       cutil::update_calib_table(calib_table,score,2,nmos,gain_cal);
@@ -53,6 +56,30 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
       print_info(FMTBUF);
     }
   }
+  this->m_codes.nmos = calib_table.state[0];
+  for(int gain_cal=0; gain_cal < MAX_GAIN_CAL; gain_cal += 1){
+    this->m_codes.gain_cal=gain_cal;
+    //compute score for combo
+    float score = 0;
+    switch(obj){
+    case CALIB_MINIMIZE_ERROR:
+      score = calibrateMinError();
+      break;
+    case CALIB_MAXIMIZE_DELTA_FIT:
+      score = calibrateMaxDeltaFit();
+      break;
+    case CALIB_FAST:
+      score = calibrateFast();
+      break;
+    default:
+      error("unimplemented dac");
+      break;
+    }
+    cutil::update_calib_table(calib_table,score,2,
+                              this->m_codes.nmos,
+                              gain_cal);
+  }
+
   int best_nmos = calib_table.state[0];
   int best_gain_cal = calib_table.state[1];
   print_info("======");
@@ -113,4 +140,12 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMinError(){
     score_total += fabs(target-mean);
   }
   return score_total/CALIB_NPTS;
+}
+
+float Fabric::Chip::Tile::Slice::Dac::calibrateFast(){
+  this->setConstant(1.0);
+  float target = Fabric::Chip::Tile::Slice::Dac::computeOutput(this->m_codes);
+  float mean,variance;
+  mean = this->fastMeasureValue(variance);
+  return fabs(mean-target);
 }

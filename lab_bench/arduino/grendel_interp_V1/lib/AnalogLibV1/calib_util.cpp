@@ -55,7 +55,7 @@ namespace cutil {
                              float& mean,
                              float& variance){
     float delta = 0.0;
-    float thresh = 2.0;
+    float thresh = 1.2;
     float step = 0.25;
     float measurement = 0;
     float ref_dac_val;
@@ -93,7 +93,7 @@ namespace cutil {
     float dummy;
     ref_dac_val = ref_dac->fastMeasureValue(dummy);
     /*
-    sprintf(FMTBUF,"MEASUREMENT targ=%f ref=%f delta=%f measurement=%f variance=%f",
+    sprintf(FMTBUF,"MEAS2 targ=%f ref=%f delta=%f measurement=%f variance=%f",
             target,ref_dac_val,delta,measurement,variance);
     print_info(FMTBUF);
     */

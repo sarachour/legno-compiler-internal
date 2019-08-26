@@ -3,8 +3,8 @@
 #include "calib_util.h"
 #include "fu.h"
 
-#define CALIB_NPTS 3
-const float TEST_POINTS[CALIB_NPTS] = {0,-0.9,0.9};
+#define CALIB_NPTS 5
+const float TEST_POINTS[CALIB_NPTS] = {0,-0.9,0.9,0.5,-0.5};
 
 
 
@@ -23,11 +23,8 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMinError(Fabric::C
                                              measure_steady_state,
                                              mean,
                                              dummy);
-    mean = util::meas_chip_out(this);
-    /*
     sprintf(FMTBUF,"  test=%f meas=%f",target,mean);
     print_info(FMTBUF);
-    */
     score_total += fabs(target-mean);
     total += 1;
   }
@@ -362,6 +359,9 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrate(calib_objective_t obj){
   cutil::calib_table_t cl_calib_table[MAX_NMOS];
 
   this->calibrateClosedLoopCircuit(obj,fan,cl_calib_table);
+
+  // calibrating the initial condition
+  //this->setRange(out0Id, RANGE_MED);
   this->calibrateInitCond(obj,val_dac,ol_calib_table,cl_calib_table);
   // gain cal does not control time constant, but it does change it
   //this->calibrateOpenLoopCircuit(obj,val_dac,ol_calib_table,cl_calib_table);

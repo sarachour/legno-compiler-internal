@@ -98,13 +98,13 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
           m_codes.upper = 31+spread*signs[usign];
           m_codes.nmos = 0;
           update(m_codes);
-          if(!testValidity(val_dac)){
-            continue;
-          }
           for(int nmos=0; nmos < MAX_NMOS; nmos += 1){
             m_codes.nmos = nmos;
             update(m_codes);
-            for(int i2v_cal=0; i2v_cal < MAX_GAIN_CAL; i2v_cal += 1){
+            if(!testValidity(val_dac)){
+              continue;
+            }
+            for(int i2v_cal=0; i2v_cal < MAX_GAIN_CAL; i2v_cal += 16){
               m_codes.i2v_cal = i2v_cal;
               update(m_codes);
               float score;
@@ -148,16 +148,58 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
       }
     }
   }
+  // find the actual best i2v_cal code.
+  this->m_codes.lower_fs = calib_table.state[0];
+  this->m_codes.upper_fs = calib_table.state[1];
+  this->m_codes.lower = calib_table.state[2];
+  this->m_codes.upper = calib_table.state[3];
+  this->m_codes.nmos = calib_table.state[4];
+  for(int i2v_cal=0; i2v_cal < MAX_GAIN_CAL; i2v_cal += 1){
+    this->m_codes.i2v_cal = i2v_cal;
+    update(m_codes);
+    float score;
+    switch(obj){
+    case CALIB_MINIMIZE_ERROR:
+      score = calibrateMinError(val_dac);
+      break;
+    case CALIB_MAXIMIZE_DELTA_FIT:
+      score = calibrateMaxDeltaFit(val_dac);
+      break;
+    case CALIB_FAST:
+      score = calibrateFast(val_dac);
+      break;
+    default:
+      error("unimplemented adc");
+      break;
+    }
+    cutil::update_calib_table(calib_table,score,6,
+                              m_codes.lower_fs,
+                              m_codes.upper_fs,
+                              m_codes.lower,
+                              m_codes.upper,
+                              m_codes.nmos,i2v_cal);
+  }
 
   conn0.brkConn();
   val_dac->update(codes_dac);
   this->update(codes_adc);
+
   this->m_codes.lower_fs = calib_table.state[0];
   this->m_codes.upper_fs = calib_table.state[1];
   this->m_codes.lower = calib_table.state[2];
   this->m_codes.upper = calib_table.state[3];
   this->m_codes.nmos = calib_table.state[4];
   this->m_codes.i2v_cal = calib_table.state[5];
+
+  sprintf(FMTBUF,"BEST fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d score=%f",
+          m_codes.lower_fs,
+          m_codes.upper_fs,
+          m_codes.lower,
+          m_codes.upper,
+          m_codes.nmos,
+          m_codes.i2v_cal,
+          calib_table.score);
+  print_info(FMTBUF);
 }
 
 /*

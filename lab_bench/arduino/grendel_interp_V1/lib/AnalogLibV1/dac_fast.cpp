@@ -13,8 +13,9 @@ void fast_calibrate_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac){
     aux_dac->setRange(RANGE_MED);
     aux_dac->setInv(false);
     // basically a heuristic that maximizes dynamic range of dac.
-    aux_dac->m_codes.nmos = 7;
-    aux_dac->m_codes.gain_cal = 63;
+    aux_dac->calibrate(CALIB_FAST);
+    //aux_dac->m_codes.nmos = 7;
+    //aux_dac->m_codes.gain_cal = 63;
     aux_dac->calibrated = true;
     aux_dac->calib_codes = aux_dac->m_codes;
     aux_dac->m_codes = codes;
@@ -271,20 +272,39 @@ futz with the value of the dac until the measured signal
 is within range.
 
 */
+bool update_code(int& code,int step){
+  int next_code = code + step;
+  bool terminate_search = false;
+  if(next_code < 0 || next_code > 255){
+    next_code = min(255,max(0,next_code));
+  }
+  if(next_code + step < 0 || next_code + step > 255){
+    terminate_search = true;
+  }
+  if(code >= 128 && next_code < 128){
+    next_code = 128;
+    terminate_search = true;
+  }
+  if(code <= 128 && next_code > 128){
+    next_code = 128;
+    terminate_search = true;
+  }
+  code = next_code;
+  return terminate_search;
+}
 float tune_dac_value(Fabric::Chip::Tile::Slice::Dac* dac,
                      float init_value,
                      float max_meas,
                      float& meas){
   float step = init_value < 0 ? 3 : -3;
+  bool terminate_search;
   meas = util::meas_fast_chip_out(dac);
   do {
-    int next_code = dac->m_codes.const_code + step;
-    if(next_code < 0 || next_code > 255){
-      break;
-    }
-    dac->setConstantCode(next_code);
+    int code = dac->m_codes.const_code;
+    terminate_search = update_code(code,step);
+    dac->setConstantCode(code);
     meas = util::meas_fast_chip_out(dac);
-  } while(fabs(meas) < max_meas);
+  } while(fabs(meas) < max_meas && !terminate_search);
 
   return Fabric::Chip::Tile::Slice::Dac::computeOutput(dac->m_codes);
 }
@@ -294,10 +314,11 @@ float find_ref_dac_code(Fabric::Chip::Tile::Slice::Dac* dac,
   dac->setConstantCode(code);
   float meas = util::meas_fast_chip_out(dac);
   const int step = 3;
+  bool terminate_search = false;
   while(fabs(meas) > max_meas){
     code += meas < 0 ? step : -step;
     if(code < 0 || code > 255){
-      error("can't set ref dac.");
+      error("find_ref: code out of bounds");
     }
     dac->setConstantCode(code);
     meas = util::meas_fast_chip_out(dac);
@@ -352,19 +373,28 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
   bool update_ref = true;
   float eps[2];
 
-  sprintf(FMTBUF,"target=%f",dval_value);
+  /*
+  sprintf(FMTBUF,"target=%f code=%d",dval_value,
+          this->m_codes.const_code);
   print_info(FMTBUF);
+  */
+  //make an initial guess for the reference dac
+  int distance = fabs(this->m_codes.const_code-128);
+  if(this->m_codes.const_code < 128)
+    ref_dac->m_codes.const_code = min(128 + distance,255);
+  else
+    ref_dac->m_codes.const_code = max(128 - distance,0);
 
   // keep telescoping until we can measure the value
   // telescope one more time if we haven't finished a measurement.
-  while(fabs(dval_value) > max_meas_val){
+  while(fabs(dval_value) > 0.0){
     //telescope the value
     //alternate between updating the reference.
     float meas;
     if(update_ref){
       meas = find_ref_dac_code(ref_dac,
-                                 ref_dac->m_codes.const_code,
-                                 max_ref_dist);
+                               ref_dac->m_codes.const_code,
+                               max_ref_dist);
       eps[0] = meas;
       dref_value = computeOutput(ref_dac->m_codes);
     }
@@ -373,6 +403,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
       eps[1] = meas;
       val_meas +=  eps[0]-eps[1];
     }
+    /*
     sprintf(FMTBUF, "%s val_dac=%f ref_dac=%f eps=%f val_meas=%f",
             update_ref ? "R" : "D",
             dval_value,
@@ -380,20 +411,12 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
             meas,
             val_meas);
     print_info(FMTBUF);
+    */
     update_ref = !update_ref;
   }
   if(!update_ref){
     error("expected update ref");
   }
-  ref_dac_to_tile.brkConn();
-
-  float mean;
-  util::meas_dist_chip_out(this,mean,variance);
-  val_meas += mean;
-  sprintf(FMTBUF, "B mean=%f meas=%f",
-          mean,
-          val_meas);
-  print_info(FMTBUF);
   ref_dac_to_tile.brkConn();
   this_dac_to_tile.brkConn();
   tile_to_chip.brkConn();

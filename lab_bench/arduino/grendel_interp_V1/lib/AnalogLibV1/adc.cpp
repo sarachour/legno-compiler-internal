@@ -5,8 +5,8 @@
 
 float Fabric::Chip::Tile::Slice::ChipAdc::computeOutput (adc_code_t& config,
                                                          float input){
-  float range = config.range;
-  float dec = input/range;
+  float rng = util::range_to_coeff(config.range);
+  float dec = input/rng;
   return (dec*128 + 128.0);
 }
 

@@ -58,6 +58,7 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
     //fast calibration utility
     float calibrateMinError();
     float calibrateMaxDeltaFit();
+    float calibrateFast();
     //fast set source/measure utilities
     float fastMakeHighValue(float value, float max_error);
     float fastMakeMedValue(float value, float max_error);
