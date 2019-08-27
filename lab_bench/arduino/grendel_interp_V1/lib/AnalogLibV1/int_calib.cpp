@@ -4,7 +4,7 @@
 #include "fu.h"
 
 #define CALIB_NPTS 5
-const float TEST_POINTS[CALIB_NPTS] = {0,-0.9,0.9,0.5,-0.5};
+const float TEST_POINTS[CALIB_NPTS] = {-0.9,0.9,0.5,-0.5,0.0};
 
 
 
@@ -24,14 +24,14 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMinError(Fabric::C
                                              mean,
                                              dummy);
     if(succ){
-      sprintf(FMTBUF,"  test=%f meas=%f",target,mean);
-      print_info(FMTBUF);
       score_total += fabs(target-mean);
       total += 1;
     }
   }
   return score_total/total;
 }
+
+
 float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * ref_dac){
   error("unimplemented: integ max_delta_fit");
   float gains[CALIB_NPTS];
@@ -40,6 +40,7 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * 
   for(int i=0; i < CALIB_NPTS; i += 1){
     float ic_val = TEST_POINTS[i];
     this->setInitial(ic_val);
+    this->update(this->m_codes);
     float target = Fabric::Chip::Tile::Slice::Integrator::computeInitCond(this->m_codes);
     bool measure_steady_state = false;
     float mean,dummy;
@@ -68,7 +69,8 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t 
                                                               cutil::calib_table_t (&calib_table)[MAX_NMOS],
                                                               cutil::calib_table_t (&closed_loop_calib_table) [MAX_NMOS]){
 
-  dac_code_t backup_codes = ref_dac->m_codes;
+  dac_code_t backup_codes_dac = ref_dac->m_codes;
+  integ_code_t backup_codes_integ = this->m_codes;
 
   ref_dac->setRange(this->m_codes.range[out0Id]);
   fast_calibrate_dac(ref_dac);
@@ -78,8 +80,13 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t 
   //conn2
 	Connection integ_to_tile= Connection ( out0,
                                          parentSlice->tileOuts[3].in0 );
+  Connection tileout_to_chipout = Connection (parentSlice->tileOuts[3].out0,
+                                              parentSlice->parentTile->parentChip
+                                              ->tiles[3].slices[2].chipOutput->in0);
+  // set configuration
   integ_to_tile.setConn();
   ref_to_tile.setConn();
+  tileout_to_chipout.setConn();
 
   print_info("calibrate init cond");
   for(int nmos=0; nmos < MAX_NMOS; nmos += 1){
@@ -94,12 +101,9 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t 
       float score = 0.0;
       switch(obj){
       case CALIB_MINIMIZE_ERROR:
-        // try to minimize the error between the expected and observed
-        // time constant
         score = calibrateInitCondMinError(ref_dac);
         break;
       case CALIB_MAXIMIZE_DELTA_FIT:
-        // try and choose time constants that produce good fits.
         score = calibrateInitCondMaxDeltaFit(ref_dac);
         break;
       default:
@@ -112,7 +116,9 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t 
   }
   integ_to_tile.brkConn();
   ref_to_tile.brkConn();
-
+  tileout_to_chipout.brkConn();
+  ref_dac->update(backup_codes_dac);
+  this->update(backup_codes_integ);
 }
 /*
 this function performs linear regressions on the two datasets to estimate
@@ -196,8 +202,11 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateOpenLoopCircuit(calib_objec
   // set the relevant connections
   Connection conn_out_to_tile = Connection (this->out0,parentSlice->tileOuts[3].in0);
   Connection conn_dac_to_in = Connection (val_dac->out0, this->in0);
-
+  Connection tileout_to_chipout = Connection (parentSlice->tileOuts[3].out0,
+                                              parentSlice->parentTile->parentChip
+                                              ->tiles[3].slices[2].chipOutput->in0);
   conn_out_to_tile.setConn();
+  tileout_to_chipout.setConn();
 
   const int n_samples = 25;
   float nom_times[25],k_times[25];
@@ -239,6 +248,7 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateOpenLoopCircuit(calib_objec
   }
 
   conn_out_to_tile.brkConn();
+  tileout_to_chipout.brkConn();
   val_dac->update(backup_codes);
   return;
 }
@@ -265,7 +275,8 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateClosedLoopCircuit(calib_obj
                                                                        cutil::calib_table_t (&calib_table)[MAX_NMOS]){
 
   // configure fanout and record biases for each port
-  fanout_code_t backup_codes = fan->m_codes;
+  fanout_code_t backup_codes_fan = fan->m_codes;
+  integ_code_t backup_codes_integ = this->m_codes;
   float out0bias, out1bias, out2bias;
   fan->setRange(RANGE_MED);
   fan->setInv(out0Id,true);
@@ -284,11 +295,15 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateClosedLoopCircuit(calib_obj
   Connection conn_fan0_to_in = Connection (fan->out0, this->in0);
   Connection conn_fan1_to_tileout = Connection (fan->out1,
                                                 parentSlice->tileOuts[3].in0);
-
+  Connection tileout_to_chipout = Connection (parentSlice->tileOuts[3].out0,
+                                              parentSlice->parentTile->parentChip
+                                              ->tiles[3].slices[2].chipOutput->in0);
+  // set configuration
 
   conn_out_to_fan.setConn();
   conn_fan0_to_in.setConn();
   conn_fan1_to_tileout.setConn();
+  tileout_to_chipout.setConn();
 
   /*
     algorithm:
@@ -346,16 +361,19 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateClosedLoopCircuit(calib_obj
             calib_table[nmos].score);
     print_info(FMTBUF);
   }
+  tileout_to_chipout.brkConn();
   conn_out_to_fan.brkConn();
   conn_fan0_to_in.brkConn();
   conn_fan1_to_tileout.brkConn();
-  fan->update(backup_codes);
+  fan->update(backup_codes_fan);
+  this->update(backup_codes_integ);
 }
 
 
 void Fabric::Chip::Tile::Slice::Integrator::calibrate(calib_objective_t obj){
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
-  Dac * val_dac = parentSlice->dac;
+  // for some reason, we have to use a dac on the next slice.
+  Dac * val_dac = parentSlice->parentTile->slices[next_slice].dac;
   Fabric::Chip::Tile::Slice::Fanout * fan = &this->parentSlice->fans[0];
 
   fanout_code_t codes_fanout = fan->m_codes;
@@ -373,11 +391,7 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrate(calib_objective_t obj){
                               ->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
 
-  Connection tileout_to_chipout = Connection (parentSlice->tileOuts[3].out0,
-                                              parentSlice->parentTile->parentChip
-                                              ->tiles[3].slices[2].chipOutput->in0);
-  // set configuration
-  tileout_to_chipout.setConn();
+  fast_calibrate_dac(val_dac);
 
   cutil::calib_table_t ol_calib_table[MAX_NMOS];
   cutil::calib_table_t cl_calib_table[MAX_NMOS];
@@ -404,7 +418,6 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrate(calib_objective_t obj){
 
   val_dac->update(codes_val_dac);
   fan->update(codes_fanout);
-	tileout_to_chipout.brkConn();
   cutil::restore_conns(calib);
 
   this->m_codes = codes_integ;

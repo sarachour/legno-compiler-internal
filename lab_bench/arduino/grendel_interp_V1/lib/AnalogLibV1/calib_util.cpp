@@ -65,9 +65,8 @@ namespace cutil {
 
     // configure reference dac to maximize gain
     ref_dac->setRange(fabs(target) > 1.0 ? RANGE_HIGH : RANGE_MED);
-    fast_calibrate_dac(ref_dac);
 
-    // choose the best input
+    fast_calibrate_dac(ref_dac);
     targ_dac_val = Fabric::Chip::Tile::Slice::Dac::computeInput(ref_dac->m_codes,
                                                                 -target);
     ref_dac->setConstant(targ_dac_val);
@@ -101,50 +100,9 @@ namespace cutil {
     ref_dac->update(codes_dac);
     return fabs(measurement) <= thresh;
   }
-  /*
-    this is different from making a true reference dac. This does
-    a lazy calibration of the dac (to ~0.9), then 
-   *
-   /*
-  float fast_make_dac(Fabric::Chip::Tile::Slice::Dac * ref_dac,
-                               float target){
-    error("deprecated");
-    if(!ref_dac->m_codes.enable)
-      ref_dac->setEnable(true);
 
-    if(ref_dac->m_codes.source != DSRC_MEM)
-      ref_dac->setSource(DSRC_MEM);
 
-    if(ref_dac->m_codes.inv)
-      ref_dac->setInv(false);
 
-    float val = ref_dac->fastMakeValue(target);
-    return val;
-  }
-  dac_code_t make_ref_dac(calibrate_t& calib,
-                        Fabric::Chip::Tile::Slice::Dac * dac,
-                          float value,
-                          float& ref){
-
-    error("make_ref_dac: deprecated");
-    return dac->m_codes;
-  }
-
-  dac_code_t make_val_dac(calibrate_t& calib,
-                          Fabric::Chip::Tile::Slice::Dac * dac,
-                          float value){
-    error("make_ref_dac: deprecated");
-    return dac->m_codes;
-  }
-  dac_code_t make_zero_dac(calibrate_t& calib,
-                           Fabric::Chip::Tile::Slice::Dac * dac){
-    return make_val_dac(calib,dac,0.0);
-  }
-  dac_code_t make_one_dac(calibrate_t& calib,
-                          Fabric::Chip::Tile::Slice::Dac * dac){
-    return make_val_dac(calib,dac,1.0);
-  }
-  */
   void buffer_conn(calibrate_t& calib, Fabric::Chip::Connection& conn){
     if(calib.nconns < MAX_CONNS){
       int i = calib.nconns;
