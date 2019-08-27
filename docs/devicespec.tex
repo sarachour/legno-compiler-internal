@@ -1,0 +1,30 @@
+\chapter{Analog Block Specification}
+
+\section{Digitally Settable Code Types}
+
+\begin{marginfigure}
+  \begin{tabular}{c|cc}
+    \tx{bool_t} & \tx{true}\\
+                & \tx{false}\\
+    \tx{range_t} & \tx{RANGE_MED}\\
+                & \tx{RANGE_HIGH}\\
+                & \tx{RANGE_LOW}\\
+  \end{tabular}
+\end{marginfigure}
+\section{Digital to Analog Converter (DAC)}
+
+\begin{marginfigure}
+  \begin{tabular}{c|cc}
+    code &values& kind \\
+    \hline
+    \tx{enable} &\tx{bool_t}& \static\\
+    \tx{inv}    &\tx{bool_t}& \static\\
+    \tx{range}  &\tx{range_t}&\static\\
+    \tx{source} &\tx{dac_src_t}& \static\\
+    \tx{const_code} &256& \dynamic\\
+    \tx{pmos}\caveat&8&\hidden\\
+    \tx{nmos}&8&\hidden\\
+    \tx{gain_cal}&64&\hidden\\
+  \end{tabular}
+  \caption{DAC Parameters\cite{fu.h}}
+\end{marginfigure}
