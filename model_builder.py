@@ -16,6 +16,7 @@ import compiler.infer_pass.infer_fanout as infer_fanout
 import compiler.infer_pass.infer_integ as infer_integ
 import compiler.infer_pass.infer_mult as infer_mult
 import compiler.infer_pass.infer_visualize as infer_visualize
+import compiler.infer_pass.infer_util as infer_util
 
 from lab_bench.lib.chipcmd.data import CalibType
 
@@ -86,7 +87,7 @@ def infer(args,dump_db=True):
   if args.visualize:
     infer_visualize.DO_PLOTS = True
 
-  infer_visualize.CALIB_MODE = CalibType(args.calib_mode)
+  infer_util.CALIB_MODE = CalibType(args.calib_mode)
 
   db = ModelDB(CalibType(args.calib_mode))
 
@@ -122,6 +123,7 @@ def infer(args,dump_db=True):
 def analyze(args):
   circ = ConcCirc.read(None,args.circ_file)
   db = ModelDB(CalibType(args.calib_mode))
+  infer_visualize.CALIB_MODE = CalibType(args.calib_mode)
   blacklist = ['tile_in','tile_out', \
                'chip_in','chip_out', \
                'ext_chip_in','ext_chip_out']

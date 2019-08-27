@@ -582,7 +582,7 @@ class UseIntegCmd(UseCommand):
     def update_state(self,state):
         state.update_init_cond(self._init_cond)
 
-    def to_key(self,targeted=False):
+    def to_key(self,calib_mode):
         loc = CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
@@ -607,7 +607,7 @@ class UseIntegCmd(UseCommand):
                                          invs=invs,
                                          ranges=rngs,
                                          ic_val=self._init_cond,
-                                         targeted=targeted)
+                                         calib_mode=calib_mode)
 
 
     def __repr__(self):

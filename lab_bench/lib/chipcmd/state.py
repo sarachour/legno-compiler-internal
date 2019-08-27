@@ -579,8 +579,8 @@ class IntegBlockState(BlockState):
                  invs,
                  ranges,
                  ic_val=None,
-                 targeted=False):
-      BlockState.Key.__init__(self,enums.BlockType.INTEG,loc,targeted)
+                 calib_mode=CalibType.MIN_ERROR):
+      BlockState.Key.__init__(self,enums.BlockType.INTEG,loc,calib_mode)
       self.exception = exception
       self.invs = invs
       self.cal_enables = cal_enables
@@ -591,8 +591,8 @@ class IntegBlockState(BlockState):
     def targeted_keys(self):
       return ['ic_val']
 
-  def __init__(self,loc,state,targeted):
-    BlockState.__init__(self,enums.BlockType.INTEG,loc,state,targeted)
+  def __init__(self,loc,state,calib_mode):
+    BlockState.__init__(self,enums.BlockType.INTEG,loc,state,calib_mode)
 
   def header(self):
     gh = keys(self.invs,prefix='inv-') + \
@@ -622,7 +622,7 @@ class IntegBlockState(BlockState):
                                self.invs,
                                self.ranges, \
                                self.ic_val,
-                               self.targeted)
+                               self.calib_mode)
 
 
   def to_cstruct(self):

@@ -33,7 +33,6 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMinError(Fabric::C
 
 
 float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * ref_dac){
-  error("unimplemented: integ max_delta_fit");
   float gains[CALIB_NPTS];
   float bias = 0;
   int m = 0;
@@ -60,8 +59,11 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * 
   }
   float avg_gain, gain_variance;
   util::distribution(gains,m,avg_gain,gain_variance);
-  sprintf(FMTBUF," gain=N(%f,%f) bias=%f", avg_gain,gain_variance,bias);
-  return gain_variance;
+  float score = max(sqrt(gain_variance),fabs(bias));
+  sprintf(FMTBUF," gain=N(%f,%f) bias=%f score=%f", avg_gain,gain_variance,
+          bias,score);
+  print_info(FMTBUF);
+  return score;
 }
 
 void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t obj,

@@ -108,7 +108,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(open_loo
   val_dac->setEnable(true);
   val_dac->setRange(RANGE_MED);
   val_dac->setInv(false);
-  val_dac->setConstantCode(129);
+  val_dac->setConstantCode(135);
   val_dac->update(val_dac->m_codes);
   float input = val_dac->fastMeasureValue(dummy);
   sprintf(FMTBUF,"open-loop input=%f",input);

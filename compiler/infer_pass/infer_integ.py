@@ -1,6 +1,7 @@
 import compiler.infer_pass.infer_util as infer_util
 import compiler.infer_pass.infer_visualize as infer_vis
 import compiler.infer_pass.infer_fit as infer_fit
+import numpy as np
 
 from chip.model import PortModel
 
@@ -50,15 +51,20 @@ def infer(obj):
   cl_bias,cl_var,_,_,cl_zero = infer_util \
                      .get_data_by_mode(obj['dataset'],1)
 
-  tc_error,tc_R2,_,_,tc = infer_util \
+  tc_errors,tc_R2,_,_,tcs_vals = infer_util \
                      .get_data_by_mode(obj['dataset'],2)
 
   ol_bias,ol_R2,_,_,ol_zero = infer_util \
                      .get_data_by_mode(obj['dataset'],3)
 
-  out_z.gain = (tc+tc_error)/tc;
+  tcs = []
+  for tc_err,tc_val in zip(tc_errors,tcs_vals):
+    tcs.append((tc_err+tc_val)/tc_val)
+
+  mu,sigma = np.median(tcs),np.std(tcs)
+  out_z.gain = mu;
   out_z.bias = ol_bias;
-  print("tau=%f confidence=%f" % (out_z.gain, tc_R2))
+  print("tau=%f sigma=%f" % (out_z.gain, sigma))
 
   if infer_util.about_one(out_z.gain):
     out_z.gain = 1.0
