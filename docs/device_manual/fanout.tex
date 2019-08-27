@@ -3,12 +3,13 @@
 The current copier block is an analog block available on the \hcdc
 device~\cite{fan.h}. Figures~\ref{fan:values} and \ref{fan:types} presents a
 complete summary of the digitally settable codes for the block. The current
-copier accepts one analog input and produces three analog outputs, where the
-analog outputs are copies of the provided signal.
+copier accepts one analog input (\tx{in}) and produces three analog outputs (\tx{out0},
+\tx{out1} and \tx{out2}), where the analog outputs are copies of the provided signal.
 
 \noindent\textbf{Location}: Each slice of the \hcdc device contains two current
 copier blocks. Given a slice at \hslice{chip}{tile}{slice}, the two current
-copiers on the slice are written as \hindex{chip}{tile}{slice}{0} and \hindex{chip}{tile}{slice}{1}.
+copiers on the slice are written as \hindex{chip}{tile}{slice}{0}
+and \hindex{chip}{tile}{slice}{1}.
 
 \begin{marginfigure}
   \small
@@ -16,6 +17,7 @@ copiers on the slice are written as \hindex{chip}{tile}{slice}{0} and \hindex{ch
     code &values\\
     \hline
     \tx{enable}& \tx{bool_t}\\ 
+    \tx{third}& \tx{bool_t}\\ 
     \tx{range}& \tx{range_t}\\
     \tx{inv[out0Id]}& \tx{bool_t}\\
     \tx{inv[out1Id]}& \tx{bool_t}\\
@@ -59,14 +61,15 @@ A$. Any behavior not covered by this algorithm is undefined.
 
 \begin{algorithmic}
   \If{\tx{enable}}
-  \State{sign(\tx{inv}[\tx{out}$i$]) $in$} 
+  \State{sign(\tx{inv}[\tx{out}$i$]) \tx{in}} 
   \EndIf
 \end{algorithmic}
 
 The \tx{inv} code for the output $i$ determines the whether the copied signal
 should be inverted or not. Note that all \static codes, with the exception of
-the \tx{range} code, are used in the block function. The \tx{range} code is
-used to configure the current limitations of the block.
+the \tx{range} and \tx{third} codes, are used in the block function. The \tx{range} code is
+used to configure the current limitations of the block, and the \tx{third} code
+determines if the third output (\tx{out2}) of the current copier is in use.
 
 \subsection{Operating Ranges}
 
@@ -78,6 +81,21 @@ analog input must fall within $[-20 \mu A, 20 \mu A]$
 
 \section{Calibration}\label{fanout:calib}
 
+The fanout block has five hidden codes:
+
+\begin{itemize}
+\item\tx{port_cal[out0]}, \tx{port_cal[out1]}, \tx{port_cal[out2]}: These bias
+  correction codes control the currents injected into
+  the \tx{out0}, \tx{out1} and \tx{out2} outputs of the current copier. These
+  injected currents are used to correct for any unwanted biases in the block. A
+  \tx{port_cal} value of 32 approximately corresponds to an injected current of zero.
+\item\tx{pmos} and \tx{nmos}: These current reference codes affect the magnitude of the
+  bias correction codes. They correspond to iref currents in the schematic of
+  the block. 
+\end{itemize}
+
+The \tx{pmos} code is always set to $XXX$. The remaining codes are set by the block's
+calibration routine. The calibration routine implements the following algorithm:
 
 \begin{algorithmic}
   \State {tbl = \tx{make_table()}}
@@ -95,15 +113,95 @@ analog input must fall within $[-20 \mu A, 20 \mu A]$
     \State {tbl2 = \tx{make_table()}}
     \For{\tx{cal2} in 0...64}
       \State {loss = obj(tbl0.cal0,tbl1.cal1,cal2)}
-      \State {tbl2 $\leftarrow$ loss,\tx{cal2}}
+      \State {tbl2 $\leftarrow$ loss,cal2}
     \EndFor
-    \State{loss = max(tbl2.loss,tbl1.loss,tbl0.loss)}
+    \State{loss = max(tbl0.loss,tbl1.loss,tbl2.loss)}
     \State {tbl $\leftarrow$ loss,(nmos,tbl0.cal0,tbl1.cal1,tbl2.cal2)}
     \EndFor
     \State{return tbl.nmos,tbl.cal0,tbl.cal1,tbl.cal2}
 \end{algorithmic}
 
+At a high level, the calibration algorithm independently finds the best
+\tx{port_cal[out0Id]}, \tx{port_cal[out1Id]} and \tx{port_cal[out2Id]} bias
+correction codes for each \tx{nmos} value. The algorithm creates three temporary
+calibration tables (\tx{tbl0}, \tx{tbl1} and \tx{tbl2}) for tracking each
+\tx{port_cal} value.
+
+\noindent\textbf{Find Best \tx{port_cal[out0Id]}} (Lines XXX-XXX): Each
+\tx{port_cal[out0Id]} code value (\tx{cal0}) is evaluated by invoking the
+objective function on the \tx{cal0} code, with the other \tx{port_cal} codes set
+to 32. The objective function returns a loss, which is used to select the best
+\tx{cal0} code. At the end of this step, \tx{tbl0} contains the loss and value of the best
+\tx{cal0} code.  
+
+\noindent\textbf{Find Best \tx{port_cal[out1Id]}} (Lines XXX-XXX): Each
+\tx{port_cal[out1Id]} code value (\tx{cal1}) is evaluated by invoking the
+objective function on the \tx{cal1} code, with the \tx{port_cal[out0Id]} code
+set to the best code in \tx{tbl0} and \tx{port_cal[out2Id]} code set to 32. At
+the end of this step, \tx{tbl1} contains the loss and value of the best
+\tx{cal1} code.
+
+\noindent\textbf{Find Best\tx{port_cal[out2Id]}} (Lines XXX-XXX): Each
+\tx{port_cal[out2Id]} code value (\tx{cal2}) is evaluated by invoking the
+objective function on the \tx{cal2} code, where \tx{port_cal[out0Id]} and
+\tx{port_cal[out1Id]} are set to the best codes in \tx{tbl0} and \tx{tbl1}. At
+the end of this step, \tx{tbl2} contains the loss and value of the best
+\tx{cal2} code.
+
+After all three of the temporary tables have been populated, the calibration
+routine consolidates the results from the three calibration steps and updates
+the master table \tx{tbl}. The consolidated loss is the worst computed loss of
+the three steps. The consolidated set of codes consists of the current \tx{nmos}
+code and the \tx{port_cal} codes from the \tx{tbl0-2}. 
+
 \section{Profiling}\label{fanout:calib}
 
 
 \section{Grendel API Hook}
+
+\grendel supports configuring fanout blocks using the \tx{use_fanout} command.
+We present the general formulation of the \tx{use_fanout} command below:
+
+\lstset{ 
+  morekeywords={use_fanout,src,sgn,val,rng,three,two},
+  basicstyle=\small
+}
+\begin{lstlisting}
+use_fanout chip tile slice index sgn sign0 sign1 sign2 rng range three|two
+\end{lstlisting}
+
+The \tx{use_fanout} command accepts a fanout location in the form of a chip,
+tile, slice and index and several additional arguments
+(\tx{sign0}, \tx{sign1}, \tx{sign2}, \tx{range}, \tx{three}, and \tx{two}) that set
+the \static and \dynamic codes of the block:
+\begin{itemize}
+\item \tx{sign0},\tx{sign1} and \tx{sign2} arguments: The sign arguments set the
+  \tx{inv} static codes for the first, second and third outputs respectively.
+  These arguments accept \tx{+} and \tx{-} as values. If the sign argument is
+  \tx{-}, the corresponding \tx{inv} code is set to true.
+  \item\tx{range} argument: The range argument sets the \tx{range} static code
+    of the block. This argument accepts \tx{m} and \tx{h} as values, where
+    \tx{m} corresponds to \tx{RANGE_MED} and \tx{h} corresponds to
+    \tx{RANGE_HIGH}.
+    \item\tx{three} or \tx{two} argument: This argument determines if the third
+      output (\tx{out2}) is enabled. If this argument is set to \tx{three}, the
+      third output is enabled.
+  \end{itemize}
+
+\subsection{Example Usage}
+
+The following invocation configures the fanout on chip 0, tile 0, slice 0, index
+0 to copy the input signal, where the input signal is within $[-2 \mu A, 2 \mu
+A]$. The first and second outputs are negated, and the third output is enabled.
+
+\begin{lstlisting}
+use_fanout 0 0 0 0 sgn - - + rng m three
+\end{lstlisting}
+
+The following invocation configures the fanout on chip 1, tile 0, slice 2, index
+1 to copy the input signal, where the input signal is within $[-20 \mu A, 20 \mu
+A]$. The second output is negated, and the third output is disabled.
+
+\begin{lstlisting}
+use_fanout 1 0 2 1 sgn + - + rng h two 
+\end{lstlisting}

@@ -11,6 +11,28 @@ DAC. The DAC may read values from the lookup tables resident on slice 0
 (\tx{source} is \tx{DSRC_LUT0}) or slice 2 (\tx{source} is \tx{DSRC_LUT1})
 of the same tile.
 
+\noindent\textbf{\static and \dynamic Codes}: We describe the digitally settable
+codes resident on the block below:
+
+\begin{itemize}
+\item\tx{enable}: Determines whether the block is enabled (true) or disabled
+  (false).
+\item\tx{range}: Configures the current range of the analog current emitted by
+  the DAC. If the code is set to \tx{RANGE_MED}, the output is mapped to a
+  current in $[-2 \mu A, 2 \mu A]$. If the code is set to \tx{RANGE_HIGH}, the
+  output is mapped to a current in $-20 \mu A, 20 \mu A$. This code cannot be
+  set to \tx{RANGE_LOW}.
+  \item\tx{inv}: Determines whether the output of the DAC is inverted or not.
+    This is useful if multiple DACs are reading from the same lookup table, as
+    some DACs can by configured to negate the value of the lookup table.
+  \item\tx{source}: Determines where the DAC reads the digital value from. If
+    the code is set to \tx{DSRC_MEM}, the digital code stored in \tx{const_code}
+    is converted to an analog signal. If the code is set to \tx{DSRC_LUT0} or
+    \tx{DSRC_LUT1}, the digital code emitted by the lookup table on slices 0 and
+    2 respectively is converted to an analog signal. If the DAC is configured to
+    read from the lookup table, it is placed in free-running mode. This allows
+    the DAC to handle dynamic digital values.  
+\end{itemize}
 
 \begin{marginfigure}
     \small
@@ -71,8 +93,7 @@ below is undefined:
 \end{algorithmic}
 
 The \tx{inv} code determines whether the output signal should be inverted or
-not. The \tx{range} code scales the output signal by 1x or 10x. The \tx{range}
-code may only be set to \tx{RANGE_MED} or \tx{RANGE_HIGH} for the DAC. Note
+not. The \tx{range} code scales the output signal by 1x or 10x. Note
 that all \static and \dynamic codes are used in the block function.
 
 \subsection{\analoglib Implementation}
@@ -81,8 +102,13 @@ block function presented above, given a set of \dynamic and \static codes. The
 returned value of this function is normalized (divided by $2 \mu A$).
 
 \section{Calibration}
-The DAC block has three hidden codes. The
-\tx{pmos} code is always set to $0$. The remaining codes are set in the block's
+The DAC block has three hidden codes:
+\begin{itemize}
+\item\tx{gain_cal}: This code controls the gain of the DAC.
+\item\tx{pmos} and \tx{nmos}: These codes control the magnitude of the
+  \tx{gain_cal} code.
+\end{itemize}
+The \tx{pmos} code is always set to $0$. The remaining codes are set by the block's
 calibration routine. The DAC is calibrated using the following
 algorithm~\cite{dac_calib.cpp}:
 
@@ -96,7 +122,7 @@ algorithm~\cite{dac_calib.cpp}:
   \EndFor
 
   \For{\tx{gain_cal} in $0...63$}
-    \State {loss = obj(\tx{table.state.nmos},\tx{gain_cal})}
+    \State {loss = obj(\tx{table.nmos},\tx{gain_cal})}
     \State {\tx{table} $\leftarrow$ loss,(\tx{nmos},\tx{gain_cal})}
   \EndFor
   \State{return \tx{table.nmos},\tx{table.gain_cal}}
@@ -141,9 +167,9 @@ present the general formulation of the \tx{use_dac} command below:
 use_dac chip tile slice src dsrc sgn sign val value rng range
 \end{lstlisting}
 
-The \tx{use_dac} accepts a DAC location in the form of a chip, tile and slice
-index. The command also accepts several arguments (\tx{src}, \tx{sgn},
-\tx{val} and \tx{rng}) which set the \static and \dynamic codes in the block:
+The \tx{use_dac} command accepts a DAC location in the form of a chip, tile and slice
+index and several additional arguments (\tx{dsrc}, \tx{sign},
+\tx{value} and \tx{range}) which are used set the \static and \dynamic codes in the block:
 \begin{itemize}
 \item\tx{dsrc} argument: This argument sets the \tx{source} \static code for
   the block, and accepts \tx{mem}, \tx{lut0} and \tx{lut1} as input values.
