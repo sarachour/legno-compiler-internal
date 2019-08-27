@@ -35,6 +35,7 @@ namespace util {
 
   // utilities for constructing compute functions
   float range_to_coeff(range_t range);
+  range_t range_to_dac_range(range_t range);
   float sign_to_coeff(bool inv);
 
   // utilities for summarizing sequences o values

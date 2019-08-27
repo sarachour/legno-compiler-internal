@@ -22,6 +22,18 @@ namespace util {
   float sign_to_coeff(bool inv){
     return inv ? -1.0 : 1.0;
   }
+  range_t range_to_dac_range(range_t rng){
+    switch(rng){
+    case RANGE_LOW:
+      return RANGE_MED;
+    case RANGE_MED:
+      return RANGE_MED;
+    case RANGE_HIGH:
+      return RANGE_HIGH;
+    }
+    error("unknown range");
+    return RANGE_UNKNOWN;
+  }
   float range_to_coeff(range_t rng){
     switch(rng){
     case RANGE_LOW:

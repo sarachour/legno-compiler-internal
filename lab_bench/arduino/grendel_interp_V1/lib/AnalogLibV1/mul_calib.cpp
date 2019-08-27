@@ -119,9 +119,9 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   Fabric::Chip::Connection ref_to_tileout =
     Fabric::Chip::Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0);
 
-  val0_dac->setRange(this->m_codes.range[in0Id]);
-  val1_dac->setRange(this->m_codes.range[in1Id]);
-  ref_dac->setRange(this->m_codes.range[out0Id]);
+  val0_dac->setRange(util::range_to_dac_range(this->m_codes.range[in0Id]));
+  val1_dac->setRange(util::range_to_dac_range(this->m_codes.range[in1Id]));
+  ref_dac->setRange(util::range_to_dac_range(this->m_codes.range[out0Id]));
   fast_calibrate_dac(val0_dac);
   fast_calibrate_dac(val1_dac);
 

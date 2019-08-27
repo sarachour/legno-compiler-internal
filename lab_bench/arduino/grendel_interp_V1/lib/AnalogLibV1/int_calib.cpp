@@ -74,7 +74,7 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t 
   dac_code_t backup_codes_dac = ref_dac->m_codes;
   integ_code_t backup_codes_integ = this->m_codes;
 
-  ref_dac->setRange(this->m_codes.range[out0Id]);
+  ref_dac->setRange(util::range_to_dac_range(this->m_codes.range[out0Id]));
   fast_calibrate_dac(ref_dac);
   // set the relevant connections
   Connection ref_to_tile = Connection ( ref_dac->out0,
