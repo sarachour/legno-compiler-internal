@@ -91,15 +91,15 @@ algorithm~\cite{dac_calib.cpp}:
   \For{\tx{nmos} in $0...7$ }
   \For{\tx{gain_cal} in $0...63$ with stride 16 }
     \State {loss = obj(\tx{nmos},\tx{gain_cal})}
-    \State {update \tx{table} loss (\tx{nmos},\tx{gain_cal})}
+    \State {\tx{table} $\leftarrow$ loss,(\tx{nmos},\tx{gain_cal})}
     \EndFor
   \EndFor
 
   \For{\tx{gain_cal} in $0...63$}
     \State {loss = obj(\tx{table.state.nmos},\tx{gain_cal})}
-    \State {update \tx{table} loss (\tx{nmos},\tx{gain_cal})}
+    \State {\tx{table} $\leftarrow$ loss,(\tx{nmos},\tx{gain_cal})}
   \EndFor
-  \State{return \tx{table.state.nmos},\tx{table.state.gain_cal}}
+  \State{return \tx{table.nmos},\tx{table.gain_cal}}
 \end{algorithmic}
 
 At a high level, the calibration algorithm iterates over \tx{nmos} and
@@ -121,7 +121,74 @@ specified in Section~\ref{dac:blockfun}. The DAC block supports three objective 
   \item\tx{CALIB_FAST}: This objective function minimizes the error for test
     point $1.0$. This quickly calibrates the gain to have good gain characteristics.
   \end{itemize}
+
+\noindent\textit{Assumptions}: XXX
   
 \section{Profiling}
 
 XXX profiling algorithm here XXX
+
+\section{Grendel API Hook}
+
+\grendel supports configuring DAC blocks using the \tx{use_dac} command. We
+present the general formulation of the \tx{use_dac} command below:
+
+\lstset{ 
+  morekeywords={use_dac,src,sgn,val,rng},
+  basicstyle=\small
+}
+\begin{lstlisting}
+use_dac chip tile slice src dsrc sgn sign val value rng range
+\end{lstlisting}
+
+The \tx{use_dac} accepts a DAC location in the form of a chip, tile and slice
+index. The command also accepts several arguments (\tx{src}, \tx{sgn},
+\tx{val} and \tx{rng}) which set the \static and \dynamic codes in the block:
+\begin{itemize}
+\item\tx{dsrc} argument: This argument sets the \tx{source} \static code for
+  the block, and accepts \tx{mem}, \tx{lut0} and \tx{lut1} as input values.
+  These input values correspond to \tx{DSRC_MEM}, \tx{DSRC_LUT0} and \tx{DSRC_LUT1} respectively.
+
+\item\tx{sign} argument:This argument sets the \tx{inv} \static code for the
+  block, and accepts \tx{+} or \tx{-} as values, where the \tx{-} value sets the
+  \tx{inv} code to true.
+
+\item\tx{val} argument: This argument indirectly sets the \tx{const_code}
+  \dynamic code of the block, and accepts a floating point value between -1 and
+  1. The \tx{val} argument is converted to a digital code using the following function:
+\[
+  min(value \cdot 128 + 128,255)
+\]
+\item\tx{rng}: This argument sets the \tx{range} \static code in the block,
+and accepts \tx{m} and \tx{h} as input values. The \tx{m} input value
+corresponds to \tx{RANGE_MED} and the \tx{h} input value corresponds to
+\tx{RANGE_HIGH}.
+
+\end{itemize}
+
+\subsection{Example Usage}
+
+The following invocation configures the DAC on chip 1, tile 3, slice 0 to emit
+an analog signal of $10 \mu A$:
+
+\begin{lstlisting}
+use_dac 1 3 0 src mem sgn + val 0.5 rng h
+\end{lstlisting}
+
+
+The following invocation configures the DAC on chip 0, tile 0, slice 0 to emit
+an analog signal of $0.25 \mu A$:
+
+\begin{lstlisting}
+use_dac 0 0 0 src mem sgn + val 0.125 rng m
+\end{lstlisting}
+
+
+
+The following invocation configures the DAC on chip 0, tile 2, slice 1 to
+convert the output of the LUT at chip 0, tile 2, slice 2 to an analog signal.
+The resulting analog signal is scaled up by ten:
+
+\begin{lstlisting}
+use_dac 0 2 1 src lut1 sgn + val 0.0 rng h
+\end{lstlisting}
