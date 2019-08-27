@@ -54,14 +54,12 @@ void Fabric::Chip::Tile::Slice::Multiplier::setGainCode (
 	// Serial.println(gainCode);
 	setVga (true);
 	m_codes.gain_code = gainCode;
-  m_codes.gain_val = (gainCode-128)/128.0;
 	setParam2 ();
 }
 
 bool Fabric::Chip::Tile::Slice::Multiplier::setGain(float gain){
   if(-1.0000001 < gain && gain < 1.0000001){
     setGainCode(min(255,round(gain*128.0)+128.0));
-    m_codes.gain_val= gain;
     return true;
   }
   else{
@@ -87,7 +85,6 @@ void Fabric::Chip::Tile::Slice::Multiplier::defaults () {
   m_codes.nmos = 0;
   m_codes.vga = false;
   m_codes.gain_code = 128;
-  m_codes.gain_val = 0.0;
   m_codes.gain_cal = 0;
   m_codes.inv[in0Id] = false;
   m_codes.inv[in1Id] = false;

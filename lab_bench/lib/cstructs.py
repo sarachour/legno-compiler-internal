@@ -310,8 +310,7 @@ def dac_state_t():
         "pmos" / cstruct.Int8ul,
         "nmos" / cstruct.Int8ul,
         "gain_cal" / cstruct.Int8ul,
-        "const_code" / cstruct.Int8ul,
-        "const_val" / cstruct.Float32l
+        "const_code" / cstruct.Int8ul
     )
 
 def mult_state_t():
@@ -326,8 +325,7 @@ def mult_state_t():
         "port_cal" / cstruct.Array(3,cstruct.Int8ul),
         "gain_cal" / cstruct.Int8ul,
         "gain_code" / cstruct.Int8ul,
-        cstruct.Padding(1),
-        "gain_val" / cstruct.Float32l
+        cstruct.Padding(1)
     )
 
 def fanout_state_t():
@@ -361,8 +359,7 @@ def integ_state_t():
         "ic_code" / cstruct.Int8ul,
         # 14 bytes in
         "port_cal" / cstruct.Array(3,cstruct.Int8ul),
-        cstruct.Padding(2),
-        "ic_val" / cstruct.Float32l
+        cstruct.Padding(2)
 
     )
 def state_t():

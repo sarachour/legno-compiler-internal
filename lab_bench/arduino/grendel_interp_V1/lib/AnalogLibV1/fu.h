@@ -73,7 +73,6 @@ typedef struct {
   uint8_t port_cal[3];
   uint8_t gain_cal;
   uint8_t gain_code;
-  float gain_val;
 } mult_code_t;
 
 
@@ -86,7 +85,6 @@ typedef struct {
   uint8_t nmos;
   uint8_t gain_cal;
   uint8_t const_code;
-  float const_val;
 } dac_code_t;
 
 typedef struct {
@@ -100,7 +98,6 @@ typedef struct {
   uint8_t gain_cal;
   uint8_t ic_code;
   uint8_t port_cal[3];
-  float ic_val;
 } integ_code_t;
 
 

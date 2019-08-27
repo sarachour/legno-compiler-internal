@@ -101,6 +101,7 @@ def fit(_tref,_yref,_tmeas,_ymeas):
   result = out_of_bounds(bounds,result)
   model = [result[0],result[1],1.0,0.0]
   infer_t,infer_x = apply_model_to_obs(tref,tmeas,ymeas,model)
+  print(model)
   return infer_t,infer_x,model
 
 def apply_model(_tref,_yref,_tmeas,_ymeas,model):

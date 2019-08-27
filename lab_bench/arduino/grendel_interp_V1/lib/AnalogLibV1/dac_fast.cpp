@@ -174,25 +174,11 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
       dac_value = -ref_value + mean;
     }
     // emit information
-    /*
-    sprintf(FMTBUF, "%s dac_val=%f ref_val=%f mean=%f dac=%f ref=%f",
-            update_ref ? "R" : "D",
-            this->m_codes.const_val,
-            ref_dac->m_codes.const_val,
-            mean,
-            dac_value,
-            ref_value);
-    print_debug(FMTBUF);
-    */
     update_ref = !update_ref;
   }
   // compute the expected difference, with respect to this
   // reference dac
   float target_diff = target + ref_value;
-  sprintf(FMTBUF,"C target=%f ref=%f diff=%f",
-          target,ref_dac->m_codes.const_val,
-          target_diff);
-  print_debug(FMTBUF);
   // start at what the value would be if the gain was one.
   this->setConstant(target*0.1);
   // start out with no code offset

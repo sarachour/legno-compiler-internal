@@ -7,7 +7,7 @@
 float Fabric::Chip::Tile::Slice::Integrator::computeInitCond(integ_code_t& m_codes){
   float sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
   float rng = util::range_to_coeff(m_codes.range[out0Id]);
-  float ic = m_codes.ic_val;
+  float ic = (m_codes.ic_code-128.0)/128.0;
   return rng*sign*ic;
 }
 
@@ -71,7 +71,6 @@ void Fabric::Chip::Tile::Slice::Integrator::setInitialCode (
 	unsigned char initialCode // fixed point representation of initial condition
 ) {
   m_codes.ic_code = initialCode;
-  m_codes.ic_val = (initialCode-128)/128.0;
 	setParam2 ();
 }
 
@@ -79,7 +78,6 @@ bool Fabric::Chip::Tile::Slice::Integrator::setInitial(float initial)
 {
   if(-1.0000001 < initial && initial < 1.000001){
     setInitialCode(min(round(initial*128.0)+128.0,255));
-    m_codes.ic_val = initial;
     return true;
   }
   else{
@@ -108,7 +106,6 @@ void Fabric::Chip::Tile::Slice::Integrator::defaults (){
   m_codes.pmos = 5;
   m_codes.nmos = 0;
   m_codes.ic_code = 128;
-  m_codes.ic_val = 0.0;
   m_codes.inv[in0Id] = false;
   m_codes.inv[in1Id] = false;
   m_codes.inv[out0Id] = false;

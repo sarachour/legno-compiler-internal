@@ -21,7 +21,6 @@ void Fabric::Chip::Tile::Slice::Dac::update(dac_code_t codes){
   m_codes = codes;
   updateFu();
   if(codes.source == DSRC_MEM){
-    setConstant(codes.const_val);
     setConstantCode(codes.const_code);
   }
   setSource(codes.source);
@@ -86,7 +85,6 @@ void Fabric::Chip::Tile::Slice::Dac::setConstantCode (
 	// 0 to 255 are valid
 ) {
   m_codes.const_code = constantCode;
-  m_codes.const_val = (constantCode - 128)/128.0;
   setSource(DSRC_MEM);
 	parentSlice->parentTile->parentChip->parentFabric->cfgCommit();
 	unsigned char selLine = 0;
@@ -103,7 +101,6 @@ void Fabric::Chip::Tile::Slice::Dac::setConstantCode (
 bool Fabric::Chip::Tile::Slice::Dac::setConstant(float constant){
   if(-1.0000001 < constant && constant< 1.0000001){
     setConstantCode(min(round(constant*128.0+128.0),255));
-    m_codes.const_val = constant;
     return true;
   }
   else{
@@ -118,7 +115,6 @@ void Fabric::Chip::Tile::Slice::Dac::defaults(){
   m_codes.nmos = 0;
   m_codes.gain_cal = 0;
   m_codes.const_code = 128;
-  m_codes.const_val = 0.0;
   m_codes.enable = false;
   calibrated = false;
 	setAnaIrefNmos ();

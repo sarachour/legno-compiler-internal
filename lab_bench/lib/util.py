@@ -13,6 +13,11 @@ def compute_pad_bytes(n,x):
     left = x - over
     return left
 
+def code_to_val(code):
+    assert(code < 256)
+    assert(code >= 0)
+    return (code - 128.0)/128.0
+
 def find_closest(array,value,round_mode):
     sel_value = None
     if round_mode == RoundMode.NEAREST:

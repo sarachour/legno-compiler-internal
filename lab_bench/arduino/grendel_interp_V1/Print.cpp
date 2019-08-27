@@ -200,15 +200,11 @@ namespace circ {
       Serial.print(state.dac.gain_cal);
       Serial.print(" code=");
       Serial.print(state.dac.const_code);
-      Serial.print(" value=");
-      Serial.print(state.dac.const_val);
       break;
 
     case block_type_t::MULT:
       Serial.print("enable=");
       Serial.print(state.mult.enable);
-      Serial.print(" gain_val=");
-      Serial.print(state.mult.gain_val);
       Serial.print(" inv=");
       print3(state.mult.inv[in0Id],
              state.mult.inv[in1Id],
@@ -236,8 +232,6 @@ namespace circ {
       Serial.print(state.integ.enable);
       Serial.print(" exception=");
       Serial.print(state.integ.exception);
-      Serial.print(" ic_val=");
-      Serial.print(state.integ.ic_val);
       Serial.print(" inv=");
       print2(sign_to_str(state.integ.inv[in0Id]),
              sign_to_str(state.integ.inv[out0Id]));

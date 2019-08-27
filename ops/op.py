@@ -40,6 +40,10 @@ def to_python(e):
         a3 = "min(%f,%s)" % (ival.upper,a2)
         return v,a3
 
+    elif e.op == OpType.PAREN:
+        v,a = to_python(e.arg(0))
+        return v,"(%s)" % a
+
     elif e.op == OpType.SGN:
         v,a = to_python(e.arg(0))
         return v,"math.copysign(1,%s)" % a

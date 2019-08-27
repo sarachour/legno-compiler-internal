@@ -1,7 +1,7 @@
 import lab_bench.lib.enums as enums
 from lab_bench.lib.chipcmd import data as chipdata
-from lab_bench.lib.chipcmd import state as chipstate
 from lab_bench.lib.chipcmd.common import *
+from lab_bench.lib.util import code_to_val
 from lab_bench.lib.chipcmd.data import *
 from enum import Enum
 import sqlite3
@@ -432,8 +432,7 @@ class DacBlockState(BlockState):
         "pmos": self.pmos,
         "nmos": self.nmos,
         "gain_cal": self.gain_cal,
-        "const_code": self.const_code,
-        "const_val": self.const_val
+        "const_code": self.const_code
       }
     })
 
@@ -446,7 +445,7 @@ class DacBlockState(BlockState):
     self.nmos = state.nmos
     self.gain_cal = state.gain_cal
     self.const_code = state.const_code
-    self.const_val = state.const_val
+    self.const_val = code_to_val(state.const_code)
 
 def to_c_list(keymap,value_code=True):
   intmap = {}
@@ -524,8 +523,7 @@ class MultBlockState(BlockState):
         "nmos": self.nmos,
         "port_cal": to_c_list(self.port_cals,value_code=False),
         "gain_cal": self.gain_cal,
-        "gain_code": self.gain_code,
-        "gain_val": self.gain_val
+        "gain_code": self.gain_code
       }
     })
 
@@ -557,8 +555,8 @@ class MultBlockState(BlockState):
     self.ranges[in1id] = chipdata.RangeType(state.range[in1id.code()])
     self.ranges[outid] = chipdata.RangeType(state.range[outid.code()])
 
-    self.gain_val = state.gain_val
     self.gain_code = state.gain_code
+    self.gain_val = code_to_val(state.gain_code)
     self.pmos = state.pmos
     self.nmos = state.nmos
     self.port_cals = {}
@@ -637,8 +635,7 @@ class IntegBlockState(BlockState):
         "nmos": self.nmos,
         "port_cal": to_c_list(self.port_cals,value_code=False),
         "ic_cal": self.ic_cal,
-        "ic_code": self.ic_code,
-        "ic_val": self.ic_val
+        "ic_code": self.ic_code
       }
     })
 
@@ -666,7 +663,7 @@ class IntegBlockState(BlockState):
     self.ranges[inid] = chipdata.RangeType(state.range[inid.code()])
     self.ranges[outid] = chipdata.RangeType(state.range[outid.code()])
 
-    self.ic_val = state.ic_val
+    self.ic_val = code_to_val(state.ic_code)
 
     self.pmos = state.pmos
     self.nmos = state.nmos
