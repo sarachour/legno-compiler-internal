@@ -1,8 +1,6 @@
 
 
-all: device_manual.pdf
-
-device_manual.pdf: *.tex *.bib
+all:
 	pdflatex device_manual
 	bibtex device_manual
 	pdflatex device_manual

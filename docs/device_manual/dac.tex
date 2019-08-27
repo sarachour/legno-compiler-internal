@@ -1,4 +1,4 @@
-\section{Digital to Analog Converter (DAC)}
+\chapter{Digital to Analog Converter (DAC)}
 
 The digital to analog converter is a hybrid digital-analog block available on
 the \hcdc device~\cite{dac.h}. Figure~\ref{dac:codes} presents the complete list
@@ -32,7 +32,7 @@ of the same tile.
 \begin{marginfigure}
     \small
     \begin{tabular}{c|c}
-      code & kind \\
+      code & type \\
       \hline
       \tx{enable} & \static\\
       \tx{inv}    & \static\\
@@ -47,7 +47,7 @@ of the same tile.
     \label{dac:codes}
 \end{marginfigure}
 
-\subsection{Block Function}\label{dac:blockfun}
+\section{Block Function}\label{dac:blockfun}
 
 Given a block at location \hslice{chip}{tile}{slice}, the behavior of the block
 is dictated by the following relation. At a high level, the DAC block converts a
@@ -74,7 +74,7 @@ not. The \tx{range} code scales the output signal by 1x or 10x. The \tx{range}
 code may only be set to \tx{RANGE_MED} or \tx{RANGE_HIGH} for the DAC. Note
 that all \static and \dynamic codes are used in the block function.
 
-\subsection{Calibration}
+\section{Calibration}
 The DAC block has three hidden codes. The
 \tx{pmos} code is always set to $0$. The \tx{nmos} and \tx{gain_cal} codes
 control the gain of the block. The DAC is calibrated using the following
