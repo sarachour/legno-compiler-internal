@@ -197,8 +197,12 @@ def scale(prog,circ,nslns, \
 
     print("logging: %s" % do_log)
     if do_log:
+        pars = jenvlib.JauntEnvParams(max_freq=max_freq, \
+                                      digital_error=digital_error,
+                                      analog_error=analog_error)
+        pars.set_model(model=jenvlib.JauntEnvParams.Type(model))
         report_missing_models(model,circ)
-        jaunt_physlog.save()
+        jaunt_physlog.save(pars.calib_obj)
         if not jaunt_physlog.is_empty() and \
         model == jenvlib.JauntEnvParams.Model.PHYSICAL:
             raise Exception("must calibrate components")

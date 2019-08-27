@@ -26,11 +26,12 @@ def is_empty():
 def clear():
   PROG.clear()
 
-def save():
+def save(calib_mode):
   minprog = srcgen.GrendelProg()
   stmt_keys = []
-  if os.path.isfile(CONFIG.CALIBRATE_FILE):
-    with open(CONFIG.CALIBRATE_FILE,'r') as fh:
+  calib_file = "%s_%s" % (calib_mode,CONFIG.CALIBRATE_FILE)
+  if os.path.isfile(calib_file):
+    with open(calib_file,'r') as fh:
       for line in fh:
         stmt = cmd.parse(line)
         stmt_keys.append(str(stmt))
@@ -46,16 +47,16 @@ def save():
     stmt_keys.append(str(stmt))
 
 
-  if os.path.exists(CONFIG.CALIBRATE_FILE):
+  if os.path.exists(calib_file):
     lines = []
-    with open(CONFIG.CALIBRATE_FILE,'r') as fh:
+    with open(calib_file,'r') as fh:
       for line in fh:
         lines.append(line.strip())
   else:
     lines = []
 
   print("JAUNTLOG: logged %d stmts" % len(minprog.stmts))
-  with open(CONFIG.CALIBRATE_FILE,'w') as fh:
+  with open(calib_file,'w') as fh:
     for line in lines:
       fh.write("%s\n" % line)
 

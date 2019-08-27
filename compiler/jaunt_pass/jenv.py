@@ -72,6 +72,7 @@ class JauntEnvParams:
 
   def partial(self):
     self.model = "partial"
+    self.calib_obj = "max_fit"
     self.propagate_uncertainty = False
     self.enable_quantize_constraint = True
     self.enable_quality_constraint = True
@@ -81,6 +82,7 @@ class JauntEnvParams:
 
   def physical(self):
     self.model = "physical"
+    self.calib_obj = "max_fit"
     self.propagate_uncertainty = False
     self.enable_quantize_constraint = True
     self.enable_quality_constraint = True
@@ -89,6 +91,7 @@ class JauntEnvParams:
 
   def naive(self):
     self.model = "naive"
+    self.calib_obj = "min_error"
     self.propagate_uncertainty = False
     self.enable_quantize_constraint = True
     self.enable_quality_constraint = True

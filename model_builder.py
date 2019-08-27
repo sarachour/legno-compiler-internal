@@ -17,7 +17,8 @@ import compiler.infer_pass.infer_integ as infer_integ
 import compiler.infer_pass.infer_mult as infer_mult
 import compiler.infer_pass.infer_visualize as infer_visualize
 
-db = ModelDB()
+from lab_bench.lib.chipcmd.data import CalibType
+
 
 def build_model(datum):
   blk = datum['metadata']['block']
@@ -85,6 +86,10 @@ def infer(args,dump_db=True):
   if args.visualize:
     infer_visualize.DO_PLOTS = True
 
+  infer_visualize.CALIB_MODE = CalibType(args.calib_mode)
+
+  db = ModelDB(CalibType(args.calib_mode))
+
   if args.populate_crossbars:
     from chip.hcdc.hcdcv2_4 import make_board
     subset = HCDCSubset('unrestricted')
@@ -116,6 +121,7 @@ def infer(args,dump_db=True):
 
 def analyze(args):
   circ = ConcCirc.read(None,args.circ_file)
+  db = ModelDB(CalibType(args.calib_mode))
   blacklist = ['tile_in','tile_out', \
                'chip_in','chip_out', \
                'ext_chip_in','ext_chip_out']

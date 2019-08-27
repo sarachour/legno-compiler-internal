@@ -5,6 +5,8 @@ import json
 import binascii
 import math
 
+from lab_bench.lib.chipcmd.data import CalibType
+
 class PortModel():
 
   def __init__(self,block,loc,port,comp_mode,scale_mode,handle=None):
@@ -132,14 +134,14 @@ class PortModel():
 class ModelDB:
 
   MISSING = []
-  def __init__(self):
+  def __init__(self,calib_mode=CalibType.MIN_ERROR):
     path = CFG.MODEL_DB
     self._conn = sqlite3.connect(path)
     self._curs = self._conn.cursor()
-
+    self.calib_mode = calib_mode
     cmd = '''
     CREATE TABLE IF NOT EXISTS models (
-    id int NOT NULL,
+    calib_mode text NOT NULL,
     block text NOT NULL,
     loc text NOT NULL,
     port text NOT NULL,
@@ -147,12 +149,12 @@ class ModelDB:
     scale_mode text NOT NULL,
     handle text NOT NULL,
     model text NOT NULL,
-    PRIMARY KEY (id)
+    PRIMARY KEY (calib_mode,block,loc,port,comp_mode,scale_mode,handle)
     )
     '''
     self._curs.execute(cmd)
     self._conn.commit()
-    self.keys = ['id',
+    self.keys = ['calib_mode',
                  'block',
                  'loc',
                  'port',
@@ -186,39 +188,49 @@ class ModelDB:
     model = PortModel(block,loc,"",comp_mode,scale_mode,None)
     cmd = '''
     SELECT * from models WHERE
-    block = "{block}"
+    calib_mode = "{calib_mode}"
+    AND block = "{block}"
     AND loc = "{loc}"
     AND comp_mode = "{comp_mode}"
     AND scale_mode = "{scale_mode}"
     '''.format(
+      calib_mode=self.calib_mode.value,
       block=model.block,
-      loc=model.loc,
-      comp_mode=model.comp_mode,
-      scale_mode=model.scale_mode,
+      loc=str(model.loc),
+      comp_mode=str(model.comp_mode),
+      scale_mode=str(model.scale_mode),
     )
     for values in self._curs.execute(cmd):
       data = dict(zip(self.keys,values))
       yield self._process(data)
 
 
+  def _where_clause(self,block,loc,port,comp_mode,scale_mode,handle=None):
+    return '''
+    WHERE calib_mode="{calib_mode}"
+      AND block="{block}"
+      AND loc="{loc}"
+      AND port="{port}"
+      AND comp_mode="{comp_mode}"
+      AND scale_mode="{scale_mode}"
+      AND handle="{handle}"
+    '''.format(calib_mode=self.calib_mode.value, \
+               block=block, \
+               loc=str(loc), \
+               port=str(port), \
+               comp_mode=str(comp_mode), \
+               scale_mode=str(scale_mode), \
+               handle=handle)
+
   def _get(self,block,loc,port,comp_mode,scale_mode,handle=None):
     model = PortModel(block,loc,port,comp_mode,scale_mode,handle)
     cmd = '''
-    SELECT * from models WHERE
-    block = "{block}"
-    AND loc = "{loc}"
-    AND port = "{port}"
-    AND comp_mode = "{comp_mode}"
-    AND scale_mode = "{scale_mode}"
-    AND handle = "{handle}";
+    SELECT * from models {where_clause};
     '''.format(
-      block=model.block,
-      loc=model.loc,
-      port=model.port,
-      comp_mode=model.comp_mode,
-      scale_mode=model.scale_mode,
-      handle=model.handle
-    )
+      where_clause=self._where_clause(block,loc,port, \
+                                      comp_mode, \
+                                      scale_mode, \
+                                      handle))
 
     for values in self._curs.execute(cmd):
       data = dict(zip(self.keys,values))
@@ -237,8 +249,12 @@ class ModelDB:
   def remove(self,block,loc,port,comp_mode,scale_mode,handle=None):
     model = PortModel(block,loc,port,comp_mode,scale_mode,handle)
     cmd = '''
-    DELETE FROM models WHERE id="{id}";
-    '''.format(id=model.identifier)
+    DELETE FROM models {where_clause};
+    '''.format(
+      where_clause=self._where_clause(block,loc,port, \
+                                      comp_mode, \
+                                      scale_mode, \
+                                      handle))
 
     self._curs.execute(cmd)
     self._conn.commit()
@@ -246,11 +262,11 @@ class ModelDB:
   def put(self,model):
     model_bits = bytes(json.dumps(model.to_json()),'utf-8').hex()
     cmd =  '''
-    INSERT INTO models (id,block,loc,port,comp_mode,scale_mode,handle,model)
-    VALUES ("{id}","{block}","{loc}","{port}","{comp_mode}",
+    INSERT INTO models (calib_mode,block,loc,port,comp_mode,scale_mode,handle,model)
+    VALUES ("{calib_mode}","{block}","{loc}","{port}","{comp_mode}",
             "{scale_mode}","{handle}","{model}");
     '''.format(
-      id=model.identifier,
+      calib_mode=self.calib_mode.value,
       block=model.block,
       loc=str(model.loc),
       port=str(model.port),
