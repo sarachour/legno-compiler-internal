@@ -1,5 +1,6 @@
 \chapter{Analog Block Specification}
 
+\section{Analog Device Architecture}
 \section{Digitally Settable Code Types}
 
 \begin{marginfigure}
@@ -10,8 +11,36 @@
                 & \tx{RANGE_HIGH}\\
                 & \tx{RANGE_LOW}\\
   \end{tabular}
+  \label{code:types}
 \end{marginfigure}
+
+Figure~\ref{code:types} presents a summary of the types of digitally settable
+codes. All other digitally settable codes are unsigned integers.
+
+\subsection{Utility Functions}
+\noindent\textit{sign}(\tx{bool_t} inverted): The sign function returns a
+constant coefficient of $-1$ if inverted is set, otherwise it returns a
+coefficient of $1$. Refer to \tx{sign_to_coeff} in \tx{util.h}~\cite{util.h}.
+
+\noindent\textit{scale}(\tx{range_t} range): The range function a constant
+coefficient that corresponds to the selected current range. The function returns
+1.0 if the range is \tx{RANGE_MED}, 10.0 if the range is \tx{RANGE_HIGH} and 0.1
+if the range is \tx{RANGE_LOW}. Refer to \tx{range_to_coeff} in
+\tx{util.h}~\cite{util.h}.
+
 \section{Digital to Analog Converter (DAC)}
+
+The digital to analog converter is a hybrid digital-analog block available on
+the \hcdc device~\cite{dac.h}. Figure~\ref{dac:codes} presents the complete list
+of digitally settable codes in each DAC block. The digital to analog converter
+accepts one digital input that is either read from memory or a lookup table, and
+produces one analog output current. Figure~\ref{dac:codes} presents a complete summary of codes. 
+
+\noindent\textbf{Location}: Each slice on the \hcdc device contains one
+DAC. The DAC may read values from the lookup tables resident on slice 0 
+(\tx{source} is \tx{DSRC_LUT0}) or slice 2 (\tx{source} is \tx{DSRC_LUT1})
+of the same tile.
+
 
 \begin{marginfigure}
   \begin{tabular}{c|cc}
@@ -27,4 +56,46 @@
     \tx{gain_cal}&64&\hidden\\
   \end{tabular}
   \caption{DAC Parameters\cite{fu.h}}
+  \label{dac:codes}
 \end{marginfigure}
+
+\subsection{Block Function}
+
+Given a block at location
+\hslice{chip}{tile}{slice}, the behavior of the block is dictated by the
+following relation:
+
+\begin{algorithmic}
+  \If {\tx{enable}}
+    \If {\tx{source} = \tx{DSRC_MEM}}
+
+    \State $sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{const_code}-128)\cdot 128^{-1}$
+    \ElsIf {\tx{source} = \tx{DSRC_LUT0}}
+
+    \State $sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{lut}\hindex{chip}{tile}{slice}{0}-128)\cdot 128^{-1}$
+    \ElsIf {\tx{source} = \tx{DSRC_LUT1}}
+
+    \State $sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{lut}\hindex{chip}{tile}{slice}{2}-128)\cdot 128^{-1}$
+    \EndIf
+ \EndIf
+\end{algorithmic}
+
+Any behavior not covered in the above algorithm is undefined.
+The \tx{inv} code determines whether the output signal should be inverted or
+not. The \tx{range} code scales the output signal by 1x or 10x. The \tx{range}
+code may only be set to \tx{RANGE_MED} or \tx{RANGE_HIGH} for the DAC. Note
+that all \static and \dynamic codes are used in the block function.
+
+\subsection{Calibration}
+The DAC block has three hidden codes. The
+\tx{pmos} code is always set to $0$. The \tx{nmos} and \tx{gain_cal} codes
+control the gain of the block. The DAC is calibrated using the following
+algorithm:
+
+\begin{algorithmic}
+  \For{each item \tx{nmos} in $0...7$ }
+    \For{each item \tx{gain_cal} in $0...63$ }
+       \State loss = obj(\tx{nmos},\tx{gain_cal})
+    \EndFor
+  \EndFor
+\end{algorithmic}
