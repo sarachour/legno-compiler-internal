@@ -103,8 +103,11 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
   cutil::calib_table_t calib_table[MAX_NMOS];;
   for(int nmos = 0; nmos < MAX_NMOS; nmos += 1){
     // bind best bias code for out0
-    float tmp_score = 0.0;
     calib_table[nmos] = cutil::make_calib_table();
+
+    cutil::calib_table_t calib_table_out0 = cutil::make_calib_table();
+    cutil::calib_table_t calib_table_out1 = cutil::make_calib_table();
+    cutil::calib_table_t calib_table_out2 = cutil::make_calib_table();
 
     this->m_codes.port_cal[out0Id] = 32;
     this->m_codes.port_cal[out1Id] = 32;
@@ -114,57 +117,59 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
       this->m_codes.port_cal[out0Id] = bias_cal;
       update(this->m_codes);
       float score = getScore(obj,val_dac,ref_dac,out0Id);
-      cutil::update_calib_table(calib_table[nmos],score,3,bias_cal,32,32);
+      cutil::update_calib_table(calib_table_out0,score,1,bias_cal);
     }
-    this->m_codes.port_cal[out0Id] = calib_table[nmos].state[0];
+    this->m_codes.port_cal[out0Id] = calib_table_out0.state[0];
     conn_out0.brkConn();
-    sprintf(FMTBUF,"nmos=%d bias_codes=(%d,%d,%d) score=%f",
+    sprintf(FMTBUF,"nmos=%d out0 bias_code=%d score=%f",
             nmos,
-            calib_table[nmos].state[0],
-            calib_table[nmos].state[1],
-            calib_table[nmos].state[2],
-            calib_table[nmos].score);
+            calib_table_out0.state[0],
+            calib_table_out0.score);
     print_info(FMTBUF);
     // find the best code for out1
     conn_out1.setConn();
-    tmp_score = calib_table[nmos].score;
     for(int bias_cal=0; bias_cal < MAX_BIAS_CAL; bias_cal+=1){
       this->m_codes.port_cal[out1Id] = bias_cal;
       update(this->m_codes);
       float score = getScore(obj,val_dac,ref_dac,out1Id);
-      cutil::update_calib_table(calib_table[nmos],
-                                max(score,tmp_score),
-                                3,
-                                calib_table[nmos].state[0],
-                                bias_cal,
-                                32);
+      cutil::update_calib_table(calib_table_out1,
+                                score,
+                                1,
+                                bias_cal);
     }
-    this->m_codes.port_cal[out1Id] = calib_table[nmos].state[1];
+    this->m_codes.port_cal[out1Id] = calib_table_out1.state[0];
     conn_out1.brkConn();
-    sprintf(FMTBUF,"nmos=%d bias_codes=(%d,%d,%d) score=%f",
+    sprintf(FMTBUF,"nmos=%d out1 bias_code=%d score=%f",
             nmos,
-            calib_table[nmos].state[0],
-            calib_table[nmos].state[1],
-            calib_table[nmos].state[2],
-            calib_table[nmos].score);
+            calib_table_out1.state[0],
+            calib_table_out1.score);
     print_info(FMTBUF);
     // find the best code for out2
     conn_out2.setConn();
-    tmp_score = calib_table[nmos].score;
     for(int bias_cal=0; bias_cal < MAX_BIAS_CAL; bias_cal+=1){
       this->m_codes.port_cal[out2Id] = bias_cal;
       update(this->m_codes);
       float score = getScore(obj,val_dac,ref_dac,out2Id);
-      cutil::update_calib_table(calib_table[nmos],
-                                max(score,tmp_score),
-                                3,
-                                calib_table[nmos].state[0],
-                                calib_table[nmos].state[1],
+      cutil::update_calib_table(calib_table_out2,
+                                score,
+                                1,
                                 bias_cal);
     }
-    this->m_codes.port_cal[out2Id] = calib_table[nmos].state[2];
+    this->m_codes.port_cal[out2Id] = calib_table_out2.state[0];
     conn_out2.brkConn();
-
+    sprintf(FMTBUF,"nmos=%d out2 bias_code=%d score=%f",
+            nmos,
+            calib_table_out2.state[0],
+            calib_table_out2.score);
+    print_info(FMTBUF);
+    cutil::update_calib_table(calib_table[nmos],
+                              max(calib_table_out0.score,
+                                  max(calib_table_out1.score,
+                                      calib_table_out2.score)),
+                              3,
+                              calib_table_out0.state[0],
+                              calib_table_out1.state[0],
+                              calib_table_out2.state[0]);
     sprintf(FMTBUF,"nmos=%d bias_codes=(%d,%d,%d) score=%f",
             nmos,
             calib_table[nmos].state[0],
@@ -206,7 +211,7 @@ float Fabric::Chip::Tile::Slice::Fanout::calibrateMaxDeltaFit(Fabric::Chip::Tile
                                                               Fabric::Chip::Tile::Slice::Dac * ref_dac,
                                                               ifc out_id) {
 
-  return 0.0;
+  error("not implemented: fanout delta fit");
 }
 float Fabric::Chip::Tile::Slice::Fanout::calibrateMinError(Fabric::Chip::Tile::Slice::Dac * val_dac,
                                                            Fabric::Chip::Tile::Slice::Dac * ref_dac,

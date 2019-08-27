@@ -112,7 +112,7 @@ class ProfileCmd(Command):
           self._n = int(n*n/4.0)
         else:
           self._n_inputs = 1
-          self._n = n
+          self._n = 2*n
 
     @staticmethod
     def name():

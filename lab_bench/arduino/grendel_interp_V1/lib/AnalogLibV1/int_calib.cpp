@@ -59,7 +59,7 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * 
   }
   float avg_gain, gain_variance;
   util::distribution(gains,m,avg_gain,gain_variance);
-  float score = max(sqrt(gain_variance),fabs(bias));
+  float score = max(sqrt(gain_variance),fabs(bias))/avg_gain;
   sprintf(FMTBUF," gain=N(%f,%f) bias=%f score=%f", avg_gain,gain_variance,
           bias,score);
   print_info(FMTBUF);

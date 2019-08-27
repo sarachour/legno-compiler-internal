@@ -428,7 +428,7 @@ class UseFanoutCmd(UseCommand):
             }
         })
 
-    def to_key(self,targeted=False):
+    def to_key(self,calib_mode):
         loc = CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
@@ -446,10 +446,11 @@ class UseFanoutCmd(UseCommand):
                       enums.PortName.OUT2]:
             rngs[ident] = self._in_range
 
-        return state.FanoutBlockState.Key(loc=loc,
-                                         third=self._third,
-                                         invs=invs,
-                                         rngs=rngs)
+        return state.FanoutBlockState.Key(loc=loc, \
+                                          third=self._third, \
+                                          invs=invs, \
+                                          rngs=rngs, \
+                                          calib_mode=calib_mode)
 
     @staticmethod
     def parse(args):

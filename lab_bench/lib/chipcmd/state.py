@@ -685,8 +685,9 @@ class FanoutBlockState(BlockState):
     def __init__(self,loc,
                  third,
                  invs,
-                 rngs):
-      BlockState.Key.__init__(self,enums.BlockType.FANOUT,loc)
+                 rngs,
+                 calib_mode):
+      BlockState.Key.__init__(self,enums.BlockType.FANOUT,loc,calib_mode)
       self.invs = invs
       self.rngs = rngs
       self.third = third
@@ -695,8 +696,8 @@ class FanoutBlockState(BlockState):
     def targeted_keys(self):
       return []
 
-  def __init__(self,loc,state):
-    BlockState.__init__(self,enums.BlockType.FANOUT,loc,state)
+  def __init__(self,loc,state,calib_mode):
+    BlockState.__init__(self,enums.BlockType.FANOUT,loc,state,calib_mode)
 
 
   @property
@@ -704,7 +705,8 @@ class FanoutBlockState(BlockState):
     return FanoutBlockState.Key(self.loc,
                                 self.third,
                                 self.invs, \
-                                self.rngs)
+                                self.rngs, \
+                                self.calib_mode)
 
 
   def header(self):

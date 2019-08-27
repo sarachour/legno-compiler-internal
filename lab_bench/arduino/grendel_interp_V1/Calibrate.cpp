@@ -8,7 +8,7 @@
 namespace calibrate {
   calib_objective_t get_objective_max_delta_fit(uint16_t blk){
     switch(blk){
-      //case circ::block_type_t::FANOUT:
+    case circ::block_type_t::FANOUT:
     case circ::block_type_t::TILE_ADC:
       return CALIB_FAST;
     default:
@@ -17,7 +17,7 @@ namespace calibrate {
   }
   calib_objective_t get_objective_min_error(uint16_t blk){
     switch(blk){
-      //case circ::block_type_t::FANOUT:
+    case circ::block_type_t::FANOUT:
     case circ::block_type_t::TILE_ADC:
       return CALIB_FAST;
     default:
