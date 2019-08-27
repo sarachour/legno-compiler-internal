@@ -1,0 +1,106 @@
+\chapter{Current Copier Block (\tx{fanout} Block)}
+
+The current copier block is an analog block available on the \hcdc
+device~\cite{fan.h}. Figures~\ref{fan:values} and \ref{fan:types} presents a
+complete summary of the digitally settable codes for the block. The current
+copier accepts one analog input and produces three analog outputs, where the
+analog outputs are copies of the provided signal.
+
+\noindent\textbf{Location}: Each slice of the \hcdc device contains two current
+copier blocks. Given a slice at \hslice{chip}{tile}{slice}, the two current
+copiers on the slice are written as \hindex{chip}{tile}{slice}{0} and \hindex{chip}{tile}{slice}{1}.
+
+\begin{marginfigure}
+  \small
+  \begin{tabular}{l|l}
+    code &values\\
+    \hline
+    \tx{enable}& \tx{bool_t}\\ 
+    \tx{range}& \tx{range_t}\\
+    \tx{inv[out0Id]}& \tx{bool_t}\\
+    \tx{inv[out1Id]}& \tx{bool_t}\\
+    \tx{inv[out2Id]}& \tx{bool_t}\\
+    \tx{nmos} & 8\\
+    \tx{pmos}\caveat & 8\\
+    \tx{port_cal[out0Id]}& 64\\
+    \tx{port_cal[out1Id]}& 64\\
+    \tx{port_cal[out2Id]}& 64\\
+  \end{tabular}
+  \caption{Fanout Values \cite{fu.h}}
+  \label{fan:values}
+\end{marginfigure}
+  
+\begin{marginfigure}
+  \small
+  \begin{tabular}{l|l}
+    code & type \\
+    \hline
+    \tx{enable}& \static \\ 
+    \tx{range}& \static \\
+    \tx{inv[out0]}& \static \\
+    \tx{inv[out1]}& \static \\
+    \tx{inv[out2]}& \static \\
+    \tx{nmos} & \hidden \\
+    \tx{pmos}\caveat & \hidden \\
+    \tx{port_cal[out0]}& \hidden \\
+    \tx{port_cal[out1]}& \hidden\\
+    \tx{port_cal[out2]}& \hidden \\
+  \end{tabular}
+  \caption{Fanout Code Types\cite{fu.h}}
+  \label{fan:types}
+\end{marginfigure}
+
+  
+\section{Block Function}\label{fanout:blockfun}
+The behavior of output $i$ (\tx{out}$i$) the current copier is dictated by the
+relation presented below. We write the analog input as $in$ in the presented
+relation. The value returned by the function is the value of the current in $\mu
+A$. Any behavior not covered by this algorithm is undefined.
+
+\begin{algorithmic}
+  \If{\tx{enable}}
+  \State{sign(\tx{inv}[\tx{out}$i$]) $in$} 
+  \EndIf
+\end{algorithmic}
+
+The \tx{inv} code for the output $i$ determines the whether the copied signal
+should be inverted or not. Note that all \static codes, with the exception of
+the \tx{range} code, are used in the block function. The \tx{range} code is
+used to configure the current limitations of the block.
+
+\subsection{Operating Ranges}
+
+The magnitude of the analog input $in$ must fall within the current limits of
+the current copier. These limits are determined by the \tx{range} code. If the
+\tx{range} code is set to \tx{RANGE_MED}, the analog input must fall within
+$[-2 \mu A, 2 \mu A]$. If the \tx{range} code is set to \tx{RANGE_HIGH}, the
+analog input must fall within $[-20 \mu A, 20 \mu A]$
+
+\section{Calibration}\label{fanout:calib}
+
+
+\begin{algorithmic}
+  \State {tbl = \tx{make_table()}}
+  \For{\tx{nmos} in 0...7}
+    \State {tbl0 = \tx{make_table()}}
+    \For{cal0 in 0...64}
+      \State {loss = obj(cal0,32,32)}
+      \State {tbl0 $\leftarrow$ loss,cal0}
+    \EndFor
+    \State {tbl1 = \tx{make_table()}}
+    \For{cal1 in 0...64}
+      \State {loss = obj(tbl0.cal0,cal1,32)}
+      \State {tbl1 $\leftarrow$ loss,cal1}
+    \EndFor
+    \State {tbl2 = \tx{make_table()}}
+    \For{\tx{cal2} in 0...64}
+      \State {loss = obj(tbl0.cal0,tbl1.cal1,cal2)}
+      \State {tbl2 $\leftarrow$ loss,\tx{cal2}}
+    \EndFor
+    \State{loss = max(tbl2.loss,tbl1.loss,tbl0.loss)}
+    \State {tbl $\leftarrow$ loss,(nmos,tbl0.cal0,tbl1.cal1,tbl2.cal2)}
+    \EndFor
+    \State{return tbl.nmos,tbl.cal0,tbl.cal1,tbl.cal2}
+\end{algorithmic}
+
+\section{Profiling}\label{fanout:calib}

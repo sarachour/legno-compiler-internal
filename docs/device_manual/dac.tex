@@ -1,10 +1,10 @@
-\chapter{Digital to Analog Converter (DAC)}
+\chapter{Digital to Analog Converter (\tx{DAC} Block)}
 
 The digital to analog converter is a hybrid digital-analog block available on
-the \hcdc device~\cite{dac.h}. Figure~\ref{dac:codes} presents the complete list
-of digitally settable codes in each DAC block. The digital to analog converter
-accepts one digital input that is either read from memory or a lookup table, and
-produces one analog output current. Figure~\ref{dac:codes} presents a complete summary of codes. 
+the \hcdc device~\cite{dac.h}. Figures~\ref{dac:values} and \ref{dac:types}
+presents the complete list of digitally settable codes in each DAC block. The
+digital to analog converter accepts one digital input that is either read from
+memory or a lookup table, and produces one analog output current. 
 
 \noindent\textbf{Location}: Each slice on the \hcdc device contains one
 DAC. The DAC may read values from the lookup tables resident on slice 0 
@@ -14,7 +14,7 @@ of the same tile.
 
 \begin{marginfigure}
     \small
-    \begin{tabular}{c|c}
+    \begin{tabular}{l|l}
       code &values\\
       \hline
       \tx{enable} &\tx{bool_t}\\
@@ -27,11 +27,11 @@ of the same tile.
       \tx{gain_cal}&64\\
     \end{tabular}
     \caption{DAC Values \cite{fu.h}}
-    \label{dac:codes}
+    \label{dac:values}
 \end{marginfigure}
 \begin{marginfigure}
     \small
-    \begin{tabular}{c|c}
+    \begin{tabular}{l|l}
       code & type \\
       \hline
       \tx{enable} & \static\\
@@ -44,27 +44,28 @@ of the same tile.
       \tx{gain_cal}&\hidden\\
     \end{tabular}
     \caption{DAC Code Types\cite{fu.h}}
-    \label{dac:codes}
+    \label{dac:types}
 \end{marginfigure}
 
 \section{Block Function}\label{dac:blockfun}
 
-Given a block at location \hslice{chip}{tile}{slice}, the behavior of the block
-is dictated by the following relation. At a high level, the DAC block converts a
-digital code to an analog current. Any behavior not covered in the algorithm
+Given a DAC at location \hslice{chip}{tile}{slice}, the behavior of the block
+is dictated by the relation presented below. At a high level, the DAC block converts a
+digital code to an analog current. The value returned by the function is the
+value of the current in $\mu A$. Any behavior not covered in the algorithm
 below is undefined:
 
 \begin{algorithmic}
   \If {\tx{enable}}
     \If {\tx{source} = \tx{DSRC_MEM}}
 
-    \State $sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{const_code}-128)\cdot 128^{-1}$
+    \State $2 \cdot sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{const_code}-128)\cdot 128^{-1}$
     \ElsIf {\tx{source} = \tx{DSRC_LUT0}}
 
-    \State $sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{lut}\hindex{chip}{tile}{slice}{0}-128)\cdot 128^{-1}$
+    \State $2 \cdot sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{lut}\hindex{chip}{tile}{slice}{0}-128)\cdot 128^{-1}$
     \ElsIf {\tx{source} = \tx{DSRC_LUT1}}
 
-    \State $sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{lut}\hindex{chip}{tile}{slice}{2}-128)\cdot 128^{-1}$
+    \State $2 \cdot sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{lut}\hindex{chip}{tile}{slice}{2}-128)\cdot 128^{-1}$
     \EndIf
  \EndIf
 \end{algorithmic}
@@ -74,11 +75,16 @@ not. The \tx{range} code scales the output signal by 1x or 10x. The \tx{range}
 code may only be set to \tx{RANGE_MED} or \tx{RANGE_HIGH} for the DAC. Note
 that all \static and \dynamic codes are used in the block function.
 
+\subsection{\analoglib Implementation}
+The \tx{dac.h} file provides a \tx{computeOutput} function that implements the
+block function presented above, given a set of \dynamic and \static codes. The
+returned value of this function is normalized (divided by $2 \mu A$).
+
 \section{Calibration}
 The DAC block has three hidden codes. The
-\tx{pmos} code is always set to $0$. The \tx{nmos} and \tx{gain_cal} codes
-control the gain of the block. The DAC is calibrated using the following
-algorithm:
+\tx{pmos} code is always set to $0$. The remaining codes are set in the block's
+calibration routine. The DAC is calibrated using the following
+algorithm~\cite{dac_calib.cpp}:
 
 \begin{algorithmic}
   \State{\tx{table} = \tx{make}()}
@@ -114,4 +120,8 @@ specified in Section~\ref{dac:blockfun}. The DAC block supports three objective 
   variance over computed gains. The final returned loss is $min(\sigma,|b|)$.
   \item\tx{CALIB_FAST}: This objective function minimizes the error for test
     point $1.0$. This quickly calibrates the gain to have good gain characteristics.
-\end{itemize}
+  \end{itemize}
+  
+\section{Profiling}
+
+XXX profiling algorithm here XXX
