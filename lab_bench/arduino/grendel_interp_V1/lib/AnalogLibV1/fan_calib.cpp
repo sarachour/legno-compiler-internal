@@ -162,10 +162,11 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
             calib_table_out2.state[0],
             calib_table_out2.score);
     print_info(FMTBUF);
+    float consolidated_score = max(calib_table_out0.score,
+                                   max(calib_table_out1.score,
+                                       calib_table_out2.score));
     cutil::update_calib_table(calib_table[nmos],
-                              max(calib_table_out0.score,
-                                  max(calib_table_out1.score,
-                                      calib_table_out2.score)),
+                              consolidated_score,
                               3,
                               calib_table_out0.state[0],
                               calib_table_out1.state[0],
@@ -203,15 +204,44 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
   return;
 }
 
-#define CALIB_NPTS 3
-const float TEST_POINTS[CALIB_NPTS] = {0,-0.5,1};
+#define CALIB_NPTS 4
+const float TEST_POINTS[CALIB_NPTS] = {0,-0.5,-1,1};
 
 
 float Fabric::Chip::Tile::Slice::Fanout::calibrateMaxDeltaFit(Fabric::Chip::Tile::Slice::Dac * val_dac,
                                                               Fabric::Chip::Tile::Slice::Dac * ref_dac,
                                                               ifc out_id) {
-
-  error("not implemented: fanout delta fit");
+  float gains[CALIB_NPTS];
+  float bias = 0.0;
+  int m = 0;
+  for(int i=0; i < CALIB_NPTS; i += 1){
+    float mean,dummy;
+    bool measure_steady_state = false;
+    val_dac->setConstant(TEST_POINTS[i]);
+    float in_val = val_dac->fastMeasureValue(dummy);
+    float target =Fabric::Chip::Tile::Slice::Fanout::computeOutput(this->m_codes,
+                                                                   out_id,
+                                                                   in_val);
+    bool succ = cutil::measure_signal_robust(this, ref_dac, target,
+                                             measure_steady_state,
+                                             mean,
+                                             dummy);
+    if(succ){
+      if(TEST_POINTS[i] == 0.0){
+        bias = fabs(mean-target);
+      }
+      else{
+        gains[m] = mean/target;
+        m += 1;
+      }
+    }
+  }
+  float gain_mean,gain_variance;
+  util::distribution(gains,m,
+                     gain_mean,
+                     gain_variance);
+  float score = max(sqrt(gain_variance),fabs(bias));
+  return score;
 }
 float Fabric::Chip::Tile::Slice::Fanout::calibrateMinError(Fabric::Chip::Tile::Slice::Dac * val_dac,
                                                            Fabric::Chip::Tile::Slice::Dac * ref_dac,

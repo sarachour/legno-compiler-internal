@@ -120,7 +120,6 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(){
       bias = mean;
     }
   }
-  float score_total = 0;
   float gain_mean,gain_variance;
   util::distribution(gains,m,
                      gain_mean,
