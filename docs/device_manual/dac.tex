@@ -50,8 +50,9 @@ codes resident on the block below:
     \end{tabular}
     \caption{DAC Values \cite{fu.h}}
     \label{dac:values}
-\end{marginfigure}
-\begin{marginfigure}
+  \end{marginfigure}
+  
+  \begin{marginfigure}
     \small
     \begin{tabular}{l|l}
       code & type \\
@@ -67,8 +68,8 @@ codes resident on the block below:
     \end{tabular}
     \caption{DAC Code Types\cite{fu.h}}
     \label{dac:types}
-\end{marginfigure}
-
+  \end{marginfigure}
+  
 \section{Block Function}\label{dac:blockfun}
 
 Given a DAC at location \hslice{chip}{tile}{slice}, the behavior of the block
@@ -84,10 +85,10 @@ below is undefined:
     \State $2 \cdot sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{const_code}-128)\cdot 128^{-1}$
     \ElsIf {\tx{source} = \tx{DSRC_LUT0}}
 
-    \State $2 \cdot sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{lut}\hindex{chip}{tile}{slice}{0}-128)\cdot 128^{-1}$
+    \State $2 \cdot sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{lut}\hslice{chip}{tile}{0}-128)\cdot 128^{-1}$
     \ElsIf {\tx{source} = \tx{DSRC_LUT1}}
 
-    \State $2 \cdot sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{lut}\hindex{chip}{tile}{slice}{2}-128)\cdot 128^{-1}$
+    \State $2 \cdot sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{lut}\hslice{chip}{tile}{2}-128)\cdot 128^{-1}$
     \EndIf
  \EndIf
 \end{algorithmic}
