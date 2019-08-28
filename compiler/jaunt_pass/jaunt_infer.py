@@ -114,7 +114,6 @@ def sc_physics_model(jenv,scale_mode,circ,block_name,loc,port,handle):
         scf = props_sc.interval().bound/props_bl.interval().bound
         jenv.implies(modevar,jvar_ops, scf)
 
-        db = jaunt_common.DB
         jvar_phys_gain = jenv.decl_phys_gain_var(block_name, \
                                                 loc, \
                                                 port,handle)
@@ -278,7 +277,7 @@ def sc_decl_scale_model_variables(jenv,circ):
                     if not block.whitelist(config.comp_mode, scm):
                         continue
 
-                    if  not jaunt_common.DB.has(block.name,loc,port, \
+                    if  not jenv.model_db.has(block.name,loc,port, \
                                                config.comp_mode, \
                                                scm,handle):
                         missing_scms.append(scm)
@@ -293,7 +292,7 @@ def sc_decl_scale_model_variables(jenv,circ):
 
         modevars = []
         for scm in missing_scms:
-                jaunt_common.DB.log_missing_model(block.name, \
+                jenv.model_db.log_missing_model(block.name, \
                                                   loc, \
                                                   block.outputs[0], \
                                                   config.comp_mode, \

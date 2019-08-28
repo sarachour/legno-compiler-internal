@@ -18,6 +18,7 @@ class PortModel():
     self._noise = 0.0
     self._bias = 0.0
     self._unc_bias = 0.0
+    self._unc_gain= 0.0
     # the actual lower bound is [ospos*pos, osneg*neg]
     self._opscale = (1.0,1.0)
     self._comp_mode = util.normalize_mode(comp_mode)
@@ -102,6 +103,15 @@ class PortModel():
     self._bias = v
 
   @property
+  def gain_uncertainty(self):
+    return self._unc_gain
+
+  @gain_uncertainty.setter
+  def gain_uncertainty(self,v):
+    assert(v >= 0.0)
+    self._unc_gain = v
+
+  @property
   def bias_uncertainty(self):
     return self._unc_bias
 
@@ -124,7 +134,7 @@ class PortModel():
     r = "=== model ===\n"
     r += "ident: %s\n" % (self.identifier)
     r += "bias: mean=%f std=%f\n" % (self.bias,self.bias_uncertainty)
-    r += "gain: mean=%f\n" % (self.gain)
+    r += "gain: mean=%f std=%f\n" % (self.gain,self.gain_uncertainty)
     r += "noise: std=%f\n" % (self.noise)
     l,u = self._opscale
     r += ("scale=(%fx,%fx)\n" % (l,u))
@@ -139,6 +149,7 @@ class ModelDB:
     self._conn = sqlite3.connect(path)
     self._curs = self._conn.cursor()
     self.calib_mode = calib_mode
+    assert(calib_mode != 'min_error')
     cmd = '''
     CREATE TABLE IF NOT EXISTS models (
     calib_mode text NOT NULL,
@@ -206,7 +217,7 @@ class ModelDB:
 
 
   def _where_clause(self,block,loc,port,comp_mode,scale_mode,handle=None):
-    return '''
+    cmd = '''
     WHERE calib_mode="{calib_mode}"
       AND block="{block}"
       AND loc="{loc}"
@@ -214,13 +225,14 @@ class ModelDB:
       AND comp_mode="{comp_mode}"
       AND scale_mode="{scale_mode}"
       AND handle="{handle}"
-    '''.format(calib_mode=self.calib_mode.value, \
+    '''.format(calib_mode=self.calib_mode, \
                block=block, \
                loc=str(loc), \
                port=str(port), \
                comp_mode=str(comp_mode), \
                scale_mode=str(scale_mode), \
                handle=handle)
+    return cmd
 
   def _get(self,block,loc,port,comp_mode,scale_mode,handle=None):
     model = PortModel(block,loc,port,comp_mode,scale_mode,handle)
@@ -290,7 +302,8 @@ def get_model(db,circ,block_name,loc,port,handle=None):
     config = circ.config(block_name,loc)
     if db.has(block.name,loc,port, \
               config.comp_mode, \
-              config.scale_mode,handle):
+              config.scale_mode, \
+              handle):
       model = db.get(block.name,loc,port, \
                      config.comp_mode, \
                      config.scale_mode,handle)

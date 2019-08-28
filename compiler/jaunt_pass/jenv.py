@@ -4,6 +4,7 @@ import ops.jop as jop
 import numpy as np
 import util.config as CONFIG
 import signal
+from chip.model import ModelDB
 import sys
 
 class JauntVarType(Enum):
@@ -320,6 +321,7 @@ class JauntInferEnv(JauntEnv):
                         max_freq=max_freq, \
                         digital_error=digital_error,
                         analog_error=analog_error)
+      self.model_db = ModelDB(self.params.calib_obj)
       self._exactly_one = []
       self._implies = {}
       self._lts = []

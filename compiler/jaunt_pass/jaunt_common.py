@@ -14,20 +14,25 @@ import compiler.jaunt_pass.jaunt_physlog as jaunt_physlog
 import compiler.jaunt_pass.jenv as jenvlib
 import math
 
-DB = ModelDB()
 
 def get_physics_params(jenv,circ,block,loc,port,handle=None):
     model = jenv.params.model
     config = circ.config(block.name,loc)
-    oprange_lower, oprange_upper = get_oprange_scale(DB,circ,block.name,loc, \
+    oprange_lower, oprange_upper = get_oprange_scale(jenv.model_db, \
+                                                     circ, \
+                                                     block.name, \
+                                                     loc, \
                                    port,handle=handle,
                                    mode=model)
-    gain_sc = get_gain(DB,circ,block.name,loc, \
+    gain_sc = get_gain(jenv.model_db, \
+                       circ, \
+                       block.name,loc, \
                        port,handle=handle, \
                        mode=model)
-    uncertainty_sc = get_variance(DB,circ,block.name,loc, \
-                       port,handle=handle, \
-                       mode=model)
+    uncertainty_sc = get_variance(jenv.model_db, \
+                                  circ,block.name,loc, \
+                                  port,handle=handle, \
+                                  mode=model)
 
     return {
         'gain':gain_sc,
