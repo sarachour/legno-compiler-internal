@@ -74,11 +74,14 @@ determines if the third output (\tx{out2}) of the current copier is in use.
 \subsection{Operating Ranges}
 
 The magnitude of the analog input $in$ must fall within the current limits of
-the current copier. These limits are determined by the \tx{range} code. If the
-\tx{range} code is set to \tx{RANGE_MED}, the analog input must fall within
-$[-2 \mu A, 2 \mu A]$. If the \tx{range} code is set to \tx{RANGE_HIGH}, the
-analog input must fall within $[-20 \mu A, 20 \mu A]$
+the current copier. These limits are determined by the \tx{range} code:
 
+\begin{algorithmic}
+  \State{$\tx{in} \in scale(\tx{range}) \cdot [-2 \mu A, 2 \mu A] $}
+  \State{$\tx{out0} \in scale(\tx{range}) \cdot [-2 \mu A, 2 \mu A] $}
+  \State{$\tx{out1} \in scale(\tx{range}) \cdot [-2 \mu A, 2 \mu A] $}
+  \State{$\tx{out2} \in scale(\tx{range}) \cdot [-2 \mu A, 2 \mu A] $}
+\end{algorithmic}
 \section{Calibration}\label{fanout:calib}
 
 The fanout block has five hidden codes:
@@ -94,65 +97,43 @@ The fanout block has five hidden codes:
   the block. 
 \end{itemize}
 
-The \tx{pmos} code is always set to $XXX$. The remaining codes are set by the block's
-calibration routine. The calibration routine implements the following algorithm:
+The \tx{pmos} code is always set to $3$ and the \tx{nmos} code is always set to
+$0$. The remaining codes are set by the block's calibration routine. The calibration routine implements the following algorithm:
 
 \begin{algorithmic}
+  \State {ctbl = \tx{make_table()}}
+  \State {tbl0 = \tx{make_table()}}
+  \For{cal0 in 0...64 with stride=4}
+  \For{cal1 in 0...64 with stride=4}
+  \For{cal2 in 0...64 with stride=4}
+  \State {loss = obj(cal0,cal1,cal2)}
+  \State {ctbl $\leftarrow$ loss,(cal0,cal1,cal2)}
+  \EndFor
+  \EndFor
+  \EndFor
   \State {tbl = \tx{make_table()}}
-  \For{\tx{nmos} in 0...7}
-    \State {tbl0 = \tx{make_table()}}
-    \For{cal0 in 0...64}
-      \State {loss = obj(cal0,32,32)}
-      \State {tbl0 $\leftarrow$ loss,cal0}
-    \EndFor
-    \State {tbl1 = \tx{make_table()}}
-    \For{cal1 in 0...64}
-      \State {loss = obj(tbl0.cal0,cal1,32)}
-      \State {tbl1 $\leftarrow$ loss,cal1}
-    \EndFor
-    \State {tbl2 = \tx{make_table()}}
-    \For{\tx{cal2} in 0...64}
-      \State {loss = obj(tbl0.cal0,tbl1.cal1,cal2)}
-      \State {tbl2 $\leftarrow$ loss,cal2}
-    \EndFor
-    \State{loss = max(tbl0.loss,tbl1.loss,tbl2.loss)}
-    \State {tbl $\leftarrow$ loss,(nmos,tbl0.cal0,tbl1.cal1,tbl2.cal2)}
-    \EndFor
-    \State{return tbl.nmos,tbl.cal0,tbl.cal1,tbl.cal2}
+  \For{i in -3..3}
+  \State{cal0 = ctbl.cal0+i}
+  \For{j in -3..3}
+  \State{cal1 = ctbl.cal1+j}
+  \For{k in -3..3}
+  \State{cal2 = ctbl.cal2+k}
+  \State {loss = obj(cal0,cal1,cal2)}
+  \State{tbl $\leftarrow$ loss,(cal0,cal1,cal2)}
+  \EndFor
+  \EndFor
+  \EndFor
+  \State{return tbl.cal0,tbl.cal1,tbl.cal2}
 \end{algorithmic}
 
 At a high level, the calibration algorithm independently finds the best
-\tx{port_cal[out0Id]}, \tx{port_cal[out1Id]} and \tx{port_cal[out2Id]} bias
-correction codes for each \tx{nmos} value. The algorithm creates three temporary
-calibration tables (\tx{tbl0}, \tx{tbl1} and \tx{tbl2}) for tracking each
-\tx{port_cal} value.
+coarse-grained assignments for the \tx{port_cal[out0Id]}, \tx{port_cal[out1Id]}
+and \tx{port_cal[out2Id]} bias correction codes. It then fine tunes the
+coarse-grained set of assignments by doing a local search in the vicinity of values
+around the coarse-grained set of assignments. 
 
-\noindent\textbf{Find Best \tx{port_cal[out0Id]}} (Lines XXX-XXX): Each
-\tx{port_cal[out0Id]} code value (\tx{cal0}) is evaluated by invoking the
-objective function on the \tx{cal0} code, with the other \tx{port_cal} codes set
-to 32. The objective function returns a loss, which is used to select the best
-\tx{cal0} code. At the end of this step, \tx{tbl0} contains the loss and value of the best
-\tx{cal0} code.  
+The objective function used by the fanout calibration routine  XXX
 
-\noindent\textbf{Find Best \tx{port_cal[out1Id]}} (Lines XXX-XXX): Each
-\tx{port_cal[out1Id]} code value (\tx{cal1}) is evaluated by invoking the
-objective function on the \tx{cal1} code, with the \tx{port_cal[out0Id]} code
-set to the best code in \tx{tbl0} and \tx{port_cal[out2Id]} code set to 32. At
-the end of this step, \tx{tbl1} contains the loss and value of the best
-\tx{cal1} code.
-
-\noindent\textbf{Find Best\tx{port_cal[out2Id]}} (Lines XXX-XXX): Each
-\tx{port_cal[out2Id]} code value (\tx{cal2}) is evaluated by invoking the
-objective function on the \tx{cal2} code, where \tx{port_cal[out0Id]} and
-\tx{port_cal[out1Id]} are set to the best codes in \tx{tbl0} and \tx{tbl1}. At
-the end of this step, \tx{tbl2} contains the loss and value of the best
-\tx{cal2} code.
-
-After all three of the temporary tables have been populated, the calibration
-routine consolidates the results from the three calibration steps and updates
-the master table \tx{tbl}. The consolidated loss is the worst computed loss of
-the three steps. The consolidated set of codes consists of the current \tx{nmos}
-code and the \tx{port_cal} codes from the \tx{tbl0-2}. 
 
 \section{Profiling}\label{fanout:calib}
 

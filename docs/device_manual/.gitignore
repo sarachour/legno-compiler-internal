@@ -2,3 +2,5 @@
 *.bbl
 *.blg
 *.pdf
+*.toc
+auto

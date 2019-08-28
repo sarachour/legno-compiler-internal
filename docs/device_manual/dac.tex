@@ -18,10 +18,7 @@ codes resident on the block below:
 \item\tx{enable}: Determines whether the block is enabled (true) or disabled
   (false).
 \item\tx{range}: Configures the current range of the analog current emitted by
-  the DAC. If the code is set to \tx{RANGE_MED}, the output is mapped to a
-  current in $[-2 \mu A, 2 \mu A]$. If the code is set to \tx{RANGE_HIGH}, the
-  output is mapped to a current in $-20 \mu A, 20 \mu A$. This code cannot be
-  set to \tx{RANGE_LOW}.
+  the DAC. This range cannot be set to low mode (\tx{RANGE_LOW}).
   \item\tx{inv}: Determines whether the output of the DAC is inverted or not.
     This is useful if multiple DACs are reading from the same lookup table, as
     some DACs can by configured to negate the value of the lookup table.
@@ -96,6 +93,16 @@ below is undefined:
 The \tx{inv} code determines whether the output signal should be inverted or
 not. The \tx{range} code scales the output signal by 1x or 10x. Note
 that all \static and \dynamic codes are used in the block function.
+
+\subsection{Operating Ranges}
+
+The magnitude of the analog output is determined by the \tx{range} code of the
+DAC. The \tx{range} code is limited to medium (\tx{RANGE_MED}) or high
+(\tx{RANGE_HIGH}) mode:
+
+\begin{algorithmic}
+  \State{$\tx{out} \in scale(\tx{range}) \cdot [-2 \mu A, 2 \mu A] $}
+\end{algorithmic}
 
 \subsection{\analoglib Implementation}
 The \tx{dac.h} file provides a \tx{computeOutput} function that implements the

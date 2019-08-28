@@ -16,10 +16,7 @@ codes resident on the block below:
 \begin{itemize}
 \item\tx{enable}: Determines whether the block is enabled (true) or disabled
   (false).
-\item\tx{range}: Configures the current limit of the analog input. If the code
-  is set to \tx{RANGE_MED}, the input must fall within $[-2 \mu A, 2 \mu A]$. If
-  the code is set to \tx{RANGE_HIGH}, the input must fall within $-20 \mu A, 20
-  \mu A$. This code cannot be set to \tx{RANGE_LOW}
+\item\tx{range}: Configures the current limit of the analog input. This code cannot be set to \tx{RANGE_LOW}
 \item\tx{test} codes: Places the block in various test modes. Currently unused,
   and therefore set to false.
 \end{itemize}
@@ -95,6 +92,16 @@ introduces and implicit gain into the function governing the behavior of the
 block. More concretely, if \tx{range} code is set to \tx{RANGE_HIGH}, the
 analog signal is scaled down by 10x (scaled by $0.1$) before being converted to
 a digital signal.
+
+\subsection{Operating Ranges}
+
+The current range of the analog input \tx{in} is determined by the \tx{range} code of the
+ADC. The \tx{range} code is limited to medium (\tx{RANGE_MED}) or high (\tx{RANGE_HIGH}) mode:
+
+\begin{algorithmic}
+  \State{$\tx{in} \in scale(\tx{range}) \cdot [-2 \mu A, 2 \mu A] $}
+\end{algorithmic}
+
 
 \subsection{\analoglib Implementation}
 
