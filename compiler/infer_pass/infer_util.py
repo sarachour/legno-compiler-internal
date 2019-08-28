@@ -58,6 +58,12 @@ def to_loc(obj):
 def to_range(name):
   return chipcmd.RangeType(name)
 
+def to_safe_loc(loc):
+  loc = loc.replace("HDACv2,","")
+  loc = loc.split("(")[1].split(")")[0]
+  loc = "x".join(loc.split(","))
+  return loc
+
 def get_directory(model):
     def to_tag(mode):
         if isinstance(mode,tuple):
@@ -67,8 +73,9 @@ def get_directory(model):
         return tag
 
     block,loc = model.block,model.loc
+    loc = to_safe_loc(loc)
     cm,sm = to_tag(model.comp_mode),to_tag(model.scale_mode)
-    direc = "MODELS/%s_%s/%s_%s/%s" % (block,loc,cm,sm, \
+    direc = "MODELS/%s-%s/%s-%s/%s" % (block,loc,cm,sm, \
                                        CALIB_MODE.value)
     util.mkdir_if_dne(direc)
     return direc
@@ -89,3 +96,7 @@ def normalize_bound(bnds,scm):
       return min(max(v,0.5),1.0)
 
   return [clamp(nlb),clamp(nub)]
+
+
+def array_map(mapfun):
+    return np.array(list(mapfun))

@@ -74,7 +74,7 @@ def write_models(models):
   if len(models) == 0:
     return
 
-  direc = infer_visualize.get_directory(models[0])
+  direc = infer_util.get_directory(models[0])
   filename = "model.json"
   path = "%s/%s" % (direc,filename)
   with open(path,'w') as fh:

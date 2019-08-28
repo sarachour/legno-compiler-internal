@@ -10,33 +10,6 @@ import math
 import sklearn.tree as tree
 from scipy import stats
 
-def apply(lambd, data, classes):
-  n = len(data)
-  idxs = list(filter(lambd, range(n)))
-  data_i = list(map(lambda i: data[i], idxs))
-  classes_i = list(map(lambda i: classes[i], idxs))
-  return data_i,classes_i
-
-def resample(npts,data,classes):
-  n = len(data)
-  if n == 0:
-    return [],[]
-  idxs = list(map(lambda _ : np.random.randint(0,n), \
-                  range(npts)))
-  data_i = list(map(lambda i: data[i], idxs))
-  classes_i = list(map(lambda i: classes[i], idxs))
-  return data_i,classes_i
-
-
-
-def compute_error_metrics(errors):
-  std = np.std(errors)
-  mean = np.mean(errors)
-  mean_unc = mean+std
-  max_unc = max(errors)
-  return mean_unc,max_unc
-
-
 
 def remove_outliers(model,in0,in1,classes):
   def test(x,l,u):
@@ -107,147 +80,149 @@ def plot_outlier(model,in0,in1,errors,cutoff):
   plt.savefig(filename)
   plt.clf()
 
-def split_model(model,in0,in1,out,bias,max_unc):
-  n = len(in0)
+def split_model(model,dataset,max_unc):
+  meas,out = dataset.meas,dataset.out
+  in0,in1 = dataset.in0,dataset.in1
+  n = dataset.n
   assert(n > 0)
-  meas = np.array(list(map(lambda i: bias[i]+out[i], range(n))))
   pred = infer_util.apply_model(model,out)
-  error = np.array(list(map(lambda i: abs(pred[i]-meas[i]), \
-                            range(n))))
-
-  adapt_err = get_outlier_classifier(error)
-  plot_error_distribution(model,error,adapt_err)
-  plot_outlier(model,in0,in1,error,adapt_err)
-  classes = list(map(lambda i: error[i] <= adapt_err,range(n)))
-  in0bnds,in1bnds = remove_outliers(model,in0,in1,classes)
-
-
-  bnds = {}
-  bnds['in0'] = in0bnds
-  bnds['in1'] = in1bnds
-  return bnds
+  err = infer_util.array_map(map(lambda i: abs(pred[i]-meas[i]), range(n)))
+  adapt_err = get_outlier_classifier(err)
+  plot_error_distribution(model,err,adapt_err)
+  plot_outlier(model,in0,in1,err,adapt_err)
+  classes = list(map(lambda i: err[i] <= adapt_err,range(n)))
+  (in0l,in0h),(in1l,in1h)= remove_outliers(model,in0,in1,classes)
+  dataset.set_bounds(in0l,in0h,in1l,in1h)
 
 
 
 
-def apply_params(xdata,a,b):
-    x = xdata
-    result = (a)*(x) + b
-    return result
 
-def in_bounds(in0,in1,bnds):
-  l0,u0 = bnds['in0']
-  l1,u1 = bnds['in1']
-  if l0 is None or u0 is None \
-     or l1 is None or u1 is None:
-    return True
 
-  return in0 >= l0 \
-    and in0 <= u0 \
-    and in1 >= l0 \
-    and in1 <= u0
+class InferDataset:
 
+  def __init__(self,in0,in1,out,bias,noise):
+    self.fields = {}
+    self.indices = list(range(len(in0)))
+    self.fields = ['in0','in1','out','noise','meas']
+    self._in0 = in0
+    self._in1 = in1
+    self._out = out
+    self._noise = noise
+    self._meas = list(map(lambda i: bias[i]+out[i], \
+                          self.indices))
+    self._in0_bnd = (None,None)
+    self._in1_bnd = (None,None)
+
+  def _get_datum(self,key):
+    return infer_util.array_map(map(lambda i: self.__dict__[key][i],  \
+                         self.indices))
+
+  @property
+  def n(self):
+    return len(self.indices)
+
+  @property
+  def in0(self):
+    return self._get_datum('_in0')
+
+
+  @property
+  def in1(self):
+    return self._get_datum('_in1')
+
+
+  @property
+  def out(self):
+    return self._get_datum('_out')
+
+  @property
+  def noise(self):
+    return self._get_datum('_noise')
+
+  @property
+  def meas(self):
+    return self._get_datum('_meas')
+
+  def set_bounds(self,in0l,in0h,in1l,in1h):
+    def in_bounds(v,l,h):
+      return v >= l \
+        and v <= h
+    self._in0_bnd = (in0l,in0h)
+    self._in1_bnd = (in1l,in1h)
+    self.indices = list(filter(lambda i: \
+                            in_bounds(self._in0[i],in0l,in0h) and \
+                            in_bounds(self._in1[i],in1l,in1h), \
+                            range(len(self._in0))))
+
+  @property
+  def in0_bounds(self):
+    return self._in0_bnd
+
+  @property
+  def in1_bounds(self):
+    return self._in1_bnd
+
+
+def fit_scale_model(model,dataset):
+  def func(x,a):
+    return x*a
+
+  def error(x,xhat,a):
+    return abs(func(x,a)-xhat)
+
+  observe,expect = dataset.meas,dataset.out
+  n = dataset.n
+  popt, pcov = scipy.optimize.curve_fit(func, expect, observe)
+  gain_mu,gain_std = popt[0], math.sqrt(pcov[0])
+  errs = infer_util.array_map(map(lambda i: error(expect[i], \
+                                                  observe[i], \
+                                                  gain_mu), range(n)))
+
+  bias_std = np.std(errs)
+  model.gain = gain_mu
+  model.gain_uncertainty = gain_std
+  model.bias = 0
+  model.bias_uncertainty = bias_std
 
 def infer_model(model,in0,in1,out,bias,noise, \
                 uncertainty_limit, \
                 adc=False,
                 required_points=20):
 
-  n = len(out)
-  if adc:
-    idxs = list(range(n))
-    bias = np.array(list(map(lambda i: bias[i]/128.0, idxs)))
-    noise = np.array(list(map(lambda i: noise[i]/(128.0**2), idxs)))
-    in0 = np.array(list(map(lambda i: in0[i], idxs)))
-    in1 = np.array(list(map(lambda i: in1[i], idxs)))
-    out = np.array(list(map(lambda i: (out[i]-128.0)/128.0, idxs)))
-    n = len(out)
 
-  else:
-    idxs = list(filter(lambda i: abs(bias[i]) < 1.3, range(n)))
-    bias = np.array(list(map(lambda i: bias[i], idxs)))
-    noise = np.array(list(map(lambda i: noise[i], idxs)))
-    in0 = np.array(list(map(lambda i: in0[i], idxs)))
-    in1 = np.array(list(map(lambda i: in1[i], idxs)))
-    out = np.array(list(map(lambda i: out[i], idxs)))
-    n = len(out)
-
-  bnd = {"in0":(None,None), "in1":(None,None)}
-  if n == 1:
-    model.gain = 1.0
-    model.bias = bias[0]
-    model.uncertainty_bias = 0.0
-    model.noise= math.sqrt(sum(map(lambda n: n**2.0, noise))/n)
-    return bnd
-
-  in0_valid = in0
-  in1_valid = in1
-  out_valid = out
-  noise_valid = noise
-  bias_valid = bias
-  has_outliers = True
+  dataset = InferDataset(in0,in1,out,bias,noise)
   cnt =0
-  max_prune =0
+  max_prune = 0
   while True:
-    n = len(in0_valid)
-    inds = list(filter(lambda i: in_bounds(in0_valid[i],in1_valid[i],bnd),
-                range(n)))
-    m = len(inds)
-    meas_valid = np.array(list(map(lambda i: out_valid[i] + bias_valid[i], inds)))
-    out_valid = np.array(list(map(lambda i: out_valid[i], inds)))
-    bias_valid = np.array(list(map(lambda i: bias_valid[i], inds)))
-    in0_valid = np.array(list(map(lambda i: in0_valid[i], inds)))
-    in1_valid = np.array(list(map(lambda i: in1_valid[i], inds)))
-    noise_valid = np.array(list(map(lambda i: noise_valid[i], inds)))
-    if m == 0:
-      print(model)
-      raise Exception("no data")
-    new_gain,new_offset,r_value,p_value,std_err = \
-                                  stats.linregress(out_valid,meas_valid)
-    pred_valid = np.array(list(map(lambda i: \
-                                    apply_params(out_valid[i], \
-                                                new_gain, \
-                                                new_offset), \
-                                    range(m))))
-    errors_valid = list(map(lambda i: abs(meas_valid[i]-pred_valid[i]), \
-                            range(m)))
-    new_unc,new_max_error = compute_error_metrics(errors_valid)
-    model.gain = new_gain
-    model.bias = new_offset
-    model.bias_uncertainty = new_unc
-    model.noise= math.sqrt(sum(map(lambda n: n**2.0, noise_valid))/(m-1))
-    print(model)
-    print("  in0=(%s,%s) in1=(%s,%s)" % (bnd['in0'][0],bnd['in0'][1], \
-                                          bnd['in1'][0],bnd['in1'][1]))
-    if cnt < max_prune and m >= required_points:
-      bnd = split_model(model, \
-                        in0_valid, \
-                        in1_valid, \
-                        out_valid, \
-                        bias_valid, \
-                        uncertainty_limit)
+    fit_scale_model(model,dataset)
+    model.noise = math.sqrt(np.mean(dataset.noise))
+    if cnt < max_prune and dataset.n >= required_points:
+      split_model(model, \
+                  dataset, \
+                  uncertainty_limit)
       cnt += 1
     else:
-      print("------")
-      return bnd
-
-
+      print(model)
+      return dataset, {
+        'in0': dataset.in0_bounds,
+        'in1': dataset.in1_bounds
+      }
 
 def build_model(model,dataset,mode,max_uncertainty,adc=False):
   bias,noise,in0,in1,out = infer_util \
                            .get_data_by_mode(dataset,mode)
-  infer_vis.plot_bias(model,\
-                      infer_vis.get_plot_name(model,'bias'), \
-                      in0,in1,out,bias)
-  infer_vis.plot_noise(model, \
-                       infer_vis.get_plot_name(model,'noise'), \
-                       in0,in1,out,noise)
-  bnd= infer_model(model,in0,in1,out, \
-                        bias,noise,max_uncertainty,adc=adc)
+  dataset,bnd= infer_model(model,in0,in1,out, \
+                           bias,noise,max_uncertainty,adc=adc)
+
+  infer_vis.plot_error(model,\
+                      infer_vis.get_plot_name(model,'nodelta-error'), \
+                      dataset, \
+                      use_delta_model=False)
   # none can be bnd
-  infer_vis.plot_prediction_error(infer_vis.get_plot_name(model,'error'), \
-                                  model,None,in0,in1,out,bias)
-  infer_vis.plot_prediction_error(infer_vis.get_plot_name(model,'bnd'), \
-                                  model,bnd,in0,in1,out,bias)
+  infer_vis.plot_error(model, \
+                       infer_vis.get_plot_name(model,'delta-error'), \
+                       dataset, \
+                       use_delta_model=True)
   plt.close('all')
   return bnd

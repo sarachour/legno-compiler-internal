@@ -149,7 +149,6 @@ class ModelDB:
     self._conn = sqlite3.connect(path)
     self._curs = self._conn.cursor()
     self.calib_mode = calib_mode
-    assert(calib_mode != 'min_error')
     cmd = '''
     CREATE TABLE IF NOT EXISTS models (
     calib_mode text NOT NULL,
