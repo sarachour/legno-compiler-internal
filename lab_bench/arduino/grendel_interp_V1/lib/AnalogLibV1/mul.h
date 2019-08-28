@@ -27,6 +27,22 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 	private:
     profile_t measureVga(float in0,float gain);
     profile_t measureMult(float in0,float in1);
+    float getLoss(calib_objective_t obj,
+                  Dac * val0_dac,
+                  Dac * val1_dac,
+                  Dac * ref_dac);
+    void calibrateHelperMult(Dac * val0_dac,
+                             Dac * val1_dac,
+                             Dac * ref_dac,
+                             float* observations,
+                             float* expected,
+                             int& npts);
+    void calibrateHelperVga(Dac * val_dac,
+                            Dac * ref_dac,
+                            float* observations,
+                            float* expected,
+                            int& npts);
+
     float calibrateMinError(Dac * val0_dac,
                             Dac * val1_dac,
                             Dac * ref_dac);
@@ -35,7 +51,14 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
     float calibrateMinErrorMult(Dac * val0_dac,
                                 Dac * val1_dac,
                                 Dac * ref_dac);
-
+    float calibrateMaxDeltaFit(Dac * val0_dac,
+                            Dac * val1_dac,
+                            Dac * ref_dac);
+    float calibrateMaxDeltaFitVga(Dac * val_dac,
+                               Dac * ref_dac);
+    float calibrateMaxDeltaFitMult(Dac * val0_dac,
+                                Dac * val1_dac,
+                                Dac * ref_dac);
 		Multiplier (Slice * parentSlice, unit unitId);
 		~Multiplier () override {
 			delete out0;
