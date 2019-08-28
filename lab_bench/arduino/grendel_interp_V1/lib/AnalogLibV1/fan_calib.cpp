@@ -100,89 +100,92 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
   val_to_fanout.setConn();
   tileout_to_chipout.setConn();
 
-  cutil::calib_table_t calib_table[MAX_NMOS];;
-  for(int nmos = 0; nmos < MAX_NMOS; nmos += 1){
-    // bind best bias code for out0
-    calib_table[nmos] = cutil::make_calib_table();
+  // nmos code doesn't change much
+  this->m_codes.nmos = 0;
+  // bind best bias code for out0
+  cutil::calib_table_t calib_table = cutil::make_calib_table();
+  // coarse grain global search: 3375 combos
+  for(int bias_cal0=0; bias_cal0 < MAX_BIAS_CAL; bias_cal0+=4){
+    this->m_codes.port_cal[out0Id] = bias_cal0;
+    for(int bias_cal1=0; bias_cal1 < MAX_BIAS_CAL; bias_cal1+=4){
+      this->m_codes.port_cal[out1Id] = bias_cal1;
+      for(int bias_cal2=0; bias_cal2 < MAX_BIAS_CAL; bias_cal2+=4){
+        this->m_codes.port_cal[out2Id] = bias_cal2;
+        update(this->m_codes);
+        conn_out0.setConn();
+        float score = getScore(CALIB_FAST,val_dac,ref_dac,out0Id);
+        conn_out0.brkConn();
+        conn_out1.setConn();
+        score = max(score,getScore(CALIB_FAST,val_dac,ref_dac,out1Id));
+        conn_out1.brkConn();
+        conn_out2.setConn();
+        score = max(score,getScore(CALIB_FAST,val_dac,ref_dac,out2Id));
+        conn_out2.brkConn();
+        cutil::update_calib_table(calib_table,score,4,
+                                  bias_cal0,
+                                  bias_cal1,
+                                  bias_cal2,
+                                  this->m_codes.nmos
+                                  );
+      }
+    }
 
-    cutil::calib_table_t calib_table_out0 = cutil::make_calib_table();
-    cutil::calib_table_t calib_table_out1 = cutil::make_calib_table();
-    cutil::calib_table_t calib_table_out2 = cutil::make_calib_table();
-
-    this->m_codes.port_cal[out0Id] = 32;
-    this->m_codes.port_cal[out1Id] = 32;
-    this->m_codes.port_cal[out2Id] = 32;
-    conn_out0.setConn();
-    for(int bias_cal=0; bias_cal < MAX_BIAS_CAL; bias_cal+=1){
-      this->m_codes.port_cal[out0Id] = bias_cal;
-      update(this->m_codes);
-      float score = getScore(obj,val_dac,ref_dac,out0Id);
-      cutil::update_calib_table(calib_table_out0,score,1,bias_cal);
-    }
-    this->m_codes.port_cal[out0Id] = calib_table_out0.state[0];
-    conn_out0.brkConn();
-    sprintf(FMTBUF,"nmos=%d out0 bias_code=%d score=%f",
-            nmos,
-            calib_table_out0.state[0],
-            calib_table_out0.score);
-    print_info(FMTBUF);
-    // find the best code for out1
-    conn_out1.setConn();
-    for(int bias_cal=0; bias_cal < MAX_BIAS_CAL; bias_cal+=1){
-      this->m_codes.port_cal[out1Id] = bias_cal;
-      update(this->m_codes);
-      float score = getScore(obj,val_dac,ref_dac,out1Id);
-      cutil::update_calib_table(calib_table_out1,
-                                score,
-                                1,
-                                bias_cal);
-    }
-    this->m_codes.port_cal[out1Id] = calib_table_out1.state[0];
-    conn_out1.brkConn();
-    sprintf(FMTBUF,"nmos=%d out1 bias_code=%d score=%f",
-            nmos,
-            calib_table_out1.state[0],
-            calib_table_out1.score);
-    print_info(FMTBUF);
-    // find the best code for out2
-    conn_out2.setConn();
-    for(int bias_cal=0; bias_cal < MAX_BIAS_CAL; bias_cal+=1){
-      this->m_codes.port_cal[out2Id] = bias_cal;
-      update(this->m_codes);
-      float score = getScore(obj,val_dac,ref_dac,out2Id);
-      cutil::update_calib_table(calib_table_out2,
-                                score,
-                                1,
-                                bias_cal);
-    }
-    this->m_codes.port_cal[out2Id] = calib_table_out2.state[0];
-    conn_out2.brkConn();
-    sprintf(FMTBUF,"nmos=%d out2 bias_code=%d score=%f",
-            nmos,
-            calib_table_out2.state[0],
-            calib_table_out2.score);
-    print_info(FMTBUF);
-    float consolidated_score = max(calib_table_out0.score,
-                                   max(calib_table_out1.score,
-                                       calib_table_out2.score));
-    cutil::update_calib_table(calib_table[nmos],
-                              consolidated_score,
-                              3,
-                              calib_table_out0.state[0],
-                              calib_table_out1.state[0],
-                              calib_table_out2.state[0]);
-    sprintf(FMTBUF,"nmos=%d bias_codes=(%d,%d,%d) score=%f",
-            nmos,
-            calib_table[nmos].state[0],
-            calib_table[nmos].state[1],
-            calib_table[nmos].state[2],
-            calib_table[nmos].score);
+    sprintf(FMTBUF, "CRS nmos=%d bias_codes=(%d,%d,%d) score=%f",
+            calib_table.state[3],
+            calib_table.state[0],
+            calib_table.state[1],
+            calib_table.state[2],
+            calib_table.score
+            );
     print_info(FMTBUF);
   }
 
-  float scores[MAX_NMOS];
-  for(int i=0; i < MAX_NMOS; i+=1){
-    scores[i] = calib_table[i].score;
+  // fine grain local search: 343 combos
+  int coarse_bias_cal0 = calib_table.state[0];
+  int coarse_bias_cal1 = calib_table.state[1];
+  int coarse_bias_cal2= calib_table.state[2];
+  for(int i=-3; i < 4; i += 1){
+    int bias_cal0 = coarse_bias_cal0 + i;
+    if(bias_cal0 < 0 || bias_cal0 >= MAX_BIAS_CAL)
+      continue;
+    this->m_codes.port_cal[out0Id] = bias_cal0;
+
+    for(int j=-3; j < 4; j += 1){
+      int bias_cal1 = coarse_bias_cal1 + j;
+      if(bias_cal1 < 0 || bias_cal1 >= MAX_BIAS_CAL)
+        continue;
+      this->m_codes.port_cal[out1Id] = bias_cal1;
+
+      for(int k=-3; k < 4; k += 1){
+        int bias_cal2 = coarse_bias_cal2 + k;
+        if(bias_cal2 < 0 || bias_cal2 >= MAX_BIAS_CAL)
+          continue;
+        update(this->m_codes);
+        conn_out0.setConn();
+        float score = getScore(CALIB_FAST,val_dac,ref_dac,out0Id);
+        conn_out0.brkConn();
+        conn_out1.setConn();
+        score = max(score,getScore(CALIB_FAST,val_dac,ref_dac,out1Id));
+        conn_out1.brkConn();
+        conn_out2.setConn();
+        score = max(score,getScore(CALIB_FAST,val_dac,ref_dac,out2Id));
+        conn_out2.brkConn();
+        cutil::update_calib_table(calib_table,score,4,
+                                  bias_cal0,
+                                  bias_cal1,
+                                  bias_cal2,
+                                  this->m_codes.nmos
+                                  );
+      }
+    }
+    sprintf(FMTBUF, "FINE nmos=%d bias_codes=(%d,%d,%d) score=%f",
+            calib_table.state[3],
+            calib_table.state[0],
+            calib_table.state[1],
+            calib_table.state[2],
+            calib_table.score
+            );
+    print_info(FMTBUF);
   }
   ref_to_tileout.brkConn();
   val_to_fanout.brkConn();
@@ -194,12 +197,11 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
   //set best hidden codes
   int best_nmos=0;
   int best_score=0;
-  best_nmos = util::find_minimum(scores,MAX_NMOS);
-  best_score = calib_table[best_nmos].score;
-  this->m_codes.port_cal[out0Id] = calib_table[best_nmos].state[0];
-  this->m_codes.port_cal[out1Id] = calib_table[best_nmos].state[1];
-  this->m_codes.port_cal[out2Id] = calib_table[best_nmos].state[2];
-  this->m_codes.nmos = best_nmos;
+  best_score = calib_table.score;
+  this->m_codes.port_cal[out0Id] = calib_table.state[0];
+  this->m_codes.port_cal[out1Id] = calib_table.state[1];
+  this->m_codes.port_cal[out2Id] = calib_table.state[2];
+  this->m_codes.nmos = calib_table.state[3];
   update(this->m_codes);
   return;
 }
@@ -269,6 +271,8 @@ float Fabric::Chip::Tile::Slice::Fanout::calibrateMinError(Fabric::Chip::Tile::S
     return score_total/total;
   else
     error("no valid points");
+
+  return 0.0;
 }
 
 float Fabric::Chip::Tile::Slice::Fanout::calibrateFast(Fabric::Chip::Tile::Slice::Dac * val_dac,
