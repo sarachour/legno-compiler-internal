@@ -155,8 +155,7 @@ def parse_pattern_use_block(args,n_signs,n_consts,n_range_codes, \
                             debug=False,
                             source=None,
                             expr=False,
-                            third=False,
-                            db=True):
+                            third=False):
     line = " ".join(args)
     DEBUG = {'debug':True,'prod':False}
     THIRD = {'three':True,'two':False}
@@ -193,8 +192,6 @@ def parse_pattern_use_block(args,n_signs,n_consts,n_range_codes, \
     if expr:
         cmd += " {vars} {expr}"
 
-    if db:
-        cmd += " {state_mode}"
 
     cmd = cmd.strip()
     result = parselib.parse(cmd,line)
@@ -230,13 +227,6 @@ def parse_pattern_use_block(args,n_signs,n_consts,n_range_codes, \
                              .split(']')[0].split()
         result['vars'] = args
 
-    if db:
-        if not (result['state_mode'] == 'update' or \
-                result['state_mode'] == 'cached'):
-            raise Exception("[%s] unknown state mode <%s>" % \
-                            (line,result['state_mode']))
-
-        result['cached'] = (result['state_mode'] == 'cached')
     return OptionalValue.value(result)
 
 class ConstVal:

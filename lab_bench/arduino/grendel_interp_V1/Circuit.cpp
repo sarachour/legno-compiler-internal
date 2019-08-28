@@ -222,7 +222,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     calibrate::calibrate(fab,
                          cmd.data.calib.blk,
                          cmd.data.calib.loc,
-                         cmd.data.calib.calib_mode);
+                         cmd.data.calib.calib_obj);
     print_log("getting codes...");
     calibrate::get_codes(fab,
                          cmd.data.calib.blk,

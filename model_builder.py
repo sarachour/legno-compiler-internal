@@ -45,9 +45,9 @@ def build_model(datum):
   else:
     raise Exception("unsupported <%s>" % blk)
 
-def populate_default_models(board):
+def populate_default_models(board,db):
   print("==== Populate Default Models ===")
-  db = ModelDB()
+
   for blkname in ['tile_in','tile_out', \
                   'chip_in','chip_out', \
                   'ext_chip_in','ext_chip_out']:
@@ -56,7 +56,9 @@ def populate_default_models(board):
       for port in block.inputs + block.outputs:
         model = PortModel(blkname,inst,port, \
                           comp_mode='*', \
-                          scale_mode='*')
+                          scale_mode='*',
+                          handle=None)
+        print(model)
         db.put(model)
 
     for blkname in ['lut']:
@@ -65,9 +67,8 @@ def populate_default_models(board):
         for port in block.inputs + block.outputs:
           model = PortModel(blkname,inst,port, \
                             comp_mode='*', \
-                            scale_mode='*')
-          model.bias_uncertainty = 0.0
-          model.noise = 0.0
+                            scale_mode='*',
+                            handle=None)
           db.put(model)
 
 def write_models(models):
@@ -83,19 +84,24 @@ def write_models(models):
       fh.write("\n\n")
 
 
+def list(args):
+  db = ModelDB(CalibType(args.calib_obj))
+  for model in db.get_all():
+    print(model)
+
 def infer(args,dump_db=True):
   if args.visualize:
     infer_visualize.DO_PLOTS = True
 
-  infer_util.CALIB_MODE = CalibType(args.calib_mode)
+  infer_util.CALIB_OBJ = CalibType(args.calib_obj)
 
-  db = ModelDB(CalibType(args.calib_mode))
+  db = ModelDB(CalibType(args.calib_obj))
 
   if args.populate_crossbars:
     from chip.hcdc.hcdcv2_4 import make_board
     subset = HCDCSubset('unrestricted')
     hdacv2_board = make_board(subset)
-    populate_default_models(hdacv2_board)
+    populate_default_models(hdacv2_board,db)
     sys.exit(0)
 
   if dump_db:
@@ -105,7 +111,7 @@ def infer(args,dump_db=True):
     if retcode != 0:
       raise Exception("could not dump database: retcode=%d" % retcode)
 
-  filepath = "%s/%s" % (CONFIG.DATASET_DIR,args.calib_mode)
+  filepath = "%s/%s" % (CONFIG.DATASET_DIR,args.calib_obj)
   for dirname, subdirlist, filelist in os.walk(filepath):
     for fname in filelist:
       if fname.endswith('.json'):
@@ -122,8 +128,8 @@ def infer(args,dump_db=True):
 
 def analyze(args):
   circ = ConcCirc.read(None,args.circ_file)
-  db = ModelDB(CalibType(args.calib_mode))
-  infer_visualize.CALIB_MODE = CalibType(args.calib_mode)
+  db = ModelDB(CalibType(args.calib_obj))
+  infer_visualize.CALIB_OBJ = CalibType(args.calib_obj)
   blacklist = ['tile_in','tile_out', \
                'chip_in','chip_out', \
                'ext_chip_in','ext_chip_out']
@@ -152,13 +158,18 @@ subparsers = parser.add_subparsers(dest='subparser_name',
                                    help='compilers/compilation passes.')
 
 
+list_subp = subparsers.add_parser('list', \
+                                   help='scale circuit parameters.')
+list_subp.add_argument('--calib-obj',type=str,default='min_error',
+                        help='calibration objective function to get datasets for')
+
 infer_subp = subparsers.add_parser('infer', \
                                    help='scale circuit parameters.')
 infer_subp.add_argument('--populate-crossbars',action='store_true',
                     help='insert default models for connection blocks')
 infer_subp.add_argument('--visualize',action='store_true',
                     help='emit visualizations for models')
-infer_subp.add_argument('--calib-mode',type=str,default='min_error',
+infer_subp.add_argument('--calib-obj',type=str,default='min_error',
                         help='calibration objective function to get datasets for')
 analyze_subp = subparsers.add_parser('analyze', \
                               help='return delta models for circuit')
@@ -167,6 +178,9 @@ analyze_subp.add_argument('circ_file',
 
 args = parser.parse_args()
 
+
+if args.subparser_name == "list":
+  list(args)
 
 if args.subparser_name == "infer":
   infer(args)

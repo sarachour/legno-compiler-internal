@@ -35,47 +35,47 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
     this->m_codes.nmos = nmos;
     for(int gain_cal=0; gain_cal < MAX_GAIN_CAL; gain_cal += 16){
       this->m_codes.gain_cal=gain_cal;
-      //compute score for combo
-      float score = 0;
+      //compute loss for combo
+      float loss = 0;
       switch(obj){
       case CALIB_MINIMIZE_ERROR:
-        score = calibrateMinError();
+        loss = calibrateMinError();
         break;
       case CALIB_MAXIMIZE_DELTA_FIT:
-        score = calibrateMaxDeltaFit();
+        loss = calibrateMaxDeltaFit();
         break;
       case CALIB_FAST:
-        score = calibrateFast();
+        loss = calibrateFast();
         break;
       default:
         error("unimplemented dac");
         break;
       }
-      cutil::update_calib_table(calib_table,score,2,nmos,gain_cal);
-      sprintf(FMTBUF,"nmos=%d\tgain_cal=%d\tscore=%f",nmos,gain_cal,score);
+      cutil::update_calib_table(calib_table,loss,2,nmos,gain_cal);
+      sprintf(FMTBUF,"nmos=%d\tgain_cal=%d\tloss=%f",nmos,gain_cal,loss);
       print_info(FMTBUF);
     }
   }
   this->m_codes.nmos = calib_table.state[0];
   for(int gain_cal=0; gain_cal < MAX_GAIN_CAL; gain_cal += 1){
     this->m_codes.gain_cal=gain_cal;
-    //compute score for combo
-    float score = 0;
+    //compute loss for combo
+    float loss = 0;
     switch(obj){
     case CALIB_MINIMIZE_ERROR:
-      score = calibrateMinError();
+      loss = calibrateMinError();
       break;
     case CALIB_MAXIMIZE_DELTA_FIT:
-      score = calibrateMaxDeltaFit();
+      loss = calibrateMaxDeltaFit();
       break;
     case CALIB_FAST:
-      score = calibrateFast();
+      loss = calibrateFast();
       break;
     default:
       error("unimplemented dac");
       break;
     }
-    cutil::update_calib_table(calib_table,score,2,
+    cutil::update_calib_table(calib_table,loss,2,
                               this->m_codes.nmos,
                               gain_cal);
   }
@@ -83,8 +83,8 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
   int best_nmos = calib_table.state[0];
   int best_gain_cal = calib_table.state[1];
   print_info("======");
-  sprintf(FMTBUF,"BEST nmos=%d\tgain_cal=%d\tscore=%f",
-          best_nmos,best_gain_cal,calib_table.score);
+  sprintf(FMTBUF,"BEST nmos=%d\tgain_cal=%d\tloss=%f",
+          best_nmos,best_gain_cal,calib_table.loss);
   print_info(FMTBUF);
 
   // teardown
@@ -124,21 +124,21 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(){
   util::distribution(gains,m,
                      gain_mean,
                      gain_variance);
-  float score = max(sqrt(gain_variance),fabs(bias));
-  return score;
+  float loss = max(sqrt(gain_variance),fabs(bias));
+  return loss;
 
 }
 float Fabric::Chip::Tile::Slice::Dac::calibrateMinError(){
-  float score_total = 0;
+  float loss_total = 0;
   for(int i=0; i < CALIB_NPTS; i += 1){
     float const_val = TEST_POINTS[i];
     this->setConstant(const_val);
     float target = Fabric::Chip::Tile::Slice::Dac::computeOutput(this->m_codes);
     float mean,variance;
     mean = this->fastMeasureValue(variance);
-    score_total += fabs(target-mean);
+    loss_total += fabs(target-mean);
   }
-  return score_total/CALIB_NPTS;
+  return loss_total/CALIB_NPTS;
 }
 
 float Fabric::Chip::Tile::Slice::Dac::calibrateFast(){

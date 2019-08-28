@@ -204,7 +204,7 @@ def circ_state_t():
 
 def circ_calib_t():
     return cstruct.Struct(
-        "calib_mode" / cstruct.Int8ul,
+        "calib_obj" / cstruct.Int8ul,
         cstruct.Padding(1),
         "blk" / block_type_t(),
         "loc" / circ_loc_idx1_t()

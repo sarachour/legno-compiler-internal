@@ -45,7 +45,7 @@ class BlockStateDatabase:
     tile int NOT NULL,
     slice int NOT NULL,
     idx int NOT NULL,
-    calib_mode text NOT NULL,
+    calib_obj text NOT NULL,
     state text NOT NULL,
     profile text NOT NULL,
     PRIMARY KEY (cmdkey)
@@ -55,7 +55,7 @@ class BlockStateDatabase:
     self._conn.commit()
     self.keys = ['cmdkey','block',
                  'chip','tile','slice','idx',
-                 'calib_mode',
+                 'calib_obj',
                  'state','profile']
 
   def get_all(self):
@@ -71,21 +71,21 @@ class BlockStateDatabase:
       yield result
 
   def get_by_instance(self,blk,chip,tile,slice,index, \
-                      calib_mode=CalibType.MIN_ERROR):
+                      calib_obj=CalibType.MIN_ERROR):
     cmd = '''
     SELECT * from states WHERE block = "{block}" AND
                                chip = {chip} AND
                                tile = {tile} AND
                                slice = {slice} AND
                                idx = {index} AND
-                               calib_mode = "{calib_mode}";
+                               calib_obj = "{calib_obj}";
     '''.format(
       block=blk.value,
       chip=chip,
       tile=tile,
       slice=slice,
       index=index,
-      calib_mode=calib_mode.value)
+      calib_obj=calib_obj.value)
 
     for values in self._curs.execute(cmd):
       data = dict(zip(self.keys,values))
@@ -105,9 +105,9 @@ class BlockStateDatabase:
     profile_bits = bytes(json.dumps(profile), 'utf-8').hex();
     cmd = '''
     INSERT INTO states (cmdkey,block,chip,tile,slice,idx,
-                        calib_mode,state,profile)
+                        calib_obj,state,profile)
     VALUES ("{cmdkey}","{block}",{chip},{tile},{slice},{index},
-            "{calib_mode}","{state}","{profile}")
+            "{calib_obj}","{state}","{profile}")
     '''.format(
       cmdkey=key,
       block=blockstate.block.value,
@@ -115,7 +115,7 @@ class BlockStateDatabase:
       tile=blockstate.loc.tile,
       slice=blockstate.loc.slice,
       index=blockstate.loc.index,
-      calib_mode=blockstate.calib_mode.value,
+      calib_obj=blockstate.calib_obj.value,
       state=state_bits,
       profile=profile_bits
     )
@@ -126,8 +126,10 @@ class BlockStateDatabase:
     assert(isinstance(blockkey,BlockState.Key))
     keystr = blockkey.to_key()
     print("GET %s" % keystr)
-    cmd = '''SELECT * FROM states WHERE cmdkey = "{cmdkey}"''' \
-                                                .format(cmdkey=keystr)
+    cmd = '''
+    SELECT * FROM states WHERE cmdkey = "{cmdkey}"
+    ''' \
+      .format(cmdkey=keystr)
     results = list(self._curs.execute(cmd))
     return results
 
@@ -152,12 +154,12 @@ class BlockStateDatabase:
                   data['idx'])
 
     blk = enums.BlockType(data['block'])
-    calib_mode = chipdata.CalibType(data['calib_mode'])
+    calib_obj = chipdata.CalibType(data['calib_obj'])
     try:
       obj = BlockState \
             .toplevel_from_cstruct(blk,loc, \
                                    bytes.fromhex(state), \
-                                   calib_mode)
+                                   calib_obj)
     except ValueError:
       return None
 
@@ -180,11 +182,11 @@ class BlockStateDatabase:
 class BlockState:
 
   class Key:
-    def __init__(self,blk,loc,calib_mode=CalibType.MIN_ERROR):
-      assert(isinstance(calib_mode,CalibType))
+    def __init__(self,blk,loc,calib_obj=CalibType.MIN_ERROR):
+      assert(isinstance(calib_obj,CalibType))
       self.block = blk
       self.loc = loc
-      self.calib_mode = calib_mode
+      self.calib_obj = calib_obj
 
     @property
     def targeted_keys(self):
@@ -222,23 +224,23 @@ class BlockState:
 
       return dict_to_key(obj)
 
-  def __init__(self,block_type,loc,state,calib_mode=CalibType.MIN_ERROR):
+  def __init__(self,block_type,loc,state,calib_obj=CalibType.MIN_ERROR):
     self.block = block_type
     self.loc = loc
-    self.calib_mode =calib_mode
+    self.calib_obj =calib_obj
     self.profile = []
     self.state = state
     if state != None:
       self.from_cstruct(state)
 
-  def get_dataset(self,db,calib_mode):
+  def get_dataset(self,db,calib_obj):
     for obj in db.get_by_instance(
         self.block,
         self.loc.chip,
         self.loc.tile,
         self.loc.slice,
         self.loc.index,
-        calib_mode):
+        calib_obj):
       if len(obj.profile) == 0:
         continue
 
@@ -255,7 +257,7 @@ class BlockState:
 
   def write_dataset(self,db):
     filepath = "%s/%s" % (CFG.DATASET_DIR, \
-                          self.calib_mode.value)
+                          self.calib_obj.value)
     filename = "%s/%s_%d_%d_%d_%d.json" % (filepath,
                                            self.block.value,
                                            self.loc.chip,
@@ -263,7 +265,7 @@ class BlockState:
                                            self.loc.slice,
                                            self.loc.index)
     dataset= []
-    for datum in self.get_dataset(db,self.calib_mode):
+    for datum in self.get_dataset(db,self.calib_obj):
       dataset.append(datum)
 
     objstr = json.dumps(dataset)
@@ -293,21 +295,21 @@ class BlockState:
     return obj
 
   @staticmethod
-  def toplevel_from_cstruct(blk,loc,data,calib_mode):
+  def toplevel_from_cstruct(blk,loc,data,calib_obj):
     obj = BlockState.decode_cstruct(blk,data)
-    assert(isinstance(calib_mode,CalibType))
+    assert(isinstance(calib_obj,CalibType))
     if blk == enums.BlockType.FANOUT:
-      st = FanoutBlockState(loc,obj,calib_mode)
+      st = FanoutBlockState(loc,obj,calib_obj)
     elif blk == enums.BlockType.INTEG:
-      st = IntegBlockState(loc,obj,calib_mode)
+      st = IntegBlockState(loc,obj,calib_obj)
     elif blk == enums.BlockType.MULT:
-      st = MultBlockState(loc,obj,calib_mode)
+      st = MultBlockState(loc,obj,calib_obj)
     elif blk == enums.BlockType.DAC:
-      st = DacBlockState(loc,obj,calib_mode)
+      st = DacBlockState(loc,obj,calib_obj)
     elif blk == enums.BlockType.ADC:
-      st = AdcBlockState(loc,obj,calib_mode)
+      st = AdcBlockState(loc,obj,calib_obj)
     elif blk == enums.BlockType.LUT:
-      st = LutBlockState(loc,obj,calib_mode)
+      st = LutBlockState(loc,obj,calib_obj)
 
     else:
       raise Exception("unimplemented block : <%s>" \
@@ -335,8 +337,8 @@ class LutBlockState(BlockState):
 
   class Key(BlockState.Key):
 
-    def __init__(self,loc,source):
-      BlockState.Key.__init__(self,enums.BlockType.LUT,loc)
+    def __init__(self,loc,source,calib_obj):
+      BlockState.Key.__init__(self,enums.BlockType.LUT,loc,calib_obj)
       self.source = source
 
 
@@ -344,13 +346,14 @@ class LutBlockState(BlockState):
     def targeted_keys(self):
       return []
 
-  def __init__(self,loc,state,calib_mode):
-    BlockState.__init__(self,enums.BlockType.LUT,loc,state,calib_mode)
+  def __init__(self,loc,state,calib_obj):
+    BlockState.__init__(self,enums.BlockType.LUT,loc,state,calib_obj)
 
   @property
   def key(self):
     return LutBlockState.Key(self.loc,
-                             self.source)
+                             self.source,
+                             self.calib_obj)
 
 
   def to_rows(self,obj):
@@ -374,8 +377,8 @@ class DacBlockState(BlockState):
 
   class Key(BlockState.Key):
 
-    def __init__(self,loc,inv,rng,source,const_val,calib_mode):
-      BlockState.Key.__init__(self,enums.BlockType.DAC,loc,calib_mode)
+    def __init__(self,loc,inv,rng,source,const_val,calib_obj):
+      BlockState.Key.__init__(self,enums.BlockType.DAC,loc,calib_obj)
       self.inv = inv
       self.rng = rng
       self.source = source
@@ -386,9 +389,9 @@ class DacBlockState(BlockState):
     def targeted_keys(self):
       return ["const_val"]
 
-  def __init__(self,loc,state,calib_mode):
+  def __init__(self,loc,state,calib_obj):
     BlockState.__init__(self,enums.BlockType.DAC,loc, \
-                        state,calib_mode)
+                        state,calib_obj)
 
   @property
   def key(self):
@@ -397,7 +400,7 @@ class DacBlockState(BlockState):
                              self.rng,
                              self.source,
                              self.const_val,
-                             self.calib_mode)
+                             self.calib_obj)
 
 
 
@@ -468,9 +471,9 @@ class MultBlockState(BlockState):
                  invs,
                  ranges,
                  gain_val=None,
-                 calib_mode=CalibType.MIN_ERROR):
+                 calib_obj=CalibType.MIN_ERROR):
       BlockState.Key.__init__(self,enums.BlockType.MULT, \
-                              loc,calib_mode)
+                              loc,calib_obj)
       assert(isinstance(vga,chipdata.BoolType))
       self.invs = invs
       self.ranges = ranges
@@ -482,9 +485,9 @@ class MultBlockState(BlockState):
     def targeted_keys(self):
       return ['gain_val']
 
-  def __init__(self,loc,state,calib_mode):
-    assert(isinstance(targeted,CalibType))
-    BlockState.__init__(self,enums.BlockType.MULT,loc,state,calib_mode)
+  def __init__(self,loc,state,calib_obj):
+    assert(isinstance(calib_obj,CalibType))
+    BlockState.__init__(self,enums.BlockType.MULT,loc,state,calib_obj)
 
   def header(self):
     GH = keys(self.invs,prefix='inv-') + \
@@ -535,7 +538,7 @@ class MultBlockState(BlockState):
                               self.invs,
                               self.ranges,
                               self.gain_val,
-                              self.calib_mode)
+                              self.calib_obj)
 
 
 
@@ -577,8 +580,8 @@ class IntegBlockState(BlockState):
                  invs,
                  ranges,
                  ic_val=None,
-                 calib_mode=CalibType.MIN_ERROR):
-      BlockState.Key.__init__(self,enums.BlockType.INTEG,loc,calib_mode)
+                 calib_obj=CalibType.MIN_ERROR):
+      BlockState.Key.__init__(self,enums.BlockType.INTEG,loc,calib_obj)
       self.exception = exception
       self.invs = invs
       self.cal_enables = cal_enables
@@ -589,8 +592,9 @@ class IntegBlockState(BlockState):
     def targeted_keys(self):
       return ['ic_val']
 
-  def __init__(self,loc,state,calib_mode):
-    BlockState.__init__(self,enums.BlockType.INTEG,loc,state,calib_mode)
+  def __init__(self,loc,state,calib_obj):
+    BlockState.__init__(self,enums.BlockType.INTEG,loc, \
+                        state,calib_obj)
 
   def header(self):
     gh = keys(self.invs,prefix='inv-') + \
@@ -620,7 +624,7 @@ class IntegBlockState(BlockState):
                                self.invs,
                                self.ranges, \
                                self.ic_val,
-                               self.calib_mode)
+                               self.calib_obj)
 
 
   def to_cstruct(self):
@@ -683,8 +687,8 @@ class FanoutBlockState(BlockState):
                  third,
                  invs,
                  rngs,
-                 calib_mode):
-      BlockState.Key.__init__(self,enums.BlockType.FANOUT,loc,calib_mode)
+                 calib_obj):
+      BlockState.Key.__init__(self,enums.BlockType.FANOUT,loc,calib_obj)
       self.invs = invs
       self.rngs = rngs
       self.third = third
@@ -693,8 +697,8 @@ class FanoutBlockState(BlockState):
     def targeted_keys(self):
       return []
 
-  def __init__(self,loc,state,calib_mode):
-    BlockState.__init__(self,enums.BlockType.FANOUT,loc,state,calib_mode)
+  def __init__(self,loc,state,calib_obj):
+    BlockState.__init__(self,enums.BlockType.FANOUT,loc,state,calib_obj)
 
 
   @property
@@ -703,7 +707,7 @@ class FanoutBlockState(BlockState):
                                 self.third,
                                 self.invs, \
                                 self.rngs, \
-                                self.calib_mode)
+                                self.calib_obj)
 
 
   def header(self):
@@ -778,7 +782,8 @@ class AdcBlockState(BlockState):
                  test_i2v,
                  test_rs,
                  test_rsinc,
-                 rng):
+                 rng,
+                 calib_obj):
       BlockState.Key.__init__(self,enums.BlockType.ADC,loc)
       self.test_en = test_en
       self.test_adc = test_adc
@@ -786,14 +791,16 @@ class AdcBlockState(BlockState):
       self.test_rs = test_rs
       self.test_rsinc = test_rsinc
       self.rng = rng
+      self.calib_obj = calib_obj
 
     @property
     def targeted_keys(self):
       return []
 
 
-  def __init__(self,loc,state):
-    BlockState.__init__(self,enums.BlockType.ADC,loc,state)
+  def __init__(self,loc,state,calib_obj):
+    BlockState.__init__(self,enums.BlockType.ADC,loc, \
+                        state,calib_obj)
 
   def to_rows(self,obj):
     g = [
@@ -832,7 +839,8 @@ class AdcBlockState(BlockState):
                              self.test_i2v,
                              self.test_rs,
                              self.test_rsinc,
-                             self.rng
+                             self.rng,
+                             self.calib_obj
     )
   def to_cstruct(self):
     return cstructs.state_t().build({

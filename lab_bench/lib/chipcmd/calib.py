@@ -48,14 +48,13 @@ class SetStateCmd(AnalogChipCommand):
 class GetStateCmd(AnalogChipCommand):
 
 
-    def __init__(self,blk,chip,tile,slce,index=None,targeted=True):
+    def __init__(self,blk,chip,tile,slce,index=None):
         AnalogChipCommand.__init__(self)
         self._blk = enums.BlockType(blk)
         self._loc = CircLoc(chip,tile,slce,index=0 if index is None \
                             else index)
 
         self.test_loc(self._blk, self._loc)
-        self._targeted = targeted
 
     @staticmethod
     def name():
@@ -121,7 +120,7 @@ class GetStateCmd(AnalogChipCommand):
                       .toplevel_from_cstruct(self._blk,
                                              self._loc,
                                              data,
-                                             targeted=self._targeted)
+                                             calib_obj=env.calib_obj)
         env.state_db.put(st)
         return True
 
@@ -132,14 +131,12 @@ class GetStateCmd(AnalogChipCommand):
 
 class CalibrateCmd(AnalogChipCommand):
 
-    def __init__(self,blk,chip,tile,slice,index=None,
-                 calib_mode=CalibType.MIN_ERROR):
+    def __init__(self,blk,chip,tile,slice,index=None):
         AnalogChipCommand.__init__(self)
         self._loc = CircLoc(chip,tile,slice,index=0 if index is None \
                             else index)
         self._blk = enums.BlockType(blk)
         self.test_loc(self._blk,self._loc)
-        self._calib_mode = calib_mode
 
     @staticmethod
     def name():
@@ -157,7 +154,7 @@ class CalibrateCmd(AnalogChipCommand):
                 'calib':{
                     'blk': self._blk.code(),
                     'loc': loc_type,
-                    'calib_mode': self._calib_mode.code()
+                    'calib_obj': self.calib_obj.code()
                 }
             }
         })
@@ -165,23 +162,20 @@ class CalibrateCmd(AnalogChipCommand):
     @staticmethod
     def parse(args):
         result = parse_pattern_block_loc(args,
-                                         CalibrateCmd.name(),
-                                         max_error=True,
-                                         targeted=self._targeted)
+                                         CalibrateCmd.name())
         if result.success:
             data = result.value
             return CalibrateCmd(data["blk"],
                                 data['chip'],
                                 data['tile'],
                                 data['slice'],
-                                data['index'],
-                                data['max_error'],
-                                data['targeted'])
+                                data['index'])
         else:
             print(result.message)
             raise Exception("<parse_failure>: %s" % args)
 
     def execute_command(self,env):
+        self.calib_obj = env.calib_obj
         resp = ArduinoCommand.execute_command(self,env)
         datum = self._loc.to_json()
         datum['block_type'] = self._blk.value
@@ -192,7 +186,7 @@ class CalibrateCmd(AnalogChipCommand):
                       .toplevel_from_cstruct(self._blk,
                                              self._loc,
                                              data,
-                                             calib_mode=self._calib_mode)
+                                             calib_obj=env.calib_obj)
         env.state_db.put(st)
 
 

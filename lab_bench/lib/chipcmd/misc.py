@@ -78,8 +78,7 @@ class WriteLUTCmd(ArduinoCommand):
         result = parse_pattern_use_block(args,0,0,0,
                                          cls.name(),
                                          source=None,
-                                         expr=True,
-                                         db=False)
+                                         expr=True)
         if result.success:
             data = result.value
             return cls(
@@ -229,8 +228,7 @@ class GetIntegStatusCmd(AnalogChipCommand):
     def parse(args):
         result = parse_pattern_use_block(args,0,0,0,
                                          GetIntegStatusCmd.name(),
-                                         debug=False,
-                                         db=False)
+                                         debug=False)
         if result.success:
             data = result.value
             return GetIntegStatusCmd(

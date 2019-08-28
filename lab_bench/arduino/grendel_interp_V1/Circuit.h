@@ -152,7 +152,7 @@ namespace circ {
   } cmd_connection_t;
 
   typedef struct {
-    uint8_t calib_mode;
+    uint8_t calib_obj;
     uint16_t blk;
     circ_loc_idx1_t loc;
   } cmd_calib_t;

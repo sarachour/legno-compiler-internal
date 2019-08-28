@@ -45,7 +45,7 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
     float calibrateFast(Fabric::Chip::Tile::Slice::Dac * val_dac,
                         Fabric::Chip::Tile::Slice::Dac * ref_dac,
                         ifc out_id);
-    float getScore(calib_objective_t obj,
+    float getLoss(calib_objective_t obj,
                    Fabric::Chip::Tile::Slice::Dac * val_dac,
                    Fabric::Chip::Tile::Slice::Dac * ref_dac,
                    ifc out_id);

@@ -9,7 +9,7 @@ const float TEST_POINTS[CALIB_NPTS] = {-0.9,0.9,0.5,-0.5,0.0};
 
 
 float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMinError(Fabric::Chip::Tile::Slice::Dac * ref_dac){
-  float score_total = 0;
+  float loss_total = 0;
   int total = 0;
   for(int i=0; i < CALIB_NPTS; i += 1){
     float ic_val = TEST_POINTS[i];
@@ -24,11 +24,11 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMinError(Fabric::C
                                              mean,
                                              dummy);
     if(succ){
-      score_total += fabs(target-mean);
+      loss_total += fabs(target-mean);
       total += 1;
     }
   }
-  return score_total/total;
+  return loss_total/total;
 }
 
 
@@ -59,11 +59,11 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * 
   }
   float avg_gain, gain_variance;
   util::distribution(gains,m,avg_gain,gain_variance);
-  float score = max(sqrt(gain_variance),fabs(bias))/avg_gain;
-  sprintf(FMTBUF," gain=N(%f,%f) bias=%f score=%f", avg_gain,gain_variance,
-          bias,score);
+  float loss = max(sqrt(gain_variance),fabs(bias))/avg_gain;
+  sprintf(FMTBUF," gain=N(%f,%f) bias=%f loss=%f", avg_gain,gain_variance,
+          bias,loss);
   print_info(FMTBUF);
-  return score;
+  return loss;
 }
 
 void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t obj,
@@ -100,20 +100,20 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t 
       this->m_codes.gain_cal = gain_cal;
       update(this->m_codes);
       //TODO
-      float score = 0.0;
+      float loss = 0.0;
       switch(obj){
       case CALIB_MINIMIZE_ERROR:
-        score = calibrateInitCondMinError(ref_dac);
+        loss = calibrateInitCondMinError(ref_dac);
         break;
       case CALIB_MAXIMIZE_DELTA_FIT:
-        score = calibrateInitCondMaxDeltaFit(ref_dac);
+        loss = calibrateInitCondMaxDeltaFit(ref_dac);
         break;
       default:
         error("unimplemented");
       }
-      sprintf(FMTBUF,"nmos=%d gain_cal=%d score=%f",nmos,gain_cal,score);
+      sprintf(FMTBUF,"nmos=%d gain_cal=%d loss=%f",nmos,gain_cal,loss);
       print_info(FMTBUF);
-      cutil::update_calib_table(calib_table[nmos],score,1,gain_cal);
+      cutil::update_calib_table(calib_table[nmos],loss,1,gain_cal);
     }
   }
   integ_to_tile.brkConn();
@@ -156,7 +156,7 @@ time_constant_stats estimate_time_constant(float k_value,
   return stats;
 }
 
-float tc_compute_score(calib_objective_t obj,
+float tc_compute_loss(calib_objective_t obj,
                     float target_tc,
                     time_constant_stats stats){
   float time_scale = stats.tc/target_tc;
@@ -238,14 +238,14 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateOpenLoopCircuit(calib_objec
                                                             n_samples,
                                                             nom_times,nom_values,
                                                             k_times,k_values);
-      float score = tc_compute_score(obj,target_tc,tc_stats);
-      cutil::update_calib_table(calib_table[nmos],score,1,gain_cal);
+      float loss = tc_compute_loss(obj,target_tc,tc_stats);
+      cutil::update_calib_table(calib_table[nmos],loss,1,gain_cal);
     }
 
-    sprintf(FMTBUF,"BEST nmos=%d code=%d score=%f",
+    sprintf(FMTBUF,"BEST nmos=%d code=%d loss=%f",
             nmos,
             calib_table[nmos].state[0],
-            calib_table[nmos].score);
+            calib_table[nmos].loss);
     print_info(FMTBUF);
   }
 
@@ -325,16 +325,16 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateClosedLoopCircuit(calib_obj
       this->update(this->m_codes);
       float mean, variance;
       util::meas_steady_chip_out(this,mean,variance);
-      float score = fabs(mean-target);
-      cutil::update_calib_table(calib_table[nmos],score,2,in0_cal,32);
+      float loss = fabs(mean-target);
+      cutil::update_calib_table(calib_table[nmos],loss,2,in0_cal,32);
       /*
-      sprintf(FMTBUF," codes=(%d,%d,32) target=%f mean=%f score=%f",
-              nmos,in0_cal,target,mean,score_in[in0_cal]);
+      sprintf(FMTBUF," codes=(%d,%d,32) target=%f mean=%f loss=%f",
+              nmos,in0_cal,target,mean,loss_in[in0_cal]);
       print_info(FMTBUF);
       */
     }
-    sprintf(FMTBUF,"nmos=%d BEST in0_code=%d score=%f",
-            nmos, calib_table[nmos].state[0], calib_table[nmos].score);
+    sprintf(FMTBUF,"nmos=%d BEST in0_code=%d loss=%f",
+            nmos, calib_table[nmos].state[0], calib_table[nmos].loss);
     print_info(FMTBUF);
   }
   for(int nmos=0; nmos < MAX_NMOS; nmos += 1){
@@ -346,21 +346,21 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateClosedLoopCircuit(calib_obj
       this->update(this->m_codes);
       float mean, variance;
       util::meas_steady_chip_out(this,mean,variance);
-      float score = fabs(mean-target);
-      cutil::update_calib_table(calib_table[nmos],score,2,
+      float loss = fabs(mean-target);
+      cutil::update_calib_table(calib_table[nmos],loss,2,
                                 calib_table[nmos].state[0],
                                 out0_cal);
       /*
-      sprintf(FMTBUF," codes=(%d,%d,%d) target=%f mean=%f score=%f",
-              nmos,codes[nmos][0],out0_cal,target,mean,score_out[out0_cal]);
+      sprintf(FMTBUF," codes=(%d,%d,%d) target=%f mean=%f loss=%f",
+              nmos,codes[nmos][0],out0_cal,target,mean,loss_out[out0_cal]);
       print_info(FMTBUF);
       */
     }
-    sprintf(FMTBUF,"nmos=%d BEST codes=(%d,%d) score=%f",
+    sprintf(FMTBUF,"nmos=%d BEST codes=(%d,%d) loss=%f",
             nmos,
             calib_table[nmos].state[0],
             calib_table[nmos].state[1],
-            calib_table[nmos].score);
+            calib_table[nmos].loss);
     print_info(FMTBUF);
   }
   tileout_to_chipout.brkConn();
@@ -405,12 +405,12 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrate(calib_objective_t obj){
   this->calibrateInitCond(obj,val_dac,ol_calib_table,cl_calib_table);
   // gain cal does not control time constant, but it does change it
   //this->calibrateOpenLoopCircuit(obj,val_dac,ol_calib_table,cl_calib_table);
-  float scores[MAX_NMOS];
+  float losss[MAX_NMOS];
   for(int i=0; i < MAX_NMOS; i += 1){
-    scores[i] = cl_calib_table[i].score + ol_calib_table[i].score;
+    losss[i] = cl_calib_table[i].loss + ol_calib_table[i].loss;
   }
 
-  int best_nmos = util::find_minimum(scores,MAX_NMOS);
+  int best_nmos = util::find_minimum(losss,MAX_NMOS);
   int best_gain_cal = ol_calib_table[best_nmos].state[0];
   int best_port_cal_in0 = cl_calib_table[best_nmos].state[0];
   int best_port_cal_out0 = cl_calib_table[best_nmos].state[1];

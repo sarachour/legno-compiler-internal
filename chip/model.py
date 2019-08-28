@@ -245,7 +245,8 @@ class ModelDB:
 
     for values in self._curs.execute(cmd):
       data = dict(zip(self.keys,values))
-      return self._process(data)
+      model = self._process(data)
+      return model
 
     return None
 

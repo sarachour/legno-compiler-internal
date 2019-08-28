@@ -14,33 +14,19 @@ import math
 
 class UseCommand(AnalogChipCommand):
 
-    def __init__(self,block,loc,cached):
+    def __init__(self,block,loc):
         AnalogChipCommand.__init__(self)
         self.test_loc(block,loc)
         self._loc = loc
         self._block = block
-        self._cached = cached
-
+        self.calibrated = True
 
     def to_key(self,targeted=False):
         raise NotImplementedError
 
     @property
-    def cached(self):
-        return self._cached
-
-    @cached.setter
-    def cached(self,o):
-        assert(isinstance(o,bool))
-        self._cached = o
-
-    @property
     def block_type(self):
         return self._block
-
-    @property
-    def max_error(self):
-        return 0.01
 
     @property
     def loc(self):
@@ -52,23 +38,22 @@ class UseCommand(AnalogChipCommand):
     def execute_command(self,env):
         AnalogChipCommand.execute_command(self,env)
 
-        if self.cached:
-            dbkey = self.to_key(calib_mode=env.calib_mode)
+        if self.calibrated:
+            dbkey = self.to_key(calib_obj=env.calib_obj)
             assert(isinstance(dbkey, state.BlockState.Key))
             if env.state_db.has(dbkey):
                 blockstate = env.state_db.get(dbkey)
-            else:
-                dbkey = self.to_key(targeted=False)
-                blockstate = env.state_db.get(dbkey)
                 self.update_state(blockstate)
+            else:
+                raise Exception("not calibrated")
             assert(isinstance(blockstate, state.BlockState))
             # set the state
             loc = CircLoc(self._loc.chip,
-                          self._loc.tile,
-                          self._loc.slice,
-                          self._loc.index \
-                          if self._loc.index != None \
-                          else 0)
+                            self._loc.tile,
+                            self._loc.slice,
+                            self._loc.index \
+                            if self._loc.index != None \
+                            else 0)
 
             cmd = SetStateCmd(self._block,loc,blockstate)
             resp = cmd.execute_command(env)
@@ -91,12 +76,10 @@ class UseCommand(AnalogChipCommand):
 class UseLUTCmd(UseCommand):
 
     def __init__(self,chip,tile,slice,
-                 source=LUTSourceType.EXTERN,
-                 cached=False):
+                 source=LUTSourceType.EXTERN):
         UseCommand.__init__(self,
                             enums.BlockType.LUT,
-                            CircLoc(chip,tile,slice),
-                            cached=cached)
+                            CircLoc(chip,tile,slice))
 
         if not self._loc.index is None:
             self.fail("dac has no index <%d>" % loc.index)
@@ -127,20 +110,20 @@ class UseLUTCmd(UseCommand):
                 data['chip'],
                 data['tile'],
                 data['slice'],
-                source=data['source'],
-                cached=data['cached']
+                source=data['source']
             )
         else:
             raise Exception(result.message)
 
-    def to_key(self,targeted=False):
+    def to_key(self,calib_obj):
         loc = CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
                       0
         )
         return state.LutBlockState.Key(loc=loc,
-                                       source=self._source)
+                                       source=self._source,
+                                       calib_obj=calib_obj)
 
 
 
@@ -162,12 +145,12 @@ class UseLUTCmd(UseCommand):
         return 'use_lut'
 
     def __repr__(self):
-        st = "%s %s %s %s src %s %s" % \
-              (self.name(),
-               self.loc.chip,self.loc.tile, \
-               self.loc.slice,
-               self._source.abbrev(),
-               "cached" if self._cached else "update")
+        cmd = "use_lut {chip} {tile} {slice} src {source}"
+        st = cmd.format(\
+                        chip=self.loc.chip, \
+                        tile=self.loc.tile, \
+                        slice=self.loc.slice, \
+                        source=self._source.abbrev())
         return st
 
 
@@ -181,12 +164,10 @@ class UseLUTCmd(UseCommand):
 class UseADCCmd(UseCommand):
 
     def __init__(self,chip,tile,slice,
-                 in_range=RangeType.MED,
-                 cached=False):
+                 in_range=RangeType.MED):
         UseCommand.__init__(self,
                             enums.BlockType.ADC,
-                            CircLoc(chip,tile,slice),
-                            cached)
+                            CircLoc(chip,tile,slice))
 
         if not self._loc.index is None:
             self.fail("adc has no index <%d>" % loc.index)
@@ -216,13 +197,12 @@ class UseADCCmd(UseCommand):
                 data['chip'],
                 data['tile'],
                 data['slice'],
-                in_range=data['range0'],
-                cached=data['cached']
+                in_range=data['range0']
             )
         else:
             raise Exception(result.message)
 
-    def to_key(self,targeted=False):
+    def to_key(self,calib_obj):
         loc = CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
@@ -236,7 +216,8 @@ class UseADCCmd(UseCommand):
                                        test_i2v=false_val,
                                        test_rs=false_val,
                                        test_rsinc=false_val,
-                                       rng=self._in_range)
+                                       rng=self._in_range,
+                                       calib_obj=calib_obj)
 
     def build_ctype(self):
         # inverting flips the sign for some wacky reason, given the byte
@@ -256,12 +237,13 @@ class UseADCCmd(UseCommand):
         return 'use_adc'
 
     def __repr__(self):
-        st = "%s %s %s %s rng %s %s" % \
-              (self.name(),
-               self.loc.chip,self.loc.tile, \
-               self.loc.slice,
-               self._in_range.abbrev(),
-               "cached" if self._cached else "update")
+        cmd = "use_dac {chip} {tile} {slice} rng {range}"
+        st = cmd.format(
+            chip=self.loc.chip, \
+            tile=self.loc.tile, \
+            slice=self.loc.slice, \
+            range=self._in_range.abbrev() \
+        )
         return st
 
 
@@ -270,12 +252,10 @@ class UseDACCmd(UseCommand):
     def __init__(self,chip,tile,slice,value,
                  source=DACSourceType.MEM,
                  out_range=RangeType.MED,
-                 inv=SignType.POS,
-                 cached=False):
+                 inv=SignType.POS):
         UseCommand.__init__(self,
                             enums.BlockType.DAC,
-                            CircLoc(chip,tile,slice),
-                            cached)
+                            CircLoc(chip,tile,slice))
 
         if value < -1.0 or value > 1.0:
             self.fail("value not in [-1,1]: %s" % value)
@@ -301,7 +281,7 @@ class UseDACCmd(UseCommand):
     def parse(args):
         return UseDACCmd._parse(args,UseDACCmd)
 
-    def to_key(self,calib_mode):
+    def to_key(self,calib_obj):
         loc = CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
@@ -312,7 +292,7 @@ class UseDACCmd(UseCommand):
                                        rng=self._out_range,
                                        source=self._source,
                                        const_val=self._value,
-                                       calib_mode=calib_mode)
+                                       calib_obj=calib_obj)
 
 
     def update_state(self,state):
@@ -332,8 +312,7 @@ class UseDACCmd(UseCommand):
                 data['value0'],
                 source=data['source'],
                 inv=data['sign0'],
-                out_range=data['range0'],
-                cached=data['cached']
+                out_range=data['range0']
             )
         else:
             raise Exception(result.message)
@@ -361,15 +340,16 @@ class UseDACCmd(UseCommand):
         return 'use_dac'
 
     def __repr__(self):
-        st = "%s %s %s %s src %s sgn %s val %s rng %s %s" % \
-              (self.name(),
-               self.loc.chip,self.loc.tile, \
-               self.loc.slice,
-               self._source.abbrev(),
-               self._inv.abbrev(),
-               self._value,
-               self._out_range.abbrev(),
-               "cached" if self._cached else "update")
+        cmd = "use_dac {chip} {tile} {slice} src {source} sgn {inv} "
+        cmd += "val {value} rng {range}"
+        st = cmd.format(\
+                        chip=self.loc.chip,
+                        tile=self.loc.tile, \
+                        slice=self.loc.slice,
+                        source=self._source.abbrev(),
+                        inv=self._inv.abbrev(),
+                        value=self._value,
+                        range=self._out_range.abbrev())
         return st
 
 
@@ -380,8 +360,7 @@ class UseFanoutCmd(UseCommand):
     def __init__(self,chip,tile,slice,index,
                  in_range,
                  inv0=False,inv1=False,inv2=False,
-                 third=False,
-                 cached=False):
+                 third=False):
 
         assert(isinstance(inv0, SignType))
         assert(isinstance(inv1,SignType))
@@ -390,8 +369,7 @@ class UseFanoutCmd(UseCommand):
 
         UseCommand.__init__(self,
                             enums.BlockType.FANOUT,
-                            CircLoc(chip,tile,slice,index),
-                            cached)
+                            CircLoc(chip,tile,slice,index))
         if in_range == RangeType.LOW:
             raise Exception("incompatible: low output")
 
@@ -428,7 +406,7 @@ class UseFanoutCmd(UseCommand):
             }
         })
 
-    def to_key(self,calib_mode):
+    def to_key(self,calib_obj):
         loc = CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
@@ -450,7 +428,7 @@ class UseFanoutCmd(UseCommand):
                                           third=self._third, \
                                           invs=invs, \
                                           rngs=rngs, \
-                                          calib_mode=calib_mode)
+                                          calib_obj=calib_obj)
 
     @staticmethod
     def parse(args):
@@ -469,25 +447,25 @@ class UseFanoutCmd(UseCommand):
                 inv0=data['sign0'],
                 inv1=data['sign1'],
                 inv2=data['sign2'],
-                third=BoolType.from_bool(data['third']),
-                cached=data['cached']
+                third=BoolType.from_bool(data['third'])
             )
         else:
             raise Exception(result.message)
 
 
     def __repr__(self):
-        st = "use_fanout %d %d %d %d sgn %s %s %s rng %s %s %s" % (\
-                    self.loc.chip,
-                    self.loc.tile,
-                    self.loc.slice,
-                    self.loc.index,
-                    self._inv[0].abbrev(),
-                    self._inv[1].abbrev(),
-                    self._inv[2].abbrev(),
-                    self._in_range.abbrev(),
-                    "three" if self._third else "two",
-                    "cached" if self._cached else "update")
+        cmd = "use_fanout {chip} {tile} {slice} {index} "
+        cmd += " sgn {inv0} {inv1} {inv2} rng {range} {third}"
+        st = cmd.format(\
+                        chip=self.loc.chip,
+                        tile=self.loc.tile,
+                        slice=self.loc.slice,
+                        index=self.loc.index,
+                        inv0=self._inv[0].abbrev(),
+                        inv1=self._inv[1].abbrev(),
+                        inv2=self._inv[2].abbrev(),
+                        range=self._in_range.abbrev(),
+                        third="three" if self._third else "two")
         return st
 
 
@@ -499,12 +477,10 @@ class UseIntegCmd(UseCommand):
                  inv=SignType.POS, \
                  in_range=RangeType.MED, \
                  out_range=RangeType.MED,
-                 debug=BoolType.FALSE,
-                 cached=False):
+                 debug=BoolType.FALSE):
         UseCommand.__init__(self,
                             enums.BlockType.INTEG,
-                            CircLoc(chip,tile,slice),
-                            cached=cached)
+                            CircLoc(chip,tile,slice))
         assert(isinstance(inv,SignType))
         assert(isinstance(in_range,RangeType))
         assert(isinstance(out_range,RangeType))
@@ -523,10 +499,6 @@ class UseIntegCmd(UseCommand):
         self._in_range = in_range
         self._out_range = out_range
         self._debug = debug
-
-    @property
-    def max_error(self):
-        return self._out_range.coeff()*0.01
 
 
     @staticmethod
@@ -554,8 +526,7 @@ class UseIntegCmd(UseCommand):
                 in_range=data['range0'],
                 out_range=data['range1'],
                 debug=BoolType.TRUE if data['debug'] \
-                else BoolType.FALSE,
-                cached=data['cached']
+                else BoolType.FALSE
             )
         else:
             raise Exception(result.message)
@@ -583,7 +554,7 @@ class UseIntegCmd(UseCommand):
     def update_state(self,state):
         state.update_init_cond(self._init_cond)
 
-    def to_key(self,calib_mode):
+    def to_key(self,calib_obj):
         loc = CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
@@ -608,21 +579,22 @@ class UseIntegCmd(UseCommand):
                                          invs=invs,
                                          ranges=rngs,
                                          ic_val=self._init_cond,
-                                         calib_mode=calib_mode)
+                                         calib_obj=calib_obj)
 
 
     def __repr__(self):
-        fmtstr = "%s %d %d %d sgn %s val %f rng %s %s %s %s"
-        st = fmtstr % (self.name(),
-                       self.loc.chip, \
-                       self.loc.tile, \
-                       self.loc.slice, \
-                       self._inv.abbrev(),
-                       self._init_cond,
-                       self._in_range.abbrev(),
-                       self._out_range.abbrev(),
-                       "debug" if self._debug else "prod",
-                       "cached" if self._cached else "update")
+        cmd = "use_integ {chip} {tile} {slice} sgn {inv} "
+        cmd += "val {init_cond} rng {in_range} {out_range} {debug}"
+        st = cmd.format(
+            chip=self.loc.chip, \
+            tile=self.loc.tile, \
+            slice=self.loc.slice, \
+            inv=self._inv.abbrev(),
+            init_cond=self._init_cond,
+            in_range=self._in_range.abbrev(),
+            out_range=self._out_range.abbrev(),
+            debug="debug" if self._debug else "prod"
+        )
         return st
 
 
@@ -636,12 +608,10 @@ class UseMultCmd(UseCommand):
                  out_range=RangeType.MED,
                  coeff=0, \
                  use_coeff=False, \
-                 inv=SignType.POS, \
-                 cached=False):
+                 inv=SignType.POS):
         UseCommand.__init__(self,
                             enums.BlockType.MULT,
-                            CircLoc(chip,tile,slice,index),
-                            cached)
+                            CircLoc(chip,tile,slice,index))
 
         if coeff < -1.0 or coeff > 1.0:
             self.fail("value not in [-1,1]: %s" % coeff)
@@ -657,18 +627,6 @@ class UseMultCmd(UseCommand):
         self._in1_range = in1_range
         self._out_range = out_range
         assert(inv == SignType.POS)
-
-    @property
-    def max_error(self):
-        val = self._out_range.coeff()
-
-        if self._use_coeff:
-            # we want the vga to fall within 4 percent error.
-            base = 0.05
-        else:
-            base = 0.4
-
-        return max(abs(base*val),base)
 
     def update_state(self,state):
         state.update_gain(self._coeff)
@@ -693,7 +651,7 @@ class UseMultCmd(UseCommand):
         })
 
 
-    def to_key(self,targeted=False):
+    def to_key(self,calib_obj):
         loc = CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
@@ -714,7 +672,7 @@ class UseMultCmd(UseCommand):
                                         invs=invs,
                                         ranges=rngs,
                                         gain_val=self._coeff,
-                                        targeted=targeted)
+                                        calib_obj=calib_obj)
 
     @staticmethod
     def parse(args):
@@ -738,8 +696,7 @@ class UseMultCmd(UseCommand):
                        in1_range=RangeType.MED,
                        out_range=data['range1'],
                        use_coeff=True,
-                       coeff=data['value0'],
-                       cached=data['cached'])
+                       coeff=data['value0'])
 
         elif result2.success:
             data = result2.value
@@ -748,8 +705,7 @@ class UseMultCmd(UseCommand):
                        in0_range=data['range0'],
                        in1_range=data['range1'],
                        out_range=data['range2'],
-                       use_coeff=False, coeff=0,
-                       cached=data['cached'])
+                       use_coeff=False, coeff=0)
 
         elif not result1.success and not result2.success:
             msg = result1.message
@@ -763,29 +719,27 @@ class UseMultCmd(UseCommand):
         return 'use_mult'
 
     def __repr__(self):
+        cmd = "use_mult {chip} {tile} {slice} {index} "
         if self._use_coeff:
-            st = "%s %d %d %d %d val %f rng %s %s %s" % (\
-                                                      self.name(),
-                                                      self.loc.chip,
-                                                      self.loc.tile,
-                                                      self.loc.slice,
-                                                      self.loc.index,
-                                                      self._coeff,
-                                                      self._in0_range.abbrev(),
-                                                      self._out_range.abbrev(),
-                                                      "cached" if self._cached else "update"
-            )
+            cmd += "val {coeff} rng {in_range} {out_range}"
+            st = cmd.format(\
+                            chip=self.loc.chip,
+                            tile=self.loc.tile,
+                            slice=self.loc.slice,
+                            index=self.loc.index,
+                            coeff=self._coeff,
+                            in_range=self._in0_range.abbrev(),
+                            out_range=self._out_range.abbrev())
         else:
-            st = "%s %d %d %d %d rng %s %s %s %s" % (self.name(),
-                                                  self.loc.chip,
-                                                  self.loc.tile,
-                                                  self.loc.slice,
-                                                  self.loc.index,
-                                                  self._in0_range.abbrev(),
-                                                  self._in1_range.abbrev(),
-                                                  self._out_range.abbrev(),
-                                                  "cached" if self._cached else "update"
-            )
+            cmd += "rng {in0_range} {in1_range} {out_range}"
+            st = cmd.format(
+                chip=self.loc.chip,
+                tile=self.loc.tile,
+                slice=self.loc.slice,
+                index=self.loc.index,
+                in0_range=self._in0_range.abbrev(),
+                in1_range=self._in1_range.abbrev(),
+                out_range=self._out_range.abbrev())
 
         return st
 

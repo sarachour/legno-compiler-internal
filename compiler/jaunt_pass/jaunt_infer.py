@@ -283,7 +283,12 @@ def sc_decl_scale_model_variables(jenv,circ):
                         missing_scms.append(scm)
 
                         if jenv.params.only_scale_modes_with_models:
-                            print("scale mode dne: %s[%s] scm=%s" % (block_name,loc,scm))
+                            print("scale mode dne: %s %s[%s].%s cm=%s scm=%s handle=%s" \
+                                  % (jenv.params.calib_obj,
+                                     block_name,loc, \
+                                     port,
+                                     config.comp_mode,
+                                     scm, handle))
                             continue
 
                     valid_scms.append(scm)

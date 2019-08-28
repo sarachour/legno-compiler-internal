@@ -144,6 +144,7 @@ class JauntEnv:
                                  analog_error=analog_error, \
                                  max_freq=max_freq)
     self.params.set_model(JauntEnvParams.Type(model))
+    self.model_db = ModelDB(self.params.calib_obj)
     self._eqs = []
     self._ltes = []
     self._failed = False
@@ -321,7 +322,6 @@ class JauntInferEnv(JauntEnv):
                         max_freq=max_freq, \
                         digital_error=digital_error,
                         analog_error=analog_error)
-      self.model_db = ModelDB(self.params.calib_obj)
       self._exactly_one = []
       self._implies = {}
       self._lts = []

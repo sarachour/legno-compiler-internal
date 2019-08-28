@@ -49,13 +49,13 @@ def main_dump_db(state):
     keys = {}
     for data in state.state_db.get_all():
         key = (data.block,data.loc)
-        if not data.calib_mode in keys:
-            keys[data.calib_mode] = {}
+        if not data.calib_obj in keys:
+            keys[data.calib_obj] = {}
 
-        if not key in keys[data.calib_mode]:
-            keys[data.calib_mode][key] = data
+        if not key in keys[data.calib_obj]:
+            keys[data.calib_obj][key] = data
 
-    for calib_mode,ds in keys.items():
+    for calib_obj,ds in keys.items():
         for _,obj in ds.items():
             obj.write_dataset(state.state_db)
 
@@ -75,13 +75,13 @@ def main_script_profile(state,filename, \
 
 def main_script_calibrate(state,filename, \
                           recompute=False,
-                          calib_mode=CalibType.MIN_ERROR):
+                          calib_obj=CalibType.MIN_ERROR):
     successes = []
     failures = []
     for command_obj in read_script(filename):
         cmd.calibrate(state,command_obj, \
                              recompute=recompute,
-                             calib_mode=calib_mode)
+                             calib_obj=calib_obj)
 
     return True
 

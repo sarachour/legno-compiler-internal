@@ -5,7 +5,7 @@ import itertools
 import util.util as util
 from lab_bench.lib.chipcmd.data import CalibType
 
-CALIB_MODE = CalibType.MIN_ERROR
+CALIB_OBJ = CalibType.MIN_ERROR
 
 def about_one(gain):
     return gain >= 0.990 and gain <= 1.10
@@ -76,7 +76,7 @@ def get_directory(model):
     loc = to_safe_loc(loc)
     cm,sm = to_tag(model.comp_mode),to_tag(model.scale_mode)
     direc = "MODELS/%s-%s/%s-%s/%s" % (block,loc,cm,sm, \
-                                       CALIB_MODE.value)
+                                       CALIB_OBJ.value)
     util.mkdir_if_dne(direc)
     return direc
 

@@ -40,14 +40,16 @@ def build_config(meta):
 
 def infer(obj):
   scm,model_in,model_ic,model_out, \
-    out_z,out_z0,out_zp = build_config(obj['metadata'])
+    model_z,model_z0,model_zp = build_config(obj['metadata'])
 
+  # fit initial condition model.
   insc,outsc = scm
   scale = outsc.coeff()/insc.coeff()
-  bnds_ic = infer_fit.build_model(out_z0,obj['dataset'],0, \
+  bnds_ic = infer_fit.build_model(model_z0,obj['dataset'],0, \
                                   0.04)
 
 
+  # estimate time constant
   cl_bias,cl_var,_,_,cl_zero = infer_util \
                      .get_data_by_mode(obj['dataset'],1)
 
@@ -61,18 +63,22 @@ def infer(obj):
   for tc_err,tc_val in zip(tc_errors,tcs_vals):
     tcs.append((tc_err+tc_val)/tc_val)
 
+  # update appropriate model
   mu,sigma = np.median(tcs),np.std(tcs)
-  out_z.gain = mu;
-  out_z.bias = ol_bias;
-  print("tau=%f sigma=%f" % (out_z.gain, sigma))
+  model_zp.gain = mu;
+  model_zp.gain_uncertainty = sigma;
+  model_zp.bias = np.mean(ol_bias);
+  model_zp.bias_uncertainty = np.std(ol_bias);
 
-  if infer_util.about_one(out_z.gain):
-    out_z.gain = 1.0
+  if infer_util.about_one(model_zp.gain):
+    model_zp.gain = 1.0
 
-  if infer_util.about_one(out_z0.gain):
-    out_z0.gain = 1.0
+  if infer_util.about_one(model_z0.gain):
+    model_z0.gain = 1.0
 
   yield model_in
   yield model_ic
   yield model_out
- 
+  yield model_z
+  yield model_zp
+  yield model_z0

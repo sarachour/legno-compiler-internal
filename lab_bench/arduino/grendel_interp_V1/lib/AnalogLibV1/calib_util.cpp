@@ -22,12 +22,12 @@ namespace cutil {
     return st;
   }
 
-  void update_calib_table(calib_table_t& table, float new_score, int n, ...){
+  void update_calib_table(calib_table_t& table, float new_loss, int n, ...){
     va_list valist;
     va_start(valist, n);
-    if(not table.set || table.score > new_score){
+    if(not table.set || table.loss > new_loss){
       table.set = true;
-      table.score = new_score;
+      table.loss = new_loss;
       if(n >= MAX_HIDDEN_STATE){
         error("not enough space in table");
       }
@@ -36,11 +36,6 @@ namespace cutil {
       }
     }
     va_end(valist);
-  }
-
-  bool perfect_score(calib_table_t& table){
-    return table.set && table.score == 0.0;
-
   }
 
 

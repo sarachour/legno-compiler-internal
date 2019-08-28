@@ -73,7 +73,7 @@ def gen_use_lut(circ,block,locstr,config,source):
   variables,expr = op.to_python(config.expr('out',inject=True))
   config.set_scf('in', in_scf)
   config.set_scf('in', out_scf)
-  yield UseLUTCmd(chip,tile,slce,source=source,cached=True)
+  yield UseLUTCmd(chip,tile,slce,source=source)
   yield WriteLUTCmd(chip,tile,slce,variables,expr)
 
 def nearest_value(value):
@@ -95,8 +95,7 @@ def gen_use_adc(circ,block,locstr,config):
   yield UseADCCmd(chip=chip,
                   tile=tile,
                   slice=slce,
-                  in_range=rng[0],
-                  cached=True)
+                  in_range=rng[0])
 
 def gen_use_dac(circ,block,locstr,config,source):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
@@ -116,8 +115,7 @@ def gen_use_dac(circ,block,locstr,config,source):
                   value=value, \
                   inv=inv, \
                   out_range=rng,
-                  source=source,
-                  cached=True)
+                  source=source)
 
 
 def gen_get_adc_status(circ,block,locstr):
@@ -157,8 +155,7 @@ def gen_use_integrator(circ,block,locstr,config,debug=True):
                     inv=inv,
                     in_range=in_rng,
                     out_range=out_rng,
-                    debug=debug,
-                    cached=True)
+                    debug=debug)
 
 
 def gen_use_multiplier(circ,block,locstr,config):
@@ -181,8 +178,7 @@ def gen_use_multiplier(circ,block,locstr,config):
                      in0_range=in0_rng,
                      out_range=out_rng,
                      coeff=coeff,
-                     use_coeff=True,
-                     cached=True)
+                     use_coeff=True)
 
 
   else:
@@ -197,8 +193,7 @@ def gen_use_multiplier(circ,block,locstr,config):
                      index,
                      in0_range=in0_rng,
                      in1_range=in1_rng,
-                     out_range=out_rng,
-                     cached=True)
+                     out_range=out_rng)
 
 
 def gen_use_fanout(circ,block,locstr,config,third=False):

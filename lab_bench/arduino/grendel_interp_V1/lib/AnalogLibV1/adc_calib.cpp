@@ -50,7 +50,7 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateFast(Fabric::Chip::Tile::Slic
 float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMinError(Fabric::Chip::Tile::Slice::Dac * val_dac){
 
   float dummy;
-  float score_total=0.0;
+  float loss_total=0.0;
   for(int i=0; i < CALIB_NPTS; i += 1){
     val_dac->setConstant(TEST_POINTS[i]);
     float in_val = val_dac->fastMeasureValue(dummy);
@@ -58,9 +58,9 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMinError(Fabric::Chip::Tile::
                                                                    in_val);
 
     float meas = util::meas_adc(this);
-    score_total += fabs(target-meas);
+    loss_total += fabs(target-meas);
   }
-  return score_total/CALIB_NPTS;
+  return loss_total/CALIB_NPTS;
 }
 float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMaxDeltaFit(Fabric::Chip::Tile::Slice::Dac * val_dac){
   error("unimplemented: integ max_delta_fit");
@@ -88,13 +88,12 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
   cutil::calib_table_t calib_table = cutil::make_calib_table();
   unsigned char opts[] = {nA100,nA200,nA300,nA400};
   int signs[] = {-1,1};
-  bool perfect_score = false;
-  for(unsigned char fs=0; fs < 4 && !perfect_score; fs += 1){
+  for(unsigned char fs=0; fs < 4; fs += 1){
     m_codes.lower_fs = opts[fs];
     m_codes.upper_fs = opts[fs];
-    for(unsigned char spread=0; spread < 32 && !perfect_score; spread++){
-      for(unsigned char lsign=0; lsign < 2 && !perfect_score; lsign +=1){
-        for(unsigned char usign=0; usign < 2 && !perfect_score; usign +=1){
+    for(unsigned char spread=0; spread < 32; spread++){
+      for(unsigned char lsign=0; lsign < 2; lsign +=1){
+        for(unsigned char usign=0; usign < 2; usign +=1){
           m_codes.lower = 31+spread*signs[lsign];
           m_codes.upper = 31+spread*signs[usign];
           m_codes.nmos = 0;
@@ -108,41 +107,37 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
             for(int i2v_cal=0; i2v_cal < MAX_GAIN_CAL; i2v_cal += 16){
               m_codes.i2v_cal = i2v_cal;
               update(m_codes);
-              float score;
+              float loss;
               switch(obj){
               case CALIB_MINIMIZE_ERROR:
-                score = calibrateMinError(val_dac);
+                loss = calibrateMinError(val_dac);
                 break;
               case CALIB_MAXIMIZE_DELTA_FIT:
-                score = calibrateMaxDeltaFit(val_dac);
+                loss = calibrateMaxDeltaFit(val_dac);
                 break;
               case CALIB_FAST:
-                score = calibrateFast(val_dac);
+                loss = calibrateFast(val_dac);
                 break;
               default:
                 error("unimplemented adc");
                 break;
               }
               // TODO
-              sprintf(FMTBUF,"fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d score=%f",
+              sprintf(FMTBUF,"fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
                       m_codes.lower_fs,
                       m_codes.upper_fs,
                       m_codes.lower,
                       m_codes.upper,
                       nmos,
                       i2v_cal,
-                      score);
+                      loss);
               print_info(FMTBUF);
-              cutil::update_calib_table(calib_table,score,6,
+              cutil::update_calib_table(calib_table,loss,6,
                                         m_codes.lower_fs,
                                         m_codes.upper_fs,
                                         m_codes.lower,
                                         m_codes.upper,
                                         nmos,i2v_cal);
-              if(cutil::perfect_score(calib_table)){
-                perfect_score = true;
-                break;
-              }
             }
           }
         }
@@ -158,22 +153,22 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
   for(int i2v_cal=0; i2v_cal < MAX_GAIN_CAL; i2v_cal += 1){
     this->m_codes.i2v_cal = i2v_cal;
     update(m_codes);
-    float score;
+    float loss;
     switch(obj){
     case CALIB_MINIMIZE_ERROR:
-      score = calibrateMinError(val_dac);
+      loss = calibrateMinError(val_dac);
       break;
     case CALIB_MAXIMIZE_DELTA_FIT:
-      score = calibrateMaxDeltaFit(val_dac);
+      loss = calibrateMaxDeltaFit(val_dac);
       break;
     case CALIB_FAST:
-      score = calibrateFast(val_dac);
+      loss = calibrateFast(val_dac);
       break;
     default:
       error("unimplemented adc");
       break;
     }
-    cutil::update_calib_table(calib_table,score,6,
+    cutil::update_calib_table(calib_table,loss,6,
                               m_codes.lower_fs,
                               m_codes.upper_fs,
                               m_codes.lower,
@@ -192,13 +187,13 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
   this->m_codes.nmos = calib_table.state[4];
   this->m_codes.i2v_cal = calib_table.state[5];
 
-  sprintf(FMTBUF,"BEST fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d score=%f",
+  sprintf(FMTBUF,"BEST fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
           m_codes.lower_fs,
           m_codes.upper_fs,
           m_codes.lower,
           m_codes.upper,
           m_codes.nmos,
           m_codes.i2v_cal,
-          calib_table.score);
+          calib_table.loss);
   print_info(FMTBUF);
 }

@@ -9,6 +9,7 @@ namespace calibrate {
   calib_objective_t get_objective_max_delta_fit(uint16_t blk){
     switch(blk){
     case circ::block_type_t::TILE_ADC:
+    case circ::block_type_t::FANOUT:
       return CALIB_FAST;
     default:
       return CALIB_MAXIMIZE_DELTA_FIT;
@@ -17,6 +18,7 @@ namespace calibrate {
   calib_objective_t get_objective_min_error(uint16_t blk){
     switch(blk){
     case circ::block_type_t::TILE_ADC:
+    case circ::block_type_t::FANOUT:
       return CALIB_FAST;
     default:
       return CALIB_MINIMIZE_ERROR;
@@ -118,6 +120,9 @@ namespace calibrate {
     case circ::block_type_t::INTEG:
       integ = common::get_slice(fab,loc.loc)->integrator;
       integ->calibrate(obj);
+      break;
+
+    case circ::block_type_t::LUT:
       break;
 
     default:

@@ -85,7 +85,7 @@ def profile(state,obj, \
             bootstrap=False, \
             n=5):
     if isinstance(obj,UseCommand):
-        dbkey = obj.to_key(calib_mode=state.calib_mode)
+        dbkey = obj.to_key(calib_obj=state.calib_obj)
         result = state.state_db.get(dbkey)
         print(">> set state")
         backup_cached = obj.cached
@@ -106,24 +106,22 @@ def profile(state,obj, \
 
 
 def calibrate(state,obj,recompute=False, \
-              calib_mode=CalibType.MIN_ERROR):
+              calib_obj=CalibType.MIN_ERROR):
     if isinstance(obj,UseCommand):
-        dbkey = obj.to_key(calib_mode)
+        dbkey = obj.to_key(calib_obj)
         if not (state.state_db.has(dbkey)) or \
            recompute:
-            obj.cached = False
-            obj.execute(state)
             print(">> resetting defaults")
             DefaultsCommand().execute(state)
             print(">> set state")
+            obj.calibrated = False
             obj.execute(state)
-            print(">> calibrate [%f]" % obj.max_error)
+            print(">> calibrate %s" % calib_obj.value)
             CalibrateCmd(obj.block_type,
                          obj.loc.chip,
                          obj.loc.tile,
                          obj.loc.slice,
-                         obj.loc.index,
-                         calib_mode=calib_mode) \
+                         obj.loc.index) \
                          .execute(state)
 
 

@@ -33,7 +33,7 @@ parser.add_argument("--debug", action='store_true', \
 
 parser.add_argument("--calibrate", action='store_true', \
                     help="calibrate uncalibrated components")
-parser.add_argument("--calib-mode", type=str, default="min_error",\
+parser.add_argument("--calib-obj", type=str, default="min_error",\
                     help="what optimization function to use for calibration")
 
 parser.add_argument("--profile", action='store_true', \
@@ -78,7 +78,7 @@ elif args.no_oscilloscope:
 state = GrendelEnv(ip,args.port,
                    ard_native=args.native,
                    validate=args.validate,
-                   calib_mode=CalibType(args.calib_mode))
+                   calib_obj=CalibType(args.calib_obj))
 
 state.initialize()
 
@@ -86,7 +86,7 @@ if args.calibrate:
     assert(args.script != None)
     succ = main_script_calibrate(state,args.script, \
                                  recompute=args.recompute,
-                                 calib_mode=CalibType(args.calib_mode))
+                                 calib_obj=CalibType(args.calib_obj))
     if not succ:
         print("[ERROR] some calibration steps failed..")
         sys.exit(1)
@@ -98,17 +98,19 @@ elif args.profile:
                                clear=args.clear_profile,
                                bootstrap=args.bootstrap,
                                n=args.n)
-if args.dry_run:
-    sys.exit(0)
 
-try:
-    if args.script == None:
-        main_stdout(state)
-    else:
-        main_script(state,args.script)
+else:
+    if args.dry_run:
+        sys.exit(0)
 
-except Exception as e:
-    print("<< closing devices >>")
-    state.close()
-    raise e
+    try:
+        if args.script == None:
+            main_stdout(state)
+        else:
+            main_script(state,args.script)
+
+    except Exception as e:
+        print("<< closing devices >>")
+        state.close()
+        raise e
 

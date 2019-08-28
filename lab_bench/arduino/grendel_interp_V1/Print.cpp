@@ -444,7 +444,7 @@ namespace circ {
       Serial.print(" ");
       print_idx_loc(cmd.data.calib.loc);
       Serial.print(" mode=");
-      Serial.print(cmd.data.calib.calib_mode);
+      Serial.print(cmd.data.calib.calib_obj);
       break;
 
     case cmd_type_t::CHARACTERIZE:

@@ -13,7 +13,7 @@ namespace cutil {
 
   typedef struct {
     unsigned char state[MAX_HIDDEN_STATE];
-    float score;
+    float loss;
     bool set;
   } calib_table_t;
 
@@ -25,7 +25,6 @@ namespace cutil {
 
   calib_table_t make_calib_table();
   void update_calib_table(calib_table_t& table, float new_score, int n, ...);
-  bool perfect_score(calib_table_t& table);
 
 
 

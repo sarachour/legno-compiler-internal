@@ -93,12 +93,10 @@ class DisableCmd(AnalogChipCommand):
     def parse(args):
         _result1 = parse_pattern_use_block(args,0,0,0,
                                            "disable %s" % args[1],
-                                           index=True,
-                                           db=False)
+                                           index=True)
         _result2 = parse_pattern_use_block(args,0,0,0,
                                            "disable %s" % args[1],
-                                           index=False,
-                                           db=False)
+                                           index=False)
 
         if _result1.success:
             result1 = _result1.value

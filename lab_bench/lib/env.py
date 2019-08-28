@@ -15,7 +15,7 @@ class GrendelEnv:
 
     def __init__(self,osc_ip,osc_port,ard_native, \
                  validate=False, \
-                 calib_mode=CalibType.MIN_ERROR):
+                 calib_obj=CalibType.MIN_ERROR):
         if not validate:
             self.arduino = ArduinoDue(native=ard_native)
             self.oscilloscope = Sigilent1020XEOscilloscope(
@@ -27,7 +27,7 @@ class GrendelEnv:
 
         ## State committed to chip
         self.use_osc = False;
-        self.calib_mode = calib_mode
+        self.calib_obj = calib_obj
 
         self.state_db = state.BlockStateDatabase()
         self._use_adc = {};

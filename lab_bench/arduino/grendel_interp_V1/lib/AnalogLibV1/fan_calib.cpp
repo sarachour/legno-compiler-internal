@@ -37,7 +37,7 @@ void Fabric::Chip::Tile::Slice::Fanout::measureZero(float &out0bias,
   this->update(codes_fan);
   cutil::restore_conns(calib);
 }
-float Fabric::Chip::Tile::Slice::Fanout::getScore(calib_objective_t obj,
+float Fabric::Chip::Tile::Slice::Fanout::getLoss(calib_objective_t obj,
                 Fabric::Chip::Tile::Slice::Dac * val_dac,
                 Fabric::Chip::Tile::Slice::Dac * ref_dac,
                 ifc outId
@@ -113,15 +113,15 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
         this->m_codes.port_cal[out2Id] = bias_cal2;
         update(this->m_codes);
         conn_out0.setConn();
-        float score = getScore(CALIB_FAST,val_dac,ref_dac,out0Id);
+        float loss = getLoss(CALIB_FAST,val_dac,ref_dac,out0Id);
         conn_out0.brkConn();
         conn_out1.setConn();
-        score = max(score,getScore(CALIB_FAST,val_dac,ref_dac,out1Id));
+        loss = max(loss,getLoss(CALIB_FAST,val_dac,ref_dac,out1Id));
         conn_out1.brkConn();
         conn_out2.setConn();
-        score = max(score,getScore(CALIB_FAST,val_dac,ref_dac,out2Id));
+        loss = max(loss,getLoss(CALIB_FAST,val_dac,ref_dac,out2Id));
         conn_out2.brkConn();
-        cutil::update_calib_table(calib_table,score,4,
+        cutil::update_calib_table(calib_table,loss,4,
                                   bias_cal0,
                                   bias_cal1,
                                   bias_cal2,
@@ -130,12 +130,12 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
       }
     }
 
-    sprintf(FMTBUF, "CRS nmos=%d bias_codes=(%d,%d,%d) score=%f",
+    sprintf(FMTBUF, "CRS nmos=%d bias_codes=(%d,%d,%d) loss=%f",
             calib_table.state[3],
             calib_table.state[0],
             calib_table.state[1],
             calib_table.state[2],
-            calib_table.score
+            calib_table.loss
             );
     print_info(FMTBUF);
   }
@@ -162,15 +162,15 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
           continue;
         update(this->m_codes);
         conn_out0.setConn();
-        float score = getScore(CALIB_FAST,val_dac,ref_dac,out0Id);
+        float loss = getLoss(CALIB_FAST,val_dac,ref_dac,out0Id);
         conn_out0.brkConn();
         conn_out1.setConn();
-        score = max(score,getScore(CALIB_FAST,val_dac,ref_dac,out1Id));
+        loss = max(loss,getLoss(CALIB_FAST,val_dac,ref_dac,out1Id));
         conn_out1.brkConn();
         conn_out2.setConn();
-        score = max(score,getScore(CALIB_FAST,val_dac,ref_dac,out2Id));
+        loss = max(loss,getLoss(CALIB_FAST,val_dac,ref_dac,out2Id));
         conn_out2.brkConn();
-        cutil::update_calib_table(calib_table,score,4,
+        cutil::update_calib_table(calib_table,loss,4,
                                   bias_cal0,
                                   bias_cal1,
                                   bias_cal2,
@@ -178,12 +178,12 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
                                   );
       }
     }
-    sprintf(FMTBUF, "FINE nmos=%d bias_codes=(%d,%d,%d) score=%f",
+    sprintf(FMTBUF, "FINE nmos=%d bias_codes=(%d,%d,%d) loss=%f",
             calib_table.state[3],
             calib_table.state[0],
             calib_table.state[1],
             calib_table.state[2],
-            calib_table.score
+            calib_table.loss
             );
     print_info(FMTBUF);
   }
@@ -196,8 +196,8 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
   this->m_codes = codes_fanout;
   //set best hidden codes
   int best_nmos=0;
-  int best_score=0;
-  best_score = calib_table.score;
+  int best_loss=0;
+  best_loss = calib_table.loss;
   this->m_codes.port_cal[out0Id] = calib_table.state[0];
   this->m_codes.port_cal[out1Id] = calib_table.state[1];
   this->m_codes.port_cal[out2Id] = calib_table.state[2];
@@ -242,13 +242,13 @@ float Fabric::Chip::Tile::Slice::Fanout::calibrateMaxDeltaFit(Fabric::Chip::Tile
   util::distribution(gains,m,
                      gain_mean,
                      gain_variance);
-  float score = max(sqrt(gain_variance),fabs(bias));
-  return score;
+  float loss = max(sqrt(gain_variance),fabs(bias));
+  return loss;
 }
 float Fabric::Chip::Tile::Slice::Fanout::calibrateMinError(Fabric::Chip::Tile::Slice::Dac * val_dac,
                                                            Fabric::Chip::Tile::Slice::Dac * ref_dac,
                                                            ifc out_id) {
-  float score_total = 0;
+  float loss_total = 0;
   int total = 0;
   for(int i=0; i < CALIB_NPTS; i += 1){
     float mean,dummy;
@@ -263,12 +263,12 @@ float Fabric::Chip::Tile::Slice::Fanout::calibrateMinError(Fabric::Chip::Tile::S
                                              mean,
                                              dummy);
     if(succ){
-      score_total = fabs(target-mean);
+      loss_total = fabs(target-mean);
       total += 1;
     }
   }
   if(total > 0)
-    return score_total/total;
+    return loss_total/total;
   else
     error("no valid points");
 
