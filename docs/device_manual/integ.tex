@@ -140,14 +140,30 @@ calibration algorithm is broken up into two subroutines:
 \subsection{\tx{calibrateClosedLoop} Subroutine}
 
 \begin{algorithmic}
+  \State{bias0 = measure out0 of fan}
+  \State{bias1 = measure out1 of fan}
+  \State{bias= bias0+bias1}
   \For{nmos in 0..7}
   \State{$\tx{port_cal[out]} \leftarrow 32$} 
   \State{$\tx{gain_cal} \leftarrow 32$}
   \State{tbls[nmos] = make()}
-  \For{calIn in 0..64}
-  obj(meas0)
+  \For{calIn in 0..63}
+  \State{$\tx{port_cal[in]} \leftarrow$ calIn}
+  \State{obs = measure out of integ}
+  \State{loss = |obs-bias|}
+  \State{tbl $\leftarrow$ loss,(calIn,32)}
   \EndFor
   \EndFor
+  \For{nmos in 0..7}
+  \State{$\tx{port_cal[in]} \leftarrow$ tbls[nmos].calIn}
+  \For{calOut in 0..63}
+  \State{$\tx{port_cal[out]} \leftarrow$ calOut}
+  \State{obs = measure out of integ}
+  \State{loss = |obs-bias|}
+  \State{tbl $\leftarrow$ loss,(calIn,calOut)}
+  \EndFor
+  \EndFor
+  \State{return tbls}
 \end{algorithmic}
 
 \subsection{\tx{calibrateInitialCond} Subroutine}
