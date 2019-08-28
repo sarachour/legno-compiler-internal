@@ -8,7 +8,7 @@ from chip.model import PortModel
 def build_config(meta):
   loc = infer_util.to_loc(meta['loc'])
   print(meta.keys())
-  comp_mode =  infer_util.to_sign(meta['invs']['out0'])
+  comp_mode =  infer_util.to_sign(meta['inv'])
   scale_mode = ( \
                  infer_util.to_range(meta['ranges']['in0']), \
                  infer_util.to_range(meta['ranges']['out0']) \

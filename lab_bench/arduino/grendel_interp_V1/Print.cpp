@@ -205,10 +205,6 @@ namespace circ {
     case block_type_t::MULT:
       Serial.print("enable=");
       Serial.print(state.mult.enable);
-      Serial.print(" inv=");
-      print3(state.mult.inv[in0Id],
-             state.mult.inv[in1Id],
-             state.mult.inv[out0Id]);
       Serial.print(" range=");
       print3(range_to_str(state.mult.range[in0Id]),
              range_to_str(state.mult.range[in1Id]),
@@ -233,8 +229,7 @@ namespace circ {
       Serial.print(" exception=");
       Serial.print(state.integ.exception);
       Serial.print(" inv=");
-      print2(sign_to_str(state.integ.inv[in0Id]),
-             sign_to_str(state.integ.inv[out0Id]));
+      Serial.print(sign_to_str(state.integ.inv));
       Serial.print(" range=");
       print2(range_to_str(state.integ.range[in0Id]),
              range_to_str(state.integ.range[out0Id]));
@@ -260,7 +255,7 @@ namespace circ {
       Serial.print(" third=");
       Serial.print(state.fanout.third);
       Serial.print(" range=");
-      Serial.print(range_to_str(state.fanout.range[in0Id]));
+      Serial.print(range_to_str(state.fanout.range));
       Serial.print(" pmos=");
       Serial.print(state.fanout.pmos);
       Serial.print(" nmos=");

@@ -61,16 +61,10 @@ def main_dump_db(state):
 
 
 def main_script_profile(state,filename, \
-                        recompute=False,
-                        clear=False,
-                        bootstrap=False,
-                        n=5):
+                        clear=False):
     for command_obj in read_script(filename):
         succ = cmd.profile(state,command_obj, \
-                           recompute=recompute,
-                           bootstrap=bootstrap,
-                           clear=clear,
-                           n=n)
+                           clear=clear)
 
 
 def main_script_calibrate(state,filename, \

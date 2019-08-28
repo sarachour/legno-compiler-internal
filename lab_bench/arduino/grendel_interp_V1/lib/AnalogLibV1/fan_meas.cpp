@@ -27,7 +27,7 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
   cutil::break_conns(calib);
 
   val_dac->setEnable(true);
-  val_dac->setRange(this->m_codes.range[in0Id]);
+  val_dac->setRange(this->m_codes.range);
   val_dac->setInv(false);
   val_dac->setConstant(input);
 

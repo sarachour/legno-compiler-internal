@@ -5,14 +5,14 @@
 #include "assert.h"
 
 float Fabric::Chip::Tile::Slice::Integrator::computeInitCond(integ_code_t& m_codes){
-  float sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
+  float sign = m_codes.inv ? -1.0 : 1.0;
   float rng = util::range_to_coeff(m_codes.range[out0Id]);
   float ic = (m_codes.ic_code-128.0)/128.0;
   return rng*sign*ic;
 }
 
 float Fabric::Chip::Tile::Slice::Integrator::computeOutput(integ_code_t& m_codes,float val){
-  float sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
+  float sign = m_codes.inv ? -1.0 : 1.0;
   float rng = util::range_to_coeff(m_codes.range[out0Id])
     /util::range_to_coeff(m_codes.range[in0Id]);
   return rng*sign*val;
@@ -43,14 +43,10 @@ void Fabric::Chip::Tile::Slice::Integrator::setEnable (
 }
 
 void Fabric::Chip::Tile::Slice::Integrator::setInv (
-                                                    ifc port,
                                                     bool inverse // whether output is negated
                                                     )
 {
-  if(!(port == out0Id)){
-      error("cannot set inverse. invalid port");
-  }
-	m_codes.inv[port] = inverse;
+	m_codes.inv = inverse;
 	setEnable (
 		m_codes.enable
 	);
@@ -106,9 +102,7 @@ void Fabric::Chip::Tile::Slice::Integrator::defaults (){
   m_codes.pmos = 5;
   m_codes.nmos = 0;
   m_codes.ic_code = 128;
-  m_codes.inv[in0Id] = false;
-  m_codes.inv[in1Id] = false;
-  m_codes.inv[out0Id] = false;
+  m_codes.inv = false;
   m_codes.range[in0Id] = RANGE_MED;
   m_codes.range[in1Id] = RANGE_UNKNOWN;
   m_codes.range[out0Id] = RANGE_MED;
@@ -172,7 +166,7 @@ void Fabric::Chip::Tile::Slice::Integrator::setParam0 () const {
 
 	unsigned char cfgTile = 0;
 	cfgTile += m_codes.enable ? 1<<7 : 0;
-	cfgTile += (m_codes.inv[out0Id]) ? 1<<6 : 0;
+	cfgTile += (m_codes.inv) ? 1<<6 : 0;
 	cfgTile += intRange<<3;
 	setParamHelper (0, cfgTile);
 }

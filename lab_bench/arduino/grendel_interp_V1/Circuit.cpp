@@ -100,7 +100,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     integ = common::get_slice(fab,integd.loc)->integrator;
     integ->setEnable(true);
     integ->setException( integd.debug == 1 ? true : false);
-    integ->setInv(out0Id,integd.inv);
+    integ->setInv(integd.inv);
     integ->setRange(in0Id,(range_t) integd.in_range);
     integ->setRange(out0Id,(range_t) integd.out_range);
     comm::test(integ->setInitial(integd.value),

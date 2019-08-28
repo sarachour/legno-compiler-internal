@@ -33,7 +33,8 @@ class UseCommand(AnalogChipCommand):
         return self._loc
 
     def update_state(self,stateobj):
-        raise Exception("override me with keyword dict of targeted args")
+        raise Exception("override me with keyword dict of targeted args: %s" % \
+                        self.__class__.__name__)
 
     def execute_command(self,env):
         AnalogChipCommand.execute_command(self,env)
@@ -85,6 +86,9 @@ class UseLUTCmd(UseCommand):
             self.fail("dac has no index <%d>" % loc.index)
 
         self._source = source
+
+    def update_state(self,stateobj):
+        return
 
     @property
     def expr(self):
@@ -182,6 +186,8 @@ class UseADCCmd(UseCommand):
     def desc():
         return "use a constant adc block on the hdacv2 board"
 
+    def update_state(self,stateobj):
+        return
 
     @staticmethod
     def parse(args):
@@ -389,6 +395,9 @@ class UseFanoutCmd(UseCommand):
         return "use a fanout block on the hdacv2 board"
 
 
+    def update_state(self,stateobj):
+        return
+
     def build_ctype(self):
         return build_circ_ctype({
             'type':enums.CircCmdType.USE_FANOUT.name,
@@ -417,17 +426,10 @@ class UseFanoutCmd(UseCommand):
             enums.PortName.OUT1: self._inv1,
             enums.PortName.OUT2: self._inv2
         }
-        rngs = {}
-        for ident in [enums.PortName.IN0,
-                      enums.PortName.OUT0,
-                      enums.PortName.OUT1,
-                      enums.PortName.OUT2]:
-            rngs[ident] = self._in_range
-
         return state.FanoutBlockState.Key(loc=loc, \
                                           third=self._third, \
                                           invs=invs, \
-                                          rngs=rngs, \
+                                          rng=self._in_range, \
                                           calib_obj=calib_obj)
 
     @staticmethod
@@ -560,10 +562,6 @@ class UseIntegCmd(UseCommand):
                       self.loc.slice,
                       0
         )
-        invs = {
-            enums.PortName.IN0: SignType.POS,
-            enums.PortName.OUT0: self._inv
-        }
         rngs = {
             enums.PortName.IN0: self._in_range,
             enums.PortName.OUT0: self._out_range
@@ -576,7 +574,7 @@ class UseIntegCmd(UseCommand):
         return state.IntegBlockState.Key(loc=loc,
                                          cal_enables=cal_en,
                                          exception=self._debug,
-                                         invs=invs,
+                                         inv=self._inv,
                                          ranges=rngs,
                                          ic_val=self._init_cond,
                                          calib_obj=calib_obj)
@@ -607,8 +605,7 @@ class UseMultCmd(UseCommand):
                  in1_range=RangeType.MED,
                  out_range=RangeType.MED,
                  coeff=0, \
-                 use_coeff=False, \
-                 inv=SignType.POS):
+                 use_coeff=False):
         UseCommand.__init__(self,
                             enums.BlockType.MULT,
                             CircLoc(chip,tile,slice,index))
@@ -616,7 +613,6 @@ class UseMultCmd(UseCommand):
         if coeff < -1.0 or coeff > 1.0:
             self.fail("value not in [-1,1]: %s" % coeff)
 
-        assert(isinstance(inv,SignType))
         assert(isinstance(in0_range,RangeType))
         assert(isinstance(in1_range,RangeType))
         assert(isinstance(out_range,RangeType))
@@ -626,7 +622,6 @@ class UseMultCmd(UseCommand):
         self._in0_range = in0_range
         self._in1_range = in1_range
         self._out_range = out_range
-        assert(inv == SignType.POS)
 
     def update_state(self,state):
         state.update_gain(self._coeff)
@@ -657,11 +652,6 @@ class UseMultCmd(UseCommand):
                       self.loc.slice,
                       self.loc.index
         )
-        invs = {
-            enums.PortName.IN0: SignType.POS,
-            enums.PortName.IN1: SignType.POS,
-            enums.PortName.OUT0: SignType.POS
-        }
         rngs = {
             enums.PortName.IN0: self._in0_range,
             enums.PortName.IN1: self._in1_range,
@@ -669,7 +659,6 @@ class UseMultCmd(UseCommand):
         }
         return state.MultBlockState.Key(loc=loc,
                                         vga=BoolType.from_bool(self._use_coeff),
-                                        invs=invs,
                                         ranges=rngs,
                                         gain_val=self._coeff,
                                         calib_obj=calib_obj)

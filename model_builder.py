@@ -105,7 +105,7 @@ def infer(args,dump_db=True):
     sys.exit(0)
 
   if dump_db:
-    cmd = "python3 grendel.py --dump-db calibrate.grendel"
+    cmd = "python3 grendel.py dump"
     print(cmd)
     retcode = os.system(cmd)
     if retcode != 0:

@@ -14,16 +14,15 @@ float Fabric::Chip::Tile::Slice::Multiplier::computeOutput(mult_code_t& m_codes,
                                                            float in0,
                                                            float in1){
   float gain = (m_codes.gain_code-128.0)/128.0;
-  float sign = m_codes.inv[out0Id] ? -1.0 : 1.0;
   float rng = util::range_to_coeff(m_codes.range[out0Id]);
   rng *= 1.0/util::range_to_coeff(m_codes.range[in0Id]);
 
   if(m_codes.vga){
-    return gain*sign*rng*in0;
+    return gain*rng*in0;
   }
   else{
     rng *= 1.0/util::range_to_coeff(m_codes.range[in1Id]);
-    return gain*sign*rng*in0*in1;
+    return rng*in0*in1;
   }
 }
 
@@ -68,6 +67,7 @@ bool Fabric::Chip::Tile::Slice::Multiplier::setGain(float gain){
 }
 
 
+
 void Fabric::Chip::Tile::Slice::Multiplier::setRange (ifc port,
                                                       range_t range) {
   if(!(port == in0Id || port == in1Id || port == out0Id)){
@@ -86,9 +86,6 @@ void Fabric::Chip::Tile::Slice::Multiplier::defaults () {
   m_codes.vga = false;
   m_codes.gain_code = 128;
   m_codes.gain_cal = 0;
-  m_codes.inv[in0Id] = false;
-  m_codes.inv[in1Id] = false;
-  m_codes.inv[out0Id] = false;
   m_codes.range[in0Id] = RANGE_MED;
   m_codes.range[in1Id] = RANGE_MED;
   m_codes.range[out0Id] = RANGE_MED;

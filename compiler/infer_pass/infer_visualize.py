@@ -108,21 +108,21 @@ def get_plot_parameters(model):
     'fanout': True,
     'multiplier': False,
     'integrator': True,
-    'adc': True,
-    'dac': True
+    'tile_adc': True,
+    'tile_dac': True
   }
   index = model.port.split('out')[1]
   LABELS = {
     'fanout': {'in0': 'Analog Input (uA)', \
                'out': 'Analog Output %s (uA)' % index},
-    'adc': {'in0': 'Analog Input (uA)', \
+    'tile_adc': {'in0': 'Analog Input (uA)', \
             'out': 'Digital Value (norm)'},
-    'dac': {'in0': 'Digital Value (norm)',
+    'tile_dac': {'in0': 'Digital Value (norm)',
             'out': 'Analog Output (uA)'},
     'multiplier.vga': {'in0':'Analog Input (uA)', \
                        'in1':'Digital Gain (norm)', \
                    'out': 'Analog Output (uA)'},
-    'multiplier.mult': {'in0':'Analog Input 0 (uA)', \
+    'multiplier.mul': {'in0':'Analog Input 0 (uA)', \
                         'in1':'Analog Input 1 (uA)',
                         'out': 'Analog Output (uA)'},
     'integrator': {'in0': 'Digital Initial Condition (norm)',
@@ -130,10 +130,10 @@ def get_plot_parameters(model):
   }
   SCALES = {
     'fanout': {'in0': 2.0,'out':2.0},
-    'adc': {'in0': 2.0,'out':1/128.0},
-    'dac': {'in0':1.0,'out':2.0},
+    'tile_adc': {'in0': 2.0,'out':1/128.0},
+    'tile_dac': {'in0':1.0,'out':2.0},
     'multiplier.vga': {'in0':2.0,'in1':1.0,'out':2.0},
-    'multiplier.mult': {'in0':2.0,'in1':2.0,'out':2.0},
+    'multiplier.mul': {'in0':2.0,'in1':2.0,'out':2.0},
     'integrator': {'in0':1.0, 'out':2.0}
   }
   is_1d = IS_1D[model.block]
@@ -141,7 +141,6 @@ def get_plot_parameters(model):
     key = model.block
   else:
     key = "%s.%s" % (model.block,model.comp_mode)
-
   scales = SCALES[key]
   labels = LABELS[key]
   return is_1d,scales,labels

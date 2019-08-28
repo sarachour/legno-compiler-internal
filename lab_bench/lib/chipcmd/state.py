@@ -468,14 +468,12 @@ class MultBlockState(BlockState):
 
     def __init__(self,loc,
                  vga,
-                 invs,
                  ranges,
                  gain_val=None,
                  calib_obj=CalibType.MIN_ERROR):
       BlockState.Key.__init__(self,enums.BlockType.MULT, \
                               loc,calib_obj)
       assert(isinstance(vga,chipdata.BoolType))
-      self.invs = invs
       self.ranges = ranges
       self.gain_val = float(gain_val) \
                       if not gain_val is None else None
@@ -490,8 +488,7 @@ class MultBlockState(BlockState):
     BlockState.__init__(self,enums.BlockType.MULT,loc,state,calib_obj)
 
   def header(self):
-    GH = keys(self.invs,prefix='inv-') + \
-         keys(self.ranges,prefix='range-') + \
+    GH = keys(self.ranges,prefix='range-') + \
          ["vga","port"]
     ZH = ["gain"]
     YH = ["bias","noise"]
@@ -499,8 +496,7 @@ class MultBlockState(BlockState):
     return GH,ZH,XH,YH
 
   def to_rows(self,obj):
-    G = ordered(obj.invs) \
-        + ordered(obj.ranges) \
+    G = ordered(obj.ranges) \
         + [obj.vga.boolean()]
     Z = [obj.gain_val]
     for port,target,in0,in1,bias,noise in obj.profile:
@@ -520,7 +516,6 @@ class MultBlockState(BlockState):
       "mult": {
         "vga": self.vga.code(),
         "enable": chipdata.BoolType.TRUE.code(),
-        "inv": to_c_list(self.invs),
         "range": to_c_list(self.ranges),
         "pmos": self.pmos,
         "nmos": self.nmos,
@@ -535,7 +530,6 @@ class MultBlockState(BlockState):
   def key(self):
     return MultBlockState.Key(self.loc,
                               self.vga,
-                              self.invs,
                               self.ranges,
                               self.gain_val,
                               self.calib_obj)
@@ -548,10 +542,6 @@ class MultBlockState(BlockState):
     outid = enums.PortName.OUT0
     self.enable = chipdata.BoolType(state.enable)
     self.vga = chipdata.BoolType(state.vga)
-    self.invs = {}
-    self.invs[in0id] = chipdata.SignType(state.inv[in0id.code()])
-    self.invs[in1id] = chipdata.SignType(state.inv[in1id.code()])
-    self.invs[outid] = chipdata.SignType(state.inv[outid.code()])
 
     self.ranges = {}
     self.ranges[in0id] = chipdata.RangeType(state.range[in0id.code()])
@@ -577,13 +567,13 @@ class IntegBlockState(BlockState):
     def __init__(self,loc,
                  exception,
                  cal_enables,
-                 invs,
+                 inv,
                  ranges,
                  ic_val=None,
                  calib_obj=CalibType.MIN_ERROR):
       BlockState.Key.__init__(self,enums.BlockType.INTEG,loc,calib_obj)
       self.exception = exception
-      self.invs = invs
+      self.inv = inv
       self.cal_enables = cal_enables
       self.ranges = ranges
       self.ic_val = ic_val
@@ -597,7 +587,7 @@ class IntegBlockState(BlockState):
                         state,calib_obj)
 
   def header(self):
-    gh = keys(self.invs,prefix='inv-') + \
+    gh = ["inv"] + \
          keys(self.ranges,prefix='range-') + \
          ["port"]
     zh = ['ic_val']
@@ -606,7 +596,7 @@ class IntegBlockState(BlockState):
     return gh,zh,xh,yh
 
   def to_rows(self,obj):
-    g = ordered(obj.invs) \
+    g = [obj.inv] \
         + ordered(obj.ranges)
     z = [obj.ic_val]
     for port,target,in0,in1,bias,noise in obj.profile:
@@ -621,7 +611,7 @@ class IntegBlockState(BlockState):
     return IntegBlockState.Key(self.loc,
                               self.exception,
                                self.cal_enable,
-                               self.invs,
+                               self.inv,
                                self.ranges, \
                                self.ic_val,
                                self.calib_obj)
@@ -631,7 +621,7 @@ class IntegBlockState(BlockState):
     return cstructs.state_t().build({
       "integ": {
         "cal_enable": to_c_list(self.cal_enable),
-        "inv": to_c_list(self.invs),
+        "inv": self.inv,
         "enable": chipdata.BoolType.TRUE.code(),
         "exception": self.exception.code(),
         "range": to_c_list(self.ranges),
@@ -659,9 +649,7 @@ class IntegBlockState(BlockState):
     self.cal_enable[outid] = chipdata \
         .BoolType(state.cal_enable[inid.code()])
 
-    self.invs = {}
-    self.invs[inid] = chipdata.SignType(state.inv[inid.code()])
-    self.invs[outid] = chipdata.SignType(state.inv[outid.code()])
+    self.inv = chipdata.SignType(state.inv)
 
     self.ranges = {}
     self.ranges[inid] = chipdata.RangeType(state.range[inid.code()])
@@ -686,11 +674,11 @@ class FanoutBlockState(BlockState):
     def __init__(self,loc,
                  third,
                  invs,
-                 rngs,
+                 rng,
                  calib_obj):
       BlockState.Key.__init__(self,enums.BlockType.FANOUT,loc,calib_obj)
       self.invs = invs
-      self.rngs = rngs
+      self.rng = rng
       self.third = third
 
     @property
@@ -698,7 +686,8 @@ class FanoutBlockState(BlockState):
       return []
 
   def __init__(self,loc,state,calib_obj):
-    BlockState.__init__(self,enums.BlockType.FANOUT,loc,state,calib_obj)
+    BlockState.__init__(self,enums.BlockType.FANOUT,loc, \
+                        state,calib_obj)
 
 
   @property
@@ -706,14 +695,13 @@ class FanoutBlockState(BlockState):
     return FanoutBlockState.Key(self.loc,
                                 self.third,
                                 self.invs, \
-                                self.rngs, \
+                                self.rng, \
                                 self.calib_obj)
 
 
   def header(self):
     gh = keys(self.invs,prefix='inv-') + \
-         keys(self.rngs,prefix='range-') + \
-         ["third", "port"]
+         ["range","third", "port"]
     zh = []
     yh = ["bias","noise"]
     xh = ["output"]
@@ -738,7 +726,7 @@ class FanoutBlockState(BlockState):
         "inv": to_c_list(self.invs),
         "enable": chipdata.BoolType.TRUE.code(),
         "third": self.third.code(),
-        "range": to_c_list(self.rngs),
+        "range": self.rng.code(),
         "pmos": self.pmos,
         "nmos": self.nmos,
         "port_cal": to_c_list(self.port_cals,value_code=False),
@@ -754,9 +742,7 @@ class FanoutBlockState(BlockState):
     self.enable = chipdata.BoolType(state.enable)
     self.third = chipdata.BoolType(state.third)
 
-    self.rngs = {}
-    for ident in [inid,out0id,out1id,out2id]:
-      self.rngs[ident] = chipdata.RangeType(state.range[inid.code()])
+    self.rng = chipdata.RangeType(state.range)
 
     self.invs = {}
     for ident in [out0id,out1id,out2id]:

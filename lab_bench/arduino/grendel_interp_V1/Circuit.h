@@ -114,6 +114,7 @@ namespace circ {
   typedef struct use_mult {
     circ_loc_idx1_t loc;
     uint8_t use_coeff;
+    uint8_t inv;
     uint8_t in0_range;
     uint8_t in1_range;
     uint8_t out_range;

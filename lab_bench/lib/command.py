@@ -80,16 +80,11 @@ def parse(line):
 
 
 def profile(state,obj, \
-            recompute=False, \
-            clear=False, \
-            bootstrap=False, \
-            n=5):
+            clear=False):
     if isinstance(obj,UseCommand):
         dbkey = obj.to_key(calib_obj=state.calib_obj)
         result = state.state_db.get(dbkey)
         print(">> set state")
-        backup_cached = obj.cached
-        obj.cached = True
         obj.execute(state)
         print(">> profile")
         ProfileCmd(obj.block_type,
@@ -97,11 +92,8 @@ def profile(state,obj, \
                    obj.loc.tile,
                    obj.loc.slice,
                    index=obj.loc.index,
-                   clear=clear,
-                   bootstrap=bootstrap,
-                   n=n) \
+                   clear=clear) \
                    .execute(state)
-        obj.cached = backup_cached
 
 
 

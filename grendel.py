@@ -17,52 +17,59 @@ from lab_bench.lib.env import GrendelEnv
 parser = argparse.ArgumentParser()
 parser.add_argument("--native", action='store_true', \
                     help="use native mode for arduino DUE.")
+parser.add_argument("--debug", action='store_true', \
+                    help="use debug mode on arduino DUE.")
+parser.add_argument("--validate", action='store_true', \
+                    help="don't dispatch commands to arduino DUE.")
+parser.add_argument("--calib-obj", type=str, default="min_error",\
+                    help="what optimization function to use for calibration")
 parser.add_argument("--no-oscilloscope", action='store_true', \
                     help="use native mode for arduino DUE.")
 parser.add_argument("--ip", type=str, help="ip address of oscilloscope.")
 parser.add_argument("--port", type=int, default=5024, \
                     help="port number of oscilloscope.")
-parser.add_argument("--output", type=str, default="noise_output", \
-                    help="output directory for data files.")
-parser.add_argument("script", type=str, \
+
+subparsers = parser.add_subparsers(dest='subparser_name',
+                                   help='compilers/compilation passes.')
+
+dump_subp = subparsers.add_parser('dump', \
+                                   help='dump database to file')
+
+
+run_subp = subparsers.add_parser('run', \
+                                   help='execute script')
+run_subp.add_argument("script", type=str, \
                     help="read data using script.")
-parser.add_argument("--validate", action='store_true', \
-                    help="validate script")
-parser.add_argument("--debug", action='store_true', \
-                    help="debug script")
 
-parser.add_argument("--calibrate", action='store_true', \
-                    help="calibrate uncalibrated components")
-parser.add_argument("--calib-obj", type=str, default="min_error",\
-                    help="what optimization function to use for calibration")
-
-parser.add_argument("--profile", action='store_true', \
-                    help="profile components on chip")
-parser.add_argument("--n", default=25, type=int, \
-                    help="number of values to collect")
-
-parser.add_argument("--bootstrap", action='store_true', \
-                    help="use idiomatic inputs")
-parser.add_argument("--clear-profile", action='store_true', \
-                    help="clear profiles on chip")
-parser.add_argument("--recompute", action='store_true', \
+calib_subp = subparsers.add_parser('calibrate', \
+                                   help='calibrate blocks in script')
+calib_subp.add_argument("--recompute", action='store_true', \
                     help="recompute calibration codes")
-parser.add_argument("--dump-db", action='store_true', \
-                    help="dump the database contents to files")
-parser.add_argument("--dry-run", action='store_true', \
-                    help="dump the database contents to files")
+calib_subp.add_argument("script", type=str, \
+                    help="read data using script.")
+
+prof_subp = subparsers.add_parser('profile', \
+                                   help='profile blocks in script')
+prof_subp.add_argument("--profile", action='store_true', \
+                    help="profile components on chip")
+prof_subp.add_argument("--clear-profile", action='store_true', \
+                    help="clear profiles on chip")
+prof_subp.add_argument("script", type=str, \
+                    help="read data using script.")
 
 
 
 args = parser.parse_args()
 
-if args.dump_db:
+# Dump database and quit
+if args.subparser_name == "dump":
     state = GrendelEnv(None,None,
                        ard_native=args.native,
                        validate=args.validate)
 
     main_dump_db(state)
     sys.exit(0)
+
 
 if args.debug:
     ArduinoCommand.set_debug(True)
@@ -82,27 +89,18 @@ state = GrendelEnv(ip,args.port,
 
 state.initialize()
 
-if args.calibrate:
+if args.subparser_name == "calibrate":
     assert(args.script != None)
     succ = main_script_calibrate(state,args.script, \
                                  recompute=args.recompute,
                                  calib_obj=CalibType(args.calib_obj))
-    if not succ:
-        print("[ERROR] some calibration steps failed..")
-        sys.exit(1)
+    sys.exit(0)
 
-
-elif args.profile:
+elif args.subparser_name == "profile":
     succ = main_script_profile(state,args.script, \
-                               recompute=args.recompute,
-                               clear=args.clear_profile,
-                               bootstrap=args.bootstrap,
-                               n=args.n)
+                               clear=args.clear_profile)
 
-else:
-    if args.dry_run:
-        sys.exit(0)
-
+elif args.subparser_name == "run":
     try:
         if args.script == None:
             main_stdout(state)

@@ -56,7 +56,7 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
     // z' = x - z
 
 		bool getException() const;
-    void setInv (ifc port, bool inverse ); // whether output is negated
+    void setInv (bool inverse ); // whether output is negated
 		void setRange (ifc port, range_t range);
     void update(integ_code_t codes);
     integ_code_t m_codes;

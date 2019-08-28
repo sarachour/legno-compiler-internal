@@ -18,14 +18,14 @@ class ExecuteInput(AnalogChipCommand):
                  inputs, \
                  index=None, \
                  mode=0,
-                 calib_mode=chipstate.CalibType.MIN_ERROR):
+                 calib_obj=chipstate.CalibType.MIN_ERROR):
         AnalogChipCommand.__init__(self)
         self._blk = enums.BlockType(blk)
         self._loc = CircLoc(chip,tile,slce,index=0 if index is None \
                             else index)
         self._inputs = inputs
         self._mode = mode
-        self._calib_mode = calib_mode
+        self._calib_obj = calib_obj
         self.test_loc(self._blk, self._loc)
 
     def build_ctype(self):
@@ -57,13 +57,14 @@ class ExecuteInput(AnalogChipCommand):
                     .toplevel_from_cstruct(self._blk,
                                            self._loc,
                                            state_data,
-                                           self._calib_mode)
+                                           self._calib_obj)
       print(result)
       bias = result.bias
       noise = result.noise
       out = result.output
       in0 = result.input0
       in1 = result.input1
+      print(result.port)
       port = enums.PortName.from_code(result.port)
       prof = {
           'bias':bias,
@@ -100,26 +101,26 @@ def canonical_normal():
 class ProfileCmd(Command):
 
     def __init__(self,blk,chip,tile,slce, \
-                 index=None,clear=False,bootstrap=False,n=5):
+                 index=None,clear=False):
         AnalogChipCommand.__init__(self)
         self._blk = enums.BlockType(blk)
         self._loc = CircLoc(chip,tile,slce,index)
         self._clear = clear
-        self._bootstrap=bootstrap
-        self._max_n = 500
+        self._initialized = False
+
+        self._i = 0
         if self._blk == enums.BlockType.MULT:
           self._n_inputs = 2
-          self._n = int(n*n/4.0)
+          self._n = 128
         else:
           self._n_inputs = 1
-          self._n = 2*n
+          self._n = 43
 
     @staticmethod
     def name():
         return 'profile'
 
     def get_output(self,env,inputs,mode=0):
-        print("PROFILE inputs=%s mode=%d" % (inputs,mode))
         cmd = ExecuteInput(self._blk, \
                            self._loc.chip, \
                            self._loc.tile, \
@@ -127,10 +128,24 @@ class ProfileCmd(Command):
                            index=self._loc.index, \
                            inputs=inputs,
                            mode=mode,
-                           calib_mode=env.calib_mode)
+                           calib_obj=env.calib_obj)
         state,profile = cmd.execute(env)
-        n = self.update_database(env,state,profile)
-        return n >= self._max_n
+        entry = env.state_db.get(state.key)
+        profile_already_exists = False
+        if (len(entry.profile) > 0 \
+            and not self._clear) and \
+            not self._initialized:
+            profile_already_exists = True
+
+        print("")
+        print(">>> PROFILING OPERATION %d/%d <<<" \
+            % (self._i,self._n))
+        print("  profile inputs=%s mode=%d" % (inputs,mode))
+        print("")
+        self._initialized = True
+        self._i += 1
+        self.update_database(env,state,profile)
+        return not profile_already_exists
 
     def clear_database(self,env,state):
         entry = env.state_db.get(state.key)
@@ -147,7 +162,6 @@ class ProfileCmd(Command):
 
         env.state_db.put(state,
                          profile=[profile] + entry.profile)
-        return len(entry.profile+[profile])
 
     def insert_result(self,env,resp):
         title = "profiled %s.%s " % (self._blk,self._loc)
@@ -155,33 +169,33 @@ class ProfileCmd(Command):
         return True
 
 
-    def execute_command(self,env):
-      if self._n_inputs == 1:
+    def execute_one_input(self,env,bootstrap=True):
         if self._blk == enums.BlockType.INTEG:
-            self.get_output(env,[],mode=1)
-            for i in range(0,8):
-                self.get_output(env,[],mode=2)
+            if bootstrap:
+                for i in range(0,8):
+                    if not self.get_output(env,[],mode=1):
+                        return
+                    if not self.get_output(env,[],mode=2):
+                        return
+                    if not self.get_output(env,[],mode=3):
+                        return
 
-            self.get_output(env,[],mode=3)
-            if self._bootstrap:
-                for x0 in [0]:
-                    if self.get_output(env,[x0],mode=0):
-                        break
-
-
+                for x0 in [0,1,-1]:
+                    if not self.get_output(env,[x0],mode=0):
+                        return
 
             for i in range(0,self._n):
                 x0 = sample_reverse_normal()
-                if self.get_output(env,[x0],mode=0):
+                if not self.get_output(env,[x0],mode=0):
                     break
 
         elif self._blk == enums.BlockType.FANOUT:
-            if self._bootstrap:
+            if bootstrap:
                 for x0 in [0,1.0,-1.0]:
                     succ=self.get_output(env,[x0],mode=0)
                     succ&=self.get_output(env,[x0],mode=1)
                     succ&=self.get_output(env,[x0],mode=2)
-                    if succ:
+                    if not succ:
                         return
 
             for i in range(0,self._n):
@@ -189,21 +203,25 @@ class ProfileCmd(Command):
                 succ = self.get_output(env,[x0],mode=0)
                 succ &= self.get_output(env,[x0],mode=1)
                 succ &= self.get_output(env,[x0],mode=2)
-                if succ:
+                if not succ:
                     return
+
+        elif self._blk == enums.BlockType.LUT:
+            return
+
         else:
-            if self._bootstrap:
+            if bootstrap:
                 for x0 in [0.0,-1.0,1.0]:
-                    if self.get_output(env,[x0],mode=0):
+                    if not self.get_output(env,[x0],mode=0):
                         return
 
             for i in range(0,self._n):
                 x0 = sample_reverse_normal()
-                if self.get_output(env,[x0],mode=0):
+                if not self.get_output(env,[x0],mode=0):
                     return
 
-      elif self._n_inputs == 2:
-          if self._bootstrap:
+    def execute_two_inputs(self,env,bootstrap=True):
+        if bootstrap:
             for x0,x1 in [(0,0), \
                           (-1.0,0.0), \
                           (1.0,0.0), \
@@ -213,37 +231,40 @@ class ProfileCmd(Command):
                           (-1.0,1.0), \
                           (1.0,-1.0), \
                           (-1.0,-1.0)]:
-                if self.get_output(env,[x0,x1],mode=0):
+                if not self.get_output(env,[x0,x1],mode=0):
                     return
 
-          for i in range(0,self._n):
-              print(">>> profiling operation %d/%d <<<" \
-                    % (i+1,self._n))
-              if i % 2 == 0:
-                  x0 = random.uniform(-1,1)
-                  z = sample_reverse_normal()
-                  while abs(z/x0) > 1.0:
-                      z = sample_reverse_normal()
-                      x0 = random.uniform(-1,1)
-                  x1 = z/x0
-              else:
-                  x0 = canonical_normal()
-                  x1 = canonical_normal()
+        for i in range(0,self._n):
+            if i % 2 == 0:
+                x0 = random.uniform(-1,1)
+                z = sample_reverse_normal()
+                while abs(z/x0) > 1.0:
+                    z = sample_reverse_normal()
+                    x0 = random.uniform(-1,1)
+                x1 = z/x0
+            else:
+                x0 = canonical_normal()
+                x1 = canonical_normal()
 
-              self.get_output(env,[x0,x1],mode=0)
-              print("%f*%f" % (x0,x1))
+            if not self.get_output(env,[x0,x1],mode=0):
+                return
 
-      else:
-        raise Exception("profiling eliminated")
+
+    def execute_command(self,env):
+        bootstrap = True
+        if self._n_inputs == 1:
+            self.execute_one_input(env,bootstrap)
+
+        elif self._n_inputs == 2:
+            self.execute_two_inputs(env,bootstrap)
 
 
     @staticmethod
     def parse(args):
-        result = parse_pattern_block_loc(args,ProfileCmd.name(),
-                                         targeted=True)
+        result = parse_pattern_block_loc(args,ProfileCmd.name())
         if result.success:
             data = result.value
-            return CharacterizeCmd(data['blk'],
+            return ProfileCmd(data['blk'],
                                    data['chip'],
                                    data['tile'],
                                    data['slice'],

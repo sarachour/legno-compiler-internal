@@ -12,7 +12,7 @@ def build_config(meta):
                  infer_util.to_sign(meta['invs']['out1']).value,
                  infer_util.to_sign(meta['invs']['out2']).value \
   )
-  scale_mode = infer_util.to_range(meta['rngs']['in0']).value
+  scale_mode = infer_util.to_range(meta['rng']).value
   print('fanout[%s]' % loc)
   if meta['third']:
     max_uncs = [0.01]*3

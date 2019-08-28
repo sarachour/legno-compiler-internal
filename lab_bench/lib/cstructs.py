@@ -150,9 +150,11 @@ def circ_use_mult_t():
     return cstruct.Struct(
         "loc" / circ_loc_idx1_t(),
         "use_coeff" / bool_t(),
+        cstruct.Padding(1),
         "in0_range" / cstruct.Int8ul,
         "in1_range" / cstruct.Int8ul,
         "out_range" / cstruct.Int8ul,
+        cstruct.Padding(1),
         "coeff" / cstruct.Float32l
     )
 
@@ -317,9 +319,7 @@ def mult_state_t():
     return cstruct.Struct(
         "vga" / bool_t(),
         "enable" / bool_t(),
-        "inv" / cstruct.Array(3,sign_t()),
         "range" / cstruct.Array(3,range_t()),
-        # 8
         "pmos" / cstruct.Int8ul,
         "nmos" / cstruct.Int8ul,
         "port_cal" / cstruct.Array(3,cstruct.Int8ul),
@@ -332,7 +332,7 @@ def fanout_state_t():
     return cstruct.Struct(
         "pmos" / cstruct.Int8ul,
         "nmos" / cstruct.Int8ul,
-        "range" / cstruct.Array(5,range_t()),
+        "range" / range_t(),
         "port_cal" / cstruct.Array(5,range_t()),
         "inv" / cstruct.Array(5,sign_t()),
         "enable" / bool_t(),
@@ -347,7 +347,7 @@ def lut_state_t():
 def integ_state_t():
     return cstruct.Struct(
         "cal_enable" / cstruct.Array(3,bool_t()),
-        "inv" / cstruct.Array(3,sign_t()),
+        "inv" / sign_t(),
         "enable" / bool_t(),
         "exception" / bool_t(),
         # 7 bytes in

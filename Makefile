@@ -1,13 +1,13 @@
 
 calibrate:
-	python3 grendel.py max_fit_calibrate.grendel --calibrate --no-oscilloscope --calib-obj max_fit
+	python3 grendel.py ---no-oscilloscope --calib-obj max_fit calibrate max_fit_calibrate.grendel 
 
 profile:
-	python3 grendel.py max_fit_calibrate.grendel --profile --bootstrap --no-oscilloscope --calib-obj max_fit
+	python3 grendel.py ---no-oscilloscope --calib-obj max_fit profile max_fit_calibrate.grendel 
 
 make-models:
-	python3 model_builder.py infer --calib-obj max_fit
-	python3 model_builder.py infer --calib-obj min_obj
+	python3 model_builder.py infer --calib-obj max_fit --visualize
+	python3 model_builder.py infer --calib-obj min_error --visualize
 
 clean-models:
 	rm -rf outputs/datasets

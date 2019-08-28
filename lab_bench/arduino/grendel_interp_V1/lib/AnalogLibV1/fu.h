@@ -66,7 +66,6 @@ typedef struct {
 typedef struct {
   bool vga;
   bool enable;
-  bool inv[3];
   range_t range[3];
   uint8_t pmos;
   uint8_t nmos;
@@ -89,7 +88,7 @@ typedef struct {
 
 typedef struct {
   bool cal_enable[3];
-  bool inv[3];
+  bool inv;
   bool enable;
   bool exception;
   range_t range[3];
@@ -104,7 +103,7 @@ typedef struct {
 typedef struct {
   uint8_t pmos;
   uint8_t nmos;
-  range_t range[5];
+  range_t range;
   uint8_t port_cal[5];
   bool inv[5];
   bool enable;

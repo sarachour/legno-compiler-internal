@@ -34,10 +34,7 @@ void Fabric::Chip::Tile::Slice::Fanout::setRange (
 	// this setting should match the unit that gives the input to the fanout
 ) {
   assert(range != RANGE_LOW);
-  m_codes.range[in0Id] = range;
-  m_codes.range[out0Id] = range;
-  m_codes.range[out1Id] = range;
-  m_codes.range[out2Id] = range;
+  m_codes.range = range;
 	setParam0();
 	setParam1();
 	setParam2();
@@ -65,11 +62,7 @@ void Fabric::Chip::Tile::Slice::Fanout::setThird (
 }
 
 void Fabric::Chip::Tile::Slice::Fanout::defaults (){
-  m_codes.range[in0Id] = RANGE_MED;
-  m_codes.range[in1Id] = RANGE_UNKNOWN;
-  m_codes.range[out0Id] = RANGE_MED;
-  m_codes.range[out1Id] = RANGE_MED;
-  m_codes.range[out2Id] = RANGE_MED;
+  m_codes.range = RANGE_MED;
   m_codes.inv[in0Id] = false;
   m_codes.inv[in1Id] = false;
   m_codes.inv[out0Id] = false;
@@ -108,7 +101,7 @@ Fabric::Chip::Tile::Slice::Fanout::Fanout (
 /*Set enable, range*/
 void Fabric::Chip::Tile::Slice::Fanout::setParam0 () const {
 	unsigned char cfgTile = 0;
-  bool is_hi = (m_codes.range[in0Id] == RANGE_HIGH);
+  bool is_hi = (m_codes.range == RANGE_HIGH);
 	cfgTile += m_codes.enable ? 1<<7 : 0;
 	cfgTile += is_hi ? 1<<5 : 0;
 	setParamHelper (0, cfgTile);
