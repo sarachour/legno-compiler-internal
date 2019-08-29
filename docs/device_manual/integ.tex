@@ -168,6 +168,13 @@ calibration algorithm is broken up into two subroutines:
 
 \subsection{\tx{calibrateInitialCond} Subroutine}
 
+\begin{algorithmic}
+  \State{cltbl = calibrateClosedLoop()}
+  \For{nmos in 0..7}
+  \For{gainCal in 0...63}
+  \EndFor
+  \EndFor
+\end{algorithmic}
 \section{Profiling}\label{fanout:calib}
 \section{Grendel API Hook}
 \subsection{Example Usage}
