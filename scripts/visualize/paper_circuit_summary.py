@@ -1,5 +1,4 @@
 import scripts.visualize.common as common
-from scripts.db import MismatchStatus
 import numpy as np
 import matplotlib.pyplot as plt
 from chip.conc import ConcCirc
@@ -162,15 +161,13 @@ def to_jaunt_table(circuits,models):
   table.horiz_rule()
   table.write(common.get_path('circuit-jaunt.tbl'))
 
-def visualize():
-  data = common.get_data(series_type='circ_ident')
+def visualize(db):
+  data = common.get_data(db,series_type='circ_ident')
   circuits = {}
   models = {}
   for ser in data.series():
     fields = ['jaunt_circ_file','model','bmark','subset']
-    conc_circ_files,bmark_models,bmarks,subsets = data.get_data(ser, fields, \
-                                    [MismatchStatus.UNKNOWN,
-                                     MismatchStatus.IDEAL])
+    conc_circ_files,bmark_models,bmarks,subsets = data.get_data(ser, fields)
     conc_circs = conc_circ_files
     bmark = bmarks[0]
     n = len(conc_circs)

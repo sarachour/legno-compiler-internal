@@ -1,5 +1,4 @@
 import scripts.visualize.common as common
-from scripts.db import MismatchStatus
 import numpy as np
 import matplotlib.pyplot as plt
 import bmark.diffeqs as diffeq

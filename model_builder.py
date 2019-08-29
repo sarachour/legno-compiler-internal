@@ -45,12 +45,24 @@ def build_model(datum):
   else:
     raise Exception("unsupported <%s>" % blk)
 
+def blocks_with_default_models():
+  return ['tile_in','tile_out', \
+          'chip_in','chip_out', \
+          'ext_chip_in','ext_chip_out',
+          'lut']
+
+def crossbars_populated(db):
+  default_blocks = blocks_with_default_models()
+  for model in db.get_all():
+    if model.block in default_blocks:
+      return True
+
+  return False
+
 def populate_default_models(board,db):
   print("==== Populate Default Models ===")
 
-  for blkname in ['tile_in','tile_out', \
-                  'chip_in','chip_out', \
-                  'ext_chip_in','ext_chip_out']:
+  for blkname in blocks_with_default_models():
     block = board.block(blkname)
     for inst in board.instances_of_block(blkname):
       for port in block.inputs + block.outputs:
@@ -97,12 +109,11 @@ def infer(args,dump_db=True):
 
   db = ModelDB(CalibType(args.calib_obj))
 
-  if args.populate_crossbars:
+  if not crossbars_populated(db):
     from chip.hcdc.hcdcv2_4 import make_board
     subset = HCDCSubset('unrestricted')
     hdacv2_board = make_board(subset)
     populate_default_models(hdacv2_board,db)
-    sys.exit(0)
 
   if dump_db:
     cmd = "python3 grendel.py dump"

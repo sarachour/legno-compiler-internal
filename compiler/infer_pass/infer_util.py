@@ -97,6 +97,3 @@ def normalize_bound(bnds,scm):
 
   return [clamp(nlb),clamp(nub)]
 
-
-def array_map(mapfun):
-    return np.array(list(mapfun))

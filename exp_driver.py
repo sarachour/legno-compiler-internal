@@ -1,9 +1,5 @@
 import argparse
-import scripts.run_experiments as runchip
-import scripts.analyze_experiments as analyze
-import scripts.visualize_experiments as visualize
-import scripts.annotate_experiments as annotate
-from scripts.db import ExperimentDB
+from scripts.expdriver_db import ExpDriverDB
 
 parser = argparse.ArgumentParser(description='toplevel chip runner.')
 
@@ -42,17 +38,12 @@ run_subp.add_argument('--obj', type=str,
 
 
 analyze_subp = subparsers.add_parser('analyze', help='run any pending grendel scripts')
-analyze_subp.add_argument('--recompute-energy', action='store_true',
-                       help='.')
 analyze_subp.add_argument('--recompute-params', action='store_true',
                        help='.')
 analyze_subp.add_argument('--recompute-quality', action='store_true',
                        help='.')
 analyze_subp.add_argument('--monitor', action='store_true',
                        help='.')
-analyze_subp.add_argument('--rank-method', type=str, default='skelter', \
-                            help='.')
-analyze_subp.add_argument('--rank-pending', action='store_true', help='.')
 analyze_subp.add_argument('--bmark', type=str,
                        help='.')
 analyze_subp.add_argument('--subset', type=str,
@@ -71,7 +62,7 @@ visualize_subp.add_argument('type', help='visualization type [rank-vs-quality,co
 args = parser.parse_args()
 
 if args.subparser_name == "scan":
-  db = ExperimentDB()
+  db = ExpDriverDB()
   print("=== added ===")
   for exp in db.scan():
     print(exp)
@@ -94,10 +85,13 @@ elif args.subparser_name == "clear":
     print(entry)
 
 elif args.subparser_name == 'run':
+  import scripts.run_experiments as runchip
   runchip.execute(args)
 
 elif args.subparser_name == 'analyze':
+  import scripts.analyze_experiments as analyze
   analyze.execute(args)
 
 elif args.subparser_name == 'visualize':
+  import scripts.visualize_experiments as visualize
   visualize.execute(args)

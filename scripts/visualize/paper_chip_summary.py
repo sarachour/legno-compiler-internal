@@ -241,7 +241,7 @@ def build_block_summary(profile):
   table.write(common.get_path('hwblocks.tbl'))
 
 
-def visualize():
+def visualize(db):
   print("==== Construct Board ====")
   board = hcdc.make_board()
   profile = build_circ_profile(board)

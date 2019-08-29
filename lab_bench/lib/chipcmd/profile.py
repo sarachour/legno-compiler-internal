@@ -141,6 +141,9 @@ class ProfileCmd(Command):
         print(">>> PROFILING OPERATION %d/%d <<<" \
             % (self._i,self._n))
         print("  profile inputs=%s mode=%d" % (inputs,mode))
+        if profile_already_exists:
+            print("  ALREADY PROFILED...")
+
         print("")
         self._initialized = True
         self._i += 1
@@ -192,18 +195,20 @@ class ProfileCmd(Command):
         elif self._blk == enums.BlockType.FANOUT:
             if bootstrap:
                 for x0 in [0,1.0,-1.0]:
-                    succ=self.get_output(env,[x0],mode=0)
-                    succ&=self.get_output(env,[x0],mode=1)
-                    succ&=self.get_output(env,[x0],mode=2)
-                    if not succ:
+                    if not self.get_output(env,[x0],mode=0):
+                        return
+                    if not self.get_output(env,[x0],mode=1):
+                        return
+                    if not self.get_output(env,[x0],mode=2):
                         return
 
             for i in range(0,self._n):
                 x0 = sample_reverse_normal()
-                succ = self.get_output(env,[x0],mode=0)
-                succ &= self.get_output(env,[x0],mode=1)
-                succ &= self.get_output(env,[x0],mode=2)
-                if not succ:
+                if not self.get_output(env,[x0],mode=0):
+                    return
+                if not self.get_output(env,[x0],mode=1):
+                    return
+                if not self.get_output(env,[x0],mode=2):
                     return
 
         elif self._blk == enums.BlockType.LUT:

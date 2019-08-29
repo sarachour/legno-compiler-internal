@@ -9,6 +9,9 @@ import os
 from enum import Enum
 
 
+def array_map(mapfun):
+    return np.array(list(mapfun))
+
 def unpack_tag(handle):
   method = "unknown"
   i=0

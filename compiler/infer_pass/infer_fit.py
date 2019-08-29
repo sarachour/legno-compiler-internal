@@ -1,4 +1,5 @@
 import compiler.infer_pass.infer_util as infer_util
+import util.util as util
 import compiler.infer_pass.infer_visualize as infer_vis
 from sklearn import svm
 
@@ -85,8 +86,8 @@ def split_model(model,dataset,max_unc):
   in0,in1 = dataset.in0,dataset.in1
   n = dataset.n
   assert(n > 0)
-  pred = infer_util.apply_model(model,out)
-  err = infer_util.array_map(map(lambda i: abs(pred[i]-meas[i]), range(n)))
+  pred = util.apply_model(model,out)
+  err = util.array_map(map(lambda i: abs(pred[i]-meas[i]), range(n)))
   adapt_err = get_outlier_classifier(err)
   plot_error_distribution(model,err,adapt_err)
   plot_outlier(model,in0,in1,err,adapt_err)
@@ -115,7 +116,7 @@ class InferDataset:
     self._in1_bnd = (None,None)
 
   def _get_datum(self,key):
-    return infer_util.array_map(map(lambda i: self.__dict__[key][i],  \
+    return util.array_map(map(lambda i: self.__dict__[key][i],  \
                          self.indices))
 
   @property
@@ -175,7 +176,7 @@ def fit_scale_model(model,dataset):
   n = dataset.n
   popt, pcov = scipy.optimize.curve_fit(func, expect, observe)
   gain_mu,gain_std = popt[0], math.sqrt(pcov[0])
-  errs = infer_util.array_map(map(lambda i: error(expect[i], \
+  errs = util.array_map(map(lambda i: error(expect[i], \
                                                   observe[i], \
                                                   gain_mu), range(n)))
 

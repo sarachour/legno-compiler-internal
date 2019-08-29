@@ -1,15 +1,12 @@
 import scripts.visualize.common as common
-from scripts.db import MismatchStatus
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import math
 import util.util as util
 
-def visualize():
-  statuses = [MismatchStatus.UNKNOWN, \
-             MismatchStatus.IDEAL]
-  data = common.get_data(series_type='bmark')
+def visualize(db):
+  data = common.get_data(db,series_type='bmark')
   desc = "performance, energy and quality for HDACv2 Board"
   table = common.Table("Results", desc, "tbl:performance", \
                        layout = "|c|c|cc|")

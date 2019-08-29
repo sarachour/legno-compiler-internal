@@ -21,7 +21,7 @@ parser.add_argument("--debug", action='store_true', \
                     help="use debug mode on arduino DUE.")
 parser.add_argument("--validate", action='store_true', \
                     help="don't dispatch commands to arduino DUE.")
-parser.add_argument("--calib-obj", type=str, default="min_error",\
+parser.add_argument("--calib-obj", type=str, \
                     help="what optimization function to use for calibration")
 parser.add_argument("--no-oscilloscope", action='store_true', \
                     help="use native mode for arduino DUE.")
@@ -70,6 +70,8 @@ if args.subparser_name == "dump":
     main_dump_db(state)
     sys.exit(0)
 
+if args.calib_obj is None:
+    raise Exception("please specify calibration objective (max_fit|min_error)")
 
 if args.debug:
     ArduinoCommand.set_debug(True)

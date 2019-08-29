@@ -170,7 +170,7 @@ float tc_compute_loss(calib_objective_t obj,
   case CALIB_MINIMIZE_ERROR:
     // try to minimize the error between the expected and observed
     // time constant
-    return fabs(time_scale- 1.0);
+    return fabs(time_scale-1.0);
     break;
   case CALIB_MAXIMIZE_DELTA_FIT:
     // try and choose time constants that produce good fits.
@@ -179,6 +179,9 @@ float tc_compute_loss(calib_objective_t obj,
   }
 }
 
+/*
+Find the set of gain_cal and nmos codes that minimizes the loss of an objective function, where the objective function takes a time constant as input
+*/
 void Fabric::Chip::Tile::Slice::Integrator::calibrateOpenLoopCircuit(calib_objective_t obj,
                                                                      Dac* val_dac,
                                                                      cutil::calib_table_t (&calib_table)[MAX_NMOS],
@@ -189,7 +192,7 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateOpenLoopCircuit(calib_objec
   val_dac->setEnable(true);
   val_dac->setRange(RANGE_MED);
   val_dac->setInv(false);
-  val_dac->setConstantCode(129);
+  val_dac->setConstantCode(135);
   val_dac->update(val_dac->m_codes);
   // determine the rate of change of the open loop system.
   float dummy;
@@ -327,11 +330,6 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateClosedLoopCircuit(calib_obj
       util::meas_steady_chip_out(this,mean,variance);
       float loss = fabs(mean-target);
       cutil::update_calib_table(calib_table[nmos],loss,2,in0_cal,32);
-      /*
-      sprintf(FMTBUF," codes=(%d,%d,32) target=%f mean=%f loss=%f",
-              nmos,in0_cal,target,mean,loss_in[in0_cal]);
-      print_info(FMTBUF);
-      */
     }
     sprintf(FMTBUF,"nmos=%d BEST in0_code=%d loss=%f",
             nmos, calib_table[nmos].state[0], calib_table[nmos].loss);

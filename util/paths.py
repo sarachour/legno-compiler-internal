@@ -1,7 +1,5 @@
-
 import os
 from enum import Enum
-
 import util.config as config
 import util.util as util
 
@@ -30,6 +28,14 @@ class PathHandler:
     def name(self):
         return self._name
 
+    @staticmethod
+    def path_to_args(dirname):
+        args = dirname.split("/")
+        assert(args[0] == 'outputs')
+        assert(args[1] == 'legno')
+        subset = args[2]
+        bmark = args[3]
+        return subset,bmark
     def set_root_dir(self,name,bmark):
         self.ROOT_DIR = "%s/legno/%s" % (config.OUTPUT_PATH,name)
         self.BMARK_DIR = self.ROOT_DIR + ("/%s" % bmark)

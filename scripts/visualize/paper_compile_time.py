@@ -72,6 +72,6 @@ def to_runtime_table(summary):
   table.write(common.get_path('compile-time.tbl'))
 
 
-def visualize():
+def visualize(db):
   summary = read_compile_times('extended')
   to_runtime_table(summary)

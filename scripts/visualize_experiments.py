@@ -1,4 +1,3 @@
-from scripts.db import ExperimentDB, ExperimentStatus, OutputStatus, MismatchStatus
 import scripts.visualize.paper_quality_energy_runtime  \
   as paper_quality_energy_runtime
 import scripts.visualize.paper_bmark_summary as paper_bmark_summary
@@ -9,7 +8,7 @@ import scripts.visualize.paper_quality_graphs as paper_quality_graphs
 import matplotlib.pyplot as plt
 import numpy as np
 import math
-
+from scripts.expdriver_db import ExpDriverDB
 
 
 def execute(args):
@@ -25,7 +24,8 @@ def execute(args):
 
   }
   if name in opts:
-    opts[name]()
+    db = ExpDriverDB()
+    opts[name](db)
   else:
     for opt in opts.keys():
       print(": %s" % opt)

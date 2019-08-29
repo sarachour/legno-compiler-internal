@@ -1,53 +1,15 @@
-from scripts.db import ExperimentDB, ExperimentStatus, OutputStatus
-import bmark.diffeqs as diffeqs
 from bmark.bmarks.common import run_system
-import chip.hcdc.globals as glbls
-import bmark.menvs as menvs
+
+from scripts.common import ExecutionStatus
+from scripts.expdriver_db import ExpDriverDB
+import scripts.analysis.quality as quality_analysis
+
 import util.util as util
 import scripts.visualize.common as common
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import math
-
-def run_reference_simulation(bmark,menvname,varname):
-  prob = diffeqs.get_prog(bmark)
-  menv = menvs.get_math_env(menvname)
-  T,D = run_system(menv,prob)
-  TREF,YREF = T,D[varname]
-  return TREF,YREF
-
-def read_meas_data(filename):
-  with open(filename,'r') as fh:
-    obj = util.decompress_json(fh.read())
-    T,V = obj['times'], obj['values']
-    T_REFLOW = np.array(T) - min(T)
-    return T_REFLOW,V
-
-def scale_measured_data(xform,tau,scf,tmeas,ymeas):
-  tc = tau*glbls.TIME_FREQUENCY
-  def sct(time):
-    tsc = xform[0]
-    toff = xform[1]
-    return (time-toff)*tc/tsc
-
-  def scv(value,scf):
-    #vsc = xform[2]
-    #voff = xform[3]
-    voff = 0.0
-    vsc = 1.0
-    return (value-voff)/(scf*vsc)
-
-  thw = list(map(lambda t: sct(t), tmeas))
-  yhw = list(map(lambda x: scv(x,scf), ymeas))
-  return thw, yhw
-
-def resample(t,x,n):
-  stride  = math.floor(len(t)/n)
-  assert(len(t) == len(x))
-  tr = list(map(lambda i: t[i*stride], range(n)))
-  xr = list(map(lambda i: x[i*stride], range(n)))
-  return tr,xr
 
 YLABELS = {
   'micro-osc': 'amplitude',
@@ -87,7 +49,6 @@ def plot_preamble(entry,TREF,YREF):
   ax.set_xticklabels([])
   ax.set_yticklabels([])
   ax.set_title(title,fontsize=20)
-  #ax.set_grid(False)
   ax.set_xlim((min(TREF),max(TREF)))
   margin = (max(YREF)-min(YREF))*0.1
   lb= min(YREF)-margin
@@ -105,18 +66,11 @@ def plot_quality(identifier,experiments):
 
   print(identifier)
   def plot_waveform(out,alpha):
-    TMEAS,YMEAS = read_meas_data(out.out_file)
-    xform = out.transform
-    tau = out.tau
-    scf = out.scf
-    TSC,YSC = scale_measured_data(out.transform,
-                                  out.tau,
-                                  out.scf,
-                                  TMEAS,
-                                  YMEAS
-    )
-    TSCR,YSCR = resample(TSC,YSC,len(TREF))
-    ax.plot(TSCR,YSCR,alpha=alpha,
+    TMEAS,YMEAS = quality_analysis.read_meas_data(out.out_file)
+    print(out.transform)
+    TREC,YREC = quality_analysis.scale_obs_data(out,TMEAS,YMEAS)
+    print(min(TREC),max(TREC))
+    ax.plot(TREC,YREC,alpha=alpha,
             label='measured', \
             color='#5758BB', \
             linewidth=4.0, \
@@ -124,15 +78,15 @@ def plot_quality(identifier,experiments):
 
     if 'standard' in identifier:
       clb,cub = ax.get_ylim()
-      margin = (max(YSCR)-min(YSCR))*0.1
-      lb= min(YSCR)-margin
-      ub = max(YSCR)+margin
+      margin = (max(YREC)-min(YREC))*0.1
+      lb= min(YREC)-margin
+      ub = max(YREC)+margin
       ax.set_ylim(min(lb,clb),max(ub,cub))
 
   # compute reference using information from first element
   entry = experiments[0]
   output = list(entry.outputs())[0]
-  TREF,YREF = run_reference_simulation(entry.bmark, \
+  TREF,YREF = quality_analysis.compute_ref(entry.bmark, \
                                        entry.math_env, \
                                        output.varname)
   ax = plot_preamble(entry,TREF,YREF)
@@ -178,10 +132,10 @@ def to_identifier(exp):
   key = "%s-%s-%s-%s" % (exp.bmark,exp.subset,inds,mode)
   return key
 
-def visualize():
-  db = ExperimentDB()
+def visualize(db):
   by_bmark = {}
-  for exp in db.get_by_status(ExperimentStatus.RAN):
+  for exp in db.experiment_tbl \
+               .get_by_status(ExecutionStatus.RAN):
     if exp.quality is None:
       continue
 

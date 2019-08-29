@@ -2,16 +2,11 @@ import os
 import time
 import matplotlib.pyplot as plt
 
-from scripts.db import ExperimentDB, ExperimentStatus, OutputStatus
+from scripts.expdriver_db import ExpDriverDB
+from scripts.common import ExecutionStatus
 import lab_bench.lib.command as cmd
-import lab_bench.lib.expcmd.micro_getter as microget
-import lab_bench.lib.expcmd.osc as osc
 
 from chip.conc import ConcCirc
-from chip.hcdc.hcdcv2_4 import make_board
-
-import compiler.skelter as skelter
-
 
 import scripts.analysis.params as params
 import scripts.analysis.quality as quality
@@ -22,48 +17,18 @@ import tqdm
 #board = make_board('standard')
 
 BOARD_CACHE = {}
-def missing_params(entry):
-  return entry.rank is None or \
-    entry.runtime is None
 
 def execute_once(args,debug=False):
-  recompute_params = args.recompute_params
-  recompute_quality = args.recompute_quality
-  recompute_energy = args.recompute_energy
-  recompute_any = recompute_params or  \
-                  recompute_quality or \
-                  recompute_energy
+  db = ExpDriverDB()
+  entries = list(db.experiment_tbl \
+                 .get_by_status(ExecutionStatus.PENDING))
 
-  db = ExperimentDB()
-  rank_method = params.RankMethod(args.rank_method)
-  entries = list(db.get_by_status(ExperimentStatus.PENDING))
 
-  if args.rank_pending:
-    for entry in tqdm.tqdm(entries):
-      if not missing_params(entry) and not recompute_params:
-        continue
-
-      if not args.bmark is None and not entry.bmark == args.bmark:
-        continue
-
-      if not args.subset is None and not entry.subset == args.subset:
-        continue
-
-      if not entry.subset in BOARD_CACHE:
-        board = make_board[entry.subset]
-        BOARD_CACHE[entry.subset] = board
-
-      conc_circ = ConcCirc.read(BOARD_CACHE[entry.subset], \
-                                entry.jaunt_circ_file)
-      params.analyze(entry,conc_circ,method=rank_method)
-
-  entries = list(db.get_by_status(ExperimentStatus.RAN))
+  entries = list(db.experiment_tbl.get_by_status(ExecutionStatus.RAN))
   for entry in tqdm.tqdm(entries):
     if not entry.runtime is None \
-      and not entry.quality is None \
-      and not missing_params(entry) \
-      and not entry.energy is None \
-      and not recompute_any:
+      and (not entry.quality is None and not args.recompute_quality)\
+      and not entry.energy is None:
       continue
 
 
@@ -79,26 +44,26 @@ def execute_once(args,debug=False):
     if not args.obj is None and entry.objective_fun != args.obj:
       continue
 
-    if not entry.subset in BOARD_CACHE:
-      board = make_board(entry.subset)
-      BOARD_CACHE[entry.subset] = board
-    else:
-      board = BOARD_CACHE[entry.subset]
-
+    board = None
     if not os.path.isfile(entry.jaunt_circ_file):
       continue
 
-    if missing_params(entry) or recompute_params:
+    if entry.energy is None or entry.runtime is None or \
+       args.recompute_params:
+      if not entry.subset in BOARD_CACHE:
+        from chip.hcdc.hcdcv2_4 import make_board
+        board = make_board(entry.subset)
+        BOARD_CACHE[entry.subset] = board
+      else:
+        board = BOARD_CACHE[entry.subset]
       conc_circ = ConcCirc.read(board,entry.jaunt_circ_file)
-      params.analyze(entry,conc_circ,method=rank_method)
-
-    if entry.energy is None or recompute_energy:
-      conc_circ = ConcCirc.read(board,entry.jaunt_circ_file)
+      params.analyze(entry,conc_circ)
       energy.analyze(entry,conc_circ)
 
-    if entry.quality is None or recompute_quality:
+    if entry.quality is None or args.recompute_quality:
+      conc_circ = ConcCirc.read(None,entry.jaunt_circ_file)
       quality.analyze(entry, \
-                      recompute=recompute_quality,
+                      recompute=args.recompute_quality,
                       no_reference=(entry.math_env == 'audenv') \
       )
 
