@@ -5,12 +5,10 @@
 #include <float.h>
 
 #define CALIB_NPTS 3
-#define ZERO_NPTS 2
-#define TOTAL_NPTS (ZERO_NPTS + CALIB_NPTS*CALIB_NPTS)
+#define TOTAL_NPTS (1 + CALIB_NPTS*CALIB_NPTS)
 const float TEST0_POINTS[CALIB_NPTS] = {-0.9,0.9,0.5};
 const float TEST1_MULT_POINTS[CALIB_NPTS] = {-0.9,0.9,0.5};
 const float TEST1_VGA_POINTS[CALIB_NPTS] = {-0.96,0.96,0.5};
-const float ZERO_POINTS[CALIB_NPTS] = {-1.0,1.0,0};
 
 float Fabric::Chip::Tile::Slice::Multiplier::getLoss(calib_objective_t obj,
                                                      Dac * val0_dac,
@@ -61,22 +59,17 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
   float dummy,mean;
 
   npts = 0;
-  for(int i=0; i < ZERO_NPTS; i += 1){
-    val_dac->setConstant(ZERO_POINTS[i]);
-    this->setGain(0.0);
-    bool succ = cutil::measure_signal_robust(this,
-                                             ref_dac,
-                                             0.0,
-                                             meas_steady,
-                                             mean,
-                                             dummy);
-
-    if(succ){
-      observations[npts] = mean;
-      expected[npts] = 0;
-      npts += 1;
-    }
-  }
+  Fabric::Chip::Connection ref_to_tileout =
+    Fabric::Chip::Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0);
+  Connection dac0_to_in0 = Connection (val_dac->out0, this->in0);
+  ref_to_tileout.brkConn();
+  dac0_to_in0.brkConn();
+  this->setGain(1.0);
+  observations[npts] = util::meas_chip_out(this);
+  expected[npts] = 0;
+  npts += 1;
+  ref_to_tileout.setConn();
+  dac0_to_in0.setConn();
 
   for(int i=0; i < CALIB_NPTS; i += 1){
     for(int j=0; j < CALIB_NPTS; j += 1){
@@ -112,23 +105,22 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperMult(Dac * val0_dac,
   const bool meas_steady = false;
   float dummy,mean;
 
-  npts = 0;
-  for(int i=0; i < ZERO_NPTS; i += 1){
-    val0_dac->setConstant(ZERO_POINTS[i]);
-    val1_dac->setConstant(0.0);
-    bool succ = cutil::measure_signal_robust(this,
-                                             ref_dac,
-                                             0.0,
-                                             meas_steady,
-                                             mean,
-                                             dummy);
+  Fabric::Chip::Connection ref_to_tileout =
+    Fabric::Chip::Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0);
+  Connection dac0_to_in0 = Connection (val0_dac->out0, this->in0);
+  Connection dac1_to_in1 = Connection (val1_dac->out1, this->in1);
 
-    if(succ){
-      observations[npts] = mean;
-      expected[npts] = 0;
-      npts += 1;
-    }
-  }
+  npts = 0;
+  ref_to_tileout.brkConn();
+  dac0_to_in0.brkConn();
+  dac1_to_in1.brkConn();
+  observations[npts] = util::meas_chip_out(this);
+  expected[npts] = 0;
+  npts += 1;
+  ref_to_tileout.setConn();
+  dac0_to_in0.setConn();
+  dac1_to_in1.setConn();
+
   for(int i=0; i < CALIB_NPTS; i += 1){
     for(int j=0; j < CALIB_NPTS; j += 1){
       float in0 = TEST0_POINTS[i];
@@ -164,17 +156,16 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
   float observed[TOTAL_NPTS];
   float expected[TOTAL_NPTS];
   float gain[TOTAL_NPTS];
-  float bias[ZERO_NPTS];
+  float bias;
   this->calibrateHelperMult(val0_dac,val1_dac,
                             ref_dac,
                             observed,
                             expected,
                             npts);
-  int n=0,m=0;
+  int m=0;
   for(int i=0; i < npts; i += 1){
     if(expected[i] == 0.0){
-      bias[n] = fabs(observed[i]-expected[i]);
-      n += 1;
+      bias = fabs(observed[i]-expected[i]);
     }
     else{
       gain[m] = observed[i]/expected[i];
@@ -186,14 +177,12 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
   util::distribution(gain,m,
                      gain_mean,
                      gain_variance);
-  util::distribution(bias,n,
-                     bias_mean,
-                     bias_variance);
-  float loss = max(fabs(bias_mean),sqrt(gain_variance))/gain_mean;
-  sprintf(FMTBUF," gain=N(%f,%f) bias=N(%f,%f)", gain_mean,
-          gain_variance,
-          bias_mean,
-          bias_variance);
+  
+  float loss = max(fabs(bias),sqrt(gain_variance))/gain_mean;
+  sprintf(FMTBUF," gain=N(%f,%f) bias=%f",
+          gain_mean,
+          sqrt(gain_variance),
+          bias);
   print_info(FMTBUF);
   return loss;
 }
@@ -203,16 +192,15 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
   float observed[TOTAL_NPTS];
   float expected[TOTAL_NPTS];
   float gain[TOTAL_NPTS];
-  float bias[ZERO_NPTS];
+  float bias;
   this->calibrateHelperVga(val_dac,ref_dac,
                            observed,
                            expected,
                            npts);
-  int m=0,n=0;
+  int m=0;
   for(int i=0; i < npts; i += 1){
     if(expected[i] == 0.0){
-      bias[n] = fabs(observed[i]-expected[i]);
-      n += 1;
+      bias = fabs(observed[i]-expected[i]);
     }
     else{
       gain[m] = observed[i]/expected[i];
@@ -224,14 +212,10 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
   util::distribution(gain,m,
                      gain_mean,
                      gain_variance);
-  util::distribution(bias,n,
-                     bias_mean,
-                     bias_variance);
-  float loss = max(fabs(bias_mean),sqrt(gain_variance))/gain_mean;
-  sprintf(FMTBUF," gain=N(%f,%f) bias=N(%f,%f)", gain_mean,
-          gain_variance,
-          bias_mean,
-          bias_variance);
+  float loss = max(fabs(bias),sqrt(gain_variance))/gain_mean;
+  sprintf(FMTBUF," gain=N(%f,%f) bias=%f", gain_mean,
+          sqrt(gain_variance),
+          bias);
   print_info(FMTBUF);
   return loss;
 }
@@ -323,52 +307,61 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   cutil::calib_table_t calib_table = cutil::make_calib_table();
   /*nmos, gain_cal, port_cal in0,in1,out*/
   for(int nmos=0; nmos < MAX_NMOS; nmos += 1){
-    cutil::calib_table_t table_out = cutil::make_calib_table();
-    cutil::calib_table_t table_in0 = cutil::make_calib_table();
-    cutil::calib_table_t table_in1 = cutil::make_calib_table();
-    this->m_codes.nmos = nmos;
-    this->m_codes.port_cal[in0Id] = 32;
-    this->m_codes.port_cal[in1Id] = 32;
-    this->m_codes.port_cal[out0Id] = 32;
-    this->m_codes.gain_cal = 32;
-    this->setGain(0.0);
-    this->setVga(true);
-    dac0_to_in0.brkConn();
-    dac1_to_in1.brkConn();
-    ref_to_tileout.brkConn();
-    for(int bias_out=0; bias_out < MAX_BIAS_CAL; bias_out+=1){
-      this->m_codes.port_cal[out0Id] = bias_out;
-      this->update(this->m_codes);
-      float bias = util::meas_chip_out(this);
-      cutil::update_calib_table(table_out,fabs(bias),1,bias_out);
-    }
-    this->m_codes.port_cal[out0Id] = table_out.state[0];
-
-    this->setGain(1.0);
-    for(int bias_in0=0; bias_in0 < MAX_BIAS_CAL; bias_in0+=1){
-      this->m_codes.port_cal[in0Id] = bias_in0;
-      this->update(this->m_codes);
-      float bias = util::meas_chip_out(this);
-      cutil::update_calib_table(table_in0,fabs(bias),1,bias_in0);
-    }
-    this->m_codes.port_cal[in0Id] = table_in0.state[0];
-
-    this->setVga(false);
-    for(int bias_in1=0; bias_in1 < MAX_BIAS_CAL; bias_in1+=1){
-      this->m_codes.port_cal[in1Id] = bias_in1;
-      this->update(this->m_codes);
-      float bias = util::meas_chip_out(this);
-      cutil::update_calib_table(table_in1,fabs(bias),1,bias_in1);
-    }
-    this->m_codes.port_cal[in1Id] = table_in1.state[0];
-
-
-    this->m_codes.vga = codes_mult.vga;
-    dac0_to_in0.setConn();
-    dac1_to_in1.setConn();
-    ref_to_tileout.setConn();
     for(int pmos=0; pmos < MAX_PMOS; pmos += 1){
+      cutil::calib_table_t table_out = cutil::make_calib_table();
+      cutil::calib_table_t table_in0 = cutil::make_calib_table();
+      cutil::calib_table_t table_in1 = cutil::make_calib_table();
+      this->m_codes.nmos = nmos;
       this->m_codes.pmos = pmos;
+      this->m_codes.port_cal[in0Id] = 32;
+      this->m_codes.port_cal[in1Id] = 32;
+      this->m_codes.port_cal[out0Id] = 32;
+      this->m_codes.gain_cal = 32;
+      this->setGain(0.0);
+      this->setVga(true);
+      dac0_to_in0.brkConn();
+      dac1_to_in1.brkConn();
+      ref_to_tileout.brkConn();
+      for(int bias_out=0; bias_out < MAX_BIAS_CAL; bias_out+=1){
+        this->m_codes.port_cal[out0Id] = bias_out;
+        this->update(this->m_codes);
+        float bias = util::meas_chip_out(this);
+        cutil::update_calib_table(table_out,fabs(bias),1,bias_out);
+      }
+
+      this->m_codes.port_cal[out0Id] = table_out.state[0];
+      this->setGain(1.0);
+      for(int bias_in0=0; bias_in0 < MAX_BIAS_CAL; bias_in0+=1){
+        this->m_codes.port_cal[in0Id] = bias_in0;
+        this->update(this->m_codes);
+        float bias = util::meas_chip_out(this);
+        cutil::update_calib_table(table_in0,fabs(bias),1,bias_in0);
+      }
+      this->m_codes.port_cal[in0Id] = table_in0.state[0];
+      if(!codes_mult.vga){
+        this->setVga(false);
+        for(int bias_in1=0; bias_in1 < MAX_BIAS_CAL; bias_in1+=1){
+          this->m_codes.port_cal[in1Id] = bias_in1;
+          this->update(this->m_codes);
+          float bias = util::meas_chip_out(this);
+          cutil::update_calib_table(table_in1,fabs(bias),1,bias_in1);
+        }
+        this->m_codes.port_cal[in1Id] = table_in1.state[0];
+        sprintf(FMTBUF,"nmos=%d pmos=%d port_cal=(%d,%d,%d) losses=(%f,%f,%f)",nmos,pmos,
+                table_out.state[0],table_in0.state[0],table_in1.state[0],
+                table_out.loss,table_in0.loss,table_in1.loss);
+        print_info(FMTBUF);
+      }
+      else{
+        this->m_codes.port_cal[in1Id] = 32;
+        sprintf(FMTBUF,"nmos=%d pmos=%d port_cal=(%d,%d,32) losses=(%f,%f)",nmos,pmos,
+                table_out.state[0],table_in0.state[0],table_out.loss,table_in0.loss);
+        print_info(FMTBUF);
+      }
+      this->m_codes.vga = codes_mult.vga;
+      dac0_to_in0.setConn();
+      dac1_to_in1.setConn();
+      ref_to_tileout.setConn();
       for(int gain_cal=min_gain_code;
           gain_cal < min_gain_code+n_gain_codes;
           gain_cal+=16){

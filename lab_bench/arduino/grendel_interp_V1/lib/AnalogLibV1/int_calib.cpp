@@ -4,18 +4,32 @@
 #include "fu.h"
 
 #define CALIB_NPTS 5
-const float TEST_POINTS[CALIB_NPTS] = {-0.9,0.9,0.5,-0.5,0.0};
+#define TOTAL_NPTS (CALIB_NPTS+1)
+const float TEST_POINTS[CALIB_NPTS] = {-0.9,0.9,0.5,-0.5};
 
 
+void Fabric::Chip::Tile::Slice::Integrator::calibrateHelper(Dac* ref_dac,
+                     float* observations,
+                     float * expected,
+                     int & npts){
+  Connection ref_to_tile = Connection ( ref_dac->out0,
+                                        parentSlice->tileOuts[3].in0 );
+  const bool measure_steady_state = false;
+  npts = 0;
 
-float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMinError(Fabric::Chip::Tile::Slice::Dac * ref_dac){
-  float loss_total = 0;
-  int total = 0;
+  ref_to_tile.brkConn();
+  this->setInitial(0.0);
+  this->update(this->m_codes);
+  observations[npts] = util::meas_chip_out(this);
+  expected[npts] = 0;
+  npts += 1;
+  ref_to_tile.setConn();
+
   for(int i=0; i < CALIB_NPTS; i += 1){
     float ic_val = TEST_POINTS[i];
     this->setInitial(ic_val);
+    this->update(this->m_codes);
     float target = Fabric::Chip::Tile::Slice::Integrator::computeInitCond(this->m_codes);
-    bool measure_steady_state = false;
     float mean,dummy;
     bool succ = cutil::measure_signal_robust(this,
                                              ref_dac,
@@ -24,43 +38,49 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMinError(Fabric::C
                                              mean,
                                              dummy);
     if(succ){
-      loss_total += fabs(target-mean);
-      total += 1;
+      observations[npts] = mean;
+      expected[npts] = target;
+      npts += 1;
     }
   }
-  return loss_total/total;
+}
+
+float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMinError(Fabric::Chip::Tile::Slice::Dac * ref_dac){
+  float observed[TOTAL_NPTS];
+  float expected[TOTAL_NPTS];
+  int npts;
+  this->calibrateHelper(ref_dac,observed,expected,npts);
+  float loss_total = 0;
+  for(int i=0; i < npts; i += 1){
+    loss_total += fabs(observed[i]-expected[i]);
+  }
+  return loss_total/npts;
 }
 
 
 float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * ref_dac){
+  float observed[TOTAL_NPTS];
+  float expected[TOTAL_NPTS];
+  int npts;
+  this->calibrateHelper(ref_dac,observed,expected,npts);
   float gains[CALIB_NPTS];
-  float bias = 0;
   int m = 0;
-  for(int i=0; i < CALIB_NPTS; i += 1){
-    float ic_val = TEST_POINTS[i];
-    this->setInitial(ic_val);
-    this->update(this->m_codes);
-    float target = Fabric::Chip::Tile::Slice::Integrator::computeInitCond(this->m_codes);
-    bool measure_steady_state = false;
-    float mean,dummy;
-    bool succ = cutil::measure_signal_robust(this,
-                                             ref_dac,
-                                             target,
-                                             measure_steady_state,
-                                             mean,
-                                             dummy);
-    if(succ && target != 0.0){
-      gains[m] = mean/target;
-      m += 1;
+  float bias = 0;
+  for(int i=0; i < npts; i += 1){
+    if(expected[i] == 0.0){
+      bias = fabs(observed[i]);
     }
     else{
-      bias = mean;
+      gains[m] = observed[i]/expected[i];
+      m += 1;
     }
   }
   float avg_gain, gain_variance;
   util::distribution(gains,m,avg_gain,gain_variance);
   float loss = max(sqrt(gain_variance),fabs(bias))/avg_gain;
-  sprintf(FMTBUF," gain=N(%f,%f) bias=%f loss=%f", avg_gain,gain_variance,
+  sprintf(FMTBUF," gain=N(%f,%f) bias=%f loss=%f",
+          avg_gain,
+          sqrt(gain_variance),
           bias,loss);
   print_info(FMTBUF);
   return loss;

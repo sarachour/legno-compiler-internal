@@ -124,7 +124,7 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(){
   util::distribution(gains,m,
                      gain_mean,
                      gain_variance);
-  float loss = max(sqrt(gain_variance),fabs(bias));
+  float loss = max(sqrt(gain_variance),fabs(bias))/gain_mean;
   return loss;
 
 }

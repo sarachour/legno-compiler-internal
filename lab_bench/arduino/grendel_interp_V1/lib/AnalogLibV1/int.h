@@ -70,9 +70,10 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 		profile_t measureClosedLoopCircuit();
 		profile_t measureOpenLoopCircuit(open_loop_prop_t prop);
 
-    bool calibrateTargetHelper(profile_t& result,
-                               const float max_error,
-                               bool change_code);
+    void calibrateHelper(Dac* ref_dac,
+                         float* observations,
+                         float * expected,
+                         int & npts);
 
     void calibrateInitCond(calib_objective_t obj,
                            Dac * val_dac,
