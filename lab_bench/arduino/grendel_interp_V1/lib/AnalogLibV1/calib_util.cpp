@@ -51,7 +51,7 @@ namespace cutil {
                              float& variance){
     float delta = 0.0;
     float thresh = 1.2;
-    float step = 0.25;
+    float step = 0.12;
     float measurement = 0;
     float ref_dac_val;
     float targ_dac_val;
@@ -64,9 +64,9 @@ namespace cutil {
     fast_calibrate_dac(ref_dac);
     targ_dac_val = Fabric::Chip::Tile::Slice::Dac::computeInput(ref_dac->m_codes,
                                                                 -target);
-    ref_dac->setConstant(targ_dac_val);
 
     do {
+      ref_dac->setConstant(targ_dac_val);
       if(steady){
         util::meas_steady_chip_out(fu,measurement,variance);
       }
@@ -77,18 +77,17 @@ namespace cutil {
         delta += measurement < 0 ? -step : step;
         targ_dac_val = Fabric::Chip::Tile::Slice::Dac::computeInput(ref_dac->m_codes,
                                                                     -(target+delta));
-        ref_dac->setConstant(targ_dac_val);
       }
     } while(fabs(measurement) > thresh &&
-            fabs(ref_dac_val) < 10.0);
+            fabs(targ_dac_val) <= 1.0);
 
+    if(fabs(measurement) > thresh){
+      sprintf(FMTBUF, "MEAS=%f VAL=%f",measurement,targ_dac_val);
+      print_info(FMTBUF);
+      error("could not reduce measurement to acceptable range");
+    }
     float dummy;
     ref_dac_val = ref_dac->fastMeasureValue(dummy);
-    /*
-    sprintf(FMTBUF,"  MEAS targ=%f ref-targ=%f ref-meas=%f measurement=%f variance=%f",
-            target,targ_dac_val,ref_dac_val,measurement,variance);
-    print_info(FMTBUF);
-    */
     mean = measurement-ref_dac_val;
     variance = variance;
 

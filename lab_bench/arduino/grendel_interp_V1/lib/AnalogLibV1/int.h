@@ -43,7 +43,7 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 			unsigned char initialCode // fixed point representation of desired initial condition
 			// 0 to 255 are valid
 		);
-    bool setInitial(float initial);
+    void setInitial(float initial);
 		void setException (
 			bool exception // turn on overflow detection
 			// turning false overflow detection saves power if it is known to be unnecessary

@@ -70,14 +70,13 @@ void Fabric::Chip::Tile::Slice::Integrator::setInitialCode (
 	setParam2 ();
 }
 
-bool Fabric::Chip::Tile::Slice::Integrator::setInitial(float initial)
+void Fabric::Chip::Tile::Slice::Integrator::setInitial(float initial)
 {
   if(-1.0000001 < initial && initial < 1.000001){
     setInitialCode(min(round(initial*128.0)+128.0,255));
-    return true;
   }
   else{
-    return false;
+    error("integ.setInitial: only accepts constant values must be between -1 and 1");
   }
 }
 

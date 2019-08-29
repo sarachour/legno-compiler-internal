@@ -98,13 +98,12 @@ void Fabric::Chip::Tile::Slice::Dac::setConstantCode (
 	parentSlice->parentTile->controllerHelperTile ( selLine, cfgTile );
 }
 
-bool Fabric::Chip::Tile::Slice::Dac::setConstant(float constant){
+void Fabric::Chip::Tile::Slice::Dac::setConstant(float constant){
   if(-1.0000001 < constant && constant< 1.0000001){
     setConstantCode(min(round(constant*128.0+128.0),255));
-    return true;
   }
   else{
-    return false;
+    error("dac.setConstant: only accepts constant values must be between -1 and 1");
   }
 }
 

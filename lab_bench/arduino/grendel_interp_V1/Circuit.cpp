@@ -59,8 +59,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     dac->setRange((range_t) dacd.out_range);
     dac->setSource((dac_source_t) dacd.source);
     if(dacd.source == DSRC_MEM){
-      comm::test(dac->setConstant(dacd.value),
-                 "failed to set dac value");
+      dac->setConstant(dacd.value);
     }
     comm::response("enabled dac",0);
     break;
@@ -78,8 +77,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
       mult->setRange(in1Id,(range_t) multd.in1_range);
     }
     else{
-      comm::test(mult->setGain(multd.coeff),
-                 "failed to set gain");
+      mult->setGain(multd.coeff);
     }
     comm::response("enabled mult",0);
     break;
@@ -103,8 +101,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     integ->setInv(integd.inv);
     integ->setRange(in0Id,(range_t) integd.in_range);
     integ->setRange(out0Id,(range_t) integd.out_range);
-    comm::test(integ->setInitial(integd.value),
-               "failed to set integ value");
+    integ->setInitial(integd.value);
     comm::response("enabled integ",0);
     break;
   case cmd_type_t::GET_INTEG_STATUS:

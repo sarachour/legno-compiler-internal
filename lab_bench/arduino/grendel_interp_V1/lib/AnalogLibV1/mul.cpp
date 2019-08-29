@@ -56,13 +56,12 @@ void Fabric::Chip::Tile::Slice::Multiplier::setGainCode (
 	setParam2 ();
 }
 
-bool Fabric::Chip::Tile::Slice::Multiplier::setGain(float gain){
+void Fabric::Chip::Tile::Slice::Multiplier::setGain(float gain){
   if(-1.0000001 < gain && gain < 1.0000001){
     setGainCode(min(255,round(gain*128.0)+128.0));
-    return true;
   }
   else{
-    return false;
+    error("mult.setGain: constant values must be between -1 and 1");
   }
 }
 

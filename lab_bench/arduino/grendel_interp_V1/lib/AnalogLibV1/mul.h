@@ -12,7 +12,7 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 			unsigned char gainCode // fixed point representation of desired gain
 			// 0 to 255 are valid
 		);
-    bool setGain(float gain);
+    void setGain(float gain);
 		void setVga (
 			bool vga // constant coefficient multiplier mode
 		);

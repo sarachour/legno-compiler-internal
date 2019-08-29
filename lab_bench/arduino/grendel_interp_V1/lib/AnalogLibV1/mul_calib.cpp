@@ -7,7 +7,9 @@
 #define CALIB_NPTS 3
 #define ZERO_NPTS 2
 #define TOTAL_NPTS (ZERO_NPTS + CALIB_NPTS*CALIB_NPTS)
-const float TEST_POINTS[CALIB_NPTS] = {-1.0,1.0,0.5};
+const float TEST0_POINTS[CALIB_NPTS] = {-0.9,0.9,0.5};
+const float TEST1_MULT_POINTS[CALIB_NPTS] = {-0.9,0.9,0.5};
+const float TEST1_VGA_POINTS[CALIB_NPTS] = {-0.96,0.96,0.5};
 const float ZERO_POINTS[CALIB_NPTS] = {-1.0,1.0,0};
 
 float Fabric::Chip::Tile::Slice::Multiplier::getLoss(calib_objective_t obj,
@@ -78,8 +80,8 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
 
   for(int i=0; i < CALIB_NPTS; i += 1){
     for(int j=0; j < CALIB_NPTS; j += 1){
-      float in0 = TEST_POINTS[i];
-      float in1 = TEST_POINTS[j];
+      float in0 = TEST0_POINTS[i];
+      float in1 = TEST1_VGA_POINTS[j];
       val_dac->setConstant(in0);
       this->setGain(in1);
       float target_in0 = val_dac->fastMeasureValue(dummy);
@@ -93,7 +95,6 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
                                                meas_steady,
                                                mean,
                                                dummy);
-
       if(succ){
         observations[npts] = mean;
         expected[npts] = target_out;
@@ -131,8 +132,8 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperMult(Dac * val0_dac,
   }
   for(int i=0; i < CALIB_NPTS; i += 1){
     for(int j=0; j < CALIB_NPTS; j += 1){
-      float in0 = TEST_POINTS[i];
-      float in1 = TEST_POINTS[j];
+      float in0 = TEST0_POINTS[i];
+      float in1 = TEST1_MULT_POINTS[j];
       float dummy,mean;
       val0_dac->setConstant(in0);
       val1_dac->setConstant(in1);
@@ -145,7 +146,6 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperMult(Dac * val0_dac,
                                                                target_in1)
                                              );
 
-      const bool meas_steady = false;
       bool succ = cutil::measure_signal_robust(this,
                                                ref_dac,
                                                target_out,
@@ -192,7 +192,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
   util::distribution(bias,n,
                      bias_mean,
                      bias_variance);
-  float loss = max(fabs(bias_mean),sqrt(gain_variance));
+  float loss = max(fabs(bias_mean),sqrt(gain_variance))/gain_mean;
   return loss;
 }
 float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_dac,
@@ -225,7 +225,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
   util::distribution(bias,n,
                      bias_mean,
                      bias_variance);
-  float loss = max(fabs(bias_mean),sqrt(gain_variance));
+  float loss = max(fabs(bias_mean),sqrt(gain_variance))/gain_mean;
   return loss;
 }
 float Fabric::Chip::Tile::Slice::Multiplier::calibrateMinErrorVga(Dac * val_dac,
@@ -360,48 +360,56 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
     dac0_to_in0.setConn();
     dac1_to_in1.setConn();
     ref_to_tileout.setConn();
-    for(int gain_cal=min_gain_code;
-        gain_cal < min_gain_code+n_gain_codes;
-        gain_cal+=16){
-      this->m_codes.gain_cal = gain_cal;
-      this->update(this->m_codes);
-      float loss = getLoss(obj,val0_dac,val1_dac,ref_dac);
-      cutil::update_calib_table(calib_table,loss,5,
-                                nmos,
-                                this->m_codes.port_cal[in0Id],
-                                this->m_codes.port_cal[in1Id],
-                                this->m_codes.port_cal[out0Id],
-                                gain_cal
-                                );
-      sprintf(FMTBUF,"nmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
-              this->m_codes.nmos,
-              this->m_codes.port_cal[in0Id],
-              this->m_codes.port_cal[in1Id],
-              this->m_codes.port_cal[out0Id],
-              this->m_codes.gain_cal,
-              loss);
-      print_info(FMTBUF);
+    for(int pmos=0; pmos < MAX_PMOS; pmos += 1){
+      this->m_codes.pmos = pmos;
+      for(int gain_cal=min_gain_code;
+          gain_cal < min_gain_code+n_gain_codes;
+          gain_cal+=16){
+        this->m_codes.gain_cal = gain_cal;
+        this->update(this->m_codes);
+        float loss = getLoss(obj,val0_dac,val1_dac,ref_dac);
+        cutil::update_calib_table(calib_table,loss,6,
+                                  nmos,
+                                  pmos,
+                                  this->m_codes.port_cal[in0Id],
+                                  this->m_codes.port_cal[in1Id],
+                                  this->m_codes.port_cal[out0Id],
+                                  gain_cal
+                                  );
+        sprintf(FMTBUF,"nmos=%d pmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
+                this->m_codes.nmos,
+                this->m_codes.pmos,
+                this->m_codes.port_cal[in0Id],
+                this->m_codes.port_cal[in1Id],
+                this->m_codes.port_cal[out0Id],
+                this->m_codes.gain_cal,
+                loss);
+        print_info(FMTBUF);
+      }
     }
   }
 
   this->m_codes.nmos = calib_table.state[0];
-  this->m_codes.port_cal[in0Id] = calib_table.state[1];
-  this->m_codes.port_cal[in1Id] = calib_table.state[2];
-  this->m_codes.port_cal[out0Id] = calib_table.state[3];
+  this->m_codes.pmos = calib_table.state[1];
+  this->m_codes.port_cal[in0Id] = calib_table.state[2];
+  this->m_codes.port_cal[in1Id] = calib_table.state[3];
+  this->m_codes.port_cal[out0Id] = calib_table.state[4];
   // do a thorough search for best nmos code.
   for(int gain_cal=min_gain_code; gain_cal < min_gain_code+n_gain_codes; gain_cal+=1){
     this->m_codes.gain_cal = gain_cal;
     this->update(this->m_codes);
     float loss = getLoss(obj,val0_dac,val1_dac,ref_dac);
-    cutil::update_calib_table(calib_table,loss,5,
+    cutil::update_calib_table(calib_table,loss,6,
                               this->m_codes.nmos,
+                              this->m_codes.pmos,
                               this->m_codes.port_cal[in0Id],
                               this->m_codes.port_cal[in1Id],
                               this->m_codes.port_cal[out0Id],
                               gain_cal
                               );
-    sprintf(FMTBUF,"nmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
+    sprintf(FMTBUF,"nmos=%d pmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
             this->m_codes.nmos,
+            this->m_codes.pmos,
             this->m_codes.port_cal[in0Id],
             this->m_codes.port_cal[in1Id],
             this->m_codes.port_cal[out0Id],
@@ -418,13 +426,15 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   cutil::restore_conns(calib);
 
   this->m_codes.nmos = calib_table.state[0];
-  this->m_codes.port_cal[in0Id] = calib_table.state[1];
-  this->m_codes.port_cal[in1Id] = calib_table.state[2];
-  this->m_codes.port_cal[out0Id] = calib_table.state[3];
-  this->m_codes.gain_cal = calib_table.state[4];
+  this->m_codes.pmos = calib_table.state[1];
+  this->m_codes.port_cal[in0Id] = calib_table.state[2];
+  this->m_codes.port_cal[in1Id] = calib_table.state[3];
+  this->m_codes.port_cal[out0Id] = calib_table.state[4];
+  this->m_codes.gain_cal = calib_table.state[5];
 
-  sprintf(FMTBUF,"BEST nmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
+  sprintf(FMTBUF,"BEST nmos=%d pmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
           this->m_codes.nmos,
+          this->m_codes.pmos,
           this->m_codes.port_cal[in0Id],
           this->m_codes.port_cal[in1Id],
           this->m_codes.port_cal[out0Id],
