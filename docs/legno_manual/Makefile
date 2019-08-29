@@ -1,9 +1,9 @@
 
 
 all:
-	pdflatex device_manual
-	bibtex device_manual
-	pdflatex device_manual
+	pdflatex legno_manual
+	bibtex legno_manual
+	pdflatex legno_manual
 
 clean:
 	rm -f *.log

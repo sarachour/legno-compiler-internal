@@ -1,9 +1,9 @@
 
 
 all:
-	pdflatex device_manual
-	bibtex device_manual
-	pdflatex device_manual
+	pdflatex grendel_manual
+	bibtex grendel_manual
+	pdflatex grendel_manual
 
 clean:
 	rm -f *.log
