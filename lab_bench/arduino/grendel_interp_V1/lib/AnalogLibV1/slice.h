@@ -30,8 +30,6 @@ class Fabric::Chip::Tile::Slice {
 		TileInOut * tileOuts;
 		ChipOutput * chipOutput;
 
-    bool calibrate() const;
-    bool calibrateTarget() const;
     void defaults();
 		Tile * const parentTile;
 	private:

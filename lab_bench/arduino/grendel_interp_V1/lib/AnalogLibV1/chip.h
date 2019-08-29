@@ -49,7 +49,6 @@ class Fabric::Chip {
 		class Vector;
 
 		void reset();
-		bool calibrate();
     void defaults();
 		void writeParallel ( unsigned char data ) const;
 		unsigned char readParallel () const;

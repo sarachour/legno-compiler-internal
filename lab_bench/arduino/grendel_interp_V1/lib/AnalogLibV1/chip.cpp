@@ -66,10 +66,6 @@ Fabric::Chip::Chip (
 		Tile (this, tileRow1, tileCol1, spiSSPinBase+3, spiMisoPinBase+3, ardAnaDiffChanBase)
 	};
 	tally_dyn_mem <Tile[4]> ("Tile[4]");
-
-	Serial.println("allocated chip");
-	Serial.println("initialized chip");
-
 }
 
 Fabric::Chip::~Chip() { delete[] tiles; };
@@ -100,8 +96,6 @@ void Fabric::Chip::reset () {
 	};
 	tally_dyn_mem <Tile[4]> ("Tile[4]");
 
-	Serial.println("allocated chip");
-	Serial.println("initialized chip");
 }
 
 /*Cache the vectors according to format choice*/
@@ -187,18 +181,6 @@ void Fabric::Chip::writeVecs () {
 			}
 		}
 	}
-}
-
-bool Fabric::Chip::calibrate () {
-	SerialUSB.println("Calibrating Tile 0");
-	tiles[0].calibrate();
-	SerialUSB.println("Calibrating Tile 1");
-	tiles[1].calibrate();
-	SerialUSB.println("Calibrating Tile 2");
-	tiles[2].calibrate();
-	SerialUSB.println("Calibrating Tile 3");
-	tiles[3].calibrate();
-	return true;
 }
 
 void Fabric::Chip::spiDriveChip (

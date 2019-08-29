@@ -60,16 +60,12 @@ Fabric::Fabric () {
 		Chip (this, chipRow0, chipCol0, 30, 25, 24, 3, 9, 4),
 		Chip (this, chipRow0, chipCol1, 31, 23, 22, 50, 14, 0)
 	};
-	Serial.println("allocated chips");
 	tally_dyn_mem <Chip[2]> ("Chip[2]");
 
-	Serial.println("allocated hcdc");
-  Serial.flush();
-
+	print_info("allocated hcdc");
 	cfgCommit();
 
-	Serial.println("initialized hcdc");
-  Serial.flush();
+	print_info("initialized hcdc");
 }
 
 Fabric::~Fabric() { 
@@ -84,7 +80,7 @@ void Fabric::defaults() {
 void Fabric::reset () {
 	Serial.begin(115200);
 	digitalWrite(moMiEnPin, LOW); /*scan chain disable*/
-	Serial.println("initialized arduino");
+	print_info("initialized arduino");
 
 	#ifdef _DUE
 		// Serial.println("fast reset");
@@ -104,17 +100,9 @@ void Fabric::reset () {
 	};
 	tally_dyn_mem <Chip[2]> ("Chip[2]");
 
-	Serial.println("allocated hcdc");
 
 	cfgCommit();
 
-	Serial.println("initialized hcdc");
+	print_info("initialized fabric");
 }
 
-bool Fabric::calibrate () const {
-	SerialUSB.println("Calibrating Chip 0");
-	chips[0].calibrate();
-	SerialUSB.println("Calibrating Chip 1");
-	chips[1].calibrate();
-	return true;
-}

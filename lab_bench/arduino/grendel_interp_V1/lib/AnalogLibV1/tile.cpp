@@ -14,11 +14,7 @@ Fabric::Chip::Tile::Tile (
 	spiSSPin (spiSSPin),
 	spiMisoPin (spiMisoPin)
 {
-  Serial.print("allocating tile ");
-  Serial.print(tileRowId);
-  Serial.print(", ");
-  Serial.println(tileColId);
-	pinMode(spiSSPin, OUTPUT);
+  	pinMode(spiSSPin, OUTPUT);
 	digitalWrite (spiSSPin, HIGH);
 	pinMode(spiMisoPin, INPUT);
 
@@ -39,20 +35,6 @@ void Fabric::Chip::Tile::defaults() {
 	slices[3].defaults();
 	return true;
 };
-
-
-bool Fabric::Chip::Tile::calibrate () const {
-	SerialUSB.println("Calibrating Slice 0");
-	slices[0].calibrate();
-	SerialUSB.println("Calibrating Slice 1");
-	slices[1].calibrate();
-	SerialUSB.println("Calibrating Slice 2");
-	slices[2].calibrate();
-	SerialUSB.println("Calibrating Slice 3");
-	slices[3].calibrate();
-	return true;
-};
-
 
 void Fabric::Chip::Tile::spiDriveTile (
 	unsigned char selRow,
