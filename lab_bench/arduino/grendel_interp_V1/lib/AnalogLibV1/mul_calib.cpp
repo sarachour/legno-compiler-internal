@@ -86,8 +86,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
       this->setGain(in1);
       float target_in0 = val_dac->fastMeasureValue(dummy);
       float target_out = this->computeOutput(this->m_codes,
-                                             Dac::computeInput(val_dac->m_codes,
-                                                               target_in0),
+                                             target_in0,
                                              0.0);
       bool succ = cutil::measure_signal_robust(this,
                                                ref_dac,
@@ -140,10 +139,8 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperMult(Dac * val0_dac,
       float target_in0 = val0_dac->fastMeasureValue(dummy);
       float target_in1 = val1_dac->fastMeasureValue(dummy);
       float target_out = this->computeOutput(this->m_codes,
-                                             Dac::computeInput(val0_dac->m_codes,
-                                                               target_in0),
-                                             Dac::computeInput(val1_dac->m_codes,
-                                                               target_in1)
+                                             target_in0,
+                                             target_in1
                                              );
 
       bool succ = cutil::measure_signal_robust(this,
@@ -180,7 +177,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
       n += 1;
     }
     else{
-      gain[m] = expected[i]/observed[i];
+      gain[m] = observed[i]/expected[i];
       m += 1;
     }
   }
@@ -193,6 +190,11 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
                      bias_mean,
                      bias_variance);
   float loss = max(fabs(bias_mean),sqrt(gain_variance))/gain_mean;
+  sprintf(FMTBUF," gain=N(%f,%f) bias=N(%f,%f)", gain_mean,
+          gain_variance,
+          bias_mean,
+          bias_variance);
+  print_info(FMTBUF);
   return loss;
 }
 float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_dac,
@@ -213,7 +215,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
       n += 1;
     }
     else{
-      gain[m] = expected[i]/observed[i];
+      gain[m] = observed[i]/expected[i];
       m += 1;
     }
   }
@@ -226,6 +228,11 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
                      bias_mean,
                      bias_variance);
   float loss = max(fabs(bias_mean),sqrt(gain_variance))/gain_mean;
+  sprintf(FMTBUF," gain=N(%f,%f) bias=N(%f,%f)", gain_mean,
+          gain_variance,
+          bias_mean,
+          bias_variance);
+  print_info(FMTBUF);
   return loss;
 }
 float Fabric::Chip::Tile::Slice::Multiplier::calibrateMinErrorVga(Dac * val_dac,
