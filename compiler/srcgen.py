@@ -405,7 +405,6 @@ def to_volt_ranges(board,conc_circ,mathenv,hwenv):
       sig_range = info['scf']*info['interval'].bound
       hw_range = max(abs(hub-llb),abs(hlb-lub))
       scf = sig_range/hw_range
-      print(sig_range,hw_range,scf)
       slb,sub = scale(scf,llb,lub)
       yield pin_mode.low,slb,sub
       slb,sub = scale(scf,hlb,hub)
@@ -446,11 +445,11 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
   # flag adc/dac data for storage in buffer
   for handle in adcs_in_use.keys():
     out_no = hwenv.adc(handle)
-    raise Exception("unimplemented: no grendel command for reading from board adcs")
+    print("unimplemented: no grendel command for reading from board adcs")
 
   for handle,info in dacs_in_use.items():
     in_no = hwenv.dac(handle)
-    raise Exception("unimplemented: no grendel command for writing to board dacs")
+    print("unimplemented: no grendel command for writing to board dacs")
 
   gren.add(parse('micro_use_chip'))
 

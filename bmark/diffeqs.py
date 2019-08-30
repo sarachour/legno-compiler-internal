@@ -2,6 +2,7 @@
 import bmark.bmarks.biology as biology
 import bmark.bmarks.columbia as columbia
 import bmark.bmarks.audio as audio
+import bmark.bmarks.quickstart as quickstart
 import bmark.bmarks.other as other
 import bmark.bmarks.kalman as kalman
 
@@ -10,8 +11,8 @@ BMARKS = biology.get_benchmarks() + \
          audio.get_benchmarks() + \
          columbia.get_benchmarks() + \
          other.get_benchmarks() + \
-         kalman.get_benchmarks()
-
+         kalman.get_benchmarks() + \
+         quickstart.get_benchmarks()
 
 # energy model: page 26 of thesis, chapter 2
 def get_names():
