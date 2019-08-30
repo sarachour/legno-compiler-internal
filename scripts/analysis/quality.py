@@ -177,7 +177,7 @@ def analyze(entry,recompute=False,no_reference=False):
       QUALITIES.append(-1)
       continue
 
-    common.simple_plot(output,path_h,output.trial,'obs',TFIT,YFIT)
+    common.simple_plot(output,path_h,output.trial,'rec',TFIT,YFIT)
     common.compare_plot(output,path_h,output.trial,'comp',TREF,YREF,TFIT,YFIT)
     RESULT = compute_quality(output,TFIT,YFIT,TREF,YREF)
     if RESULT == -1:
