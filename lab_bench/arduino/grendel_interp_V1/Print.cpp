@@ -493,44 +493,11 @@ namespace experiment {
     case cmd_type_t::USE_ANALOG_CHIP:
       comm::response("[dbg] use_analog_chip=true",0);
       break;
-    case cmd_type_t::USE_DAC:
-      comm::response("[dbg] use_dac=true",0);
-      break;
-    case cmd_type_t::USE_ADC:
-      comm::response("[dbg] use_adc=true",0);
-      break;
     case cmd_type_t::USE_OSC:
       comm::response("[dbg] enable_trigger=true",0);
       break;
     case cmd_type_t::SET_SIM_TIME:
       comm::response("[dbg] set simulation time",0);
-      break;
-
-    case cmd_type_t::COMPUTE_OFFSETS:
-      comm::response("[dbg] computed offsets",0);
-      break;
-    case cmd_type_t::SET_DAC_VALUES:
-      comm::response("[dbg] set dac values",0);
-      break;
-
-    case cmd_type_t::GET_ADC_VALUES:
-      comm::response("[dbg] get adc values",1);
-      comm::data("3","F");
-      comm::payload();
-      Serial.println(" 0.3 0.5 0.7");
-      break;
-
-    case cmd_type_t::GET_TIME_BETWEEN_SAMPLES:
-      comm::response("[dbg] get time between samples",1);
-      comm::data("0.1","f");
-      break;
-    case cmd_type_t::GET_NUM_DAC_SAMPLES:
-      comm::response("get num dac samples",1);
-      comm::data("10","i");
-      break;
-    case cmd_type_t::GET_NUM_ADC_SAMPLES:
-      comm::response("get num adc samples",1);
-      comm::data("15","i");
       break;
     }
   }
@@ -551,59 +518,8 @@ namespace experiment {
       Serial.println("use_osc");
       break;
 
-    case cmd_type_t::USE_DAC:
-      Serial.print("use_dac ");
-      Serial.print(cmd.args.ints[0]);
-      Serial.print(" periodic=");
-      Serial.println(cmd.flag ? "yes" : "no");
-      break;
-
-    case cmd_type_t::USE_ADC:
-      Serial.print("use_adc ");
-      Serial.println(cmd.args.ints[0]);
-      break;
-
     case cmd_type_t::USE_ANALOG_CHIP:
       Serial.println("use_analog_chip");
-      break;
-
-    case cmd_type_t::COMPUTE_OFFSETS:
-      Serial.println("compute_offsets");
-      break;
-
-    case cmd_type_t::GET_NUM_DAC_SAMPLES:
-      Serial.println("get_num_dac_samples");
-      break;
-
-    case cmd_type_t::GET_NUM_ADC_SAMPLES:
-      Serial.println("get_num_adc_samples");
-      break;
-    case cmd_type_t::GET_TIME_BETWEEN_SAMPLES:
-      Serial.println("get_time_between_samples");
-      break;
-
-    case cmd_type_t::GET_ADC_VALUES:
-      Serial.print("get_adc_values adc_id=");
-      Serial.print(cmd.args.ints[0]);
-      Serial.print(" nels=");
-      Serial.print(cmd.args.ints[1]);
-      Serial.print(" offset=");
-      Serial.println(cmd.args.ints[2]);
-      break;
-
-    case cmd_type_t::SET_DAC_VALUES:
-      Serial.print("set_dac_values dac_id=");
-      Serial.print(cmd.args.ints[0]);
-      Serial.print(" nels=");
-      Serial.print(cmd.args.ints[1]);
-      Serial.print(" offset=");
-      Serial.print(cmd.args.ints[2]);
-      Serial.print(" [");
-      for(int i=0; i < cmd.args.ints[1]; i++){
-        Serial.print(inbuf[i]);
-        Serial.print(" ");
-      }
-      Serial.println("]");
       break;
 
     case cmd_type_t::RESET:

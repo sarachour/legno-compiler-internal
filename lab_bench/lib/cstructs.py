@@ -60,18 +60,10 @@ def block_type_t():
 def experiment_cmd_type_t():
     kwargs = {
         ExpCmdType.RESET.name:0,
-        ExpCmdType.SET_DAC_VALUES.value:1,
-        ExpCmdType.GET_ADC_VALUES.value:2,
-        ExpCmdType.USE_ANALOG_CHIP.name:3,
-        ExpCmdType.SET_SIM_TIME.name:4,
-        ExpCmdType.USE_DAC.name:5,
-        ExpCmdType.USE_ADC.name:6,
-        ExpCmdType.USE_OSC.name:7,
-        ExpCmdType.RUN.name:8,
-        ExpCmdType.COMPUTE_OFFSETS.name:9,
-        ExpCmdType.GET_NUM_DAC_SAMPLES.name:10,
-        ExpCmdType.GET_TIME_BETWEEN_SAMPLES.name:11,
-        ExpCmdType.GET_NUM_ADC_SAMPLES.name:12
+        ExpCmdType.USE_ANALOG_CHIP.name:1,
+        ExpCmdType.SET_SIM_TIME.name:2,
+        ExpCmdType.USE_OSC.name:3,
+        ExpCmdType.RUN.name:4,
     }
     return cstruct.Enum(cstruct.Int16ul,**kwargs)
 

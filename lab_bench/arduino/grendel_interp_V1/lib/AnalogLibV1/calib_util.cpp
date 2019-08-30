@@ -50,7 +50,7 @@ namespace cutil {
                              float& mean,
                              float& variance){
     float delta = 0.0;
-    float thresh = 1.2;
+    float thresh = 1.3;
     float step = 0.12;
     float measurement = 0;
     float ref_dac_val;
