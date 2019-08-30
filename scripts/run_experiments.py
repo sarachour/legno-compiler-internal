@@ -24,7 +24,7 @@ def execute_script(script_file, \
                    calib_obj, \
                    calibrate=False):
     print(script_file)
-    if not calibrate:
+    if calibrate:
         calib_cmd = "python3 grendel.py --calib-obj {obj} calibrate {script}"
         cmd = calib_cmd.format(obj=calib_obj, \
                                script=script_file)
