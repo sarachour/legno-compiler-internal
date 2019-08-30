@@ -254,8 +254,6 @@ def gen_block(gprog,circ,block,locstr,config):
   elif block.name == 'tile_adc':
     sources = list(circ.get_conns_by_dest(block.name,locstr,'in'))
     generator = gen_use_adc(circ,block,locstr,config)
-    cmd = gen_get_adc_status(circ,block,locstr)
-    gprog.add(cmd)
 
   elif block.name == 'lut':
     sources = list(circ.get_conns_by_dest(block.name,locstr,'in'))
@@ -276,8 +274,6 @@ def gen_block(gprog,circ,block,locstr,config):
   elif block.name == 'integrator':
     generator = gen_use_integrator(circ,block,locstr,config, \
                                    debug=True)
-    cmd = gen_get_integrator_status(circ,block,locstr)
-    gprog.add(cmd)
 
   elif block.name == 'fanout':
     targets = list(circ.get_conns_by_src(block.name,locstr,'out2'))
@@ -443,38 +439,21 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
        gren.add(parse(cmd))
 
   # initialize microcontroller
-  cmd = "micro_set_sim_time %.3e %.3e" % \
-             (scaled_sim_time,scaled_input_time)
+  cmd = "micro_set_sim_time %.3e" % \
+             (scaled_sim_time)
   gren.add(parse(cmd))
 
   # flag adc/dac data for storage in buffer
   for handle in adcs_in_use.keys():
     out_no = hwenv.adc(handle)
-    if not out_no is None:
-      gren.add(parse('micro_use_ard_adc %d' % out_no))
+    raise Exception("unimplemented: no grendel command for reading from board adcs")
 
   for handle,info in dacs_in_use.items():
     in_no = hwenv.dac(handle)
-    gren.add(parse('micro_use_ard_dac %d %s' % \
-                   (in_no,info['periodic'])))
+    raise Exception("unimplemented: no grendel command for writing to board dacs")
 
-
-  gren.add(parse('micro_compute_offsets'))
-  gren.add(parse('micro_get_num_adc_samples'))
-  gren.add(parse('micro_get_num_dac_samples'))
-  gren.add(parse('micro_get_time_delta'))
-  #FIXME `use_due_dac` if there are external inputs
-  #FIXME `use_due_adc` / `use_osc` if there are external outputs
   gren.add(parse('micro_use_chip'))
 
-  for handle,info in dacs_in_use.items():
-    in_no = hwenv.dac(handle)
-    gren.add(parse('micro_set_dac_values %d %s %f %f' % \
-                   (in_no,info['waveform'],\
-                    scaled_tc_hz,
-                    info['scf']
-                   )
-    ))
 
 def execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trialno):
   if hwenv.use_oscilloscope and len(hwenv.oscilloscope.outputs()) > 0:
@@ -502,9 +481,8 @@ def execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trialno):
                                                    info['label'],
                                                    trialno)
     if not out_no is None:
-      gren.add(parse('micro_get_adc_values %d %s %s' % (out_no, \
-                                                        info['label'], \
-                                                        filename)))
+      raise Exception("unimplemented: no command for reading data from microcontroller adcs")
+
     elif hwenv.use_oscilloscope:
       pin_mode = hwenv.oscilloscope.output(handle)
       if isinstance(pin_mode,DiffPinMode):
@@ -519,9 +497,10 @@ def execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trialno):
 
 
 def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,ntrials):
-  gren.add(parse('micro_get_status'))
   for trial in range(0,ntrials):
-    execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trial)
+    execconfig(path_handler,gren,board, \
+               conc_circ,menv,hwenv,filename,trial)
+
     for block_name,loc,config in conc_circ.instances():
       block = conc_circ.board.block(block_name)
       get_statuses(gren,conc_circ,block,loc,config)
