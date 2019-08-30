@@ -125,11 +125,16 @@ which restricts the dynamic range of the device. The \tx{--abs-circuits} and
 compilation pass. Specifying higher numbers to these flags produces more analog
 device programs.
 
-The following command produces exactly one unscaled analog device program at
-the following location: 
+For the \tx{cos} dynamical system with the \tx{standard} set of features, all
+unscaled circuits are stored in the following directory:
+\begin{snippet}
+  outputs/legno/standard/cos/abs-circ
+\end{snippet}
+
+The \lgraph command presented above produces exactly one unscaled analog device program: 
 
 \begin{snippet}
-  outputs/legno/standard/cos/abs-circ/cos_0_0_0_0.circ
+  cos_0_0_0_0.circ
 \end{snippet}
 
 Since the analog device program is not human readable, the compiler also
@@ -159,18 +164,25 @@ determines how many scaled programs to produce from each unscaled program.
 Finally the \tx{--search} parameter tells \legno to search for the scaling
 transform that produces the best signal-to-noise ratio.
 
-The following command produces exactly one scaled analog device program at
-the following location. XXX describe filename structure XXX: 
+For the \tx{cos} dynamical system with the \tx{standard} set of features, the
+resulting scaled programs are written to the following directory:
 
 \begin{snippet}
-  outputs/legno/standard/cos/conc-circ/cos_0_0_0_0_s0_nq1.53d1.10b_obsslow.circ
+  outputs/legno/standard/cos/conc-circ
 \end{snippet}
 
-Since the analog device program is not human readable, the compiler also
-produces a graph that describes the analog device program.
+The \lscale execution presented above produces exactly one scaled analog device program: 
+
+ \begin{snippet}
+  cos_0_0_0_0_s0_nq1.53d1.10b_obsslow.circ
+\end{snippet}
+
+Since the analog device program is not human readable, the compiler
+also produces graphs that visually depict the circuit each program implements.
+These graphs are stored in the following directory:
 
 \begin{snippet}
-  outputs/legno/standard/cos/conc-graph/cos_0_0_0_0_s0_nq1.53d1.10b_obsslow.png
+  outputs/legno/standard/cos/conc-graph
 \end{snippet}
 
 \subsubsection{Source Generation}
@@ -182,16 +194,43 @@ script that executes the experiment on the analog hardware.
   python3 legno.py --subset standard cos srcgen default --trials 1
 \end{snippet}
 
-This generates command generates the following grendel file.
+This command generates a \grendel script for each scaled analog device program.
+For the \tx{cos} dynamical system with the \tx{standard} set of features, all the \grendel scripts are
+stored in the following directory:
 
 \begin{snippet}
-  outputs/legno/standard/cos/grendel/cos_0_0_0_0_s0_nq1.53d1.10b_obsslow_t20_default.grendel
+  outputs/legno/standard/cos/grendel
 \end{snippet}
 
-We then execute the dynamical system on the hardware with the following two commands:
+Since the \tx{cos} benchmark only has one scaled circuit, only one \grendel
+script is produced:
 
 \begin{snippet}
-python3 grendel.py --calib-obj min_error calibrate <grendel_file>.grendel
-python3 grendel.py --calib-obj min_error run <grendel_file>.grendel
+  cos_0_0_0_0_s0_nq1.53d1.10b_obsslow_t20_default.grendel
 \end{snippet}
 
+This grendel script can be dispatched to the \hcdc analog device with the
+following commands:
+
+\begin{snippet}
+  python3 exp_driver.py scan
+  python3 exp_driver.py run
+\end{snippet}
+
+These commands execute the cosine dynamical system described in
+Section~\ref{XXX}. For the \tx{cos} benchmark with the \tx{standard} set of
+features, the waveforms are stored in the following directory:
+\begin{snippet}
+  outputs/legno/standard/cos/out-waveform
+\end{snippet}
+
+The collected waveforms can then be analyzed (compared with the expected cosine function) with the following command:
+
+\begin{snippet}
+  python3 exp_driver.py analyze
+\end{snippet}
+
+The relevant visualizations are stored in the following directory:
+\begin{snippet}
+  outputs/legno/standard/cos/plots
+\end{snippet}

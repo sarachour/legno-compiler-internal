@@ -11,34 +11,31 @@ import bmark.menvs as menvs
 
 
 # from wikipedia
-def model(menv_name='t20', adc=False):
-    omega = 1.0
+def model():
     params = {
-        'P0': 0.1,
-        'V0' :0.0,
-        'omega': -1*omega*omega
+        'p(0)': 1.0,
+        'v(0)' :0.0
     }
     # t20
     prob = MathProg("cos")
-    P = parse_diffeq("V", "P0", ":a", params)
-    V = parse_diffeq("(-P)", "V0", ":b", params)
+    p = parse_diffeq("v", "p(0)", ":a", params)
+    v = parse_diffeq("(-p)", "v(0)", ":b", params)
     #V = parse_diffeq("{omega}*P", "V0", ":b", params)
 
-    scf = omega
-    prob.bind("P", P)
-    prob.bind("V", V)
+    prob.bind("p", p)
+    prob.bind("v", v)
     #make_output(prob,"Loc", "P", adc)
-    prob.bind("Pos", \
-              op.Emit(op.Var("P"),loc="A0") \
+    prob.bind("pos", \
+              op.Emit(op.Var("p"),loc="A0") \
     )
 
     # most accurately, 0.1
     #base_bnd = 0.1
-    base_bnd = 0.12
-    prob.set_interval("P",-base_bnd,base_bnd)
-    prob.set_interval("V",-base_bnd*scf,base_bnd*scf)
+    base_bnd = 1.0
+    prob.set_interval("p",-1,1)
+    prob.set_interval("v",-1,1)
     prob.set_max_sim_time(200)
     prob.compile()
-    menv = menvs.get_math_env(menv_name)
+    menv = menvs.get_math_env('t20')
     return menv,prob
 
