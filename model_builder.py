@@ -180,7 +180,7 @@ infer_subp.add_argument('--populate-crossbars',action='store_true',
                     help='insert default models for connection blocks')
 infer_subp.add_argument('--visualize',action='store_true',
                     help='emit visualizations for models')
-infer_subp.add_argument('--calib-obj',type=str,default='min_error',
+infer_subp.add_argument('--calib-obj',type=str,
                         help='calibration objective function to get datasets for')
 analyze_subp = subparsers.add_parser('analyze', \
                               help='return delta models for circuit')
@@ -189,6 +189,8 @@ analyze_subp.add_argument('circ_file',
 
 args = parser.parse_args()
 
+if args.calib_obj is None:
+  raise Exception("please specify calibration objective to infer models for")
 
 if args.subparser_name == "list":
   list(args)

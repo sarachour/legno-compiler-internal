@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import compiler.infer_pass.infer_util as infer_util
+import util.util as util
 import numpy as np
 from scipy.ndimage.filters import gaussian_filter
 import matplotlib.cm as cm
@@ -158,20 +159,20 @@ def plot_error(model,filename,dataset,use_delta_model=False):
 
   title = "|Error| of %s %s" % (labels['out'],tag)
   #plt.title(title)
-  in0 = infer_util.array_map(map(lambda x: x*scales['in0'], dataset.in0))
+  in0 = util.array_map(map(lambda x: x*scales['in0'], dataset.in0))
   out,meas = dataset.out,dataset.meas
   pred = infer_util.apply_model(model,out)
   if use_delta_model:
-    err = infer_util.array_map(map(lambda i: scales['out']*abs(meas[i]-pred[i]), \
+    err = util.array_map(map(lambda i: scales['out']*abs(meas[i]-pred[i]), \
                                  range(dataset.n)))
   else:
-    err = infer_util.array_map(map(lambda i: scales['out']*abs(meas[i]-out[i]), \
+    err = util.array_map(map(lambda i: scales['out']*abs(meas[i]-out[i]), \
                                    range(dataset.n)))
 
   if is_1d:
     heatmap1d(in0,out,err,labels)
   else:
-    in1 = infer_util.array_map(map(lambda x: x*scales['in1'], dataset.in1))
+    in1 = util.array_map(map(lambda x: x*scales['in1'], dataset.in1))
     heatmap2d(in0,in1,out,err,labels)
 
   save_figure(filename)
