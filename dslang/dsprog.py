@@ -5,48 +5,28 @@ import sys
 from enum import Enum
 import ops.op as op
 
-class MathEnv:
+class DSProgDatabase:
+    PROGRAMS = {}
 
-    def __init__(self,name):
-        self._name = name
-        self._sim_time = 1.0
-        self._input_time = 1.0
-        self._inputs = {}
+    @staticmethod
+    def register(name,dsprog,dssim):
+        assert(not name in DSProgDatabase.PROGRAMS)
+        DSProgDatabase.PROGRAMS[name] = (dsprog,dssim)
 
-    def input(self,name):
-        if not name in self._inputs:
-            raise Exception("input not recognized: %s" % name)
-        return self._inputs[name][0]
+    @staticmethod
+    def get(name):
+        return DSProgDatabase.PROGRAMS[name]
 
-    def is_periodic(self,name):
-        return self._inputs[name][1]
+    @staticmethod
+    def execute(name):
+        prog,sim = DSProgDatabase.get(name)
+        plot_diffeq(sim(), \
+                    prog())
 
-    def set_input(self,name,func,periodic=False):
-        assert(isinstance(func,op.Op))
-        self._inputs[name] = (func,periodic)
-
-    @property
     def name(self):
-        return self._name
+        return NotImplementedError
 
-    @property
-    def input_time(self):
-        return self._input_time
-
-    @property
-    def sim_time(self):
-        return self._sim_time
-
-    def set_input_time(self,t):
-        assert(t > 0)
-        self._input_time = t
-
-
-    def set_sim_time(self,t):
-        assert(t > 0)
-        self._sim_time = t
-
-class MathProg:
+class DSProg:
     class ExprType(Enum):
         INTEG = "integ"
         EXTERN = "extern"
@@ -55,6 +35,7 @@ class MathProg:
     def __init__(self,name):
         self._name = name
         self._bindings = {}
+        self._lambdas = {}
         self._intervals = {}
         self._bandwidths= {}
         self._variables = []
@@ -63,7 +44,7 @@ class MathProg:
         self.__order = None
         self.__order_integs = None
         self.__types = None
-
+        self.__handles = 0
 
 
 
@@ -121,10 +102,26 @@ class MathProg:
         return self._variables
 
 
-    def bind(self,var,expr):
+    def _bind(self,var,expr):
         assert(not var in self._bindings)
         self._variables.append(var)
         self._bindings[var] = expr
+
+    def decl_stvar(self,var,deriv,ic="0.0",params={}):
+        deriv = opparse.parse(deriv.format(**params))
+        ic = opparse.parse(params['ic'].format(**params))
+        handle = ":h%d" % self.__handles
+        expr = op.Integ(deriv,ic,handle=handle)
+        self.__handles += 1
+        self._bind(var,obj)
+
+    def decl_var(self,var,expr,params={}):
+        expr_conc = expr.format(**params)
+        return opparse.parse(expr_conc)
+
+    def decl_lambda(self,var,expr,params={}):
+        expr_conc = opparse.parse(expr.format(**params))
+        self._lambdas[var] = expr_conc
 
     def bindings(self):
         for var,expr in self._bindings.items():
@@ -135,23 +132,10 @@ class MathProg:
             return None
         return self._bindings[v]
 
-    def interval(self,v):
+    def get_interval(self,v):
         return self._intervals[v]
 
-    def bandwidth(self,v):
-        bw = self._bandwidths[v]
-        assert(isinstance(bw,Bandwidth))
-        return bw
-
-    def set_max_sim_time(self,t):
-        self.max_sim_time = t
-
-    def set_bandwidth(self,v,b):
-        if not v in self._variables:
-            self._variables.append(v)
-        self._bandwidths[v] = Bandwidth(b)
-
-    def set_interval(self,v,min_v,max_v):
+    def interval(self,v,min_v,max_v):
         assert(min_v <= max_v)
         if not v in self._variables:
             self._variables.append(v)
@@ -161,11 +145,21 @@ class MathProg:
         for v,ival in self._intervals.items():
             yield v,ival
 
+    def get_bandwidth(self,v):
+        bw = self._bandwidths[v]
+        assert(isinstance(bw,Bandwidth))
+        return bw
+
+    def bandwidth(self,v,b):
+        if not v in self._variables:
+            self._variables.append(v)
+        self._bandwidths[v] = Bandwidth(b)
+
     def bandwidths(self):
         for v,bw in self._bandwidths.items():
             yield v,bw
 
-    def compile(self):
+    def check(self):
         for variable,expr in self._bindings.items():
             if not (variable in self._intervals):
                 if expr is None:

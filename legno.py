@@ -1,8 +1,7 @@
 import sys
 import os
 import numpy as np
-import bmark.diffeqs as bmark
-import bmark.menvs as menvs
+import progs
 import util.paths as paths
 
 

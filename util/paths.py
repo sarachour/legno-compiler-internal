@@ -39,14 +39,13 @@ class PathHandler:
     def set_root_dir(self,name,bmark):
         self.ROOT_DIR = "%s/legno/%s" % (config.OUTPUT_PATH,name)
         self.BMARK_DIR = self.ROOT_DIR + ("/%s" % bmark)
-        self.ABS_CIRC_DIR = self.BMARK_DIR + "/abs-circ"
-        self.ABS_GRAPH_DIR = self.BMARK_DIR + "/abs-graph"
-        self.CONC_CIRC_DIR = self.BMARK_DIR + "/conc-circ"
-        self.CONC_GRAPH_DIR = self.BMARK_DIR + "/conc-graph"
+        self.ABS_CIRC_DIR = self.BMARK_DIR + "/lgraph-adp"
+        self.ABS_GRAPH_DIR = self.BMARK_DIR + "/lgraph-graph"
+        self.CONC_CIRC_DIR = self.BMARK_DIR + "/lscale-adp"
+        self.CONC_GRAPH_DIR = self.BMARK_DIR + "/lscale-graph"
         self.GRENDEL_FILE_DIR = self.BMARK_DIR + "/grendel"
         self.PLOT_DIR = self.BMARK_DIR + "/plots"
         self.MEAS_WAVEFORM_FILE_DIR = self.BMARK_DIR + "/out-waveform"
-        self.REF_WAVEFORM_FILE_DIR = self.BMARK_DIR + "/ref-waveform"
         self.TIME_DIR = self.ROOT_DIR + "/TIMES"
 
 
@@ -77,10 +76,6 @@ class PathHandler:
       return self.GRENDEL_FILE_DIR+ "/%s_%s_s%s_%s_%s_%s_%s.grendel" % \
         (self._bmark,index_str,scale_index,model,opt,menv_name,henv_name)
 
-
-    def reference_waveform_file(self,bmark,menv_name):
-      return self.REF_WAVEFORM_FILE_DIR+ "/%s_%s.json" % \
-        (self._bmark,menv_name)
 
     def measured_waveform_dir(self):
       return self.MEAS_WAVEFORM_FILE_DIR
