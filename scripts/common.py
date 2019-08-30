@@ -17,8 +17,8 @@ def get_output_files(grendel_script):
       instr = cmdparse.parse(line)
       if isinstance(instr,osc.OscGetValuesCmd):
         yield instr.filename
-      elif isinstance(instr,microget.MicroGetADCValuesCmd):
-        yield instr.filename
+      #elif isinstance(instr,microget.MicroGetADCValuesCmd):
+      #  yield instr.filename
 
 def make_args(subset,bmark,arco_inds,jaunt_indx,model,opt,menv_name,hwenv_name):
   return  {
