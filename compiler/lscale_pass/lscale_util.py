@@ -1,4 +1,4 @@
-import ops.jop as jop
+import ops.scop as scop
 import ops.op as ops
 import ops.interval as interval
 
@@ -43,8 +43,8 @@ def cancel_signs(orig_lhs,orig_rhs):
         log_info("[sign mismatch] %s OP %s" % (orig_lhs,orig_rhs))
         return False,orig_lhs,orig_rhs
 
-    new_expr1 = jop.JMult(jop.JConst(const1),expr1)
-    new_expr2 = jop.JMult(jop.JConst(const2),expr2)
+    new_expr1 = scop.SCMult(scop.SCConst(const1),expr1)
+    new_expr2 = scop.SCMult(scop.SCConst(const2),expr2)
     return True,new_expr1,new_expr2
 
 
@@ -75,13 +75,13 @@ def lower_bound_constraint(jenv,expr,math_lower,hw_lower,annot):
 
     if same_sign(math_lower,hw_lower) and \
        math_lower > 0 and hw_lower > 0:
-        jenv.gte(jop.JMult(expr,jop.JConst(math_lower)),
-                 jop.JConst(hw_lower),annot)
+        jenv.gte(scop.SCMult(expr,scop.SCConst(math_lower)),
+                 scop.SCConst(hw_lower),annot)
 
     elif same_sign(math_lower,hw_lower) and \
          math_lower < 0 and hw_lower < 0:
-        jenv.lte(jop.JMult(expr,jop.JConst(-math_lower)),
-                 jop.JConst(-hw_lower),annot)
+        jenv.lte(scop.SCMult(expr,scop.SCConst(-math_lower)),
+                 scop.SCConst(-hw_lower),annot)
 
     elif not same_sign(math_lower,hw_lower) and \
          hw_lower < 0 and math_lower > 0:
@@ -116,13 +116,13 @@ def upper_bound_constraint(jenv,expr,math_upper,hw_upper,annot):
 
     if same_sign(math_upper,hw_upper) and \
        math_upper > 0 and hw_upper > 0:
-        jenv.lte(jop.JMult(expr,jop.JConst(math_upper)),
-                 jop.JConst(hw_upper),annot)
+        jenv.lte(scop.SCMult(expr,scop.SCConst(math_upper)),
+                 scop.SCConst(hw_upper),annot)
 
     elif same_sign(math_upper,hw_upper) and \
          math_upper < 0 and hw_upper < 0:
-        jenv.gte(jop.JMult(expr,jop.JConst(-math_upper)),
-                 jop.JConst(-hw_upper),annot)
+        jenv.gte(scop.SCMult(expr,scop.SCConst(-math_upper)),
+                 scop.SCConst(-hw_upper),annot)
 
     elif not same_sign(math_upper,hw_upper) and \
          hw_upper > 0 and math_upper < 0:

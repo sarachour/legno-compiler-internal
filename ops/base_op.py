@@ -25,6 +25,7 @@ class OpType(Enum):
   LN= "ln"
   EXP= "exp"
   CLAMP="clamp"
+  RANDFUN="randfun"
 
 class Op:
 

@@ -51,15 +51,13 @@ class Integ(GenericOp2):
         return self.handle
 
     def infer_interval(self,intervals={}):
-      raise NotImplementedError
-      ideriv = self.deriv.compute_interval(intervals)
-      icond = self.init_cond.compute_interval(intervals)
+      if not self.handle in intervals:
+        raise Exception("handle not in interval.")
+
+      ival = intervals[self.handle]
       istvar = interval.IntervalCollection(ival)
-      icomb = icond.merge(ideriv, istvar.interval)
-      icomb.bind(self.deriv_handle, ideriv.interval)
-      icomb.bind(self.handle, ival)
-      icomb.bind(self.ic_handle, icond.interval)
-      return icomb
+      istvar.bind(self.handle,ival)
+      return istvar
 
     def state_vars(self):
         stvars = Op.state_vars(self)
@@ -290,8 +288,8 @@ class Mult(GenericOp2):
 
 
     def infer_interval(self,intervals):
-        is1 = self.arg1.compute_interval(intervals)
-        is2 = self.arg2.compute_interval(intervals)
+        is1 = self.arg1.infer_interval(intervals)
+        is2 = self.arg2.infer_interval(intervals)
         return is1.merge(is2,
                   is1.interval.mult(is2.interval))
 

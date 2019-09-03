@@ -1,31 +1,27 @@
 import gpkit
 import itertools
 
-import lab_bench.lib.chipcmd.data as chipcmd
+from hwlib.config import Labels
+from hwlib.adp import AnalogDeviceProg
+import hwlib.model as modelib
+import hwlib.block as blocklib
+import hwlib.props as props
 
-from chip.config import Labels
-import chip.cont as cont
-from chip.conc import ConcCirc
-import chip.model as modelib
-import chip.block as blocklib
+import compiler.lscale_pass.scenv as scenvlib
+import compiler.lscale_pass.scenv_gpkit as scenvlib_gpkit
+import compiler.lscale_pass.scenv_smt as scenvlib_smt
+import compiler.lscale_pass.objective.basic_obj as basicobj
+import compiler.lscale_pass.expr_visitor as exprvisitor
+from compiler.lscale_pass.objective.obj_mgr import LScaleObjectiveFunctionManager
 
-from compiler.common import infer
-import compiler.jaunt_pass.jenv as jenvlib
-import compiler.jaunt_pass.jenv_gpkit as jgpkit
-import compiler.jaunt_pass.jenv_smt as jsmt
-import compiler.jaunt_pass.objective.basic_obj as basicobj
-import compiler.jaunt_pass.expr_visitor as exprvisitor
-from compiler.jaunt_pass.objective.obj_mgr import JauntObjectiveFunctionManager
+import compiler.lscale_pass.lscale_util as lscale_util
+import compiler.lscale_pass.lscale_common as lscale_common
 
-import compiler.jaunt_pass.jaunt_util as jaunt_util
-import compiler.jaunt_pass.jaunt_common as jaunt_common
-
-import ops.jop as jop
+import ops.scop as scop
 import ops.op as ops
-import chip.props as props
 import ops.interval as interval
 
-import signal
+
 import random
 import time
 import numpy as np
@@ -33,11 +29,11 @@ import util.util as util
 import util.config as CONFIG
 from tqdm import tqdm
 
-def sc_get_scm_var(jenv,block_name,loc,v):
+def sc_get_scm_var(scenv,block_name,loc,v):
     if v.type == cont.CSMVar.Type.OPVAR:
-        jvar = jenv.get_op_range_var(block_name,loc,v.port,v.handle)
+        jvar = scenv.get_op_range_var(block_name,loc,v.port,v.handle)
     elif v.type == cont.CSMVar.Type.COEFFVAR:
-        jvar = jenv.get_gain_var(block_name,loc,v.port,v.handle)
+        jvar = scenv.get_gain_var(block_name,loc,v.port,v.handle)
     else:
         raise Exception("unknown var type")
     return jvar
@@ -45,16 +41,16 @@ def sc_get_scm_var(jenv,block_name,loc,v):
 
 class ScaleModelExprVisitor(exprvisitor.ExprVisitor):
 
-    def __init__(self,jenv,circ,block,loc):
-        exprvisitor.ExprVisitor.__init__(self,jenv,circ,block,loc,None)
+    def __init__(self,scenv,circ,block,loc):
+        exprvisitor.ExprVisitor.__init__(self,scenv,circ,block,loc,None)
 
     def visit_var(self,expr):
         block,loc = self.block,self.loc
         config = self.circ.config(block.name,loc)
         scale_model = block.scale_model(config.comp_mode)
         var= scale_model.var(expr.name)
-        jaunt_var = sc_get_scm_var(self.jenv,block.name,loc,var)
-        return jop.JVar(jaunt_var)
+        lscale_var = sc_get_scm_var(self.scenv,block.name,loc,var)
+        return scop.SCVar(lscale_var)
 
     def visit_pow(self,expr):
         expr1 = self.visit_expr(expr.arg1)
@@ -63,18 +59,18 @@ class ScaleModelExprVisitor(exprvisitor.ExprVisitor):
 
 
     def visit_const(self,expr):
-        return jop.JConst(expr.value)
+        return scop.SCConst(expr.value)
 
     def visit_mult(self,expr):
         expr1 = self.visit_expr(expr.arg1)
         expr2 = self.visit_expr(expr.arg2)
-        return jop.JMult(expr1,expr2)
+        return scop.SCMult(expr1,expr2)
 
 class SCFInferExprVisitor(exprvisitor.SCFPropExprVisitor):
 
-    def __init__(self,jenv,circ,block,loc,port):
+    def __init__(self,scenv,circ,block,loc,port):
         exprvisitor.SCFPropExprVisitor.__init__(self,\
-                                                jenv,circ, \
+                                                scenv,circ, \
                                                 block,loc,port)
 
     def coeff(self,handle):
@@ -84,55 +80,54 @@ class SCFInferExprVisitor(exprvisitor.SCFPropExprVisitor):
       scale_mode = model.baseline
       coeff_const = block.coeff(config.comp_mode, \
                                 scale_mode,self.port)
-      coeff_var = self.jenv.get_coeff_var(self.block.name, \
+      coeff_var = self.scenv.get_coeff_var(self.block.name, \
                                           self.loc, \
                                           self.port,handle=handle)
-      return jop.JMult(jop.JConst(coeff_const), \
-                       jop.JVar(coeff_var))
+      return scop.SCMult(scop.SCConst(coeff_const), \
+                       scop.SCVar(coeff_var))
 
-def sc_physics_model(jenv,scale_mode,circ,block_name,loc,port,handle):
+def sc_physics_model(scenv,scale_mode,circ,block_name,loc,port,handle):
         block = circ.board.block(block_name)
         config = circ.config(block.name,loc)
 
-        baseline = block.baseline
         baseline = block.baseline(config.comp_mode)
         config.set_scale_mode(scale_mode)
 
-        modevar = jenv.decl_mode_var(block_name,loc,scale_mode)
-        jvar_gain = jenv.decl_gain_var(block_name, \
+        modevar = scenv.decl_mode_var(block_name,loc,scale_mode)
+        jvar_gain = scenv.decl_gain_var(block_name, \
                                        loc, \
                                        port,handle)
-        jvar_ops = jenv.decl_op_range_var(block_name, \
+        jvar_ops = scenv.decl_op_range_var(block_name, \
                                           loc, \
                                           port,handle)
 
         gain = block.coeff(config.comp_mode,scale_mode,port,handle)
-        jenv.implies(modevar,jvar_gain, gain)
+        scenv.implies(modevar,jvar_gain, gain)
 
         props_sc = block.props(config.comp_mode,scale_mode,port,handle)
         props_bl = block.props(config.comp_mode,baseline,port,handle)
         scf = props_sc.interval().bound/props_bl.interval().bound
-        jenv.implies(modevar,jvar_ops, scf)
+        scenv.implies(modevar,jvar_ops, scf)
 
-        jvar_phys_gain = jenv.decl_phys_gain_var(block_name, \
+        jvar_phys_gain = scenv.decl_phys_gain_var(block_name, \
                                                 loc, \
                                                 port,handle)
-        jvar_phys_ops_lower = jenv.decl_phys_op_range_scvar(block_name, \
+        jvar_phys_ops_lower = scenv.decl_phys_op_range_scvar(block_name, \
                                                             loc, \
                                                             port,handle,
                                                             lower=True)
-        jvar_phys_ops_upper = jenv.decl_phys_op_range_scvar(block_name, \
+        jvar_phys_ops_upper = scenv.decl_phys_op_range_scvar(block_name, \
                                                             loc, \
                                                             port,handle,
                                                             lower=False)
 
-        jvar_unc = jenv.decl_phys_uncertainty(block_name, \
+        jvar_unc = scenv.decl_phys_uncertainty(block_name, \
                                          loc, \
                                          port,handle)
 
         #config.scale_mode = config.scale_mode
-        model = jenv.params.model
-        pars = jaunt_common.get_physics_params(jenv, \
+        model = scenv.params.model
+        pars = lscale_common.get_physics_params(scenv, \
                                                circ, \
                                                block, \
                                                loc, \
@@ -141,10 +136,10 @@ def sc_physics_model(jenv,scale_mode,circ,block_name,loc,port,handle):
         uncertainty,gain = pars['uncertainty'],pars['gain']
         oprange_scale_lower = pars['oprange_lower']
         oprange_scale_upper = pars['oprange_upper']
-        jenv.implies(modevar,jvar_phys_gain, gain)
-        jenv.implies(modevar,jvar_phys_ops_lower, oprange_scale_lower)
-        jenv.implies(modevar,jvar_phys_ops_upper, oprange_scale_upper)
-        jenv.implies(modevar,jvar_unc, uncertainty)
+        scenv.implies(modevar,jvar_phys_gain, gain)
+        scenv.implies(modevar,jvar_phys_ops_lower, oprange_scale_lower)
+        scenv.implies(modevar,jvar_phys_ops_upper, oprange_scale_upper)
+        scenv.implies(modevar,jvar_unc, uncertainty)
         config.set_scale_mode(baseline)
 
 def sc_coalesce_connections(circ):
@@ -225,7 +220,7 @@ def sc_coalesce_connections(circ):
             yield sblk,sloc,sport, \
                 dblk,dloc,dport
 
-def sc_build_connection_constraints(jenv,circ):
+def sc_build_connection_constraints(scenv,circ):
     def get_range(blkname,loc,port):
         block = circ.board.block(blkname)
         config = circ.config(blkname,loc)
@@ -239,32 +234,32 @@ def sc_build_connection_constraints(jenv,circ):
 
     for sblk,sloc,sport, \
         dblk,dloc,dport in sc_coalesce_connections(circ):
-        if jenv.has_op_range_var(sblk,sloc,sport) and \
-           jenv.has_op_range_var(dblk,dloc,dport):
-            src_ov = jenv.get_op_range_var(sblk, \
+        if scenv.has_op_range_var(sblk,sloc,sport) and \
+           scenv.has_op_range_var(dblk,dloc,dport):
+            src_ov = scenv.get_op_range_var(sblk, \
                                            sloc, \
                                            sport)
             src_max = get_range(sblk,sloc,sport)
-            dest_ov = jenv.get_op_range_var(dblk, \
+            dest_ov = scenv.get_op_range_var(dblk, \
                                             dloc, \
                                             dport)
             dest_max = get_range(dblk,dloc,dport)
             if dblk == "integrator":
-                jenv.lte( \
-                         jop.JMult(jop.JVar(src_ov),jop.JConst(src_max)), \
-                     jop.JMult(jop.JVar(dest_ov),jop.JConst(dest_max)), \
+                scenv.lte( \
+                         scop.SCMult(scop.SCVar(src_ov),scop.SCConst(src_max)), \
+                     scop.SCMult(scop.SCVar(dest_ov),scop.SCConst(dest_max)), \
                      'jc-match-scale-modes')
             else:
-                jenv.eq( \
-                     jop.JMult(jop.JVar(src_ov),jop.JConst(src_max)), \
-                     jop.JMult(jop.JVar(dest_ov),jop.JConst(dest_max)), \
+                scenv.eq( \
+                     scop.SCMult(scop.SCVar(src_ov),scop.SCConst(src_max)), \
+                     scop.SCMult(scop.SCVar(dest_ov),scop.SCConst(dest_max)), \
                      'jc-match-scale-modes')
 
 
 
     return True
 
-def sc_decl_scale_model_variables(jenv,circ):
+def sc_decl_scale_model_variables(scenv,circ):
     success = True
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
@@ -277,14 +272,14 @@ def sc_decl_scale_model_variables(jenv,circ):
                     if not block.whitelist(config.comp_mode, scm):
                         continue
 
-                    if  not jenv.model_db.has(block.name,loc,port, \
+                    if  not scenv.model_db.has(block.name,loc,port, \
                                                config.comp_mode, \
                                                scm,handle):
                         missing_scms.append(scm)
 
-                        if jenv.params.only_scale_modes_with_models:
+                        if scenv.params.only_scale_modes_with_models:
                             print("scale mode dne: %s %s[%s].%s cm=%s scm=%s handle=%s" \
-                                  % (jenv.params.calib_obj,
+                                  % (scenv.params.calib_obj,
                                      block_name,loc, \
                                      port,
                                      config.comp_mode,
@@ -292,12 +287,12 @@ def sc_decl_scale_model_variables(jenv,circ):
                             continue
 
                     valid_scms.append(scm)
-                    sc_physics_model(jenv,scm,circ,block_name, \
+                    sc_physics_model(scenv,scm,circ,block_name, \
                                      loc,port,handle=handle)
 
         modevars = []
         for scm in missing_scms:
-                jenv.model_db.log_missing_model(block.name, \
+                scenv.model_db.log_missing_model(block.name, \
                                                   loc, \
                                                   block.outputs[0], \
                                                   config.comp_mode, \
@@ -310,132 +305,132 @@ def sc_decl_scale_model_variables(jenv,circ):
         for scale_mode in block.scale_modes(config.comp_mode):
             if not scale_mode in valid_scms:
                 continue
-            modevar = jenv.get_mode_var(block_name,loc,scale_mode)
+            modevar = scenv.get_mode_var(block_name,loc,scale_mode)
             modevars.append(modevar)
 
-        jenv.exactly_one(modevars)
+        scenv.exactly_one(modevars)
 
     # figure out which ports have linked scaling modes by collapsing * ports.
-    sc_build_connection_constraints(jenv,circ)
+    sc_build_connection_constraints(scenv,circ)
 
     return success
 
-def sc_build_jaunt_env(prog,circ, \
+def sc_build_lscale_env(prog,circ, \
                        model="ideal", \
                        max_freq=None, \
                        digital_error=0.05, \
                        analog_error=0.05):
-    jenv = jenvlib.JauntInferEnv(model, \
-                                 max_freq=max_freq, \
-                                 digital_error=digital_error,
-                                 analog_error=analog_error)
+    scenv = scenvlib.LScaleInferEnv(model, \
+                                    max_freq=max_freq, \
+                                    digital_error=digital_error,
+                                    analog_error=analog_error)
     # declare scaling factors
-    jaunt_common.decl_scale_variables(jenv,circ)
+    lscale_common.decl_scale_variables(scenv,circ)
     # build continuous model constraints
-    success = sc_decl_scale_model_variables(jenv,circ)
+    success = sc_decl_scale_model_variables(scenv,circ)
     if not success:
-        jenv.fail("missing models")
-        return jenv
+        scenv.fail("missing models")
+        return scenv
 
-    sc_generate_problem(jenv,prog,circ)
+    sc_generate_problem(scenv,prog,circ)
 
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for port in block.outputs + block.inputs:
-            v = jenv.get_scvar(block_name,loc,port)
-            jenv.lt(jop.JConst(1e-12), jop.JVar(v), \
+            v = scenv.get_scvar(block_name,loc,port)
+            scenv.lt(scop.SCConst(1e-12), scop.SCVar(v), \
                     "ensure nonzero");
-            jenv.gt(jop.JConst(1e12), jop.JVar(v), \
+            scenv.gt(scop.SCConst(1e12), scop.SCVar(v), \
                     "ensure nonzero");
 
-    return jenv
+    return scenv
 
 # traverse dynamics, also including coefficient variable
-def sc_traverse_dynamics(jenv,circ,block,loc,out):
-    visitor = exprvisitor.SCFPropExprVisitor(jenv,circ,block,loc,out)
+def sc_traverse_dynamics(scenv,circ,block,loc,out):
+    visitor = exprvisitor.SCFPropExprVisitor(scenv,circ,block,loc,out)
     visitor.visit()
 
-def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
-    jaunt_util.log_info("%s[%s].%s" % (block.name,loc,port))
+def sc_interval_constraint(scenv,circ,prob,block,loc,port,handle=None):
+    lscale_util.log_info("%s[%s].%s" % (block.name,loc,port))
     config = circ.config(block.name,loc)
     baseline = block.baseline(config.comp_mode)
     prop = block.props(config.comp_mode,baseline,port,handle=handle)
     if isinstance(prop, props.AnalogProperties):
-        jaunt_common.analog_op_range_constraint(jenv,circ,block,loc,port,handle,
+        lscale_common.analog_op_range_constraint(scenv,circ,block,loc,port,handle,
                                                 '%s-%s-%s' % \
                                                 (block.name,loc,port))
-        jaunt_common.analog_bandwidth_constraint(jenv,circ,block,loc,port,handle,
+        lscale_common.analog_bandwidth_constraint(scenv,circ,block,loc,port,handle,
                                                  '%s-%s-%s' % \
                                                  (block.name,loc,port))
 
     elif isinstance(prop, props.DigitalProperties):
-        jaunt_common.digital_op_range_constraint(jenv,circ,block,loc,port,handle,
+        lscale_common.digital_op_range_constraint(scenv,circ,block,loc,port,handle,
                                                 '%s-%s-%s' % \
                                                  (block.name,loc,port))
-        jaunt_common.digital_quantize_constraint(jenv,circ,block,loc,port,handle,
+        lscale_common.digital_quantize_constraint(scenv,circ,block,loc,port,handle,
                                                  'quantize')
-        jaunt_common.digital_bandwidth_constraint(jenv,prob,circ, \
+        lscale_common.digital_bandwidth_constraint(scenv,prob,circ, \
                                                   block,loc,port,handle,
                                                   '%s-%s-%s' % \
                                                   (block.name,loc,port))
     else:
         raise Exception("unknown")
 
-def sc_port_used(jenv,block_name,loc,port,handle=None):
-    return jenv.in_use((block_name,loc,port,handle), \
-                       tag=jenvlib.JauntVarType.SCALE_VAR)
+def sc_port_used(scenv,block_name,loc,port,handle=None):
+    return scenv.in_use((block_name,loc,port,handle), \
+                       tag=scenvlib.LScaleVarType.SCALE_VAR)
 
-def sc_generate_problem(jenv,prob,circ):
+def sc_generate_problem(scenv,prob,circ):
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for out in block.outputs:
             # ensure we can propagate the dynamics
             #if block.name == 'integrator':
-                #jenv.interactive()
+                #scenv.interactive()
 
-            sc_traverse_dynamics(jenv,circ,block,loc,out)
+            sc_traverse_dynamics(scenv,circ,block,loc,out)
 
         for port in block.outputs + block.inputs:
-            if sc_port_used(jenv,block_name,loc,port):
-                sc_interval_constraint(jenv,circ,prob,block,loc,port)
+            if sc_port_used(scenv,block_name,loc,port):
+                sc_interval_constraint(scenv,circ,prob,block,loc,port)
 
             for handle in block.handles(config.comp_mode,port):
-                if sc_port_used(jenv,block_name,loc,port,handle=handle):
-                    sc_interval_constraint(jenv,circ,prob,block,loc,port, \
+                if sc_port_used(scenv,block_name,loc,port,handle=handle):
+                    sc_interval_constraint(scenv,circ,prob,block,loc,port, \
                                            handle=handle)
 
 
 
-    if not jenv.uses_tau() or not jenv.time_scaling:
-        jenv.eq(jop.JVar(jenv.tau()), jop.JConst(1.0),'tau-fixed')
+    if not scenv.uses_tau() or not scenv.time_scaling:
+        scenv.eq(scop.SCVar(scenv.tau()), scop.SCConst(1.0),'tau-fixed')
     else:
-        jenv.lte(jop.JVar(jenv.tau()), jop.JConst(1e10),'tau-min')
-        jenv.gte(jop.JVar(jenv.tau()), jop.JConst(1e-10),'tau-max')
-        jaunt_common.max_sim_time_constraint(jenv,prob,circ)
+        scenv.lte(scop.SCVar(scenv.tau()), scop.SCConst(1e10),'tau-min')
+        scenv.gte(scop.SCVar(scenv.tau()), scop.SCConst(1e-10),'tau-max')
+        lscale_common.max_sim_time_constraint(scenv,prob,circ)
 
 
 
-def concretize_result(jenv,circ,nslns):
-    if jenv.failed():
+def concretize_result(scenv,circ,nslns):
+    if scenv.failed():
         return
 
-    smtenv = jsmt.build_smt_prob(circ,jenv)
-    for result in jsmt.solve_smt_prob(smtenv,nslns=nslns):
+    smtenv = scenvlib_smt.build_smt_prob(circ,scenv)
+    for result in scenvlib_smt.solve_smt_prob(smtenv,nslns=nslns):
         new_circ = circ.copy()
         for key,value in result.items():
             if isinstance(value,bool):
                 continue
 
-            jaunt_util.log_info("%s=%s" % (key,value))
+            lscale_util.log_info("%s=%s" % (key,value))
 
         for block_name,loc,config in new_circ.instances():
             block = circ.board.block(block_name)
             scale_mode = None
             for scm in block.scale_modes(config.comp_mode):
-                if not jenv.has_mode_var(block_name,loc,scm):
+                if not scenv.has_mode_var(block_name,loc,scm):
                     continue
 
-                mode = jenv.get_mode_var(block_name,loc,scm)
+                mode = scenv.get_mode_var(block_name,loc,scm)
                 if result[mode]:
                     assert(scale_mode is None)
                     scale_mode = scm
@@ -444,47 +439,24 @@ def concretize_result(jenv,circ,nslns):
 
             config.set_scale_mode(scale_mode)
             print("%s[%s] = %s" % (block_name,loc,scale_mode))
-            jaunt_util.log_info("%s[%s] = %s" % (block_name,loc,scale_mode))
+            lscale_util.log_info("%s[%s] = %s" % (block_name,loc,scale_mode))
         yield new_circ
 
-def solve_convex_first(prob,circ,jenv):
-    jopt = JauntObjectiveFunctionManager(jenv)
-    jaunt_util.log_debug("===== %s =====" % jopt.method)
-    for joptfun in jopt.inference_methods():
-        jaunt_util.log_info("===> %s <===" % joptfun.name())
-        jopt.method = joptfun.name()
-        for idx,(gpprob,obj) in \
-            enumerate(jgpkit.build_gpkit_problem(circ,jenv,jopt)):
-            if gpprob is None:
-                print("no solution")
-                continue
 
-            jaunt_util.log_debug("-> %s" % jopt.method)
-            sln = jgpkit.solve_gpkit_problem(gpprob)
-            if sln is None:
-                jaunt_util.log_info("[[FAILURE - NO SLN]]")
-                jenv.set_solved(False)
-                jgpkit.debug_gpkit_problem(gpprob)
-                return
-            else:
-                jaunt_util.log_info("[[SUCCESS - FOUND SLN]]")
-                jenv.set_solved(True)
-
-
-def infer_scale_config(prog,circ,nslns, \
+def infer_scale_config(prog,adp,nslns, \
                        model="ideal", \
                        max_freq=None, \
                        analog_error=0.05,
                        digital_error=0.05):
-    assert(isinstance(circ,ConcCirc))
-    jenv = sc_build_jaunt_env(prog,circ,
+    assert(isinstance(adp,AnalogDeviceProg))
+    scenv = sc_build_lscale_env(prog,adp,
                               model=model, \
                               max_freq=max_freq, \
                               analog_error=analog_error, \
                               digital_error=digital_error)
-    #solve_convex_first(prog,circ,jenv)
+    #solve_convex_first(prog,adp,jenv)
     count = 0
-    for new_circ in concretize_result(jenv,circ,nslns):
-        yield new_circ
+    for new_adp in concretize_result(scenv,adp,nslns):
+        yield new_adp
         count += 1
 

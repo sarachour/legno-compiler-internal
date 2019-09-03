@@ -16,7 +16,7 @@ class AnalogDeviceProg:
         self.meta = {}
 
     def copy(self):
-        circ = ConcCirc(self._board)
+        circ = AnalogDeviceProg(self._board)
         circ.set_tau(self.tau)
         for block_name,loc,cfg in self.instances():
             circ.use(block_name,loc,cfg.copy())
@@ -145,7 +145,7 @@ class AnalogDeviceProg:
             yield path
 
 
-    def conn(self,block1,loc1,port1,block2,loc2,port2):
+    def conn(self,block1,loc1,port1,block2,loc2,port2,check_conn=False):
         if not self.in_use(block1,loc1):
             raise Exception("block <%s.%s> not in use" % (block1,loc1))
 
@@ -153,7 +153,8 @@ class AnalogDeviceProg:
             raise Exception("block <%s.%s> not in use" % (block1,loc1))
 
 
-        if not self._board is None and \
+        if check_conn and \
+           not self._board is None and \
            not self._board.can_connect(block1,loc1,port1,
                                        block2,loc2,port2):
             raise Exception("cannot connect <%s.%s.%s> to <%s.%s.%s>" % \
@@ -173,7 +174,7 @@ class AnalogDeviceProg:
 
     @staticmethod
     def from_json(board,obj):
-        circ = ConcCirc(board)
+        circ = AnalogDeviceProg(board)
         circ.set_tau(obj['tau'])
         for inst in obj['insts']:
             assert(board is None or \
@@ -203,9 +204,9 @@ class AnalogDeviceProg:
     def read(board,filename):
         with open(filename,'r') as fh:
             obj = json.loads(fh.read())
-            conc_circ = ConcCirc.from_json(board,obj)
-            conc_circ._filename = filename
-            return conc_circ
+            adp = AnalogDeviceProg.from_json(board,obj)
+            adp._filename = filename
+            return adp
 
     def to_json(self):
         data_struct = {

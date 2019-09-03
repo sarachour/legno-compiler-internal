@@ -43,20 +43,17 @@ lscale_subp = subparsers.add_parser('lscale', \
                                    help='scale circuit parameters.')
 lscale_subp.add_argument('--model', default="physical",
                         help='use physical models to inform constraints.')
-lscale_subp.add_argument('--scale-circuits', type=int,default=15, \
+lscale_subp.add_argument('--scale-circuits', type=int,default=5, \
                        help='number of scaled circuits to generate.')
 lscale_subp.add_argument('--digital-error', type=float, default=0.04, \
                         help='do performance sweep.')
 lscale_subp.add_argument('--analog-error',type=float,default=0.04, \
                         help='do performance sweep.')
 lscale_subp.add_argument('--search',action="store_true")
-lscale_subp.add_argument('--use_model-uncertainty', \
-                        action='store_true', \
-                        help='use the uncertainty bundled with the model')
 lscale_subp.add_argument('program', type=str,help='benchmark to compile')
 
-
-lscale_subp.add_argument("--max-freq", type=float, help="maximum frequency in Khz")
+lscale_subp.add_argument("--max-freq", type=float, \
+                         help="maximum frequency in Khz")
 
 graph_subp = subparsers.add_parser('graph', \
                                    help='emit debugging graph.')

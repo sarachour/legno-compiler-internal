@@ -1,5 +1,5 @@
 
-class JauntObjectiveFunction():
+class LScaleObjectiveFunction():
 
   def __init__(self,obj,cstrs=[],tag=None):
     self._cstrs = cstrs

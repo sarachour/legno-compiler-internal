@@ -1,110 +1,113 @@
 
-from compiler.common import infer
+import ops.scop as scop
+import ops.op as ops
+import ops.interval as interval
+
+import hwlib.model as hwmodel
+import hwlib.props as props
+from hwlib.adp import AnalogDeviceProg
+
+
+import compiler.common.prop_interval as prop_interval
 
 import compiler.lscale_pass.lscale_util as lscale_util
 import compiler.lscale_pass.lscale_common as lscale_common
 import compiler.lscale_pass.scenv as scenvlib
 import compiler.lscale_pass.scenv_gpkit as scenv_gpkit
 
-from hwlib.adp import AnalogDeviceProg
-from compiler.lscale_pass.objective.obj_mgr import LscaleObjectiveFunctionManager
 import compiler.lscale_pass.expr_visitor as exprvisitor
 import compiler.lscale_pass.lscale_util as lscale_util
 import compiler.lscale_pass.lscale_common as lscale_common
 import compiler.lscale_pass.lscale_infer as lscale_infer
 import compiler.lscale_pass.lscale_physlog as lscale_physlog
-
-
-import ops.jop as jop
-import ops.op as ops
-from chip.model import ModelDB
-import chip.props as props
-import ops.interval as interval
+from compiler.lscale_pass.objective.obj_mgr import LScaleObjectiveFunctionManager
 
 
 
-def sc_interval_constraint(jenv,circ,prob,block,loc,port,handle=None):
+
+
+def sc_interval_constraint(scenv,circ,prob,block,loc,port,handle=None):
     config = circ.config(block.name,loc)
     prop = block.props(config.comp_mode,config.scale_mode,port,handle=handle)
     annot = "%s.%s.%s" % (block.name,loc,port)
     if isinstance(prop, props.AnalogProperties):
-        jaunt_common.analog_op_range_constraint(jenv,circ,block,loc,port, handle,\
+        lscale_common.analog_op_range_constraint(scenv,circ,block,loc,port, handle,\
                                                 annot=annot)
-        jaunt_common.analog_bandwidth_constraint(jenv,circ,block,loc,port,handle,\
+        lscale_common.analog_bandwidth_constraint(scenv,circ,block,loc,port,handle,\
                                                  annot)
 
     elif isinstance(prop, props.DigitalProperties):
-        jaunt_common.digital_op_range_constraint(jenv,circ,block,loc,port,handle, \
+        lscale_common.digital_op_range_constraint(scenv,circ,block,loc,port,handle, \
                                                  annot)
         # phys,prop,scfvar,jop.JConst(1.0),mrng
-        jaunt_common.digital_quantize_constraint(jenv,circ,block,loc,port,handle, \
+        lscale_common.digital_quantize_constraint(scenv,circ,block,loc,port,handle, \
                                                  "")
-        jaunt_common.digital_bandwidth_constraint(jenv,prob,circ,block,loc,port,handle,
+        lscale_common.digital_bandwidth_constraint(scenv,prob,circ,block,loc,port,handle,
                                                   annot)
     else:
         raise Exception("unknown")
 
 
 # traverse dynamics, also including coefficient variable
-def sc_traverse_dynamics(jenv,circ,block,loc,out):
-    visitor = exprvisitor.SCFPropExprVisitor(jenv,circ,block,loc,out)
+def sc_traverse_dynamics(scenv,circ,block,loc,out):
+    visitor = exprvisitor.SCFPropExprVisitor(scenv,circ,block,loc,out)
     visitor.visit()
 
 
-def sc_port_used(jenv,block_name,loc,port,handle=None):
-    return jenv.in_use((block_name,loc,port,handle), \
-                       tag=jenvlib.JauntVarType.SCALE_VAR)
+def sc_port_used(scenv,block_name,loc,port,handle=None):
+    return scenv.in_use((block_name,loc,port,handle), \
+                       tag=scenvlib.LScaleVarType.SCALE_VAR)
 
-def sc_generate_problem(jenv,prob,circ):
+def sc_generate_problem(scenv,prob,circ):
 
     for block_name,loc,config in circ.instances():
         block = circ.board.block(block_name)
         for out in block.outputs:
             # ensure we can propagate the dynamics
-            sc_traverse_dynamics(jenv,circ,block,loc,out)
+            sc_traverse_dynamics(scenv,circ,block,loc,out)
 
         for port in block.outputs + block.inputs:
-            if sc_port_used(jenv,block_name,loc,port):
-                sc_interval_constraint(jenv,circ,prob,block,loc,port)
+            if sc_port_used(scenv,block_name,loc,port):
+                sc_interval_constraint(scenv,circ,prob,block,loc,port)
 
             for handle in block.handles(config.comp_mode,port):
-                if sc_port_used(jenv,block_name,loc,port,handle=handle):
-                    sc_interval_constraint(jenv,circ,prob,block, \
+                if sc_port_used(scenv,block_name,loc,port,handle=handle):
+                    sc_interval_constraint(scenv,circ,prob,block, \
                                            loc,port,handle=handle)
 
 
-    if not jenv.uses_tau() or not jenv.time_scaling:
-        print("uses tau: %s" % jenv.uses_tau())
-        print("time scale: %s" % jenv.time_scaling)
-        jenv.eq(jop.JVar(jenv.tau()), jop.JConst(1.0),'tau_fixed')
+    if not scenv.uses_tau() or not scenv.time_scaling:
+        print("uses tau: %s" % scenv.uses_tau())
+        print("time scale: %s" % scenv.time_scaling)
+        scenv.eq(scop.SCVar(scenv.tau()), scop.SCConst(1.0),'tau_fixed')
     else:
-        jenv.lte(jop.JVar(jenv.tau()), jop.JConst(1e6),'tau_min')
-        jenv.gte(jop.JVar(jenv.tau()), jop.JConst(1e-6),'tau_max')
-        jaunt_common.max_sim_time_constraint(jenv,prob,circ)
+        scenv.lte(scop.SCVar(scenv.tau()), scop.SCConst(1e6),'tau_min')
+        scenv.gte(scop.SCVar(scenv.tau()), scop.SCConst(1e-6),'tau_max')
+        lscale_common.max_sim_time_constraint(scenv,prob,circ)
 
 
-def sc_build_jaunt_env(jenv,prog,circ):
+def sc_build_lscale_env(scenv,prog,circ):
     # declare scaling factors
-    jaunt_common.decl_scale_variables(jenv,circ)
+    lscale_common.decl_scale_variables(scenv,circ)
     # build continuous model constraints
-    sc_generate_problem(jenv,prog,circ)
-    return jenv
+    sc_generate_problem(scenv,prog,circ)
+    return scenv
 
 
-def apply_result(jenv,circ,sln):
+def apply_result(scenv,circ,sln):
     new_circ = circ.copy()
     lut_updates = {}
     for variable,value in sln['freevariables'].items():
-        jaunt_util.log_debug("%s = %s" % (variable,value))
+        lscale_util.log_debug("%s = %s" % (variable,value))
         print("%s = %s" % (variable,value))
-        if variable.name == jenv.tau():
+        if variable.name == scenv.tau():
             new_circ.set_tau(value)
         else:
-            tag,(block_name,loc,port,handle)= jenv.get_jaunt_var_info(variable.name)
-            if(tag == jenvlib.JauntVarType.SCALE_VAR):
+            tag,(block_name,loc,port,handle)= scenv.get_lscale_var_info(variable.name)
+            if(tag == scenvlib.LScaleVarType.SCALE_VAR):
                 new_circ.config(block_name,loc) \
                         .set_scf(port,value,handle=handle)
-            elif(tag == jenvlib.JauntVarType.INJECT_VAR):
+            elif(tag == scenvlib.LScaleVarType.INJECT_VAR):
                 new_circ.config(block_name,loc) \
                     .set_inj(port,value)
             else:
@@ -112,33 +115,33 @@ def apply_result(jenv,circ,sln):
 
     return new_circ
 
-def compute_scale(jenv,prog,infer_circ,objfun):
-    assert(isinstance(infer_circ,ConcCirc))
+def compute_scale(scenv,prog,infer_circ,objfun):
+    assert(isinstance(infer_circ,AnalogDeviceProg))
     print("build environment")
-    jenv = sc_build_lscale_env(jenv,prog,infer_circ)
-    jopt = LscaleObjectiveFunctionManager(jenv)
+    scenv = sc_build_lscale_env(scenv,prog,infer_circ)
+    jopt = LScaleObjectiveFunctionManager(scenv)
     jopt.method = objfun.name()
 
     print("objective: %s" % objfun.name())
     for gpvars,gpprob,thisobj in \
-        jgpkit.build_gpkit_problem(infer_circ,jenv,jopt):
+        scenv_gpkit.build_gpkit_problem(infer_circ,scenv,jopt):
         if gpprob is None:
             print("<< could not build geometric problem>>")
             continue
 
         print("solve")
-        sln = jgpkit.solve_gpkit_problem(gpprob)
-        #jgpkit.validate_gpkit_problem(jenv,gpvars,sln)
+        sln = scenv_gpkit.solve_gpkit_problem(gpprob)
+        #jgpkit.validate_gpkit_problem(scenv,gpvars,sln)
         if sln == None:
             print("<< solution is none >>")
             continue
 
         jopt.add_result(thisobj.tag(),sln)
-        new_circ = apply_result(jenv,infer_circ,sln)
+        new_circ = apply_result(scenv,infer_circ,sln)
         yield thisobj,new_circ
 
 def report_missing_models(model,circ):
-    for block,loc,port,comp_mode,scale_mode in ModelDB.MISSING:
+    for block,loc,port,comp_mode,scale_mode in hwmodel.ModelDB.MISSING:
         lscale_physlog.log(circ,block,loc, \
                           comp_mode,
                           scale_mode)
@@ -146,64 +149,57 @@ def report_missing_models(model,circ):
               (block,loc,port, \
                comp_mode,scale_mode)
 
-def scale(prog,circ,nslns, \
+def scale(prog,adp,nslns, \
           model='physical', \
           digital_error=0.05, \
           analog_error=0.05, \
           max_freq=None, \
           do_log=True,
           also_emit_naive=True):
-    infer.clear(circ)
-    infer.infer_intervals(prog,circ)
-    infer.infer_bandwidths(prog,circ)
-    objs = LscaleObjectiveFunctionManager.basic_methods()
+    prop_interval.clear_intervals(adp)
+    prop_interval.compute_intervals(prog,adp)
+    objs = LScaleObjectiveFunctionManager.basic_methods()
     n_missing = 0
     models_to_gen = {
         'physical': ['physical','partial','naive'],
         'partial': ['partial','naive'],
         'naive': ['naive']
     }
-    for idx,infer_circ in enumerate(lscale_infer.infer_scale_config(prog, \
-                                                                   circ, \
-                                                                   nslns, \
-                                                                   model=model,
-                                                                   max_freq=max_freq, \
-                                                                   digital_error=digital_error,
-                                                                   analog_error=analog_error)):
-
+    for idx,infer_adp in enumerate(lscale_infer.infer_scale_config(prog, \
+                                                                    adp, \
+                                                                    nslns, \
+                                                                    model=model,
+                                                                    max_freq=max_freq, \
+                                                                    digital_error=digital_error,
+                                                                    analog_error=analog_error)):
         for obj in objs:
             for this_model in models_to_gen[model]:
-                jenv = jenvlib.LscaleEnv(model=this_model, \
+                scenv = scenvlib.LScaleEnv(model=this_model, \
                                         max_freq=max_freq, \
                                         digital_error=digital_error, \
                                         analog_error=analog_error)
 
-                if this_model == jenvlib.LscaleEnvParams.Model.PHYSICAL and \
+                if this_model == scenvlib.LScaleEnvParams.Model.PHYSICAL and \
                    len(ModelDB.MISSING) > n_missing:
-                    jenv.fail(msg)
+                    scenv.fail(msg)
 
-                print("missing: %d -> %d" % (n_missing, len(ModelDB.MISSING)))
-                n_missing = len(ModelDB.MISSING)
+                print("missing: %d -> %d" % (n_missing, len(hwmodel.ModelDB.MISSING)))
+                n_missing = len(hwmodel.ModelDB.MISSING)
 
-
-                infer.infer_costs(infer_circ, \
-                                  propagate_cost=jenv.params.propagate_uncertainty, \
-                                  model=jenv.params.model)
-
-                for final_obj,final_circ in compute_scale(jenv,prog,infer_circ,obj):
-                    yield idx,final_obj.tag(),jenv.params.tag(),final_circ
+                for scaled_obj,scaled_adp in compute_scale(scenv,prog,infer_adp,obj):
+                    yield idx,scaled_obj.tag(),scenv.params.tag(),scaled_adp
 
 
     print("logging: %s" % do_log)
     if do_log:
-        pars = jenvlib.LscaleEnvParams(max_freq=max_freq, \
+        pars = scenvlib.LScaleEnvParams(max_freq=max_freq, \
                                       digital_error=digital_error,
                                       analog_error=analog_error)
-        pars.set_model(model=jenvlib.LscaleEnvParams.Type(model))
-        report_missing_models(model,circ)
+        pars.set_model(model=scenvlib.LScaleEnvParams.Type(model))
+        report_missing_models(model,adp)
         lscale_physlog.save(pars.calib_obj)
         if not lscale_physlog.is_empty() and \
-        model == jenvlib.LscaleEnvParams.Model.PHYSICAL:
+        model == scenvlib.LScaleEnvParams.Model.PHYSICAL:
             raise Exception("must calibrate components")
 
         lscale_physlog.clear()

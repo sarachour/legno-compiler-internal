@@ -1,6 +1,7 @@
 import parse as parselib
 import numpy as np
-from lab_bench.lib.chipcmd.data import *
+import hwlib.hcdc.enums as spec_enums
+import lab_bench.lib.chipcmd.data as lab_enums
 import lab_bench.lib.cstructs as cstructs
 from lab_bench.lib.base_command  \
     import OptionalValue, ArduinoCommand
@@ -204,12 +205,12 @@ def parse_pattern_use_block(args,n_signs,n_consts,n_range_codes, \
     for idx in range(0,n_signs):
         key = 'sign%d' % idx
         value = result[key]
-        result[key] = SignType.from_abbrev(value)
+        result[key] = spec_enums.SignType.from_abbrev(value)
 
     for idx in range(0,n_range_codes):
         key = 'range%d' % idx
         value = result[key]
-        result[key] = RangeType.from_abbrev(value)
+        result[key] = spec_enums.RangeType.from_abbrev(value)
 
     if not source is None:
         key = "source"

@@ -1,11 +1,12 @@
-import lab_bench.lib.enums as enums
-from hwlib.hcdc.enums import *
-from lab_bench.lib.chipcmd.common import *
-from lab_bench.lib.chipcmd.data import *
-import lab_bench.lib.chipcmd.state as state
-from lab_bench.lib.chipcmd.calib import CalibrateCmd, SetStateCmd
+import hwlib.hcdc.enums as spec_enums
+
+import lab_bench.lib.chipcmd.data as lab_enums
+import lab_bench.lib.chipcmd.common as lab_common
 from lab_bench.lib.chipcmd.disable import DisableCmd
+import lab_bench.lib.chipcmd.state as state
+
 from lab_bench.lib.base_command import AnalogChipCommand
+import lab_bench.lib.enums as glb_enums
 import lab_bench.lib.util as util
 import numpy as np
 from enum import Enum
@@ -78,9 +79,9 @@ class UseCommand(AnalogChipCommand):
 class UseLUTCmd(UseCommand):
 
     def __init__(self,chip,tile,slice,
-                 source=LUTSourceType.EXTERN):
+                 source=spec_enums.LUTSourceType.EXTERN):
         UseCommand.__init__(self,
-                            enums.BlockType.LUT,
+                            glb_enums.BlockType.LUT,
                             CircLoc(chip,tile,slice))
 
         if not self._loc.index is None:
@@ -136,7 +137,7 @@ class UseLUTCmd(UseCommand):
         # inverting flips the sign for some wacky reason, given the byte
         # representation is signed
         return build_circ_ctype({
-            'type':enums.CircCmdType.USE_LUT.name,
+            'type':lab_enums.CircCmdType.USE_LUT.name,
             'data':{
                 'lut':{
                     'loc':self._loc.build_ctype(),
@@ -169,16 +170,16 @@ class UseLUTCmd(UseCommand):
 class UseADCCmd(UseCommand):
 
     def __init__(self,chip,tile,slice,
-                 in_range=RangeType.MED):
+                 in_range=spec_enums.RangeType.MED):
         UseCommand.__init__(self,
-                            enums.BlockType.ADC,
+                            lab_enums.glb_enums.BlockType.ADC,
                             CircLoc(chip,tile,slice))
 
         if not self._loc.index is None:
             self.fail("adc has no index <%d>" % loc.index)
 
-        assert(isinstance(in_range,RangeType))
-        if in_range == RangeType.LOW:
+        assert(isinstance(in_range,spec_enums.RangeType))
+        if in_range == spec_enums.RangeType.LOW:
             raise Exception("incompatible: low input")
 
         self._in_range = in_range
@@ -216,7 +217,7 @@ class UseADCCmd(UseCommand):
                       0
         )
 
-        false_val = BoolType.FALSE
+        false_val = lab_enums.BoolType.FALSE
         return state.AdcBlockState.Key(loc=loc,
                                        test_en=false_val,
                                        test_adc=false_val,
@@ -230,7 +231,7 @@ class UseADCCmd(UseCommand):
         # inverting flips the sign for some wacky reason, given the byte
         # representation is signed
         return build_circ_ctype({
-            'type':enums.CircCmdType.USE_ADC.name,
+            'type':lab_enums.CircCmdType.USE_ADC.name,
             'data':{
                 'adc':{
                     'loc':self._loc.build_ctype(),
@@ -257,11 +258,11 @@ class UseADCCmd(UseCommand):
 class UseDACCmd(UseCommand):
 
     def __init__(self,chip,tile,slice,value,
-                 source=DACSourceType.MEM,
-                 out_range=RangeType.MED,
-                 inv=SignType.POS):
+                 source=spec_enums.DACSourceType.MEM,
+                 out_range=spec_enums.RangeType.MED,
+                 inv=spec_enums.SignType.POS):
         UseCommand.__init__(self,
-                            enums.BlockType.DAC,
+                            lab_enums.glb_enums.BlockType.DAC,
                             CircLoc(chip,tile,slice))
 
         if value < -1.0 or value > 1.0:
@@ -269,9 +270,9 @@ class UseDACCmd(UseCommand):
         if not self._loc.index is None:
             self.fail("dac has no index <%d>" % loc.index)
 
-        assert(isinstance(inv,SignType))
-        assert(isinstance(out_range,RangeType))
-        if out_range == RangeType.LOW:
+        assert(isinstance(inv,spec_enums.SignType))
+        assert(isinstance(out_range,spec_enums.RangeType))
+        if out_range == spec_enums.RangeType.LOW:
             raise Exception("incompatible: low output")
 
         self._out_range = out_range
@@ -309,7 +310,7 @@ class UseDACCmd(UseCommand):
     def _parse(args,cls):
         result = parse_pattern_use_block(args,1,1,1,
                                      cls.name(),
-                                     source=DACSourceType)
+                                     source=spec_enums.DACSourceType)
         if result.success:
             data = result.value
             return cls(
@@ -328,7 +329,7 @@ class UseDACCmd(UseCommand):
         # inverting flips the sign for some wacky reason, given the byte
         # representation is signed
         return build_circ_ctype({
-            'type':enums.CircCmdType.USE_DAC.name,
+            'type':lab_enums.CircCmdType.USE_DAC.name,
             'data':{
                 'dac':{
                     'loc':self._loc.build_ctype(),
@@ -369,15 +370,15 @@ class UseFanoutCmd(UseCommand):
                  inv0=False,inv1=False,inv2=False,
                  third=False):
 
-        assert(isinstance(inv0, SignType))
-        assert(isinstance(inv1,SignType))
-        assert(isinstance(inv2,SignType))
-        assert(isinstance(in_range,RangeType))
+        assert(isinstance(inv0, spec_enums.SignType))
+        assert(isinstance(inv1,spec_enums.SignType))
+        assert(isinstance(inv2,spec_enums.SignType))
+        assert(isinstance(in_range,spec_enums.RangeType))
 
         UseCommand.__init__(self,
-                            enums.BlockType.FANOUT,
-                            CircLoc(chip,tile,slice,index))
-        if in_range == RangeType.LOW:
+                            glb_enums.BlockType.FANOUT,
+                            lab_enums.CircLoc(chip,tile,slice,index))
+        if in_range == spec_enums.RangeType.LOW:
             raise Exception("incompatible: low output")
 
         self._inv = [inv0,inv1,inv2]
@@ -401,7 +402,7 @@ class UseFanoutCmd(UseCommand):
 
     def build_ctype(self):
         return build_circ_ctype({
-            'type':enums.CircCmdType.USE_FANOUT.name,
+            'type':lab_enums.CircCmdType.USE_FANOUT.name,
             'data':{
                 'fanout':{
                     'loc':self._loc.build_ctype(),
@@ -423,9 +424,9 @@ class UseFanoutCmd(UseCommand):
                       self.loc.index
         )
         invs = {
-            enums.PortName.OUT0: self._inv0,
-            enums.PortName.OUT1: self._inv1,
-            enums.PortName.OUT2: self._inv2
+            lab_enums.PortName.OUT0: self._inv0,
+            lab_enums.PortName.OUT1: self._inv1,
+            lab_enums.PortName.OUT2: self._inv2
         }
         return state.FanoutBlockState.Key(loc=loc, \
                                           third=self._third, \
@@ -435,10 +436,10 @@ class UseFanoutCmd(UseCommand):
 
     @staticmethod
     def parse(args):
-        result = parse_pattern_use_block(args,3,0,1,
-                                         UseFanoutCmd.name(),
-                                         index=True,
-                                         third=True)
+        result = lab_common.parse_pattern_use_block(args,3,0,1, \
+                                                    UseFanoutCmd.name(), \
+                                                    index=True, \
+                                                    third=True)
         if result.success:
             data = result.value
             return UseFanoutCmd(
@@ -450,7 +451,7 @@ class UseFanoutCmd(UseCommand):
                 inv0=data['sign0'],
                 inv1=data['sign1'],
                 inv2=data['sign2'],
-                third=BoolType.from_bool(data['third'])
+                third=lab_enums.BoolType.from_bool(data['third'])
             )
         else:
             raise Exception(result.message)
@@ -477,26 +478,26 @@ class UseIntegCmd(UseCommand):
 
 
     def __init__(self,chip,tile,slice,init_cond,
-                 inv=SignType.POS, \
-                 in_range=RangeType.MED, \
-                 out_range=RangeType.MED,
-                 debug=BoolType.FALSE):
+                 inv=spec_enums.SignType.POS, \
+                 in_range=spec_enums.RangeType.MED, \
+                 out_range=spec_enums.RangeType.MED,
+                 debug=lab_enums.BoolType.FALSE):
         UseCommand.__init__(self,
-                            enums.BlockType.INTEG,
-                            CircLoc(chip,tile,slice))
-        assert(isinstance(inv,SignType))
-        assert(isinstance(in_range,RangeType))
-        assert(isinstance(out_range,RangeType))
+                            glb_enums.BlockType.INTEG,
+                            lab_enums.CircLoc(chip,tile,slice))
+        assert(isinstance(inv,spec_enums.SignType))
+        assert(isinstance(in_range,spec_enums.RangeType))
+        assert(isinstance(out_range,spec_enums.RangeType))
         if init_cond < -1.0 or init_cond > 1.0:
             self.fail("init_cond not in [-1,1]: %s" % init_cond)
 
         self._init_cond = init_cond
         self._inv = inv
-        if in_range == RangeType.HIGH and \
-           out_range == RangeType.LOW:
+        if in_range == spec_enums.RangeType.HIGH and \
+           out_range == spec_enums.RangeType.LOW:
             raise Exception("incompatible: high input and low output")
-        elif in_range == RangeType.LOW and \
-             out_range == RangeType.HIGH:
+        elif in_range == spec_enums.RangeType.LOW and \
+             out_range == spec_enums.RangeType.HIGH:
             raise Exception("incompatible: high input and low output")
 
         self._in_range = in_range
@@ -515,9 +516,9 @@ class UseIntegCmd(UseCommand):
 
     @staticmethod
     def _parse(args,cls):
-        result = parse_pattern_use_block(args,1,1,2,
-                                     cls.name(),
-                                     debug=True)
+        result = lab_common.parse_pattern_use_block(args,1,1,2, \
+                                                    cls.name(), \
+                                                    debug=True)
         if result.success:
             data = result.value
             return cls(
@@ -528,8 +529,8 @@ class UseIntegCmd(UseCommand):
                 inv=data['sign0'],
                 in_range=data['range0'],
                 out_range=data['range1'],
-                debug=BoolType.TRUE if data['debug'] \
-                else BoolType.FALSE
+                debug=lab_enums.BoolType.TRUE if data['debug'] \
+                else lab_enums.BoolType.FALSE
             )
         else:
             raise Exception(result.message)
@@ -541,7 +542,7 @@ class UseIntegCmd(UseCommand):
 
     def build_ctype(self):
         return build_circ_ctype({
-            'type':enums.CircCmdType.USE_INTEG.name,
+            'type':lab_enums.CircCmdType.USE_INTEG.name,
             'data':{
                 'integ':{
                     'loc':self._loc.build_ctype(),
@@ -558,18 +559,18 @@ class UseIntegCmd(UseCommand):
         state.update_init_cond(self._init_cond)
 
     def to_key(self,calib_obj):
-        loc = CircLoc(self.loc.chip,
+        loc = lab_enums.CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
                       0
         )
         rngs = {
-            enums.PortName.IN0: self._in_range,
-            enums.PortName.OUT0: self._out_range
+            lab_enums.PortName.IN0: self._in_range,
+            lab_enums.PortName.OUT0: self._out_range
         }
         cal_en = {
-            enums.PortName.IN0: BoolType.FALSE,
-            enums.PortName.OUT0: BoolType.FALSE
+            lab_enums.PortName.IN0: lab_enums.BoolType.FALSE,
+            lab_enums.PortName.OUT0: lab_enums.BoolType.FALSE
         }
 
         return state.IntegBlockState.Key(loc=loc,
@@ -602,21 +603,21 @@ class UseMultCmd(UseCommand):
 
 
     def __init__(self,chip,tile,slice,index,
-                 in0_range=RangeType.MED,
-                 in1_range=RangeType.MED,
-                 out_range=RangeType.MED,
+                 in0_range=spec_enums.RangeType.MED,
+                 in1_range=spec_enums.RangeType.MED,
+                 out_range=spec_enums.RangeType.MED,
                  coeff=0, \
                  use_coeff=False):
         UseCommand.__init__(self,
-                            enums.BlockType.MULT,
-                            CircLoc(chip,tile,slice,index))
+                            glb_enums.BlockType.MULT,
+                            lab_enums.CircLoc(chip,tile,slice,index))
 
         if coeff < -1.0 or coeff > 1.0:
             self.fail("value not in [-1,1]: %s" % coeff)
 
-        assert(isinstance(in0_range,RangeType))
-        assert(isinstance(in1_range,RangeType))
-        assert(isinstance(out_range,RangeType))
+        assert(isinstance(in0_range,spec_enums.RangeType))
+        assert(isinstance(in1_range,spec_enums.RangeType))
+        assert(isinstance(out_range,spec_enums.RangeType))
 
         self._use_coeff = use_coeff
         self._coeff = coeff
@@ -633,7 +634,7 @@ class UseMultCmd(UseCommand):
 
     def build_ctype(self):
         return build_circ_ctype({
-            'type':enums.CircCmdType.USE_MULT.name,
+            'type':lab_enums.CircCmdType.USE_MULT.name,
             'data':{
                 'mult':{
                     'loc':self._loc.build_ctype(),
@@ -648,18 +649,18 @@ class UseMultCmd(UseCommand):
 
 
     def to_key(self,calib_obj):
-        loc = CircLoc(self.loc.chip,
+        loc = lab_enums.CircLoc(self.loc.chip,
                       self.loc.tile,
                       self.loc.slice,
                       self.loc.index
         )
         rngs = {
-            enums.PortName.IN0: self._in0_range,
-            enums.PortName.IN1: self._in1_range,
-            enums.PortName.OUT0: self._out_range,
+            lab_enums.PortName.IN0: self._in0_range,
+            lab_enums.PortName.IN1: self._in1_range,
+            lab_enums.PortName.OUT0: self._out_range,
         }
         return state.MultBlockState.Key(loc=loc,
-                                        vga=BoolType.from_bool(self._use_coeff),
+                                        vga=lab_enums.BoolType.from_bool(self._use_coeff),
                                         ranges=rngs,
                                         gain_val=self._coeff,
                                         calib_obj=calib_obj)
@@ -670,11 +671,11 @@ class UseMultCmd(UseCommand):
 
     @staticmethod
     def _parse(args,cls):
-        result1 = parse_pattern_use_block(args,0,1,2,
+        result1 = lab_common.parse_pattern_use_block(args,0,1,2,
                                       cls.name(),
                                      index=True)
 
-        result2 = parse_pattern_use_block(args,0,0,3,
+        result2 = lab_common.parse_pattern_use_block(args,0,0,3,
                                       cls.name(),
                                       index=True)
 
@@ -683,7 +684,7 @@ class UseMultCmd(UseCommand):
             return cls(data['chip'],data['tile'],
                        data['slice'],data['index'],
                        in0_range=data['range0'],
-                       in1_range=RangeType.MED,
+                       in1_range=spec_enums.RangeType.MED,
                        out_range=data['range1'],
                        use_coeff=True,
                        coeff=data['value0'])

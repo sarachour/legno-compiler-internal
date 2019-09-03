@@ -5,9 +5,9 @@ from ops.interval import Interval, IRange, IValue
 
 class PropOpRangeVisitor(Visitor):
 
-  def __init__(self,prog,circ):
-    Visitor.__init__(self,circ)
-    self._prog = prog
+  def __init__(self,prog,adp):
+    Visitor.__init__(self,adp)
+    self.prog = prog
     self.hardware_op_ranges()
 
 
@@ -20,9 +20,9 @@ class PropOpRangeVisitor(Visitor):
                          port,\
                          handle=handle).interval()
     '''main body '''
-    circ = self.circ
-    for block_name,loc,config in circ.instances():
-        block = circ.board.block(block_name)
+    adp = self.adp
+    for block_name,loc,config in adp.instances():
+        block = adp.board.block(block_name)
         mode = config.comp_mode
         for port in block.inputs + block.outputs:
             hwrng = ival_port_to_range(block,config,port)
@@ -36,16 +36,17 @@ class PropOpRangeVisitor(Visitor):
 
 class PropIntervalVisitor(Visitor):
 
-  def __init__(self,prog,circ):
-    Visitor.__init__(self,circ)
-    self._prog = prog
+  def __init__(self,prog,adp):
+    Visitor.__init__(self,adp)
+    self.prog = prog
+    self.adp = adp
     self.math_label_ranges()
 
 
   def math_label_ranges(self):
-    prog,circ = self._prog,self.circ
-    for block_name,loc,config in circ.instances():
-        block = circ.board.block(block_name)
+    prog,adp = self.prog,self.adp
+    for block_name,loc,config in adp.instances():
+        block = adp.board.block(block_name)
         if not block_name == 'integrator' and \
            not block_name == 'ext_chip_in':
           continue
@@ -59,28 +60,28 @@ class PropIntervalVisitor(Visitor):
                 else:
                     handle = None
 
-                mrng = prog.interval(label)
+                mrng = prog.get_interval(label)
                 config.set_interval(port,mrng,\
                                     handle=handle)
 
 
 
   def is_free(self,block_name,loc,port):
-    config = self._circ.config(block_name,loc)
+    config = self.adp.config(block_name,loc)
     return config.interval(port) is None \
             or config.interval(port).unbounded()
 
   def input_port(self,block_name,loc,port):
     Visitor.input_port(self,block_name,loc,port)
-    circ = self._circ
-    config = circ.config(block_name,loc)
+    adp = self.adp
+    config = adp.config(block_name,loc)
     dest_expr = ops.Const(0.0 if not config.has_dac(port) \
                           else config.dac(port))
-    dest_ival = dest_expr.compute_interval({}).interval
+    dest_ival = dest_expr.infer_interval({}).interval
 
     for src_block_name,src_loc,src_port in \
-        circ.get_conns_by_dest(block_name,loc,port):
-      src_config = circ.config(src_block_name,src_loc)
+        adp.get_conns_by_dest(block_name,loc,port):
+      src_config = adp.config(src_block_name,src_loc)
       src_ival = src_config.interval(src_port)
       if(src_ival is None):
         print("free: <%s>\n" % free)
@@ -92,21 +93,21 @@ class PropIntervalVisitor(Visitor):
       dest_ival = dest_ival.add(src_ival)
 
     config.set_interval(port,dest_ival)
-    #print("ival in %s[%s].%s => %s" % (block_name,loc,port,dest_ival))
+    print("ival in %s[%s].%s => %s" % (block_name,loc,port,dest_ival))
 
   def _update_intervals(self,block_name,loc,port):
-    circ = self._circ
-    block = circ.board.block(block_name)
-    config = circ.config(block_name,loc)
+    adp = self.adp
+    block = adp.board.block(block_name)
+    config = adp.config(block_name,loc)
     # don't apply any coefficients
     if not config.has_expr(port):
       expr = block.get_dynamics(config.comp_mode,port)
     else:
       expr = config.expr(port,inject=False)
 
-    intervals = expr.compute_interval(config.intervals())
+    intervals = expr.infer_interval(config.intervals())
     config.set_interval(port,intervals.interval)
-    #print("ival out %s[%s].%s => %s" % (block_name,loc,port,intervals.interval))
+    print("ival out %s[%s].%s => %s" % (block_name,loc,port,intervals.interval))
     for handle,interval in intervals.bindings():
       config.set_interval(port, \
                           interval,handle=handle)
@@ -114,30 +115,33 @@ class PropIntervalVisitor(Visitor):
 
 
   def output_port(self,block_name,loc,port):
-    self._update_intervals(block_name,loc,port)
     Visitor.output_port(self,block_name,loc,port)
     self._update_intervals(block_name,loc,port)
 
   def is_valid(self):
-    circ = self._circ
+    adp = self.adp
     valid = True
-    for block_name,loc,config in circ.instances():
+    for block_name,loc,config in adp.instances():
       for ival in config.intervals().values():
         if ival.unbounded():
            valid = False
 
     return valid
 
-def compute_intervals(prog,circ):
-  visitor = PropIntervalVisitor(prog,circ)
+def compute_intervals(prog,adp):
+  visitor = PropIntervalVisitor(prog,adp)
   visitor.all()
   while(not visitor.is_valid()):
       visitor.clear()
       visitor.all()
 
-def compute_op_ranges(prog,circ):
-  visitor = PropOpRangeVisitor(prog,circ)
+def compute_op_ranges(prog,adp):
+  visitor = PropOpRangeVisitor(prog,adp)
   visitor.all()
   while(not visitor.is_valid()):
       visitor.clear()
       visitor.all()
+
+def clear_intervals(adp):
+  for block_name,loc,config in adp.instances():
+        config.clear_intervals()

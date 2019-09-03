@@ -2,16 +2,16 @@
 #TODO: update gpkit
 from enum import Enum
 
-class JOpType(Enum):
+class SCOpType(Enum):
     MULT  = "*"
     ADD = "+"
     CONST = "const"
     VAR = "var"
 
-class JOp:
+class SCOp:
 
     def __init__(self,op,args):
-        assert(isinstance(op,JOpType))
+        assert(isinstance(op,SCOpType))
         self._args = args
         self._op = op
 
@@ -30,10 +30,10 @@ class JOp:
         argstr = " ".join(map(lambda x : str(x),self._args))
         return "(%s %s)" % (self._op.value,argstr)
 
-class JVar(JOp):
+class SCVar(SCOp):
 
     def __init__(self,name,exponent=1.0):
-        JOp.__init__(self,JOpType.VAR,[])
+        SCOp.__init__(self,SCOpType.VAR,[])
         self._name = name
         self._exponent = exponent
 
@@ -60,15 +60,15 @@ class JVar(JOp):
         else:
             return "(var %s exp=%f)" % (self._name,self._exponent)
 
-class JConst(JOp):
+class SCConst(SCOp):
 
     def __init__(self,value):
-        JOp.__init__(self,JOpType.CONST,[])
+        SCOp.__init__(self,SCOpType.CONST,[])
         self._value = float(value)
 
 
     def factor_const(self):
-        return self._value,JConst(1.0)
+        return self._value,SCConst(1.0)
 
     def evaluate(self,args):
         return self._value
@@ -80,23 +80,23 @@ class JConst(JOp):
     def __repr__(self):
         return "(const %s)" % self._value
 
-class JMult(JOp):
+class SCMult(SCOp):
 
     def __init__(self,arg1,arg2):
-        JOp.__init__(self,JOpType.MULT,[arg1,arg2])
+        SCOp.__init__(self,SCOpType.MULT,[arg1,arg2])
 
     def factor_const(self):
         c1,x1 = self.arg(0).factor_const()
         c2,x2 = self.arg(1).factor_const()
         c = c1*c2
-        if x1.op == JOpType.CONST and x2.op == JOpType.CONST:
-            return c, JConst(1.0)
-        elif x1.op == JOpType.CONST:
+        if x1.op == SCOpType.CONST and x2.op == SCOpType.CONST:
+            return c, SCConst(1.0)
+        elif x1.op == SCOpType.CONST:
             return c, x2
-        elif x2.op == JOpType.CONST:
+        elif x2.op == SCOpType.CONST:
             return c, x1
         else:
-            return c,JMult(x1,x2)
+            return c,SCMult(x1,x2)
 
 
     def evaluate(self,args):
@@ -104,10 +104,10 @@ class JMult(JOp):
 
 
 
-class JAdd(JOp):
+class SCAdd(SCOp):
 
     def __init__(self,arg1,arg2):
-        JOp.__init__(self,JOpType.ADD,[arg1,arg2])
+        SCOp.__init__(self,SCOpType.ADD,[arg1,arg2])
 
     def factor_const(self):
         return 1.0,self
@@ -119,25 +119,25 @@ class JAdd(JOp):
 
 
 def expo(jexpr, factor):
-    if jexpr.op == JOpType.CONST:
-        return JConst(jexpr.value**factor)
-    elif jexpr.op == JOpType.VAR:
-        return JVar(jexpr.name,exponent=jexpr.exponent*factor)
-    elif jexpr.op == JOpType.MULT:
+    if jexpr.op == SCOpType.CONST:
+        return SCConst(jexpr.value**factor)
+    elif jexpr.op == SCOpType.VAR:
+        return SCVar(jexpr.name,exponent=jexpr.exponent*factor)
+    elif jexpr.op == SCOpType.MULT:
         e1 = expo(jexpr.arg(0),factor)
         e2 = expo(jexpr.arg(1),factor)
-        return JMult(e1,e2)
+        return SCMult(e1,e2)
     else:
         raise Exception("exponentiate: not-impl %s" % jexpr)
 
 def simplify(jexpr):
-    if jexpr.op == JOpType.CONST:
-        return JConst(jexpr.value)
-    elif jexpr.op == JOpType.VAR:
-        return JVar(jexpr.name,jexpr.exponent)
-    elif jexpr.op == JOpType.MULT:
+    if jexpr.op == SCOpType.CONST:
+        return SCConst(jexpr.value)
+    elif jexpr.op == SCOpType.VAR:
+        return SCVar(jexpr.name,jexpr.exponent)
+    elif jexpr.op == SCOpType.MULT:
         c,e = jexpr.factor_const()
         if c == 1.0:
             return e
         else:
-            return JMult(JConst(c),e)
+            return SCMult(SCConst(c),e)

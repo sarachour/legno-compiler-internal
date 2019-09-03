@@ -1,9 +1,8 @@
 from enum import Enum
 import sys
 import numpy as np
-import ops.jop as jop
 import util.config as CONFIG
-from hwlib.model import ModelDB
+import hwlib.model as hwmodel
 import compiler.lscale_pass.lscale_util as lscale_util
 
 class LScaleVarType(Enum):
@@ -143,7 +142,7 @@ class LScaleEnv:
                                  analog_error=analog_error, \
                                  max_freq=max_freq)
     self.params.set_model(LScaleEnvParams.Type(model))
-    self.model_db = ModelDB(self.params.calib_obj)
+    self.model_db = hwmodel.ModelDB(self.params.calib_obj)
     self._eqs = []
     self._ltes = []
     self._failed = False

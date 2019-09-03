@@ -37,6 +37,10 @@ class Block:
         self._scale_modes = {}
         self._subset = None
 
+    def baseline(self,comp_mode):
+        scms = self.scale_modes(comp_mode)
+        return scms[0]
+
     def whitelist(self,comp_mode,scale_mode=None):
         comp_mode_key = util.normalize_mode(comp_mode)
         if not comp_mode in self._comp_mode_subsets:

@@ -1,15 +1,14 @@
-import compiler.jaunt_pass.objective.obj as optlib
-import compiler.jaunt_pass.objective.basic_obj as boptlib
-import compiler.jaunt_pass.jaunt_util as jaunt_util
-import ops.jop as jop
+import compiler.lscale_pass.objective.obj as optlib
+import compiler.lscale_pass.objective.basic_obj as boptlib
+import compiler.lscale_pass.lscale_util as lscale_util
 import random
 import numpy as np
 
-class MultScaleObjFunc(optlib.JauntObjectiveFunction):
+class MultScaleObjFunc(optlib.LScaleObjectiveFunction):
 
   def __init__(self,obj,idx,cstrs):
     self._idx = idx
-    optlib.JauntObjectiveFunction.__init__(self,obj,
+    optlib.LScaleObjectiveFunction.__init__(self,obj,
                                            tag=self.mktag(idx), \
                                            cstrs=cstrs)
 
@@ -119,11 +118,11 @@ class MaxRandomSignalObjFunc(MultScaleObjFunc):
                                  jobj,varmap,n=n)
 
 
-class MultSpeedObjFunc(optlib.JauntObjectiveFunction):
+class MultSpeedObjFunc(optlib.LScaleObjectiveFunction):
 
   def __init__(self,obj,idx,cstrs):
     self._idx = idx
-    optlib.JauntObjectiveFunction.__init__(self,obj,
+    optlib.LScaleObjectiveFunction.__init__(self,obj,
                                            tag=self.mktag(idx), \
                                            cstrs=cstrs)
 

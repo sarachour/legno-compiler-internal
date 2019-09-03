@@ -1,12 +1,12 @@
 from util.paths import PathHandler
 import numpy as np
-import compiler.jaunt_pass.objective.obj as optlib
-import compiler.jaunt_pass.jenv as jenvlib
+import compiler.lscale_pass.objective.obj as optlib
+import compiler.lscale_pass.scenv as scenvlib
 
-class SlowObjFunc(optlib.JauntObjectiveFunction):
+class SlowObjFunc(optlib.LScaleObjectiveFunction):
 
   def __init__(self,obj):
-    optlib.JauntObjectiveFunction.__init__(self,obj)
+    optlib.LScaleObjectiveFunction.__init__(self,obj)
 
   @staticmethod
   def name():
@@ -15,17 +15,17 @@ class SlowObjFunc(optlib.JauntObjectiveFunction):
 
   @staticmethod
   def make(circ,jobj,varmap):
-    objective = varmap[jobj.jenv.tau()]
+    objective = varmap[jobj.scenv.tau()]
     #print(objective)
-    if jobj.jenv.uses_tau():
+    if jobj.scenv.uses_tau():
       yield SlowObjFunc(objective)
     else:
       yield SlowObjFunc(0)
 
-class FastObjFunc(optlib.JauntObjectiveFunction):
+class FastObjFunc(optlib.LScaleObjectiveFunction):
 
   def __init__(self,obj):
-    optlib.JauntObjectiveFunction.__init__(self,obj)
+    optlib.LScaleObjectiveFunction.__init__(self,obj)
 
   @staticmethod
   def name():
@@ -34,27 +34,27 @@ class FastObjFunc(optlib.JauntObjectiveFunction):
 
   @staticmethod
   def make(circ,jobj,varmap):
-    objective = 1.0/varmap[jobj.jenv.tau()]
-    if jobj.jenv.uses_tau():
+    objective = 1.0/varmap[jobj.scenv.tau()]
+    if jobj.scenv.uses_tau():
         yield FastObjFunc(objective)
     else:
         yield FastObjFunc(0)
 
-class FindSCFBoundFunc(optlib.JauntObjectiveFunction):
+class FindSCFBoundFunc(optlib.LScaleObjectiveFunction):
 
   def __init__(self,obj):
-    optlib.JauntObjectiveFunction.__init__(self,obj)
+    optlib.LScaleObjectiveFunction.__init__(self,obj)
 
   @staticmethod
   def name():
     return "_findscfbound"
 
   @staticmethod
-  def make(circ,jenv,variable,varmap,minimize=True):
+  def make(circ,scenv,variable,varmap,minimize=True):
     rngobj = 0.0
-    for scvar in jenv.jaunt_vars():
-      if jenv.jaunt_var_in_use(scvar):
-         if jenv.get_tag(scvar) == jenvlib.JauntVarType.SCALE_VAR and \
+    for scvar in scenv.lscale_vars():
+      if scenv.lscale_var_in_use(scvar):
+         if scenv.get_tag(scvar) == scenvlib.LscaleVarType.SCALE_VAR and \
             variable == scvar:
            if minimize:
              rngobj += varmap[scvar]
@@ -64,10 +64,10 @@ class FindSCFBoundFunc(optlib.JauntObjectiveFunction):
     yield FindSCFBoundFunc(rngobj)
 
 
-class NoScaleFunc(optlib.JauntObjectiveFunction):
+class NoScaleFunc(optlib.LScaleObjectiveFunction):
 
   def __init__(self,obj):
-    optlib.JauntObjectiveFunction.__init__(self,obj)
+    optlib.LScaleObjectiveFunction.__init__(self,obj)
 
   @staticmethod
   def name():
@@ -76,63 +76,63 @@ class NoScaleFunc(optlib.JauntObjectiveFunction):
   @staticmethod
   def make(circ,jobj,varmap):
     rngobj = 0.0
-    jenv = jobj.jenv
-    for scvar in jenv.jaunt_vars():
-      if jenv.jaunt_var_in_use(scvar):
-         if jenv.get_tag(scvar) == jenvlib.JauntVarType.OP_RANGE_VAR:
+    scenv = jobj.scenv
+    for scvar in scenv.lscale_vars():
+      if scenv.lscale_var_in_use(scvar):
+         if scenv.get_tag(scvar) == scenvlib.LscaleVarType.OP_RANGE_VAR:
            rngobj += varmap[scvar]
-         elif jenv.get_tag(scvar) == jenvlib.JauntVarType.SCALE_VAR:
+         elif scenv.get_tag(scvar) == scenvlib.LscaleVarType.SCALE_VAR:
            rngobj += varmap[scvar] + varmap[scvar]**(-1.0)
-         #elif jenv.get_tag(scvar) == jenvlib.JauntVarType.COEFF_VAR:
+         #elif scenv.get_tag(scvar) == scenvlib.LscaleVarType.COEFF_VAR:
          #  rngobj += varmap[scvar] + varmap[scvar]**(-1.0)
 
     yield NoScaleFunc(rngobj)
 
 
-class MaxSignalObjFunc(optlib.JauntObjectiveFunction):
+class MaxSignalObjFunc(optlib.LScaleObjectiveFunction):
 
   def __init__(self,obj):
-    optlib.JauntObjectiveFunction.__init__(self,obj)
+    optlib.LScaleObjectiveFunction.__init__(self,obj)
 
   @staticmethod
   def name():
     return "maxsig"
 
   @staticmethod
-  def make_mult(jenv,varmap,variables=None):
+  def make_mult(scenv,varmap,variables=None):
     rngobj = 0.0
-    for scvar in jenv.variables(in_use=True):
+    for scvar in scenv.variables(in_use=True):
       if not (variables is None or scvar in variables):
         continue
 
-      tag = jenv.get_tag(scvar)
-      if tag == jenvlib.JauntVarType.SCALE_VAR:
+      tag = scenv.get_tag(scvar)
+      if tag == scenvlib.LscaleVarType.SCALE_VAR:
         rngobj *= 1/varmap[scvar]
     return rngobj
 
   @staticmethod
-  def make_add(jenv,varmap,variables=None):
+  def make_add(scenv,varmap,variables=None):
     rngobj = 0.0
-    for scvar in jenv.variables(in_use=True):
+    for scvar in scenv.variables(in_use=True):
       if not (variables is None or scvar in variables):
         continue
 
-      tag = jenv.get_tag(scvar)
-      if tag == jenvlib.JauntVarType.SCALE_VAR:
+      tag = scenv.get_tag(scvar)
+      if tag == scenvlib.LScaleVarType.SCALE_VAR:
         rngobj += 1/varmap[scvar]
     return rngobj
 
   @staticmethod
   def make(circ,jobj,varmap,variables=None):
-    jenv = jobj.jenv
-    yield MaxSignalObjFunc(MaxSignalObjFunc.make_add(jenv,varmap))
-    #if not jenv.solved():
-    #  yield MaxSignalObjFunc(MaxSignalObjFunc.make_mult(jenv,varmap))
+    scenv = jobj.scenv
+    yield MaxSignalObjFunc(MaxSignalObjFunc.make_add(scenv,varmap))
+    #if not scenv.solved():
+    #  yield MaxSignalObjFunc(MaxSignalObjFunc.make_mult(scenv,varmap))
 
-class MaxSignalAndSpeedObjFunc(optlib.JauntObjectiveFunction):
+class MaxSignalAndSpeedObjFunc(optlib.LScaleObjectiveFunction):
 
   def __init__(self,obj):
-    optlib.JauntObjectiveFunction.__init__(self,obj)
+    optlib.LScaleObjectiveFunction.__init__(self,obj)
 
   @staticmethod
   def name():
@@ -149,10 +149,10 @@ class MaxSignalAndSpeedObjFunc(optlib.JauntObjectiveFunction):
       for obj in MaxSignalObjFunc.make(circ,jobj,varmap):
         yield obj
 
-class MaxSignalAndStabilityObjFunc(optlib.JauntObjectiveFunction):
+class MaxSignalAndStabilityObjFunc(optlib.LScaleObjectiveFunction):
 
   def __init__(self,obj):
-    optlib.JauntObjectiveFunction.__init__(self,obj)
+    optlib.LScaleObjectiveFunction.__init__(self,obj)
 
   @staticmethod
   def name():
@@ -170,40 +170,40 @@ class MaxSignalAndStabilityObjFunc(optlib.JauntObjectiveFunction):
         yield obj
 
 
-class MinSignalObjFunc(optlib.JauntObjectiveFunction):
+class MinSignalObjFunc(optlib.LScaleObjectiveFunction):
 
   def __init__(self,obj):
-    optlib.JauntObjectiveFunction.__init__(self,obj)
+    optlib.LScaleObjectiveFunction.__init__(self,obj)
 
   @staticmethod
   def name():
     return "minsig"
 
   @staticmethod
-  def make_mult(jenv,varmap):
+  def make_mult(scenv,varmap):
     rngobj = 0.0
-    for scvar in jenv.variables(in_use=True):
-      tag = jenv.get_tag(scvar)
-      if tag == jenvlib.JauntVarType.SCALE_VAR:
+    for scvar in scenv.variables(in_use=True):
+      tag = scenv.get_tag(scvar)
+      if tag == scenvlib.LscaleVarType.SCALE_VAR:
         rngobj *= varmap[scvar]
     return rngobj
 
   @staticmethod
-  def make_add(jenv,varmap):
+  def make_add(scenv,varmap):
     rngobj = 0.0
-    for scvar in jenv.variables(in_use=True):
-      tag = jenv.get_tag(scvar)
-      if tag == jenvlib.JauntVarType.SCALE_VAR:
+    for scvar in scenv.variables(in_use=True):
+      tag = scenv.get_tag(scvar)
+      if tag == scenvlib.LscaleVarType.SCALE_VAR:
         rngobj += varmap[scvar]
     return rngobj
 
   @staticmethod
   def make(circ,jobj,varmap):
-    jenv = jobj.jenv
-    yield MinSignalObjFunc(MinSignalObjFunc.make_add(jenv,varmap))
+    scenv = jobj.scenv
+    yield MinSignalObjFunc(MinSignalObjFunc.make_add(scenv,varmap))
 
 
-def observed(circ,jobj):
+def observed(circ,scobj):
   ports = []
   for block_name,loc,config in circ.instances():
     if block_name == 'ext_chip_in':
@@ -212,13 +212,13 @@ def observed(circ,jobj):
     if not is_measurable is None:
       block = circ.board.block(block_name)
       for port in block.inputs:
-        scvar = jobj.jenv.get_scvar(block_name,loc,port,handle=None)
+        scvar = scobj.scenv.get_scvar(block_name,loc,port,handle=None)
         yield scvar
 
-class FastObsObjFunc(optlib.JauntObjectiveFunction):
+class FastObsObjFunc(optlib.LScaleObjectiveFunction):
 
   def __init__(self,obj):
-    optlib.JauntObjectiveFunction.__init__(self,obj)
+    optlib.LScaleObjectiveFunction.__init__(self,obj)
 
   @staticmethod
   def name():
@@ -236,10 +236,10 @@ class FastObsObjFunc(optlib.JauntObjectiveFunction):
       for obj in MaxSignalObjFunc.make(circ,jobj,varmap,variables):
         yield FastObsObjFunc(obj.objective())
 
-class SlowObsObjFunc(optlib.JauntObjectiveFunction):
+class SlowObsObjFunc(optlib.LScaleObjectiveFunction):
 
   def __init__(self,obj):
-    optlib.JauntObjectiveFunction.__init__(self,obj)
+    optlib.LScaleObjectiveFunction.__init__(self,obj)
 
   @staticmethod
   def name():

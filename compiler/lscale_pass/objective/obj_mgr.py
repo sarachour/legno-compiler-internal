@@ -1,11 +1,10 @@
-import compiler.lscale_pass.objective.phys_obj as physoptlib
 import compiler.lscale_pass.objective.basic_obj as boptlib
 import compiler.lscale_pass.objective.sweep_obj as sweepoptlib
 
 #TODO: what is low range, high range and med range?
 #TODO: setRange: integ.in, integ.out and mult have setRange functions.
 #TODO: how do you set wc in the integrator? Is it through the setRange function?
-class LscaleObjectiveFunctionManager():
+class LScaleObjectiveFunctionManager():
 
     @staticmethod
     def basic_methods():
@@ -36,15 +35,15 @@ class LscaleObjectiveFunctionManager():
         ]
 
 
-    def __init__(self,jenv):
+    def __init__(self,scenv):
         self.method = None
-        self.jenv = jenv
+        self.scenv = scenv
         self._results = {}
 
 
     @property
     def time_scaling(self):
-        return self.jenv.time_scaling
+        return self.scenv.time_scaling
 
     def result(self,objective):
         return self._results[objective]

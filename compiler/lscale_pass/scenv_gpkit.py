@@ -1,5 +1,5 @@
 import compiler.lscale_pass.scenv as scenv
-import ops.jop as jop
+import ops.scop as scop
 import compiler.lscale_pass.lscale_util as lscale_util
 import compiler.lscale_pass.scenv as scenvlib
 import numpy as np
@@ -9,15 +9,15 @@ import util.config as CONFIG
 import signal
 
 def gpkit_expr(variables,expr):
-    if expr.op == jop.JOpType.VAR:
+    if expr.op == scop.SCOpType.VAR:
         return variables[expr.name]**float(expr.exponent)
 
-    elif expr.op == jop.JOpType.MULT:
+    elif expr.op == scop.SCOpType.MULT:
         e1 = gpkit_expr(variables,expr.arg(0))
         e2 = gpkit_expr(variables,expr.arg(1))
         return e1*e2
 
-    elif expr.op == jop.JOpType.CONST:
+    elif expr.op == scop.SCOpType.CONST:
         return float(expr.value)
 
     else:

@@ -1,16 +1,15 @@
-import ops.jop as jop
+import ops.scop as scop
 import ops.op as ops
 import ops.interval as interval
-from chip.model import ModelDB,get_gain,get_variance
 from enum import Enum
-import compiler.jaunt_pass.jaunt_common as jaunt_common
-import compiler.jaunt_pass.jaunt_util as jaunt_util
+import compiler.lscale_pass.lscale_common as lscale_common
+import compiler.lscale_pass.lscale_util as lscale_util
 import logging
 
 class ExprVisitor:
 
-  def __init__(self,jenv,circ,block,loc,port):
-    self.jenv = jenv
+  def __init__(self,scenv,circ,block,loc,port):
+    self.scenv = scenv
     self.circ = circ
     self.block = block
     self.loc = loc
@@ -87,63 +86,62 @@ class ExprVisitor:
 
 class SCFPropExprVisitor(ExprVisitor):
 
-  def __init__(self,jenv,circ,block,loc,port):
-    ExprVisitor.__init__(self,jenv,circ,block,loc,port)
-    self.db = ModelDB()
+  def __init__(self,scenv,circ,block,loc,port):
+    ExprVisitor.__init__(self,scenv,circ,block,loc,port)
 
 
   def coeff(self,handle):
     block,loc,port = self.block,self.loc,self.port
-    pars = jaunt_common.get_parameters(self.jenv,self.circ, \
+    pars = lscale_common.get_parameters(self.scenv,self.circ, \
                                        block,loc,port,handle)
 
     return pars['hw_gain']
 
   def visit_const(self,expr):
-    return jop.JConst(1.0)
+    return scop.SCConst(1.0)
 
   def visit_pow(self,expr):
     expr1 = self.visit_expr(expr.arg(0))
     expr2 = self.visit_expr(expr.arg(1))
     if expr.arg(1).op == ops.OpType.CONST:
-      self.jenv.eq(expr2, jop.JConst(1.0), 'expr-visit-pow')
+      self.scenv.eq(expr2, scop.SCConst(1.0), 'expr-visit-pow')
       return jop.expo(expr1, expr.arg(1).value)
     else:
-      self.jenv.eq(expr1, jop.JConst(1.0), 'expr-visit-pow')
-      self.jenv.eq(expr2, jop.JConst(1.0), 'expr-visit-pow')
-      return jop.JConst(1.0)
+      self.scenv.eq(expr1, scop.SCConst(1.0), 'expr-visit-pow')
+      self.scenv.eq(expr2, scop.SCConst(1.0), 'expr-visit-pow')
+      return scop.SCConst(1.0)
 
   def visit_var(self,expr):
     block,loc = self.block,self.loc
-    scvar = self.jenv.get_scvar(block.name,loc,expr.name)
-    if self.jenv.has_inject_var(block.name,loc,expr.name):
-      injvar = self.jenv.get_inject_var(block.name,loc,expr.name)
-      expr = jop.JMult(jop.JVar(scvar),jop.JVar(injvar))
-      #self.jenv.eq(jop.JVar(injvar), jop.JConst(2.0), 'expr-visit-noscale-in')
-      self.jenv.eq(expr, jop.JConst(1.0), 'expr-visit-inj')
+    scvar = self.scenv.get_scvar(block.name,loc,expr.name)
+    if self.scenv.has_inject_var(block.name,loc,expr.name):
+      injvar = self.scenv.get_inject_var(block.name,loc,expr.name)
+      expr = scop.SCMult(scop.SCVar(scvar),scop.SCVar(injvar))
+      #self.scenv.eq(scop.SCVar(injvar), scop.SCConst(2.0), 'expr-visit-noscale-in')
+      self.scenv.eq(expr, scop.SCConst(1.0), 'expr-visit-inj')
       return expr
     else:
-      return jop.JVar(scvar)
+      return scop.SCVar(scvar)
 
 
   def visit_mult(self,expr):
     expr1 = self.visit_expr(expr.arg1)
     expr2 = self.visit_expr(expr.arg2)
-    return jop.JMult(expr1,expr2)
+    return scop.SCMult(expr1,expr2)
 
   def visit_add(self,expr):
     expr1 = self.visit_expr(expr.arg1)
     expr2 = self.visit_expr(expr.arg2)
-    self.jenv.eq(expr1,expr2,'expr-visit-add')
+    self.scenv.eq(expr1,expr2,'expr-visit-add')
     return expr1
 
   def visit_randfun(self,expr):
     expr1 = self.visit_expr(expr.arg(0))
-    return jop.JConst(1.0)
+    return scop.SCConst(1.0)
 
   def visit_sgn(self,expr):
     expr1 = self.visit_expr(expr.arg(0))
-    return jop.JConst(1.0)
+    return scop.SCConst(1.0)
 
   def visit_abs(self,expr):
     expr = self.visit_expr(expr.arg(0))
@@ -156,47 +154,47 @@ class SCFPropExprVisitor(ExprVisitor):
 
   def visit_cos(self,expr):
     expr = self.visit_expr(expr.arg(0))
-    self.jenv.eq(expr, jop.JConst(1.0), 'expr-visit-cos')
-    return jop.JConst(1.0)
+    self.scenv.eq(expr, scop.SCConst(1.0), 'expr-visit-cos')
+    return scop.SCConst(1.0)
 
   def visit_sin(self,expr):
     return self.visit_cos(expr)
 
   def visit_integ(self,expr):
-    jenv = self.jenv
+    scenv = self.scenv
     block,loc,port = self.block,self.loc,self.port
     # config
     scexpr_ic = self.visit_expr(expr.init_cond)
     scexpr_deriv = self.visit_expr(expr.deriv)
 
-    scvar_deriv = jop.JVar(jenv.get_scvar(block.name,loc,port, \
+    scvar_deriv = scop.SCVar(scenv.get_scvar(block.name,loc,port, \
                                           handle=expr.deriv_handle))
-    scvar_state = jop.JVar(jenv.get_scvar(block.name,loc,port, \
+    scvar_state = scop.SCVar(scenv.get_scvar(block.name,loc,port, \
                                           handle=expr.handle))
-    scvar_ic = jop.JVar(jenv.get_scvar(block.name,loc,port, \
+    scvar_ic = scop.SCVar(scenv.get_scvar(block.name,loc,port, \
                                           handle=expr.ic_handle))
     coeff_deriv = self.coeff(expr.deriv_handle)
     coeff_state = self.coeff(expr.handle)
     coeff_ic = self.coeff(expr.ic_handle)
 
-    #jaunt_util.log_debug("deriv: coeff=%s var=%s" % (coeff_deriv,scvar_deriv))
-    #jaunt_util.log_debug("stvar: coeff=%s var=%s" % (coeff_state,scvar_state))
-    #jaunt_util.log_debug("ic:    coeff=%s var=%s" % (coeff_ic,scvar_ic))
-    #jaunt_util.log_debug("deriv-expr: %s" % scexpr_deriv)
-    #jaunt_util.log_debug("ic-expr: %s" % scexpr_ic)
-    jenv.eq(jop.JMult(scexpr_ic,coeff_ic), scvar_ic,'expr-visit-integ')
-    jenv.eq(scvar_ic, scvar_state,'expr-visit-integ')
+    #lscale_util.log_debug("deriv: coeff=%s var=%s" % (coeff_deriv,scvar_deriv))
+    #lscale_util.log_debug("stvar: coeff=%s var=%s" % (coeff_state,scvar_state))
+    #lscale_util.log_debug("ic:    coeff=%s var=%s" % (coeff_ic,scvar_ic))
+    #lscale_util.log_debug("deriv-expr: %s" % scexpr_deriv)
+    #lscale_util.log_debug("ic-expr: %s" % scexpr_ic)
+    scenv.eq(scop.SCMult(scexpr_ic,coeff_ic), scvar_ic,'expr-visit-integ')
+    scenv.eq(scvar_ic, scvar_state,'expr-visit-integ')
 
-    jenv.eq(jop.JMult(scexpr_deriv, coeff_deriv), scvar_deriv, \
+    scenv.eq(scop.SCMult(scexpr_deriv, coeff_deriv), scvar_deriv, \
             'expr-visit-integ')
 
-    scexpr_state = jop.JMult(jop.JVar(jenv.tau(), \
+    scexpr_state = scop.SCMult(scop.SCVar(scenv.tau(), \
                                       exponent=-1), scvar_deriv)
 
-    jenv.eq(jop.JMult(scexpr_state, coeff_state),  \
+    scenv.eq(scop.SCMult(scexpr_state, coeff_state),  \
             scvar_state,'expr-visit-integ')
 
-    jenv.use_tau()
+    scenv.use_tau()
     return scvar_state
 
   def visit(self):
@@ -207,14 +205,14 @@ class SCFPropExprVisitor(ExprVisitor):
       else:
         expr = config.expr(self.port,inject=False)
 
-      lhsexpr = jop.JVar(self.jenv.get_scvar(block.name,loc,self.port))
+      lhsexpr = scop.SCVar(self.scenv.get_scvar(block.name,loc,self.port))
       rhsexpr = self.visit_expr(expr)
-      if self.jenv.has_inject_var(block.name,loc,self.port):
-        injvar = self.jenv.get_inject_var(block.name,loc,self.port)
-        self.jenv.eq(rhsexpr, jop.JConst(1.0), 'expr-visit-inj')
-        #self.jenv.eq(jop.JVar(injvar), jop.JConst(0.5), 'expr-visit-noscale-in')
-        rhsexpr = jop.JMult(rhsexpr,jop.JVar(injvar))
+      if self.scenv.has_inject_var(block.name,loc,self.port):
+        injvar = self.scenv.get_inject_var(block.name,loc,self.port)
+        self.scenv.eq(rhsexpr, scop.SCConst(1.0), 'expr-visit-inj')
+        #self.scenv.eq(scop.SCVar(injvar), scop.SCConst(0.5), 'expr-visit-noscale-in')
+        rhsexpr = scop.SCMult(rhsexpr,scop.SCVar(injvar))
 
       coeffvar = self.coeff(None)
-      total_rhsexpr = jop.JMult(rhsexpr,coeffvar)
-      self.jenv.eq(lhsexpr,total_rhsexpr, 'expr-visit-out')
+      total_rhsexpr = scop.SCMult(rhsexpr,coeffvar)
+      self.scenv.eq(lhsexpr,total_rhsexpr, 'expr-visit-out')

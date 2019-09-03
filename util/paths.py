@@ -7,15 +7,15 @@ class PathHandler:
     def __init__(self,name,bmark,make_dirs=True):
         self.set_root_dir(name,bmark)
         for path in [
-            self.ROOT_DIR,
-            self.BMARK_DIR,
-            self.ABS_CIRC_DIR,
-            self.CONC_CIRC_DIR,
-            self.CONC_GRAPH_DIR,
-            self.ABS_GRAPH_DIR,
-            self.MEAS_WAVEFORM_FILE_DIR,
-            self.GRENDEL_FILE_DIR,
-            self.PLOT_DIR
+                self.ROOT_DIR,
+                self.BMARK_DIR,
+                self.LGRAPH_ADP_DIR,
+                self.LGRAPH_ADP_DIAG_DIR,
+                self.LSCALE_ADP_DIR,
+                self.LSCALE_ADP_DIAG_DIR,
+                self.MEAS_WAVEFORM_FILE_DIR,
+                self.GRENDEL_FILE_DIR,
+                self.PLOT_DIR
         ]:
           if make_dirs:
               util.mkdir_if_dne(path)
@@ -38,25 +38,25 @@ class PathHandler:
     def set_root_dir(self,name,bmark):
         self.ROOT_DIR = "%s/legno/%s" % (config.OUTPUT_PATH,name)
         self.BMARK_DIR = self.ROOT_DIR + ("/%s" % bmark)
-        self.ABS_CIRC_DIR = self.BMARK_DIR + "/lgraph-adp"
-        self.ABS_GRAPH_DIR = self.BMARK_DIR + "/lgraph-graph"
-        self.CONC_CIRC_DIR = self.BMARK_DIR + "/lscale-adp"
-        self.CONC_GRAPH_DIR = self.BMARK_DIR + "/lscale-graph"
+        self.LGRAPH_ADP_DIR = self.BMARK_DIR + "/lgraph-adp"
+        self.LGRAPH_ADP_DIAG_DIR = self.BMARK_DIR + "/lgraph-diag"
+        self.LSCALE_ADP_DIR = self.BMARK_DIR + "/lscale-adp"
+        self.LSCALE_ADP_DIAG_DIR = self.BMARK_DIR + "/lscale-diag"
         self.GRENDEL_FILE_DIR = self.BMARK_DIR + "/grendel"
         self.PLOT_DIR = self.BMARK_DIR + "/plots"
         self.MEAS_WAVEFORM_FILE_DIR = self.BMARK_DIR + "/out-waveform"
-        self.TIME_DIR = self.ROOT_DIR + "/TIMES"
+        self.TIME_DIR = self.ROOT_DIR + "/times"
 
 
-    def conc_circ_file(self,bmark,indices,scale_index,model,opt):
+    def lscale_adp_file(self,bmark,indices,scale_index,model,opt):
       index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.CONC_CIRC_DIR+ "/%s_%s_s%s_%s_%s.circ" % \
+      return self.LSCALE_ADP_DIR+ "/%s_%s_s%s_%s_%s.circ" % \
         (self._bmark,index_str,scale_index,model,opt)
 
 
-    def conc_graph_file(self,bmark,indices,scale_index,model,opt,tag="notag"):
+    def lscale_adp_diagram_file(self,bmark,indices,scale_index,model,opt,tag="notag"):
       index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.CONC_GRAPH_DIR+ "/%s_%s_s%s_%s_%s_%s.dot" % \
+      return self.LSCALE_ADP_DIAG_DIR+ "/%s_%s_s%s_%s_%s_%s.dot" % \
         (self._bmark,index_str,scale_index,model,opt,tag)
 
 
@@ -147,8 +147,8 @@ class PathHandler:
       conc_circ.meta['bandwidth'] = bandwidth
 
     @staticmethod
-    def conc_circ_to_args(name):
-      basename = name.split(".circ")[0]
+    def lscale_adp_to_args(name):
+      basename = name.split(".adp")[0]
       args = basename.split("_")
       bmark = args[0]
       indices = list(map(lambda token: int(token), args[1:-3]))
@@ -159,38 +159,34 @@ class PathHandler:
 
 
     @staticmethod
-    def abs_circ_to_args(name):
-      basename = name.split(".circ")[0]
+    def lgraph_adp_to_args(name):
+      basename = name.split(".adp")[0]
       args = basename.split("_")
       bmark = args[0]
       indices = list(map(lambda token: int(token), args[1:]))
       return bmark,indices
 
-    def abs_graph_file(self,indices):
+    def lgraph_adp_diagram_file(self,indices):
         index_str = "_".join(map(lambda ind : str(ind),indices))
-        return self.ABS_GRAPH_DIR+ "/%s_%s.dot" % \
+        return self.LGRAPH_ADP_DIAG_DIR+ "/%s_%s.dot" % \
           (self._bmark,index_str)
 
 
-    def abs_circ_file(self,indices):
+    def lgraph_adp_file(self,indices):
         index_str = "_".join(map(lambda ind : str(ind),indices))
-        return self.ABS_CIRC_DIR+ "/%s_%s.circ" % \
+        return self.LGRAPH_ADP_DIR+ "/%s_%s.adp" % \
           (self._bmark,index_str)
 
     def grendel_file_dir(self):
         return self.GRENDEL_FILE_DIR
 
 
-    def skelt_circ_dir(self):
-        return self.SKELT_CIRC_DIR
+    def lscale_adp_dir(self):
+        return self.LSCALE_ADP_DIR
 
 
-    def conc_circ_dir(self):
-        return self.CONC_CIRC_DIR
-
-
-    def abs_circ_dir(self):
-        return self.ABS_CIRC_DIR
+    def lgraph_adp_dir(self):
+        return self.LGRAPH_ADP_DIR
 
     def has_file(self,filepath):
         if not os.path.exists(filepath):
