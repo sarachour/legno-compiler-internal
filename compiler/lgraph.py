@@ -205,7 +205,8 @@ def compile(board,prob,depth=3, \
                     indices = [abs_idx,conc_idx]
                     try_merge.succeed()
                     try_abs.succeed()
-                    yield indices,conc_circ
+                    index_str = "x".join(map(lambda i: str(i), indices))
+                    yield index_str,conc_circ
                     conc_idx += 1
 
 

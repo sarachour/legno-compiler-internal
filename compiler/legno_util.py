@@ -19,7 +19,7 @@ def exec_lgraph(args):
                               load_conns=True)
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
-    timer = Timer('lgraph_%s' % args.program,path_handler)
+    timer = Timer('lgraph',path_handler)
     timer.start()
     count = 0
     for indices,adp in \
@@ -49,8 +49,9 @@ def exec_lgraph(args):
     print(timer)
     timer.save()
 
-def exec_lscale_normal(prog,adp,args):
+def exec_lscale_normal(timer,prog,adp,args):
     from compiler import lscale
+    timer.start()
     for idx,opt,model,scale_circ in lscale.scale(prog, \
                                                  adp,
                                                  args.scale_circuits,
@@ -59,6 +60,7 @@ def exec_lscale_normal(prog,adp,args):
                                                  digital_error=args.digital_error,
                                                  analog_error=args.analog_error,
                                                  do_log=True):
+        timer.end()
         yield idx,opt,model,scale_circ
 
 
@@ -165,80 +167,80 @@ def exec_lscale(args):
                               load_conns=False)
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
-    timer = Timer('lscale_%s' % args.program,path_handler)
+    timer = Timer('lscale',path_handler)
     adp_dir = path_handler.lgraph_adp_dir()
-    timer.start()
     for dirname, subdirlist, filelist in os.walk(adp_dir):
-        for fname in filelist:
-            if fname.endswith('.adp'):
-                _prog,indices = path_handler \
-                                          .lgraph_adp_to_args(fname)
-                assert(_prog == args.program)
-                print('<<<< %s >>>>' % fname)
-                filename = "%s/%s" % (dirname,fname)
-                adp = AnalogDeviceProg.read(hdacv2_board, filename)
+        for lgraph_adp_file in filelist:
+            if lgraph_adp_file.endswith('.adp'):
+                fileargs = path_handler \
+                           .lgraph_adp_to_args(lgraph_adp_file)
+                print('<<<< %s >>>>' % lgraph_adp_file)
+                lgraph_adp_filepath = "%s/%s" % (dirname,lgraph_adp_file)
+                adp = AnalogDeviceProg.read(hdacv2_board, \
+                                            lgraph_adp_filepath)
 
-                gen = exec_lscale_normal(program,adp,args) if not args.search \
+                gen = exec_lscale_normal(timer,program,adp,args) if not args.search \
                       else exec_lscale_search(timer,program,adp,args)
 
-                timer.start()
-                for idx,opt,model,scale_adp in gen:
-                    timer.end()
-                    filename = path_handler.lscale_adp_file(program,
-                                                            indices,
-                                                            idx,
+                for scale_index,opt,model,scale_adp in gen:
+                    lscale_adp_file = path_handler.lscale_adp_file(fileargs['lgraph'],
+                                                            scale_index,
                                                             model,
                                                             opt)
-                    scale_adp.write_circuit(filename)
-                    filename = path_handler.lscale_adp_diagram_file(program,
-                                                                    indices,
-                                                                    idx,
+                    scale_adp.write_circuit(lscale_adp_file)
+                    lscale_diag_file = path_handler.lscale_adp_diagram_file(fileargs['lgraph'],
+                                                                    scale_index,
                                                                     model,
                                                                     opt)
-                    scale_adp.write_graph(filename,write_png=True)
-                    timer.start()
+                    scale_adp.write_graph(lscale_diag_file,write_png=True)
 
     timer.kill()
     timer.save()
 
-def exec_srcgen(hdacv2_board,args):
-  path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
-  menv = bmark.get_math_env(args.benchmark)
-  hwenv = hwenvs.get_hw_env(args.hw_env)
-  recompute = args.recompute
-  circ_dir = path_handler.conc_circ_dir()
-  timer = Timer('srcgen_%s' % args.benchmark,path_handler)
-  for dirname, subdirlist, filelist in os.walk(circ_dir):
-    for fname in filelist:
-      if fname.endswith('.circ'):
-        print('<<<< %s >>>>' % fname)
-        circ_bmark,circ_indices,circ_scale_index,circ_method,circ_opt = \
-            path_handler.conc_circ_to_args(fname)
-        filename = path_handler.grendel_file(circ_bmark, \
-                                             circ_indices, \
-                                             circ_scale_index, \
-                                             circ_method, \
-                                             circ_opt,
-                                             menv.name,
-                                             hwenv.name)
+def exec_srcgen(args):
+    from compiler import srcgen
+    import hwlib.hcdc.hwenvs as hwenvs
+    from hwlib.hcdc.hcdcv2_4 import make_board
+    from hwlib.hcdc.globals import HCDCSubset
 
-        if path_handler.has_file(filename) and not recompute:
-            continue
+    hdacv2_board = make_board(HCDCSubset(args.subset), \
+                              load_conns=False)
+    path_handler = paths.PathHandler(args.subset,args.program)
+    dssim = DSProgDB.get_sim(args.program)
+    hwenv = hwenvs.get_hw_env(args.hw_env)
+    adp_dir = path_handler.lscale_adp_dir()
+    timer = Timer('srcgen', path_handler)
+    for dirname, subdirlist, filelist in os.walk(adp_dir):
+        for adp_file in filelist:
+            if adp_file.endswith('.adp'):
+                print('<<<< %s >>>>' % adp_file)
+                fileargs  = \
+                            path_handler.lscale_adp_to_args(adp_file)
+                gren_file = path_handler.grendel_file(fileargs['lgraph'], \
+                                                     fileargs['lscale'], \
+                                                     fileargs['model'], \
+                                                     fileargs['opt'],
+                                                     dssim.name,
+                                                     hwenv.name)
 
-        conc_circ = AnalogDeviceProg.read(hdacv2_board,"%s/%s" % (dirname,fname))
-        timer.start()
-        gren_file = srcgen.generate(path_handler,
-                                    hdacv2_board,\
-                                    conc_circ,\
-                                    menv,
-                                    hwenv,
-                                    filename=filename,
-                                    ntrials=args.trials)
-        timer.end()
-        gren_file.write(filename)
+                if path_handler.has_file(gren_file) and not args.recompute:
+                    continue
 
-  print(timer)
-  timer.save()
+                adp_filepath = "%s/%s" % (dirname,adp_file)
+                conc_circ = AnalogDeviceProg.read(hdacv2_board,adp_filepath)
+                timer.start()
+                gren_prog = srcgen.generate(path_handler,
+                                            hdacv2_board,\
+                                            conc_circ,\
+                                            dssim,
+                                            hwenv,
+                                            filename=gren_file,
+                                            ntrials=args.trials)
+                timer.end()
+                gren_prog.write(gren_file)
+
+    print(timer)
+    timer.save()
 
 
 

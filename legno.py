@@ -66,14 +66,16 @@ gren_subp.add_argument('hw_env', type=str, \
                         help='hardware environment')
 gren_subp.add_argument('--recompute', action='store_true',
                        help='recompute.')
-gren_subp.add_argument('--trials', type=int, default=3,
+gren_subp.add_argument('--trials', type=int, default=1,
                        help='compute trials.')
 gren_subp.add_argument('program', type=str,help='benchmark to compile')
 
 
 sim_subp = subparsers.add_parser('simulate', help='simulate circuit.')
-sim_subp.add_argument('conc_circ', help='simulate concrete circuit.')
-
+sim_subp.add_argument('program', help='program to simulate.')
+sim_subp.add_argument('--adp',help='analog device program to simulate')
+sim_subp.add_argument('--reference',action="store_true", \
+                      help='execute reference simulation')
 
 args = parser.parse_args()
 
@@ -96,5 +98,4 @@ elif args.subparser_name == "graph":
    legno_util.exec_graph(args)
 
 elif args.subparser_name == "simulate":
-   simulator.simulate(args.conc_circ, \
-                      args.program)
+   simulator.simulate(args)

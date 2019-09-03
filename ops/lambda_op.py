@@ -53,17 +53,6 @@ def to_python(e):
               )
         return v,fmt
 
-    elif e.op == OpType.RANDOM_VAR:
-        v = e.variance
-        return [],"np.random.uniform(%f,%f)" \
-            % (-v,v)
-
-    elif e.op == OpType.UNIFNOISE:
-        nmax = e.bound
-        nmin = -nmax
-        return [],"np.random.uniform(-%f,%f)" % (nmin,nmax)
-
-
     elif e.op == OpType.SIN:
         v,a = to_python(e.arg(0))
         return v,"math.sin(%s.real)" % a

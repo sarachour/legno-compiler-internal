@@ -3,6 +3,7 @@ import tqdm
 import os
 import matplotlib.pyplot as plt
 import json
+from util import paths
 
 from scipy.integrate import ode
 
@@ -25,14 +26,9 @@ def next_state(derivs,variables,values):
   return result
 
 
-def plot_simulation(menv,conc_circ_path,V,T,Y):
-  cwd = os.getcwd()
-  conc_circ_file = conc_circ_path.split("outputs/legno")[1]
-  filedir = "%s/SIMULATE/%s_%s" % (cwd, \
-                                    conc_circ_file,\
-                                    menv.name)
-  if not os.path.exists(filedir):
-    os.makedirs(filedir)
+def plot_adp_simulation(path_handler,dssim,adp_path,V,T,Y):
+  fileargs = \
+             path_handler.lscale_adp_to_args(adp_path)
 
   Z =dict(map(lambda v: (v,[]), V))
   for t,y in zip(T,Y):
@@ -41,22 +37,29 @@ def plot_simulation(menv,conc_circ_path,V,T,Y):
 
   for series_name,values in Z.items():
       print("%s: %d" % (series_name,len(values)))
+
   for series_name,values in Z.items():
-    filepath = "%s/%s.png" % (filedir,series_name);
+    filepath = path_handler.adp_sim_plot(fileargs['lgraph'], \
+                                         fileargs['lscale'], \
+                                         fileargs['opt'], \
+                                         fileargs['model'], \
+                                         series_name)
     print('plotting %s' % series_name)
     plt.plot(T,values,label=series_name)
     plt.savefig(filepath)
     plt.clf()
 
-def run_simulation(board,conc_circ, \
-                   init_conds,derivs,menv):
+def run_adp_simulation(board, \
+                       adp, \
+                       init_conds, \
+                       derivs, \
+                       dssim):
   var_order = list(init_conds.keys())
 
   def dt_func(t,vs):
     return next_state(derivs,var_order,vs)
 
-  print(menv.sim_time)
-  time = menv.sim_time/conc_circ.tau
+  time = dssim.sim_time/(adp.tau)
   n = 300.0
   dt = time/n
 
@@ -72,7 +75,7 @@ def run_simulation(board,conc_circ, \
   Y = []
   with tqdm.tqdm(total=tqdm_segs) as prog:
     while r.successful() and r.t < time:
-        T.append(r.t/conc_circ.board.time_constant)
+        T.append(r.t/adp.board.time_constant)
         Y.append(r.y)
         r.integrate(r.t + dt)
         seg = int(tqdm_segs*float(r.t)/float(time))
@@ -83,16 +86,42 @@ def run_simulation(board,conc_circ, \
 
   return var_order,T,Y
 
-def simulate(board,circ_file,bmark):
-  menv = diffeqs.get_math_env(bmark)
-  with open(circ_file,'r') as fh:
-    obj = json.loads(fh.read())
-    circ = ConcCirc.from_json(board, \
-                              obj)
+def plot_reference_simulation(path_handler,prob,dssim):
+    T,Z = prob.execute(dssim)
 
-  init_conds,derivs =  \
-                       buildsim.build_simulation(board, \
-                                               circ)
-  V,T,Y = run_simulation(board,circ, \
-                         init_conds,derivs,menv)
-  plot_simulation(menv,circ_file,V,T,Y)
+
+    for series_name,values in Z.items():
+        print("%s: %d" % (series_name,len(values)))
+
+    for series_name,values in Z.items():
+      plot_file = path_handler.ref_sim_plot(series_name)
+      print('plotting %s' % series_name)
+      plt.plot(T,values,label=series_name)
+      plt.savefig(plot_file)
+      plt.clf()
+
+
+def simulate(args):
+  import hwlib.hcdc.hwenvs as hwenvs
+  from hwlib.hcdc.hcdcv2_4 import make_board
+  from hwlib.hcdc.globals import HCDCSubset
+  dssim = DSProgDB.get_sim(args.program)
+  path_handler = paths.PathHandler(args.subset,args.program)
+
+  if args.reference:
+    ref_prog = DSProgDB.get_prog(args.program)
+    plot_reference_simulation(path_handler, ref_prog,dssim)
+
+  if args.adp:
+    board = make_board(HCDCSubset(args.subset), \
+                              load_conns=False)
+    adp = AnalogDeviceProg.read(board, args.adp)
+    init_conds,derivs =  \
+                        buildsim.build_simulation(board, \
+                                                  adp)
+    V,T,Y = run_adp_simulation(board, \
+                           adp, \
+                           init_conds, \
+                           derivs, \
+                               dssim)
+    plot_adp_simulation(path_handler,dssim,args.adp,V,T,Y)

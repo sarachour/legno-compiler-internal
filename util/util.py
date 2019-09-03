@@ -12,6 +12,21 @@ from enum import Enum
 def array_map(mapfun):
     return np.array(list(mapfun))
 
+def model_format():
+    cmd = [
+        "{model:w}q{digital_error:f}d{analog_error:f}b", \
+        "{model:w}q{digital_error:f}d{analog_error:f}b{bandwidth:d}k" \
+    ]
+    return cmd
+
+def pack_model(args):
+    if not "bandwidth" in args:
+        cmd = "{model}q{digital_error}d{analog_error}b"
+    else:
+        cmd = "{model}q{digital_error}d{analog_error}b{bandwidth}:k"
+
+    return cmd.format(**args)
+
 def unpack_tag(handle):
   method = "unknown"
   i=0
@@ -80,9 +95,7 @@ class Timer:
         return "%s mean=%s std=%s" % (self._name,mean,std)
 
     def save(self):
-        time_dir = self._paths.TIME_DIR
-        mkdir_if_dne(time_dir)
-        filename = "%s/time_%s.txt" % (time_dir,self._name)
+        filename = self._paths.time_file(self._name)
         with open(filename,'w') as fh:
             fh.write("%s\n" % self._name)
             for run in self._runs:

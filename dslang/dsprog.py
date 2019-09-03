@@ -1,9 +1,19 @@
-from ops.interval import Interval
-import util.util as util
 import sys
 from enum import Enum
+import math
+import numpy as np
+
+import util.util as util
+
 import ops.op as op
 import ops.opparse as opparse
+from ops.interval import Interval
+
+def _evaluate(expr,vmap):
+    vmap['math'] = math
+    vmap['np'] = np
+    vmap['randlist'] = util.randlist
+    return np.real(eval(expr,vmap))
 
 class DSProgDB:
     PROGRAMS = {}
@@ -23,7 +33,8 @@ class DSProgDB:
     def get_prog(name):
         DSProgDB.load()
         prog,sim = DSProgDB.PROGRAMS[name]
-        return prog()
+        prob = DSProg(name)
+        return prog(prob)
 
     @staticmethod
     def execute(name):
@@ -132,10 +143,10 @@ class DSProg:
         return opparse.parse(expr_conc)
 
 
-    def emit(self,varexpr,obsvar,params={}):
+    def emit(self,varexpr,obsvar,params={},loc='A0'):
         expr_conc = varexpr.format(**params)
         obj = opparse.parse(expr_conc)
-        self._bind(obsvar,op.Emit(obj))
+        self._bind(obsvar,op.Emit(obj,loc='A0'))
 
     def decl_lambda(self,var,expr,params={}):
         expr_conc = opparse.parse(expr.format(**params))
@@ -200,3 +211,61 @@ class DSProg:
 
 
         return s
+
+    def _execute(self,dssim):
+        from scipy.integrate import ode
+        stvars,ics,derivs,fnvars,fns = self.build_ode_prob()
+
+        def dt_func(t,values):
+            vs = dict(zip(map(lambda v: "%s_" % v, stvars), \
+                        values))
+            for fvar in fnvars:
+                vs["%s_" % fvar] = _evaluate(fns[fvar],vs)
+
+            next_vs = {}
+            for stvar in stvars:
+                next_vs[stvar] = _evaluate(derivs[stvar],vs)
+
+            return list(map(lambda v: next_vs[v],stvars))
+
+        time = dssim.sim_time
+        n = 1000.0
+        dt = time/n
+        r = ode(dt_func).set_integrator('zvode',method='bdf')
+        x0 = list(map(lambda v: _evaluate(ics[v],{}),stvars))
+        r.set_initial_value(x0,t=0.0)
+        T = []
+        Y = []
+        tqdm_segs = 500
+        last_seg = 0
+        while r.successful() and r.t < time:
+            T.append(r.t)
+            Y.append(r.y)
+            r.integrate(r.t + dt)
+            seg = int(tqdm_segs*float(r.t)/float(time))
+
+        return T,Y
+
+
+    def execute(self,dssim):
+        T,Y = self._execute(dssim)
+        stvars,ics,derivs,fnvars,fns = self.build_ode_prob()
+
+        def fn_func(t,values):
+            vs = dict(zip(map(lambda v: "%s_" % v, stvars), \
+                            values))
+            vals = {}
+            for fvar in fnvars:
+                vals[fvar] = _evaluate(fns[fvar],vs)
+                vs["%s_" % fvar] = vals[fvar]
+            for v in stvars:
+                vals[v] = vs['%s_' % v]
+            return vals
+
+        Z =dict(map(lambda v: (v,[]), stvars+fnvars))
+        for t,y in zip(T,Y):
+            for var,value in fn_func(t,y).items():
+                Z[var].append(value)
+
+
+        return T,Z

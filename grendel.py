@@ -13,22 +13,22 @@ from lab_bench.lib.command_handler import main_stdout,  \
 from lab_bench.lib.base_command import ArduinoCommand
 from lab_bench.lib.env import GrendelEnv
 
+def add_args(parser):
+    parser.add_argument("--native", action='store_true', \
+                        help="use native mode for arduino DUE.")
+    parser.add_argument("--debug", action='store_true', \
+                        help="use debug mode on arduino DUE.")
+    parser.add_argument("--validate", action='store_true', \
+                        help="don't dispatch commands to arduino DUE.")
+    parser.add_argument("--calib-obj", type=str, \
+                        help="what optimization function to use for calibration")
+    parser.add_argument("--no-oscilloscope", action='store_true', \
+                        help="use native mode for arduino DUE.")
+    parser.add_argument("--ip", type=str, help="ip address of oscilloscope.")
+    parser.add_argument("--port", type=int, default=5024, \
+                        help="port number of oscilloscope.")
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--native", action='store_true', \
-                    help="use native mode for arduino DUE.")
-parser.add_argument("--debug", action='store_true', \
-                    help="use debug mode on arduino DUE.")
-parser.add_argument("--validate", action='store_true', \
-                    help="don't dispatch commands to arduino DUE.")
-parser.add_argument("--calib-obj", type=str, \
-                    help="what optimization function to use for calibration")
-parser.add_argument("--no-oscilloscope", action='store_true', \
-                    help="use native mode for arduino DUE.")
-parser.add_argument("--ip", type=str, help="ip address of oscilloscope.")
-parser.add_argument("--port", type=int, default=5024, \
-                    help="port number of oscilloscope.")
-
 subparsers = parser.add_subparsers(dest='subparser_name',
                                    help='compilers/compilation passes.')
 
@@ -40,6 +40,7 @@ run_subp = subparsers.add_parser('run', \
                                    help='execute script')
 run_subp.add_argument("script", type=str, \
                     help="read data using script.")
+add_args(run_subp)
 
 calib_subp = subparsers.add_parser('calibrate', \
                                    help='calibrate blocks in script')
@@ -47,6 +48,7 @@ calib_subp.add_argument("--recompute", action='store_true', \
                     help="recompute calibration codes")
 calib_subp.add_argument("script", type=str, \
                     help="read data using script.")
+add_args(calib_subp)
 
 prof_subp = subparsers.add_parser('profile', \
                                    help='profile blocks in script')
@@ -56,6 +58,7 @@ prof_subp.add_argument("--clear-profile", action='store_true', \
                     help="clear profiles on chip")
 prof_subp.add_argument("script", type=str, \
                     help="read data using script.")
+add_args(prof_subp)
 
 
 

@@ -356,11 +356,11 @@ def parse(line):
   assert(not cmd is None)
   return cmd
 
-def get_ext_dacs_in_use(board,conc_circ,menv):
+def get_ext_dacs_in_use(board,conc_circ,dssim):
   info = {}
   for loc,config in conc_circ.instances_of_block('ext_chip_in'):
-    _,waveform = op.to_python(menv.input(config.label('in')))
-    periodic = menv.is_periodic(config.label('in'))
+    _,waveform = op.to_python(dssim.input(config.label('in')))
+    periodic = dssim.is_periodic(config.label('in'))
     handle = board.handle_by_inst('ext_chip_in',loc)
     assert(not handle is None)
     info[handle] = {'label':config.label('in'),
@@ -371,7 +371,7 @@ def get_ext_dacs_in_use(board,conc_circ,menv):
 
   return info
 
-def get_ext_adcs_in_use(board,conc_circ,menv):
+def get_ext_adcs_in_use(board,conc_circ,dssim):
   info = {}
   for loc,config in conc_circ.instances_of_block('ext_chip_out'):
     handle = board.handle_by_inst('ext_chip_out',loc)
@@ -456,7 +456,7 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
   gren.add(parse('micro_use_chip'))
 
 
-def execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trialno):
+def execconfig(path_handler,gren,board,conc_circ,dssim,hwenv,filename,trialno):
   if hwenv.use_oscilloscope and len(hwenv.oscilloscope.outputs()) > 0:
     gren.add(parse('osc_setup_trigger'))
 
@@ -464,20 +464,19 @@ def execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trialno):
     gren.add(parse('wait_for_key'))
 
   gren.add(parse('micro_run'))
-  circ_bmark,circ_indices,circ_scale_index,circ_method,circ_opt,_,_ = \
-                    path_handler.grendel_file_to_args(filename)
+  fileargs = \
+             path_handler.grendel_file_to_args(filename)
 
 
 
-  adcs_in_use = get_ext_adcs_in_use(board,conc_circ,menv)
+  adcs_in_use = get_ext_adcs_in_use(board,conc_circ,dssim)
   for handle, info in adcs_in_use.items():
     out_no = hwenv.adc(handle)
-    filename = path_handler.measured_waveform_file(circ_bmark, \
-                                                   circ_indices, \
-                                                   circ_scale_index, \
-                                                   circ_method, \
-                                                   circ_opt, \
-                                                   menv.name, \
+    filename = path_handler.measured_waveform_file(fileargs['lgraph'], \
+                                                   fileargs['lscale'], \
+                                                   fileargs['model'], \
+                                                   fileargs['opt'], \
+                                                   dssim.name, \
                                                    hwenv.name, \
                                                    info['label'],
                                                    trialno)
@@ -497,10 +496,10 @@ def execconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,trialno):
       raise Exception("cannot read value")
 
 
-def postconfig(path_handler,gren,board,conc_circ,menv,hwenv,filename,ntrials):
+def postconfig(path_handler,gren,board,conc_circ,dssim,hwenv,filename,ntrials):
   for trial in range(0,ntrials):
     execconfig(path_handler,gren,board, \
-               conc_circ,menv,hwenv,filename,trial)
+               conc_circ,dssim,hwenv,filename,trial)
 
     for block_name,loc,config in conc_circ.instances():
       block = conc_circ.board.block(block_name)
@@ -517,9 +516,9 @@ def teardown(gren,stmt):
   elif isinstance(stmt, UseCommand):
     gren.add(stmt.disable())
 
-def generate(paths,board,conc_circ,menv,hwenv,filename,ntrials):
+def generate(paths,board,conc_circ,dssim,hwenv,filename,ntrials):
   gren = GrendelProg()
-  preamble(gren,board,conc_circ,menv,hwenv)
+  preamble(gren,board,conc_circ,dssim,hwenv)
 
   stmts = []
   for block_name,loc,config in conc_circ.instances():
@@ -535,7 +534,7 @@ def generate(paths,board,conc_circ,menv,hwenv,filename,ntrials):
   for stmt in stmts:
     gren.add(stmt)
 
-  postconfig(paths,gren,board,conc_circ,menv,hwenv,filename,ntrials)
+  postconfig(paths,gren,board,conc_circ,dssim,hwenv,filename,ntrials)
 
   for stmt in gren.stmts:
     teardown(gren,stmt)

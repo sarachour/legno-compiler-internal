@@ -2,10 +2,11 @@ import os
 from enum import Enum
 import util.config as config
 import util.util as util
+import parse as parselib
 
 class PathHandler:
-    def __init__(self,name,bmark,make_dirs=True):
-        self.set_root_dir(name,bmark)
+    def __init__(self,subset,bmark,make_dirs=True):
+        self.set_root_dir(subset,bmark)
         for path in [
                 self.ROOT_DIR,
                 self.BMARK_DIR,
@@ -15,26 +16,27 @@ class PathHandler:
                 self.LSCALE_ADP_DIAG_DIR,
                 self.MEAS_WAVEFORM_FILE_DIR,
                 self.GRENDEL_FILE_DIR,
-                self.PLOT_DIR
+                self.REF_SIM_DIR,
+                self.ADP_SIM_DIR,
+                self.TIME_DIR
         ]:
           if make_dirs:
               util.mkdir_if_dne(path)
 
-        self._name = name
-        self._bmark = bmark
+        self._subset = subset
+        self._prog = bmark
 
     @property
-    def name(self):
-        return self._name
+    def subset(self):
+        return self._subset
 
     @staticmethod
     def path_to_args(dirname):
-        args = dirname.split("/")
-        assert(args[0] == 'outputs')
-        assert(args[1] == 'legno')
-        subset = args[2]
-        bmark = args[3]
-        return subset,bmark
+        path = "%s/legno/{subset:s}/{prog:s}" \
+               % config.OUTPUT_PATH
+        args = parselib.parse(path,dirname)
+        return args
+
     def set_root_dir(self,name,bmark):
         self.ROOT_DIR = "%s/legno/%s" % (config.OUTPUT_PATH,name)
         self.BMARK_DIR = self.ROOT_DIR + ("/%s" % bmark)
@@ -45,137 +47,173 @@ class PathHandler:
         self.GRENDEL_FILE_DIR = self.BMARK_DIR + "/grendel"
         self.PLOT_DIR = self.BMARK_DIR + "/plots"
         self.MEAS_WAVEFORM_FILE_DIR = self.BMARK_DIR + "/out-waveform"
-        self.TIME_DIR = self.ROOT_DIR + "/times"
+        self.TIME_DIR = self.BMARK_DIR + "/times"
+        self.REF_SIM_DIR = self.BMARK_DIR + "/sim/ref"
+        self.ADP_SIM_DIR = self.BMARK_DIR + "/sim/adp"
 
 
-    def lscale_adp_file(self,bmark,indices,scale_index,model,opt):
-      index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.LSCALE_ADP_DIR+ "/%s_%s_s%s_%s_%s.circ" % \
-        (self._bmark,index_str,scale_index,model,opt)
+    def adp_sim_plot(self,lgraph,lscale,opt,model,varname):
+        dirpath = "{path}/{lgraph}_{lscale}_{opt}_{model}"
+        cdir = dirpath.format(path=self.ADP_SIM_DIR, \
+                              lgraph=lgraph, \
+                              lscale=lscale, \
+                              opt=opt, \
+                              model=model)
+        util.mkdir_if_dne(cdir)
+        filename = "{dirpath}/{name}.png"
+        cfilename = filename.format(dirpath=cdir, \
+                                name=varname)
+        return cfilename
+
+    def ref_sim_plot(self,varname):
+        path = "{path}/{name}.png"
+        return path.format(path=self.REF_SIM_DIR, \
+                           name=varname)
 
 
-    def lscale_adp_diagram_file(self,bmark,indices,scale_index,model,opt,tag="notag"):
-      index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.LSCALE_ADP_DIAG_DIR+ "/%s_%s_s%s_%s_%s_%s.dot" % \
-        (self._bmark,index_str,scale_index,model,opt,tag)
+    def time_file(self,name):
+        path = "{path}/{name}.txt"
+        return path.format(path=self.TIME_DIR, \
+                           name=name)
 
 
-    def plot(self,bmark,indices,scale_index,model,opt, \
-             menv_name,henv_name,tag):
-      index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.PLOT_DIR+ "/%s_%s_s%s_%s_%s_%s_%s_%s.png" % \
-        (self._bmark,index_str,scale_index,model,opt, \
-         menv_name,henv_name,\
-         tag)
+
+    def lgraph_adp_diagram_file(self,graph_index):
+        path = "{path}/{prog}_g{lgraph}.dot"
+        return path.format(path=self.LGRAPH_ADP_DIAG_DIR,
+                           prog=self._prog,
+                           lgraph=graph_index)
 
 
-    def grendel_file(self,bmark,indices,scale_index,model,opt, \
-                     menv_name,henv_name):
-      index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.GRENDEL_FILE_DIR+ "/%s_%s_s%s_%s_%s_%s_%s.grendel" % \
-        (self._bmark,index_str,scale_index,model,opt,menv_name,henv_name)
+    def lgraph_adp_file(self,graph_index):
+        path = "{path}/{prog}_g{lgraph}.adp"
+        return path.format(path=self.LGRAPH_ADP_DIR,
+                           prog=self._prog,
+                           lgraph=graph_index)
+
+    @staticmethod
+    def lgraph_adp_to_args(path):
+        name = path.split("/")[-1]
+        cmd = "{prog:w}_g{lgraph:w}.adp"
+        result = parselib.parse(cmd,name)
+        assert(not result is None)
+        return result
+
+    def lscale_adp_file(self,graph_index,scale_index,model,opt):
+        path ="{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}.adp"
+        filepath = path.format(path=self.LSCALE_ADP_DIR, \
+                               prog=self._prog, \
+                               lgraph=graph_index, \
+                               lscale=scale_index, \
+                               model=model, \
+                               opt=opt)
+
+
+    @staticmethod
+    def lscale_adp_to_args(path):
+        name = path.split("/")[-1]
+        for model_cmd in util.model_format():
+            cmd = "{prog:w}_g{lgraph:w}_s{lscale:d}_%s_{opt:w}.adp"  \
+                  % model_cmd
+            result = parselib.parse(cmd,name)
+            if not result is None:
+                result = dict(result.named.items())
+                model = util.pack_model(result)
+                result['model'] = model
+                assert(not result is None)
+                return result
+
+        raise Exception("could not parse: %s" % name)
+
+    def lscale_adp_diagram_file(self,graph_index,scale_index,model,opt,tag="notag"):
+        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{tag}.dot"
+        return path.format(path=self.LSCALE_ADP_DIAG_DIR,
+                           prog=self._prog, \
+                           lgraph=graph_index, \
+                           lscale=scale_index, \
+                           model=model, \
+                           opt=opt,
+                           tag=tag)
+
+
+
+    def plot(self,graph_index,scale_index,model,opt, \
+             menv_subset,henv_subset,tag):
+        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{dssim}_{hwenv}_{tag}.png"
+        return path.format(path=self.PLOT_DIR,
+                           prog=self._prog,
+                           lgraph=graph_index,
+                           lscale=scale_index,
+                           model=mode,
+                           opt=opt,
+                           dssim=menv_subset,
+                           hwenv=henv_subset, \
+                           tag=tag)
+
+
+
+    def grendel_file(self,graph_index,scale_index,model,opt, \
+                     menv_subset,henv_subset):
+        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{dssim}_{hwenv}.grendel"
+        return path.format(path=self.GRENDEL_FILE_DIR,
+                           prog=self._prog,
+                           lgraph=graph_index,
+                           lscale=scale_index,
+                           model=model,
+                           opt=opt,
+                           dssim=menv_subset,
+                           hwenv=henv_subset)
+
+
+    @staticmethod
+    def grendel_file_to_args(path):
+        name = path.split("/")[-1]
+        for model_cmd in util.model_format():
+            cmd = "{prog:w}_g{lgraph:w}_s{lscale:d}_%s_{opt:w}_{dssim:w}_{hwenv:w}.grendel" % \
+                   model_cmd
+            result = parselib.parse(cmd,name)
+            if not result is None:
+                result = dict(result.named.items())
+                model = util.pack_model(result)
+                result['model'] = model
+                assert(not result is None)
+                return result
+
+        raise Exception("could not parse: %s" % name)
+
+
+    def measured_waveform_file(self,graph_index,scale_index, \
+                               model,opt,\
+                               dssim, \
+                               hwenv, \
+                               variable,trial):
+        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}"
+        path += "_{dssim}_{hwenv}_{var}_{trial}.json"
+
+        return path.format(path=self.MEAS_WAVEFORM_FILE_DIR,
+                           prog=self._prog,
+                           lgraph=graph_index,
+                           lscale=scale_index,
+                           model=model,
+                           opt=opt,
+                           dssim=dssim,
+                           hwenv=hwenv,
+                           var=variable,
+                           trial=trial)
+
+
+
+    def measured_waveform_file_to_args(self,name):
+        path = "{prog:s}_g{lgraph:s}_s{lscale:d}_{model:s}_{opt:s}"
+        path += "_{dssim:s}_{hwenv:s}_{var:s}_{trial:d}.json"
+        args = parselib.parse(path,name)
+        return args
+
+
 
 
     def measured_waveform_dir(self):
       return self.MEAS_WAVEFORM_FILE_DIR
-
-
-    def measured_waveform_file(self,bmark,indices,scale_index, \
-                               model,opt,\
-                               menv_name,hwenv_name,variable,trial):
-      index_str = "_".join(map(lambda ind : str(ind),indices))
-      return self.MEAS_WAVEFORM_FILE_DIR+ "/%s_%s_s%s_%s_%s_%s_%s_%s_%d.json" % \
-        (self._bmark,index_str,scale_index,model,opt, \
-         menv_name,hwenv_name,variable,trial)
-
-
-    def measured_waveform_files(self,bmark,indices,scale_index,\
-                               menv_name,hwenv_name,variable):
-      index_str = "_".join(map(lambda ind : str(ind),indices))
-      prefix = "%s_%s_s%s_%s_%s_" % \
-        (self._bmark,index_str,scale_index,menv_name,hwenv_name)
-
-      raise Exception("TODO: this is not the correct prefix.")
-      for dirname, subdirlist, filelist in \
-          os.walk(self.MEAS_WAVEFORM_FILE_DIR):
-        for fname in filelist:
-          if fname.endswith('.json') and fname.startswith(prefix):
-            yield "%s/%s" % (self.MEAS_WAVEFORM_FILE_DIR,fname)
-
-
-    def measured_waveform_file_to_args(self,name):
-      basename = name.split(".json")[0]
-      args = basename.split("_")
-      bmark = args[0]
-      indices = list(map(lambda token: int(token), args[1:-7]))
-      scale_index = int(args[-7].split('s')[1])
-      model = args[-6]
-      opt = args[-5]
-      menv_name = args[-4]
-      hwenv_name = args[-3]
-      var_name = args[-2]
-      trial = int(args[-1])
-
-      return bmark,indices,scale_index,model,opt, \
-          menv_name,hwenv_name,var_name,trial
-
-
-    @staticmethod
-    def grendel_file_to_args(name):
-      basename = name.split(".grendel")[0]
-      args = basename.split("_")
-      bmark = args[0]
-      indices = list(map(lambda token: int(token), args[1:-5]))
-      scale_index = int(args[-5].split('s')[1])
-      model = args[-4]
-      opt = args[-3]
-      menv_name = args[-2]
-      hwenv_name = args[-1]
-      return bmark,indices,scale_index,model,opt,menv_name,hwenv_name
-
-
-
-    def extract_metadata_from_filename(self, conc_circ, fname):
-      bmark,indices,scale_index,tag,opt = self.conc_circ_to_args(fname)
-      conc_circ.meta['bmark'] = bmark
-      conc_circ.meta['arco_index'] = indices
-      conc_circ.meta['jaunt_index'] = scale_index
-      model,analog_error,digital_error,bandwidth = util.unpack_tag(tag)
-      conc_circ.meta['model'] = model
-      conc_circ.meta['analog_error'] = analog_error
-      conc_circ.meta['digital_error'] = digital_error
-      conc_circ.meta['bandwidth'] = bandwidth
-
-    @staticmethod
-    def lscale_adp_to_args(name):
-      basename = name.split(".adp")[0]
-      args = basename.split("_")
-      bmark = args[0]
-      indices = list(map(lambda token: int(token), args[1:-3]))
-      scale_index = int(args[-3].split('s')[1])
-      model = args[-2]
-      opt = args[-1]
-      return bmark,indices,scale_index,model,opt
-
-
-    @staticmethod
-    def lgraph_adp_to_args(name):
-      basename = name.split(".adp")[0]
-      args = basename.split("_")
-      bmark = args[0]
-      indices = list(map(lambda token: int(token), args[1:]))
-      return bmark,indices
-
-    def lgraph_adp_diagram_file(self,indices):
-        index_str = "_".join(map(lambda ind : str(ind),indices))
-        return self.LGRAPH_ADP_DIAG_DIR+ "/%s_%s.dot" % \
-          (self._bmark,index_str)
-
-
-    def lgraph_adp_file(self,indices):
-        index_str = "_".join(map(lambda ind : str(ind),indices))
-        return self.LGRAPH_ADP_DIR+ "/%s_%s.adp" % \
-          (self._bmark,index_str)
 
     def grendel_file_dir(self):
         return self.GRENDEL_FILE_DIR
