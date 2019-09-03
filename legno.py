@@ -1,12 +1,11 @@
 import sys
 import os
 import numpy as np
-import progs
 import util.paths as paths
 
 
 from compiler import  simulator
-from chip.conc import ConcCirc
+from hwlib.adp import AnalogDeviceProg
 
 import argparse
 
@@ -20,40 +19,44 @@ import compiler.legno_util as legno_util
 parser = argparse.ArgumentParser(description='Legno compiler.')
 parser.add_argument('--subset', default="unrestricted",
                     help='component subset to use for compilation')
-parser.add_argument('benchmark', type=str,help='benchmark to compile')
 
 
 subparsers = parser.add_subparsers(dest='subparser_name',
                                    help='compilers/compilation passes.')
 
-arco_subp = subparsers.add_parser('arco', help='generate circuit')
-arco_subp.add_argument('--simulate', action="store_true",
+lgraph_subp = subparsers.add_parser('lgraph', help='generate circuit')
+lgraph_subp.add_argument('--simulate', action="store_true",
                        help="ignore resource constraints while compiling.")
-arco_subp.add_argument('--xforms', type=int,default=3,
+lgraph_subp.add_argument('--xforms', type=int,default=3,
                        help='number of abs circuits to generate.')
-arco_subp.add_argument('--abs-circuits', type=int,default=100,
+lgraph_subp.add_argument('--abs-circuits', type=int,default=100,
                        help='number of abs circuits to generate.')
-arco_subp.add_argument('--conc-circuits', type=int,default=3,
+lgraph_subp.add_argument('--conc-circuits', type=int,default=3,
                        help='number of conc circuits to generate.')
+lgraph_subp.add_argument('--max-circuits', type=int,default=5,
+                       help='maximum number of circuits to generate.')
 
 
-jaunt_subp = subparsers.add_parser('jaunt', \
+lgraph_subp.add_argument('program', type=str,help='benchmark to compile')
+
+lscale_subp = subparsers.add_parser('lscale', \
                                    help='scale circuit parameters.')
-jaunt_subp.add_argument('--model', default="physical",
+lscale_subp.add_argument('--model', default="physical",
                         help='use physical models to inform constraints.')
-jaunt_subp.add_argument('--scale-circuits', type=int,default=15, \
+lscale_subp.add_argument('--scale-circuits', type=int,default=15, \
                        help='number of scaled circuits to generate.')
-jaunt_subp.add_argument('--digital-error', type=float, default=0.04, \
+lscale_subp.add_argument('--digital-error', type=float, default=0.04, \
                         help='do performance sweep.')
-jaunt_subp.add_argument('--analog-error',type=float,default=0.04, \
+lscale_subp.add_argument('--analog-error',type=float,default=0.04, \
                         help='do performance sweep.')
-jaunt_subp.add_argument('--search',action="store_true")
-jaunt_subp.add_argument('--use_model-uncertainty', \
+lscale_subp.add_argument('--search',action="store_true")
+lscale_subp.add_argument('--use_model-uncertainty', \
                         action='store_true', \
                         help='use the uncertainty bundled with the model')
+lscale_subp.add_argument('program', type=str,help='benchmark to compile')
 
 
-jaunt_subp.add_argument("--max-freq", type=float, help="maximum frequency in Khz")
+lscale_subp.add_argument("--max-freq", type=float, help="maximum frequency in Khz")
 
 graph_subp = subparsers.add_parser('graph', \
                                    help='emit debugging graph.')
@@ -68,6 +71,7 @@ gren_subp.add_argument('--recompute', action='store_true',
                        help='recompute.')
 gren_subp.add_argument('--trials', type=int, default=3,
                        help='compute trials.')
+gren_subp.add_argument('program', type=str,help='benchmark to compile')
 
 
 sim_subp = subparsers.add_parser('simulate', help='simulate circuit.')
@@ -75,26 +79,25 @@ sim_subp.add_argument('conc_circ', help='simulate concrete circuit.')
 
 
 args = parser.parse_args()
-prog = bmark.get_prog(args.benchmark)
 
-from chip.hcdc.hcdcv2_4 import make_board
-from chip.hcdc.globals import HCDCSubset
-subset = HCDCSubset(args.subset)
-hdacv2_board = make_board(subset)
-args.bmark_dir = subset.value
+#from hwlib.hcdc.hcdcv2_4 import make_board
+#from hwlib.hcdc.globals import HCDCSubset
+#subset = HCDCSubset(args.subset)
+#hdacv2_board = make_board(subset,load_conns=True)
+#args.bmark_dir = subset.value
 
-if args.subparser_name == "arco":
-    legno_util.exec_arco(hdacv2_board, args)
+if args.subparser_name == "lgraph":
+    legno_util.exec_lgraph(args)
 
-elif args.subparser_name == "jaunt":
-    legno_util.exec_jaunt(hdacv2_board,args)
+elif args.subparser_name == "lscale":
+    legno_util.exec_lscale(args)
 
 elif args.subparser_name == "srcgen":
-   legno_util.exec_srcgen(hdacv2_board,args)
+   legno_util.exec_srcgen(args)
 
 elif args.subparser_name == "graph":
-   legno_util.exec_graph(hdacv2_board,args)
+   legno_util.exec_graph(args)
 
 elif args.subparser_name == "simulate":
-   simulator.simulate(hdacv2_board,args.conc_circ, \
-                      args.benchmark)
+   simulator.simulate(args.conc_circ, \
+                      args.program)

@@ -1,22 +1,22 @@
+import itertools
 import ops.aop as aop
 import ops.op as op
-import chip.abs as acirc
-import lab_bench.lib.chipcmd.data as chipcmd
-import itertools
-import compiler.arco_pass.util as arco_util
-import chip.props as prop
-import itertools
-from chip.config import Labels
+
+import compiler.lgraph_pass.util as lgraph_util
+import hwlib.hcdc.enums as enums
+import hwlib.props as prop
+from hwlib.config import Labels
+import hwlib.abs as acirc
 
 def tac_integ(board,ast):
     for deriv,deriv_output in to_abs_circ(board,ast.input(0)):
         ic = ast.input(1)
-        if not ic.op == aop.AOpType.CONST:
+        if not ic.to_expr().is_constant():
             raise Exception("unexpected ic: <%s>" % ic)
 
-        init_cond = ic.value
+        init_cond = ic.to_expr().compute()
         node = acirc.ANode.make_node(board,"integrator")
-        node.config.set_comp_mode(chipcmd.SignType.POS)
+        node.config.set_comp_mode(enums.SignType.POS)
         node.config.set_dac("ic",init_cond)
         acirc.ANode.connect(deriv,deriv_output,node,"in")
         yield node,"out"

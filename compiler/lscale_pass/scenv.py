@@ -1,13 +1,12 @@
 from enum import Enum
-import compiler.jaunt_pass.jaunt_util as jaunt_util
-import ops.jop as jop
-import numpy as np
-import util.config as CONFIG
-import signal
-from chip.model import ModelDB
 import sys
+import numpy as np
+import ops.jop as jop
+import util.config as CONFIG
+from hwlib.model import ModelDB
+import compiler.lscale_pass.lscale_util as lscale_util
 
-class JauntVarType(Enum):
+class LScaleVarType(Enum):
   SCALE_VAR= "SCV"
   GAIN_VAR = "GNV"
 
@@ -23,7 +22,7 @@ class JauntVarType(Enum):
 
 
 
-class JauntEnvParams:
+class LScaleEnvParams:
   class Type(Enum):
     PHYSICAL = "physical"
     IDEAL = "ideal"
@@ -37,13 +36,13 @@ class JauntEnvParams:
     NAIVE = "naive"
 
     def abbrev(self):
-      if JauntEnvParams.Model.PHYSICAL == self:
+      if LScaleEnvParams.Model.PHYSICAL == self:
         return "x"
-      if JauntEnvParams.Model.PARTIAL == self:
+      if LScaleEnvParams.Model.PARTIAL == self:
         return "z"
-      elif JauntEnvParams.Model.NAIVE == self:
+      elif LScaleEnvParams.Model.NAIVE == self:
         return "n"
-      elif JauntEnvParams.Model.IDEAL == self:
+      elif LScaleEnvParams.Model.IDEAL == self:
         return "i"
 
   def __init__(self,digital_error=0.05, \
@@ -102,20 +101,20 @@ class JauntEnvParams:
 
 
   def set_model(self,model):
-    if model == JauntEnvParams.Type.PHYSICAL:
+    if model == LScaleEnvParams.Type.PHYSICAL:
       self.physical()
-    elif model == JauntEnvParams.Type.IDEAL:
+    elif model == LScaleEnvParams.Type.IDEAL:
       self.ideal()
-    elif model == JauntEnvParams.Type.NAIVE:
+    elif model == LScaleEnvParams.Type.NAIVE:
       self.naive()
-    elif model == JauntEnvParams.Type.PARTIAL:
+    elif model == LScaleEnvParams.Type.PARTIAL:
       self.partial()
     else:
       raise Exception("unknown jenv model: <%s>" % model);
 
   def tag(self):
     tag = ""
-    tag += "%s" % JauntEnvParams.Model(self.model).abbrev()
+    tag += "%s" % LScaleEnvParams.Model(self.model).abbrev()
     if self.propagate_uncertainty:
       tag += "P"
     if self.enable_quality_constraint:
@@ -129,21 +128,21 @@ class JauntEnvParams:
 
     return tag
 
-class JauntEnv:
+class LScaleEnv:
   def __init__(self,model="physical", \
                digital_error=0.05, \
                analog_error=0.05,
                max_freq=None):
     # scaling factor name to port
-    self._to_jaunt_var = {}
-    self._from_jaunt_var ={}
+    self._to_lscale_var = {}
+    self._from_lscale_var ={}
 
     self._in_use = {}
 
-    self.params = JauntEnvParams(digital_error=digital_error, \
+    self.params = LScaleEnvParams(digital_error=digital_error, \
                                  analog_error=analog_error, \
                                  max_freq=max_freq)
-    self.params.set_model(JauntEnvParams.Type(model))
+    self.params.set_model(LScaleEnvParams.Type(model))
     self.model_db = ModelDB(self.params.calib_obj)
     self._eqs = []
     self._ltes = []
@@ -153,7 +152,7 @@ class JauntEnv:
     self._use_tau = False
     self._solved = False
     self._interactive = False
-    self.decl_jaunt_var((),JauntVarType.TAU)
+    self.decl_lscale_var((),LScaleVarType.TAU)
 
     self.time_scaling = True
 
@@ -161,7 +160,7 @@ class JauntEnv:
     self.time_scaling = v
 
   def tau(self):
-    return self.to_jaunt_var(JauntVarType.TAU,())
+    return self.to_lscale_var(LScaleVarType.TAU,())
 
   def interactive(self):
     self._interactive = True
@@ -188,17 +187,17 @@ class JauntEnv:
   def failed(self):
       return self._failed
 
-  def in_use(self,tup,tag=JauntVarType.VAR):
-    var_name = self.to_jaunt_var(tag,tup)
+  def in_use(self,tup,tag=LScaleVarType.VAR):
+    var_name = self.to_lscale_var(tag,tup)
     return self._in_use[var_name]
 
 
-  def jaunt_var_in_use(self,var_name):
+  def lscale_var_in_use(self,var_name):
     return self._in_use[var_name]
 
   def variables(self,in_use=False):
-    for var in self._from_jaunt_var.keys():
-      if self.jaunt_var_in_use(var) or not in_use:
+    for var in self._from_lscale_var.keys():
+      if self.lscale_var_in_use(var) or not in_use:
         yield var
 
   def eqs(self):
@@ -209,93 +208,93 @@ class JauntEnv:
     for lhs,rhs,annot in self._ltes:
       yield (lhs,rhs,annot)
 
-  def get_jaunt_var_info(self,scvar_var):
-    if not scvar_var in self._from_jaunt_var:
-      print(self._from_jaunt_var.keys())
+  def get_lscale_var_info(self,scvar_var):
+    if not scvar_var in self._from_lscale_var:
+      print(self._from_lscale_var.keys())
       raise Exception("not scaling factor table in <%s>" % scvar_var)
 
-    result = self._from_jaunt_var[scvar_var]
+    result = self._from_lscale_var[scvar_var]
     return result
 
   def get_tag(self,var):
-    result = self.get_jaunt_var_info(var)
+    result = self.get_lscale_var_info(var)
     return result[0]
 
-  def jaunt_vars(self):
-    return self._from_jaunt_var.keys()
+  def lscale_vars(self):
+    return self._from_lscale_var.keys()
 
-  def has_jaunt_var(self,tup, tag=JauntVarType.VAR):
-    varname = self.to_jaunt_var(tag,tup)
-    return varname in self._from_jaunt_var
+  def has_lscale_var(self,tup, tag=LScaleVarType.VAR):
+    varname = self.to_lscale_var(tag,tup)
+    return varname in self._from_lscale_var
 
-  def get_jaunt_var(self,tup, tag=JauntVarType.VAR):
-    varname = self.to_jaunt_var(tag,tup)
+  def get_lscale_var(self,tup, tag=LScaleVarType.VAR):
+    varname = self.to_lscale_var(tag,tup)
 
-    if not varname in self._from_jaunt_var:
-      for p in self._from_jaunt_var.keys():
+    if not varname in self._from_lscale_var:
+      for p in self._from_lscale_var.keys():
         print("  var: %s" % p)
       raise Exception("error: cannot find <%s> in var dict" % str(varname))
 
     self._in_use[varname] = True
     return varname
 
-  def to_jaunt_var(self,tag,tup):
+  def to_lscale_var(self,tag,tup):
     args = [tag.value] + list(tup)
     return "_".join(map(lambda a: str(a), args))
 
-  def decl_jaunt_var(self,tup, \
-                     tag=JauntVarType.VAR):
+  def decl_lscale_var(self,tup, \
+                     tag=LScaleVarType.VAR):
       # create a scaling factor from the variable name
-    var_name = self.to_jaunt_var(tag,tup)
-    if var_name in self._from_jaunt_var:
+    var_name = self.to_lscale_var(tag,tup)
+    if var_name in self._from_lscale_var:
       return var_name
 
-    self._from_jaunt_var[var_name] = (tag,tup)
-    self._to_jaunt_var[(tag,tup)] = var_name
+    self._from_lscale_var[var_name] = (tag,tup)
+    self._to_lscale_var[(tag,tup)] = var_name
     self._in_use[var_name] = False
     return var_name
 
   def get_inject_var(self,block_name,loc,port,handle=None):
-    return self.get_jaunt_var((block_name,loc,port,handle), \
-                               tag=JauntVarType.INJECT_VAR)
+    return self.get_lscale_var((block_name,loc,port,handle), \
+                               tag=LScaleVarType.INJECT_VAR)
 
   def decl_inject_var(self,block_name,loc,port,handle=None):
-    return self.decl_jaunt_var((block_name,loc,port,handle), \
-                               tag=JauntVarType.INJECT_VAR)
+    return self.decl_lscale_var((block_name,loc,port,handle), \
+                               tag=LScaleVarType.INJECT_VAR)
 
   def has_inject_var(self,block_name,loc,port,handle=None):
-    var_name =self.to_jaunt_var(JauntVarType.INJECT_VAR,
+    var_name =self.to_lscale_var(LScaleVarType.INJECT_VAR,
                                 (block_name,loc,port,handle))
-    return var_name in self._from_jaunt_var
+    return var_name in self._from_lscale_var
 
   def get_scvar(self,block_name,loc,port,handle=None):
-    return self.get_jaunt_var((block_name,loc,port,handle), \
-                              tag=JauntVarType.SCALE_VAR)
+    return self.get_lscale_var((block_name,loc,port,handle), \
+                              tag=LScaleVarType.SCALE_VAR)
 
   def decl_scvar(self,block_name,loc,port,handle=None):
-    return self.decl_jaunt_var((block_name,loc,port,handle), \
-                              tag=JauntVarType.SCALE_VAR)
+    return self.decl_lscale_var((block_name,loc,port,handle), \
+                              tag=LScaleVarType.SCALE_VAR)
 
 
   def get_scvar(self,block_name,loc,port,handle=None):
-    return self.get_jaunt_var((block_name,loc,port,handle), \
-                              tag=JauntVarType.SCALE_VAR)
+    return self.get_lscale_var((block_name,loc,port,handle), \
+                              tag=LScaleVarType.SCALE_VAR)
 
 
 
   def eq(self,v1,v2,annot):
-      jaunt_util.log_debug("%s == %s {%s}" % (v1,v2,annot))
+      lscale_util.log_debug("%s == %s {%s}" % (v1,v2,annot))
       # TODO: equality
       if self._interactive:
         input()
-      succ,lhs,rhs = jaunt_util.cancel_signs(v1,v2)
+      succ,lhs,rhs = lscale_util.cancel_signs(v1,v2)
       if not succ:
         self.fail("could not cancel signs: %s == %s" % (v1,v2))
       self._eqs.append((lhs,rhs,annot))
 
 
   def lte(self,v1,v2,annot):
-      jaunt_util.log_debug("%s <= %s {%s}" % (v1,v2,annot))
+      lscale_util.log_debug("%s <= %s {%s}" % (v1,v2,annot))
       c1,_ = v1.factor_const()
       c2,_ = v2.factor_const()
       if c1 == 0 and c2 >= 0:
@@ -312,13 +311,13 @@ class JauntEnv:
       # TODO: equality
       self.lte(v2,v1,annot)
 
-class JauntInferEnv(JauntEnv):
+class LScaleInferEnv(LScaleEnv):
 
     def __init__(self,model="ideal", \
                  max_freq=None,
                  digital_error=0.05, \
                  analog_error=0.05):
-      JauntEnv.__init__(self,model, \
+      LScaleEnv.__init__(self,model, \
                         max_freq=max_freq, \
                         digital_error=digital_error,
                         analog_error=analog_error)
@@ -327,80 +326,80 @@ class JauntInferEnv(JauntEnv):
       self._lts = []
 
     def decl_op_range_var(self,block_name,loc,port,handle=None):
-      return self.decl_jaunt_var((block_name,loc,port,handle),
-                                 tag=JauntVarType.OP_RANGE_VAR)
+      return self.decl_lscale_var((block_name,loc,port,handle),
+                                 tag=LScaleVarType.OP_RANGE_VAR)
 
     def decl_gain_var(self,block_name,loc,port,handle=None):
-      return self.decl_jaunt_var((block_name,loc,port,handle),
-                                 tag=JauntVarType.GAIN_VAR)
+      return self.decl_lscale_var((block_name,loc,port,handle),
+                                 tag=LScaleVarType.GAIN_VAR)
 
     def get_gain_var(self,block_name,loc,port,handle=None):
-      return self.get_jaunt_var((block_name,loc,port,handle),
-                                tag=JauntVarType.GAIN_VAR)
+      return self.get_lscale_var((block_name,loc,port,handle),
+                                tag=LScaleVarType.GAIN_VAR)
 
     def get_op_range_var(self,block_name,loc,port,handle=None):
-      return self.get_jaunt_var((block_name,loc,port,handle),
-                                tag=JauntVarType.OP_RANGE_VAR)
+      return self.get_lscale_var((block_name,loc,port,handle),
+                                tag=LScaleVarType.OP_RANGE_VAR)
 
     def has_op_range_var(self,block_name,loc,port,handle=None):
-      return self.has_jaunt_var((block_name,loc,port,handle),
-                                tag=JauntVarType.OP_RANGE_VAR)
+      return self.has_lscale_var((block_name,loc,port,handle),
+                                tag=LScaleVarType.OP_RANGE_VAR)
 
 
     def decl_mode_var(self,block_name,loc,mode):
-      return self.decl_jaunt_var((block_name,loc,mode),
-                          tag=JauntVarType.MODE_VAR)
+      return self.decl_lscale_var((block_name,loc,mode),
+                          tag=LScaleVarType.MODE_VAR)
 
 
     def get_mode_var(self,block_name,loc,mode):
-      return self.get_jaunt_var((block_name,loc,mode),
-                                tag=JauntVarType.MODE_VAR)
+      return self.get_lscale_var((block_name,loc,mode),
+                                tag=LScaleVarType.MODE_VAR)
 
     def has_mode_var(self,block_name,loc,mode):
-      return self.has_jaunt_var((block_name,loc,mode),
-                                tag=JauntVarType.MODE_VAR)
+      return self.has_lscale_var((block_name,loc,mode),
+                                tag=LScaleVarType.MODE_VAR)
 
 
     def decl_phys_op_range_scvar(self,block_name,loc,port,handle=None,lower=True):
       if lower:
-        return self.decl_jaunt_var((block_name,loc,port,handle), \
-                                   tag=JauntVarType.PHYS_OPRANGE_SCALE_VAR_LOWER)
+        return self.decl_lscale_var((block_name,loc,port,handle), \
+                                   tag=LScaleVarType.PHYS_OPRANGE_SCALE_VAR_LOWER)
       else:
-        return self.decl_jaunt_var((block_name,loc,port,handle), \
-                                   tag=JauntVarType.PHYS_OPRANGE_SCALE_VAR_UPPER)
+        return self.decl_lscale_var((block_name,loc,port,handle), \
+                                   tag=LScaleVarType.PHYS_OPRANGE_SCALE_VAR_UPPER)
 
     def decl_phys_gain_var(self,block_name,loc,port,handle=None):
-      return self.decl_jaunt_var((block_name,loc,port,handle), \
-                                 tag=JauntVarType.PHYS_GAIN_VAR)
+      return self.decl_lscale_var((block_name,loc,port,handle), \
+                                 tag=LScaleVarType.PHYS_GAIN_VAR)
 
     def decl_phys_uncertainty(self,block_name,loc,port,handle=None):
-      return self.decl_jaunt_var((block_name,loc,port,handle), \
-                                 tag=JauntVarType.PHYS_UNCERTAINTY)
+      return self.decl_lscale_var((block_name,loc,port,handle), \
+                                 tag=LScaleVarType.PHYS_UNCERTAINTY)
 
     def get_phys_op_range_scvar(self,block_name,loc,port,handle=None,lower=True):
       if lower:
-        return self.get_jaunt_var((block_name,loc,port,handle), \
-                                  tag=JauntVarType.PHYS_OPRANGE_SCALE_VAR_LOWER)
+        return self.get_lscale_var((block_name,loc,port,handle), \
+                                  tag=LScaleVarType.PHYS_OPRANGE_SCALE_VAR_LOWER)
       else:
-        return self.get_jaunt_var((block_name,loc,port,handle), \
-                                  tag=JauntVarType.PHYS_OPRANGE_SCALE_VAR_UPPER)
+        return self.get_lscale_var((block_name,loc,port,handle), \
+                                  tag=LScaleVarType.PHYS_OPRANGE_SCALE_VAR_UPPER)
 
 
 
     def get_phys_gain_var(self,block_name,loc,port,handle=None):
-      return self.get_jaunt_var((block_name,loc,port,handle), \
-                                tag=JauntVarType.PHYS_GAIN_VAR)
+      return self.get_lscale_var((block_name,loc,port,handle), \
+                                tag=LScaleVarType.PHYS_GAIN_VAR)
 
     def get_phys_uncertainty(self,block_name,loc,port,handle=None):
-      return self.get_jaunt_var((block_name,loc,port,handle), \
-                                tag=JauntVarType.PHYS_UNCERTAINTY)
+      return self.get_lscale_var((block_name,loc,port,handle), \
+                                tag=LScaleVarType.PHYS_UNCERTAINTY)
 
 
     def implies(self,condvar,var,value):
-      assert(condvar in self._from_jaunt_var)
+      assert(condvar in self._from_lscale_var)
       if not condvar in self._implies:
         self._implies[condvar] = []
-      jaunt_util.log_info("%s -> %s = %s" % (condvar,var,value))
+      lscale_util.log_info("%s -> %s = %s" % (condvar,var,value))
       self._implies[condvar].append((var,value))
 
     def exactly_one(self,exclusive):
@@ -408,7 +407,7 @@ class JauntInferEnv(JauntEnv):
         return
 
       for v in exclusive:
-        assert(v in self._from_jaunt_var)
+        assert(v in self._from_lscale_var)
       self._exactly_one.append(exclusive)
 
     def get_lts(self):
@@ -426,7 +425,7 @@ class JauntInferEnv(JauntEnv):
 
 
     def lt(self,v1,v2,annot):
-      jaunt_util.log_debug("%s < %s {%s}" % (v1,v2,annot))
+      lscale_util.log_debug("%s < %s {%s}" % (v1,v2,annot))
       self._lts.append((v1,v2,annot))
 
     def gt(self,v1,v2,annot):

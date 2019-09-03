@@ -1,8 +1,5 @@
-import bmark.hwenvs as hwenvs
-import bmark.diffeqs as bmark
 from util import paths
-from compiler import arco, jaunt, srcgen, execprog, skelter
-from chip.conc import ConcCirc
+#from compiler import lgraph, lscale, srcgen, execprog
 import os
 import time
 import json
@@ -10,71 +7,64 @@ import shutil
 import numpy as np
 from util.util import Timer
 import itertools
+from hwlib.adp import AnalogDeviceProg
+from dslang.dsprog import DSProgDB
 
-# TODO: in concrete specification, connection is made to same dest.
-def compile(board,problem):
-    files = []
-    prob = benchmark1()
-    for idx1,idx2,circ in compile(hdacv2_board,prob):
-        srcgen.Logger.DEBUG = True
-        srcgen.Logger.NATIVE = True
-        circ.name = "%s_%d_%d" % (circ_name,idx1,idx2)
-        labels,circ_cpp, circ_h = srcgen.generate(circ)
-        files = []
-        files.append((labels,circ.name,circ_cpp,circ_h))
-        srcgen.write_file(experiment,files,out_name,
-                        circs=[circ])
+def exec_lgraph(args):
+    from compiler import lgraph
+    from hwlib.hcdc.hcdcv2_4 import make_board
+    from hwlib.hcdc.globals import HCDCSubset
 
-def exec_ref(hdacv2_board, args):
-  path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
-  prog = bmark.get_prog(args.benchmark)
-  menv = bmark.get_math_env(args.benchmark)
-  execprog.execute(path_handler,
-                   prog,
-                   menv)
+    hdacv2_board = make_board(HCDCSubset(args.subset), \
+                              load_conns=True)
+    path_handler = paths.PathHandler(args.subset,args.program)
+    program = DSProgDB.get_prog(args.program)
+    timer = Timer('lgraph_%s' % args.program,path_handler)
+    timer.start()
+    count = 0
+    for indices,adp in \
+        lgraph.compile(hdacv2_board,
+                       program,
+                       depth=args.xforms,
+                       max_abs_circs=args.abs_circuits,
+                       max_conc_circs=args.conc_circuits):
+        timer.end()
 
-def exec_arco(hdacv2_board, args):
-  path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
-  problem = bmark.get_prog(args.benchmark)
+        print("<<< writing circuit>>>")
+        filename = path_handler.abs_circ_file(indices)
+        adp.write_circuit(filename)
 
-  timer = Timer('arco_%s' % args.benchmark,path_handler)
-  timer.start()
-  for indices,conc_circ in \
-      arco.compile(hdacv2_board,
-                              problem,
-                              depth=args.xforms,
-                              max_abs_circs=args.abs_circuits,
-                              max_conc_circs=args.conc_circuits):
+        print("<<< writing graph >>>")
+        filename = path_handler.abs_graph_file(indices)
+        adp.write_graph(filename,write_png=True)
 
-      timer.end()
-      filename = path_handler.abs_circ_file(indices)
-      print("<<< writing circuit>>>")
-      conc_circ.write_circuit(filename)
-      filename = path_handler.abs_graph_file(indices)
-      print("<<< writing graph >>>")
-      conc_circ.write_graph(filename,write_png=True)
-      timer.start()
+        count += 1
+        if count >= args.max_circuits:
+            break
 
-  timer.kill()
-  print(timer)
-  timer.save()
+        timer.start()
 
-def exec_jaunt_normal(prog,conc_circ,args):
-    for idx,opt,model,scale_circ in jaunt.scale(prog, \
-                                                conc_circ,
-                                                args.scale_circuits,
-                                                model=args.model,
-                                                max_freq=args.max_freq,
-                                                digital_error=args.digital_error,
-                                                analog_error=args.analog_error,
-                                                do_log=True):
+    print("<<< done >>>")
+    timer.kill()
+    print(timer)
+    timer.save()
+
+def exec_lscale_normal(prog,conc_circ,args):
+    for idx,opt,model,scale_circ in lscale.scale(prog, \
+                                                 conc_circ,
+                                                 args.scale_circuits,
+                                                 model=args.model,
+                                                 max_freq=args.max_freq,
+                                                 digital_error=args.digital_error,
+                                                 analog_error=args.analog_error,
+                                                 do_log=True):
         yield idx,opt,model,scale_circ
 
 
-def exec_jaunt_search(prog,conc_circ,args,tolerance=0.002):
+def exec_lscale_search(prog,conc_circ,args,tolerance=0.002):
     def test_valid(digital_error,analog_error):
         print("dig_error=%f an_error=%f" % (digital_error,analog_error))
-        for idx,opt,model,scale_circ in jaunt.scale(prog, \
+        for idx,opt,model,scale_circ in lscale.scale(prog, \
                                                     conc_circ,
                                                     args.scale_circuits,
                                                     model=args.model,
@@ -150,7 +140,7 @@ def exec_jaunt_search(prog,conc_circ,args,tolerance=0.002):
     dig_error,analog_error = joint_search(dig_error,analog_error)
 
     for scale in [1.1]:
-        for idx,opt,model,scale_circ in jaunt.scale(prog, \
+        for idx,opt,model,scale_circ in lscale.scale(prog, \
                                                     conc_circ,
                                                     args.scale_circuits,
                                                     model=args.model,
@@ -161,11 +151,11 @@ def exec_jaunt_search(prog,conc_circ,args,tolerance=0.002):
 
 
 
-def exec_jaunt(hdacv2_board, args):
+def exec_lscale(args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
   prog = bmark.get_prog(args.benchmark)
   circ_dir = path_handler.abs_circ_dir()
-  timer = Timer('jaunt_%s' % args.benchmark, path_handler)
+  timer = Timer('lscale_%s' % args.benchmark, path_handler)
   for dirname, subdirlist, filelist in os.walk(circ_dir):
     for fname in filelist:
       if fname.endswith('.circ'):
@@ -176,8 +166,8 @@ def exec_jaunt(hdacv2_board, args):
         conc_circ = ConcCirc.read(hdacv2_board, filename)
 
         timer.start()
-        gen = exec_jaunt_normal(prog,conc_circ,args) if not args.search \
-              else exec_jaunt_search(prog,conc_circ,args)
+        gen = exec_lscale_normal(prog,conc_circ,args) if not args.search \
+              else exec_lscale_search(prog,conc_circ,args)
 
         for idx,opt,model,scale_circ in gen:
             filename = path_handler.conc_circ_file(circ_bmark,
@@ -270,7 +260,7 @@ def exec_graph_one(hdacv2_board,path_handler,fname):
                                   write_png=True,\
                                   color_method=draw_method)
 
-def exec_graph(hdacv2_board, args):
+def exec_visualize(args):
   path_handler = paths.PathHandler(args.bmark_dir,args.benchmark)
   circ_dir = path_handler.conc_circ_dir()
   scores = []

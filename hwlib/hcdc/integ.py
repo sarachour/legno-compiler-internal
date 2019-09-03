@@ -1,28 +1,25 @@
-from chip.block import Block
-import chip.props as props
-import chip.units as units
-import chip.hcdc.util as util
 import util.util as gutil
-import chip.cont as cont
-
-import lab_bench.lib.chipcmd.data as chipcmd
-import chip.hcdc.globals as glb
-from chip.hcdc.globals import CTX, GLProp
 import ops.op as ops
-import chip.cont as contlib
+from hwlib.block import Block
+import hwlib.props as props
+import hwlib.units as units
+import hwlib.hcdc.util as util
+import hwlib.hcdc.enums as enums
+import hwlib.hcdc.globals as glb
+
 import itertools
 
 def get_comp_modes():
-  return chipcmd.SignType.options()
+  return enums.SignType.options()
 
 def get_scale_modes():
   opts = [
-    chipcmd.RangeType.options(),
-    chipcmd.RangeType.options()
+    enums.RangeType.options(),
+    enums.RangeType.options()
   ]
   blacklist = [
-    (chipcmd.RangeType.LOW,chipcmd.RangeType.HIGH),
-    (chipcmd.RangeType.HIGH,chipcmd.RangeType.LOW)
+    (enums.RangeType.LOW,enums.RangeType.HIGH),
+    (enums.RangeType.HIGH,enums.RangeType.LOW)
   ]
   modes = list(util.apply_blacklist(itertools.product(*opts),\
                                     blacklist))
@@ -31,25 +28,17 @@ def get_scale_modes():
 
 def is_standard(scale_mode):
   i,o = scale_mode
-  return i == chipcmd.RangeType.MED and \
-    o == chipcmd.RangeType.MED
+  return i == enums.RangeType.MED and \
+    o == enums.RangeType.MED
 
 def is_extended(scale_mode):
   i,o = scale_mode
-  #return i == chipcmd.RangeType.MED and \
-  #  (o == chipcmd.RangeType.MED or \
-  #   o == chipcmd.RangeType.LOW)
-  return (i != chipcmd.RangeType.LOW) and \
-          o != chipcmd.RangeType.LOW
+  #return i == enums.RangeType.MED and \
+  #  (o == enums.RangeType.MED or \
+  #   o == enums.RangeType.LOW)
+  return (i != enums.RangeType.LOW) and \
+          o != enums.RangeType.LOW
 
-def continuous_scale_model(integ):
-  m = chipcmd.RangeType.MED
-  comp_modes = get_comp_modes()
-  scale_modes = get_scale_modes()
-  for comp_mode in comp_modes:
-    csm = cont.ContinuousScaleModel()
-    csm.set_baseline((m,m))
-    integ.set_scale_model(comp_mode,csm)
 
 def scale_model(integ):
   comp_modes = get_comp_modes()
@@ -61,18 +50,18 @@ def scale_model(integ):
     integ.set_scale_modes(comp_mode,nonstandard,[glb.HCDCSubset.UNRESTRICTED])
     integ.add_subsets(comp_mode,extended,[glb.HCDCSubset.EXTENDED])
     for scale_mode in scale_modes:
-      get_prop = lambda p : CTX.get(p, integ.name,
+      get_prop = lambda p : glb.CTX.get(p, integ.name,
                                     comp_mode,scale_mode,None)
       inrng,outrng = scale_mode
       analog_in = util.make_ana_props(inrng, \
-                                      get_prop(GLProp.CURRENT_INTERVAL))
-      analog_in.set_bandwidth(0,get_prop(GLProp.MAX_FREQ),units.hz)
+                                      get_prop(glb.GLProp.CURRENT_INTERVAL))
+      analog_in.set_bandwidth(0,get_prop(glb.GLProp.MAX_FREQ),units.hz)
 
       analog_out = util.make_ana_props(outrng, \
-                                       get_prop(GLProp.CURRENT_INTERVAL))
-      dig_props = util.make_dig_props(chipcmd.RangeType.MED,
-                                      get_prop(GLProp.DIGITAL_INTERVAL), \
-                                      get_prop(GLProp.DIGITAL_QUANTIZE))
+                                       get_prop(glb.GLProp.CURRENT_INTERVAL))
+      dig_props = util.make_dig_props(enums.RangeType.MED,
+                                      get_prop(glb.GLProp.DIGITAL_INTERVAL), \
+                                      get_prop(glb.GLProp.DIGITAL_QUANTIZE))
       dig_props.set_constant()
       integ.set_props(comp_mode,scale_mode,['in'],analog_in)
       integ.set_props(comp_mode,scale_mode,["ic"], dig_props)
@@ -100,17 +89,16 @@ block = Block('integrator',) \
 .set_comp_modes(get_comp_modes(),glb.HCDCSubset.all_subsets()) \
 .add_inputs(props.CURRENT,["in","ic"]) \
 .add_outputs(props.CURRENT,["out"]) \
-.set_op(chipcmd.SignType.POS,"out",
+.set_op(enums.SignType.POS,"out",
         ops.Integ(ops.Var("in"), ops.Var("ic"),
                   handle=':z'
         )
 ) \
-.set_op(chipcmd.SignType.NEG,"out",
+.set_op(enums.SignType.NEG,"out",
         ops.Integ(ops.Mult(ops.Const(-1),ops.Var("in")), \
         ops.Var("ic"),
         handle=':z')
 )
 scale_model(block)
-continuous_scale_model(block)
 block.check()
 

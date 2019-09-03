@@ -1,6 +1,6 @@
-import chip.props as prop
 import itertools
-import chip.abs as acirc
+import hwlib.props as prop
+import hwlib.abs as acirc
 import random
 import math
 

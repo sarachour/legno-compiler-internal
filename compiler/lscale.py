@@ -1,19 +1,18 @@
 
 from compiler.common import infer
 
-import compiler.jaunt_pass.jaunt_util as jaunt_util
-import compiler.jaunt_pass.jaunt_common as jaunt_common
-import compiler.jaunt_pass.jenv as jenvlib
-import compiler.jaunt_pass.jenv_smt as jsmt
-import compiler.jaunt_pass.jenv_gpkit as jgpkit
+import compiler.lscale_pass.lscale_util as lscale_util
+import compiler.lscale_pass.lscale_common as lscale_common
+import compiler.lscale_pass.scenv as scenvlib
+import compiler.lscale_pass.scenv_gpkit as scenv_gpkit
 
-from chip.conc import ConcCirc
-from compiler.jaunt_pass.objective.obj_mgr import JauntObjectiveFunctionManager
-import compiler.jaunt_pass.expr_visitor as exprvisitor
-import compiler.jaunt_pass.jaunt_util as jaunt_util
-import compiler.jaunt_pass.jaunt_common as jaunt_common
-import compiler.jaunt_pass.jaunt_infer as jaunt_infer
-import compiler.jaunt_pass.jaunt_physlog as jaunt_physlog
+from hwlib.adp import AnalogDeviceProg
+from compiler.lscale_pass.objective.obj_mgr import LscaleObjectiveFunctionManager
+import compiler.lscale_pass.expr_visitor as exprvisitor
+import compiler.lscale_pass.lscale_util as lscale_util
+import compiler.lscale_pass.lscale_common as lscale_common
+import compiler.lscale_pass.lscale_infer as lscale_infer
+import compiler.lscale_pass.lscale_physlog as lscale_physlog
 
 
 import ops.jop as jop
@@ -116,8 +115,8 @@ def apply_result(jenv,circ,sln):
 def compute_scale(jenv,prog,infer_circ,objfun):
     assert(isinstance(infer_circ,ConcCirc))
     print("build environment")
-    jenv = sc_build_jaunt_env(jenv,prog,infer_circ)
-    jopt = JauntObjectiveFunctionManager(jenv)
+    jenv = sc_build_lscale_env(jenv,prog,infer_circ)
+    jopt = LscaleObjectiveFunctionManager(jenv)
     jopt.method = objfun.name()
 
     print("objective: %s" % objfun.name())
@@ -140,7 +139,7 @@ def compute_scale(jenv,prog,infer_circ,objfun):
 
 def report_missing_models(model,circ):
     for block,loc,port,comp_mode,scale_mode in ModelDB.MISSING:
-        jaunt_physlog.log(circ,block,loc, \
+        lscale_physlog.log(circ,block,loc, \
                           comp_mode,
                           scale_mode)
         msg = "NO model: %s[%s].%s %s %s error" % \
@@ -157,14 +156,14 @@ def scale(prog,circ,nslns, \
     infer.clear(circ)
     infer.infer_intervals(prog,circ)
     infer.infer_bandwidths(prog,circ)
-    objs = JauntObjectiveFunctionManager.basic_methods()
+    objs = LscaleObjectiveFunctionManager.basic_methods()
     n_missing = 0
     models_to_gen = {
         'physical': ['physical','partial','naive'],
         'partial': ['partial','naive'],
         'naive': ['naive']
     }
-    for idx,infer_circ in enumerate(jaunt_infer.infer_scale_config(prog, \
+    for idx,infer_circ in enumerate(lscale_infer.infer_scale_config(prog, \
                                                                    circ, \
                                                                    nslns, \
                                                                    model=model,
@@ -174,12 +173,12 @@ def scale(prog,circ,nslns, \
 
         for obj in objs:
             for this_model in models_to_gen[model]:
-                jenv = jenvlib.JauntEnv(model=this_model, \
+                jenv = jenvlib.LscaleEnv(model=this_model, \
                                         max_freq=max_freq, \
                                         digital_error=digital_error, \
                                         analog_error=analog_error)
 
-                if this_model == jenvlib.JauntEnvParams.Model.PHYSICAL and \
+                if this_model == jenvlib.LscaleEnvParams.Model.PHYSICAL and \
                    len(ModelDB.MISSING) > n_missing:
                     jenv.fail(msg)
 
@@ -197,14 +196,14 @@ def scale(prog,circ,nslns, \
 
     print("logging: %s" % do_log)
     if do_log:
-        pars = jenvlib.JauntEnvParams(max_freq=max_freq, \
+        pars = jenvlib.LscaleEnvParams(max_freq=max_freq, \
                                       digital_error=digital_error,
                                       analog_error=analog_error)
-        pars.set_model(model=jenvlib.JauntEnvParams.Type(model))
+        pars.set_model(model=jenvlib.LscaleEnvParams.Type(model))
         report_missing_models(model,circ)
-        jaunt_physlog.save(pars.calib_obj)
-        if not jaunt_physlog.is_empty() and \
-        model == jenvlib.JauntEnvParams.Model.PHYSICAL:
+        lscale_physlog.save(pars.calib_obj)
+        if not lscale_physlog.is_empty() and \
+        model == jenvlib.LscaleEnvParams.Model.PHYSICAL:
             raise Exception("must calibrate components")
 
-        jaunt_physlog.clear()
+        lscale_physlog.clear()

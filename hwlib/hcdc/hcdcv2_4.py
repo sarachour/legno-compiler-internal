@@ -1,18 +1,18 @@
-from chip.hcdc.integ import block as integ
-from chip.hcdc.mult import block as mult
-from chip.hcdc.crossbar import tile_in, tile_out, \
+from hwlib.hcdc.integ import block as integ
+from hwlib.hcdc.mult import block as mult
+from hwlib.hcdc.crossbar import tile_in, tile_out, \
     chip_in, chip_out, inv_conn
 
-from chip.hcdc.extern import block_in as ext_chip_in
-from chip.hcdc.extern import block_out as ext_chip_out
-from chip.hcdc.extern import block_analog_in as ext_chip_analog_in
-from chip.hcdc.io import dac as tile_dac
-from chip.hcdc.io import adc as tile_adc
-from chip.hcdc.fanout import block as fanout
-from chip.hcdc.lut import block as lut
+from hwlib.hcdc.extern import block_in as ext_chip_in
+from hwlib.hcdc.extern import block_out as ext_chip_out
+from hwlib.hcdc.extern import block_analog_in as ext_chip_analog_in
+from hwlib.hcdc.io import dac as tile_dac
+from hwlib.hcdc.io import adc as tile_adc
+from hwlib.hcdc.fanout import block as fanout
+from hwlib.hcdc.lut import block as lut
 
-import chip.hcdc.globals as glb
-from chip.board import Board
+import hwlib.hcdc.globals as glb
+from hwlib.board import Board
 
 
 BLACKLIST = []
@@ -82,7 +82,7 @@ def connect_adj_list(hw,block1,block2,adjlist):
                                  inport)
 
 
-def make_board(subset=glb.HCDCSubset.UNRESTRICTED):
+def make_board(subset=glb.HCDCSubset.UNRESTRICTED,load_conns=True):
     n_chips = 2
     n_tiles = 4
     n_slices = 4
@@ -194,6 +194,9 @@ def make_board(subset=glb.HCDCSubset.UNRESTRICTED):
             layer1.inst('conn_inv')
 
     hw.freeze_instances()
+
+    if not load_conns:
+        return hw
 
     for chip1 in range(0,n_chips):
         chip1_layer = hw.layer(chip1)

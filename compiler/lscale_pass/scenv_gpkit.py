@@ -1,7 +1,7 @@
-import compiler.jaunt_pass.jenv as jenv
+import compiler.lscale_pass.scenv as scenv
 import ops.jop as jop
-import compiler.jaunt_pass.jaunt_util as jaunt_util
-import compiler.jaunt_pass.jenv as jenvlib
+import compiler.lscale_pass.lscale_util as lscale_util
+import compiler.lscale_pass.scenv as scenvlib
 import numpy as np
 from gpkit import Variable,Model
 
@@ -23,24 +23,24 @@ def gpkit_expr(variables,expr):
     else:
         raise Exception("unsupported <%s>" % expr)
 
-def build_gpkit_cstrs(circ,jenv):
-  failed = jenv.failed()
+def build_gpkit_cstrs(circ,scenv):
+  failed = scenv.failed()
   if failed:
-    jaunt_util.log_warn("==== FAIL ====")
-    for fail in jenv.failures():
-      jaunt_util.log_warn(fail)
+    lscale_util.log_warn("==== FAIL ====")
+    for fail in scenv.failures():
+      lscale_util.log_warn(fail)
     return
 
 
   variables = {}
   constraints = []
   blacklist = []
-  for var in jenv.variables(in_use=True):
+  for var in scenv.variables(in_use=True):
     gpvar = Variable(var)
     assert(not var in variables)
     variables[var] = gpvar
 
-  for lhs,rhs,annot in jenv.eqs():
+  for lhs,rhs,annot in scenv.eqs():
       gp_lhs = gpkit_expr(variables,lhs)
       gp_rhs = gpkit_expr(variables,rhs)
       result = (gp_lhs == gp_rhs)
@@ -48,7 +48,7 @@ def build_gpkit_cstrs(circ,jenv):
       if not annot in blacklist:
         constraints.append((gp_lhs == gp_rhs,msg))
 
-  for lhs,rhs,annot in jenv.ltes():
+  for lhs,rhs,annot in scenv.ltes():
       gp_lhs = gpkit_expr(variables,lhs)
       gp_rhs = gpkit_expr(variables,rhs)
       msg="%s <= %s" % (gp_lhs,gp_rhs)
@@ -77,7 +77,7 @@ def build_gpkit_cstrs(circ,jenv):
   cstrs = list(gpkit_cstrs)
   return variables,cstrs
 
-def validate_gpkit_problem(jenv,variables,sln):
+def validate_gpkit_problem(scenv,variables,sln):
     assigns = {}
     tol = 1e-3
     for jvar,gpvar in variables.items():
@@ -85,7 +85,7 @@ def validate_gpkit_problem(jenv,variables,sln):
         assert(not jvar in assigns)
         assigns[jvar] = value
 
-    for lhs,rhs,annot in jenv.eqs():
+    for lhs,rhs,annot in scenv.eqs():
         lhs_val = lhs.evaluate(assigns)
         rhs_val = rhs.evaluate(assigns)
         if abs(lhs_val-rhs_val) > tol:
@@ -93,7 +93,7 @@ def validate_gpkit_problem(jenv,variables,sln):
             raise Exception("doesn't validate")
 
 
-    for lhs,rhs,annot in jenv.ltes():
+    for lhs,rhs,annot in scenv.ltes():
         lhs_val = lhs.evaluate(assigns)
         rhs_val = rhs.evaluate(assigns)
         if abs(min(0,rhs_val-lhs_val)) > tol:
@@ -101,8 +101,8 @@ def validate_gpkit_problem(jenv,variables,sln):
             raise Exception("doesn't validate")
 
 
-def build_gpkit_problem(circ,jenv,jopt):
-  variables,gpkit_cstrs = build_gpkit_cstrs(circ,jenv)
+def build_gpkit_problem(circ,scenv,jopt):
+  variables,gpkit_cstrs = build_gpkit_cstrs(circ,scenv)
   if gpkit_cstrs is None:
     print("could not build constraints")
     input()
@@ -112,7 +112,7 @@ def build_gpkit_problem(circ,jenv,jopt):
   for obj in jopt.objective(circ,variables):
       cstrs = list(gpkit_cstrs) + list(obj.constraints())
       ofun = obj.objective()
-      jaunt_util.log_info(ofun)
+      lscale_util.log_info(ofun)
       model = Model(ofun, cstrs)
       yield variables,model,obj
 
@@ -151,17 +151,17 @@ def solve_gpkit_problem_mosek(gpmodel,timeout=10):
                             verbosity=0)
         signal.alarm(0)
     except TimeoutError as te:
-        jaunt_util.log_warn("Timeout: mosek timed out or hung")
+        lscale_util.log_warn("Timeout: mosek timed out or hung")
         signal.alarm(0)
         return None
     except RuntimeWarning as re:
-        jaunt_util.log_warn("[gpkit][ERROR] %s" % re)
+        lscale_util.log_warn("[gpkit][ERROR] %s" % re)
         signal.alarm(0)
         return None
 
     if not 'freevariables' in sln:
       succ,result = sln
-      jaunt_util.log_warn("[gpkit][ERROR] no freevariables key in sln")
+      lscale_util.log_warn("[gpkit][ERROR] no freevariables key in sln")
       assert(result is None)
       assert(succ == False)
       return None

@@ -1,4 +1,5 @@
 from enum import Enum
+import ops.op as oplib
 
 class AOpType(Enum):
 
@@ -27,6 +28,7 @@ class AOp:
         self._inputs = inps
         self._op = op
 
+    
     @property
     def inputs(self):
         return self._inputs
@@ -74,8 +76,12 @@ class AOp:
     def op(self):
         return self._op
 
+    def to_expr(self):
+        raise Exception("cannot convert to op: %s" % self)
+
     def hash(self):
         return hash(str(self))
+
     def vars(self):
         vars = []
         for inp in self.inputs:
@@ -136,6 +142,9 @@ class AVar(AOp):
     def make(self,inputs):
         return AVar(self._var,self._coeff)
 
+    def is_constant(self):
+        return False
+
     @property
     def coefficient(self):
         return self._coeff
@@ -159,13 +168,15 @@ class AConst(AOp):
         AOp.__init__(self,AOpType.CONST,[])
         self._value = value
 
+    def to_expr(self):
+        return oplib.Const(self._value)
+
     @property
     def value(self):
         return self._value
 
     def make(self,inputs):
         return AConst(self._value)
-
 
     def label(self):
         return str("%.3e" % self._value)
@@ -285,6 +296,9 @@ class APrec(AOp):
     def make(self,inputs):
         return APrec(inputs[0])
 
+
+    def to_expr(self):
+        return oplib.Paren(self.input(0).to_expr())
 
 class AInteg(AOp):
 

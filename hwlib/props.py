@@ -1,4 +1,4 @@
-import chip.units as units
+import hwlib.units as units
 from enum import Enum
 
 class Properties:

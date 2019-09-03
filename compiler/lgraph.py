@@ -1,22 +1,22 @@
 import itertools
-import chip.abs as acirc
-import chip.props as prop
-from chip.config import Labels
-import ops.aop as aop
+
 import random
 import math
 import logging
-import compiler.arco_pass.route as arco_route
-from compiler.arco_pass.rules import get_rules
-import compiler.arco_pass.to_abs_op as arcolib_aop
-import compiler.arco_pass.to_abs_circ as arcolib_acirc
-import compiler.arco_pass.make_fanouts as arcolib_mkfan
-import compiler.arco_pass.util as arcolib_util
-import compiler.arco_pass.util as arco_util
+import compiler.lgraph_pass.route as lgraph_route
+from compiler.lgraph_pass.rules import get_rules
+import compiler.lgraph_pass.to_abs_op as lgraphlib_aop
+import compiler.lgraph_pass.to_abs_circ as lgraphlib_acirc
+import compiler.lgraph_pass.make_fanouts as lgraphlib_mkfan
+import compiler.lgraph_pass.util as lgraphlib_util
+import hwlib.abs as acirc
+import hwlib.props as prop
+from hwlib.config import Labels
+import ops.aop as aop
 
 #logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('arco')
+logger = logging.getLogger('lgraph')
 #logger.setLevel(logging.ERROR)
 logger.setLevel(logging.INFO)
 
@@ -41,13 +41,13 @@ def compile_compute_fragments(board,prob,n_xforms):
     xform_map = {}
     rules = get_rules(board)
     for var,expr in prob.bindings():
-        abs_expr = arcolib_aop.make_abstract(expr)
+        abs_expr = lgraphlib_aop.make_abstract(expr)
         frag_node_map[var] = []
         frag_output_map[var] = []
         xform_map[var] = []
         for n_xforms,xform_abs_expr in abs_expr.xform(rules,n_xforms):
             xform_map[var].append(xform_abs_expr)
-            for node,output in arcolib_acirc.to_abs_circ(board,xform_abs_expr):
+            for node,output in lgraphlib_acirc.to_abs_circ(board,xform_abs_expr):
                 if isinstance(node,acirc.ABlockInst):
                     node.config.set_label(output,var,kind=Labels.OUTPUT)
 
@@ -65,14 +65,14 @@ def compile_sample_fragments_and_add_fanouts(board,frag_node_map, \
         frag_nodes = {}
         frag_outputs = {}
         logger.info("-> sampling circuit")
-        choices = arcolib_util.sample(frag_node_map)
+        choices = lgraphlib_util.sample(frag_node_map)
         for variable,index in choices.items():
             frag_nodes[variable],_ = \
                                      frag_node_map[variable][index].copy()
             frag_outputs[variable] = frag_output_map[variable][index]
 
         # compute any references/stubs
-        refs,stubs = arcolib_mkfan.count_var_refs(frag_nodes)
+        refs,stubs = lgraphlib_mkfan.count_var_refs(frag_nodes)
 
         subcs = {}
         skip_circuit = False
@@ -86,7 +86,7 @@ def compile_sample_fragments_and_add_fanouts(board,frag_node_map, \
             subcs[var_name] = []
             # make n copies of each variable for routing purposes.
             for sources,cnode in \
-                arcolib_mkfan.copy_signal(board,frag_node,frag_output,
+                lgraphlib_mkfan.copy_signal(board,frag_node,frag_output,
                                           refs[var_name], var_name, free_fanouts):
 
                 other_frags = [v for k,v in frag_nodes.items() \
@@ -154,9 +154,9 @@ def compile(board,prob,depth=3, \
         if len(frags) == 0:
             raise Exception("cannot model variable <%s>" % var)
 
-    try_abs = arco_util.TryObject('abs_circ',max_abs_circs,None)
-    try_merge = arco_util.TryObject('merge_circ',max_fanout_circs,100)
-    try_conc = arco_util.TryObject('conc_circ',max_conc_circs,None)
+    try_abs = lgraphlib_util.TryObject('abs_circ',max_abs_circs,None)
+    try_merge = lgraphlib_util.TryObject('merge_circ',max_fanout_circs,100)
+    try_conc = lgraphlib_util.TryObject('conc_circ',max_conc_circs,None)
 
     for abs_idx, subcircuits_optmap in \
         try_abs.enumerate(compile_sample_fragments_and_add_fanouts(board, \
@@ -167,22 +167,23 @@ def compile(board,prob,depth=3, \
 
         try_merge.clear()
         try_conc.clear()
+        conc_idx = 0
         logger.info(">>> combine fragments <<<")
         for merge_idx,source_map,node_map in \
             try_merge.iterate(compile_combine_fragments(subcircuits_optmap),do_succeed=False):
 
-            refs,stubs = arcolib_mkfan.count_var_refs(node_map)
+            refs,stubs = lgraphlib_mkfan.count_var_refs(node_map)
             n_conc = 0;
             logger.info(">>> compute matches from stubs to sources <<<")
             for stub_src_idx,mapping in \
-                enumerate(arcolib_mkfan.match_stubs_to_sources(source_map,stubs)):
+                enumerate(lgraphlib_mkfan.match_stubs_to_sources(source_map,stubs)):
 
                 if not try_conc.successes_left():
                     logger.info("-> found %d/%d conc circuits" % \
                                 (n_conc,max_conc_circs))
                     break
                 logger.info(">>> connect stubs to sources <<<")
-                succ = arcolib_mkfan.connect_stubs_to_sources(board,
+                succ = lgraphlib_mkfan.connect_stubs_to_sources(board,
                                                               node_map, \
                                                               mapping)
                 if not succ:
@@ -195,15 +196,16 @@ def compile(board,prob,depth=3, \
                     bind_namespace(node,var)
 
                 logger.info(">>> route <<<")
-                for route_index,conc_circ in try_conc.enumerate(arco_route.route(board,
+                for route_index,conc_circ in try_conc.enumerate(lgraph_route.route(board,
                                                                                  prob,
                                                                                  node_map,
                                                                                  max_failures=1000,
                                                                                  max_resolutions=100)):
 
-                    indices = [abs_idx,merge_idx,stub_src_idx,route_index]
+                    indices = [abs_idx,conc_idx]
                     try_merge.succeed()
                     try_abs.succeed()
                     yield indices,conc_circ
+                    conc_idx += 1
 
 

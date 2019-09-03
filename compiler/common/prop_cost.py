@@ -1,12 +1,12 @@
 from compiler.common.visitor import ForwardVisitor
-import chip.props as props
+import hwlib.props as props
 import ops.op as ops
 import ops.nop as nop
 import compiler.common.base_propagator_symbolic as propagate
 import compiler.common.data_symbolic as symdata
 import math
 from ops.interval import Interval, IRange, IValue
-from chip.model import ModelDB, PortModel,get_variance
+from hwlib.model import ModelDB, PortModel,get_variance
 from enum import Enum
 
 # find the most expensive input

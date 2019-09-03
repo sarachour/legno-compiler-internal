@@ -1,5 +1,5 @@
 import networkx as nx
-from chip.block import Block, BlockType
+from hwlib.block import Block, BlockType
 
 class Layer:
 

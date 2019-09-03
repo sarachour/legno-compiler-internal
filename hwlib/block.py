@@ -27,7 +27,6 @@ class Block:
         self._props = {} # operating ranges and values
 
         # scale factors
-        self._scale_models = {}
         self._scale_modes = {}
 
         #self.set_comp_modes(['*'])
@@ -347,23 +346,6 @@ class Block:
         data = self._make_comp_dict(comp_mode,self._ops)
         data[out] = expr
         return self
-
-    def baseline(self,comp_mode):
-        return self._scale_models[comp_mode].baseline
-
-    def scale_model(self,comp_mode):
-        raise NotImplementedError
-        if not comp_mode in self._scale_models:
-            raise Exception("block <%s> does not contain scale model for <%s>" % \
-                            (self.name,comp_mode))
-
-        if not self.whitelist(comp_mode):
-            return
-
-        return self._scale_models[comp_mode]
-
-    def set_scale_model(self,comp_mode,model):
-        self._scale_models[comp_mode] = model
 
     def set_props(self,comp_mode,scale_mode,ports,properties,handle=None):
         data = self._make_scale_dict(comp_mode,scale_mode,self._props)

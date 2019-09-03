@@ -1,5 +1,5 @@
-import chip.conc as ccirc
-import chip.config as configlib
+import hwlib.adp as adplib
+import hwlib.config as configlib
 
 def random_locs(board,locs,conns,restrict):
   # test this annotation.
@@ -133,23 +133,23 @@ def find_routes(board,locs,conns,inst_assigns):
 
 
 def make_concrete_circuit(board,routes,inst_assigns,configs):
-  circ = ccirc.ConcCirc(board)
+  adp = adplib.AnalogDeviceProg(board)
   for (blk,fragid),loc in inst_assigns.items():
     locstr = board.position_string(loc)
-    circ.use(blk,locstr,configs[(blk,fragid)])
+    adp.use(blk,locstr,configs[(blk,fragid)])
 
   for route in routes:
     for (sblk,sloc,sport),(dblk,dloc,dport) in route:
-      if not circ.in_use(sblk,sloc):
+      if not adp.in_use(sblk,sloc):
         cfg = configlib.Config()
         cfg.set_comp_mode("*")
-        circ.use(sblk,sloc,cfg)
-      if not circ.in_use(dblk,dloc):
+        adp.use(sblk,sloc,cfg)
+      if not adp.in_use(dblk,dloc):
         cfg = configlib.Config()
         cfg.set_comp_mode("*")
-        circ.use(dblk,dloc,cfg)
+        adp.use(dblk,dloc,cfg)
 
-      circ.conn(sblk,sloc,sport,dblk,dloc,dport)
+      adp.conn(sblk,sloc,sport,dblk,dloc,dport)
 
-  return circ
+  return adp
 

@@ -1,9 +1,9 @@
-from chip.config import Config, Labels
+from hwlib.config import Config, Labels
 import json
 import os
-import chip.conc_graphlib as graphlib
+import hwlib.adp_graphlib as graphlib
 
-class ConcCirc:
+class AnalogDeviceProg:
 
     def __init__(self,board,filename=None):
         self._board = board

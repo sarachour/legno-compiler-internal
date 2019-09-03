@@ -1,22 +1,21 @@
-from chip.block import Block, BlockType
-import chip.props as props
-import chip.units as units
-import chip.hcdc.util as util
-import util.util as gutil
-from chip.cont import *
-import lab_bench.lib.chipcmd.data as chipcmd
-from chip.hcdc.globals import CTX, GLProp
-import chip.hcdc.globals as glb
-import ops.op as ops
 import itertools
+import ops.op as ops
+import util.util as gutil
+import hwlib.units as units
+from hwlib.block import Block, BlockType
+import hwlib.props as props
+
+import hwlib.hcdc.util as util
+import hwlib.hcdc.globals as glb
+import hwlib.hcdc.enums as enums
 
 def dac_get_modes():
    opts = [
-      [chipcmd.SignType.POS],
-      chipcmd.RangeType.options()
+      [enums.SignType.POS],
+      enums.RangeType.options()
    ]
    blacklist = [
-      (None,chipcmd.RangeType.LOW)
+      (None,enums.RangeType.LOW)
    ]
    modes = list(util.apply_blacklist(itertools.product(*opts),
                                      blacklist))
@@ -25,13 +24,7 @@ def dac_get_modes():
 
 def dac_is_standard(mode):
    sign,rng = mode
-   return rng == chipcmd.RangeType.MED
-
-def dac_continuous_scale_model(dac):
-  modes = dac_get_modes()
-  csm = ContinuousScaleModel()
-  csm.set_baseline((chipcmd.SignType.POS, chipcmd.RangeType.MED))
-  dac.set_scale_model("*", csm)
+   return rng == enums.RangeType.MED
 
 def dac_scale_model(dac):
    modes = dac_get_modes()
@@ -40,20 +33,20 @@ def dac_scale_model(dac):
    dac.set_scale_modes("*",nonstd,[glb.HCDCSubset.UNRESTRICTED, \
                                    glb.HCDCSubset.EXTENDED])
    for mode in modes:
-      get_prop = lambda p : CTX.get(p, dac.name,
+      get_prop = lambda p : glb.CTX.get(p, dac.name,
                                     '*',mode,None)
 
       sign,rng = mode
       # ERRATA: dac does scale up.
-      coeff = sign.coeff()*rng.coeff()*get_prop(GLProp.COEFF)
-      digital_props = util.make_dig_props(chipcmd.RangeType.MED,
-                                         get_prop(GLProp.DIGITAL_INTERVAL),
-                                         get_prop(GLProp.DIGITAL_QUANTIZE)
+      coeff = sign.coeff()*rng.coeff()*get_prop(glb.GLProp.COEFF)
+      digital_props = util.make_dig_props(enums.RangeType.MED,
+                                         get_prop(glb.GLProp.DIGITAL_INTERVAL),
+                                         get_prop(glb.GLProp.DIGITAL_QUANTIZE)
       )
       ana_props = util.make_ana_props(rng,
-                                      get_prop(GLProp.CURRENT_INTERVAL))
-      digital_props.set_continuous(0,get_prop(GLProp.MAX_FREQ))
-      digital_props.set_resolution(get_prop(GLProp.DIGITAL_RESOLUTION))
+                                      get_prop(glb.GLProp.CURRENT_INTERVAL))
+      digital_props.set_continuous(0,get_prop(glb.GLProp.MAX_FREQ))
+      digital_props.set_resolution(get_prop(glb.GLProp.DIGITAL_RESOLUTION))
       dac.set_coeff("*",mode,'out', coeff)
       dac.set_props("*",mode,["in"], digital_props)
       dac.set_props("*",mode,["out"], ana_props)
@@ -66,22 +59,15 @@ dac = Block('tile_dac',type=BlockType.DAC) \
                              .add_inputs(props.DIGITAL,["in"]) \
                              .set_op("*","out",ops.Var("in"))
 dac_scale_model(dac)
-dac_continuous_scale_model(dac)
 dac.check()
 
 def adc_get_modes():
-   return [chipcmd.RangeType.HIGH, chipcmd.RangeType.MED]
+   return [enums.RangeType.HIGH, enums.RangeType.MED]
 
 
 def adc_is_standard(mode):
-   return mode == chipcmd.RangeType.MED
+   return mode == enums.RangeType.MED
 
-
-def adc_continuous_scale_model(adc):
-   modes = adc_get_modes()
-   csm = ContinuousScaleModel()
-   csm.set_baseline(chipcmd.RangeType.MED)
-   adc.set_scale_model("*", csm)
 
 def adc_scale_model(adc):
    modes = adc_get_modes()
@@ -90,20 +76,20 @@ def adc_scale_model(adc):
    adc.set_scale_modes("*",nonstd,[glb.HCDCSubset.UNRESTRICTED, \
                                    glb.HCDCSubset.EXTENDED])
    for mode in modes:
-      get_prop = lambda p : CTX.get(p, adc.name,
+      get_prop = lambda p : glb.CTX.get(p, adc.name,
                                     '*',mode,None)
 
-      coeff = (1.0/mode.coeff())*get_prop(GLProp.COEFF)
+      coeff = (1.0/mode.coeff())*get_prop(glb.GLProp.COEFF)
       analog_props = util.make_ana_props(mode,
-                                         get_prop(GLProp.CURRENT_INTERVAL))
+                                         get_prop(glb.GLProp.CURRENT_INTERVAL))
       #analog_props.set_bandwidth(0,20,units.khz)
 
-      digital_props = util.make_dig_props(chipcmd.RangeType.MED,
-                                          get_prop(GLProp.DIGITAL_INTERVAL),
-                                          get_prop(GLProp.DIGITAL_QUANTIZE)
+      digital_props = util.make_dig_props(enums.RangeType.MED,
+                                          get_prop(glb.GLProp.DIGITAL_INTERVAL),
+                                          get_prop(glb.GLProp.DIGITAL_QUANTIZE)
       )
-      digital_props.set_resolution(get_prop(GLProp.DIGITAL_RESOLUTION))
-      digital_props.set_continuous(0,get_prop(GLProp.MAX_FREQ))
+      digital_props.set_resolution(get_prop(glb.GLProp.DIGITAL_RESOLUTION))
+      digital_props.set_continuous(0,get_prop(glb.GLProp.MAX_FREQ))
       adc.set_props("*",mode,["in"],analog_props)
       adc.set_props("*",mode,["out"], digital_props)
       adc.set_coeff("*",mode,'out', coeff)
@@ -120,5 +106,4 @@ adc = Block('tile_adc',type=BlockType.ADC) \
                              .set_props("*","*",["in"],None) \
                              .set_coeff("*","*","out",0.5)
 adc_scale_model(adc)
-adc_continuous_scale_model(adc)
 adc.check()

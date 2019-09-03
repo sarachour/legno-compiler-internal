@@ -13,7 +13,6 @@ class PathHandler:
             self.CONC_CIRC_DIR,
             self.CONC_GRAPH_DIR,
             self.ABS_GRAPH_DIR,
-            self.REF_WAVEFORM_FILE_DIR,
             self.MEAS_WAVEFORM_FILE_DIR,
             self.GRENDEL_FILE_DIR,
             self.PLOT_DIR

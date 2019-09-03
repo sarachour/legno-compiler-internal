@@ -1,4 +1,5 @@
 import lab_bench.lib.enums as enums
+from hwlib.hcdc.enums import *
 from lab_bench.lib.chipcmd.common import *
 from lab_bench.lib.chipcmd.data import *
 import lab_bench.lib.chipcmd.state as state

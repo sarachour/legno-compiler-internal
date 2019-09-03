@@ -1,9 +1,8 @@
 import os
 import colorlover
-import compiler.common.evaluator_symbolic as evalsym
 import ops.op as op
 import math
-from chip.model import ModelDB, PortModel, get_variance
+from hwlib.model import ModelDB, PortModel, get_variance
 
 def undef_to_one(v):
   return 1.0 if v is None else v

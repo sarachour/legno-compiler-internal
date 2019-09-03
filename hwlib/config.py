@@ -1,7 +1,6 @@
 from enum import Enum
 from ops.interval import Interval
 from ops.bandwidth import Bandwidth
-from compiler.common.data_symbolic import SymbolicModel
 import ops.op as ops
 import util.util as util
 

@@ -1,7 +1,7 @@
 import util.config as CONFIG
 from compiler import srcgen
+from hwlib.config import Config
 from lab_bench.lib.chipcmd.use import *
-from chip.config import Config
 import lab_bench.lib.command as cmd
 
 import os

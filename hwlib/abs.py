@@ -1,7 +1,5 @@
-import chip.block as block
-from chip.config import Config
-
-
+import hwlib.block as block
+from hwlib.config import Config
 
 class ANode:
     _IDENT = 0;

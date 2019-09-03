@@ -1,11 +1,11 @@
-import compiler.jaunt_pass.objective.phys_obj as physoptlib
-import compiler.jaunt_pass.objective.basic_obj as boptlib
-import compiler.jaunt_pass.objective.sweep_obj as sweepoptlib
+import compiler.lscale_pass.objective.phys_obj as physoptlib
+import compiler.lscale_pass.objective.basic_obj as boptlib
+import compiler.lscale_pass.objective.sweep_obj as sweepoptlib
 
 #TODO: what is low range, high range and med range?
 #TODO: setRange: integ.in, integ.out and mult have setRange functions.
 #TODO: how do you set wc in the integrator? Is it through the setRange function?
-class JauntObjectiveFunctionManager():
+class LscaleObjectiveFunctionManager():
 
     @staticmethod
     def basic_methods():

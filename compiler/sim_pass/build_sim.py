@@ -1,6 +1,6 @@
-from chip.model import ModelDB
-import chip.model as model
-import chip.props as proplib
+from hwlib.model import ModelDB
+import hwlib.model as model
+import hwlib.props as proplib
 import ops.op as oplib
 import ops.interval as intervallib
 

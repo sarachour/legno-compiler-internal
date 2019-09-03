@@ -1,18 +1,18 @@
-import chip.props as props
-import chip.units as units
 import numpy as np
 import os
-import chip.hcdc.globals as glb
-import lab_bench.lib.chipcmd.data as chipcmd
+import hwlib.props as props
+import hwlib.units as units
+import hwlib.hcdc.globals as glb
+import hwlib.hcdc.enums as enums
 import ops.interval as interval
-import util.util as glbl_util
+import util.util as gutil
 import math
 
-truncate = glbl_util.truncate
-equals = glbl_util.equals
+truncate = gutil.truncate
+equals = gutil.equals
 
 def datapath(filename):
-    return "chip/hcdc/data/%s" % filename
+    return "hwlib/hcdc/data/%s" % filename
 
 def build_coeff_cstr(cstrlst,expr):
     contcstrlst = []
@@ -36,11 +36,11 @@ def build_oprange_cstr(cstrlst,scale):
     slack = 1.2
 
     for var,rng in cstrlst:
-        if rng == chipcmd.RangeType.MED:
+        if rng == hwlibcmd.RangeType.MED:
             cstr = 1.0
-        elif rng == chipcmd.RangeType.LOW:
+        elif rng == hwlibcmd.RangeType.LOW:
             cstr = 0.1
-        elif rng == chipcmd.RangeType.HIGH:
+        elif rng == hwlibcmd.RangeType.HIGH:
             cstr = 10.0
 
         contcstrlst.append((var,cstr))

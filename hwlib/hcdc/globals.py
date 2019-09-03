@@ -1,6 +1,6 @@
 import util.util as util
-import chip.units as units
-from lab_bench.lib.chipcmd.data import RangeType
+import hwlib.units as units
+import hwlib.hcdc.enums as enums
 from enum import Enum
 #NOMINAL_NOISE = 1e-9
 #NOMINAL_DELAY = 1e-10

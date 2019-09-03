@@ -1,10 +1,12 @@
 from lab_bench.lib.chipcmd.misc import *
 from lab_bench.lib.chipcmd.use import *
 from lab_bench.lib.chipcmd.conn import *
-from lab_bench.lib.chipcmd.data import SignType,RangeType, CircPortLoc, \
-  LUTSourceType,DACSourceType
+from lab_bench.lib.chipcmd.data import CircPortLoc
+
 import lab_bench.lib.command as toplevel_cmd
-from lang.hwenv import DiffPinMode
+from hwlib.hcdc.enums import SignType,RangeType,LUTSourceType,DACSourceType
+
+from hwlib.hwenv import DiffPinMode
 import ops.op as op
 
 class GrendelProg:

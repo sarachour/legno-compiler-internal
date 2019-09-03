@@ -1,15 +1,16 @@
-import chip.abs as acirc
-import chip.block as blocklib
-import chip.conc as ccirc
-import ops.ilpop as ilpop
-import chip.config as configlib
+
 import logging
 import networkx as nx
 import matplotlib.pyplot as plt
 
-import compiler.arco_pass.route_ilp_util as route_ilp_util
-import compiler.arco_pass.route_partition_tree as partition_tree
-import compiler.arco_pass.route_find_slices as find_slices
+import ops.ilpop as ilpop
+import hwlib.abs as acirc
+import hwlib.block as blocklib
+import hwlib.adp as adplib
+import hwlib.config as configlib
+import compiler.lgraph_pass.route_ilp_util as route_ilp_util
+import compiler.lgraph_pass.route_partition_tree as partition_tree
+import compiler.lgraph_pass.route_find_slices as find_slices
 
 logger = logging.getLogger('arco_route')
 logger.setLevel(logging.DEBUG)

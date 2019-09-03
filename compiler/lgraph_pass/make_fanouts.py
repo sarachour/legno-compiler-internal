@@ -1,7 +1,7 @@
-import chip.abs as acirc
-import chip.props as prop
-import compiler.arco_pass.util as arco_util
-from chip.config import Labels
+import hwlib.abs as acirc
+import hwlib.props as prop
+import compiler.lgraph_pass.util as lgraph_util
+from hwlib.config import Labels
 import itertools
 
 def copy_signal(board,node,output,n_copies,label,max_fanouts):
@@ -19,17 +19,17 @@ def copy_signal(board,node,output,n_copies,label,max_fanouts):
         for out in fanout.outputs:
             fanout_modes[mode][out] = fanout.get_dynamics(mode,out).coefficient()
 
-    for levels in arco_util.enumerate_tree(fanout,n_copies,
+    for levels in lgraph_util.enumerate_tree(fanout,n_copies,
                                  max_blocks=max_fanouts,
                                  permute_input=False):
-        free_ports,c_node,c_input,fanout_nodes = arco_util\
+        free_ports,c_node,c_input,fanout_nodes = lgraph_util\
                                      .build_tree_from_levels(board,
                                                              levels,
                                                              fanout,
                                                              ['out1','out0','out2'],
                                                              'in',
                                                              input_tree=False,
-                                                             mode='*',
+                                                             mode=None,
                                                              prop=prop.CURRENT
                                      )
 
@@ -95,7 +95,7 @@ def cs2s_blockinst(board,node,outputs,stubs):
     # fill in unbound scaling factors.
     scfs={}
     for mode in block.comp_modes:
-        if not config.comp_mode == "*" and \
+        if not config.comp_mode is None and \
            not config.comp_mode == mode:
             continue
 
@@ -114,10 +114,10 @@ def cs2s_blockinst(board,node,outputs,stubs):
     return len(valid_modes) > 0
 
 def connect_stubs_to_sources(board,node_map,mapping):
-    groups = arco_util.group_by(mapping, key=lambda args: args[0][0].id)
+    groups = lgraph_util.group_by(mapping, key=lambda args: args[0][0].id)
     succ = True
     for group in groups.values():
-        assert(arco_util.all_same(map(lambda n: n[0][0].id,\
+        assert(lgraph_util.all_same(map(lambda n: n[0][0].id,\
                                       group)))
         node = group[0][0][0]
         outputs = list(map(lambda args: args[0][1],group))
@@ -132,8 +132,6 @@ def connect_stubs_to_sources(board,node_map,mapping):
             cs2s_join(board,node,outputs,stubs)
         else:
             raise Exception("unknown: %s" % node)
-        #print(node.to_str())
-        #input()
 
     print("=== CONNECTED -> VALIDATING ====")
     for (node,output),inp in mapping:

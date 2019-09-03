@@ -1,5 +1,5 @@
 from compiler.common.visitor import Visitor
-import chip.props as props
+import hwlib.props as props
 import ops.op as ops
 from ops.interval import Interval, IRange, IValue
 
