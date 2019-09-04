@@ -1,37 +1,39 @@
 from lab_bench.lib.enums import BlockType,ExpCmdType,CircCmdType,CmdType
-from lab_bench.lib.chipcmd import data as chipdata
+import lab_bench.lib.chipcmd.data as chipdata
+import hwlib.hcdc.enums as specdata
 import construct as cstruct
+
 def lut_source_t():
     kwargs = {
-        chipdata.LUTSourceType.ADC0.value:0,
-        chipdata.LUTSourceType.ADC1.value:1,
-        chipdata.LUTSourceType.EXTERN.value:2,
-        chipdata.LUTSourceType.CONTROLLER.value:3
+        specdata.LUTSourceType.ADC0.value:0,
+        specdata.LUTSourceType.ADC1.value:1,
+        specdata.LUTSourceType.EXTERN.value:2,
+        specdata.LUTSourceType.CONTROLLER.value:3
     }
     return cstruct.Enum(cstruct.Int8ul,**kwargs)
 
 def dac_source_t():
     kwargs = {
-        chipdata.DACSourceType.MEM.value:0,
-        chipdata.DACSourceType.EXTERN.value:1,
-        chipdata.DACSourceType.LUT0.value:2,
-        chipdata.DACSourceType.LUT1.value:3
+        specdata.DACSourceType.MEM.value:0,
+        specdata.DACSourceType.EXTERN.value:1,
+        specdata.DACSourceType.LUT0.value:2,
+        specdata.DACSourceType.LUT1.value:3
     }
     return cstruct.Enum(cstruct.Int8ul,**kwargs)
 
 def range_t():
     kwargs = {
-        chipdata.RangeType.HIGH.value:0,
-        chipdata.RangeType.MED.value:1,
-        chipdata.RangeType.LOW.value:2,
-        chipdata.RangeType.UNKNOWN.value:3
+        specdata.RangeType.HIGH.value:0,
+        specdata.RangeType.MED.value:1,
+        specdata.RangeType.LOW.value:2,
+        specdata.RangeType.UNKNOWN.value:3
     }
     return cstruct.Enum(cstruct.Int8ul,**kwargs)
 
 def sign_t():
     kwargs = {
-        chipdata.SignType.POS.value:0,
-        chipdata.SignType.NEG.value:1
+        specdata.SignType.POS.value:0,
+        specdata.SignType.NEG.value:1
     }
     return cstruct.Enum(cstruct.Int8ul,**kwargs)
 

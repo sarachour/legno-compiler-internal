@@ -97,7 +97,7 @@ if args.subparser_name == "calibrate":
     assert(args.script != None)
     succ = main_script_calibrate(state,args.script, \
                                  recompute=args.recompute,
-                                 calib_obj=util.CalibrateObjective(args.calib_obj))
+                                 calib_obj=state.calib_obj)
     sys.exit(0)
 
 elif args.subparser_name == "profile":

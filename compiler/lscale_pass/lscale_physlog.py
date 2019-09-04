@@ -29,7 +29,10 @@ def clear():
 def save(calib_mode):
   minprog = srcgen.GrendelProg()
   stmt_keys = []
-  calib_file = "%s_%s" % (calib_mode,CONFIG.CALIBRATE_FILE)
+  calib_file_pat = "{path}/{calib_obj}.grendel"
+  calib_file = calib_file_pat.format(path=CONFIG.CALIBRATE_DIR, \
+                                     calib_obj=calib_mode.value)
+
   if os.path.isfile(calib_file):
     with open(calib_file,'r') as fh:
       for line in fh:

@@ -1,15 +1,17 @@
-import lab_bench.lib.enums as enums
-from lab_bench.lib.chipcmd import data as chipdata
-from lab_bench.lib.chipcmd.common import *
-from lab_bench.lib.util import code_to_val
-from lab_bench.lib.chipcmd.data import *
 from enum import Enum
 import sqlite3
-import util.config as CFG
-import util.util as util
 import json
 import binascii
 import math
+
+import lab_bench.lib.enums as glb_enums
+import lab_bench.lib.cstructs as cstructs
+import lab_bench.lib.chipcmd.data as ccmd_data
+import lab_bench.lib.chipcmd.common as ccmd_common
+from lab_bench.lib.util import code_to_val
+import hwlib.hcdc.enums as spec_data
+import util.config as CFG
+import util.util as util
 
 def keys(dict_,prefix=""):
   k = list(dict_.keys())
@@ -33,8 +35,7 @@ class BlockStateDatabase:
     FAILURE = "failure"
 
   def __init__(self):
-    path = CFG.STATE_DB
-    self._conn = sqlite3.connect(path)
+    self._conn = sqlite3.connect(CFG.STATE_DB)
     self._curs = self._conn.cursor()
 
     cmd = '''
@@ -148,13 +149,13 @@ class BlockStateDatabase:
 
   def _process(self,data):
     state = data['state']
-    loc = chipdata.CircLoc(data['chip'],
+    loc = ccmd_data.CircLoc(data['chip'],
                   data['tile'],
                   data['slice'],
                   data['idx'])
 
-    blk = enums.BlockType(data['block'])
-    calib_obj = chipdata.util.CalibrateObjective(data['calib_obj'])
+    blk = glb_enums.BlockType(data['block'])
+    calib_obj = util.CalibrateObjective(data['calib_obj'])
     try:
       obj = BlockState \
             .toplevel_from_cstruct(blk,loc, \
@@ -269,7 +270,6 @@ class BlockState:
       dataset.append(datum)
 
     objstr = json.dumps(dataset)
-    util.mkdir_if_dne(filepath)
     with open(filename,'w') as fh:
       fh.write(objstr)
 
@@ -280,17 +280,17 @@ class BlockState:
     pad = bytes([0]*(24-len(data)))
     typ = cstructs.state_t()
     obj = typ.parse(data+pad)
-    if blk == enums.BlockType.FANOUT:
+    if blk == glb_enums.BlockType.FANOUT:
       return obj.fanout
-    elif blk == enums.BlockType.INTEG:
+    elif blk == glb_enums.BlockType.INTEG:
       return obj.integ
-    elif blk == enums.BlockType.MULT:
+    elif blk == glb_enums.BlockType.MULT:
       return obj.mult
-    elif blk == enums.BlockType.DAC:
+    elif blk == glb_enums.BlockType.DAC:
       return obj.dac
-    elif blk == enums.BlockType.ADC:
+    elif blk == glb_enums.BlockType.ADC:
       return obj.adc
-    elif blk == enums.BlockType.LUT:
+    elif blk == glb_enums.BlockType.LUT:
       return obj.lut
     return obj
 
@@ -298,17 +298,17 @@ class BlockState:
   def toplevel_from_cstruct(blk,loc,data,calib_obj):
     obj = BlockState.decode_cstruct(blk,data)
     assert(isinstance(calib_obj,util.CalibrateObjective))
-    if blk == enums.BlockType.FANOUT:
+    if blk == glb_enums.BlockType.FANOUT:
       st = FanoutBlockState(loc,obj,calib_obj)
-    elif blk == enums.BlockType.INTEG:
+    elif blk == glb_enums.BlockType.INTEG:
       st = IntegBlockState(loc,obj,calib_obj)
-    elif blk == enums.BlockType.MULT:
+    elif blk == glb_enums.BlockType.MULT:
       st = MultBlockState(loc,obj,calib_obj)
-    elif blk == enums.BlockType.DAC:
+    elif blk == glb_enums.BlockType.DAC:
       st = DacBlockState(loc,obj,calib_obj)
-    elif blk == enums.BlockType.ADC:
+    elif blk == glb_enums.BlockType.ADC:
       st = AdcBlockState(loc,obj,calib_obj)
-    elif blk == enums.BlockType.LUT:
+    elif blk == glb_enums.BlockType.LUT:
       st = LutBlockState(loc,obj,calib_obj)
 
     else:
@@ -338,7 +338,7 @@ class LutBlockState(BlockState):
   class Key(BlockState.Key):
 
     def __init__(self,loc,source,calib_obj):
-      BlockState.Key.__init__(self,enums.BlockType.LUT,loc,calib_obj)
+      BlockState.Key.__init__(self,glb_enums.BlockType.LUT,loc,calib_obj)
       self.source = source
 
 
@@ -347,7 +347,7 @@ class LutBlockState(BlockState):
       return []
 
   def __init__(self,loc,state,calib_obj):
-    BlockState.__init__(self,enums.BlockType.LUT,loc,state,calib_obj)
+    BlockState.__init__(self,glb_enums.BlockType.LUT,loc,state,calib_obj)
 
   @property
   def key(self):
@@ -371,14 +371,14 @@ class LutBlockState(BlockState):
 
 
   def from_cstruct(self,state):
-    self.source = chipdata.LUTSourceType(state.source)
+    self.source = ccmd_data.LUTSourceType(state.source)
 
 class DacBlockState(BlockState):
 
   class Key(BlockState.Key):
 
     def __init__(self,loc,inv,rng,source,const_val,calib_obj):
-      BlockState.Key.__init__(self,enums.BlockType.DAC,loc,calib_obj)
+      BlockState.Key.__init__(self,glb_enums.BlockType.DAC,loc,calib_obj)
       self.inv = inv
       self.rng = rng
       self.source = source
@@ -390,7 +390,7 @@ class DacBlockState(BlockState):
       return ["const_val"]
 
   def __init__(self,loc,state,calib_obj):
-    BlockState.__init__(self,enums.BlockType.DAC,loc, \
+    BlockState.__init__(self,glb_enums.BlockType.DAC,loc, \
                         state,calib_obj)
 
   @property
@@ -440,10 +440,10 @@ class DacBlockState(BlockState):
     })
 
   def from_cstruct(self,state):
-    self.enable = chipdata.BoolType(state.enable)
-    self.inv = chipdata.SignType(state.inv)
-    self.rng = chipdata.RangeType(state.range)
-    self.source = chipdata.DACSourceType(state.source)
+    self.enable = ccmd_data.BoolType(state.enable)
+    self.inv = spec_data.SignType(state.inv)
+    self.rng = spec_data.RangeType(state.range)
+    self.source = ccmd_data.DACSourceType(state.source)
     self.pmos = state.pmos
     self.nmos = state.nmos
     self.gain_cal = state.gain_cal
@@ -471,9 +471,9 @@ class MultBlockState(BlockState):
                  ranges,
                  gain_val=None,
                  calib_obj=util.CalibrateObjective.MIN_ERROR):
-      BlockState.Key.__init__(self,enums.BlockType.MULT, \
+      BlockState.Key.__init__(self,glb_enums.BlockType.MULT, \
                               loc,calib_obj)
-      assert(isinstance(vga,chipdata.BoolType))
+      assert(isinstance(vga,ccmd_data.BoolType))
       self.ranges = ranges
       self.gain_val = float(gain_val) \
                       if not gain_val is None else None
@@ -485,7 +485,7 @@ class MultBlockState(BlockState):
 
   def __init__(self,loc,state,calib_obj):
     assert(isinstance(calib_obj,util.CalibrateObjective))
-    BlockState.__init__(self,enums.BlockType.MULT,loc,state,calib_obj)
+    BlockState.__init__(self,glb_enums.BlockType.MULT,loc,state,calib_obj)
 
   def header(self):
     GH = keys(self.ranges,prefix='range-') + \
@@ -515,7 +515,7 @@ class MultBlockState(BlockState):
     return cstructs.state_t().build({
       "mult": {
         "vga": self.vga.code(),
-        "enable": chipdata.BoolType.TRUE.code(),
+        "enable": ccmd_data.BoolType.TRUE.code(),
         "range": to_c_list(self.ranges),
         "pmos": self.pmos,
         "nmos": self.nmos,
@@ -537,16 +537,16 @@ class MultBlockState(BlockState):
 
 
   def from_cstruct(self,state):
-    in0id = enums.PortName.IN0
-    in1id = enums.PortName.IN1
-    outid = enums.PortName.OUT0
-    self.enable = chipdata.BoolType(state.enable)
-    self.vga = chipdata.BoolType(state.vga)
+    in0id = glb_enums.PortName.IN0
+    in1id = glb_enums.PortName.IN1
+    outid = glb_enums.PortName.OUT0
+    self.enable = ccmd_data.BoolType(state.enable)
+    self.vga = ccmd_data.BoolType(state.vga)
 
     self.ranges = {}
-    self.ranges[in0id] = chipdata.RangeType(state.range[in0id.code()])
-    self.ranges[in1id] = chipdata.RangeType(state.range[in1id.code()])
-    self.ranges[outid] = chipdata.RangeType(state.range[outid.code()])
+    self.ranges[in0id] = spec_data.RangeType(state.range[in0id.code()])
+    self.ranges[in1id] = spec_data.RangeType(state.range[in1id.code()])
+    self.ranges[outid] = spec_data.RangeType(state.range[outid.code()])
 
     self.gain_code = state.gain_code
     self.gain_val = code_to_val(state.gain_code)
@@ -571,7 +571,7 @@ class IntegBlockState(BlockState):
                  ranges,
                  ic_val=None,
                  calib_obj=util.CalibrateObjective.MIN_ERROR):
-      BlockState.Key.__init__(self,enums.BlockType.INTEG,loc,calib_obj)
+      BlockState.Key.__init__(self,glb_enums.BlockType.INTEG,loc,calib_obj)
       self.exception = exception
       self.inv = inv
       self.cal_enables = cal_enables
@@ -583,7 +583,7 @@ class IntegBlockState(BlockState):
       return ['ic_val']
 
   def __init__(self,loc,state,calib_obj):
-    BlockState.__init__(self,enums.BlockType.INTEG,loc, \
+    BlockState.__init__(self,glb_enums.BlockType.INTEG,loc, \
                         state,calib_obj)
 
   def header(self):
@@ -622,7 +622,7 @@ class IntegBlockState(BlockState):
       "integ": {
         "cal_enable": to_c_list(self.cal_enable),
         "inv": self.inv,
-        "enable": chipdata.BoolType.TRUE.code(),
+        "enable": ccmd_data.BoolType.TRUE.code(),
         "exception": self.exception.code(),
         "range": to_c_list(self.ranges),
         "pmos": self.pmos,
@@ -638,22 +638,22 @@ class IntegBlockState(BlockState):
     self.ic_code = signed_float_to_byte(value)
 
   def from_cstruct(self,state):
-    inid = enums.PortName.IN0
-    outid = enums.PortName.OUT0
-    self.enable = chipdata.BoolType(state.enable)
-    self.exception = chipdata.BoolType(state.exception)
+    inid = glb_enums.PortName.IN0
+    outid = glb_enums.PortName.OUT0
+    self.enable = ccmd_data.BoolType(state.enable)
+    self.exception = ccmd_data.BoolType(state.exception)
 
     self.cal_enable = {}
-    self.cal_enable[inid] = chipdata \
+    self.cal_enable[inid] = ccmd_data \
         .BoolType(state.cal_enable[inid.code()])
-    self.cal_enable[outid] = chipdata \
+    self.cal_enable[outid] = ccmd_data \
         .BoolType(state.cal_enable[inid.code()])
 
-    self.inv = chipdata.SignType(state.inv)
+    self.inv = spec_data.SignType(state.inv)
 
     self.ranges = {}
-    self.ranges[inid] = chipdata.RangeType(state.range[inid.code()])
-    self.ranges[outid] = chipdata.RangeType(state.range[outid.code()])
+    self.ranges[inid] = spec_data.RangeType(state.range[inid.code()])
+    self.ranges[outid] = spec_data.RangeType(state.range[outid.code()])
 
     self.ic_val = code_to_val(state.ic_code)
 
@@ -676,7 +676,7 @@ class FanoutBlockState(BlockState):
                  invs,
                  rng,
                  calib_obj):
-      BlockState.Key.__init__(self,enums.BlockType.FANOUT,loc,calib_obj)
+      BlockState.Key.__init__(self,glb_enums.BlockType.FANOUT,loc,calib_obj)
       self.invs = invs
       self.rng = rng
       self.third = third
@@ -686,7 +686,7 @@ class FanoutBlockState(BlockState):
       return []
 
   def __init__(self,loc,state,calib_obj):
-    BlockState.__init__(self,enums.BlockType.FANOUT,loc, \
+    BlockState.__init__(self,glb_enums.BlockType.FANOUT,loc, \
                         state,calib_obj)
 
 
@@ -724,7 +724,7 @@ class FanoutBlockState(BlockState):
     return cstructs.state_t().build({
       "fanout": {
         "inv": to_c_list(self.invs),
-        "enable": chipdata.BoolType.TRUE.code(),
+        "enable": ccmd_data.BoolType.TRUE.code(),
         "third": self.third.code(),
         "range": self.rng.code(),
         "pmos": self.pmos,
@@ -734,19 +734,19 @@ class FanoutBlockState(BlockState):
     })
 
   def from_cstruct(self,state):
-    inid = enums.PortName.IN0
-    out0id = enums.PortName.OUT0
-    out1id = enums.PortName.OUT1
-    out2id = enums.PortName.OUT2
+    inid = glb_enums.PortName.IN0
+    out0id = glb_enums.PortName.OUT0
+    out1id = glb_enums.PortName.OUT1
+    out2id = glb_enums.PortName.OUT2
 
-    self.enable = chipdata.BoolType(state.enable)
-    self.third = chipdata.BoolType(state.third)
+    self.enable = ccmd_data.BoolType(state.enable)
+    self.third = ccmd_data.BoolType(state.third)
 
-    self.rng = chipdata.RangeType(state.range)
+    self.rng = spec_data.RangeType(state.range)
 
     self.invs = {}
     for ident in [out0id,out1id,out2id]:
-      self.invs[ident] = chipdata.SignType(state.inv[ident.code()])
+      self.invs[ident] = spec_data.SignType(state.inv[ident.code()])
 
 
     self.pmos = state.pmos
@@ -770,7 +770,7 @@ class AdcBlockState(BlockState):
                  test_rsinc,
                  rng,
                  calib_obj):
-      BlockState.Key.__init__(self,enums.BlockType.ADC,loc)
+      BlockState.Key.__init__(self,glb_enums.BlockType.ADC,loc)
       self.test_en = test_en
       self.test_adc = test_adc
       self.test_i2v = test_i2v
@@ -785,7 +785,7 @@ class AdcBlockState(BlockState):
 
 
   def __init__(self,loc,state,calib_obj):
-    BlockState.__init__(self,enums.BlockType.ADC,loc, \
+    BlockState.__init__(self,glb_enums.BlockType.ADC,loc, \
                         state,calib_obj)
 
   def to_rows(self,obj):
@@ -836,7 +836,7 @@ class AdcBlockState(BlockState):
         "test_i2v": self.test_i2v.code(),
         "test_rs": self.test_rs.code(),
         "test_rsinc": self.test_rsinc.code(),
-        "enable": chipdata.BoolType.TRUE.code(),
+        "enable": ccmd_data.BoolType.TRUE.code(),
         "pmos": self.pmos,
         "nmos": self.nmos,
         "pmos2": self.pmos2,
@@ -850,15 +850,15 @@ class AdcBlockState(BlockState):
     })
 
   def from_cstruct(self,state):
-    inid = enums.PortName.IN0
-    outid = enums.PortName.OUT0
+    inid = glb_enums.PortName.IN0
+    outid = glb_enums.PortName.OUT0
 
-    self.test_en = chipdata.BoolType(state.test_en)
-    self.test_adc = chipdata.BoolType(state.test_adc)
-    self.test_i2v = chipdata.BoolType(state.test_i2v)
-    self.test_rs = chipdata.BoolType(state.test_rs)
-    self.test_rsinc = chipdata.BoolType(state.test_rsinc)
-    self.enable = chipdata.BoolType(state.enable)
+    self.test_en = ccmd_data.BoolType(state.test_en)
+    self.test_adc = ccmd_data.BoolType(state.test_adc)
+    self.test_i2v = ccmd_data.BoolType(state.test_i2v)
+    self.test_rs = ccmd_data.BoolType(state.test_rs)
+    self.test_rsinc = ccmd_data.BoolType(state.test_rsinc)
+    self.enable = ccmd_data.BoolType(state.enable)
 
 
     self.pmos = state.pmos
@@ -869,4 +869,4 @@ class AdcBlockState(BlockState):
     self.lower_fs = state.lower_fs
     self.upper = state.upper
     self.lower = state.lower
-    self.rng = chipdata.RangeType(state.range)
+    self.rng = ccmd_data.RangeType(state.range)

@@ -1,9 +1,10 @@
-import lab_bench.lib.enums as enums
+import lab_bench.lib.enums as glb_enums
 import lab_bench.lib.cstructs as cstructs
-from lab_bench.lib.base_command import AnalogChipCommand
-from lab_bench.lib.chipcmd.data import CircLoc
-from lab_bench.lib.chipcmd.common import *
-import lab_bench.lib.chipcmd.state as chipstate
+from lab_bench.lib.base_command import ArduinoCommand,AnalogChipCommand
+import lab_bench.lib.chipcmd.data as ccmd_data
+import lab_bench.lib.chipcmd.common as ccmd_common
+import lab_bench.lib.chipcmd.state as cstate
+import util.util as util
 import json
 import struct
 import os
@@ -14,13 +15,13 @@ class SetStateCmd(AnalogChipCommand):
 
     def __init__(self,blk,loc,state):
         AnalogChipCommand.__init__(self)
-        self._blk = enums.BlockType(blk);
-        assert(isinstance(loc, CircLoc) and loc.index != None)
+        self._blk = glb_enums.BlockType(blk);
+        assert(isinstance(loc, ccmd_data.CircLoc) and loc.index != None)
         self._loc = loc;
         self._state = state
         self.test_loc(self._blk, self._loc)
         assert(not loc is None and \
-               isinstance(loc,CircLoc))
+               isinstance(loc,ccmd_data.CircLoc))
 
 
 
@@ -28,8 +29,8 @@ class SetStateCmd(AnalogChipCommand):
         statebuf = self._state.to_cstruct()
         padding = bytes([0]*(64-len(statebuf)))
         buf = statebuf+padding
-        return build_circ_ctype({
-            'type':enums.CircCmdType.SET_STATE.name,
+        return ccmd_common.build_circ_ctype({
+            'type':glb_enums.CircCmdType.SET_STATE.name,
             'data':{
                 'state':{
                     'blk': self._blk.name,
@@ -50,8 +51,8 @@ class GetStateCmd(AnalogChipCommand):
 
     def __init__(self,blk,chip,tile,slce,index=None):
         AnalogChipCommand.__init__(self)
-        self._blk = enums.BlockType(blk)
-        self._loc = CircLoc(chip,tile,slce,index=0 if index is None \
+        self._blk = glb_enums.BlockType(blk)
+        self._loc = ccmd_data.CircLoc(chip,tile,slce,index=0 if index is None \
                             else index)
 
         self.test_loc(self._blk, self._loc)
@@ -66,8 +67,8 @@ class GetStateCmd(AnalogChipCommand):
 
 
     def build_ctype(self):
-        return build_circ_ctype({
-            'type':enums.CircCmdType.GET_STATE.name,
+        return ccmd_common.build_circ_ctype({
+            'type':glb_enums.CircCmdType.GET_STATE.name,
             'data':{
                 'state':{
                     'blk': self._blk.name,
@@ -80,7 +81,7 @@ class GetStateCmd(AnalogChipCommand):
 
     @staticmethod
     def parse(args):
-        result = parse_pattern_block_loc(args,GetStateCmd.name())
+        result = ccmd_common.parse_pattern_block_loc(args,GetStateCmd.name())
         if result.success:
             data = result.value
             return GetStateCmd(data['blk'],
@@ -100,8 +101,8 @@ class GetStateCmd(AnalogChipCommand):
         data = {}
         print("# els: %d" % len(array))
         while i < len(array):
-            key = enums.CodeType.from_code(array[i])
-            if key == enums.CodeType.CODE_END:
+            key = glb_enums.CodeType.from_code(array[i])
+            if key == glb_enums.CodeType.CODE_END:
                 return data
 
             value = array[i+1]
@@ -116,7 +117,7 @@ class GetStateCmd(AnalogChipCommand):
         datum = self._loc.to_json()
         datum['block_type'] = self._blk.value
         data = bytes(resp.data(0)[1:])
-        st = chipstate.BlockState \
+        st = cstate.BlockState \
                       .toplevel_from_cstruct(self._blk,
                                              self._loc,
                                              data,
@@ -133,9 +134,9 @@ class CalibrateCmd(AnalogChipCommand):
 
     def __init__(self,blk,chip,tile,slice,index=None):
         AnalogChipCommand.__init__(self)
-        self._loc = CircLoc(chip,tile,slice,index=0 if index is None \
+        self._loc = ccmd_data.CircLoc(chip,tile,slice,index=0 if index is None \
                             else index)
-        self._blk = enums.BlockType(blk)
+        self._blk = glb_enums.BlockType(blk)
         self.test_loc(self._blk,self._loc)
 
     @staticmethod
@@ -146,22 +147,31 @@ class CalibrateCmd(AnalogChipCommand):
     def desc():
         return "calibrate a slice on the hdacv2 board"
 
+    @staticmethod
+    def calib_obj_to_code(obj):
+        if obj == util.CalibrateObjective.MIN_ERROR:
+            return 0
+        elif obj == util.CalibrateObjective.MAX_FIT:
+            return 1
+        elif obj == util.CalibrateObjective.FAST:
+            return 2
+
     def build_ctype(self):
         loc_type = self._loc.build_ctype()
-        return build_circ_ctype({
-            'type':enums.CircCmdType.CALIBRATE.name,
+        return ccmd_common.build_circ_ctype({
+            'type':glb_enums.CircCmdType.CALIBRATE.name,
             'data':{
                 'calib':{
                     'blk': self._blk.code(),
                     'loc': loc_type,
-                    'calib_obj': self.calib_obj.code()
+                    'calib_obj': self.calib_obj_to_code(self.calib_obj)
                 }
             }
         })
 
     @staticmethod
     def parse(args):
-        result = parse_pattern_block_loc(args,
+        result = ccmd_common.parse_pattern_block_loc(args,
                                          CalibrateCmd.name())
         if result.success:
             data = result.value
@@ -182,7 +192,7 @@ class CalibrateCmd(AnalogChipCommand):
         state_size = int(resp.data(0)[1]);
         base=2
         data = bytes(resp.data(0)[base:])
-        st = chipstate.BlockState \
+        st = cstate.BlockState \
                       .toplevel_from_cstruct(self._blk,
                                              self._loc,
                                              data,

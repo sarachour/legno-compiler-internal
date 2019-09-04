@@ -144,8 +144,7 @@ class ModelDB:
 
   MISSING = []
   def __init__(self,calib_mode=util.CalibrateObjective.MIN_ERROR):
-    path = CFG.MODEL_DB
-    self._conn = sqlite3.connect(path)
+    self._conn = sqlite3.connect(CFG.MODEL_DB)
     self._curs = self._conn.cursor()
     self.calib_mode = calib_mode
     cmd = '''
