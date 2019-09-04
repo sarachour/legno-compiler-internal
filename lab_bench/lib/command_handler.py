@@ -1,5 +1,4 @@
 import lab_bench.lib.command as cmd
-from lab_bench.lib.chipcmd.data import CalibType
 import sys
 
 
@@ -68,8 +67,8 @@ def main_script_profile(state,filename, \
 
 
 def main_script_calibrate(state,filename, \
-                          recompute=False,
-                          calib_obj=CalibType.MIN_ERROR):
+                          calib_obj,
+                          recompute=False):
     successes = []
     failures = []
     for command_obj in read_script(filename):

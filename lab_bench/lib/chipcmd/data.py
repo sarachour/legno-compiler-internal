@@ -1,6 +1,7 @@
 from enum import Enum
 from lab_bench.lib import cstructs,enums
 
+'''
 class CalibType(str,Enum):
     MIN_ERROR = "min_error"
     MAX_DELTA_FIT = "max_fit"
@@ -13,6 +14,7 @@ class CalibType(str,Enum):
             return 1
         elif self == CalibType.FAST:
             return 2
+'''
 
 class BoolType(str,Enum):
     TRUE = 'true'

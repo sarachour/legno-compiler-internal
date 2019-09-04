@@ -25,18 +25,18 @@ def execute_script(script_file, \
                    calibrate=False):
     print(script_file)
     if calibrate:
-        calib_cmd = "python3 grendel.py --calib-obj {obj} calibrate {script}"
-        cmd = calib_cmd.format(obj=calib_obj, \
+        calib_cmd = "python3 grendel.py calibrate {script} --calib-obj {obj}"
+        cmd = calib_cmd.format(obj=calib_obj.value, \
                                script=script_file)
         os.system(cmd)
 
-    exec_cmd = "python3 grendel.py --calib-obj {obj} run {script}"
-    cmd = exec_cmd.format(obj=calib_obj, \
+    exec_cmd = "python3 grendel.py run {script} --calib-obj {obj}"
+    cmd = exec_cmd.format(obj=calib_obj.value, \
                            script=script_file)
     os.system(cmd)
 
 def execute(args):
-    from compiler.jaunt_pass.jenv import JauntEnvParams
+    from compiler.lscale_pass.scenv import LScaleEnvParams
     db = ExpDriverDB()
     entries = []
     for entry in db.experiment_tbl.get_by_status(ExecutionStatus.RAN):
@@ -46,8 +46,9 @@ def execute(args):
     for entry in db.experiment_tbl.get_by_status(ExecutionStatus.PENDING):
         entry.synchronize()
 
-        if not args.bmark is None and entry.bmark != args.bmark:
+        if not args.prog is None and entry.prog != args.prog:
             continue
+
         if not args.subset is None and entry.subset != args.subset:
             continue
 
@@ -62,12 +63,13 @@ def execute(args):
 
 
     for entry in entries:
-        method,mape,mdpe,bw = util.unpack_tag(entry.model)
-        pars = JauntEnvParams(digital_error=mdpe, \
-                              analog_error=mape,
-                              max_freq=bw)
-        pars.set_model(JauntEnvParams.Type(method))
-        execute_script(entry.grendel_file, \
+        fargs = util.unpack_model(entry.model)
+        pars = LScaleEnvParams(model=fargs['model'], \
+                               mdpe=fargs['mdpe'], \
+                               mape=fargs['mape'],
+                               max_freq_khz=fargs['bandwidth_khz'])
+
+        execute_script(entry.grendel_script, \
                        calib_obj=pars.calib_obj, \
                        calibrate=args.calibrate)
         entry.synchronize()

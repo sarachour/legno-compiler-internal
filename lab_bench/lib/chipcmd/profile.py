@@ -18,7 +18,7 @@ class ExecuteInput(AnalogChipCommand):
                  inputs, \
                  index=None, \
                  mode=0,
-                 calib_obj=chipstate.CalibType.MIN_ERROR):
+                 calib_obj=chipstate.util.CalibrateObjective.MIN_ERROR):
         AnalogChipCommand.__init__(self)
         self._blk = enums.BlockType(blk)
         self._loc = CircLoc(chip,tile,slce,index=0 if index is None \
@@ -31,7 +31,7 @@ class ExecuteInput(AnalogChipCommand):
     def build_ctype(self):
         loc_type = self._loc.build_ctype()
         return build_circ_ctype({
-            'type':enums.CircCmdType.CHARACTERIZE.name,
+            'type':enums.CircCmdType.PROFILE.name,
             'data':{
                 'prof':{
                   'blk': self._blk.code(),

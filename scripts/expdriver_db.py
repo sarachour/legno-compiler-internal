@@ -10,48 +10,72 @@ class ExpDriverDB:
 
 
   def __init__(self):
-    path = CONFIG.EXPERIMENT_DB
-    self.conn = sqlite3.connect(path)
-    self.curs = self.conn.cursor()
+    self.path = CONFIG.EXPERIMENT_DB
+    self.open()
     self.experiment_tbl = ExperimentTable(self)
     self.output_tbl = OutputTable(self)
+
+  def open(self):
+    self.conn = sqlite3.connect(self.path)
+    self.curs = self.conn.cursor()
 
 
   def close(self):
     self.conn.close()
 
 
-  def add(self,path_handler,subset,bmark,arco_inds, \
-          jaunt_inds, \
-          model,opt, \
-          menv_name,hwenv_name):
-    entry=  self.experiment_tbl.add(path_handler, \
-                                    subset,bmark,arco_inds, \
-                                    jaunt_inds, \
-                                    model,opt, \
-                                    menv_name,hwenv_name)
+  def add(self,path_handler,subset,prog, \
+          lgraph, \
+          lscale, \
+          model, \
+          obj, \
+          dssim,hwenv):
+    entry = self.experiment_tbl.add(path_handler, \
+                                    subset=subset, \
+                                    prog=prog, \
+                                    lgraph=lgraph, \
+                                    lscale=lscale, \
+                                    model=model, \
+                                    obj=obj, \
+                                    dssim=dssim, \
+                                    hwenv=hwenv)
 
-    print(entry)
-    for out_file in get_output_files(entry.grendel_file):
-      _,_,_,_,_,_,_,var_name,trial = path_handler \
-                               .measured_waveform_file_to_args(out_file)
+    for out_file in get_output_files(entry.grendel_script):
+      fargs = path_handler \
+              .measured_waveform_file_to_args(out_file)
       self.output_tbl.add(path_handler, \
-                          subset,bmark,arco_inds,jaunt_inds, \
-                          model,opt, \
-                          menv_name,hwenv_name,var_name,trial)
+                          subset=subset, \
+                          prog=prog, \
+                          lgraph=lgraph, \
+                          lscale=lscale, \
+                          model=model, \
+                          obj=obj, \
+                          dssim=dssim, \
+                          hwenv=hwenv, \
+                          variable=fargs['var'], \
+                          trial=fargs['trial'])
 
     entry.synchronize()
+    return entry
 
   def scan(self):
     for dirname, subdirlist, filelist in os.walk(CONFIG.OUTPUT_PATH):
       for fname in filelist:
         if fname.endswith('.grendel'):
-          subset,bmark = paths.PathHandler.path_to_args(dirname)
-          ph = paths.PathHandler(subset,bmark,make_dirs=False)
-          args= \
+          fargs = paths.PathHandler.path_to_args(dirname)
+          ph = paths.PathHandler(subset=fargs['subset'], \
+                                 prog=fargs['prog'], \
+                                 make_dirs=False)
+          gargs = \
                 ph.grendel_file_to_args(fname)
-          bmark,arco_inds,jaunt_inds,model,opt,menv_name,hwenv_name = args
-          exp = self.add(ph,subset,bmark,arco_inds,jaunt_inds, \
-                         model,opt,menv_name,hwenv_name)
+          exp = self.add(ph, \
+                         subset=fargs['subset'], \
+                         prog=fargs['prog'], \
+                         lgraph=gargs['lgraph'], \
+                         lscale=gargs['lscale'], \
+                         model=gargs['model'], \
+                         obj=gargs['opt'], \
+                         dssim=gargs['dssim'], \
+                         hwenv=gargs['hwenv'])
           if not exp is None:
             yield exp

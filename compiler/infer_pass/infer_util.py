@@ -71,13 +71,17 @@ def get_directory(model):
         else:
             tag = str(mode)
         return tag
-
     block,loc = model.block,model.loc
     loc = to_safe_loc(loc)
     cm,sm = to_tag(model.comp_mode),to_tag(model.scale_mode)
-    direc = "MODELS/%s-%s/%s-%s/%s" % (block,loc,cm,sm, \
-                                       CALIB_OBJ.value)
-    util.mkdir_if_dne(direc)
+    direc = "{path}/{block}-{loc}/{comp_mode}-{scale_mode}/{calib_obj}"
+    conc_dir = direc.format(path=CFG.MODEL_PPATH,
+                            block=block,
+                            loc=loc,
+                            comp_mode=cm,
+                            scale_mode=sm,
+                            calib_obj=CALIB_OBJ.value)
+    util.mkdir_if_dne(conc_direc)
     return direc
 
 def normalize_bound(bnds,scm):

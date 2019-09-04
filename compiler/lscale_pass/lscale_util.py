@@ -5,11 +5,11 @@ import ops.interval as interval
 import logging
 import networkx as nx
 
-logger = logging.getLogger('jaunt')
+logger = logging.getLogger('lscale')
 logger.setLevel(logging.ERROR)
 #logger.setLevel(logging.DEBUG)
 # create file handler which logs even debug messages
-fh = logging.FileHandler('jaunt.log')
+fh = logging.FileHandler('lscale.log')
 fh.setLevel(logging.ERROR)
 # create console handler with a higher log level
 ch = logging.StreamHandler()

@@ -91,9 +91,9 @@ def get_parameters(scenv,circ,block,loc,port,handle=None):
         'hw_oprange_base':hwrng,
         'hw_bandwidth':hwbw,
         'hw_uncertainty': uncertainty,
-        'min_digital_snr': 1.0/scenv.params.percent_digital_error,
+        'mdpe': scenv.params.mdpe,
         'digital_resolution': resolution,
-        'min_analog_snr': 1.0/scenv.params.percent_analog_error
+        'mape': scenv.params.mape
     }
 
 def decl_scale_variables(scenv,circ):
@@ -157,9 +157,9 @@ def digital_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
                                       hwrng.lower,
                                       'jcom-digital-oprange-%s' % annot)
 
-
+    '''
     hw_unc = pars['hw_uncertainty']
-    min_snr = pars['min_analog_snr']
+    min_snr = pars['mape']
     hw_unc_coeff,_ = hw_unc.factor_const()
     if hw_unc_coeff > 0.0  \
        and mrng.bound > 0.0 \
@@ -169,6 +169,7 @@ def digital_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
         snr_expr = scop.SCMult(signal_expr,noise_expr)
         scenv.gte(snr_expr,scop.SCConst(min_snr), \
                  annot='jcom-digital-minsig')
+    '''
 
 
 def analog_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
@@ -176,7 +177,7 @@ def analog_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
     pars = get_parameters(scenv,circ,block,loc,port,handle)
     mrng = pars['math_interval']
     hwrng = pars['hw_oprange_base']
-    min_snr = pars['min_analog_snr']
+    min_snr = 1.0/pars['mape']
     hw_unc = pars['hw_uncertainty']
     prop = pars['prop']
     assert(isinstance(prop, props.AnalogProperties))
@@ -216,7 +217,7 @@ def digital_quantize_constraint(scenv,circ,block,loc,port,handle,annot=""):
     pars = get_parameters(scenv,circ,block,loc,port,handle)
     prop = pars['prop']
     mrng = pars['math_interval']
-    min_snr = pars['min_digital_snr']
+    min_snr = 1.0/pars['mdpe']
     resolution = pars['digital_resolution']
     delta_h = np.mean(np.diff(prop.values()))
 
@@ -261,9 +262,9 @@ def analog_bandwidth_constraint(scenv,circ,block,loc,port,handle,annot):
     physbw = _to_phys_bandwidth(circ)
     scenv.use_tau()
 
-    if not scenv.params.max_freq is None:
+    if not scenv.params.max_freq_hz is None:
         scenv.lte(scop.SCMult(tau,scop.SCConst(physbw)), \
-                scop.SCConst(scenv.params.max_freq),
+                scop.SCConst(scenv.params.max_freq_hz),
                 'jcom-analog-maxbw-%s' % annot
         )
 
@@ -305,9 +306,9 @@ def digital_bandwidth_constraint(scenv,prob,circ,block,loc,port,handle,annot):
                     scop.SCConst(hw_sample_freq),
                     'jcom-digital-bw-%s' % annot
             )
-            if not scenv.params.max_freq is None:
+            if not scenv.params.max_freq_hz is None:
                 scenv.lte(scop.SCMult(tau,scop.SCConst(sim_sample_freq)), \
-                         scop.SCConst(scenv.params.max_freq),
+                         scop.SCConst(scenv.params.max_freq_hz),
                          'jcom-digital-maxbw-%s' % annot
                 )
 

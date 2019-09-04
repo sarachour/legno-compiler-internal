@@ -29,7 +29,7 @@ def tac_vprod(board,ast):
     else:
         multiplier = board.block("multiplier")
         for levels in \
-            arco_util.enumerate_tree(multiplier,len(ast.inputs),
+            lgraph_util.enumerate_tree(multiplier,len(ast.inputs),
                                           permute_input=True,
                                           prop=prop.CURRENT):
 
@@ -39,7 +39,7 @@ def tac_vprod(board,ast):
             # for each combination of inputs
             for combo in itertools.product(*new_inputs):
                 free_ports,out_block,out_port,_ = \
-                                                arco_util.build_tree_from_levels(
+                                                lgraph_util.build_tree_from_levels(
                                                     board,
                                                     levels,
                                                     multiplier,
@@ -50,7 +50,7 @@ def tac_vprod(board,ast):
                                                     prop=prop.CURRENT
                                                 )
 
-                for unused,assigns in arco_util.input_level_combos(free_ports,combo):
+                for unused,assigns in lgraph_util.input_level_combos(free_ports,combo):
                     # only consider assigns where the free ports are in1s
                     if len(unused) > 0 and \
                        len(list((filter(lambda args: args[1] != 'in1',unused)))) > 0:
@@ -70,7 +70,7 @@ def tac_vprod(board,ast):
                         acirc.ANode.connect(srcblk,srcport, \
                                             dstblk,dstport)
 
-                    arco_util.validate_fragment(out_block_c)
+                    lgraph_util.validate_fragment(out_block_c)
                     yield out_block_c,out_port
 
 def tac_cprod(board,ast):

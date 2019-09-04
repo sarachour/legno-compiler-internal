@@ -9,13 +9,13 @@ subparsers = parser.add_subparsers(dest='subparser_name',
 scan_subp = subparsers.add_parser('scan', help='scan for new grendel scripts')
 list_subp = subparsers.add_parser('list', help='list database entries')
 list_subp.add_argument('--bmark', type=str,
-                       help='bmark to run.')
+                       help='prog to run.')
 list_subp.add_argument('--obj', type=str,
                        help='objective function to run.')
 
 
 del_subp = subparsers.add_parser('clear', help='delete a benchmark/opt-run')
-del_subp.add_argument('--bmark', type=str,
+del_subp.add_argument('--prog', type=str,
                        help='benchmark to delete.')
 del_subp.add_argument('--obj', type=str,
                        help='optimization objective function to delete.')
@@ -27,10 +27,10 @@ run_subp.add_argument('--email', type=str,
                        help='email address.')
 run_subp.add_argument('--native', action='store_true',
                        help='use ttyACM0.')
-run_subp.add_argument('--bmark', type=str,
-                       help='bmark to run.')
+run_subp.add_argument('--prog', type=str,
+                       help='prog to run.')
 run_subp.add_argument('--subset', type=str,
-                       help='bmark to run.')
+                       help='prog to run.')
 run_subp.add_argument('--model', type=str,
                        help='model to run.')
 run_subp.add_argument('--obj', type=str,
@@ -44,7 +44,7 @@ analyze_subp.add_argument('--recompute-quality', action='store_true',
                        help='.')
 analyze_subp.add_argument('--monitor', action='store_true',
                        help='.')
-analyze_subp.add_argument('--bmark', type=str,
+analyze_subp.add_argument('--prog', type=str,
                        help='.')
 analyze_subp.add_argument('--subset', type=str,
                        help='.')
@@ -67,21 +67,27 @@ if args.subparser_name == "scan":
   for exp in db.scan():
     print(exp)
 
+  db.close()
+  db.open()
+  input("execute get")
+  for entry in db.experiment_tbl.get_all():
+    print(entry)
+
 elif args.subparser_name == "list":
-  db = ExperimentDB()
+  db = ExpDriverDB()
   print("=== all entries ===")
-  for entry in db.get_all():
+  for entry in db.experiment_tbl.get_all():
     if entry.bmark != args.bmark and not args.bmark is None:
       continue
     if entry.objective_fun != args.obj and not args.obj is None:
       continue
-
     print(entry)
 
+
 elif args.subparser_name == "clear":
-  db = ExperimentDB()
+  db = ExpDriverDB()
   print("==== deleted ====")
-  for entry in db.delete(args.bmark,args.obj):
+  for entry in db.experiment_tbl.delete(args.bmark,args.obj):
     print(entry)
 
 elif args.subparser_name == 'run':

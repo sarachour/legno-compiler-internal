@@ -5,7 +5,6 @@ import json
 import binascii
 import math
 
-from lab_bench.lib.chipcmd.data import CalibType
 
 class PortModel():
 
@@ -144,9 +143,8 @@ class PortModel():
 class ModelDB:
 
   MISSING = []
-  def __init__(self,calib_mode=CalibType.MIN_ERROR):
-    path = CFG.MODEL_DB
-    self._conn = sqlite3.connect(path)
+  def __init__(self,calib_mode=util.CalibrateObjective.MIN_ERROR):
+    self._conn = sqlite3.connect(CFG.MODEL_DB)
     self._curs = self._conn.cursor()
     self.calib_mode = calib_mode
     cmd = '''
@@ -320,12 +318,12 @@ def get_model(db,circ,block_name,loc,port,handle=None):
       #       str(config.scale_mode)))
       return None
 
-def get_variance(db,circ,block_name,loc,port,handle=None,mode='physical'):
-  if 'physical' == mode or 'partial' == mode:
+def get_variance(db,circ,block_name,loc,port,mode,handle=None):
+  if mode.uses_delta_model():
     #unc_min = 1e-6
     unc_min = 0.01
     model = get_model(db,circ,block_name,loc,port,handle=handle)
-    if model is None or mode == 'partial':
+    if model is None or mode == util.DeltaModel.PARTIAL:
       return unc_min
 
     unc = math.sqrt(model.noise + model.bias_uncertainty**2.0)
@@ -335,15 +333,16 @@ def get_variance(db,circ,block_name,loc,port,handle=None,mode='physical'):
 
     return physunc
 
-  elif mode == 'ideal':
+  if mode == util.DeltaModel.IDEAL:
     return 1e-12
-  elif mode == 'naive':
+  if mode == util.DeltaModel.NAIVE:
     return 0.01
   else:
     raise Exception("unknown mode <%s>" % mode)
 
-def get_oprange_scale(db,circ,block_name,loc,port,handle=None,mode='physical'):
-  if mode == 'physical' or mode == 'partial':
+def get_oprange_scale(db,circ,block_name,loc,port,mode,handle=None):
+  assert(isinstance(mode,util.DeltaModel))
+  if mode.uses_delta_model():
     model = get_model(db,circ,block_name,loc,port,handle=handle)
     if model is None:
       return (1.0,1.0)
@@ -351,22 +350,18 @@ def get_oprange_scale(db,circ,block_name,loc,port,handle=None,mode='physical'):
     l,u = model.oprange_scale
     return (l,u)
 
-  elif mode == 'naive' or mode == 'ideal':
+  else:
     return (1.0,1.0)
 
-  else:
-    raise Exception("unknown mode")
 
-def get_gain(db,circ,block_name,loc,port,handle=None,mode='physical'):
-  if mode == 'physical' or mode == 'partial':
+def get_gain(db,circ,block_name,loc,port,mode,handle=None):
+  assert(isinstance(mode,util.DeltaModel))
+  if mode.uses_delta_model():
     model = get_model(db,circ,block_name,loc,port,handle=handle)
     if model is None:
       return 1.0
 
     return model.gain
 
-  elif mode == 'naive' or mode == 'ideal':
-    return 1.0
-
   else:
-    raise Exception("unknown mode")
+    return 1.0

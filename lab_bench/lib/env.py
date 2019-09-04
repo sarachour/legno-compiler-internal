@@ -2,7 +2,6 @@ from lab_bench.devices.arduino_due import ArduinoDue
 from lab_bench.devices.sigilent_osc import Sigilent1020XEOscilloscope
 import lab_bench.devices.sigilent_osc as osclib
 
-from lab_bench.lib.chipcmd.data import CalibType
 from lab_bench.lib.base_command import FlushCommand, ArduinoCommand
 from lab_bench.lib.base_command import AnalogChipCommand
 import lab_bench.lib.util as util
@@ -13,9 +12,8 @@ import math
 
 class GrendelEnv:
 
-    def __init__(self,osc_ip,osc_port,ard_native, \
-                 validate=False, \
-                 calib_obj=CalibType.MIN_ERROR):
+    def __init__(self,osc_ip,osc_port,ard_native,calib_obj,\
+                 validate=False):
         if not validate:
             self.arduino = ArduinoDue(native=ard_native)
             self.oscilloscope = Sigilent1020XEOscilloscope(

@@ -9,35 +9,31 @@ class ExperimentTable:
     self.db = db
     cmd = '''CREATE TABLE IF NOT EXISTS experiments
              (subset text NOT NULL,
-              bmark text NOT NULL,
+              prog text NOT NULL,
               status text NOT NULL,
               modif timestamp,
-              arco0 int NOT NULL,
-              arco1 int NOT NULL,
-              arco2 int NOT NULL,
-              arco3 int NOT NULL,
-              jaunt int NOT NULL,
+              lgraph text NOT NULL,
+              lscale int NOT NULL,
               model text NOT NULL,
-              opt text NOT NULL,
-              menv text NOT NULL,
+              obj text NOT NULL,
+              dssim text NOT NULL,
               hwenv text NOT NULL,
-              grendel_file text,
-              jaunt_circ_file text,
+              grendel_script text,
+              adp text,
               quality real,
               energy real,
               runtime real,
-              PRIMARY KEY (subset,bmark,arco0,arco1,
-                           arco2,arco3,jaunt,
-                           model,opt,menv,hwenv)
+              PRIMARY KEY (subset,prog,lgraph,lscale,
+                           model,obj,dssim,hwenv)
              );
     '''
     self._order = ['subset',
-                   'bmark','status','modif','arco0', \
-                   'arco1','arco2', \
-                   'arco3','jaunt',
-                   'model','opt','menv','hwenv',
-                   'grendel_file', \
-                   'jaunt_circ_file',
+                   'prog','status','modif', \
+                   'lgraph', \
+                   'lscale',
+                   'model','obj','dssim','hwenv',
+                   'grendel_script', \
+                   'adp',
                    'quality', \
                    'energy', \
                    'runtime']
@@ -48,7 +44,7 @@ class ExperimentTable:
     self.db.curs.execute(cmd)
 
   def _get_rows(self,where_clause):
-    cmd = '''SELECT * FROM experiments {where_clause}'''
+    cmd = '''SELECT * FROM experiments {where_clause};'''
     conc_cmd = cmd.format(where_clause=where_clause)
     for values in list(self.db.curs.execute(conc_cmd)):
       assert(len(values) == len(self._order))
@@ -71,24 +67,24 @@ class ExperimentTable:
     for entry in self._get_rows(where_clause):
       yield entry
 
-  def to_where_clause(self,subset,bmark,arco_inds,jaunt_inds,model,opt, \
-                      menv_name,hwenv_name):
+  def to_where_clause(self,subset,prog,lgraph,lscale, \
+                      model,obj, \
+                      dssim,hwenv):
     cmd = '''WHERE
       subset = "{subset}"
-      AND bmark = "{bmark}"
-      AND arco0 = {arco0}
-      AND arco1 = {arco1}
-      AND arco2 = {arco2}
-      AND arco3 = {arco3}
-      AND jaunt = {jaunt}
+      AND prog = "{prog}"
+      AND lgraph = "{lgraph}"
+      AND lscale = {lscale}
       AND model = "{model}"
-      AND opt = "{opt}"
-      AND menv = "{menv}"
+      AND obj= "{obj}"
+      AND dssim = "{dssim}"
       AND hwenv = "{hwenv}"
       '''
-    args = common.make_args(subset,bmark,arco_inds, \
-                            jaunt_inds,model,opt, \
-                     menv_name,hwenv_name)
+    args = common.make_args(subset,prog, \
+                            lgraph, \
+                            lscale,model,obj, \
+                            dssim, \
+                            hwenv)
 
     conc_cmd = cmd.format(**args)
     return conc_cmd
@@ -106,14 +102,14 @@ class ExperimentTable:
 
 
 
-  def delete(self,bmark=None,objfun=None):
-    assert(not bmark is None or not objfun is None)
-    if not bmark is None and not objfun is None:
-      itertr= self.filter({'bmark':bmark,'opt':objfun})
+  def delete(self,prog=None,objfun=None):
+    assert(not prog is None or not objfun is None)
+    if not prog is None and not objfun is None:
+      itertr= self.filter({'prog':prog,'opt':objfun})
     elif not objfun is None:
       itertr= self.filter({'opt':objfun})
-    elif not bmark is None:
-      itertr= self.filter({'bmark':bmark})
+    elif not prog is None:
+      itertr= self.filter({'prog':prog})
     else:
       raise Exception("???")
 
@@ -123,10 +119,15 @@ class ExperimentTable:
 
 
 
-  def get(self,subset,bmark,arco_inds,jaunt_inds,model,opt,menv_name,hwenv_name):
-    where_clause = self.to_where_clause(subset,bmark,\
-                                        arco_inds,jaunt_inds,model,opt, \
-                                        menv_name,hwenv_name)
+  def get(self,subset,prog,lgraph,lscale,model,opt,dssim,hwenv):
+    where_clause = self.to_where_clause(subset, \
+                                        prog=prog ,\
+                                        lgraph=lgraph, \
+                                        lscale=lscale, \
+                                        model=model, \
+                                        obj=opt, \
+                                        dssim=dssim, \
+                                        hwenv=hwenv)
     result = list(self._get_rows(where_clause))
     if len(result) == 0:
       return None
@@ -135,15 +136,15 @@ class ExperimentTable:
     else:
       raise Exception("nonunique experiment")
 
-  def delete(self,subset,bmark,arco_inds,jaunt_inds, \
-                        model,opt,menv_name,hwenv_name):
+  def delete(self,subset,prog,lgraph,lscale, \
+                        model,opt,dssim,hwenv):
     cmd = '''
     DELETE FROM experiments {where_clause};
     '''
-    where_clause = self.to_where_clause(subset,bmark,\
-                                        arco_inds,jaunt_inds,
+    where_clause = self.to_where_clause(subset,prog,\
+                                        lgraph,lscale,
                                         model,opt, \
-                                        menv_name,hwenv_name)
+                                        dssim,hwenv)
     conc_cmd = cmd.format(where_clause=where_clause)
     self.db.curs.execute(conc_cmd)
     self.db.conn.commit()
@@ -151,65 +152,68 @@ class ExperimentTable:
 
 
   def add(self,path_handler,
-          subset,bmark,arco_inds, \
-          jaunt_inds, \
-          model,opt, \
-          menv_name,hwenv_name):
+          subset,prog,lgraph, \
+          lscale, \
+          model,obj, \
+          dssim,hwenv):
     entry = self.get(subset, \
-                     bmark,arco_inds,jaunt_inds, \
-                     model,opt,menv_name,hwenv_name)
+                     prog,lgraph,lscale, \
+                     model,obj,dssim,hwenv)
     if entry is None:
       cmd = '''
       INSERT INTO experiments (
-         subset,bmark,arco0,arco1,arco2,arco3,jaunt,
-         model,opt,menv,hwenv,
-         jaunt_circ_file,
-         grendel_file,status,modif
+         subset,prog,lgraph,lscale,
+         model,obj,dssim,hwenv,
+         adp,grendel_script,
+         status,modif
       ) VALUES
       (
-         "{subset}","{bmark}",{arco0},{arco1},{arco2},{arco3},{jaunt},
-         "{model}","{opt}","{menv}","{hwenv}",
-         "{conc_circ}",
-         "{grendel_file}",
+         "{subset}","{prog}","{lgraph}",{lscale},
+         "{model}","{obj}","{dssim}","{hwenv}",
+         "{adp}",
+         "{grendel_script}",
          "{status}",
          "{modif}"
-      )
+      );
       '''
       args = common.make_args(subset,
-                       bmark,arco_inds,jaunt_inds,model,opt, \
-                       menv_name,hwenv_name)
+                              prog,lgraph,lscale, \
+                              model,obj, \
+                              dssim,hwenv)
       args['modif'] = datetime.datetime.now()
       args['status'] = common.ExecutionStatus.PENDING.value
-      args['grendel_file'] = path_handler.grendel_file(bmark,arco_inds, \
-                                                       jaunt_inds,
-                                                       model,
-                                                       opt,
-                                                       menv_name,
-                                                       hwenv_name)
-      args['conc_circ'] = path_handler.conc_circ_file(bmark,arco_inds, \
-                                                      jaunt_inds, \
-                                                      model,
-                                                      opt)
+      args['grendel_script'] = path_handler.grendel_file(lgraph, \
+                                                         lscale,
+                                                         model,
+                                                         obj,
+                                                         dssim,
+                                                         hwenv)
+      args['adp'] = path_handler.lscale_adp_file(lgraph, \
+                                                 lscale, \
+                                                 model, \
+                                                 obj)
 
       conc_cmd = cmd.format(**args)
       self.db.curs.execute(conc_cmd)
+      if self.db.curs.rowcount == 0:
+        raise Exception("Query Failed:\n%s" % conc_cmd)
       self.db.conn.commit()
-      entry = self.get(subset,bmark,arco_inds,jaunt_inds, \
-                       model,opt,menv_name,hwenv_name)
-
+      entry = self.get(subset,prog,lgraph,lscale, \
+                       model,obj,dssim,hwenv)
+      assert(not entry is None)
     return entry
 
 
 
-  def update(self,subset,bmark,arco_inds,jaunt_inds,model, \
-             opt,menv_name,hwenv_name,new_fields):
+  def update(self,subset,prog,lgraph,lscale,model, \
+             obj,dssim,hwenv,new_fields):
     cmd = '''
     UPDATE experiments
     SET {assign_clause} {where_clause};
     '''
-    where_clause = self.to_where_clause(subset,bmark,\
-                                        arco_inds,jaunt_inds,model,opt, \
-                                        menv_name,hwenv_name)
+    where_clause = self.to_where_clause(subset,prog,\
+                                        lgraph,lscale,model,obj, \
+                                        dssim,hwenv)
     new_fields['modif'] = datetime.datetime.now()
     assign_subclauses = []
     for field,value in new_fields.items():

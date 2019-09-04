@@ -1,12 +1,12 @@
-from util import paths
 #from compiler import lgraph, lscale, srcgen, execprog
 import os
 import time
 import json
 import shutil
 import numpy as np
-from util.util import Timer
 import itertools
+import util.util as util
+import util.paths as paths
 from hwlib.adp import AnalogDeviceProg
 from dslang.dsprog import DSProgDB
 
@@ -19,7 +19,7 @@ def exec_lgraph(args):
                               load_conns=True)
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
-    timer = Timer('lgraph',path_handler)
+    timer = util.Timer('lgraph',path_handler)
     timer.start()
     count = 0
     for indices,adp in \
@@ -55,10 +55,10 @@ def exec_lscale_normal(timer,prog,adp,args):
     for idx,opt,model,scale_circ in lscale.scale(prog, \
                                                  adp,
                                                  args.scale_circuits,
-                                                 model=args.model,
-                                                 max_freq=args.max_freq,
-                                                 digital_error=args.digital_error,
-                                                 analog_error=args.analog_error,
+                                                 model=util.DeltaModel(args.model),
+                                                 max_freq_khz=args.max_freq,
+                                                 mdpe=args.mdpe/100.0,
+                                                 mape=args.mape/100.0,
                                                  do_log=True):
         timer.end()
         yield idx,opt,model,scale_circ
@@ -66,15 +66,15 @@ def exec_lscale_normal(timer,prog,adp,args):
 
 def exec_lscale_search(timer,prog,adp,args,tolerance=0.002):
     from compiler import lscale
-    def test_valid(digital_error,analog_error):
-        print("dig_error=%f an_error=%f" % (digital_error,analog_error))
+    def test_valid(mdpe,mape):
+        print("mdpe=%f mape=%f" % (mdpe,mape))
         for idx,opt,model,scale_circ in lscale.scale(prog, \
                                                     adp,
                                                     args.scale_circuits,
-                                                    model=args.model,
-                                                    max_freq=args.max_freq,
-                                                    digital_error=digital_error,
-                                                    analog_error=analog_error,
+                                                    model=util.DeltaModel(args.model),
+                                                    max_freq_khz=args.max_freq,
+                                                    mdpe=mdpe,
+                                                    mape=mape,
                                                     do_log=True):
             return True
         return False
@@ -93,8 +93,8 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.002):
                 fails.append(error)
                 continue;
 
-            is_valid = test_valid(max_value,error) if analog \
-                       else test_valid(error,max_value)
+            is_valid = test_valid(mdpe=max_value,mape=error) if analog \
+                       else test_valid(mdpe=error,mape=max_value)
             if is_valid:
                 succs.append(error)
                 break;
@@ -147,12 +147,12 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.002):
     for scale in [1.1]:
         timer.start()
         for idx,opt,model,scale_circ in lscale.scale(prog, \
-                                                    adp,
-                                                    args.scale_circuits,
-                                                    model=args.model,
-                                                    max_freq=args.max_freq,
-                                                    digital_error=dig_error*scale,
-                                                    analog_error=analog_error*scale):
+                                                     adp,
+                                                     args.scale_circuits,
+                                                     model=util.DeltaModel(args.model),
+                                                     max_freq_khz=args.max_freq,
+                                                     mdpe=dig_error*scale,
+                                                     mape=analog_error*scale):
             timer.end()
             timer.start()
             yield idx,opt,model,scale_circ
@@ -167,7 +167,7 @@ def exec_lscale(args):
                               load_conns=False)
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
-    timer = Timer('lscale',path_handler)
+    timer = util.Timer('lscale',path_handler)
     adp_dir = path_handler.lgraph_adp_dir()
     for dirname, subdirlist, filelist in os.walk(adp_dir):
         for lgraph_adp_file in filelist:
@@ -209,7 +209,7 @@ def exec_srcgen(args):
     dssim = DSProgDB.get_sim(args.program)
     hwenv = hwenvs.get_hw_env(args.hw_env)
     adp_dir = path_handler.lscale_adp_dir()
-    timer = Timer('srcgen', path_handler)
+    timer = util.Timer('srcgen', path_handler)
     for dirname, subdirlist, filelist in os.walk(adp_dir):
         for adp_file in filelist:
             if adp_file.endswith('.adp'):

@@ -5,11 +5,11 @@ import util.util as util
 import parse as parselib
 
 class PathHandler:
-    def __init__(self,subset,bmark,make_dirs=True):
-        self.set_root_dir(subset,bmark)
+    def __init__(self,subset,prog,make_dirs=True):
+        self.set_root_dir(subset,prog)
         for path in [
                 self.ROOT_DIR,
-                self.BMARK_DIR,
+                self.PROG_DIR,
                 self.LGRAPH_ADP_DIR,
                 self.LGRAPH_ADP_DIAG_DIR,
                 self.LSCALE_ADP_DIR,
@@ -24,7 +24,7 @@ class PathHandler:
               util.mkdir_if_dne(path)
 
         self._subset = subset
-        self._prog = bmark
+        self._prog = prog
 
     @property
     def subset(self):
@@ -32,24 +32,31 @@ class PathHandler:
 
     @staticmethod
     def path_to_args(dirname):
-        path = "%s/legno/{subset:s}/{prog:s}" \
-               % config.OUTPUT_PATH
-        args = parselib.parse(path,dirname)
-        return args
+        paths =[ "%s/legno/{subset:w}/{prog:w}" \
+                % config.OUTPUT_PATH, \
+                 "%s/legno/{subset:w}/{prog:w}/{dir:w}" \
+                % config.OUTPUT_PATH \
+        ]
+        for path in paths:
+            args = parselib.parse(path,dirname)
+            if not args is None:
+                return dict(args.named.items())
+
+        raise Exception("cannot parse path: %s" % dirname)
 
     def set_root_dir(self,name,bmark):
         self.ROOT_DIR = "%s/legno/%s" % (config.OUTPUT_PATH,name)
-        self.BMARK_DIR = self.ROOT_DIR + ("/%s" % bmark)
-        self.LGRAPH_ADP_DIR = self.BMARK_DIR + "/lgraph-adp"
-        self.LGRAPH_ADP_DIAG_DIR = self.BMARK_DIR + "/lgraph-diag"
-        self.LSCALE_ADP_DIR = self.BMARK_DIR + "/lscale-adp"
-        self.LSCALE_ADP_DIAG_DIR = self.BMARK_DIR + "/lscale-diag"
-        self.GRENDEL_FILE_DIR = self.BMARK_DIR + "/grendel"
-        self.PLOT_DIR = self.BMARK_DIR + "/plots"
-        self.MEAS_WAVEFORM_FILE_DIR = self.BMARK_DIR + "/out-waveform"
-        self.TIME_DIR = self.BMARK_DIR + "/times"
-        self.REF_SIM_DIR = self.BMARK_DIR + "/sim/ref"
-        self.ADP_SIM_DIR = self.BMARK_DIR + "/sim/adp"
+        self.PROG_DIR = self.ROOT_DIR + ("/%s" % bmark)
+        self.LGRAPH_ADP_DIR = self.PROG_DIR + "/lgraph-adp"
+        self.LGRAPH_ADP_DIAG_DIR = self.PROG_DIR + "/lgraph-diag"
+        self.LSCALE_ADP_DIR = self.PROG_DIR + "/lscale-adp"
+        self.LSCALE_ADP_DIAG_DIR = self.PROG_DIR + "/lscale-diag"
+        self.GRENDEL_FILE_DIR = self.PROG_DIR + "/grendel"
+        self.PLOT_DIR = self.PROG_DIR + "/plots"
+        self.MEAS_WAVEFORM_FILE_DIR = self.PROG_DIR + "/out-waveform"
+        self.TIME_DIR = self.PROG_DIR + "/times"
+        self.REF_SIM_DIR = self.PROG_DIR + "/sim/ref"
+        self.ADP_SIM_DIR = self.PROG_DIR + "/sim/adp"
 
 
     def adp_sim_plot(self,lgraph,lscale,opt,model,varname):
@@ -108,6 +115,7 @@ class PathHandler:
                                model=model, \
                                opt=opt)
 
+        return filepath
 
     @staticmethod
     def lscale_adp_to_args(path):
@@ -118,8 +126,7 @@ class PathHandler:
             result = parselib.parse(cmd,name)
             if not result is None:
                 result = dict(result.named.items())
-                model = util.pack_model(result)
-                result['model'] = model
+                result['model']= util.pack_parsed_model(result)
                 assert(not result is None)
                 return result
 
@@ -174,8 +181,7 @@ class PathHandler:
             result = parselib.parse(cmd,name)
             if not result is None:
                 result = dict(result.named.items())
-                model = util.pack_model(result)
-                result['model'] = model
+                result['model'] = util.pack_parsed_model(result)
                 assert(not result is None)
                 return result
 
@@ -203,12 +209,19 @@ class PathHandler:
 
 
 
-    def measured_waveform_file_to_args(self,name):
-        path = "{prog:s}_g{lgraph:s}_s{lscale:d}_{model:s}_{opt:s}"
-        path += "_{dssim:s}_{hwenv:s}_{var:s}_{trial:d}.json"
-        args = parselib.parse(path,name)
-        return args
+    def measured_waveform_file_to_args(self,path):
+        name = path.split("/")[-1]
+        for model_cmd in util.model_format():
+            cmd = "{prog:w}_g{lgraph:w}_s{lscale:d}_%s_{opt:w}" % model_cmd
+            cmd += "_{dssim:w}_{hwenv:w}_{var:w}_{trial:d}.json"
+            result = parselib.parse(cmd,name)
+            if not result is None:
+                result = dict(result.named.items())
+                result['model'] = util.pack_parsed_model(result)
+                assert(not result is None)
+                return result
 
+        raise Exception("could not parse: %s" % name)
 
 
 

@@ -7,57 +7,109 @@ import time
 import util.config as CONFIG
 import os
 from enum import Enum
+import parse as parselib
 
 
 def array_map(mapfun):
     return np.array(list(mapfun))
 
+
+class CalibrateObjective(Enum):
+    MIN_ERROR = "min_error"
+    MAX_FIT = "max_fit"
+    FAST = "fast"
+
+class DeltaModel(Enum):
+    PHYSICAL = "physical"
+    PARTIAL = "partial"
+    IDEAL = "ideal"
+    NAIVE = "naive"
+
+    def abbrev(self):
+        if DeltaModel.PHYSICAL == self:
+            return "x"
+        if DeltaModel.PARTIAL == self:
+            return "z"
+        elif DeltaModel.NAIVE == self:
+            return "n"
+        elif DeltaModel.IDEAL == self:
+            return "i"
+
+    @staticmethod
+    def from_abbrev(x):
+      if x == "x":
+        return DeltaModel.PHYSICAL
+      elif x == "z":
+        return DeltaModel.PARTIAL
+      elif x == "n":
+        return DeltaModel.NAIVE
+      elif x == "i":
+        return DeltaModel.IDEAL
+      else:
+        raise Exception("unknown abbrev")
+
+    def uses_delta_model(self):
+        if self == DeltaModel.PHYSICAL or self == DeltaModel.PARTIAL:
+            return True
+        else:
+            return False
+
+    def calibrate_objective(self):
+        if self == DeltaModel.PHYSICAL or self == DeltaModel.PARTIAL:
+            return CalibrateObjective.MAX_FIT
+        else:
+            return CalibrateObjective.MIN_ERROR
+
 def model_format():
     cmd = [
-        "{model:w}q{digital_error:f}d{analog_error:f}b", \
-        "{model:w}q{digital_error:f}d{analog_error:f}b{bandwidth:d}k" \
+        "{model:w}d{pct_mdpe:f}a{pct_mape:f}", \
+        "{model:w}d{pct_mdpe:f}a{pct_mape:f}b{bandwidth_khz:d}k" \
     ]
     return cmd
 
-def pack_model(args):
-    if not "bandwidth" in args:
-        cmd = "{model}q{digital_error}d{analog_error}b"
+# pack model from model_format function
+def pack_parsed_model(args):
+    model = DeltaModel.from_abbrev(args['model'])
+    mdpe = args['pct_mdpe']/100.0
+    mape = args['pct_mape']/100.0
+    bandwidth_hz = None
+    if 'bandwidth_khz' in args:
+        bandwidth_hz = args['bandwidth_khz']*1000.0
+
+    return pack_model(model,mdpe,mape,bandwidth_hz)
+
+def pack_model(model,mdpe,mape,bandwidth_hz=None):
+    model_enum = DeltaModel(model)
+    args = {
+        'model': model_enum.abbrev(),
+        'pct_mdpe': mdpe*100.0,
+        'pct_mape': mape*100.0
+    }
+    if bandwidth_hz is None:
+        cmd = "{model}d{pct_mdpe:.2f}a{pct_mape:.2f}"
     else:
-        cmd = "{model}q{digital_error}d{analog_error}b{bandwidth}:k"
+        args['bandwidth_khz'] = bandwidth/1000.0
+        cmd = "{model}d{pct_mdpe:.2f}a{pct_mape:.2f}b{bandwidth_khz:d}k"
 
     return cmd.format(**args)
 
-def unpack_tag(handle):
-  method = "unknown"
-  i=0
-  if handle[i] == 'n':
-    method="naive"
-  elif handle[i] == 'i':
-    method="ideal"
-  elif handle[i] == 'x':
-    method="physical"
-  elif handle[i] == 'z':
-    method="partial"
 
-  i += 1
-  assert(handle[i] == 'q')
-  i += 1
-  next_tag = handle[i:].find('d')
-  analog = float(handle[i:i+next_tag])
-  i += next_tag
-  assert(handle[i] == 'd')
-  i += 1
-  next_tag = handle[i:].find('b')
-  digital= float(handle[i:i+next_tag])
-  i += next_tag
-  assert(handle[i] == 'b')
-  i += 1
-  if len(handle[i:]) == 0:
-      bandwidth = 200
-  else:
-      bandwidth = float(handle[i:].split('k')[0])
-      bandwidth *= 1000
-  return method,analog,digital,bandwidth
+def unpack_model(name):
+    for subcmd in model_format():
+        result = parselib.parse(subcmd,name)
+        if not result is None:
+            args = dict(result.named.items())
+            return {
+                "model":DeltaModel.from_abbrev(args['model']),
+                'pct_mdpe':args['pct_mdpe'],
+                'pct_mape':args['pct_mape'],
+                "mdpe": args['pct_mdpe']/100.0,
+                "mape": args['pct_mape']/100.0,
+                'bandwidth_khz': args['bandwidth_khz'] \
+                if 'bandwidth_khz' in args else None,
+                'bandwidth_hz': args['bandwidth_khz']*1000.0 \
+                if 'bandwidth_khz' in args else None
+            }
 
 def randlist(seed,n):
   np.random.seed(seed)

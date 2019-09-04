@@ -2,9 +2,9 @@ import argparse
 import sys
 import os
 import util.config as CONFIG
+import util.util as util
 #sys.path.insert(0,os.path.abspath("."))
 
-from lab_bench.lib.chipcmd.data import CalibType
 from lab_bench.lib.command_handler import main_stdout,  \
     main_script, \
     main_script_calibrate, \
@@ -61,7 +61,6 @@ prof_subp.add_argument("script", type=str, \
 add_args(prof_subp)
 
 
-
 args = parser.parse_args()
 
 # Dump database and quit
@@ -90,7 +89,7 @@ elif args.no_oscilloscope:
 state = GrendelEnv(ip,args.port,
                    ard_native=args.native,
                    validate=args.validate,
-                   calib_obj=CalibType(args.calib_obj))
+                   calib_obj=util.CalibrateObjective(args.calib_obj))
 
 state.initialize()
 
@@ -98,7 +97,7 @@ if args.subparser_name == "calibrate":
     assert(args.script != None)
     succ = main_script_calibrate(state,args.script, \
                                  recompute=args.recompute,
-                                 calib_obj=CalibType(args.calib_obj))
+                                 calib_obj=state.calib_obj)
     sys.exit(0)
 
 elif args.subparser_name == "profile":

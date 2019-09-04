@@ -31,31 +31,34 @@ class OutputTransform:
     s += "}"
     return s
 
-@read_only_properties('subset','arco_indices','jaunt_index', \
-                      'objective_fun', 'model', 'math_env', \
-                      'hw_env', 'out_file',  \
+@read_only_properties('subset','prog','lgraph','lscale', \
+                      'objective_fun', 'model', 'dssim', \
+                      'hwenv', 'waveform',  \
                       'trial','varname')
 class OutputEntry:
 
-  def __init__(self,db,status,modif,subset,bmark,
-               arco_indices,
-               jaunt_index,
-               out_file,
+  def __init__(self,db,status,modif,subset,
+               prog,
+               lgraph,
+               lscale,
                model,
-               objective_fun,math_env,hw_env,
-               varname,trial,transform,quality,runtime):
+               objective_fun, \
+               dssim,hwenv,
+               variable,
+               waveform,
+               trial,transform,quality,runtime):
     self._db = db
     self.subset = subset
-    self.bmark = bmark
-    self.arco_indices = arco_indices
-    self.jaunt_index = jaunt_index
+    self.prog = prog
+    self.lgraph = lgraph
+    self.lscale = lscale
     self.objective_fun = objective_fun
     self.model = model
-    self.math_env = math_env
-    self.hw_env = hw_env
-    self.varname = varname
+    self.dssim = dssim
+    self.hwenv = hwenv
+    self.variable = variable
     self.trial = trial
-    self.out_file = out_file
+    self.waveform = waveform
 
     self._modif =modif
     self._status = status
@@ -74,16 +77,15 @@ class OutputEntry:
       status=ExecutionStatus(args['status']),
       modif=args['modif'],
       subset=args['subset'],
-      bmark=args['bmark'],
-      arco_indices=[args['arco0'],args['arco1'], \
-                  args['arco2'], args['arco3']],
-      out_file=args['out_file'],
+      prog=args['prog'],
+      lgraph=args['lgraph'],
+      lscale=args['lscale'],
       model=args['model'],
       objective_fun=args['opt'],
-      jaunt_index=args['jaunt'],
-      math_env=args['menv'],
-      hw_env=args['hwenv'],
-      varname=args['varname'],
+      dssim=args['dssim'],
+      hwenv=args['hwenv'],
+      waveform=args['waveform'],
+      variable=args['varname'],
       trial=args['trial'],
       quality=args['quality'],
       runtime=args['runtime'],
@@ -150,41 +152,42 @@ class OutputEntry:
 
 
   def delete(self):
-     self._db.output_tbl.delete(self.subset,
-                            self.bmark,
-                            self.arco_indices,
-                            self.jaunt_index,
-                            self.model,
-                            self.objective_fun,
-                            self.math_env,
-                            self.hw_env,
-                            self.varname,
-                            self.trial)
+     self._db.output_tbl.delete(self.subset, \
+                                self.prog, \
+                                self.lgraph, \
+                                self.lscale, \
+                                self.model, \
+                                self.objective_fun, \
+                                self.dssim, \
+                                self.hwenv, \
+                                self.variable, \
+                                self.trial)
 
   def update_db(self,args):
-    self._db.output_tbl.update(self.subset,
-                               self.bmark,
-                               self.arco_indices,
-                               self.jaunt_index,
-                               self.model,
-                               self.objective_fun,
-                               self.math_env,
-                               self.hw_env,
-                               self.varname,
-                               self.trial,
+    self._db.output_tbl.update(self.subset, \
+                               self.prog, \
+                               self.lgraph, \
+                               self.lscale, \
+                               self.model, \
+                               self.objective_fun, \
+                               self.dssim, \
+                               self.hwenv, \
+                               self.variable, \
+                               self.trial, \
                                args)
 
 
 
 
+  '''
   @property
-  def circ_ident(self):
+  def adp_ident(self):
     return "%s(%s,%s)" % (self.bmark,
-                          self.arco_indices,
-                          self.jaunt_index)
+                          self.lgraph,
+                          self.lscale)
   @property
   def port_ident(self):
-    return "%s.%s" % (self.circ_ident,self.varname)
+    return "%s.%s" % (self.adp_ident,self.varname)
 
 
 
@@ -196,6 +199,7 @@ class OutputEntry:
                                      self.model, \
                                      self.math_env, \
                                      self.hw_env)
+  '''
 
   def __repr__(self):
     s = "{\n"

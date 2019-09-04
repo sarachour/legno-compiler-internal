@@ -5,6 +5,7 @@ import lab_bench.lib.chipcmd.data as lab_enums
 import lab_bench.lib.cstructs as cstructs
 from lab_bench.lib.base_command  \
     import OptionalValue, ArduinoCommand
+import lab_bench.lib.enums as glb_enums
 import struct
 
 def send_mail(title,log):
@@ -22,7 +23,7 @@ def send_mail(title,log):
 def build_circ_ctype(circ_data):
     return {
         'test':ArduinoCommand.DEBUG,
-        'type':enums.CmdType.CIRC_CMD.name,
+        'type':glb_enums.CmdType.CIRC_CMD.name,
         'data': {
             'circ_cmd':circ_data
         }

@@ -1,28 +1,44 @@
 from scripts.common import read_only_properties, ExecutionStatus
 import os
+import logging
 
-@read_only_properties('bmark', 'subset', 'arco_indices','jaunt_index', \
-                      'objective_fun','model','math_env','hw_env','grendel_file',\
-                      'jaunt_circ_file')
+logger = logging.getLogger('exptbl')
+logger.setLevel(logging.WARN)
+
+@read_only_properties('bmark', 'subset', 'lgraph','lscale', \
+                      'objective_fun','model', \
+                      'dssim','hwenv', \
+                      'grendel_script',\
+                      'adp')
 class ExperimentEntry:
 
-  def __init__(self,db,status,modif,subset,bmark, \
-               arco_indices,jaunt_index, \
-               grendel_file,
-               jaunt_circ_file, \
-               model,objective_fun, \
-               math_env,hw_env, \
-               energy,runtime,quality):
-    self.bmark = bmark
+  def __init__(self,db, \
+               status, \
+               modif, \
+               subset, \
+               program, \
+               lgraph, \
+               lscale, \
+               grendel_script,
+               adp, \
+               model, \
+               obj, \
+               dssim, \
+               hwenv, \
+               energy, \
+               runtime, \
+               quality):
+
+    self.program = program
     self.subset = subset
-    self.arco_indices = arco_indices
-    self.jaunt_index = jaunt_index
-    self.objective_fun = objective_fun
+    self.lgraph= lgraph
+    self.lscale= lscale
+    self.obj = obj
     self.model = model
-    self.math_env = math_env
-    self.hw_env = hw_env
-    self.grendel_file = grendel_file
-    self.jaunt_circ_file = jaunt_circ_file
+    self.dssim = dssim
+    self.hwenv = hwenv
+    self.grendel_script = grendel_script
+    self.adp = adp
 
     self._status = status
     self._modif = modif
@@ -84,26 +100,30 @@ class ExperimentEntry:
 
   def outputs(self):
     for outp in self._db.output_tbl.get(self.subset,
-                                          self.bmark, \
-                                          self.arco_indices, \
-                                          self.jaunt_index, \
+                                          self.program, \
+                                          self.lgraph, \
+                                          self.lscale, \
                                           self.model, \
-                                          self.objective_fun, \
-                                          self.math_env, \
-                                          self.hw_env):
+                                          self.obj, \
+                                          self.dssim, \
+                                          self.hwenv):
       yield outp
 
   def synchronize(self):
     # delete if we're missing relevent files
-    if not os.path.isfile(self.grendel_file) or \
-       not os.path.isfile(self.jaunt_circ_file):
+    if not os.path.isfile(self.grendel_script):
+      logger.warn("file doesn't exist: <%s>" % self.grendel_script)
+      self.delete()
+      return
+    if not  os.path.isfile(self.adp):
+      logger.warn("file doesn't exist: <%s>" % self.adp)
       self.delete()
       return
 
     clear_computed = False
     not_done = False
     for output in self.outputs():
-      if os.path.isfile(output.out_file):
+      if os.path.isfile(output.waveform):
         if output.status == ExecutionStatus.PENDING:
           output.status = ExecutionStatus.RAN
       else:
@@ -119,15 +139,16 @@ class ExperimentEntry:
       self.status = ExecutionStatus.PENDING
 
   def update_db(self,args):
-    self._db.experiment_tbl.update(self.subset,
-                    self.bmark,
-                    self.arco_indices,
-                    self.jaunt_index,
-                    self.model,
-                    self.objective_fun,
-                    self.math_env,
-                    self.hw_env,
-                    args)
+    self._db.experiment_tbl.update( \
+                                    self.subset, \
+                                    self.program, \
+                                    self.lgraph, \
+                                    self.lscale, \
+                                    self.model, \
+                                    self.obj, \
+                                    self.dssim, \
+                                    self.hwenv, \
+                                    args)
 
   def set_status(self,new_status):
     assert(isinstance(new_status,ExecutionStatus))
@@ -150,24 +171,24 @@ class ExperimentEntry:
     for outp in self.get_outputs():
       outp.delete()
 
-    self._db.experiment_table.delete(self.subset,
-                               self.bmark,
-                               self.arco_indices,
-                               self.jaunt_index,
+    self._db.experiment_tbl.delete(self.subset,
+                               self.program,
+                               self.lgraph,
+                               self.lscale,
                                self.model,
-                               self.objective_fun,
-                               self.math_env,
-                               self.hw_env)
+                               self.obj,
+                               self.dssim,
+                               self.hwenv)
 
   def get_outputs(self):
-    return self._db.output_table.get(self.subset,
-                                self.bmark, \
-                                self.arco_indices,
-                                self.jaunt_index,
-                                self.model,
-                                self.objective_fun,
-                                self.math_env, \
-                                self.hw_env)
+    return self._db.output_tbl.get(self.subset,
+                                     self.program, \
+                                     self.lgraph,
+                                     self.lscale,
+                                     self.model,
+                                     self.obj,
+                                     self.dssim, \
+                                     self.hwenv)
 
   @staticmethod
   def from_db_row(db,args):
@@ -176,44 +197,46 @@ class ExperimentEntry:
       status=ExecutionStatus(args['status']),
       modif=args['modif'],
       subset=args['subset'],
-      bmark=args['bmark'],
-      arco_indices=[args['arco0'],args['arco1'], \
-                  args['arco2'], args['arco3']],
+      program=args['prog'],
+      lgraph=args['lgraph'],
+      lscale=args['lscale'],
       model=args['model'],
-      grendel_file=args['grendel_file'],
-      jaunt_circ_file=args['jaunt_circ_file'],
-      objective_fun=args['opt'],
-      jaunt_index=args['jaunt'],
-      math_env=args['menv'],
-      hw_env=args['hwenv'],
+      grendel_script=args['grendel_script'],
+      adp=args['adp'],
+      obj=args['obj'],
+      dssim=args['dssim'],
+      hwenv=args['hwenv'],
       energy=args['energy'],
       runtime=args['runtime'],
       quality=args['quality'],
     )
     return entry
 
+  '''
   @property
-  def circ_ident(self):
+  def adp_ident(self):
     return "%s::%s(%s,%s)" % (self.subset,
-                          self.bmark,
-                          self.arco_indices,
-                          self.jaunt_index)
+                          self.prog,
+                          self.lgraph,
+                          self.lscale)
 
   @property
   def ident(self):
-    return "%s[%s,%s](%s,%s)" % (self.circ_ident, \
-                                 self.objective_fun, \
+    return "%s[%s,%s](%s,%s)" % (self.adp_ident, \
+                                 self.obj, \
                                  self.model, \
-                                 self.math_env, \
-                                 self.hw_env)
+                                 self.dssim, \
+                                 self.hwenv)
+  '''
 
   def __repr__(self):
     s = "{\n"
-    s += "bmark=%s\n" % (self.bmark)
-    s += "ident=%s\n" % (self.ident)
+    s += "prog=%s\n" % (self.program)
+    s += "lscale=%s lgraph=%s\n" % (self.lscale,self.lgraph)
+    s += "model=%s obj=%s\n" % (self.model,self.obj)
     s += "status=%s\n" % (self.status.value)
-    s += "grendel_file=%s\n" % (self.grendel_file)
-    s += "jaunt_circ=%s\n" % (self.jaunt_circ_file)
+    s += "grendel_script=%s\n" % (self.grendel_script)
+    s += "adp=%s\n" % (self.adp)
     s += "energy=%s\n" % (self.energy)
     s += "runtime=%s\n" % (self.runtime)
     s += "quality=%s\n" % (self.quality)
