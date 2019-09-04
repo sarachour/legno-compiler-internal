@@ -71,7 +71,7 @@ class BlockStateDatabase:
       yield result
 
   def get_by_instance(self,blk,chip,tile,slice,index, \
-                      calib_obj=CalibType.MIN_ERROR):
+                      calib_obj=util.CalibrateObjective.MIN_ERROR):
     cmd = '''
     SELECT * from states WHERE block = "{block}" AND
                                chip = {chip} AND
@@ -154,7 +154,7 @@ class BlockStateDatabase:
                   data['idx'])
 
     blk = enums.BlockType(data['block'])
-    calib_obj = chipdata.CalibType(data['calib_obj'])
+    calib_obj = chipdata.util.CalibrateObjective(data['calib_obj'])
     try:
       obj = BlockState \
             .toplevel_from_cstruct(blk,loc, \
@@ -182,8 +182,8 @@ class BlockStateDatabase:
 class BlockState:
 
   class Key:
-    def __init__(self,blk,loc,calib_obj=CalibType.MIN_ERROR):
-      assert(isinstance(calib_obj,CalibType))
+    def __init__(self,blk,loc,calib_obj=util.CalibrateObjective.MIN_ERROR):
+      assert(isinstance(calib_obj,util.CalibrateObjective))
       self.block = blk
       self.loc = loc
       self.calib_obj = calib_obj
@@ -224,7 +224,7 @@ class BlockState:
 
       return dict_to_key(obj)
 
-  def __init__(self,block_type,loc,state,calib_obj=CalibType.MIN_ERROR):
+  def __init__(self,block_type,loc,state,calib_obj=util.CalibrateObjective.MIN_ERROR):
     self.block = block_type
     self.loc = loc
     self.calib_obj =calib_obj
@@ -297,7 +297,7 @@ class BlockState:
   @staticmethod
   def toplevel_from_cstruct(blk,loc,data,calib_obj):
     obj = BlockState.decode_cstruct(blk,data)
-    assert(isinstance(calib_obj,CalibType))
+    assert(isinstance(calib_obj,util.CalibrateObjective))
     if blk == enums.BlockType.FANOUT:
       st = FanoutBlockState(loc,obj,calib_obj)
     elif blk == enums.BlockType.INTEG:
@@ -470,7 +470,7 @@ class MultBlockState(BlockState):
                  vga,
                  ranges,
                  gain_val=None,
-                 calib_obj=CalibType.MIN_ERROR):
+                 calib_obj=util.CalibrateObjective.MIN_ERROR):
       BlockState.Key.__init__(self,enums.BlockType.MULT, \
                               loc,calib_obj)
       assert(isinstance(vga,chipdata.BoolType))
@@ -484,7 +484,7 @@ class MultBlockState(BlockState):
       return ['gain_val']
 
   def __init__(self,loc,state,calib_obj):
-    assert(isinstance(calib_obj,CalibType))
+    assert(isinstance(calib_obj,util.CalibrateObjective))
     BlockState.__init__(self,enums.BlockType.MULT,loc,state,calib_obj)
 
   def header(self):
@@ -570,7 +570,7 @@ class IntegBlockState(BlockState):
                  inv,
                  ranges,
                  ic_val=None,
-                 calib_obj=CalibType.MIN_ERROR):
+                 calib_obj=util.CalibrateObjective.MIN_ERROR):
       BlockState.Key.__init__(self,enums.BlockType.INTEG,loc,calib_obj)
       self.exception = exception
       self.inv = inv

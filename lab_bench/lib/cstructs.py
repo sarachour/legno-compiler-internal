@@ -92,7 +92,7 @@ def circ_cmd_type():
         CircCmdType.GET_STATE.name:19,
         CircCmdType.SET_STATE.name:20,
         CircCmdType.DEFAULTS.name:21,
-        CircCmdType.CHARACTERIZE.name:22
+        CircCmdType.PROFILE.name:22
     }
     return cstruct.Enum(cstruct.Int24ul,
                         **kwargs)

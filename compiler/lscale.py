@@ -1,3 +1,4 @@
+import util.util as util
 
 import ops.scop as scop
 import ops.op as ops
@@ -150,36 +151,46 @@ def report_missing_models(model,circ):
                comp_mode,scale_mode)
 
 def scale(prog,adp,nslns, \
-          model='physical', \
-          digital_error=0.05, \
-          analog_error=0.05, \
-          max_freq=None, \
-          do_log=True,
-          also_emit_naive=True):
+          model, \
+          mdpe, \
+          mape, \
+          max_freq_khz=None, \
+          do_log=True):
+    def gen_models(model):
+        if model == util.DeltaModel.PHYSICAL:
+            return [
+                model.util.DeltaModel.PHYSICAL,
+                model.util.DeltaModel.PARTIAL,
+                model.util.DeltaModel.NAIVE
+            ]
+        elif model == util.DeltaModel.PARTIAL:
+            return [
+                model.util.DeltaModel.PARTIAL,
+                model.util.DeltaModel.NAIVE
+            ]
+        else:
+            return [model]
+
+    assert(isinstance(model,util.DeltaModel))
     prop_interval.clear_intervals(adp)
     prop_interval.compute_intervals(prog,adp)
     objs = LScaleObjectiveFunctionManager.basic_methods()
     n_missing = 0
-    models_to_gen = {
-        'physical': ['physical','partial','naive'],
-        'partial': ['partial','naive'],
-        'naive': ['naive']
-    }
     for idx,infer_adp in enumerate(lscale_infer.infer_scale_config(prog, \
                                                                     adp, \
                                                                     nslns, \
                                                                     model=model,
-                                                                    max_freq=max_freq, \
-                                                                    digital_error=digital_error,
-                                                                    analog_error=analog_error)):
+                                                                    max_freq_khz=max_freq_khz, \
+                                                                    mdpe=mdpe,
+                                                                    mape=mape)):
         for obj in objs:
-            for this_model in models_to_gen[model]:
+            for this_model in gen_models(model):
                 scenv = scenvlib.LScaleEnv(model=this_model, \
-                                        max_freq=max_freq, \
-                                        digital_error=digital_error, \
-                                        analog_error=analog_error)
+                                        max_freq_khz=max_freq_khz, \
+                                        mdpe=mdpe, \
+                                           mape=mape)
 
-                if this_model == scenvlib.LScaleEnvParams.Model.PHYSICAL and \
+                if this_model.uses_delta_model() and \
                    len(ModelDB.MISSING) > n_missing:
                     scenv.fail(msg)
 
@@ -192,14 +203,14 @@ def scale(prog,adp,nslns, \
 
     print("logging: %s" % do_log)
     if do_log:
-        pars = scenvlib.LScaleEnvParams(max_freq=max_freq, \
-                                      digital_error=digital_error,
-                                      analog_error=analog_error)
-        pars.set_model(model=scenvlib.LScaleEnvParams.Type(model))
+        pars = scenvlib.LScaleEnvParams(model=model,
+                                        max_freq_khz=max_freq_khz, \
+                                        mdpe=mdpe,
+                                        mape=mape)
         report_missing_models(model,adp)
         lscale_physlog.save(pars.calib_obj)
         if not lscale_physlog.is_empty() and \
-        model == scenvlib.LScaleEnvParams.Model.PHYSICAL:
+           model.uses_delta_model():
             raise Exception("must calibrate components")
 
         lscale_physlog.clear()

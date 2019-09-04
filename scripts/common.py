@@ -20,19 +20,16 @@ def get_output_files(grendel_script):
       #elif isinstance(instr,microget.MicroGetADCValuesCmd):
       #  yield instr.filename
 
-def make_args(subset,bmark,arco_inds,jaunt_indx,model,opt,menv_name,hwenv_name):
+def make_args(subset,prog,lgraph,lscale,model,obj,dssim,hwenv):
   return  {
     'subset':subset,
-    'bmark':bmark,
-    'arco0':arco_inds[0],
-    'arco1':arco_inds[1],
-    'arco2':arco_inds[2],
-    'arco3':arco_inds[3],
-    'jaunt':jaunt_indx,
+    'prog':prog,
+    'lgraph':lgraph,
+    'lscale':lscale,
     'model': model,
-    'opt': opt,
-    'menv':menv_name,
-    'hwenv': hwenv_name
+    'obj': obj,
+    'dssim':dssim,
+    'hwenv': hwenv
   }
 
 def read_only_properties(*attrs):

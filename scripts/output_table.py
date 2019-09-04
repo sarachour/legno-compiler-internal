@@ -8,37 +8,35 @@ class OutputTable:
     self.db = db
     cmd = '''CREATE TABLE IF NOT EXISTS outputs(
     subset text NOT NULL,
-    bmark text NULL,
+    prog text NULL,
     status text NOT NULL,
-    arco0 int NOT NULL,
-    arco1 int NOT NULL,
-    arco2 int NOT NULL,
-    arco3 int NOT NULL,
-    jaunt int NOT NULL,
+    lgraph text NOT NULL,
+    lscale int NOT NULL,
     model text NOT NULL,
-    opt text NOT NULL,
-    menv text NOT NULL,
+    obj text NOT NULL,
+    dssim text NOT NULL,
     hwenv text NOT NULL,
     variable text NOT NULL,
     trial int NOT NULL,
-    out_file text,
+    waveform text,
     runtime real,
     quality real,
     transform text,
     modif timestamp,
-    PRIMARY KEY (subset,bmark,arco0,arco1,arco2,arco3,jaunt,
-                 model,opt,menv,hwenv,variable,trial)
-    FOREIGN KEY (subset,bmark,arco0,arco1,arco2,arco3,jaunt,
-                 model,opt,menv,hwenv)
-    REFERENCES experiments(subset,bmark,arco0,arco1,arco2,arco3,jaunt,
-                           model,opt,menv,hwenv)
+    PRIMARY KEY (subset,prog,lgraph,lscale,
+                 model,obj,dssim,hwenv,variable,trial)
+    FOREIGN KEY (subset,prog,lgraph,lscale,
+                 model,obj,dssim,hwenv)
+    REFERENCES experiments(subset,prog,lgraph,lscale,
+                           model,obj,dssim,hwenv)
     )
     '''
     self._order = ['subset',
-                   'bmark','status','arco0', \
-                   'arco1','arco2', \
-                   'arco3','jaunt','model','opt','menv','hwenv',
-                   'varname','trial','out_file', \
+                   'prog','status', \
+                   'lgraph','lscale', \
+                   'model','opt', \
+                   'dssim','hwenv',
+                   'varname','trial','waveform', \
                    'runtime','quality','transform','modif']
 
     self._modifiable = ['runtime','quality','modif', \
@@ -47,30 +45,31 @@ class OutputTable:
     self.db.conn.commit()
 
 
-  def to_where_clause(self,subset,bmark,arco_inds,jaunt_inds,model,opt, \
-                      menv_name,hwenv_name,varname,trial):
+  def to_where_clause(self,subset,prog, \
+                      lgraph,lscale,model,obj, \
+                      dssim,hwenv, \
+                      variable,trial):
     cmd = '''WHERE
       subset = "{subset}"
-      AND bmark = "{bmark}"
-      AND arco0 = {arco0}
-      AND arco1 = {arco1}
-      AND arco2 = {arco2}
-      AND arco3 = {arco3}
-      AND jaunt = {jaunt}
+      AND prog = "{prog}"
+      AND lgraph = "{lgraph}"
+      AND lscale = {lscale}
       AND model = "{model}"
-      AND opt = "{opt}"
-      AND menv = "{menv}"
+      AND obj = "{obj}"
+      AND dssim = "{dssim}"
       AND hwenv = "{hwenv}"
       '''
-    if not varname is None and not trial is None:
+    if not variable is None and not trial is None:
       cmd += '''
-      AND variable = "{varname}"
+      AND variable = "{variable}"
       AND trial = {trial}
       '''
 
-    args = common.make_args(subset,bmark,arco_inds,jaunt_inds,model,opt, \
-                     menv_name,hwenv_name)
-    args['varname'] = varname
+    args = common.make_args(subset,prog, \
+                            lgraph,lscale, \
+                            model,obj, \
+                            dssim,hwenv)
+    args['variable'] = variable
     args['trial'] = trial
     conc_cmd = cmd.format(**args)
     return conc_cmd
@@ -116,33 +115,34 @@ class OutputTable:
       raise Exception("Query Failed:\n%s" % conc_cmd)
     self.db.conn.commit()
 
-  def get(self,subset,bmark,arco_inds,jaunt_inds,model,opt,menv_name,hwenv_name):
+  def get(self,subset,prog,lgraph,lscale,model,opt,dssim,hwenv):
     cmd = '''
      SELECT *
      FROM outputs
      {where_clause};
     '''
-    where_clause = self.to_where_clause(subset,bmark,\
-                                        arco_inds,jaunt_inds,
+    where_clause = self.to_where_clause(subset,prog,\
+                                        lgraph,lscale,
                                         model,opt, \
-                                        menv_name,hwenv_name,
-                                        varname=None,
+                                        dssim, \
+                                        hwenv,
+                                        variable=None,
                                         trial=None)
     for entry in self._get_rows(where_clause):
       yield entry
-      yield entry
 
-  def delete(self,subset,bmark,arco_inds,jaunt_inds, \
-             model,opt,menv_name,hwenv_name,output,trial):
+  def delete(self,subset,prog,lgraph,lscale, \
+             model,opt,dssim,hwenv, \
+             variable,trial):
     cmd = '''
     DELETE FROM outputs {where_clause};
     '''
-    where_clause = self.to_where_clause(subset,bmark,\
-                                        arco_inds,jaunt_inds,
+    where_clause = self.to_where_clause(subset,prog,\
+                                        lgraph,lscale,
                                         model, \
                                         opt, \
-                                        menv_name,hwenv_name,
-                                        varname=output,
+                                        dssim,hwenv, \
+                                        variable=variable, \
                                         trial=trial)
     conc_cmd = cmd.format(where_clause=where_clause)
     self.db.curs.execute(conc_cmd)
@@ -150,37 +150,45 @@ class OutputTable:
 
 
   def add(self,path_handler, \
-          subset,bmark,arco_inds, \
-          jaunt_inds, model, opt,\
-          menv_name,hwenv_name,output,trial):
+          subset,prog, \
+          lgraph, lscale, \
+          model, obj,\
+          dssim,hwenv, \
+          variable,trial):
     cmd = '''
       INSERT INTO outputs (
-         subset,bmark,arco0,arco1,arco2,arco3,jaunt,
-         model,opt,menv,hwenv,out_file,status,modif,variable,trial
+         subset,prog,lgraph,lscale,
+         model,obj,dssim,hwenv,
+         waveform,status,modif,
+         variable,trial
       ) VALUES
       (
          "{subset}",
-         "{bmark}",{arco0},{arco1},{arco2},{arco3},{jaunt},
-         "{model}","{opt}","{menv}","{hwenv}",
-         "{out_file}",
+         "{prog}","{lgraph}",{lscale},
+         "{model}","{obj}",
+         "{dssim}","{hwenv}",
+         "{waveform}",
          "{status}",
          "{modif}",
-         "{varname}",
+         "{variable}",
          {trial}
       )
       '''
-    args = common.make_args(subset,bmark,arco_inds,jaunt_inds,model,opt, \
-                     menv_name,hwenv_name)
+    args = common.make_args(subset,prog, \
+                            lgraph,lscale, \
+                            model,obj, \
+                            dssim,hwenv)
     args['modif'] = datetime.datetime.now()
     args['status'] = common.ExecutionStatus.PENDING.value
-    args['varname'] = output
+    args['variable'] = variable
     args['trial'] = trial
-    args['out_file'] = path_handler.measured_waveform_file(bmark,arco_inds, \
-                                                           jaunt_inds, \
-                                                           model,
-                                                           opt,menv_name, \
-                                                           hwenv_name, \
-                                                           output, \
+    args['waveform'] = path_handler.measured_waveform_file(lgraph, \
+                                                           lscale, \
+                                                           model, \
+                                                           obj, \
+                                                           dssim, \
+                                                           hwenv, \
+                                                           variable, \
                                                            trial)
     conc_cmd = cmd.format(**args)
     self.db.curs.execute(conc_cmd)

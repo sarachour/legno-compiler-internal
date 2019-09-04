@@ -10,6 +10,8 @@ from lab_bench.lib.expcmd.micro_action import *
 from lab_bench.lib.expcmd.micro_getter import *
 from lab_bench.lib.expcmd.osc import *
 from lab_bench.lib.expcmd.client import *
+import util.util as util
+
 '''
 ###################
 CIRCUIT COMMANDS
@@ -90,7 +92,7 @@ def profile(state,obj, \
 
 
 def calibrate(state,obj,recompute=False, \
-              calib_obj=CalibType.MIN_ERROR):
+              calib_obj=util.CalibrateObjective.MIN_ERROR):
     if isinstance(obj,UseCommand):
         dbkey = obj.to_key(calib_obj)
         if not (state.state_db.has(dbkey)) or \

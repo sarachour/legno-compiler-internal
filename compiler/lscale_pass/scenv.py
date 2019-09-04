@@ -1,6 +1,7 @@
 from enum import Enum
 import sys
 import numpy as np
+import util.util as util
 import util.config as CONFIG
 import hwlib.model as hwmodel
 import compiler.lscale_pass.lscale_util as lscale_util
@@ -22,56 +23,32 @@ class LScaleVarType(Enum):
 
 
 class LScaleEnvParams:
-  class Type(Enum):
-    PHYSICAL = "physical"
-    IDEAL = "ideal"
-    NAIVE = "naive"
-    PARTIAL = "partial"
 
-  class Model(Enum):
-    PHYSICAL = "physical"
-    PARTIAL = "partial"
-    IDEAL = "ideal"
-    NAIVE = "naive"
+  def __init__(self, \
+               model,\
+               mdpe, \
+               mape, \
+               max_freq_khz=None):
+    self.mdpe = mdpe
+    self.mape = mape
 
-    def abbrev(self):
-      if LScaleEnvParams.Model.PHYSICAL == self:
-        return "x"
-      if LScaleEnvParams.Model.PARTIAL == self:
-        return "z"
-      elif LScaleEnvParams.Model.NAIVE == self:
-        return "n"
-      elif LScaleEnvParams.Model.IDEAL == self:
-        return "i"
+    self.max_freq_hz = None
+    if not max_freq_khz is None:
+      self.max_freq_hz = max_freq_khz*1000.0
 
-  def __init__(self,digital_error=0.05, \
-               analog_error=0.05,
-               max_freq=None):
-    self.percent_digital_error = digital_error
-    self.percent_analog_error = analog_error
-    self.use_model_uncertainty = False
-    self.only_scale_modes_with_models = False
-
-    if not max_freq is None:
-      self.max_freq = max_freq*1000.0
-    else:
-      self.max_freq = None
-
-    self.ideal()
+    self.set_model(model)
 
   def ideal(self):
-    self.model = "ideal"
+    self.model = util.DeltaModel.IDEAL
     self.propagate_uncertainty = False
     self.enable_quantize_constraint = False
     self.enable_quality_constraint = False
     self.enable_bandwidth_constraint = True
-    self.use_model_uncertainty = False
     self.only_scale_modes_with_models = False
 
 
   def partial(self):
-    self.model = "partial"
-    self.calib_obj = "max_fit"
+    self.model = util.DeltaModel.PARTIAL
     self.propagate_uncertainty = False
     self.enable_quantize_constraint = True
     self.enable_quality_constraint = True
@@ -80,8 +57,7 @@ class LScaleEnvParams:
 
 
   def physical(self):
-    self.model = "physical"
-    self.calib_obj = "max_fit"
+    self.model = util.DeltaModel.PHYSICAL
     self.propagate_uncertainty = False
     self.enable_quantize_constraint = True
     self.enable_quality_constraint = True
@@ -89,59 +65,52 @@ class LScaleEnvParams:
     self.only_scale_modes_with_models = True
 
   def naive(self):
-    self.model = "naive"
-    self.calib_obj = "min_error"
+    self.model = util.DeltaModel.NAIVE
     self.propagate_uncertainty = False
     self.enable_quantize_constraint = True
     self.enable_quality_constraint = True
     self.enable_bandwidth_constraint = True
-    self.use_model_uncertainty = False
     self.only_scale_modes_with_models = False
 
 
   def set_model(self,model):
-    if model == LScaleEnvParams.Type.PHYSICAL:
+    if model == util.DeltaModel.PHYSICAL:
       self.physical()
-    elif model == LScaleEnvParams.Type.IDEAL:
+    elif model == util.DeltaModel.IDEAL:
       self.ideal()
-    elif model == LScaleEnvParams.Type.NAIVE:
+    elif model == util.DeltaModel.NAIVE:
       self.naive()
-    elif model == LScaleEnvParams.Type.PARTIAL:
+    elif model == util.DeltaModel.PARTIAL:
       self.partial()
     else:
       raise Exception("unknown jenv model: <%s>" % model);
 
-  def tag(self):
-    tag = ""
-    tag += "%s" % LScaleEnvParams.Model(self.model).abbrev()
-    if self.propagate_uncertainty:
-      tag += "P"
-    if self.enable_quality_constraint:
-      tag += "q%.2f" % (self.percent_analog_error*100.0)
-    if self.enable_quantize_constraint:
-      tag += "d%.2f" % (self.percent_digital_error*100.0)
-    if self.enable_bandwidth_constraint:
-      tag += "b"
-    if not self.max_freq is None:
-      tag += "%dk" % int(self.max_freq/1000.0)
+    self.calib_obj = self.model.calibrate_objective()
 
-    return tag
+  def tag(self):
+    return util.pack_model(
+      model=self.model,
+      mdpe=self.mdpe,
+      mape=self.mape,
+      bandwidth_hz=self.max_freq_hz
+    )
 
 class LScaleEnv:
-  def __init__(self,model="physical", \
-               digital_error=0.05, \
-               analog_error=0.05,
-               max_freq=None):
+  def __init__(self, \
+               model, \
+               mdpe, \
+               mape,
+               max_freq_khz=None):
     # scaling factor name to port
     self._to_lscale_var = {}
     self._from_lscale_var ={}
 
     self._in_use = {}
 
-    self.params = LScaleEnvParams(digital_error=digital_error, \
-                                 analog_error=analog_error, \
-                                 max_freq=max_freq)
-    self.params.set_model(LScaleEnvParams.Type(model))
+    self.params = LScaleEnvParams(model,
+                                  mdpe=mdpe, \
+                                  mape=mape, \
+                                  max_freq_khz=max_freq_khz)
     self.model_db = hwmodel.ModelDB(self.params.calib_obj)
     self._eqs = []
     self._ltes = []
@@ -312,14 +281,14 @@ class LScaleEnv:
 
 class LScaleInferEnv(LScaleEnv):
 
-    def __init__(self,model="ideal", \
-                 max_freq=None,
-                 digital_error=0.05, \
-                 analog_error=0.05):
+    def __init__(self,model, \
+                 mdpe, \
+                 mape, \
+                 max_freq_khz=None):
       LScaleEnv.__init__(self,model, \
-                        max_freq=max_freq, \
-                        digital_error=digital_error,
-                        analog_error=analog_error)
+                        max_freq_khz=max_freq_khz, \
+                        mdpe=mdpe,
+                        mape=mape)
       self._exactly_one = []
       self._implies = {}
       self._lts = []
