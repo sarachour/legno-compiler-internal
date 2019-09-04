@@ -10,17 +10,26 @@ def get_arduino_path():
 
   return None
 
+def mkdir_if_dne(dirname):
+  import os
+  if not os.path.exists(dirname):
+    os.makedirs(dirname)
 
-OUTPUT_PATH="outputs/"
+OUTPUT_PATH="outputs"
+mkdir_if_dne(OUTPUT_PATH)
 #GPKIT_SOLVER="mosek_cli"
 GPKIT_SOLVER="cvxopt"
 EXPERIMENT_DB="outputs/experiments.db"
-STATE_DB="state.db"
-MODEL_DB="model.db"
-OSC_IP="192.168.1.6"
+
+OSC_IP="128.30.71.225"
 ARDUINO_FILE_DESC=get_arduino_path()
-#GPKIT_SOLVER="cvxopt"
-TIME_DIR="%s/times/" % OUTPUT_PATH
-DATASET_DIR="%s/datasets/" % OUTPUT_PATH
-CALIBRATE_FILE="calibrate.grendel"
+
+DEVSTATE_PATH="device-state"
+mkdir_if_dne(DEVSTATE_PATH)
+CALIBRATE_DIR="%s/calibrate" % DEVSTATE_PATH
+mkdir_if_dne(CALIBRATE_DIR)
+STATE_DB="%s/state.db" % DEVSTATE_PATH
+MODEL_DB="%s/model.db" % DEVSTATE_PATH
+MODEL_PATH="%s/models" % DEVSTATE_PATH
+DATASET_DIR="%s/datasets/" % DEVSTATE_PATH
 

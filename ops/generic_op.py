@@ -300,7 +300,7 @@ class Mult(GenericOp2):
 class Add(GenericOp2):
 
     def __init__(self,arg1,arg2):
-        GenericOp2.__init__(self,OpType.ADD,arg1,arg2)
+        GenericOp2.__init__(self,OpType.ADD,[arg1,arg2])
         pass
 
     @staticmethod
