@@ -63,7 +63,7 @@ class PropIntervalVisitor(Visitor):
                 mrng = prog.get_interval(label)
                 config.set_interval(port,mrng,\
                                     handle=handle)
-
+                print("ival lbl %s[%s].%s:%s => %s" % (block_name,loc,port,handle,mrng))
 
 
   def is_free(self,block_name,loc,port):
@@ -72,6 +72,7 @@ class PropIntervalVisitor(Visitor):
             or config.interval(port).unbounded()
 
   def input_port(self,block_name,loc,port):
+    print("visit inp %s[%s].%s" % (block_name,loc,port))
     Visitor.input_port(self,block_name,loc,port)
     adp = self.adp
     config = adp.config(block_name,loc)
@@ -84,9 +85,7 @@ class PropIntervalVisitor(Visitor):
       src_config = adp.config(src_block_name,src_loc)
       src_ival = src_config.interval(src_port)
       if(src_ival is None):
-        print("free: <%s>\n" % free)
-        print("bound: <%s>\n" % bound)
-
+        print("free: %s[%s].%s\n" % (src_block_name,src_loc,src_port))
         raise Exception("unknown interval: %s[%s].%s" % \
                         (src_block_name,src_loc,src_port))
 
@@ -95,28 +94,49 @@ class PropIntervalVisitor(Visitor):
     config.set_interval(port,dest_ival)
     print("ival in %s[%s].%s => %s" % (block_name,loc,port,dest_ival))
 
-  def _update_intervals(self,block_name,loc,port):
+  def output_port(self,block_name,loc,port):
+    print("visit out %s[%s].%s" % (block_name,loc,port))
     adp = self.adp
     block = adp.board.block(block_name)
     config = adp.config(block_name,loc)
+
+    if self.visited(block_name,loc,port):
+      return
+
+    if not config.interval(port) is None:
+      self.visit(block_name,loc,port)
+      return
+
     # don't apply any coefficients
     if not config.has_expr(port):
       expr = block.get_dynamics(config.comp_mode,port)
     else:
       expr = config.expr(port,inject=False)
 
+    # try to infer the intervals without resolving ports
+    try:
+      intervals = expr.infer_interval(config.intervals())
+      config.set_interval(port,intervals.interval)
+      self.visit(block_name,loc,port)
+      return
+    except Exception as e:
+      pass
+
+    free,bound = self.classify(block_name,loc,expr.vars())
+    for free_var in free:
+      self.port(block.name,loc,free_var)
+
     intervals = expr.infer_interval(config.intervals())
     config.set_interval(port,intervals.interval)
-    print("ival out %s[%s].%s => %s" % (block_name,loc,port,intervals.interval))
     for handle,interval in intervals.bindings():
       config.set_interval(port, \
-                          interval,handle=handle)
+                          interval, \
+                          handle=handle)
+
+    config.set_interval(port,intervals.interval)
 
 
 
-  def output_port(self,block_name,loc,port):
-    Visitor.output_port(self,block_name,loc,port)
-    self._update_intervals(block_name,loc,port)
 
   def is_valid(self):
     adp = self.adp
@@ -127,6 +147,18 @@ class PropIntervalVisitor(Visitor):
            valid = False
 
     return valid
+
+
+
+  def all(self,inputs=False):
+    circ = self._circ
+    for block_name,loc,config in circ.instances():
+      block = circ.board.block(block_name)
+      for inp in block.inputs:
+        self.input_port(block_name,loc,inp)
+
+    for block_name,loc,config in circ.instances():
+      self.block(block_name,loc)
 
 def compute_intervals(prog,adp):
   visitor = PropIntervalVisitor(prog,adp)

@@ -308,7 +308,7 @@ class UseDACCmd(UseCommand):
 
     @staticmethod
     def _parse(args,cls):
-        result = parse_pattern_use_block(args,1,1,1,
+        result = ccmd_common.parse_pattern_use_block(args,1,1,1,
                                      cls.name(),
                                      source=spec_enums.DACSourceType)
         if result.success:
