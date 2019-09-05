@@ -82,9 +82,10 @@ namespace cutil {
             fabs(targ_dac_val) <= 1.0);
 
     if(fabs(measurement) > thresh){
-      sprintf(FMTBUF, "MEAS=%f VAL=%f",measurement,targ_dac_val);
+      sprintf(FMTBUF,
+              "could not reduce measurement: thresh=%f meas=%f val=%f", \
+              thresh,measurement,targ_dac_val);
       print_info(FMTBUF);
-      error("could not reduce measurement to acceptable range");
     }
     float dummy;
     ref_dac_val = ref_dac->fastMeasureValue(dummy);

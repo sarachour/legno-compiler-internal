@@ -105,10 +105,10 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperMult(Dac * val0_dac,
   const bool meas_steady = false;
   float dummy,mean;
 
-  Fabric::Chip::Connection ref_to_tileout =
-    Fabric::Chip::Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0);
+  Connection ref_to_tileout =
+    Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0);
   Connection dac0_to_in0 = Connection (val0_dac->out0, this->in0);
-  Connection dac1_to_in1 = Connection (val1_dac->out1, this->in1);
+  Connection dac1_to_in1 = Connection (val1_dac->out0, this->in1);
 
   npts = 0;
   ref_to_tileout.brkConn();
@@ -117,6 +117,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperMult(Dac * val0_dac,
   observations[npts] = util::meas_chip_out(this);
   expected[npts] = 0;
   npts += 1;
+
   ref_to_tileout.setConn();
   dac0_to_in0.setConn();
   dac1_to_in1.setConn();
@@ -157,7 +158,8 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
   float expected[TOTAL_NPTS];
   float gain[TOTAL_NPTS];
   float bias;
-  this->calibrateHelperMult(val0_dac,val1_dac,
+  this->calibrateHelperMult(val0_dac,
+                            val1_dac,
                             ref_dac,
                             observed,
                             expected,
@@ -177,7 +179,6 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
   util::distribution(gain,m,
                      gain_mean,
                      gain_variance);
-  
   float loss = max(fabs(bias),sqrt(gain_variance))/gain_mean;
   sprintf(FMTBUF," gain=N(%f,%f) bias=%f",
           gain_mean,
