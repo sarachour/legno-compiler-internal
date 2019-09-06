@@ -103,7 +103,8 @@ void Fabric::Chip::Tile::Slice::Dac::setConstant(float constant){
     setConstantCode(min(round(constant*128.0+128.0),255));
   }
   else{
-    error("dac.setConstant: only accepts constant values must be between -1 and 1");
+    sprintf(FMTBUF,"dac.setConstant: only accepts constants between -1 and 1, set %f", constant);
+    error(FMTBUF);
   }
 }
 

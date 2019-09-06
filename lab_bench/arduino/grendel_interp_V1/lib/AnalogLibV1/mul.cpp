@@ -61,7 +61,8 @@ void Fabric::Chip::Tile::Slice::Multiplier::setGain(float gain){
     setGainCode(min(255,round(gain*128.0)+128.0));
   }
   else{
-    error("mult.setGain: constant values must be between -1 and 1");
+    sprintf(FMTBUF,"mult.setGain: constant values must be between -1 and 1, gain=%f",gain);
+    error(FMTBUF);
   }
 }
 

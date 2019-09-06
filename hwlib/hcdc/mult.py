@@ -18,39 +18,42 @@ import itertools
 # out = in0*in1*coeff
 
 def get_modes():
-  opts_def = [
-    enums.RangeType.options(),
-    enums.RangeType.options(),
-    enums.RangeType.options()
+  opts_mult = [
+    list(enums.RangeType.options()),
+    list(enums.RangeType.options()),
+    list(enums.RangeType.options())
   ]
 
   opts_vga = [
-    enums.RangeType.options(),
-    enums.RangeType.options()
+    list(enums.RangeType.options()),
+    list(enums.RangeType.options())
   ]
-  blacklist_vga = [
-    (enums.RangeType.LOW,enums.RangeType.HIGH),
-    (enums.RangeType.HIGH,enums.RangeType.LOW)
-  ]
-  blacklist_mult = [
-    (enums.RangeType.LOW,enums.RangeType.LOW, \
-     enums.RangeType.HIGH),
-    (enums.RangeType.MED,enums.RangeType.LOW, \
-     enums.RangeType.HIGH),
-    (enums.RangeType.LOW,enums.RangeType.MED, \
-     enums.RangeType.HIGH),
-    (enums.RangeType.HIGH,enums.RangeType.HIGH, \
-     enums.RangeType.LOW),
-    (enums.RangeType.HIGH,enums.RangeType.MED, \
-     enums.RangeType.LOW),
-    (enums.RangeType.MED,enums.RangeType.HIGH, \
-     enums.RangeType.LOW)
 
-  ]
+  blacklist_vga = []
+  ub = 10.0
+  lb = 0.1
+  for inp,out in itertools.product(*opts_vga):
+    scf = out.coeff()/inp.coeff()
+    if scf > ub or scf < lb or \
+       inp == enums.RangeType.LOW:
+      blacklist_vga.append((inp,out))
+
+  blacklist_mult = []
+  for inp0,inp1,out in itertools.product(*opts_mult):
+    scf = out.coeff()/(inp0.coeff()*inp1.coeff())
+    scf2 = inp0.coeff()/inp1.coeff()
+    if scf < lb or scf > ub or \
+       scf2 < lb or scf2 > ub or \
+       inp0 == enums.RangeType.LOW or \
+       inp1 == enums.RangeType.LOW:
+      blacklist_mult.append((inp0,inp1,out))
+
   vga_modes = list(util.apply_blacklist(itertools.product(*opts_vga),
                                    blacklist_vga))
-  mul_modes = list(util.apply_blacklist(itertools.product(*opts_def),
+  mul_modes = list(util.apply_blacklist(itertools.product(*opts_mult),
                                    blacklist_mult))
+  print(vga_modes)
+  print(mul_modes)
   return vga_modes,mul_modes
 
 def is_standard_vga(mode):

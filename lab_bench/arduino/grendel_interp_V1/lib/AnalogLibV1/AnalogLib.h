@@ -68,10 +68,10 @@ static void error (
                    const char * message
                    ) {
   // trap for printing error
+  Serial.print("AC:>[msg] ERROR: ");
+  Serial.println(message);
+  Serial.flush();
   while(true){
-    Serial.print("AC:>[msg] ERROR: ");
-    Serial.println(message);
-    Serial.flush();
     delay(1000);
   }
 }
