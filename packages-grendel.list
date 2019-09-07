@@ -3,11 +3,13 @@ boto==2.49.0
 construct==2.9.45
 cycler==0.10.0
 decorator==4.4.0
+seaborn
 kiwisolver==1.1.0
 matplotlib>=3.0.0
 mpmath==1.1.0
 numpy
 scipy
+sklearn
 parse==1.12.0
 Pint==0.9
 pyparsing==2.4.1.1
