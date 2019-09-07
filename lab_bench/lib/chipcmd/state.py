@@ -198,6 +198,7 @@ class BlockState:
       obj = dict(self.__dict__)
       obj['loc'] = self.loc.to_json()
       obj['block'] = self.block.value
+      obj['calib_obj'] = self.calib_obj.value
       return obj
 
     def to_key(self):
@@ -269,6 +270,7 @@ class BlockState:
     for datum in self.get_dataset(db,self.calib_obj):
       dataset.append(datum)
 
+    util.mkdir_if_dne(filepath);
     objstr = json.dumps(dataset)
     with open(filename,'w') as fh:
       fh.write(objstr)

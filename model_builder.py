@@ -2,13 +2,14 @@ import argparse
 import sys
 import os
 import shutil
-import util.config as CONFIG
-from chip.model import ModelDB
 import json
 import argparse
-from chip.hcdc.globals import HCDCSubset
-from chip.model import PortModel, ModelDB
-from chip.conc import ConcCirc
+import util.config as CONFIG
+import util.util as util
+from hwlib.model import ModelDB
+from hwlib.hcdc.globals import HCDCSubset
+from hwlib.model import PortModel, ModelDB
+from hwlib.adp import AnalogDeviceProg
 
 import compiler.infer_pass.infer_dac as infer_dac
 import compiler.infer_pass.infer_adc as infer_adc
@@ -18,7 +19,6 @@ import compiler.infer_pass.infer_mult as infer_mult
 import compiler.infer_pass.infer_visualize as infer_visualize
 import compiler.infer_pass.infer_util as infer_util
 
-from lab_bench.lib.chipcmd.data import CalibType
 
 
 def build_model(datum):
@@ -73,16 +73,6 @@ def populate_default_models(board,db):
         print(model)
         db.put(model)
 
-    for blkname in ['lut']:
-      block = board.block(blkname)
-      for inst in board.instances_of_block(blkname):
-        for port in block.inputs + block.outputs:
-          model = PortModel(blkname,inst,port, \
-                            comp_mode='*', \
-                            scale_mode='*',
-                            handle=None)
-          db.put(model)
-
 def write_models(models):
   if len(models) == 0:
     return
@@ -97,7 +87,7 @@ def write_models(models):
 
 
 def list(args):
-  db = ModelDB(CalibType(args.calib_obj))
+  db = ModelDB(util.CalibrateObjective(args.calib_obj))
   for model in db.get_all():
     print(model)
 
@@ -105,14 +95,14 @@ def infer(args,dump_db=True):
   if args.visualize:
     infer_visualize.DO_PLOTS = True
 
-  infer_util.CALIB_OBJ = CalibType(args.calib_obj)
+  infer_util.CALIB_OBJ = util.CalibrateObjective(args.calib_obj)
 
-  db = ModelDB(CalibType(args.calib_obj))
+  db = ModelDB(util.CalibrateObjective(args.calib_obj))
 
   if not crossbars_populated(db):
-    from chip.hcdc.hcdcv2_4 import make_board
+    from hwlib.hcdc.hcdcv2_4 import make_board
     subset = HCDCSubset('unrestricted')
-    hdacv2_board = make_board(subset)
+    hdacv2_board = make_board(subset,load_conns=False)
     populate_default_models(hdacv2_board,db)
 
   if dump_db:
@@ -139,8 +129,8 @@ def infer(args,dump_db=True):
 
 def analyze(args):
   circ = ConcCirc.read(None,args.circ_file)
-  db = ModelDB(CalibType(args.calib_obj))
-  infer_visualize.CALIB_OBJ = CalibType(args.calib_obj)
+  db = ModelDB(util.CalibrateObjective(args.calib_obj))
+  infer_visualize.CALIB_OBJ = util.CalibrateObjective(args.calib_obj)
   blacklist = ['tile_in','tile_out', \
                'chip_in','chip_out', \
                'ext_chip_in','ext_chip_out']

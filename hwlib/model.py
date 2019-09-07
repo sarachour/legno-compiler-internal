@@ -222,7 +222,7 @@ class ModelDB:
       AND comp_mode="{comp_mode}"
       AND scale_mode="{scale_mode}"
       AND handle="{handle}"
-    '''.format(calib_mode=self.calib_mode, \
+    '''.format(calib_mode=self.calib_mode.value, \
                block=block, \
                loc=str(loc), \
                port=str(port), \

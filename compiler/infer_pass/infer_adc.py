@@ -2,7 +2,7 @@ import compiler.infer_pass.infer_util as infer_util
 import compiler.infer_pass.infer_visualize as infer_vis
 import compiler.infer_pass.infer_fit as infer_fit
 
-from chip.model import PortModel
+from hwlib.model import PortModel
 
 def build_config(meta):
   loc = infer_util.to_loc(meta['loc'])

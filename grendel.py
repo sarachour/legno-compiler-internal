@@ -34,6 +34,8 @@ subparsers = parser.add_subparsers(dest='subparser_name',
 
 dump_subp = subparsers.add_parser('dump', \
                                    help='dump database to file')
+dump_subp.add_argument("--calib-obj", type=str, \
+                       help="what optimization function to use for calibration")
 
 
 run_subp = subparsers.add_parser('run', \
@@ -65,10 +67,9 @@ args = parser.parse_args()
 
 # Dump database and quit
 if args.subparser_name == "dump":
-    state = GrendelEnv(None,None,
-                       ard_native=args.native,
-                       validate=args.validate)
-
+    state = GrendelEnv(None,None, \
+                       ard_native=False, \
+                       calib_obj=args.calib_obj)
     main_dump_db(state)
     sys.exit(0)
 

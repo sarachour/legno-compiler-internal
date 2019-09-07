@@ -1,11 +1,12 @@
-from chip.model import PortModel, ModelDB
 import numpy as np
-import lab_bench.lib.chipcmd.data as chipcmd
 import itertools
 import util.util as util
-from lab_bench.lib.chipcmd.data import CalibType
+import util.config as CFG
+from hwlib.model import PortModel, ModelDB
+import hwlib.hcdc.enums as spec_enums
+import lab_bench.lib.chipcmd.data as chipcmd
 
-CALIB_OBJ = CalibType.MIN_ERROR
+CALIB_OBJ = util.CalibrateObjective.MIN_ERROR
 
 def about_one(gain):
     return gain >= 0.990 and gain <= 1.10
@@ -56,7 +57,7 @@ def to_loc(obj):
     return loc
 
 def to_range(name):
-  return chipcmd.RangeType(name)
+  return spec_enums.RangeType(name)
 
 def to_safe_loc(loc):
   loc = loc.replace("HDACv2,","")
@@ -75,14 +76,14 @@ def get_directory(model):
     loc = to_safe_loc(loc)
     cm,sm = to_tag(model.comp_mode),to_tag(model.scale_mode)
     direc = "{path}/{block}-{loc}/{comp_mode}-{scale_mode}/{calib_obj}"
-    conc_dir = direc.format(path=CFG.MODEL_PPATH,
+    conc_dir = direc.format(path=CFG.MODEL_PATH,
                             block=block,
                             loc=loc,
                             comp_mode=cm,
                             scale_mode=sm,
                             calib_obj=CALIB_OBJ.value)
-    util.mkdir_if_dne(conc_direc)
-    return direc
+    util.mkdir_if_dne(conc_dir)
+    return conc_dir
 
 def normalize_bound(bnds,scm):
   lb,ub = bnds

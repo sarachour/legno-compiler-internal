@@ -2,7 +2,8 @@ import compiler.infer_pass.infer_util as infer_util
 import compiler.infer_pass.infer_visualize as infer_vis
 import compiler.infer_pass.infer_fit as infer_fit
 import lab_bench.lib.chipcmd.data as chipdata
-from chip.model import PortModel
+import hwlib.hcdc.enums as spec_enums
+from hwlib.model import PortModel
 
 def build_config(meta):
   loc = infer_util.to_loc(meta['loc'])
@@ -48,7 +49,7 @@ def infer(obj):
     model_in0.bias_uncertainty = model_out.bias_uncertainty/scale
     bnd = infer_util.normalize_bound(bnds['in0'],scm[0])
     model_in0.set_oprange_scale(*bnd)
-    bnd = infer_util.normalize_bound(bnds['in1'],chipdata.RangeType.MED)
+    bnd = infer_util.normalize_bound(bnds['in1'],spec_enums.RangeType.MED)
     model_coeff.set_oprange_scale(*bnd)
   else:
     sci0,sci1,sco = scm

@@ -179,7 +179,7 @@ def fit_scale_model(model,dataset):
   errs = util.array_map(map(lambda i: error(expect[i], \
                                                   observe[i], \
                                                   gain_mu), range(n)))
-
+  print(gain_mu,gain_std,n)
   bias_std = np.std(errs)
   model.gain = gain_mu
   model.gain_uncertainty = gain_std
