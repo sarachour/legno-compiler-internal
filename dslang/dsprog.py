@@ -34,7 +34,8 @@ class DSProgDB:
         DSProgDB.load()
         prog,sim = DSProgDB.PROGRAMS[name]
         prob = DSProg(name)
-        return prog(prob)
+        prog(prob)
+        return prob
 
     @staticmethod
     def execute(name):
@@ -131,8 +132,8 @@ class DSProg:
         self._bindings[var] = expr
 
     def decl_stvar(self,var,deriv,ic="0.0",params={}):
-        deriv = opparse.parse(deriv.format(**params))
-        ic = opparse.parse(ic.format(**params))
+        deriv = opparse.parse(self,deriv.format(**params))
+        ic = opparse.parse(self,ic.format(**params))
         handle = ":h%d" % self.__handles
         expr = op.Integ(deriv,ic,handle=handle)
         self.__handles += 1
@@ -140,17 +141,31 @@ class DSProg:
 
     def decl_var(self,var,expr,params={}):
         expr_conc = expr.format(**params)
-        return opparse.parse(expr_conc)
+        return opparse.parse(self,expr_conc)
 
 
     def emit(self,varexpr,obsvar,params={},loc='A0'):
         expr_conc = varexpr.format(**params)
-        obj = opparse.parse(expr_conc)
+        obj = opparse.parse(self,expr_conc)
         self._bind(obsvar,op.Emit(obj,loc='A0'))
 
-    def decl_lambda(self,var,expr,params={}):
-        expr_conc = opparse.parse(expr.format(**params))
-        self._lambdas[var] = expr_conc
+    def lambda_spec(self,lambda_name):
+        if not lambda_name in self._lambdas:
+            raise Exception("lambda doesn't exist: <%s>" % lambda_name);
+
+        variables,expr = self._lambdas[lambda_name]
+        return variables,expr
+
+    def has_lambda(self,name):
+        return name in self._lambdas
+
+    def decl_lambda(self,lambda_name,expr,params={}):
+        if lambda_name in self._lambdas:
+            raise Exception("already exists: lambda <%s>" % lambda_name)
+
+        expr_conc = opparse.parse(self,expr.format(**params))
+        free_vars = set(expr_conc.vars())
+        self._lambdas[lambda_name] = (free_vars,expr_conc)
 
     def bindings(self):
         for var,expr in self._bindings.items():

@@ -52,8 +52,6 @@ def get_modes():
                                    blacklist_vga))
   mul_modes = list(util.apply_blacklist(itertools.product(*opts_mult),
                                    blacklist_mult))
-  print(vga_modes)
-  print(mul_modes)
   return vga_modes,mul_modes
 
 def is_standard_vga(mode):
