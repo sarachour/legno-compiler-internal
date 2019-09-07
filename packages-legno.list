@@ -15,7 +15,7 @@ scipy
 parse==1.12.0
 Pint==0.9
 PuLP==1.6.10
-pyparsing==2.4.1.1
+lark-parser
 pyserial==3.4
 python-dateutil==2.8.0
 six==1.12.0

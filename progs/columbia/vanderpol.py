@@ -1,3 +1,5 @@
+from dslang.dsprog import DSProg
+from dslang.dssim import DSSim
 
 def dsname():
   return "vanderpol"

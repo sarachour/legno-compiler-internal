@@ -1,99 +1,105 @@
 import ops.op as op
 from enum import Enum
 import re
-from pyparsing import *
-import operator
+#from pyparsing import *
+#import operator
 import math
+import lark
 
-number = Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?") \
-         .setParseAction(lambda t: float(t[0]))
-variable = Word(alphas,alphanums+'_')
-operand = number | variable
+GRAMMAR = '''
+?start: sum
+    ?sum: product
+        | sum "+" product   -> add
+        | sum "-" product   -> sub
+    ?product: atom
+        | product "*" atom  -> mul
+    ?atoms: atom
+         | atoms "," atom -> lst
+    ?atom: NUMBER           -> number
+         | "-" atom         -> neg
+         | NAME             -> var
+         | NAME "(" atoms ")"      -> func
+         | "(" sum ")"
+    %import common.CNAME -> NAME
+    %import common.NUMBER
+    %import common.WS_INLINE
+    %ignore WS_INLINE
+'''
 
-expop = Literal('^')
-signop = oneOf('+ -')
-multop = oneOf('* /')
-plusop = oneOf('+ -')
-factop = Literal('!')
+PARSER = lark.Lark(GRAMMAR)
 
-expr = infixNotation( operand,
-    [("!", 1, opAssoc.LEFT),
-     ("^", 2, opAssoc.RIGHT),
-     (signop, 1, opAssoc.RIGHT),
-     (multop, 2, opAssoc.LEFT),
-     (plusop, 2, opAssoc.LEFT),]
-    )
+def report(clause,msg):
+  if not clause:
+    raise Exception("when parsing <%s> : %s" % (node,msg))
 
-def _build_expr(expr,terms,ctor):
-  if len(terms) == 0:
-    return expr
+def function_to_dslang_ast(dsprog,name,arguments):
+  n = len(arguments)
+  if dsprog.has_lambda(name):
+    freevars,impl = dsprog.lambda_spec(name);
+    report(len(freevars) == n, \
+           "expected <%d> args, got <%d>" % (len(freevars),n))
+    return op.Call(arguments, \
+                   op.Func(freevars, impl));
+  elif name == "sin":
+    report(n == 1, "expected 1 argument to sin function")
+    return op.Sin(arguments[0])
   else:
-    rhs = build_expr(terms,ctor)
-    return ctor(expr,rhs)
+    raise Exception("unknown built-in function <%s>" % name)
 
-def build_expr(exprs,ctor):
-  if len(exprs) == 1:
-    return exprs[0]
-  elif len(exprs) == 0:
-    return None
+
+def lark_to_dslang_ast(dsprog,node):
+  def recurse(ch):
+    return lark_to_dslang_ast(dsprog,ch)
+
+  n = len(node.children)
+  if node.data == "neg":
+    report(n == 1, "negation operation takes one argument");
+    expr = recurse(node.children[0])
+    return op.Mult(op.Const(-1),expr)
+
+  if node.data == "func":
+    report(n > 0, "function name not specified");
+    func_name = node.children[0]
+    report(func_name.type == "NAME", "expected Token.NAME");
+    arguments = list(map(lambda ch: recurse(ch), node.children[1:]))
+    return function_to_dslang_ast(dsprog,func_name.value,arguments);
+
+  if node.data == "number":
+    number = node.children[0]
+    report(number.type == "NUMBER", "expected Token.NUMBER");
+    value = float(number.value)
+    return op.Const(value)
+
+  if node.data == "var":
+    report(n == 1, "variable must have token");
+    var_name = node.children[0]
+    report(var_name.type == "NAME", "expected Token.NAME");
+    return op.Var(var_name.value)
+
+  if node.data == "sub":
+    report(n == 2, "only binary subtraction are supported");
+    e1 = recurse(node.children[0])
+    e2 = recurse(node.children[1])
+    return op.Add(e1,op.Mult(op.Const(-1),e2))
+
+
+  if node.data == "add":
+    report(n == 2, "only binary adds are supported");
+    e1 = recurse(node.children[0])
+    e2 = recurse(node.children[1])
+    return op.Add(e1,e2)
+
+  if node.data == "mul":
+    report(n == 2, "only binary mults are supported");
+    e1 = recurse(node.children[0])
+    e2 = recurse(node.children[1])
+    return op.Mult(e1,e2)
+
   else:
-    return _build_expr(exprs[0],exprs[1:],ctor)
-
-def get_terms(ops,terms,sel_op):
-  for op,term in zip(ops,terms):
-    if op == sel_op:
-      yield term
-
-def negate(expr):
-  if expr.op == op.OpType.CONST:
-    return op.Const(expr.value*-1)
-  else:
-    return op.Mult(op.Const(-1), expr)
-
-def paren(expr):
-  return op.Paren(expr)
-
-def from_infix(infix):
-  if isinstance(infix,str):
-    return op.Var(infix)
-  elif isinstance(infix,float):
-    return op.Const(infix)
-  elif len(infix) == 1:
-    return paren(from_infix(infix[0]))
-  elif len(infix) == 2 and infix[0] == '-':
-    return negate(from_infix(infix[1]))
-
-  assert(len(infix) >= 3)
-  terms = list(map(lambda i: from_infix(infix[i]), \
-              range(0,len(infix),2)))
-  ops = [None]+list(map(lambda i: infix[i], \
-                        range(1,len(infix),2)))
-
-  if ops[1] == '-' or ops[1] == '+':
-    ops[0] = '+'
-    sub_terms = list(get_terms(ops,terms,'-'))
-    add_terms = list(get_terms(ops,terms,'+'))
-    add_expr = build_expr(add_terms,op.Add)
-    sub_expr = build_expr(sub_terms,op.Add)
-
-    if len(sub_terms) > 0 and len(add_terms) > 0:
-      return op.Add(add_expr,negate(sub_expr))
-
-    elif len(sub_terms) > 0 and len(add_terms) == 0:
-      return op.Mult(negate(sub_expr))
-
-    elif len(sub_terms) == 0 and len(add_terms) > 0:
-      return add_expr
-
-  elif ops[1] == '*':
-    ops[0] = '*'
-    return build_expr(terms,op.Mult)
-  else:
-    raise Exception("unknown: %s" % str(infix))
+    raise Exception("???")
 
 
-def parse(strrepr):
-  args = ''.join(strrepr.split())
-  infix = expr.parseString(args,parseAll=True)
-  obj = from_infix(infix)
+def parse(dsprog,strrepr):
+  lark_ast = PARSER.parse(strrepr)
+  obj = lark_to_dslang_ast(dsprog,lark_ast)
   return obj
