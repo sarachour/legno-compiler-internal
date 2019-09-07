@@ -22,6 +22,25 @@ the default configuration, execute the following copy command:
 cp util/config_local.py util/config.py
 \end{snippet}
 
+To program the HCDCv2 device, we require \tx{android-mk} and the Arduino IDE to
+be installed. To install the Arduino IDE, follow the following link:
+
+\begin{snippet}
+https://www.arduino.cc/en/Main/Software
+\end{snippet}
+
+To install \tx{android-mk}, execute the following commands if you're on linux:
+
+\begin{snippet}
+sudo apt-get install arduino-mk
+\end{snippet}
+
+Or the following commands if you're on OSX:
+\begin{snippet}
+brew tap sudar/arduino-mk
+brew install --HEAD arduino-mk
+\end{snippet}
+
 \subsection{Anatomy of a Grendel Script}
 
 The following section of the quickstart guide breaks down the 
