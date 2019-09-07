@@ -99,7 +99,7 @@ void Fabric::Chip::Tile::Slice::Dac::setConstantCode (
 }
 
 void Fabric::Chip::Tile::Slice::Dac::setConstant(float constant){
-  if(-1.0000001 < constant && constant< 1.0000001){
+  if(-1.001 < constant && constant< 1.001){
     setConstantCode(min(round(constant*128.0+128.0),255));
   }
   else{

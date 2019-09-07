@@ -422,7 +422,7 @@ class DacBlockState(BlockState):
 
   def update_value(self,value):
     self.const_val = value
-    self.const_code = signed_float_to_byte(value)
+    self.const_code = ccmd_common.signed_float_to_byte(value)
 
 
   def to_cstruct(self):
@@ -507,7 +507,7 @@ class MultBlockState(BlockState):
 
   def update_gain(self,value):
     self.gain_val = value
-    self.gain_code = signed_float_to_byte(value)
+    self.gain_code = ccmd_common.signed_float_to_byte(value)
 
 
 
@@ -635,7 +635,7 @@ class IntegBlockState(BlockState):
 
   def update_init_cond(self,value):
     self.ic_val = value
-    self.ic_code = signed_float_to_byte(value)
+    self.ic_code = ccmd_common.signed_float_to_byte(value)
 
   def from_cstruct(self,state):
     inid = glb_enums.PortName.IN0

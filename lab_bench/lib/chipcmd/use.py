@@ -3,6 +3,7 @@ import hwlib.hcdc.enums as spec_enums
 import lab_bench.lib.chipcmd.data as ccmd_data
 import lab_bench.lib.chipcmd.common as ccmd_common
 from lab_bench.lib.chipcmd.disable import DisableCmd
+from lab_bench.lib.chipcmd.calib import SetStateCmd
 import lab_bench.lib.chipcmd.state as state
 
 from lab_bench.lib.base_command import AnalogChipCommand

@@ -14,12 +14,42 @@ dependencies, execute the following command:
   pip install -r packages.list
 \end{snippet}
 
+
+
 Both the \legno compiler and the \grendel runtime work with a \tx{config.py}
 file that specifies the relevant output directories and database files. To use
 the default configuration, execute the following copy command:
 
 \begin{snippet}
 cp util/config_local.py util/config.py
+\end{snippet}
+
+To write the device firmward to the SA100ASY development board, you must install the Arduino
+IDE. This can be done be visiting the link below:
+
+After installing the Arduino IDE, navigate to \tx{Tools/Board} in the menu, and select the \tx{Board Manager}
+option. After doing so, search for \tx{Due} and install the \tx{Arduino Sam Boards (32 bits ARM-Cortex M3} package.
+We installed 1.6.12.
+
+You also want to install the \tx{DueTimer} package. This can be done by navigating to the 
+\tx{Sketch/Include Library/Manage Libraries} option in the Arduino IDE and searching for the \tx{DueTimer} package.
+We installed 1.4.7.
+
+After following these steps, it should be possible to flash the HCDCv2 firmware to the analog device. Navigate
+to the following directory:
+\begin{snippet}
+lab_bench/arduino/grendel_interp_V1
+\end{snippet}
+
+To build the firmware, type `make`. This should complete without incident. After the make command completes 
+successfully type `make upload` to flash the firmware to the device. Please ensure the device is programmed via USB,
+and that the USB cable is plugged into the programming port of the device. This is the port closest to the DC power port. 
+
+If you get an error along the lines of `import failed, serial not found`, this is likely because \tx{arduino-mk} is using 
+a different version of python than the rest of the project. To mitigate this, install pyserial for \tx{python2}:
+
+\begin{snippet}
+pip install pyserial
 \end{snippet}
 
 \subsection{Anatomy of a Grendel Script}
