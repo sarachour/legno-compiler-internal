@@ -47,7 +47,7 @@ class Fabric::Chip::Tile::Slice::ChipOutput : public Fabric::Chip::Tile::Slice::
 	/*Measure the differential voltage from a pair of ADC from multiple samples*/
 	float analogAvg () const;
 	float fastAnalogAvg () const;
-	void analogSeq(float* times, float* values, int n) const;
+	int analogSeq(float* times, float* values, int n) const;
 	void analogDist (float& mean, float& variance) const;
 
 

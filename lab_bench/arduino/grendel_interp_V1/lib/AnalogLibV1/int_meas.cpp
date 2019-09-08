@@ -132,17 +132,19 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(open_loo
   float nom_times[25],k_times[25];
   float nom_values[25],k_values[25];
   conn_dac_to_in.setConn();
-  util::meas_transient_chip_out(this,
-                                k_times, k_values,
-                                n_samples);
+  print_info("=== with input ===");
+  int n = util::meas_transient_chip_out(this,
+                                    k_times, k_values,
+                                    n_samples);
   // with ground.
   conn_dac_to_in.brkConn();
-  util::meas_transient_chip_out(this,
-                                nom_times, nom_values,
-                                n_samples);
+  print_info("=== without input ===");
+  int m = util::meas_transient_chip_out(this,
+                                        nom_times, nom_values,
+                                        n_samples);
 
   time_constant_stats tc_stats = estimate_time_constant(input,
-                                                        n_samples,
+                                                        min(n,m),
                                                         nom_times,nom_values,
                                                         k_times,k_values);
 

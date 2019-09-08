@@ -159,16 +159,21 @@ namespace util {
       ->analogDist(mean,variance);
   }
 
-  void meas_transient_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+  int meas_transient_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                                float * times, float* values,
                                int samples){
     Fabric* fab = fu->getFabric();
     fu->updateFu();
     fab->cfgCommit();
     fab->execStart();
-    fu->getChip()->tiles[3].slices[2].chipOutput
+    int n = fu->getChip()->tiles[3].slices[2].chipOutput
       ->analogSeq(times,values,samples);
     fab->execStop();
+    for(int i=0; i < n; i += 1){
+      sprintf(FMTBUF," t=%f v=%f", times[i], values[i]);
+      print_info(FMTBUF);
+    }
+    return n;
   }
   void meas_steady_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                             float& mean, float& variance){

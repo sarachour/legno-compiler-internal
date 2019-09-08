@@ -60,7 +60,7 @@ namespace util {
                           float& mean, float& variance);
   void meas_steady_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                             float& mean, float& variance);
-  void meas_transient_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
+  int meas_transient_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                                float * times, float * values,
                                int n_samples);
   void test_iref(unsigned char code);

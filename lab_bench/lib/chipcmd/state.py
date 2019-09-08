@@ -502,7 +502,7 @@ class DacBlockState(BlockState):
     self.enable = ccmd_data.BoolType(state.enable)
     self.inv = spec_data.SignType(state.inv)
     self.rng = spec_data.RangeType(state.range)
-    self.source = ccmd_data.DACSourceType(state.source)
+    self.source = spec_data.DACSourceType(state.source)
     self.pmos = state.pmos
     self.nmos = state.nmos
     self.gain_cal = state.gain_cal
