@@ -45,6 +45,7 @@ def compile_compute_fragments(board,prob,n_xforms):
         frag_node_map[var] = []
         frag_output_map[var] = []
         xform_map[var] = []
+        print(abs_expr)
         for n_xforms,xform_abs_expr in abs_expr.xform(rules,n_xforms):
             xform_map[var].append(xform_abs_expr)
             for node,output in lgraphlib_acirc.to_abs_circ(board,xform_abs_expr):

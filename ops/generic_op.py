@@ -10,7 +10,7 @@ class Integ(GenericOp2):
         self._handle = handle
         pass
 
-    def substitute(self,bindings):
+    def substitute(self,bindings={}):
         inp = self.arg(0).substitute(bindings)
         ic = self.arg(1).substitute(bindings)
         return Integ(inp,ic,self._handle)
@@ -89,7 +89,7 @@ class ExtVar(GenericOp):
     def name(self):
         return self._name
 
-    def infer_interval(self,bindings):
+    def infer_interval(self,bindings={}):
         return interval.IntervalCollection(bindings[self._name])
 
     @property
@@ -156,7 +156,7 @@ class Var(Op):
     def substitute(self,assigns):
         return assigns[self._name]
 
-    def compute(self,bindings):
+    def compute(self,bindings={}):
         if not self._name in bindings:
             for key in bindings:
                 print(key)
@@ -181,7 +181,7 @@ class Const(GenericOp):
         obj['value'] = self._value
         return obj
 
-    def substitute(self,bindings):
+    def substitute(self,bindings={}):
         return Const(self._value)
 
     @staticmethod
@@ -201,7 +201,7 @@ class Const(GenericOp):
     def prod_terms(self):
         return []
 
-    def compute(self,bindings):
+    def compute(self,bindings={}):
         return self._value
 
     def infer_interval(self,bindings):

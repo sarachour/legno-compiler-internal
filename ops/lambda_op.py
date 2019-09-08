@@ -392,7 +392,7 @@ class Sqrt(Op):
         return math.sqrt(self.arg(0).compute(bindings))
 
     def infer_interval(self,ivals):
-        ivalcoll = self.arg(0).compute_interval(ivals)
+        ivalcoll = self.arg(0).infer_interval(ivals)
         ivalcoll.update(ivalcoll.interval.sqrt())
         return ivalcoll
 

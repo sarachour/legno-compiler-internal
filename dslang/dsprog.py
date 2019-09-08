@@ -141,7 +141,8 @@ class DSProg:
 
     def decl_var(self,var,expr,params={}):
         expr_conc = expr.format(**params)
-        return opparse.parse(self,expr_conc)
+        obj = opparse.parse(self,expr_conc)
+        self._bind(var,obj)
 
 
     def emit(self,varexpr,obsvar,params={},loc='A0'):
