@@ -80,36 +80,10 @@ class BlockStateDatabase:
          obj.key.loc.tile == tile and \
          obj.key.loc.slice == slice and \
          obj.calib_obj == calib_obj:
-        print(obj)
-        if obj.block == "fanout":
-          print(obj.key.to_key())
-          input()
         yield obj
 
     return
-    raise Exception("G")
-    cmd = '''
-    SELECT * from states WHERE block = "{block}" AND
-                               chip = {chip} AND
-                               tile = {tile} AND
-                               slice = {slice} AND
-                               idx = {index} AND
-                               calib_obj = "{calib_obj}";
-    '''.format(
-      block=blk.value,
-      chip=chip,
-      tile=tile,
-      slice=slice,
-      index=index,
-      calib_obj=calib_obj.value)
-
-    for values in self._curs.execute(cmd):
-      print(values)
-      input()
-      data = dict(zip(self.keys,values))
-      result = self._process(data)
-      yield result
-
+    
   def remove(self,blockstate):
     key = blockstate.key.to_key()
     cmd = '''DELETE FROM states WHERE cmdkey="{cmdkey}"''' \
@@ -271,9 +245,6 @@ class BlockState:
       for datum in obj.profile:
         for k in keys:
           prof[k].append(datum[k])
-
-      if obj.block == "fanout":
-        db.put(obj,profile=[])
 
       yield {
         'metadata':obj.key.to_json(),
