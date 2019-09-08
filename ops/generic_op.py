@@ -347,7 +347,7 @@ class Call(GenericOp):
         assert(expr.op == OpType.FUNC)
 
     def coefficient(self):
-        raise Exception("bind call function to its own variable please")
+        return 1.0
 
     def compute(self,bindings={}):
         new_bindings = {}

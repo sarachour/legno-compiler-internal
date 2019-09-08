@@ -177,7 +177,7 @@ def fit_scale_model(model,dataset):
   n = dataset.n
   if n < min_pts:
     print(model)
-    input("not enough points")
+    input("not enough points: %d" % n)
     return
 
   popt, pcov = scipy.optimize.curve_fit(func, expect, observe)
