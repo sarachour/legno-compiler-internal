@@ -86,7 +86,7 @@ class BlockStateDatabase:
       tile=tile,
       slice=slice,
       index=index,
-      calib_obj=calib_obj.name)
+      calib_obj=calib_obj.value)
 
     for values in self._curs.execute(cmd):
       data = dict(zip(self.keys,values))
@@ -102,7 +102,8 @@ class BlockStateDatabase:
 
   def put(self,blockstate,profile=[]):
     assert(isinstance(blockstate,BlockState))
-    this.remove(blockstate)
+    self.remove(blockstate)
+    key = blockstate.key.to_key()
     print("PUT %s" % key)
     state_bits = blockstate.to_cstruct().hex()
     profile_bits = bytes(json.dumps(profile), 'utf-8').hex();
@@ -254,6 +255,9 @@ class BlockState:
       for datum in obj.profile:
         for k in keys:
           prof[k].append(datum[k])
+
+      if obj.block == "fanout":
+        db.put(obj,profile=[])
 
       yield {
         'metadata':obj.key.to_json(),
