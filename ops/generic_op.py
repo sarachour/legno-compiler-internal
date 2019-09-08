@@ -349,6 +349,13 @@ class Call(GenericOp):
     def coefficient(self):
         return 1.0
 
+    def prod_terms(self):
+        return [self]
+
+    def sum_terms(self):
+        return [self]
+
+
     def compute(self,bindings={}):
         new_bindings = {}
         for func_arg,var in zip(self._func.func_args,self._params):
