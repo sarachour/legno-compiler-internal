@@ -928,4 +928,4 @@ class AdcBlockState(BlockState):
     self.lower_fs = state.lower_fs
     self.upper = state.upper
     self.lower = state.lower
-    self.rng = ccmd_data.RangeType(state.range)
+    self.rng = spec_data.RangeType(state.range)
