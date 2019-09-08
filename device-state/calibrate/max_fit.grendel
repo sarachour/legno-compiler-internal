@@ -102,3 +102,17 @@ use_mult 0 3 2 1 val 0.0 rng m m
 use_mult 0 3 2 1 val 0.0 rng h h
 use_mult 0 3 2 1 val 0.0 rng h m
 use_mult 0 3 2 1 val 0.0 rng m h
+use_integ 1 3 3 sgn + val 0.0 rng l m debug
+use_integ 1 3 0 sgn + val 0.0 rng l m debug
+use_integ 0 3 1 sgn + val 0.0 rng l m debug
+use_integ 1 3 1 sgn + val 0.0 rng l m debug
+use_integ 0 3 0 sgn + val 0.0 rng l m debug
+use_integ 1 3 2 sgn + val 0.0 rng l m debug
+
+use_integ 1 3 3 sgn + val 0.0 rng m h debug
+use_integ 1 3 0 sgn + val 0.0 rng m h debug
+use_integ 0 3 1 sgn + val 0.0 rng m h debug
+use_integ 1 3 1 sgn + val 0.0 rng m h debug
+use_integ 0 3 0 sgn + val 0.0 rng m h debug
+use_integ 1 3 2 sgn + val 0.0 rng m h debug
+

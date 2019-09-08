@@ -171,10 +171,14 @@ class ProfileCmd(Command):
         if self._blk == enums.BlockType.INTEG:
             if bootstrap:
                 for i in range(0,8):
-                    if not self.get_output(env,[],mode=1):
-                        return
                     if not self.get_output(env,[],mode=2):
                         return
+
+                for i in range(0,8):
+                    if not self.get_output(env,[],mode=1):
+                        return
+
+                for i in range(0,8):
                     if not self.get_output(env,[],mode=3):
                         return
 

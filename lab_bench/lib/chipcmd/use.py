@@ -374,12 +374,13 @@ class UseFanoutCmd(UseCommand):
 
     def __init__(self,chip,tile,slice,index,
                  in_range,
-                 inv0=False,inv1=False,inv2=False,
-                 third=False):
+                 inv0,inv1,inv2,
+                 third):
 
         assert(isinstance(inv0, spec_enums.SignType))
         assert(isinstance(inv1,spec_enums.SignType))
         assert(isinstance(inv2,spec_enums.SignType))
+        assert(isinstance(third,ccmd_data.BoolType))
         assert(isinstance(in_range,spec_enums.RangeType))
 
         UseCommand.__init__(self,
@@ -476,7 +477,7 @@ class UseFanoutCmd(UseCommand):
                         inv1=self._inv[1].abbrev(),
                         inv2=self._inv[2].abbrev(),
                         range=self._in_range.abbrev(),
-                        third="three" if self._third else "two")
+                        third="three" if self._third.boolean() else "two")
         return st
 
 
