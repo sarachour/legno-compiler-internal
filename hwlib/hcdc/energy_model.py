@@ -1,5 +1,5 @@
-import chip.units as units
-import lab_bench.lib.chipcmd.data as chipcmd
+import hwlib.units as units
+import hwlib.hcdc.enums as hcdc_enums
 from scipy import stats
 
 #'adc_1khz':54.0*units.uW,
@@ -68,23 +68,22 @@ def scale_mode_factor(block,scale_mode):
   if 'tile' in block or 'chip' in block:
     return 1.0
 
-  if chipcmd.RangeType.HIGH in scale_mode or \
-     scale_mode == chipcmd.RangeType.HIGH:
+  if hcdc_enums.RangeType.HIGH in scale_mode or \
+     scale_mode == hcdc_enums.RangeType.HIGH:
     return MODE_ENERGY_FACTOR['high']
 
-  elif chipcmd.RangeType.MED in scale_mode or \
-       scale_mode == chipcmd.RangeType.MED:
+  elif hcdc_enums.RangeType.MED in scale_mode or \
+       scale_mode == hcdc_enums.RangeType.MED:
     return MODE_ENERGY_FACTOR['med']
 
-  elif chipcmd.RangeType.LOW in scale_mode or \
-       scale_mode == chipcmd.RangeType.LOW:
+  elif hcdc_enums.RangeType.LOW in scale_mode or \
+       scale_mode == hcdc_enums.RangeType.LOW:
     return MODE_ENERGY_FACTOR['low']
 
   else:
     return 1.0
 
-def freq_energy(circ,block,freq_math):
-  fmax = freq_math.fmax*circ.board.time_constant
+def freq_energy(circ,block,fmax):
   if block in FREQ_ENERGY:
     slope = FREQ_ENERGY[block]
     print("slope:%s" % slope)
@@ -92,13 +91,13 @@ def freq_energy(circ,block,freq_math):
   else:
     return 0
 
-def compute_energy(circ,runtime):
+def compute_energy(circ,runtime,bandwidth):
   energy_figure = nominal_global_energy()
   for block,loc,cfg in circ.instances():
     output = circ.board.block(block).outputs[0]
     nominal = nominal_block_energy(block,cfg.comp_mode)
     scm_factor = scale_mode_factor(block,cfg.scale_mode)
-    freq = freq_energy(circ,block,cfg.bandwidth(output))
+    freq = freq_energy(circ,block,bandwidth)
     energy = nominal*scm_factor+freq
     print('%s[%s]: %s J/s' % (block,loc,energy))
     energy_figure += energy

@@ -63,7 +63,7 @@ class DeltaModel(Enum):
 def model_format():
     cmd = [
         "{model:w}d{pct_mdpe:f}a{pct_mape:f}", \
-        "{model:w}d{pct_mdpe:f}a{pct_mape:f}b{bandwidth_khz:d}k" \
+        "{model:w}d{pct_mdpe:f}a{pct_mape:f}b{bandwidth_khz:f}k" \
     ]
     return cmd
 
@@ -88,8 +88,8 @@ def pack_model(model,mdpe,mape,bandwidth_hz=None):
     if bandwidth_hz is None:
         cmd = "{model}d{pct_mdpe:.2f}a{pct_mape:.2f}"
     else:
-        args['bandwidth_khz'] = bandwidth/1000.0
-        cmd = "{model}d{pct_mdpe:.2f}a{pct_mape:.2f}b{bandwidth_khz:d}k"
+        args['bandwidth_khz'] = bandwidth_hz/1000.0
+        cmd = "{model}d{pct_mdpe:.2f}a{pct_mape:.2f}b{bandwidth_khz:.2f}k"
 
     return cmd.format(**args)
 

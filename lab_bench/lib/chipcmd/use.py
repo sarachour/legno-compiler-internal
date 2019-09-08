@@ -49,6 +49,12 @@ class UseCommand(AnalogChipCommand):
                 blockstate = env.state_db.get(dbkey)
                 self.update_state(blockstate)
             else:
+                for obj in env.state_db.get_all():
+                    print(dbkey.identifier,obj.descriptor)
+
+                print("=====")
+                print(dbkey.identifier,dbkey.descriptor)
+                input("not calibrated")
                 raise Exception("not calibrated")
             assert(isinstance(blockstate, state.BlockState))
             # set the state
@@ -198,8 +204,8 @@ class UseADCCmd(UseCommand):
 
     @staticmethod
     def _parse(args,cls):
-        result = parse_pattern_use_block(args,0,0,1,
-                                     cls.name())
+        result = ccmd_common.parse_pattern_use_block(args,0,0,1,
+                                                     cls.name())
         if result.success:
             data = result.value
             return cls(
@@ -246,7 +252,7 @@ class UseADCCmd(UseCommand):
         return 'use_adc'
 
     def __repr__(self):
-        cmd = "use_dac {chip} {tile} {slice} rng {range}"
+        cmd = "use_adc {chip} {tile} {slice} rng {range}"
         st = cmd.format(
             chip=self.loc.chip, \
             tile=self.loc.tile, \

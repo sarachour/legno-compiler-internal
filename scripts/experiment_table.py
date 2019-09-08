@@ -23,6 +23,7 @@ class ExperimentTable:
               quality real,
               energy real,
               runtime real,
+              bandwidth real,
               PRIMARY KEY (subset,prog,lgraph,lscale,
                            model,obj,dssim,hwenv)
              );
@@ -36,11 +37,12 @@ class ExperimentTable:
                    'adp',
                    'quality', \
                    'energy', \
-                   'runtime']
+                   'runtime', \
+                   'bandwidth']
 
     self._modifiable =  \
                         ['status','modif','quality', \
-                         'energy','runtime']
+                         'energy','runtime','bandwidth']
     self.db.curs.execute(cmd)
 
   def _get_rows(self,where_clause):

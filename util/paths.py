@@ -18,6 +18,7 @@ class PathHandler:
                 self.GRENDEL_FILE_DIR,
                 self.REF_SIM_DIR,
                 self.ADP_SIM_DIR,
+                self.PLOT_DIR,
                 self.TIME_DIR
         ]:
           if make_dirs:
@@ -151,7 +152,7 @@ class PathHandler:
                            prog=self._prog,
                            lgraph=graph_index,
                            lscale=scale_index,
-                           model=mode,
+                           model=model,
                            opt=opt,
                            dssim=menv_subset,
                            hwenv=henv_subset, \

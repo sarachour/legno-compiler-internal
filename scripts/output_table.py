@@ -95,7 +95,7 @@ class OutputTable:
                                         model,
                                         opt, \
                                         menv_name,hwenv_name,
-                                        varname=varname,
+                                        variable=varname,
                                         trial=trial)
     new_fields['modif'] = datetime.datetime.now()
     assign_subclauses = []

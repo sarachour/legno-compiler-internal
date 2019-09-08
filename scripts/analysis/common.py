@@ -3,14 +3,14 @@ import json
 import numpy as np
 
 def waveform(entry,path_h,trial,tag,t,x):
-  filename = path_h.plot(entry.bmark,
-                         entry.arco_indices,
-                         entry.jaunt_index,
+  filename = path_h.plot(entry.program,
+                         entry.lgraph,
+                         entry.lscale,
                          entry.model,
-                         entry.objective_fun,
-                         entry.math_env,
-                         entry.hw_env,
-                         '%s-%d-%s' % (entry.varname,trial,tag))
+                         entry.obj,
+                         entry.dssim,
+                         entry.hwenv,
+                         '%s-%d-%s' % (entry.variable,trial,tag))
   filename = filename.split(".png")[0] + ".txt"
   with open(filename,'w') as fh:
     fh.write(json.dumps({ \
@@ -24,14 +24,13 @@ def compare_plot(entry,path_h,trial,tag,tpred,xpred,tobs,xobs):
   bot,top = plt.ylim()
   plt.ylim(min(bot,0),top)
   plt.legend()
-  filename = path_h.plot(entry.bmark,
-                         entry.arco_indices,
-                         entry.jaunt_index,
+  filename = path_h.plot(entry.lgraph,
+                         entry.lscale,
                          entry.model,
-                         entry.objective_fun,
-                         entry.math_env,
-                         entry.hw_env,
-                         '%s-%d-%s' % (entry.varname,trial,tag))
+                         entry.obj,
+                         entry.dssim,
+                         entry.hwenv,
+                         '%s-%d-%s' % (entry.variable,trial,tag))
   print(filename)
   plt.savefig(filename)
   plt.clf()
@@ -42,14 +41,13 @@ def simple_plot(entry,path_h,trial,tag,t,x):
   bot,top = plt.ylim()
   plt.ylim(min(bot,0),top)
   plt.legend()
-  filename = path_h.plot(entry.bmark,
-                         entry.arco_indices,
-                         entry.jaunt_index,
+  filename = path_h.plot(entry.lgraph,
+                         entry.lscale,
                          entry.model,
-                         entry.objective_fun,
-                         entry.math_env,
-                         entry.hw_env,
-                         '%s-%d-%s' % (entry.varname,trial,tag))
+                         entry.obj,
+                         entry.dssim,
+                         entry.hwenv,
+                         '%s-%d-%s' % (entry.variable,trial,tag))
   print(filename)
   plt.savefig(filename)
   plt.clf()
@@ -62,14 +60,14 @@ def mean_std_plot(entry,path_h,trial,tag,t,mean,std):
   plt.plot(t,LOWER,label='-std',color='red')
   plt.plot(t,mean,label='mean',color='black')
   plt.legend()
-  filename = path_h.plot(entry.bmark,
-                         entry.arco_indices,
-                         entry.jaunt_index,
+  filename = path_h.plot(entry.program,
+                         entry.lgraph,
+                         entry.lscale,
                          entry.model,
-                         entry.objective_fun,
-                         entry.math_env,
-                         entry.hw_env,
-                         '%s-%d-%s' % (entry.varname,trial,tag))
+                         entry.obj,
+                         entry.dssim,
+                         entry.hwenv,
+                         '%s-%d-%s' % (entry.variable,trial,tag))
   plt.savefig(filename)
   plt.clf()
 

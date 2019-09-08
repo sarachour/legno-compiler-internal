@@ -1,18 +1,16 @@
-import compiler.skelter as skelter
-import compiler.common.prop_noise as pnlib
-import bmark.menvs as menvs
 from enum import Enum
+from dslang.dsprog import DSProgDB
 
-def update_params(conc_circ, \
+def update_params(ad_prog, \
                   output_entry):
   LOCS = []
-  for block_name,loc,config in conc_circ.instances():
-    handle = conc_circ.board.handle_by_inst(block_name,loc)
+  for block_name,loc,config in ad_prog.instances():
+    handle = ad_prog.board.handle_by_inst(block_name,loc)
     if handle is None:
       continue
 
     for port,label,label_kind in config.labels():
-      if label == output_entry.varname:
+      if label == output_entry.variable:
         LOCS.append((block_name,loc,port,handle))
 
   if len(LOCS) == 0:
@@ -23,25 +21,26 @@ def update_params(conc_circ, \
     raise Exception("more than one port with that label")
 
   block_name,loc,port,handle = LOCS[0]
-  cfg = conc_circ.config(block_name,loc)
-  menv = menvs.get_math_env(output_entry.math_env)
+  cfg = ad_prog.config(block_name,loc)
+  dssim = DSProgDB.get_sim(output_entry.program)
 
   xform = output_entry.transform
   xform.handle = handle
-  xform.time_constant = conc_circ.board.time_constant
+  xform.time_constant = ad_prog.board.time_constant
   xform.legno_ampl_scale = cfg.scf(port)
-  xform.legno_time_scale = conc_circ.tau
+  xform.legno_time_scale = ad_prog.tau
   output_entry.transform = xform
 
-  runtime = menv.sim_time/(xform.time_constant*xform.legno_time_scale)
+  runtime = dssim.sim_time/(xform.time_constant*xform.legno_time_scale)
   output_entry.runtime = runtime
 
 
 
-def analyze(entry,conc_circ):
+def analyze(entry,ad_prog):
   params = None
   for output in list(entry.outputs()):
-    update_params(conc_circ, \
+    update_params(ad_prog, \
                            output)
 
     entry.runtime = output.runtime
+    entry.bandwidth = output.transform.bandwidth

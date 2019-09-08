@@ -6,7 +6,7 @@ from scripts.expdriver_db import ExpDriverDB
 from scripts.common import ExecutionStatus
 import lab_bench.lib.command as cmd
 
-from chip.conc import ConcCirc
+from hwlib.adp import AnalogDeviceProg
 
 import scripts.analysis.params as params
 import scripts.analysis.quality as quality
@@ -32,7 +32,7 @@ def execute_once(args,debug=False):
       continue
 
 
-    if not args.bmark is None and not entry.bmark == args.bmark:
+    if not args.prog is None and not entry.prog == args.prog:
       continue
 
     if not args.subset is None and not entry.subset == args.subset:
@@ -45,26 +45,26 @@ def execute_once(args,debug=False):
       continue
 
     board = None
-    if not os.path.isfile(entry.jaunt_circ_file):
+    if not os.path.isfile(entry.adp):
       continue
 
     if entry.energy is None or entry.runtime is None or \
        args.recompute_params:
       if not entry.subset in BOARD_CACHE:
-        from chip.hcdc.hcdcv2_4 import make_board
-        board = make_board(entry.subset)
+        from hwlib.hcdc.hcdcv2_4 import make_board
+        board = make_board(entry.subset,load_conns=False)
         BOARD_CACHE[entry.subset] = board
       else:
         board = BOARD_CACHE[entry.subset]
-      conc_circ = ConcCirc.read(board,entry.jaunt_circ_file)
-      params.analyze(entry,conc_circ)
-      energy.analyze(entry,conc_circ)
+      ad_prog = AnalogDeviceProg.read(board,entry.adp)
+      params.analyze(entry,ad_prog)
+      energy.analyze(entry,ad_prog)
 
     if entry.quality is None or args.recompute_quality:
-      conc_circ = ConcCirc.read(None,entry.jaunt_circ_file)
+      ad_prog = AnalogDeviceProg.read(None,entry.adp)
       quality.analyze(entry, \
                       recompute=args.recompute_quality,
-                      no_reference=(entry.math_env == 'audenv') \
+                      no_reference=(entry.hwenv == 'audio') \
       )
 
   db.close()

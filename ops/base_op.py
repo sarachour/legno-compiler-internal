@@ -115,31 +115,34 @@ class Op:
 
     @staticmethod
     def from_json(obj):
+        import ops.generic_op as generic
+        import ops.lambda_op as lambd
+
         op = OpType(obj['op'])
         if op == OpType.VAR:
-            return Var.from_json(obj)
+            return generic.Var.from_json(obj)
         elif op == OpType.CONST:
-            return Const.from_json(obj)
+            return generic.Const.from_json(obj)
         elif op == OpType.FUNC:
-            return Func.from_json(obj)
+            return generic.Func.from_json(obj)
         elif op == OpType.MULT:
-            return Mult.from_json(obj)
+            return generic.Mult.from_json(obj)
         elif op == OpType.POW:
-            return Pow.from_json(obj)
+            return lambd.Pow.from_json(obj)
         elif op == OpType.SGN:
-            return Sgn.from_json(obj)
+            return lambd.Sgn.from_json(obj)
         elif op == OpType.ABS:
-            return Abs.from_json(obj)
+            return lambd.Abs.from_json(obj)
         elif op == OpType.SQRT:
-            return Sqrt.from_json(obj)
+            return lambd.Sqrt.from_json(obj)
         elif op == OpType.SIN:
-            return Sin.from_json(obj)
+            return lambd.Sin.from_json(obj)
         elif op == OpType.COS:
-            return Cos.from_json(obj)
+            return lambd.Cos.from_json(obj)
         elif op == OpType.ADD:
-            return Add.from_json(obj)
+            return lambd.Add.from_json(obj)
         elif op == OpType.RANDFUN:
-            return RandFun.from_json(obj)
+            return lambd.RandFun.from_json(obj)
 
 
         else:

@@ -3,6 +3,7 @@ import sqlite3
 import json
 import binascii
 import math
+import hashlib
 
 import lab_bench.lib.enums as glb_enums
 import lab_bench.lib.cstructs as cstructs
@@ -143,7 +144,7 @@ class BlockStateDatabase:
     self._conn.commit()
 
   def remove(self,blockstate):
-    cmd = '''DELETE FROM states WHERE identifier="{id}"''' \
+    cmd = '''DELETE FROM states WHERE identifier="{id}";''' \
       .format(id=blockstate.identifier)
     self._curs.execute(cmd)
     self._conn.commit()
@@ -231,7 +232,7 @@ class BlockState:
       self.calib_obj = calib_obj
 
     @property
-    def targeted_keys(self):
+    def dynamic_codes(self):
       print(self.block)
       raise NotImplementedError
 
@@ -244,7 +245,7 @@ class BlockState:
 
     @property
     def identifier(self):
-      return hash(self.descriptor)
+      return hashlib.md5(self.descriptor.encode()).hexdigest()
 
     @property
     def descriptor(self):
@@ -255,7 +256,7 @@ class BlockState:
         ident = ""
         for key in keys:
           value = obj[key]
-          if key in self.targeted_keys:
+          if key in self.dynamic_codes:
             continue
 
           ident += "%s=" % key
@@ -401,7 +402,7 @@ class LutBlockState(BlockState):
 
 
     @property
-    def targeted_keys(self):
+    def dynamic_codes(self):
       return []
 
   def __init__(self,loc,state,calib_obj):
@@ -444,7 +445,7 @@ class DacBlockState(BlockState):
 
 
     @property
-    def targeted_keys(self):
+    def dynamic_codes(self):
       return ["const_val"]
 
   def __init__(self,loc,state,calib_obj):
@@ -538,7 +539,7 @@ class MultBlockState(BlockState):
       self.vga = vga
 
     @property
-    def targeted_keys(self):
+    def dynamic_codes(self):
       return ['gain_val']
 
   def __init__(self,loc,state,calib_obj):
@@ -637,7 +638,7 @@ class IntegBlockState(BlockState):
       self.ic_val = ic_val
 
     @property
-    def targeted_keys(self):
+    def dynamic_codes(self):
       return ['ic_val']
 
   def __init__(self,loc,state,calib_obj):
@@ -740,7 +741,7 @@ class FanoutBlockState(BlockState):
       self.third = third
 
     @property
-    def targeted_keys(self):
+    def dynamic_codes(self):
       return []
 
   def __init__(self,loc,state,calib_obj):
@@ -838,7 +839,7 @@ class AdcBlockState(BlockState):
       self.calib_obj = calib_obj
 
     @property
-    def targeted_keys(self):
+    def dynamic_codes(self):
       return []
 
 

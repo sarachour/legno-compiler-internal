@@ -27,6 +27,7 @@ class ExperimentEntry:
                hwenv, \
                energy, \
                runtime, \
+               bandwidth, \
                quality):
 
     self.program = program
@@ -44,6 +45,7 @@ class ExperimentEntry:
     self._modif = modif
     self._energy= energy
     self._runtime= runtime
+    self._bandwidth = bandwidth
     self._quality= quality
     self._db = db
 
@@ -56,6 +58,16 @@ class ExperimentEntry:
     assert(isinstance(new_modif,ExecutionStatus))
     self.update_db({'modif':new_status.value})
     self._modif = new_status
+
+  @property
+  def bandwidth(self):
+    return self._bandwidth
+
+  @bandwidth.setter
+  def bandwidth(self,new_bandwidth):
+    self.update_db({'bandwidth':new_bandwidth})
+    self._bandwidth = new_bandwidth
+
 
   @property
   def status(self):
@@ -208,6 +220,7 @@ class ExperimentEntry:
       hwenv=args['hwenv'],
       energy=args['energy'],
       runtime=args['runtime'],
+      bandwidth=args['bandwidth'],
       quality=args['quality'],
     )
     return entry
@@ -239,6 +252,7 @@ class ExperimentEntry:
     s += "adp=%s\n" % (self.adp)
     s += "energy=%s\n" % (self.energy)
     s += "runtime=%s\n" % (self.runtime)
+    s += "bandwidth=%s\n" % (self.bandwidth)
     s += "quality=%s\n" % (self.quality)
     s += "}\n"
     return s

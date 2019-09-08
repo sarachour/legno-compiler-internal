@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from scipy import signal, fftpack
 import scripts.analysis.common as common
 
+import dslang.dsprog as dsproglib
 CACHE = {}
 
 def scale_obs_data(output,tobs,yobs):
@@ -43,21 +44,18 @@ def scale_ref_data(output,tref,yref):
   return thw, yhw
 
 
-def compute_ref(bmark,menvname,varname):
-  import bmark.menvs as menvs
-  import bmark.diffeqs as diffeqs
-  from bmark.bmarks.common import run_system
+def compute_ref(progname,dssimname,variable):
+  if not (progname,dssimname,variable) in CACHE:
+    prog = dsproglib.DSProgDB.get_prog(progname)
+    dssim = dsproglib.DSProgDB.get_sim(progname)
+    assert(dssim.name == dssimname)
+    T,D = prog.execute(dssim)
+    TREF,YREF = T,D[variable]
 
-  if not (bmark,menvname,varname) in CACHE:
-    prob = diffeqs.get_prog(bmark)
-    menv = menvs.get_math_env(menvname)
-    T,D = run_system(menv,prob)
-    TREF,YREF = T,D[varname]
-
-    CACHE[(bmark,menvname,varname)] = (TREF,YREF)
+    CACHE[(progname,dssimname,variable)] = (TREF,YREF)
     return TREF,YREF
   else:
-      return CACHE[(bmark,menvname,varname)]
+      return CACHE[(progname,dssimname,variable)]
 
 def read_meas_data(filename):
   with open(filename,'r') as fh:
@@ -147,15 +145,15 @@ def compute_quality(output,_trec,_yrec,_tref,_yref):
   return score,tref,errors
 
 def analyze(entry,recompute=False,no_reference=False):
-  path_h = paths.PathHandler(entry.subset,entry.bmark)
+  path_h = paths.PathHandler(entry.subset,entry.program)
   QUALITIES = []
-  VARS = set(map(lambda o: o.varname, entry.outputs()))
+  VARS = set(map(lambda o: o.variable, entry.outputs()))
   MODEL = None
   for output in entry.outputs():
-    varname = output.varname
+    variable = output.variable
     trial = output.trial
 
-    TMEAS,YMEAS = read_meas_data(output.out_file)
+    TMEAS,YMEAS = read_meas_data(output.waveform)
     common.simple_plot(output,path_h,output.trial,'meas',TMEAS,YMEAS)
     if no_reference:
       QUALITIES.append(-1)
@@ -164,7 +162,7 @@ def analyze(entry,recompute=False,no_reference=False):
     #if not output.quality is None:
     #  QUALITIES.append(output.quality)
 
-    TREF,YREF = compute_ref(entry.bmark,entry.math_env,varname)
+    TREF,YREF = compute_ref(entry.program,entry.dssim,variable)
     common.simple_plot(output,path_h,output.trial,'ref',TREF,YREF)
 
     TPRED,YPRED = scale_ref_data(output,TREF,YREF)

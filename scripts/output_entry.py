@@ -13,6 +13,10 @@ class OutputTransform:
     self.expd_time_scale = 1.0
     self.expd_time_offset = 0.0
 
+  @property
+  def bandwidth(self):
+    return (self.time_constant*self.legno_time_scale);
+
   def to_json(self):
     return self.__dict__
 
@@ -49,10 +53,10 @@ class OutputEntry:
                trial,transform,quality,runtime):
     self._db = db
     self.subset = subset
-    self.prog = prog
+    self.program = prog
     self.lgraph = lgraph
     self.lscale = lscale
-    self.objective_fun = objective_fun
+    self.obj = objective_fun
     self.model = model
     self.dssim = dssim
     self.hwenv = hwenv
@@ -140,7 +144,7 @@ class OutputEntry:
       obj = self._transform.__dict__
 
     xform = OutputTransform \
-            .from_json(self.varname, \
+            .from_json(self.variable, \
                        obj)
     return xform
 
@@ -153,11 +157,11 @@ class OutputEntry:
 
   def delete(self):
      self._db.output_tbl.delete(self.subset, \
-                                self.prog, \
+                                self.program, \
                                 self.lgraph, \
                                 self.lscale, \
                                 self.model, \
-                                self.objective_fun, \
+                                self.obj, \
                                 self.dssim, \
                                 self.hwenv, \
                                 self.variable, \
@@ -165,11 +169,11 @@ class OutputEntry:
 
   def update_db(self,args):
     self._db.output_tbl.update(self.subset, \
-                               self.prog, \
+                               self.program, \
                                self.lgraph, \
                                self.lscale, \
                                self.model, \
-                               self.objective_fun, \
+                               self.obj, \
                                self.dssim, \
                                self.hwenv, \
                                self.variable, \
@@ -179,41 +183,18 @@ class OutputEntry:
 
 
 
-  '''
-  @property
-  def adp_ident(self):
-    return "%s(%s,%s)" % (self.bmark,
-                          self.lgraph,
-                          self.lscale)
-  @property
-  def port_ident(self):
-    return "%s.%s" % (self.adp_ident,self.varname)
-
-
-
-  @property
-  def ident(self):
-    return "%s::%s[%s,%s](%s,%s)" % (self.subset, \
-                                     self.port_ident, \
-                                     self.objective_fun, \
-                                     self.model, \
-                                     self.math_env, \
-                                     self.hw_env)
-  '''
-
   def __repr__(self):
     s = "{\n"
-    s += "ident=%s\n" % self.ident
-    s += "status=%s\n" % (self._status.value)
-    s += "varname=<%s>\n" % (self._varname)
-    s += "trial=%d\n" % (self._trial)
-    s += "out_file=%s\n" % (self._out_file)
-    s += "rank=%s\n" % (self._rank)
-    s += "tau=%s\n" % (self._tau)
-    s += "scf=%s\n" % (self._scf)
-    s += "fmax=%s\n" % (self._fmax)
-    s += "quality=%s\n" % (self._quality)
-    s += "transform=%s\n" % (self._transform)
+    s += "prog=%s\n" % (self.program)
+    s += "lscale=%s lgraph=%s\n" % (self.lscale,self.lgraph)
+    s += "model=%s obj=%s\n" % (self.model,self.obj)
+    s += "status=%s\n" % (self.status.value)
+    s += "variable=%s\n" % (self.variable)
+    s += "trial=%d\n" % (self.trial)
+    s += "waveform=%s\n" % (self.waveform)
+    s += "quality=%s\n" % self.quality
+    s += "transform=%s\n" % self.transform
+    s += "runtime=%s\n" % self.runtime
     s += "}\n"
     return s
 

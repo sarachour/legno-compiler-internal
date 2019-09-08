@@ -160,13 +160,11 @@ def scale(prog,adp,nslns, \
         if model == util.DeltaModel.PHYSICAL:
             return [
                 util.DeltaModel.PHYSICAL,
-                util.DeltaModel.PARTIAL,
-                util.DeltaModel.NAIVE
+                util.DeltaModel.PARTIAL
             ]
         elif model == util.DeltaModel.PARTIAL:
             return [
                 util.DeltaModel.PARTIAL,
-                util.DeltaModel.NAIVE
             ]
         else:
             return [model]
