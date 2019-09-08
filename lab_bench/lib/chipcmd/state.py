@@ -40,7 +40,8 @@ class BlockStateDatabase:
 
     cmd = '''
     CREATE TABLE IF NOT EXISTS states (
-    cmdkey text NOT NULL,
+    identifier text NOT NULL,
+    descriptor text NOT NULL,
     block text NOT NULL,
     chip int NOT NULL,
     tile int NOT NULL,
@@ -49,12 +50,12 @@ class BlockStateDatabase:
     calib_obj text NOT NULL,
     state text NOT NULL,
     profile text NOT NULL,
-    PRIMARY KEY (cmdkey)
-    )
+    PRIMARY KEY (identifier)
+    );
     '''
     self._curs.execute(cmd)
     self._conn.commit()
-    self.keys = ['cmdkey','block',
+    self.keys = ['identifier','descriptor','block',
                  'chip','tile','slice','idx',
                  'calib_obj',
                  'state','profile']
@@ -89,6 +90,11 @@ class BlockStateDatabase:
                                  calib_obj)
         obj.profile = json.loads(bytes.fromhex(datum['profile']) \
                                  .decode('utf-8'))
+        prev_obj = self.get(obj)
+        if not prev_obj is None and \
+           len(prev_obj.profile) > len(obj.profile):
+          continue
+
         self.put(obj,obj.profile)
 
   def get_all(self):
@@ -106,48 +112,74 @@ class BlockStateDatabase:
   def get_by_instance(self,blk,chip,tile,slice,index, \
                       calib_obj=util.CalibrateObjective.MIN_ERROR):
 
-    for obj in self.get_all():
-      if obj.key.block == blk and \
-         obj.key.loc.chip == chip and \
-         obj.key.loc.tile == tile and \
-         obj.key.loc.slice == slice and \
-         obj.calib_obj == calib_obj:
-        if not obj.key.to_key() in dups:
-          dups[obj.key.to_key()] = 0
-        #print("%s NELS=%d" % (obj.key.to_key(),len(obj.profile)))
-        yield obj
+    cmd ='''
+    SELECT * from states WHERE block="{block}"
+    AND chip={chip}
+    AND tile={tile}
+    AND slice={slice}
+    AND idx={index}
+    AND calib_obj="{calib_obj}";
+    '''
+    conc_cmd = cmd.format(block=blk.value, \
+               chip=chip,
+               tile=tile,
+               slice=slice,
+               index=index,
+               calib_obj=calib_obj.value)
 
-    for key,v in dups.items():
-        if(v > 1):
-           print(key,v)
+    for values in self._curs.execute(conc_cmd):
+      data = dict(zip(self.keys,values))
+      result = self._process(data)
+      if result is None:
+        print("==== FAILED TO PROCESS ===")
+        print(data)
+        raise Exception("could not process row")
 
-    return
+      yield result
 
   def clear(self):
-    cmd = '''DELETE * FROM states;'''
+    cmd = '''DELETE FROM states;'''
     self._curs.execute(cmd)
     self._conn.commit()
 
   def remove(self,blockstate):
-    key = blockstate.key.to_key()
-    cmd = '''DELETE FROM states WHERE cmdkey="{cmdkey}"''' \
-      .format(cmdkey=key)
+    cmd = '''DELETE FROM states WHERE identifier="{id}"''' \
+      .format(id=blockstate.identifier)
     self._curs.execute(cmd)
     self._conn.commit()
+
+  def get(self,blockstate):
+    cmd = '''SELECT * FROM states WHERE identifier="{id}";''' \
+      .format(id=blockstate.identifier)
+    for values in self._curs.execute(cmd):
+      data = dict(zip(self.keys,values))
+      result = self._process(data)
+      return result
+
+    return None
+
+
+  def has(self,blockstate):
+    cmd = '''SELECT * FROM states WHERE identifier="{id}";''' \
+      .format(id=blockstate.identifier)
+    for values in self._curs.execute(cmd):
+      return True
+
+    return False
 
   def put(self,blockstate,profile=[]):
     assert(isinstance(blockstate,BlockState))
     self.remove(blockstate)
-    key = blockstate.key.to_key()
     state_bits = blockstate.to_cstruct().hex()
     profile_bits = bytes(json.dumps(profile), 'utf-8').hex();
     cmd = '''
-    INSERT INTO states (cmdkey,block,chip,tile,slice,idx,
+    INSERT INTO states (identifier,descriptor,block,chip,tile,slice,idx,
                         calib_obj,state,profile)
-    VALUES ("{cmdkey}","{block}",{chip},{tile},{slice},{index},
+    VALUES ("{id}","{desc}","{block}",{chip},{tile},{slice},{index},
             "{calib_obj}","{state}","{profile}")
     '''.format(
-      cmdkey=blockstate.key.to_key().hex(),
+      id=blockstate.identifier,
+      desc=blockstate.descriptor,
       block=blockstate.block.value,
       chip=blockstate.loc.chip,
       tile=blockstate.loc.tile,
@@ -159,17 +191,6 @@ class BlockStateDatabase:
     )
     self._curs.execute(cmd)
     self._conn.commit()
-
-  def _get(self,blockkey):
-    assert(isinstance(blockkey,BlockState.Key))
-    keystr = blockkey.to_key()
-    print("GET %s" % keystr)
-    cmd = '''
-    SELECT * FROM states WHERE cmdkey = "{cmdkey}"
-    ''' \
-      .format(cmdkey=keystr)
-    results = list(self._curs.execute(cmd))
-    return results
 
   def has(self,blockkey):
     return len(self._get(blockkey)) > 0
@@ -206,17 +227,7 @@ class BlockStateDatabase:
     return obj
 
 
-  def get(self,blockkey):
-    results = self._get(blockkey)
-    if not (len(results) == 1):
-      for row in self.get_all():
-        print(row.key.to_key())
-      raise Exception("cannot get <%s> : %d results found" \
-                      % (blockkey.to_key(),len(results)))
-    data = dict(zip(self.keys,results[0]))
-    result = self._process(data)
-    return result
-
+  
 class BlockState:
 
   class Key:
@@ -238,7 +249,12 @@ class BlockState:
       obj['calib_obj'] = self.calib_obj.value
       return obj
 
-    def to_key(self):
+    @property
+    def identifier(self):
+      return hash(self.descriptor)
+
+    @property
+    def descriptor(self):
       obj = self.to_json()
       def dict_to_key(obj):
         keys = list(obj.keys())
@@ -272,6 +288,14 @@ class BlockState:
     self.state = state
     if state != None:
       self.from_cstruct(state)
+
+  @property
+  def descriptor(self):
+    return self.key.descriptor
+
+  @property
+  def identifier(self):
+    return self.key.identifier
 
   def get_dataset(self,db,calib_obj):
     for obj in db.get_by_instance(
