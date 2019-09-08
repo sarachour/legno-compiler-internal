@@ -43,6 +43,16 @@ def function_to_dslang_ast(dsprog,name,arguments):
   elif name == "sin":
     report(n == 1, "expected 1 argument to sin function")
     return op.Sin(arguments[0])
+  elif name == "sgn":
+    report(n == 1, "expected 1 argument to sgn function")
+    return op.Sgn(arguments[0])
+  elif name == "sqrt":
+    report(n == 1, "expected 1 argument to sqrt function")
+    return op.Sqrt(arguments[0])
+  elif name == "abs":
+    report(n == 1, "expected 1 argument to abs function")
+    return op.Abs(arguments[0])
+
   else:
     raise Exception("unknown built-in function <%s>" % name)
 
@@ -55,7 +65,10 @@ def lark_to_dslang_ast(dsprog,node):
   if node.data == "neg":
     report(n == 1, "negation operation takes one argument");
     expr = recurse(node.children[0])
-    return op.Mult(op.Const(-1),expr)
+    if(expr.op == op.OpType.CONST):
+        return op.Const(-1*expr.value);
+    else:
+        return op.Mult(op.Const(-1),expr)
 
   if node.data == "func":
     report(n > 0, "function name not specified");

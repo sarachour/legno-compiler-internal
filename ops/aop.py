@@ -17,7 +17,7 @@ class AOpType(Enum):
     INTEG = "integ"
     EMIT = "emit"
     EXTVAR = "ev"
-    SPECIAL = "special"
+    CALL = "call"
 
 class AOp:
 
@@ -58,7 +58,6 @@ class AOp:
         nodes = []
         for n_rules_left, new_inps in \
             self._xform_inputs(self.inputs,rules,n_rules):
-            print(self)
             this_node = self.make(new_inps)
             if not str(this_node) in nodes:
                 yield n_rules,this_node
@@ -67,7 +66,6 @@ class AOp:
             if n_rules > 0:
                 for rule in rules:
                     for new_node in rule.apply(this_node):
-                        print("%s -> %s" % (this_node,new_node))
                         if not str(new_node) in nodes:
                             yield n_rules-1,new_node
                             nodes.append(str(new_node))

@@ -3,7 +3,6 @@ import importlib.util
 import os
 
 def dynamic_load(filepath):
-  print(filepath)
   spec = importlib.util.spec_from_file_location("module.name",
                                                 filepath)
   module = importlib.util.module_from_spec(spec)
@@ -11,7 +10,6 @@ def dynamic_load(filepath):
   if module.dssim != None and \
      module.dsprog != None and \
      module.dsname != None:
-    print(module.dsname())
     DSProgDB.register(module.dsname(), \
                             module.dsprog, \
                             module.dssim)

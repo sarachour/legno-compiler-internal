@@ -158,7 +158,7 @@ def to_abs_circ(board,ast):
             acirc.ANode.connect(in_node,in_port,node,"in")
             yield node,"out"
 
-    elif ast.op == aop.AOpType.SPECIAL:
+    elif ast.op == aop.AOpType.CALL:
         assert(len(ast.inputs) == 1)
         for in_node, in_port in to_abs_circ(board,ast.input(0)):
             dac_node = acirc.ANode.make_node(board,'tile_dac')
