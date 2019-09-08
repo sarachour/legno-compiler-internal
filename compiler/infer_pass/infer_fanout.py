@@ -40,6 +40,8 @@ def infer(obj):
   max_uncs,model_in,model_out0,model_out1,model_out2 = \
                             build_config(obj['metadata'])
 
+  print(obj['dataset'])
+  input()
   bnds0 = infer_fit.build_model(model_out0, \
                                 obj['dataset'],0,max_uncs[0])
   bnds1 = infer_fit.build_model(model_out1, \

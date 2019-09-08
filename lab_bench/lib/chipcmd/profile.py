@@ -166,11 +166,6 @@ class ProfileCmd(Command):
         env.state_db.put(state,
                          profile=[profile] + entry.profile)
 
-    def insert_result(self,env,resp):
-        title = "profiled %s.%s " % (self._blk,self._loc)
-        send_mail(title,log)
-        return True
-
 
     def execute_one_input(self,env,bootstrap=True):
         if self._blk == enums.BlockType.INTEG:

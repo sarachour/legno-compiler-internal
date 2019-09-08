@@ -86,21 +86,23 @@ class BlockStateDatabase:
       tile=tile,
       slice=slice,
       index=index,
-      calib_obj=calib_obj.value)
+      calib_obj=calib_obj.name)
 
     for values in self._curs.execute(cmd):
       data = dict(zip(self.keys,values))
       result = self._process(data)
       yield result
 
-  def put(self,blockstate,profile=[]):
-    assert(isinstance(blockstate,BlockState))
+  def remove(self,blockstate):
     key = blockstate.key.to_key()
     cmd = '''DELETE FROM states WHERE cmdkey="{cmdkey}"''' \
       .format(cmdkey=key)
     self._curs.execute(cmd)
     self._conn.commit()
 
+  def put(self,blockstate,profile=[]):
+    assert(isinstance(blockstate,BlockState))
+    this.remove(blockstate)
     print("PUT %s" % key)
     state_bits = blockstate.to_cstruct().hex()
     profile_bits = bytes(json.dumps(profile), 'utf-8').hex();
@@ -226,7 +228,7 @@ class BlockState:
 
       return dict_to_key(obj)
 
-  def __init__(self,block_type,loc,state,calib_obj=util.CalibrateObjective.MIN_ERROR):
+  def __init__(self,block_type,loc,state,calib_obj):
     self.block = block_type
     self.loc = loc
     self.calib_obj =calib_obj
@@ -245,6 +247,7 @@ class BlockState:
         calib_obj):
       if len(obj.profile) == 0:
         continue
+
 
       keys = ['mode','in0','in1','out','bias','noise']
       prof = dict(map(lambda k : (k,[]), keys))

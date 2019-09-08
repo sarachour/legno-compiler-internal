@@ -172,14 +172,19 @@ def fit_scale_model(model,dataset):
   def error(x,xhat,a):
     return abs(func(x,a)-xhat)
 
+  min_pts = 10
   observe,expect = dataset.meas,dataset.out
   n = dataset.n
+  if n < min_pts:
+    print(model)
+    input("not enough points")
+    return
+
   popt, pcov = scipy.optimize.curve_fit(func, expect, observe)
   gain_mu,gain_std = popt[0], math.sqrt(pcov[0])
   errs = util.array_map(map(lambda i: error(expect[i], \
                                                   observe[i], \
                                                   gain_mu), range(n)))
-  print(gain_mu,gain_std,n)
   bias_std = np.std(errs)
   model.gain = gain_mu
   model.gain_uncertainty = gain_std

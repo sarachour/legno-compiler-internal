@@ -21,10 +21,12 @@ def get_max_value(out):
 
 def heatmap1d(in0,out,value,labels):
   # strictly monotonic increasing
+  if len(in0) <= 3:
+    return
+
   x,y,z = [],[],[]
   vmin = 0
   vmax = get_max_value(out)
-  
   plt.clf()
   style = plt.get_cmap("magma")
   n = len(in0)
@@ -62,6 +64,9 @@ def heatmap1d(in0,out,value,labels):
   #plt.colorbar(orientation='horizontal')
 
 def heatmap2d(in0,in1,out,value,labels):
+  if len(in0) <= 3:
+    return
+
   x,y,z = [],[],[]
   vmin = 0
   vmax = get_max_value(out)
