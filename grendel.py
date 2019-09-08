@@ -32,8 +32,20 @@ parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(dest='subparser_name',
                                    help='compilers/compilation passes.')
 
+import_subp = subparsers.add_parser('import', \
+                                    help='import database')
+import_subp.add_argument("filename", type=str, \
+                         help="filename to import state objects from")
+
+
+export_subp = subparsers.add_parser('export', \
+                                   help='export database')
+export_subp.add_argument("filename", type=str, \
+                       help="filename to export state objects to")
+
+
 dump_subp = subparsers.add_parser('dump', \
-                                   help='dump database to file')
+                                   help='dump database to datasets')
 dump_subp.add_argument("--calib-obj", type=str, \
                        help="what optimization function to use for calibration")
 
@@ -64,6 +76,21 @@ add_args(prof_subp)
 
 
 args = parser.parse_args()
+
+if args.subparser_name == "import":
+    state = GrendelEnv(None,None, \
+                       ard_native=False, \
+                       calib_obj=util.CalibrateObjective.MIN_ERROR)
+    state.state_db.load(args.filename)
+    sys.exit(0)
+
+
+if args.subparser_name == "export":
+    state = GrendelEnv(None,None, \
+                       ard_native=False, \
+                       calib_obj=util.CalibrateObjective.MIN_ERROR)
+    state.state_db.export(args.filename)
+    sys.exit(0)
 
 # Dump database and quit
 if args.subparser_name == "dump":

@@ -59,6 +59,38 @@ class BlockStateDatabase:
                  'calib_obj',
                  'state','profile']
 
+  def export(self,json_dir):
+        arrs = []
+        for obj in self.get_all():
+           state_bits = obj.to_cstruct().hex()
+           profile_bits = bytes(json.dumps(obj.profile), 'utf-8').hex();
+           arrs.append({ \
+                         "state":state_bits, \
+                         "profile":profile_bits, \
+                         "calib_obj":obj.calib_obj.value, \
+                         "block":obj.block.value, \
+                         "loc":obj.loc.to_json()
+           })
+        with open(json_dir,'w') as fh:
+           fh.write(json.dumps(arrs))
+
+  def load(self,json_dir):
+    self.clear()
+    with open(json_dir,"r") as fh:
+      data = json.loads(fh.read())
+      for datum in data:
+        calib_obj = util.CalibrateObjective(datum["calib_obj"])
+        blk = glb_enums.BlockType(datum['block'])
+        loc = ccmd_data.CircLoc.from_json(datum['loc'])
+
+        obj = BlockState \
+          .toplevel_from_cstruct(blk,loc, \
+                                 bytes.fromhex(datum["state"]), \
+                                 calib_obj)
+        obj.profile = json.loads(bytes.fromhex(datum['profile']) \
+                                 .decode('utf-8'))
+        self.put(obj,obj.profile)
+
   def get_all(self):
     cmd = "SELECT * from states;"
     for values in self._curs.execute(cmd):
@@ -80,10 +112,22 @@ class BlockStateDatabase:
          obj.key.loc.tile == tile and \
          obj.key.loc.slice == slice and \
          obj.calib_obj == calib_obj:
+        if not obj.key.to_key() in dups:
+          dups[obj.key.to_key()] = 0
+        #print("%s NELS=%d" % (obj.key.to_key(),len(obj.profile)))
         yield obj
 
+    for key,v in dups.items():
+        if(v > 1):
+           print(key,v)
+
     return
-    
+
+  def clear(self):
+    cmd = '''DELETE * FROM states;'''
+    self._curs.execute(cmd)
+    self._conn.commit()
+
   def remove(self,blockstate):
     key = blockstate.key.to_key()
     cmd = '''DELETE FROM states WHERE cmdkey="{cmdkey}"''' \
@@ -103,7 +147,7 @@ class BlockStateDatabase:
     VALUES ("{cmdkey}","{block}",{chip},{tile},{slice},{index},
             "{calib_obj}","{state}","{profile}")
     '''.format(
-      cmdkey=key,
+      cmdkey=blockstate.key.to_key().hex(),
       block=blockstate.block.value,
       chip=blockstate.loc.chip,
       tile=blockstate.loc.tile,
@@ -217,7 +261,8 @@ class BlockState:
           ident += ";"
         return ident
 
-      return dict_to_key(obj)
+      keystr = dict_to_key(obj)
+      return keystr
 
   def __init__(self,block_type,loc,state,calib_obj):
     self.block = block_type
