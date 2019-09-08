@@ -156,7 +156,7 @@ class Var(Op):
     def substitute(self,assigns):
         return assigns[self._name]
 
-    def compute(self,bindings):
+    def compute(self,bindings={}):
         if not self._name in bindings:
             for key in bindings:
                 print(key)
@@ -201,7 +201,7 @@ class Const(GenericOp):
     def prod_terms(self):
         return []
 
-    def compute(self,bindings):
+    def compute(self,bindings={}):
         return self._value
 
     def infer_interval(self,bindings):
