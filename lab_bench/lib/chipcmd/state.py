@@ -104,7 +104,6 @@ class BlockStateDatabase:
     assert(isinstance(blockstate,BlockState))
     self.remove(blockstate)
     key = blockstate.key.to_key()
-    print("PUT %s" % key)
     state_bits = blockstate.to_cstruct().hex()
     profile_bits = bytes(json.dumps(profile), 'utf-8').hex();
     cmd = '''
@@ -246,6 +245,7 @@ class BlockState:
         self.loc.slice,
         self.loc.index,
         calib_obj):
+      print("%s n=%d" % (obj.key.to_key(),len(obj.profile)))
       if len(obj.profile) == 0:
         continue
 
