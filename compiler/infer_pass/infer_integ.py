@@ -65,17 +65,22 @@ def infer(obj):
 
   # update appropriate model
   mu,sigma = np.median(tcs),np.std(tcs)
-  model_zp.gain = mu;
-  model_zp.gain_uncertainty = sigma;
-  model_zp.bias = np.mean(ol_bias);
-  model_zp.bias_uncertainty = np.std(ol_bias);
+  model_z.gain = mu;
+  model_z.gain_uncertainty = sigma;
+  model_z.bias = np.mean(ol_bias);
+  model_z.bias_uncertainty = np.std(ol_bias);
 
   if infer_util.about_one(model_zp.gain):
-    model_zp.gain = 1.0
+    model_z.gain = 1.0
 
   if infer_util.about_one(model_z0.gain):
     model_z0.gain = 1.0
 
+  model_zp.gain = model_z.gain/model_z0.gain
+  #print(model_z)
+  #print(model_zp)
+  #print(model_z0)
+  #input()
   yield model_in
   yield model_ic
   yield model_out
