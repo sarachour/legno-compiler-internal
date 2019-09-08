@@ -73,6 +73,21 @@ class BlockStateDatabase:
 
   def get_by_instance(self,blk,chip,tile,slice,index, \
                       calib_obj=util.CalibrateObjective.MIN_ERROR):
+
+    for obj in self.get_all():
+      if obj.key.block == blk and \
+         obj.key.loc.chip == chip and \
+         obj.key.loc.tile == tile and \
+         obj.key.loc.slice == slice and \
+         obj.calib_obj == calib_obj:
+        print(obj)
+        if obj.block == "fanout":
+          print(obj.key.to_key())
+          input()
+        yield obj
+
+    return
+    raise Exception("G")
     cmd = '''
     SELECT * from states WHERE block = "{block}" AND
                                chip = {chip} AND
@@ -89,6 +104,8 @@ class BlockStateDatabase:
       calib_obj=calib_obj.value)
 
     for values in self._curs.execute(cmd):
+      print(values)
+      input()
       data = dict(zip(self.keys,values))
       result = self._process(data)
       yield result
@@ -245,7 +262,6 @@ class BlockState:
         self.loc.slice,
         self.loc.index,
         calib_obj):
-      print("%s n=%d" % (obj.key.to_key(),len(obj.profile)))
       if len(obj.profile) == 0:
         continue
 
