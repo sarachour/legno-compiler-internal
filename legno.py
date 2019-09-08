@@ -45,9 +45,9 @@ lscale_subp.add_argument('--model', default="physical",
                         help='use physical models to inform constraints.')
 lscale_subp.add_argument('--scale-circuits', type=int,default=5, \
                        help='number of scaled circuits to generate.')
-lscale_subp.add_argument('--digital-error', type=float, default=0.04, \
+lscale_subp.add_argument('--mdpe', type=float, default=0.04, \
                         help='do performance sweep.')
-lscale_subp.add_argument('--analog-error',type=float,default=0.04, \
+lscale_subp.add_argument('--mape',type=float,default=0.04, \
                         help='do performance sweep.')
 lscale_subp.add_argument('--search',action="store_true")
 lscale_subp.add_argument('program', type=str,help='benchmark to compile')
