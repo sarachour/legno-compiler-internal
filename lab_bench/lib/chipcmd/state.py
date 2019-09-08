@@ -160,12 +160,8 @@ class BlockStateDatabase:
 
 
   def has(self,blockstate):
-    cmd = '''SELECT * FROM states WHERE identifier="{id}";''' \
-      .format(id=blockstate.identifier)
-    for values in self._curs.execute(cmd):
-      return True
-
-    return False
+    result = self.get(blockstate)
+    return not (result is None)
 
   def put(self,blockstate,profile=[]):
     assert(isinstance(blockstate,BlockState))
@@ -191,9 +187,6 @@ class BlockStateDatabase:
     )
     self._curs.execute(cmd)
     self._conn.commit()
-
-  def has(self,blockkey):
-    return len(self._get(blockkey)) > 0
 
   def has_profile(self,blockkey):
     if self.has(blockkey):

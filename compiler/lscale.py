@@ -159,14 +159,14 @@ def scale(prog,adp,nslns, \
     def gen_models(model):
         if model == util.DeltaModel.PHYSICAL:
             return [
-                model.util.DeltaModel.PHYSICAL,
-                model.util.DeltaModel.PARTIAL,
-                model.util.DeltaModel.NAIVE
+                util.DeltaModel.PHYSICAL,
+                util.DeltaModel.PARTIAL,
+                util.DeltaModel.NAIVE
             ]
         elif model == util.DeltaModel.PARTIAL:
             return [
-                model.util.DeltaModel.PARTIAL,
-                model.util.DeltaModel.NAIVE
+                util.DeltaModel.PARTIAL,
+                util.DeltaModel.NAIVE
             ]
         else:
             return [model]
@@ -191,7 +191,7 @@ def scale(prog,adp,nslns, \
                                            mape=mape)
 
                 if this_model.uses_delta_model() and \
-                   len(ModelDB.MISSING) > n_missing:
+                   len(hwmodel.ModelDB.MISSING) > n_missing:
                     scenv.fail(msg)
 
                 print("missing: %d -> %d" % (n_missing, len(hwmodel.ModelDB.MISSING)))

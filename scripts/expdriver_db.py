@@ -68,6 +68,17 @@ class ExpDriverDB:
                                  make_dirs=False)
           gargs = \
                 ph.grendel_file_to_args(fname)
+          if self.experiment_tbl.has(  \
+                                       subset=fargs['subset'], \
+                                       prog=fargs['prog'], \
+                                       lgraph=gargs['lgraph'], \
+                                       lscale=gargs['lscale'], \
+                                       model=gargs['model'], \
+                                       obj=gargs['opt'], \
+                                       dssim=gargs['dssim'], \
+                                       hwenv=gargs['hwenv']):
+            continue
+
           exp = self.add(ph, \
                          subset=fargs['subset'], \
                          prog=fargs['prog'], \

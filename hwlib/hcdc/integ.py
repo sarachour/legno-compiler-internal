@@ -33,11 +33,7 @@ def is_standard(scale_mode):
 
 def is_extended(scale_mode):
   i,o = scale_mode
-  #return i == enums.RangeType.MED and \
-  #  (o == enums.RangeType.MED or \
-  #   o == enums.RangeType.LOW)
-  return (i != enums.RangeType.LOW) and \
-          o != enums.RangeType.LOW
+  return True
 
 
 def scale_model(integ):

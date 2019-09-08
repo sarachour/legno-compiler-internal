@@ -51,6 +51,38 @@ class ExperimentTable:
       args = dict(zip(self._order,values))
       yield ExperimentEntry.from_db_row(self.db,args)
 
+  def get(self,subset,prog,lgraph,lscale,model,obj,dssim,hwenv):
+    cmd = '''
+    SELECT * WHERE subset="subset"
+    AND prog="prog"
+    AND lgraph="lgraph"
+    AND lscale=lscale
+    AND model="model"
+    AND obj="objective"
+    AND dssim="dssim"
+    AND hwenv="hwenv"
+    '''
+    conc_cmd = cmd.format(subset=subset,
+               prog=prog,
+               lgraph=lgraph,
+               lscale=lscale,
+               model=model,
+               obj=obj,
+               dssim=dssim,
+               hwenv=hwenv
+    )
+    for values in list(self.db.curs.execute(conc_cmd)):
+      assert(len(values) == len(self._order))
+      args = dict(zip(self._order,values))
+      return ExperimentEntry.from_db_row(self.db,args)
+
+    return None
+
+  def has(self,subset,prog,lgraph,lscale,model,obj,dssim,hwenv):
+    result = self.get(subset,prog,lgraph,lscale,model,obj,dssim,hwenv)
+    return not (result is None)
+
+
   def get_all(self):
     for entry in self._get_rows(""):
       yield entry

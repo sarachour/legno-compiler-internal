@@ -69,9 +69,6 @@ if args.subparser_name == "scan":
 
   db.close()
   db.open()
-  input("execute get")
-  for entry in db.experiment_tbl.get_all():
-    print(entry)
 
 elif args.subparser_name == "list":
   db = ExpDriverDB()
