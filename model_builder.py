@@ -70,7 +70,6 @@ def populate_default_models(board,db):
                           comp_mode='*', \
                           scale_mode='*',
                           handle=None)
-        print(model)
         db.put(model)
 
 def write_models(models):
