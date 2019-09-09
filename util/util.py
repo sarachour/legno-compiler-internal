@@ -20,16 +20,16 @@ class CalibrateObjective(Enum):
     FAST = "fast"
 
 class DeltaModel(Enum):
-    PHYSICAL = "physical"
-    PARTIAL = "partial"
-    IDEAL = "ideal"
+    DELTA_MINERR = "delta-min_error"
+    DELTA_MAXFIT = "delta-max_fit"
     NAIVE = "naive"
+    IDEAL = "ideal"
 
     def abbrev(self):
-        if DeltaModel.PHYSICAL == self:
-            return "x"
-        if DeltaModel.PARTIAL == self:
-            return "z"
+        if DeltaModel.DELTA_MINERR == self:
+            return "e"
+        if DeltaModel.DELTA_MAXFIT == self:
+            return "g"
         elif DeltaModel.NAIVE == self:
             return "n"
         elif DeltaModel.IDEAL == self:
@@ -37,10 +37,10 @@ class DeltaModel(Enum):
 
     @staticmethod
     def from_abbrev(x):
-      if x == "x":
-        return DeltaModel.PHYSICAL
-      elif x == "z":
-        return DeltaModel.PARTIAL
+      if x == "e":
+        return DeltaModel.DELTA_MINERR
+      elif x == "g":
+        return DeltaModel.DELTA_MAXFIT
       elif x == "n":
         return DeltaModel.NAIVE
       elif x == "i":
@@ -48,14 +48,18 @@ class DeltaModel(Enum):
       else:
         raise Exception("unknown abbrev")
 
+    def uses_uncertainty(self):
+        return False
+
     def uses_delta_model(self):
-        if self == DeltaModel.PHYSICAL or self == DeltaModel.PARTIAL:
+        if self == DeltaModel.DELTA_MINERR or \
+           self == DeltaModel.DELTA_MAXFIT:
             return True
         else:
             return False
 
     def calibrate_objective(self):
-        if self == DeltaModel.PHYSICAL or self == DeltaModel.PARTIAL:
+        if self == DeltaModel.DELTA_MAXFIT:
             return CalibrateObjective.MAX_FIT
         else:
             return CalibrateObjective.MIN_ERROR

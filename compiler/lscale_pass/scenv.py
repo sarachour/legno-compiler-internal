@@ -47,17 +47,8 @@ class LScaleEnvParams:
     self.only_scale_modes_with_models = False
 
 
-  def partial(self):
-    self.model = util.DeltaModel.PARTIAL
-    self.propagate_uncertainty = False
-    self.enable_quantize_constraint = True
-    self.enable_quality_constraint = True
-    self.enable_bandwidth_constraint = True
-    self.only_scale_modes_with_models = True
-
-
-  def physical(self):
-    self.model = util.DeltaModel.PHYSICAL
+  def delta(self,model):
+    self.model = model
     self.propagate_uncertainty = False
     self.enable_quantize_constraint = True
     self.enable_quality_constraint = True
@@ -74,16 +65,12 @@ class LScaleEnvParams:
 
 
   def set_model(self,model):
-    if model == util.DeltaModel.PHYSICAL:
-      self.physical()
-    elif model == util.DeltaModel.IDEAL:
+    if model == util.DeltaModel.IDEAL:
       self.ideal()
     elif model == util.DeltaModel.NAIVE:
       self.naive()
-    elif model == util.DeltaModel.PARTIAL:
-      self.partial()
     else:
-      raise Exception("unknown jenv model: <%s>" % model);
+      self.delta(model)
 
     self.calib_obj = self.model.calibrate_objective()
 

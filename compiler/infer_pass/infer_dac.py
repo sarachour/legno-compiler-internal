@@ -12,11 +12,13 @@ def build_config(meta):
 
   out = PortModel('tile_dac',loc,'out', \
                   comp_mode=comp_mode, \
-                  scale_mode=scale_mode)
+                  scale_mode=scale_mode,
+                  calib_obj=infer_util.CALIB_OBJ)
 
   inp = PortModel('tile_dac',loc,'in', \
                   comp_mode=comp_mode, \
-                  scale_mode=scale_mode)
+                  scale_mode=scale_mode,
+                  calib_obj=infer_util.CALIB_OBJ)
 
   return scale_mode,inp,out
 

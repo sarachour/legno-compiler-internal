@@ -22,17 +22,21 @@ def build_config(meta):
 
   out0 = PortModel('fanout',loc,'out0', \
                   comp_mode=comp_mode, \
-                  scale_mode=scale_mode)
+                  scale_mode=scale_mode,
+                  calib_obj=infer_util.CALIB_OBJ)
   out1 = PortModel('fanout',loc,'out1', \
                   comp_mode=comp_mode, \
-                  scale_mode=scale_mode)
+                  scale_mode=scale_mode,
+                  calib_obj=infer_util.CALIB_OBJ)
   out2 = PortModel('fanout',loc,'out2', \
                   comp_mode=comp_mode, \
-                  scale_mode=scale_mode)
+                  scale_mode=scale_mode,
+                  calib_obj=infer_util.CALIB_OBJ)
 
   inp = PortModel('fanout',loc,'in', \
                   comp_mode=comp_mode, \
-                  scale_mode=scale_mode)
+                  scale_mode=scale_mode, \
+                  calib_obj=infer_util.CALIB_OBJ)
 
   return max_uncs,inp,out0,out1,out2
 

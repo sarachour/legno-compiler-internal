@@ -15,26 +15,32 @@ def build_config(meta):
   )
   inp = PortModel('integrator',loc,'in', \
                   comp_mode=comp_mode, \
-                  scale_mode=scale_mode)
+                  scale_mode=scale_mode,
+                  calib_obj=infer_util.CALIB_OBJ)
   out = PortModel('integrator',loc,'out', \
                   comp_mode=comp_mode, \
-                  scale_mode=scale_mode)
+                  scale_mode=scale_mode,
+                  calib_obj=infer_util.CALIB_OBJ)
   out_z0 = PortModel('integrator',loc,'out', \
-                  comp_mode=comp_mode, \
-                  scale_mode=scale_mode, \
-                  handle=':z[0]')
+                     comp_mode=comp_mode, \
+                     scale_mode=scale_mode, \
+                     calib_obj=infer_util.CALIB_OBJ, \
+                     handle=':z[0]')
   out_zp = PortModel('integrator',loc,'out', \
-                  comp_mode=comp_mode, \
-                  scale_mode=scale_mode, \
-                  handle=':z\'')
+                     comp_mode=comp_mode, \
+                     scale_mode=scale_mode, \
+                     calib_obj=infer_util.CALIB_OBJ, \
+                     handle=':z\'')
   out_z = PortModel('integrator',loc,'out', \
-                  comp_mode=comp_mode, \
-                  scale_mode=scale_mode, \
-                  handle=':z')
+                    comp_mode=comp_mode, \
+                    scale_mode=scale_mode, \
+                    calib_obj=infer_util.CALIB_OBJ, \
+                    handle=':z')
 
   ic = PortModel('integrator',loc,'ic', \
                   comp_mode=comp_mode, \
-                  scale_mode=scale_mode)
+                  scale_mode=scale_mode,
+                 calib_obj=infer_util.CALIB_OBJ)
   return scale_mode,inp,ic,out,out_z,out_z0,out_zp
 
 

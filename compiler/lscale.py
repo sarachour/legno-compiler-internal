@@ -157,14 +157,10 @@ def scale(prog,adp,nslns, \
           max_freq_khz=None, \
           do_log=True):
     def gen_models(model):
-        if model == util.DeltaModel.PHYSICAL:
+        if model.uses_delta_model():
             return [
-                util.DeltaModel.PHYSICAL,
-                util.DeltaModel.PARTIAL
-            ]
-        elif model == util.DeltaModel.PARTIAL:
-            return [
-                util.DeltaModel.PARTIAL,
+                model,
+                util.DeltaModel.NAIVE
             ]
         else:
             return [model]

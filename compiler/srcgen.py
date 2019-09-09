@@ -211,7 +211,7 @@ def gen_use_fanout(circ,block,locstr,config,third=False):
                      inv0=inv0,
                      inv1=inv1,
                      inv2=inv2,
-                     third=third)
+                     third=ccmd_data.BoolType.from_bool(third))
 
 
 def is_same_tile(circ,loc1,loc2):

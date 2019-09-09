@@ -72,7 +72,7 @@ class PropIntervalVisitor(Visitor):
             or config.interval(port).unbounded()
 
   def input_port(self,block_name,loc,port):
-    print("visit inp %s[%s].%s" % (block_name,loc,port))
+    #print("visit inp %s[%s].%s" % (block_name,loc,port))
     Visitor.input_port(self,block_name,loc,port)
     adp = self.adp
     config = adp.config(block_name,loc)
@@ -92,10 +92,10 @@ class PropIntervalVisitor(Visitor):
       dest_ival = dest_ival.add(src_ival)
 
     config.set_interval(port,dest_ival)
-    print("ival in %s[%s].%s => %s" % (block_name,loc,port,dest_ival))
+    #print("ival in %s[%s].%s => %s" % (block_name,loc,port,dest_ival))
 
   def output_port(self,block_name,loc,port):
-    print("visit out %s[%s].%s" % (block_name,loc,port))
+    #print("visit out %s[%s].%s" % (block_name,loc,port))
     adp = self.adp
     block = adp.board.block(block_name)
     config = adp.config(block_name,loc)
