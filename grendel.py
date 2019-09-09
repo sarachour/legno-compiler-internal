@@ -12,6 +12,7 @@ from lab_bench.lib.command_handler import main_stdout,  \
     main_dump_db
 from lab_bench.lib.base_command import ArduinoCommand
 from lab_bench.lib.env import GrendelEnv
+import lab_bench.lib.gen_script as gen_script
 
 def add_args(parser):
     parser.add_argument("--native", action='store_true', \
@@ -41,6 +42,12 @@ import_subp.add_argument("filename", type=str, \
 export_subp = subparsers.add_parser('export', \
                                    help='export database')
 export_subp.add_argument("filename", type=str, \
+                       help="filename to export state objects to")
+
+
+genscript_subp = subparsers.add_parser('gen-script', \
+                                   help='generate a script for recalibrating all components in the grendel database.')
+genscript_subp.add_argument("filename", type=str, \
                        help="filename to export state objects to")
 
 
@@ -76,6 +83,14 @@ add_args(prof_subp)
 
 
 args = parser.parse_args()
+
+if args.subparser_name == "gen-script":
+    state = GrendelEnv(None,None, \
+                       ard_native=False, \
+                       calib_obj=util.CalibrateObjective.MIN_ERROR)
+    gen_script.generate(state.state_db,args.filename)
+    sys.exit(0)
+
 
 if args.subparser_name == "import":
     state = GrendelEnv(None,None, \
