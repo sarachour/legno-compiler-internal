@@ -9,7 +9,7 @@ import lab_bench.lib.chipcmd.data as chipcmd
 CALIB_OBJ = util.CalibrateObjective.MIN_ERROR
 
 def about_one(gain):
-    return gain >= 0.990 and gain <= 1.10
+    return gain >= 0.990 and gain <= 1.01
 
 def tightest_bounds(bnds):
     lb = min(map(lambda b: b[0] \

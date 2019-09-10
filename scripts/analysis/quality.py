@@ -163,10 +163,10 @@ def analyze(entry,recompute=False,no_reference=False):
     #  QUALITIES.append(output.quality)
 
     TREF,YREF = compute_ref(entry.program,entry.dssim,variable)
-    common.simple_plot(output,path_h,output.trial,'ref',TREF,YREF)
+    #common.simple_plot(output,path_h,output.trial,'ref',TREF,YREF)
 
     TPRED,YPRED = scale_ref_data(output,TREF,YREF)
-    common.simple_plot(output,path_h,output.trial,'pred',TPRED,YPRED)
+    #common.simple_plot(output,path_h,output.trial,'pred',TPRED,YPRED)
 
     fit(output,TPRED,YPRED,TMEAS,YMEAS)
     TFIT,YFIT = scale_obs_data(output,TMEAS,YMEAS)
@@ -175,7 +175,7 @@ def analyze(entry,recompute=False,no_reference=False):
       QUALITIES.append(-1)
       continue
 
-    common.simple_plot(output,path_h,output.trial,'rec',TFIT,YFIT)
+    #common.simple_plot(output,path_h,output.trial,'rec',TFIT,YFIT)
     common.compare_plot(output,path_h,output.trial,'comp',TREF,YREF,TFIT,YFIT)
     RESULT = compute_quality(output,TFIT,YFIT,TREF,YREF)
     if RESULT == -1:
@@ -183,7 +183,7 @@ def analyze(entry,recompute=False,no_reference=False):
       continue
 
     QUALITY,TERR,YERR = RESULT
-    common.simple_plot(output,path_h,output.trial,'err',TERR,YERR)
+    #common.simple_plot(output,path_h,output.trial,'err',TERR,YERR)
     output.quality = QUALITY
     QUALITIES.append(QUALITY)
 

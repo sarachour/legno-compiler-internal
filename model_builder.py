@@ -130,7 +130,7 @@ def infer(args,dump_db=True):
             write_models(models)
 
 def analyze(args):
-  circ = ConcCirc.read(None,args.circ_file)
+  circ = AnalogDeviceProg.read(None,args.circ_file)
   db = ModelDB(util.CalibrateObjective(args.calib_obj))
   infer_visualize.CALIB_OBJ = util.CalibrateObjective(args.calib_obj)
   blacklist = ['tile_in','tile_out', \
@@ -178,6 +178,8 @@ analyze_subp = subparsers.add_parser('analyze', \
                               help='return delta models for circuit')
 analyze_subp.add_argument('circ_file',
                     help='circ file to analyze')
+analyze_subp.add_argument('--calib-obj',type=str,
+                        help='calibration objective function to get datasets for')
 
 args = parser.parse_args()
 

@@ -327,7 +327,11 @@ def get_model(db,circ,block_name,loc,port,handle=None):
       return None
 
 def get_variance(db,circ,block_name,loc,port,mode,handle=None):
-  if mode.uses_delta_model():
+
+  if mode == util.DeltaModel.IDEAL:
+    return 1e-12
+
+  elif mode.uses_delta_model():
     #unc_min = 1e-6
     unc_min = 0.01
     model = get_model(db,circ,block_name,loc,port,handle=handle)
@@ -341,12 +345,8 @@ def get_variance(db,circ,block_name,loc,port,mode,handle=None):
 
     return physunc
 
-  if mode == util.DeltaModel.IDEAL:
-    return 1e-12
-  if mode == util.DeltaModel.NAIVE:
-    return 0.01
   else:
-    raise Exception("unknown mode <%s>" % mode)
+    return 0.01
 
 def get_oprange_scale(db,circ,block_name,loc,port,mode,handle=None):
   assert(isinstance(mode,util.DeltaModel))

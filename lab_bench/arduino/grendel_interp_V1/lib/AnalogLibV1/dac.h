@@ -17,6 +17,11 @@ typedef enum {
 	adc		= 3  /*signals from ADC are selected*/
 } dacSel;
 
+typedef struct {
+  float alpha;
+  float beta;
+  float rsq;
+} dac_model_t;
 
 void fast_calibrate_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac);
 
@@ -48,12 +53,14 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
     // fast measurement and make functions
     float fastMeasureValue(float& noise);
     float fastMakeValue(float value);
+    void fastMakeDacModel();
     void defaults();
 
     static float computeOutput(dac_code_t& codes);
     static float computeInput(dac_code_t& codes,float output);
     dac_code_t m_codes;
     dac_code_t calib_codes;
+    dac_model_t dac_model;
     bool calibrated;
 	private:
     //fast calibration utility
@@ -61,8 +68,8 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
     float calibrateMaxDeltaFit();
     float calibrateFast();
     //fast set source/measure utilities
-    float fastMakeHighValue(float value, float max_error);
     float fastMakeMedValue(float value, float max_error);
+    float fastMakeHighValue(float value, float max_error);
     float fastMeasureHighValue(float& noise);
     float fastMeasureMedValue(float& noise);
 

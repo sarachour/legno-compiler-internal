@@ -55,8 +55,8 @@ class LScaleEnvParams:
     self.enable_bandwidth_constraint = True
     self.only_scale_modes_with_models = True
 
-  def naive(self):
-    self.model = util.DeltaModel.NAIVE
+  def naive(self,model):
+    self.model = model
     self.propagate_uncertainty = False
     self.enable_quantize_constraint = True
     self.enable_quality_constraint = True
@@ -67,10 +67,10 @@ class LScaleEnvParams:
   def set_model(self,model):
     if model == util.DeltaModel.IDEAL:
       self.ideal()
-    elif model == util.DeltaModel.NAIVE:
-      self.naive()
-    else:
+    elif model.uses_delta_model():
       self.delta(model)
+    else:
+      self.naive(model)
 
     self.calib_obj = self.model.calibrate_objective()
 

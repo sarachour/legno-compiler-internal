@@ -67,8 +67,11 @@ def infer(obj):
 
   tcs = []
   for tc_err,tc_val in zip(tc_errors,tcs_vals):
+    print(" val=%f error=%f" % (tc_val,tc_err))
+    #tcs.append((tc_err+tc_val)/tc_val)
     tcs.append((tc_err+tc_val)/tc_val)
 
+  print(tcs)
   # update appropriate model
   mu,sigma = np.median(tcs),np.std(tcs)
   model_z.gain = mu;
@@ -76,17 +79,16 @@ def infer(obj):
   model_z.bias = np.mean(ol_bias);
   model_z.bias_uncertainty = np.std(ol_bias);
 
-  if infer_util.about_one(model_zp.gain):
-    model_z.gain = 1.0
-
   if infer_util.about_one(model_z0.gain):
     model_z0.gain = 1.0
 
-  model_zp.gain = model_z.gain/model_z0.gain
-  #print(model_z)
-  #print(model_zp)
-  #print(model_z0)
-  #input()
+  if infer_util.about_one(model_z.gain):
+    model_z.gain = 1.0
+
+
+  print(model_z)
+  print(model_zp)
+  print(model_z0)
   yield model_in
   yield model_ic
   yield model_out

@@ -160,7 +160,7 @@ def scale(prog,adp,nslns, \
         if model.uses_delta_model():
             return [
                 model,
-                util.DeltaModel.NAIVE
+                model.naive_model()
             ]
         else:
             return [model]
