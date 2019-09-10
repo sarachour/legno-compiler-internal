@@ -49,6 +49,9 @@ genscript_subp = subparsers.add_parser('gen-script', \
                                    help='generate a script for recalibrating all components in the grendel database.')
 genscript_subp.add_argument("filename", type=str, \
                        help="filename to export state objects to")
+genscript_subp.add_argument("--calib-obj", type=str, \
+                       help="what optimization function to use for calibration")
+
 
 
 dump_subp = subparsers.add_parser('dump', \
@@ -87,7 +90,7 @@ args = parser.parse_args()
 if args.subparser_name == "gen-script":
     state = GrendelEnv(None,None, \
                        ard_native=False, \
-                       calib_obj=util.CalibrateObjective.MIN_ERROR)
+                       calib_obj=util.CalibrateObjective(args.calib_obj))
     gen_script.generate(state.state_db,args.filename)
     sys.exit(0)
 
