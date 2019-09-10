@@ -51,15 +51,16 @@ def blocks_with_default_models():
           'ext_chip_in','ext_chip_out',
           'lut']
 
-def crossbars_populated(db):
+def crossbars_populated(db,calib_obj):
   default_blocks = blocks_with_default_models()
   for model in db.get_all():
-    if model.block in default_blocks:
+    if model.block in default_blocks and \
+       model.calib_obj == calib_obj:
       return True
 
   return False
 
-def populate_default_models(board,db):
+def populate_default_models(board,db,calib_obj):
   print("==== Populate Default Models ===")
 
   for blkname in blocks_with_default_models():
@@ -68,7 +69,8 @@ def populate_default_models(board,db):
       for port in block.inputs + block.outputs:
         model = PortModel(blkname,inst,port, \
                           comp_mode='*', \
-                          scale_mode='*',
+                          scale_mode='*', \
+                          calib_obj=calib_obj, \
                           handle=None)
         db.put(model)
 
@@ -96,13 +98,14 @@ def infer(args,dump_db=True):
 
   infer_util.CALIB_OBJ = util.CalibrateObjective(args.calib_obj)
 
-  db = ModelDB(util.CalibrateObjective(args.calib_obj))
+  calib_obj=util.CalibrateObjective(args.calib_obj)
+  db = ModelDB(calib_obj)
 
-  if not crossbars_populated(db):
+  if not crossbars_populated(db,infer_util.CALIB_OBJ):
     from hwlib.hcdc.hcdcv2_4 import make_board
     subset = HCDCSubset('unrestricted')
     hdacv2_board = make_board(subset,load_conns=False)
-    populate_default_models(hdacv2_board,db)
+    populate_default_models(hdacv2_board,db,calib_obj)
 
   if dump_db:
     cmd = "python3 grendel.py dump"
@@ -127,7 +130,7 @@ def infer(args,dump_db=True):
             write_models(models)
 
 def analyze(args):
-  circ = ConcCirc.read(None,args.circ_file)
+  circ = AnalogDeviceProg.read(None,args.circ_file)
   db = ModelDB(util.CalibrateObjective(args.calib_obj))
   infer_visualize.CALIB_OBJ = util.CalibrateObjective(args.calib_obj)
   blacklist = ['tile_in','tile_out', \
@@ -175,6 +178,8 @@ analyze_subp = subparsers.add_parser('analyze', \
                               help='return delta models for circuit')
 analyze_subp.add_argument('circ_file',
                     help='circ file to analyze')
+analyze_subp.add_argument('--calib-obj',type=str,
+                        help='calibration objective function to get datasets for')
 
 args = parser.parse_args()
 

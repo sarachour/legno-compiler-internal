@@ -5,6 +5,8 @@
 #include "slice.h"
 #include "dac.h"
 
+// this model for the high-mode dac.
+
 void fast_calibrate_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac){
   if(!aux_dac->calibrated){
     // do a naive calibration to make sure we have enough range.
@@ -18,14 +20,34 @@ void fast_calibrate_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac){
     //aux_dac->m_codes.gain_cal = 63;
     aux_dac->calibrated = true;
     aux_dac->calib_codes = aux_dac->m_codes;
+    aux_dac->fastMakeDacModel();
     aux_dac->m_codes = codes;
+
   }
   aux_dac->m_codes.pmos = aux_dac->calib_codes.pmos;
   aux_dac->m_codes.nmos = aux_dac->calib_codes.nmos;
   aux_dac->m_codes.gain_cal = aux_dac->calib_codes.gain_cal;
   aux_dac->update(aux_dac->m_codes);
 }
-
+void Fabric::Chip::Tile::Slice::Dac::fastMakeDacModel(){
+#define NPTS 5
+  float values[NPTS] = {-10,-5,0,5,10};
+  float codes[NPTS];
+  for(int i=0; i < NPTS; i += 1){
+    values[i] = this->fastMakeHighValue(values[i],0.2);
+    codes[i] = this->m_codes.const_code;
+    sprintf(FMTBUF," v=%f c=%f", values[i],codes[i]);
+    print_info(FMTBUF);
+  }
+  util::linear_regression(codes,values,NPTS,
+                          this->dac_model.alpha,
+                          this->dac_model.beta,
+                          this->dac_model.rsq);
+  sprintf(FMTBUF,"alpha=%f beta=%f rsq=%f", dac_model.alpha,
+          dac_model.beta,
+          dac_model.rsq);
+  print_info(FMTBUF);
+}
 float Fabric::Chip::Tile::Slice::Dac::fastMakeValue(float target){
   if(fabs(target) < 0.9){
     return fastMakeMedValue(target, 0.02);
@@ -353,63 +375,27 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
 
   const float max_meas_val = 0.8;
   const float max_ref_dist = 0.8;
-  const float max_meas = 1.2;
   //compute the floating point value from the dac code.
-  float dval_value = computeOutput(this->m_codes);
-  float dref_value;
-  float val_meas = 0.0;
-  bool update_ref = true;
-  float eps[2];
-
-  /*
-  sprintf(FMTBUF,"target=%f code=%d",dval_value,
-          this->m_codes.const_code);
-  print_info(FMTBUF);
-  */
-  //make an initial guess for the reference dac
   int distance = fabs(this->m_codes.const_code-128);
   if(this->m_codes.const_code < 128)
     ref_dac->m_codes.const_code = min(128 + distance,255);
   else
     ref_dac->m_codes.const_code = max(128 - distance,0);
 
-  // keep telescoping until we can measure the value
-  // telescope one more time if we haven't finished a measurement.
-  while(fabs(dval_value) > 0.0){
-    //telescope the value
-    //alternate between updating the reference.
-    float meas;
-    if(update_ref){
-      meas = find_ref_dac_code(ref_dac,
-                               ref_dac->m_codes.const_code,
-                               max_ref_dist);
-      eps[0] = meas;
-      dref_value = computeOutput(ref_dac->m_codes);
-    }
-    else{
-      dval_value = tune_dac_value(this,dval_value,max_meas,meas);
-      eps[1] = meas;
-      val_meas +=  eps[0]-eps[1];
-    }
-    /*
-    sprintf(FMTBUF, "%s val_dac=%f ref_dac=%f eps=%f val_meas=%f",
-            update_ref ? "R" : "D",
-            dval_value,
-            dref_value,
-            meas,
-            val_meas);
-    print_info(FMTBUF);
-    */
-    update_ref = !update_ref;
-  }
-  if(!update_ref){
-    error("expected update ref");
-  }
+  float meas = find_ref_dac_code(ref_dac,
+                                 ref_dac->m_codes.const_code,
+                                 max_ref_dist);
+
+  dac_model_t model = ref_dac->dac_model;
+  float ref = ref_dac->m_codes.const_code*model.alpha + model.beta;
+  float out = meas - ref;
+  sprintf(FMTBUF,"ref=%f meas=%f out=%f", ref,meas,out);
+  print_info(FMTBUF);
   ref_dac_to_tile.brkConn();
   this_dac_to_tile.brkConn();
   tile_to_chip.brkConn();
   cutil::restore_conns(calib);
   update(codes_dac);
   ref_dac->update(codes_ref);
-  return val_meas;
+  return out;
 }

@@ -8,7 +8,7 @@ import math
 
 class PortModel():
 
-  def __init__(self,block,loc,port,comp_mode,scale_mode,handle=None):
+  def __init__(self,block,loc,port,comp_mode,scale_mode,calib_obj,handle=None):
     self._port = port
     self._block = block
     self._loc = loc
@@ -22,6 +22,7 @@ class PortModel():
     self._opscale = (1.0,1.0)
     self._comp_mode = util.normalize_mode(comp_mode)
     self._scale_mode = util.normalize_mode(scale_mode)
+    self._calib_obj = calib_obj
 
   @staticmethod
   def from_json(obj):
@@ -29,6 +30,7 @@ class PortModel():
     m.__dict__ = obj
     m._comp_mode = util.normalize_mode(m._comp_mode)
     m._scale_mode = util.normalize_mode(m._scale_mode)
+    m._calib_obj = util.CalibrateObjective(m._calib_obj)
     return m
 
   def set_model(self,other):
@@ -66,11 +68,17 @@ class PortModel():
     return ident
 
   def to_json(self):
-    return self.__dict__
+    jsn = dict(self.__dict__)
+    jsn['_calib_obj'] = jsn['_calib_obj'].value
+    return jsn
 
   @property
   def comp_mode(self):
     return self._comp_mode
+
+  @property
+  def calib_obj(self):
+    return self._calib_obj
 
   @property
   def scale_mode(self):
@@ -143,13 +151,13 @@ class PortModel():
 class ModelDB:
 
   MISSING = []
-  def __init__(self,calib_mode=util.CalibrateObjective.MIN_ERROR):
+  def __init__(self,calib_obj=util.CalibrateObjective.MIN_ERROR):
     self._conn = sqlite3.connect(CFG.MODEL_DB)
     self._curs = self._conn.cursor()
-    self.calib_mode = calib_mode
+    self.calib_obj = calib_obj
     cmd = '''
     CREATE TABLE IF NOT EXISTS models (
-    calib_mode text NOT NULL,
+    calib_obj text NOT NULL,
     block text NOT NULL,
     loc text NOT NULL,
     port text NOT NULL,
@@ -157,12 +165,12 @@ class ModelDB:
     scale_mode text NOT NULL,
     handle text NOT NULL,
     model text NOT NULL,
-    PRIMARY KEY (calib_mode,block,loc,port,comp_mode,scale_mode,handle)
+    PRIMARY KEY (calib_obj,block,loc,port,comp_mode,scale_mode,handle)
     )
     '''
     self._curs.execute(cmd)
     self._conn.commit()
-    self.keys = ['calib_mode',
+    self.keys = ['calib_obj',
                  'block',
                  'loc',
                  'port',
@@ -196,13 +204,13 @@ class ModelDB:
     model = PortModel(block,loc,"",comp_mode,scale_mode,None)
     cmd = '''
     SELECT * from models WHERE
-    calib_mode = "{calib_mode}"
+    calib_obj = "{calib_obj}"
     AND block = "{block}"
     AND loc = "{loc}"
     AND comp_mode = "{comp_mode}"
     AND scale_mode = "{scale_mode}"
     '''.format(
-      calib_mode=self.calib_mode.value,
+      calib_obj=self.calib_obj.value,
       block=model.block,
       loc=str(model.loc),
       comp_mode=str(model.comp_mode),
@@ -215,14 +223,14 @@ class ModelDB:
 
   def _where_clause(self,block,loc,port,comp_mode,scale_mode,handle=None):
     cmd = '''
-    WHERE calib_mode="{calib_mode}"
+    WHERE calib_obj="{calib_obj}"
       AND block="{block}"
       AND loc="{loc}"
       AND port="{port}"
       AND comp_mode="{comp_mode}"
       AND scale_mode="{scale_mode}"
       AND handle="{handle}"
-    '''.format(calib_mode=self.calib_mode.value, \
+    '''.format(calib_obj=self.calib_obj.value, \
                block=block, \
                loc=str(loc), \
                port=str(port), \
@@ -272,11 +280,11 @@ class ModelDB:
   def put(self,model):
     model_bits = bytes(json.dumps(model.to_json()),'utf-8').hex()
     cmd =  '''
-    INSERT INTO models (calib_mode,block,loc,port,comp_mode,scale_mode,handle,model)
-    VALUES ("{calib_mode}","{block}","{loc}","{port}","{comp_mode}",
+    INSERT INTO models (calib_obj,block,loc,port,comp_mode,scale_mode,handle,model)
+    VALUES ("{calib_obj}","{block}","{loc}","{port}","{comp_mode}",
             "{scale_mode}","{handle}","{model}");
     '''.format(
-      calib_mode=self.calib_mode.value,
+      calib_obj=self.calib_obj.value,
       block=model.block,
       loc=str(model.loc),
       port=str(model.port),
@@ -319,11 +327,15 @@ def get_model(db,circ,block_name,loc,port,handle=None):
       return None
 
 def get_variance(db,circ,block_name,loc,port,mode,handle=None):
-  if mode.uses_delta_model():
+
+  if mode == util.DeltaModel.IDEAL:
+    return 1e-12
+
+  elif mode.uses_delta_model():
     #unc_min = 1e-6
     unc_min = 0.01
     model = get_model(db,circ,block_name,loc,port,handle=handle)
-    if model is None or mode == util.DeltaModel.PARTIAL:
+    if model is None or not mode.uses_uncertainty():
       return unc_min
 
     unc = math.sqrt(model.noise + model.bias_uncertainty**2.0)
@@ -333,12 +345,8 @@ def get_variance(db,circ,block_name,loc,port,mode,handle=None):
 
     return physunc
 
-  if mode == util.DeltaModel.IDEAL:
-    return 1e-12
-  if mode == util.DeltaModel.NAIVE:
-    return 0.01
   else:
-    raise Exception("unknown mode <%s>" % mode)
+    return 0.01
 
 def get_oprange_scale(db,circ,block_name,loc,port,mode,handle=None):
   assert(isinstance(mode,util.DeltaModel))

@@ -170,6 +170,7 @@ class ProfileCmd(Command):
     def execute_one_input(self,env,bootstrap=True):
         if self._blk == enums.BlockType.INTEG:
             if bootstrap:
+                '''
                 for i in range(0,8):
                     if not self.get_output(env,[],mode=2):
                         return
@@ -181,10 +182,11 @@ class ProfileCmd(Command):
                 for i in range(0,8):
                     if not self.get_output(env,[],mode=3):
                         return
-
+                '''
                 for x0 in [0,1,-1]:
                     if not self.get_output(env,[x0],mode=0):
                         return
+                input()
 
             for i in range(0,self._n):
                 x0 = sample_reverse_normal()

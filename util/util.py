@@ -20,42 +20,58 @@ class CalibrateObjective(Enum):
     FAST = "fast"
 
 class DeltaModel(Enum):
-    PHYSICAL = "physical"
-    PARTIAL = "partial"
+    DELTA_MINERR = "delta-min_error"
+    DELTA_MAXFIT = "delta-max_fit"
+    NAIVE_MINERR = "naive-min_error"
+    NAIVE_MAXFIT = "naive-max_fit"
     IDEAL = "ideal"
-    NAIVE = "naive"
 
     def abbrev(self):
-        if DeltaModel.PHYSICAL == self:
-            return "x"
-        if DeltaModel.PARTIAL == self:
-            return "z"
-        elif DeltaModel.NAIVE == self:
-            return "n"
+        if DeltaModel.DELTA_MINERR == self:
+            return "de"
+        if DeltaModel.DELTA_MAXFIT == self:
+            return "dg"
+        elif DeltaModel.NAIVE_MINERR == self:
+            return "ne"
+        elif DeltaModel.NAIVE_MAXFIT == self:
+            return "ng"
         elif DeltaModel.IDEAL == self:
             return "i"
 
     @staticmethod
     def from_abbrev(x):
-      if x == "x":
-        return DeltaModel.PHYSICAL
-      elif x == "z":
-        return DeltaModel.PARTIAL
-      elif x == "n":
-        return DeltaModel.NAIVE
+      if x == "de":
+        return DeltaModel.DELTA_MINERR
+      elif x == "dg":
+        return DeltaModel.DELTA_MAXFIT
+      elif x == "ne":
+        return DeltaModel.NAIVE_MINERR
+      elif x == "ng":
+        return DeltaModel.NAIVE_MAXFIT
       elif x == "i":
         return DeltaModel.IDEAL
       else:
         raise Exception("unknown abbrev")
 
+    def uses_uncertainty(self):
+        return False
+
+    def naive_model(self):
+        if self == DeltaModel.DELTA_MINERR:
+            return DeltaModel.NAIVE_MINERR
+        elif self == DeltaModel.DELTA_MAXFIT:
+            return DeltaModel.NAIVE_MAXFIT
+
     def uses_delta_model(self):
-        if self == DeltaModel.PHYSICAL or self == DeltaModel.PARTIAL:
+        if self == DeltaModel.DELTA_MINERR or \
+           self == DeltaModel.DELTA_MAXFIT:
             return True
         else:
             return False
 
     def calibrate_objective(self):
-        if self == DeltaModel.PHYSICAL or self == DeltaModel.PARTIAL:
+        if self == DeltaModel.DELTA_MAXFIT or \
+           self == DeltaModel.NAIVE_MAXFIT:
             return CalibrateObjective.MAX_FIT
         else:
             return CalibrateObjective.MIN_ERROR

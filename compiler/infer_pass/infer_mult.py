@@ -24,17 +24,21 @@ def build_config(meta):
 
   out = PortModel('multiplier',loc,'out', \
                   comp_mode=comp_mode, \
-                  scale_mode=scale_mode)
+                  scale_mode=scale_mode,
+                  calib_obj=infer_util.CALIB_OBJ)
 
   in0 = PortModel('multiplier',loc,'in0', \
                   comp_mode=comp_mode, \
-                  scale_mode=scale_mode)
+                  scale_mode=scale_mode,
+                  calib_obj=infer_util.CALIB_OBJ)
   in1 = PortModel('multiplier',loc,'in1',
                   comp_mode=comp_mode, \
-                  scale_mode=scale_mode)
+                  scale_mode=scale_mode,
+                  calib_obj=infer_util.CALIB_OBJ)
   coeff = PortModel('multiplier',loc,'coeff', \
                     comp_mode=comp_mode, \
-                    scale_mode=scale_mode)
+                    scale_mode=scale_mode,
+                    calib_obj=infer_util.CALIB_OBJ)
   return scale_mode,max_unc,out,in0,in1,coeff
 
 
