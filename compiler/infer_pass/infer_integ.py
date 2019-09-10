@@ -36,7 +36,6 @@ def build_config(meta):
                     scale_mode=scale_mode, \
                     calib_obj=infer_util.CALIB_OBJ, \
                     handle=':z')
-
   ic = PortModel('integrator',loc,'ic', \
                   comp_mode=comp_mode, \
                   scale_mode=scale_mode,

@@ -389,8 +389,8 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
   dac_model_t model = ref_dac->dac_model;
   float ref = ref_dac->m_codes.const_code*model.alpha + model.beta;
   float out = meas - ref;
-  sprintf(FMTBUF,"ref=%f meas=%f out=%f", ref,meas,out);
-  print_info(FMTBUF);
+  //sprintf(FMTBUF,"ref=%f meas=%f out=%f", ref,meas,out);
+  //print_info(FMTBUF);
   ref_dac_to_tile.brkConn();
   this_dac_to_tile.brkConn();
   tile_to_chip.brkConn();

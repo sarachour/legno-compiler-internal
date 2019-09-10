@@ -26,19 +26,23 @@ inline float to_diff_voltage(int pos, int neg){
   */
   return scaled_value;
 }
-int measure_seq(int ardAnaDiffChan,float* times, float* values, int& n){
+int measure_seq(Fabric* fab,
+                int ardAnaDiffChan,float* times, float* values, int& n){
   unsigned long codes[SAMPLES];
   unsigned int pos[SAMPLES];
   unsigned int neg[SAMPLES];
   const unsigned int samples = SAMPLES;
   unsigned int pinmap[] = {7,6,5,4,3,2,1,0};
+  fab->cfgCommit();
+  fab->execStart();
   for(unsigned int index = 0; index < SAMPLES; index++){
     pos[index] = analogRead(pinmap[ardAnaDiffChan+1]);
     neg[index] = analogRead(pinmap[ardAnaDiffChan]);
     codes[index] = micros();
   }
+  fab->execStop();
   unsigned int base_time = codes[0];
-  const float thresh = 2.6;
+  const float thresh = 1.0;
   assert(n <= SAMPLES);
   int oob_idx = n;
   for(unsigned int index = 0; index < n; index++){
@@ -106,7 +110,7 @@ int Fabric::Chip::Tile::Slice::ChipOutput::analogSeq(
                                                         ) const {
 
 
-  return measure_seq(ardAnaDiffChan,times,values,n);
+  return measure_seq(this->getFabric(),ardAnaDiffChan,times,values,n);
 }
 void Fabric::Chip::Tile::Slice::ChipOutput::analogDist (
                                                         float& mean,

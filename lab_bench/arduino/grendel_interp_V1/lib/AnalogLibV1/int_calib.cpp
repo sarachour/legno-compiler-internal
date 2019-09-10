@@ -142,6 +142,23 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t 
   ref_dac->update(backup_codes_dac);
   this->update(backup_codes_integ);
 }
+time_constant_stats estimate_expo_time_constant(int n,
+                                           float * nom_times,float * nom_vals){
+  time_constant_stats stats;
+  for(int i=0; i < n; i += 1){
+    float log_val = log(nom_vals[i]);
+    nom_vals[i] = log_val;
+  }
+  float nom_alpha,nom_beta,nom_Rsq;
+
+  util::linear_regression(nom_times,nom_vals,n,
+                          nom_alpha,nom_beta,nom_Rsq);
+  sprintf(FMTBUF,"  nominal alpha=%f beta=%f R2=%f",
+          nom_alpha,nom_beta,nom_Rsq);
+  print_info(FMTBUF);
+  return stats;
+
+}
 /*
 this function performs linear regressions on the two datasets to estimate
 the time constant. A known input k_value is applied to the integrator, which has an unknown
@@ -165,14 +182,15 @@ time_constant_stats estimate_time_constant(float k_value,
   stats.eps = nom_alpha/stats.tc;
   stats.R2_eps = nom_Rsq;
   stats.R2_k = k_Rsq;
-  /*
-    sprintf(FMTBUF,"  nominal alpha=%f beta=%f R2=%f",
-    nom_alpha,nom_beta,nom_Rsq);
-    print_info(FMTBUF);
-    sprintf(FMTBUF,"  const alpha=%f beta=%f R2=%f",
-    k_alpha,k_beta,k_Rsq);
-    print_info(FMTBUF);
-  */
+  sprintf(FMTBUF,"  input-rate=%f",
+          k_value);
+  print_info(FMTBUF);
+  sprintf(FMTBUF,"  nominal alpha=%f beta=%f R2=%f",
+          nom_alpha,nom_beta,nom_Rsq);
+  print_info(FMTBUF);
+  sprintf(FMTBUF,"  const alpha=%f beta=%f R2=%f",
+          k_alpha,k_beta,k_Rsq);
+  print_info(FMTBUF);
   return stats;
 }
 

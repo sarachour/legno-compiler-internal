@@ -33,7 +33,8 @@ time_constant_stats estimate_time_constant(
                                            int n,
                                            float * nom_times,float * nom_vals,
                                            float * k_times, float * k_vals);
-
+time_constant_stats estimate_expo_time_constant(int n,
+                                                float * nom_times,float * nom_vals);
 class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::FunctionUnit {
 	friend Slice;
 

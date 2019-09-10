@@ -22,6 +22,7 @@ extern size_t dynamic_memory;
 
 extern char FMTBUF[64];
 
+#define NOMINAL_TIME_CONSTANT 126000.0
 template <typename type>
 void tally_dyn_mem(
 	const char * name

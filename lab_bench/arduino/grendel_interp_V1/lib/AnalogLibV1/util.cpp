@@ -165,10 +165,8 @@ namespace util {
     Fabric* fab = fu->getFabric();
     fu->updateFu();
     fab->cfgCommit();
-    fab->execStart();
     int n = fu->getChip()->tiles[3].slices[2].chipOutput
       ->analogSeq(times,values,samples);
-    fab->execStop();
     for(int i=0; i < n; i += 1){
       sprintf(FMTBUF," t=%f v=%f", times[i], values[i]);
       print_info(FMTBUF);

@@ -68,6 +68,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureClosedLoopCircuit(){
   float in1 = 0.0;
   int mode = 1;
   util::meas_steady_chip_out(this,mean,variance);
+
   profile_t result = prof::make_profile(out0Id,
                                         mode,
                                         target,
@@ -102,24 +103,25 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(open_loo
   cutil::buffer_chipout_conns(calib,parentSlice->parentTile
                               ->parentChip->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
-
+  float target_tc = Fabric::Chip::Tile::Slice
+    ::Integrator::computeTimeConstant(this->m_codes);
   // configure value DAC
   float dummy;
-  val_dac->setEnable(true);
-  val_dac->setRange(RANGE_MED);
-  val_dac->setInv(false);
-  val_dac->setConstantCode(135);
-  val_dac->update(val_dac->m_codes);
-  float input = val_dac->fastMeasureValue(dummy);
-  sprintf(FMTBUF,"open-loop input=%f",input);
+
+  float input = 0.0;
+  if(target_tc > 1.5*NOMINAL_TIME_CONSTANT){
+    input = val_dac->fastMakeValue(0.02);
+  }
+  else {
+    input = val_dac->fastMakeValue(0.05);
+  }
+  float expected = val_dac->computeOutput(val_dac->m_codes);
+  sprintf(FMTBUF,"open-loop input=%f expected=%f",input,expected);
   print_info(FMTBUF);
 
   // set the initial condition of the system
   this->setInitial(0.0);
-  float target_tc = Fabric::Chip::Tile::Slice
-    ::Integrator::computeTimeConstant(this->m_codes);
-
-  // build open loop circuit
+ // build open loop circuit
   Connection conn_out_to_tile = Connection (this->out0,parentSlice->tileOuts[3].in0);
   Connection conn_dac_to_in = Connection (val_dac->out0, this->in0);
   Connection tileout_to_chipout = Connection (parentSlice->tileOuts[3].out0,

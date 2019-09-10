@@ -22,7 +22,7 @@ float Fabric::Chip::Tile::Slice::Integrator::computeOutput(integ_code_t& m_codes
 float Fabric::Chip::Tile::Slice::Integrator::computeTimeConstant(integ_code_t& m_codes){
   float rng = util::range_to_coeff(m_codes.range[out0Id])
     /util::range_to_coeff(m_codes.range[in0Id]);
-  const float TIME_CONSTANT = 126000.0;
+  const float TIME_CONSTANT = NOMINAL_TIME_CONSTANT;
   return TIME_CONSTANT*rng;
 }
 
