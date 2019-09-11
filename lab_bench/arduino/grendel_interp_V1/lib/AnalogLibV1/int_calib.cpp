@@ -45,6 +45,20 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateHelper(Dac* ref_dac,
   }
 }
 
+float Fabric::Chip::Tile::Slice::Integrator::getInitCondLoss(Fabric::Chip::Tile::Slice::Dac * ref_dac, calib_objective_t obj){
+  float loss = 0.0;
+  switch(obj){
+  case CALIB_MINIMIZE_ERROR:
+    loss = calibrateInitCondMinError(ref_dac);
+    break;
+  case CALIB_MAXIMIZE_DELTA_FIT:
+    loss = calibrateInitCondMaxDeltaFit(ref_dac);
+    break;
+  default:
+    error("unimplemented");
+  }
+  return loss;
+}
 float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMinError(Fabric::Chip::Tile::Slice::Dac * ref_dac){
   float observed[TOTAL_NPTS];
   float expected[TOTAL_NPTS];
@@ -78,7 +92,7 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * 
   float gain_mean, gain_variance;
   util::distribution(gains,m,gain_mean,gain_variance);
   return cutil::compute_loss(bias,gain_mean,gain_variance,
-                             this->m_codes.range[out0Id]);
+                             this->m_codes.range[out0Id],0.3);
 }
 
 void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t obj,
@@ -111,21 +125,11 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t 
     this->m_codes.port_cal[in0Id] = closed_loop_calib_table[nmos].state[0];
     this->m_codes.port_cal[out0Id] = closed_loop_calib_table[nmos].state[1];
     this->m_codes.nmos = nmos;
-    for(int gain_cal=0; gain_cal < MAX_GAIN_CAL; gain_cal += 1){
+    for(int gain_cal=0; gain_cal < MAX_GAIN_CAL; gain_cal += 16){
       this->m_codes.gain_cal = gain_cal;
       update(this->m_codes);
       //TODO
-      float loss = 0.0;
-      switch(obj){
-      case CALIB_MINIMIZE_ERROR:
-        loss = calibrateInitCondMinError(ref_dac);
-        break;
-      case CALIB_MAXIMIZE_DELTA_FIT:
-        loss = calibrateInitCondMaxDeltaFit(ref_dac);
-        break;
-      default:
-        error("unimplemented");
-      }
+      float loss = this->getInitCondLoss(ref_dac,obj);
       sprintf(FMTBUF,"nmos=%d gain_cal=%d loss=%f",nmos,gain_cal,loss);
       print_info(FMTBUF);
       cutil::update_calib_table(calib_table[nmos],loss,1,gain_cal);
@@ -436,12 +440,39 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrate(calib_objective_t obj){
   this->calibrateInitCond(obj,val_dac,ol_calib_table,cl_calib_table);
   // gain cal does not control time constant, but it does change it
   //this->calibrateOpenLoopCircuit(obj,val_dac,ol_calib_table,cl_calib_table);
-  float losss[MAX_NMOS];
+  float loss[MAX_NMOS];
   for(int i=0; i < MAX_NMOS; i += 1){
-    losss[i] = cl_calib_table[i].loss + ol_calib_table[i].loss;
+    loss[i] = cl_calib_table[i].loss + ol_calib_table[i].loss;
   }
+  int best_nmos = util::find_minimum(loss,MAX_NMOS);
 
-  int best_nmos = util::find_minimum(losss,MAX_NMOS);
+  this->m_codes.nmos = best_nmos;
+  this->m_codes.port_cal[in0Id] = cl_calib_table[best_nmos].state[0];
+  this->m_codes.port_cal[out0Id] = cl_calib_table[best_nmos].state[1];
+
+  /* carefully search through gain-cal codes.*/
+  // set the relevant connections
+  Connection ref_to_tile = Connection ( val_dac->out0,
+                                        parentSlice->tileOuts[3].in0 );
+	Connection integ_to_tile= Connection ( out0,
+                                         parentSlice->tileOuts[3].in0 );
+  Connection tileout_to_chipout = Connection (parentSlice->tileOuts[3].out0,
+                                              parentSlice->parentTile->parentChip
+                                              ->tiles[3].slices[2].chipOutput->in0);
+  // set configuration
+  integ_to_tile.setConn();
+  ref_to_tile.setConn();
+  tileout_to_chipout.setConn();
+
+  for(int gain_cal=0; gain_cal < MAX_GAIN_CAL; gain_cal+=1){
+    this->m_codes.gain_cal = gain_cal;
+    update(this->m_codes);
+    float loss = this->getInitCondLoss(val_dac,obj);
+    sprintf(FMTBUF,"nmos=%d gain_cal=%d loss=%f",this->m_codes.nmos,
+            gain_cal,loss);
+    print_info(FMTBUF);
+    cutil::update_calib_table(ol_calib_table[best_nmos],loss,1,gain_cal);
+  }
   int best_gain_cal = ol_calib_table[best_nmos].state[0];
   int best_port_cal_in0 = cl_calib_table[best_nmos].state[0];
   int best_port_cal_out0 = cl_calib_table[best_nmos].state[1];
@@ -449,6 +480,10 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrate(calib_objective_t obj){
           best_nmos,best_gain_cal,best_port_cal_in0,best_port_cal_out0);
   print_info(FMTBUF);
 
+  // set configuration
+  integ_to_tile.brkConn();
+  ref_to_tile.brkConn();
+  tileout_to_chipout.brkConn();
   val_dac->update(codes_val_dac);
   fan->update(codes_fanout);
   cutil::restore_conns(calib);

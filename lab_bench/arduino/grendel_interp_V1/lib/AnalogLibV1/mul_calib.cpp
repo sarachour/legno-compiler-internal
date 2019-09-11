@@ -179,7 +179,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
                      gain_mean,
                      gain_variance);
   return cutil::compute_loss(bias,gain_mean,gain_variance,
-                             this->m_codes.range[out0Id]);
+                             this->m_codes.range[out0Id], 0.1);
 }
 float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_dac,
                                                                   Dac * ref_dac){
@@ -207,7 +207,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
                      gain_mean,
                      gain_variance);
   return cutil::compute_loss(bias,gain_mean,gain_variance,
-                             this->m_codes.range[out0Id]);
+                             this->m_codes.range[out0Id],0.1);
 }
 float Fabric::Chip::Tile::Slice::Multiplier::calibrateMinErrorVga(Dac * val_dac,
                                                                   Dac * ref_dac){

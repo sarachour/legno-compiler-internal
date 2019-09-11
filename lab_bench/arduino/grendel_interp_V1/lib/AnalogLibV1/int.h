@@ -82,6 +82,7 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
                            cutil::calib_table_t (&closedloop_calib_table)[MAX_NMOS]
                            );
 
+  float getInitCondLoss(Dac * val_dac,calib_objective_t obj);
     float calibrateInitCondMinError(Dac * val_dac);
     float calibrateInitCondMaxDeltaFit(Dac * val_dac);
     void calibrateOpenLoopCircuit(calib_objective_t obj,
