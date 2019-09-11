@@ -75,15 +75,10 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * 
       m += 1;
     }
   }
-  float avg_gain, gain_variance;
-  util::distribution(gains,m,avg_gain,gain_variance);
-  float loss = max(sqrt(gain_variance),fabs(bias))/avg_gain;
-  sprintf(FMTBUF," gain=N(%f,%f) bias=%f loss=%f",
-          avg_gain,
-          sqrt(gain_variance),
-          bias,loss);
-  print_info(FMTBUF);
-  return loss;
+  float gain_mean, gain_variance;
+  util::distribution(gains,m,gain_mean,gain_variance);
+  return cutil::compute_loss(bias,gain_mean,gain_variance,
+                             this->m_codes.range[out0Id]);
 }
 
 void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t obj,

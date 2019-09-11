@@ -47,11 +47,11 @@ def infer(obj):
   scm,max_unc,model_out,model_in0,model_in1,model_coeff = result
   bnds = infer_fit.build_model(model_out,obj['dataset'],0,max_unc)
   cm = model_out.comp_mode
+  print("[WARN] EMPIRICALLY, WE OBSERVE MULTIPLIER SCALED DOWN BY 0.87")
+  model_out.gain *= 0.87
   if cm == 'vga':
     sci,sco = scm
     scale = sco.coeff()/sci.coeff()
-    print("[WARN] EMPIRICALLY, WE OBSERVE MULTIPLIER SCALED DOWN BY 0.87")
-    model_out.gain *= 0.87
     model_in0.bias_uncertainty = model_out.bias_uncertainty/scale
     bnd = infer_util.normalize_bound(bnds['in0'],scm[0])
     model_in0.set_oprange_scale(*bnd)

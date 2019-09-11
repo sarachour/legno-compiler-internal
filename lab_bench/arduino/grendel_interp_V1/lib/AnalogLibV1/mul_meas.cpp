@@ -5,14 +5,19 @@
 #include <float.h>
 
 profile_t Fabric::Chip::Tile::Slice::Multiplier::measure(int mode,float in0val,float in1val) {
-  if(this->m_codes.vga){
-    return measureVga(in0val,in1val);
+  if(mode == 0){
+    if(this->m_codes.vga){
+      return measureVga(in0val,in1val);
+    }
+    else{
+      return measureMult(in0val,in1val);
+    }
   }
-  else{
-    return measureMult(in0val,in1val);
+  else {
+    error("unknown mode");
   }
-
 }
+
 profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float normalized_in0val,float gain) {
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   Dac * ref_dac = parentSlice->parentTile->slices[next_slice].dac;

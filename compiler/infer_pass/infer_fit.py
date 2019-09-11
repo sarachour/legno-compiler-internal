@@ -226,7 +226,7 @@ def infer_model(model,in0,in1,out,bias,noise, \
   cnt =0
   max_prune = 0
   while True:
-    fit_affine_model(model,dataset)
+    fit_linear_model(model,dataset)
     model.noise = math.sqrt(np.mean(dataset.noise))
     if cnt < max_prune and dataset.n >= required_points:
       split_model(model, \

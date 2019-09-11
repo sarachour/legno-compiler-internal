@@ -32,6 +32,7 @@ class Fabric::Chip::Tile::Slice {
 
     void defaults();
 		Tile * const parentTile;
+    const slice sliceId;
 	private:
 		Slice (
 			Tile * parentTile,
@@ -39,7 +40,6 @@ class Fabric::Chip::Tile::Slice {
 			unsigned char ardAnaDiffChan
 		);
 		~Slice ();
-		const slice sliceId;
 		/*ANALOG INPUT PINS*/
 		const unsigned char ardAnaDiffChan; /*ANALOG OUTAna*/
 };

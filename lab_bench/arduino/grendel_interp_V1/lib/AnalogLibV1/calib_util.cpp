@@ -38,6 +38,19 @@ namespace cutil {
     va_end(valist);
   }
 
+  float compute_loss(float bias, float gain_mean, float gain_variance, range_t range){
+    float gain_std = sqrt(gain_variance);
+    float mag = util::range_to_coeff(range);
+    float error = max(fabs(bias), gain_std*mag);
+    float pct_error = error/mag;
+    float pct_deviate = fabs(gain_mean-1.0)/1.0;
+    float loss = pct_error*pct_deviate;
+    sprintf(FMTBUF,"gain=N(%f,%f) bias=%f mag=%f",gain_mean,gain_std,bias,mag);
+    print_info(FMTBUF);
+    sprintf(FMTBUF,"pct-error=%f pct-deviate=%f loss=%f",pct_error,pct_deviate,loss);
+    print_info(FMTBUF);
+    return loss;
+  }
 
   /*
     measures the initial or steady state of a signal, adjusting the

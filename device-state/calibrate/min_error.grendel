@@ -12,12 +12,3 @@ use_mult 0 3 0 0 val 0.0 rng m m
 use_mult 0 3 0 0 val 0.0 rng h h
 use_mult 0 3 0 0 val 0.0 rng h m
 use_mult 0 3 0 0 val 0.0 rng m h
-use_dac 0 3 0 src mem sgn + val 0.0 rng m
-use_dac 0 3 0 src mem sgn + val 0.0 rng h
-use_mult 0 3 0 0 rng m m m
-use_mult 0 3 0 0 rng h h h
-use_mult 0 3 0 0 rng h m h
-use_mult 0 3 0 0 rng h m m
-use_mult 0 3 0 0 rng m h h
-use_mult 0 3 0 0 rng m h m
-use_mult 0 3 0 0 rng m m h
