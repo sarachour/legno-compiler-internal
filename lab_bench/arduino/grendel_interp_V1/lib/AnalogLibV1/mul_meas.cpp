@@ -4,7 +4,7 @@
 #include "profile.h"
 #include <float.h>
 
-profile_t Fabric::Chip::Tile::Slice::Multiplier::measure(float in0val,float in1val) {
+profile_t Fabric::Chip::Tile::Slice::Multiplier::measure(int mode,float in0val,float in1val) {
   if(this->m_codes.vga){
     return measureVga(in0val,in1val);
   }
@@ -13,7 +13,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure(float in0val,float in1v
   }
 
 }
-profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float in0val,float gain) {
+profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float normalized_in0val,float gain) {
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   Dac * ref_dac = parentSlice->parentTile->slices[next_slice].dac;
   Dac * val1_dac = parentSlice->dac;
@@ -26,6 +26,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float in0val,float g
   dac_code_t codes_ref = ref_dac->m_codes;
 
   setGain(gain);
+  float target_gain = (this->m_codes.gain_code-128.0)/128.0;
   // backup connections
   cutil::buffer_mult_conns(calib,this);
   cutil::buffer_dac_conns(calib,ref_dac);
@@ -44,13 +45,10 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float in0val,float g
   Connection ref_to_tileout = Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0 );
 
 
-  float dummy;
-  val1_dac->setConstant(in0val);
-  fast_calibrate_dac(val1_dac);
-  float target_in0 = val1_dac->fastMeasureValue(dummy);
-
+  float in0val = util::range_to_coeff(this->m_codes.range[in0Id])*(normalized_in0val);
+  float target_in0 = val1_dac->fastMakeValue(in0val);
   float target_vga = computeOutput(this->m_codes,
-                                   Dac::computeInput(val1_dac->m_codes,target_in0),
+                                   target_in0,
                                    0.0);
   if(fabs(target_vga) > 10.0){
     sprintf(FMTBUF, "can't fit %f", target_vga);
@@ -60,17 +58,19 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float in0val,float g
   dac_to_in0.setConn();
   mult_to_tileout.setConn();
   tileout_to_chipout.setConn();
-  ref_to_tileout.setConn();
+  //ref_to_tileout.setConn();
 
   float mean,variance;
   bool meas_steady = false;
+  util::meas_dist_chip_out(this,mean,variance);
+  /*
   calib.success &= cutil::measure_signal_robust(this,
                                                 ref_dac,
                                                 target_vga,
                                                 meas_steady,
                                                 mean,
                                                 variance);
-
+  */
   float bias = (mean-target_vga);
   sprintf(FMTBUF,"PARS target=%f meas=%f",
           target_vga,mean);
@@ -80,7 +80,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float in0val,float g
                                       mode,
                                       target_vga,
                                       target_in0,
-                                      gain,
+                                      target_gain,
                                       bias,
                                       variance);
   if(!calib.success){
@@ -99,7 +99,8 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float in0val,float g
 }
 
 
-profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(float in0val, float in1val) {
+profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(float normalized_in0val,
+                                                             float normalized_in1val) {
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   int next2_slice = (slice_to_int(parentSlice->sliceId) + 2) % 4;
   Dac * val2_dac = parentSlice->parentTile->slices[next_slice].dac;
@@ -140,22 +141,17 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(float in0val, float
   ref_to_tileout.setConn();
 
 
-  float dummy;
-  val1_dac->setConstant(in0val);
-  val2_dac->setConstant(in1val);
-  float target_in0 = val1_dac->fastMeasureValue(dummy);
-  float target_in1 = val2_dac->fastMeasureValue(dummy);
-  float target_mult = computeOutput(m_codes,
-                                 Dac::computeInput(val1_dac->m_codes,target_in0),
-                                 Dac::computeInput(val2_dac->m_codes,target_in1)
-                                 );
-
+  float in0val = util::range_to_coeff(this->m_codes.range[in0Id])*(normalized_in0val);
+  float in1val = util::range_to_coeff(this->m_codes.range[in1Id])*(normalized_in1val);
+  float target_in0 = val1_dac->fastMakeValue(in0val);
+  float target_in1 = val2_dac->fastMakeValue(in1val);
+  float target_mult = computeOutput(m_codes,target_in0,target_in1);
   if(fabs(target_mult) > 10.0){
     calib.success = false;
   }
   float mean,variance;
   const bool meas_steady;
-  if(calib.success)
+  if(calib.success){
     calib.success &= cutil::measure_signal_robust(this,
                                                   ref_dac,
                                                   target_mult,
@@ -163,8 +159,8 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(float in0val, float
                                                   mean,
                                                   variance);
 
-
-  sprintf(FMTBUF,"PARS in0=%f in1=%f target=%f mean=%f",
+  }
+  sprintf(FMTBUF,"config in0=%f in1=%f output=%f meas=%f",
           target_in0,target_in1,target_mult,mean);
   print_info(FMTBUF);
 

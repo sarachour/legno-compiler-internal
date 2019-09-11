@@ -56,7 +56,7 @@ namespace calibrate {
     case circ::block_type_t::MULT:
       // TODO: indicate if input or output.
       mult = common::get_mult(fab,loc);
-      return mult->measure(in0,in1);
+      return mult->measure(mode,in0,in1);
       break;
 
     case circ::block_type_t::TILE_ADC:

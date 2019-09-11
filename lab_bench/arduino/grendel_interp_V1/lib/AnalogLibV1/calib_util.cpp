@@ -49,47 +49,19 @@ namespace cutil {
                              bool steady,
                              float& mean,
                              float& variance){
-    float delta = 0.0;
-    float thresh = 1.3;
-    float step = 0.12;
-    float measurement = 0;
-    float ref_dac_val;
-    float targ_dac_val;
 
     dac_code_t codes_dac = ref_dac->m_codes;
-
     // configure reference dac to maximize gain
-    ref_dac->setRange(fabs(target) > 1.0 ? RANGE_HIGH : RANGE_MED);
-
-    fast_calibrate_dac(ref_dac);
-    targ_dac_val = Fabric::Chip::Tile::Slice::Dac::computeInput(ref_dac->m_codes,
-                                                                -target);
-
-    do {
-      ref_dac->setConstant(targ_dac_val);
-      if(steady){
-        util::meas_steady_chip_out(fu,measurement,variance);
-      }
-      else{
-        util::meas_dist_chip_out(fu,measurement,variance);
-      }
-      if(fabs(measurement) > thresh){
-        delta += measurement < 0 ? -step : step;
-        targ_dac_val = Fabric::Chip::Tile::Slice::Dac::computeInput(ref_dac->m_codes,
-                                                                    -(target+delta));
-      }
-    } while(fabs(measurement) > thresh &&
-            fabs(targ_dac_val) <= 1.0);
-
-    if(fabs(measurement) > thresh){
-      sprintf(FMTBUF,
-              "could not reduce measurement: thresh=%f meas=%f val=%f", \
-              thresh,measurement,targ_dac_val);
-      print_info(FMTBUF);
+    float measurement;
+    const float thresh = 1.0;
+    float targ_meas = ref_dac->fastMakeValue(-target);
+    if(steady){
+      util::meas_steady_chip_out(fu,measurement,variance);
     }
-    float dummy;
-    ref_dac_val = ref_dac->fastMeasureValue(dummy);
-    mean = measurement-ref_dac_val;
+    else{
+      util::meas_dist_chip_out(fu,measurement,variance);
+    }
+    mean = measurement-targ_meas;
     variance = variance;
 
     ref_dac->update(codes_dac);
