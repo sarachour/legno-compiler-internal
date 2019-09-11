@@ -50,9 +50,8 @@ def infer(obj):
   if cm == 'vga':
     sci,sco = scm
     scale = sco.coeff()/sci.coeff()
+    print("[WARN] EMPIRICALLY, WE OBSERVE MULTIPLIER SCALED DOWN BY 0.87")
     model_out.gain *= 0.87
-    print(model_out)
-    input()
     model_in0.bias_uncertainty = model_out.bias_uncertainty/scale
     bnd = infer_util.normalize_bound(bnds['in0'],scm[0])
     model_in0.set_oprange_scale(*bnd)

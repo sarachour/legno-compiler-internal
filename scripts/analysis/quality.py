@@ -113,15 +113,28 @@ def fit(output,_tref,_yref,_tmeas,_ymeas):
     rx = list(map(lambda i: (meas_x[i]-d)/c, inds))
     return rt,rx
 
+  def compute_loss(x):
+    return compute_error(tref,yref,tmeas,ymeas, \
+                         [x[0],x[1],0,0])
   # apply transform to turn ref -> pred
   tref = np.array(_tref)
   yref = np.array(_yref)
   tmeas = np.array(_tmeas)
   ymeas = np.array(_ymeas)
 
+  bounds = [
+    (0.9,1.1),
+    (0.0,max(tmeas)*0.10)
+  ]
+  n = 10
+  #result = optimize.brute(compute_loss,bounds,Ns=n)
   t_delta = lag_finder(tref,yref,tmeas,ymeas)
   xform = output.transform
-  xform.expd_time_offset = t_delta
+  #xform.expd_time_scale = result[0]
+  #xform.expd_time_offset = -result[1]
+  xform.expd_time_offset = lag_finder(tref,yref,tmeas,ymeas)
+  print("time-scale=%f time-offset=%f" % (xform.expd_time_scale, \
+                                          xform.expd_time_offset))
   # update database
   output.transform = xform
 
