@@ -170,19 +170,23 @@ class ProfileCmd(Command):
     def execute_one_input(self,env,bootstrap=True):
         if self._blk == enums.BlockType.INTEG:
             if bootstrap:
-                for i in range(0,8):
+                for i in range(0,50):
+                    self._n += 1
                     if not self.get_output(env,[],mode=2):
                         return
 
                 for i in range(0,8):
+                    self._n += 1
                     if not self.get_output(env,[],mode=1):
                         return
 
                 for i in range(0,8):
+                    self._n += 1
                     if not self.get_output(env,[],mode=3):
                         return
 
                 for x0 in [0,1,-1]:
+                    self._n += 1
                     if not self.get_output(env,[x0],mode=0):
                         return
 
@@ -194,10 +198,13 @@ class ProfileCmd(Command):
         elif self._blk == enums.BlockType.FANOUT:
             if bootstrap:
                 for x0 in [0,1.0,-1.0]:
+                    self._n += 1
                     if not self.get_output(env,[x0],mode=0):
                         return
+                    self._n += 1
                     if not self.get_output(env,[x0],mode=1):
                         return
+                    self._n += 1
                     if not self.get_output(env,[x0],mode=2):
                         return
 
@@ -205,8 +212,10 @@ class ProfileCmd(Command):
                 x0 = sample_reverse_normal()
                 if not self.get_output(env,[x0],mode=0):
                     return
+                self._n += 1
                 if not self.get_output(env,[x0],mode=1):
                     return
+                self._n += 1
                 if not self.get_output(env,[x0],mode=2):
                     return
 
@@ -216,6 +225,7 @@ class ProfileCmd(Command):
         else:
             if bootstrap:
                 for x0 in [0.0,-1.0,1.0]:
+                    self._n += 1
                     if not self.get_output(env,[x0],mode=0):
                         return
 

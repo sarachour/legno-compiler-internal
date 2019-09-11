@@ -165,7 +165,32 @@ class InferDataset:
     return self._in1_bnd
 
 
-def fit_scale_model(model,dataset):
+def fit_affine_model(model,dataset):
+  def func(x,a,b):
+    return x*a+b
+
+  def error(x,xhat,a,b):
+    return abs(func(x,a,b)-xhat)
+
+  min_pts = 10
+  observe,expect = dataset.meas,dataset.out
+  n = dataset.n
+  if n < min_pts:
+    print(model)
+    input("not enough points: %d" % n)
+    return
+
+  popt, pcov = scipy.optimize.curve_fit(func, expect, observe)
+  print(pcov)
+  gain_mu,gain_std = popt[0], math.sqrt(pcov[0][0])
+  bias_mu,bias_std = popt[1], math.sqrt(pcov[1][1])
+  model.gain = gain_mu
+  model.gain_uncertainty = gain_std
+  model.bias = bias_mu
+  model.bias_uncertainty = bias_std
+
+
+def fit_linear_model(model,dataset):
   def func(x,a):
     return x*a
 
@@ -201,7 +226,7 @@ def infer_model(model,in0,in1,out,bias,noise, \
   cnt =0
   max_prune = 0
   while True:
-    fit_scale_model(model,dataset)
+    fit_affine_model(model,dataset)
     model.noise = math.sqrt(np.mean(dataset.noise))
     if cnt < max_prune and dataset.n >= required_points:
       split_model(model, \

@@ -5,6 +5,20 @@ import compiler.infer_pass.infer_fit as infer_fit
 
 from hwlib.model import PortModel
 
+def remove_outliers(data):
+  Q1 = np.percentile(data, 25)
+  Q3 = np.percentile(data, 75)
+  IQR = Q3-Q1
+  SCALE = 1.0
+  UB = SCALE*IQR+Q3
+  LB = Q1-SCALE*IQR
+
+  idxs = filter(lambda i:data[i] <= UB and data[i] >= LB,
+                     range(len(data)))
+
+  print(UB,LB)
+  return list(map(lambda i : data[i], idxs))
+
 def build_config(meta):
   loc = infer_util.to_loc(meta['loc'])
   print(meta.keys())
@@ -66,18 +80,16 @@ def infer(obj):
 
   tcs = []
   for tc_err,tc_val in zip(tc_errors,tcs_vals):
-    print(" val=%f error=%f" % (tc_val,tc_err))
-    #tcs.append((tc_err+tc_val)/tc_val)
     tcs.append((tc_err+tc_val)/tc_val)
 
-  print(tcs)
   # update appropriate model
-  mu,sigma = np.median(tcs),np.std(tcs)
+  tcs_lim=remove_outliers(tcs)
+  mu,sigma = np.mean(tcs_lim),np.std(tcs_lim)
   model_z.gain = mu;
   model_z.gain_uncertainty = sigma;
   model_z.bias = np.mean(ol_bias);
   model_z.bias_uncertainty = np.std(ol_bias);
-
+  print("mean=%f std=%f" % (mu,sigma))
   if infer_util.about_one(model_z0.gain):
     model_z0.gain = 1.0
 
