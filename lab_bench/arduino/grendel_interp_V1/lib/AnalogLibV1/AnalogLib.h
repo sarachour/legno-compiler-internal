@@ -72,6 +72,8 @@ static void error (
   Serial.print("AC:>[msg] ERROR: ");
   Serial.println(message);
   Serial.flush();
+  //close serial connection.
+  Serial.end();
   while(true){
     delay(1000);
   }

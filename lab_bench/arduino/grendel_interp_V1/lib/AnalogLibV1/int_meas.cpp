@@ -110,10 +110,10 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(open_loo
 
   float input = 0.0;
   if(target_tc > 1.5*NOMINAL_TIME_CONSTANT){
-    input = val_dac->fastMakeValue(0.02);
+    input = val_dac->fastMakeValue(0.015);
   }
   else {
-    input = val_dac->fastMakeValue(0.05);
+    input = val_dac->fastMakeValue(0.10);
   }
   float expected = val_dac->computeOutput(val_dac->m_codes);
   sprintf(FMTBUF,"open-loop input=%f expected=%f",input,expected);
