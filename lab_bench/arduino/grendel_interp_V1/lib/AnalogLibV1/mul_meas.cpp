@@ -57,25 +57,24 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float normalized_in0
                                    0.0);
   if(fabs(target_vga) > 10.0){
     sprintf(FMTBUF, "can't fit %f", target_vga);
-    error(FMTBUF);
+    calib.success = false;
   }
 
   dac_to_in0.setConn();
   mult_to_tileout.setConn();
   tileout_to_chipout.setConn();
-  //ref_to_tileout.setConn();
+  ref_to_tileout.setConn();
 
   float mean,variance;
   bool meas_steady = false;
-  util::meas_dist_chip_out(this,mean,variance);
-  /*
-  calib.success &= cutil::measure_signal_robust(this,
-                                                ref_dac,
-                                                target_vga,
-                                                meas_steady,
-                                                mean,
-                                                variance);
-  */
+  if(calib.success){
+    calib.success &= cutil::measure_signal_robust(this,
+                                                  ref_dac,
+                                                  target_vga,
+                                                  meas_steady,
+                                                  mean,
+                                                  variance);
+  }
   float bias = (mean-target_vga);
   sprintf(FMTBUF,"PARS target=%f meas=%f",
           target_vga,mean);
