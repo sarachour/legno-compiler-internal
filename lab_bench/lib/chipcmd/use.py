@@ -113,9 +113,9 @@ class UseLUTCmd(UseCommand):
 
     @staticmethod
     def _parse(args,cls):
-        result = parse_pattern_use_block(args,0,0,0,
+        result = ccmd_common.parse_pattern_use_block(args,0,0,0,
                                      cls.name(),
-                                     source=LUTSourceType,
+                                     source=spec_enums.LUTSourceType,
                                      expr=False)
         if result.success:
             data = result.value

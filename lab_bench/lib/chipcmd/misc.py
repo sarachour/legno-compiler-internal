@@ -166,8 +166,7 @@ class GetADCStatusCmd(AnalogChipCommand):
     def parse(args):
         result = parse_pattern_use_block(args,0,0,0,
                                          GetADCStatusCmd.name(),
-                                         debug=False,
-                                         db=False)
+                                         debug=False)
         if result.success:
             data = result.value
             return GetADCStatusCmd(
