@@ -31,7 +31,6 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float normalized_in0
   dac_code_t codes_ref = ref_dac->m_codes;
 
   setGain(gain);
-  float target_gain = (this->m_codes.gain_code-128.0)/128.0;
   // backup connections
   cutil::buffer_mult_conns(calib,this);
   cutil::buffer_dac_conns(calib,ref_dac);
@@ -84,7 +83,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float normalized_in0
                                       mode,
                                       target_vga,
                                       target_in0,
-                                      target_gain,
+                                      gain,
                                       bias,
                                       variance);
   if(!calib.success){
