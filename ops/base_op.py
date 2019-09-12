@@ -21,7 +21,6 @@ class OpType(Enum):
   ABS = "abs"
   COS = "cos"
   SIN = "sin"
-  SQRT= "sqrt"
   LN= "ln"
   EXP= "exp"
   CLAMP="clamp"
@@ -133,8 +132,6 @@ class Op:
             return lambd.Sgn.from_json(obj)
         elif op == OpType.ABS:
             return lambd.Abs.from_json(obj)
-        elif op == OpType.SQRT:
-            return lambd.Sqrt.from_json(obj)
         elif op == OpType.SIN:
             return lambd.Sin.from_json(obj)
         elif op == OpType.COS:

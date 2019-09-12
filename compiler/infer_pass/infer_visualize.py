@@ -7,6 +7,7 @@ import matplotlib.cm as cm
 from matplotlib.colors import Normalize
 import seaborn as sns
 import scipy.interpolate
+import faulthandler
 
 DO_PLOTS = False
 
@@ -40,6 +41,7 @@ def heatmap1d(in0,out,value,labels):
     xs.append([in0[i],0.5])
     xs.append([in0[i],1.0])
 
+  faulthandler.enable()
   grid_x, grid_y = np.mgrid[min(in0):max(in0):100j, \
                             0.0:1.0:20j]
 

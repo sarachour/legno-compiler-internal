@@ -1,3 +1,6 @@
+# TODO
+
+- remove 10x modes from allowed modes, they have pretty high error
 # Running Questions
 
 # Benchmark Status

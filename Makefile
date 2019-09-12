@@ -1,4 +1,7 @@
 
+VISUALIZE=--visualize
+VISUALIZE=
+
 calibrate-minerr:
 	python3 -u grendel.py calibrate --no-oscilloscope --calib-obj min_error device-state/calibrate/min_error.grendel 
 
@@ -12,8 +15,8 @@ profile-minerr:
 	python3 -u grendel.py profile --no-oscilloscope --calib-obj min_error device-state/calibrate/min_error.grendel 
 
 models:
-	python3 model_builder.py infer --calib-obj max_fit --visualize
-	python3 model_builder.py infer --calib-obj min_error --visualize
+	python3 model_builder.py infer --calib-obj max_fit ${VISUALIZE}
+	python3 model_builder.py infer --calib-obj min_error ${VISUALIZE}
 
 clean-models:
 	rm -rf device-state/datasets

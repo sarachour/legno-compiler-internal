@@ -186,7 +186,7 @@ def scale(prog,adp,nslns, \
 
                 if this_model.uses_delta_model() and \
                    len(hwmodel.ModelDB.MISSING) > n_missing:
-                    scenv.fail(msg)
+                    scenv.fail("missing models")
 
                 print("missing: %d -> %d" % (n_missing, len(hwmodel.ModelDB.MISSING)))
                 n_missing = len(hwmodel.ModelDB.MISSING)

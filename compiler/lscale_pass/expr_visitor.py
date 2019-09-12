@@ -38,9 +38,6 @@ class ExprVisitor:
     elif expr.op == ops.OpType.ABS:
       result = self.visit_abs(expr)
 
-    elif expr.op == ops.OpType.SQRT:
-      result = self.visit_sqrt(expr)
-
     elif expr.op == ops.OpType.COS:
       result = self.visit_cos(expr)
 
@@ -105,7 +102,7 @@ class SCFPropExprVisitor(ExprVisitor):
     expr2 = self.visit_expr(expr.arg(1))
     if expr.arg(1).op == ops.OpType.CONST:
       self.scenv.eq(expr2, scop.SCConst(1.0), 'expr-visit-pow')
-      return jop.expo(expr1, expr.arg(1).value)
+      return scop.expo(expr1, expr.arg(1).value)
     else:
       self.scenv.eq(expr1, scop.SCConst(1.0), 'expr-visit-pow')
       self.scenv.eq(expr2, scop.SCConst(1.0), 'expr-visit-pow')
@@ -149,7 +146,7 @@ class SCFPropExprVisitor(ExprVisitor):
 
   def visit_sqrt(self,expr):
     expr = self.visit_expr(expr.arg(0))
-    new_expr = jop.expo(expr,0.5)
+    new_expr = scop.expo(expr,0.5)
     return new_expr
 
   def visit_cos(self,expr):

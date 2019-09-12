@@ -64,10 +64,6 @@ def to_python(e):
         return v,"math.cos(%s.real)" % a
 
 
-    elif e.op == OpType.SQRT:
-        v,a = to_python(e.arg(0))
-        return v,"math.sqrt(%s)" % a
-
     elif e.op == OpType.ABS:
         v,a = to_python(e.arg(0))
         return v,"abs(%s)" % a
@@ -379,7 +375,7 @@ class Pow(Op):
 
 
 def Sqrt(a):
-    return genop.Pow(a,genop.Const(0.5))
+    return Pow(a,genop.Const(0.5))
 
 def Square(a):
     return genop.Mult(a,a)
