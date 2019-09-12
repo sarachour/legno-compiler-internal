@@ -24,7 +24,6 @@ class OutputTransform:
   def from_json(varname,obj):
     xform = OutputTransform(varname)
     if not obj is None:
-      print(obj)
       xform.__dict__ = obj
     return xform
 

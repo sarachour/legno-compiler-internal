@@ -195,7 +195,7 @@ def fit_linear_model(model,dataset):
     return x*a
 
   def error(x,xhat,a):
-    return abs(func(x,a)-xhat)
+    return func(x,a)-xhat
 
   min_pts = 10
   observe,expect = dataset.meas,dataset.out
@@ -207,14 +207,25 @@ def fit_linear_model(model,dataset):
 
   popt, pcov = scipy.optimize.curve_fit(func, expect, observe)
   gain_mu,gain_std = popt[0], math.sqrt(pcov[0])
+
+
+  nom_errs = util.array_map(map(lambda i: error(expect[i], \
+                                                observe[i], \
+                                                1.0), range(n)))
+
   errs = util.array_map(map(lambda i: error(expect[i], \
-                                            observe[i], \
-                                            gain_mu), range(n)))
-  bias_std = np.std(errs)
+                                                observe[i], \
+                                                gain_mu), range(n)))
+
+  print("nominal mu=%f std=%f" % (np.mean(nom_errs),np.std(nom_errs)))
+  print("fitted  mu=%f std=%f" % (np.mean(errs),np.std(errs)))
+  if 2.0*np.std(errs) > np.std(nom_errs):
+    return
+
   model.gain = gain_mu
   model.gain_uncertainty = gain_std
-  model.bias = 0
-  model.bias_uncertainty = bias_std
+  model.bias = np.mean(errs)
+  model.bias_uncertainty = np.std(errs)
 
 def infer_model(model,in0,in1,out,bias,noise, \
                 uncertainty_limit, \

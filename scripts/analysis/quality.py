@@ -38,7 +38,6 @@ def scale_ref_data(output,tref,yref):
                     *transform.time_constant)
   time_offset = 0.0
   val_scale = transform.legno_ampl_scale
-  print(time_scale,time_offset)
   thw = list(map(lambda t: t*time_scale+time_offset, tref))
   yhw = list(map(lambda x: x*val_scale, yref))
   return thw, yhw
@@ -72,8 +71,6 @@ def make_prediction(t_meas,x_meas,model):
 
 def compute_error(ref_t,ref_x,meas_t,meas_x,model):
   pred_t,pred_x = make_prediction(meas_t,meas_x,model)
-  if min(pred_t) < min(meas_t) or max(pred_t) > max(meas_t):
-      return 2.0
   pred_x_reflow = np.interp(ref_t, pred_t, pred_x, left=0, right=0)
   error = np.sum((pred_x_reflow-ref_x)**2)/len(ref_t)
   return error
@@ -104,11 +101,14 @@ def fit(output,_tref,_yref,_tmeas,_ymeas):
 
   def apply_model_to_obs(pred_t,meas_t,meas_x,model):
     a,b,c,d = model
-    tmin,tmax = b+(pred_t-b)/a
+    '''
+    tmin,tmax = (pred_t-b)/a
     inds = list(filter(lambda i: \
                        meas_t[i] <= tmax \
                        and meas_t[i] >= tmin, \
                        range(len(meas_t))))
+    '''
+    inds = list(range(len(meas_t)))
     rt = list(map(lambda i: a*meas_t[i]-b,inds))
     rx = list(map(lambda i: c*meas_x[i]-d, inds))
     return rt,rx
@@ -123,17 +123,18 @@ def fit(output,_tref,_yref,_tmeas,_ymeas):
   ymeas = np.array(_ymeas)
 
   bounds = [
-    (0.9,1.1),
+    (0.99,1.01),
     (0.0,max(tmeas)*0.10)
   ]
   n = 5
   print("==== TRANSFORM ===")
-  #result = optimize.brute(compute_loss,bounds,Ns=n)
-  #print(result)
-  t_delta = lag_finder(tref,yref,tmeas,ymeas)
+  result = optimize.brute(compute_loss,bounds,Ns=n)
+  print(result)
   xform = output.transform
-  xform.expd_time_scale = 1.0
-  xform.expd_time_offset = lag_finder(tref,yref,tmeas,ymeas)
+  xform.expd_time_scale = min(max(result[0],0.99),1.01)
+  xform.expd_time_offset = result[1]
+  #xform.expd_time_scale = 1.0
+  #xform.expd_time_offset = lag_finder(tref,yref,tmeas,ymeas)
   print("time-scale=%f" % (xform.expd_time_scale))
   print("time-offset=%f" % (xform.expd_time_offset))
   print("========")

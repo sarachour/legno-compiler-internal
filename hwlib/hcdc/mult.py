@@ -73,10 +73,13 @@ def is_extended_vga(mode):
   #return (i == enums.RangeType.LOW or \
   not_low = (i != enums.RangeType.LOW) and \
           (o != enums.RangeType.LOW)
-  not_ampl = not (i == enums.RangeType.MED and \
-                  o == enums.RangeType.HIGH)
-  not_high = not (i == enums.RangeType.HIGH and \
-                  o == enums.RangeType.HIGH)
+  disabled = [
+    (enums.RangeType.HIGH,enums.RangeType.HIGH)
+  ]
+  for ci,co in disabled:
+    if i == ci and o == co:
+      return False
+
   return not_low
   #return not_low and not_ampl
   #return not_low

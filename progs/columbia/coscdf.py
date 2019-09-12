@@ -2,7 +2,7 @@ from dslang.dsprog import DSProg
 from dslang.dssim import DSSim
 
 def dsname():
-  return "cosc"
+  return "coscdf"
 
 def dsprog(prog):
   params = {
@@ -13,7 +13,7 @@ def dsprog(prog):
   # making P' = 1*V breaks the frequency.
   prog.decl_stvar("V","0.22*(-V)+0.84*(-P)","{V0}",params)
   #prog.decl_stvar("P","{one}*V","{P0}",params)
-  prog.decl_stvar("P","V","{P0}",params)
+  prog.decl_stvar("P","{one}*V","{P0}",params)
   prog.emit("{one}*P","Position",params)
   prog.interval("P",-10.0,10.0)
   prog.interval("V",-10.0,15.0)

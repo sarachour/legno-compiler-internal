@@ -6,10 +6,15 @@ def dynamic_load(filepath):
   spec = importlib.util.spec_from_file_location("module.name",
                                                 filepath)
   module = importlib.util.module_from_spec(spec)
-  obj = spec.loader.exec_module(module)
-  if module.dssim != None and \
-     module.dsprog != None and \
-     module.dsname != None:
+  try:
+    obj = spec.loader.exec_module(module)
+  except FileNotFoundError as e:
+    print("file not found: %s" % filepath)
+    return
+
+  if hasattr(module, "dssim") and \
+     hasattr(module, "dsprog") and \
+     hasattr(module, "dsname"):
     DSProgDB.register(module.dsname(), \
                             module.dsprog, \
                             module.dssim)
