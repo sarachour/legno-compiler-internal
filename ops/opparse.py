@@ -13,10 +13,12 @@ GRAMMAR = '''
         | sum "-" product   -> sub
     ?product: atom
         | product "*" atom  -> mul
+        | product "/" atom  -> div
     ?atoms: atom
          | atoms "," atom -> lst
     ?atom: NUMBER           -> number
          | "-" atom         -> neg
+         | atom "^" atom -> pow
          | NAME             -> var
          | NAME "(" atoms ")"      -> func
          | "(" sum ")"
@@ -108,8 +110,20 @@ def lark_to_dslang_ast(dsprog,node):
     e2 = recurse(node.children[1])
     return op.Mult(e1,e2)
 
+  if node.data == "div":
+    report(n == 2, "only binary div are supported");
+    e1 = recurse(node.children[0])
+    e2 = recurse(node.children[1])
+    return op.Div(e1,e2)
+
+  if node.data == "pow":
+    report(n == 2, "only binary div are supported");
+    e1 = recurse(node.children[0])
+    e2 = recurse(node.children[1])
+    return op.Pow(e1,e2)
+
   else:
-    raise Exception("???")
+    raise Exception("unknown operator: %s" % node.data);
 
 
 def parse(dsprog,strrepr):

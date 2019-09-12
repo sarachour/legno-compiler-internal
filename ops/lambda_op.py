@@ -1,4 +1,5 @@
 from ops.base_op import *
+import ops.generic_op as genop
 import ops.interval as interval
 import math
 
@@ -359,8 +360,8 @@ class Pow(Op):
 
 
     def infer_interval(self,ivals):
-        bcoll = self.arg(0).compute_interval(ivals)
-        ecoll = self.arg(1).compute_interval(ivals)
+        bcoll = self.arg(0).infer_interval(ivals)
+        ecoll = self.arg(1).infer_interval(ivals)
         new_ival = bcoll.interval.exponent(ecoll.interval)
         rcoll = bcoll.merge(ecoll, new_ival)
         return rcoll
@@ -377,46 +378,11 @@ class Pow(Op):
 
 
 
-class Sqrt(Op):
-
-    def __init__(self,arg):
-        Op.__init__(self,OpType.SQRT,[arg])
-        pass
-
-
-    @staticmethod
-    def from_json(obj):
-        return Sqrt(Op.from_json(obj['args'][0]))
-
-
-    def compute(self,bindings):
-        return math.sqrt(self.arg(0).compute(bindings))
-
-    def infer_interval(self,ivals):
-        ivalcoll = self.arg(0).infer_interval(ivals)
-        ivalcoll.update(ivalcoll.interval.sqrt())
-        return ivalcoll
-
-    @property
-    def exponent(self):
-        return Const(0.5)
-
-    def substitute(self,args):
-        return Sqrt(self.arg(0).substitute(args))
-
-class Square(Op):
-
-    def __init__(self,arg):
-        Op.__init__(self,OpType.SQUARE,[arg])
-        pass
-
-    @property
-    def exponent(self):
-        return Const(2)
-
+def Sqrt(a):
+    return genop.Pow(a,genop.Const(0.5))
 
 def Square(a):
-    return Mult(a,a)
+    return genop.Mult(a,a)
 
 def Div(a,b):
-    return Mult(a,Pow(b,Const(-1)))
+    return genop.Mult(a,Pow(b,genop.Const(-1)))
