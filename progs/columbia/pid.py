@@ -14,10 +14,12 @@ def dsprog(prob):
 
   ampl = 1.0
   freq = 0.2
+
+  params['negTarget'] = -params['target']
   prog_util.build_oscillator(prob,ampl,freq,"Z0","Z1")
   SIGNAL = "Z0+Z1"
   PLANT = "CTRL+0.1*SIG"
-  ERROR = "PLANT-{target}"
+  ERROR = "PLANT+({negTarget})"
   CONTROL = "0.8*(-ERR)+1.7*(-INTEG)"
   INTEGRAL = "ERR-0.1*INTEG"
 
@@ -31,6 +33,7 @@ def dsprog(prob):
   for v in ['SIG','PLANT','CTRL','ERR','INTEG']:
     prob.interval(v,-1,1)
 
+  print(prob)
   prob.check()
 
 def dssim():
