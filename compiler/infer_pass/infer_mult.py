@@ -47,8 +47,8 @@ def infer(obj):
   scm,max_unc,model_out,model_in0,model_in1,model_coeff = result
   bnds = infer_fit.build_model(model_out,obj['dataset'],0,max_unc)
   cm = model_out.comp_mode
-  print("[WARN] EMPIRICALLY, WE OBSERVE MULTIPLIER SCALED DOWN BY 0.87")
-  model_out.gain *= 0.87
+  #print("[WARN] EMPIRICALLY, WE OBSERVE MULTIPLIER SCALED DOWN BY 0.87")
+  #model_out.gain *= 0.87
   if cm == 'vga':
     sci,sco = scm
     scale = sco.coeff()/sci.coeff()

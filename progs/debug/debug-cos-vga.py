@@ -2,7 +2,7 @@ from dslang.dsprog import DSProg
 from dslang.dssim import DSSim
 
 def dsname():
-  return "debug-cos-vga"
+  return "dbgvga"
 
 def dsprog(prob):
   params = {
@@ -22,3 +22,7 @@ def dssim():
   exp = DSSim('t20')
   exp.set_sim_time(20)
   return exp
+
+# 1.439614
+# 1.411127
+# 1.329994

@@ -97,9 +97,6 @@ def infer(obj):
     model_z.gain = 1.0
 
 
-  print(model_z)
-  print(model_zp)
-  print(model_z0)
   yield model_in
   yield model_ic
   yield model_out

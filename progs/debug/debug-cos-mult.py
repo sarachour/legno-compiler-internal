@@ -2,7 +2,7 @@ from dslang.dsprog import DSProg
 from dslang.dssim import DSSim
 
 def dsname():
-  return "relcosmult"
+  return "dbgmult"
 
 def dsprog(prob):
   params = {

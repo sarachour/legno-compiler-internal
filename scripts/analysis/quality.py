@@ -64,18 +64,18 @@ def read_meas_data(filename):
     T_REFLOW = np.array(T) - min(T)
     return T_REFLOW,V
 
-def make_prediction(t_ref,x_ref,model):
+def make_prediction(t_meas,x_meas,model):
     a,b,c,d = model
-    t_pred = a*t_ref + b
-    x_pred = c*x_ref + d
+    t_pred = a*t_meas - b
+    x_pred = c*x_meas - d
     return t_pred,x_pred
 
 def compute_error(ref_t,ref_x,meas_t,meas_x,model):
-  res_t,res_x = make_prediction(ref_t,ref_x,model)
-  if min(res_t) < min(meas_t) or max(res_t) > max(meas_t):
+  pred_t,pred_x = make_prediction(meas_t,meas_x,model)
+  if min(pred_t) < min(meas_t) or max(pred_t) > max(meas_t):
       return 2.0
-  meas_x_reflow = np.interp(res_t, meas_t, meas_x, left=0, right=0)
-  error = np.sum((meas_x_reflow-res_x)**2)/len(res_t)
+  pred_x_reflow = np.interp(ref_t, pred_t, pred_x, left=0, right=0)
+  error = np.sum((pred_x_reflow-ref_x)**2)/len(ref_t)
   return error
 
 
@@ -104,18 +104,18 @@ def fit(output,_tref,_yref,_tmeas,_ymeas):
 
   def apply_model_to_obs(pred_t,meas_t,meas_x,model):
     a,b,c,d = model
-    tmin,tmax = b, b+max(pred_t*a)
+    tmin,tmax = b+(pred_t-b)/a
     inds = list(filter(lambda i: \
                        meas_t[i] <= tmax \
                        and meas_t[i] >= tmin, \
                        range(len(meas_t))))
-    rt = list(map(lambda i: (meas_t[i]-b)/a,inds))
-    rx = list(map(lambda i: (meas_x[i]-d)/c, inds))
+    rt = list(map(lambda i: a*meas_t[i]-b,inds))
+    rx = list(map(lambda i: c*meas_x[i]-d, inds))
     return rt,rx
 
   def compute_loss(x):
     return compute_error(tref,yref,tmeas,ymeas, \
-                         [x[0],x[1],0,0])
+                         [x[0],x[1],1.0,0])
   # apply transform to turn ref -> pred
   tref = np.array(_tref)
   yref = np.array(_yref)
@@ -126,15 +126,17 @@ def fit(output,_tref,_yref,_tmeas,_ymeas):
     (0.9,1.1),
     (0.0,max(tmeas)*0.10)
   ]
-  n = 10
+  n = 5
+  print("==== TRANSFORM ===")
   #result = optimize.brute(compute_loss,bounds,Ns=n)
+  #print(result)
   t_delta = lag_finder(tref,yref,tmeas,ymeas)
   xform = output.transform
-  #xform.expd_time_scale = result[0]
-  #xform.expd_time_offset = -result[1]
+  xform.expd_time_scale = 1.0
   xform.expd_time_offset = lag_finder(tref,yref,tmeas,ymeas)
-  print("time-scale=%f time-offset=%f" % (xform.expd_time_scale, \
-                                          xform.expd_time_offset))
+  print("time-scale=%f" % (xform.expd_time_scale))
+  print("time-offset=%f" % (xform.expd_time_offset))
+  print("========")
   # update database
   output.transform = xform
 
