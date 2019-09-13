@@ -9,3 +9,13 @@ use_mult 0 3 1 1 rng h m m
 use_mult 0 3 1 1 rng m h h
 use_mult 0 3 1 1 rng m h m
 use_mult 0 3 1 1 rng m m h
+use_fanout 0 3 1 1  sgn - - + rng m two
+use_fanout 0 3 1 1  sgn - - + rng h two
+use_fanout 0 3 0 0  sgn - - + rng m three
+use_fanout 0 3 0 0  sgn - - + rng h three
+use_fanout 0 3 1 1  sgn + + - rng m three
+use_fanout 0 3 1 1  sgn + + - rng h three
+use_fanout 0 3 2 0  sgn + - + rng m three
+use_fanout 0 3 2 0  sgn + - + rng h three
+use_fanout 0 3 2 1  sgn - + - rng m three
+use_fanout 0 3 2 1  sgn - + - rng h three
