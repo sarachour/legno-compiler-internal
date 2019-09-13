@@ -78,13 +78,15 @@ def get_parameters(scenv,circ,block,loc,port,handle=None):
     hwrng= prop.interval()
     hwbw = prop.bandwidth()
     resolution = 1
+    coverage = 1
     if isinstance(prop,props.DigitalProperties):
         resolution = prop.resolution
-
+        coverage = prop.coverage
     return {
         'math_interval':mrng,
         'math_scale':mathscvar,
         'prop':prop,
+        'hw_coverage':coverage,
         'hw_oprange_scale_lower':hwscvar_lower,
         'hw_oprange_scale_upper':hwscvar_upper,
         'hw_gain':hwscvar_gain,
@@ -141,6 +143,8 @@ def digital_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
     prop = pars['prop']
     hscale_lower = pars['hw_oprange_scale_lower']
     hscale_upper = pars['hw_oprange_scale_upper']
+    coverage = pars['hw_coverage']
+    min_coverage = pars['mc']
 
     assert(isinstance(prop, props.DigitalProperties))
     def ratio(hwexpr):
@@ -159,6 +163,19 @@ def digital_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
                                       'jcom-digital-oprange-%s' % annot)
 
 
+    if mrng.spread > 0.0:
+        lscale_util.lower_bound_constraint(scenv,
+                                           ratio(scop.SCMult(hscale_upper,
+                                                             scop.SCConst(abs(hwrng.upper)))),
+                                           abs(mrng.upper),
+                                           min_coverage*coverage,
+                                           'jcom-coverage-%s' % annot)
+        lscale_util.lower_bound_constraint(scenv,
+                                           ratio(scop.SCMult(hscale_lower,
+                                                             scop.SCConst(abs(hwrng.lower)))),
+                                           abs(mrng.lower),
+                                           min_coverage*coverage,
+                                           'jcom-coverage-%s' % annot)
 
 def analog_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
 
@@ -206,7 +223,6 @@ def digital_quantize_constraint(scenv,circ,block,loc,port,handle,annot=""):
     prop = pars['prop']
     mrng = pars['math_interval']
     min_snr = 1.0/pars['mdpe']
-    min_coverage = pars['mc']
     resolution = pars['digital_resolution']
     delta_h = np.mean(np.diff(prop.values()))
 
@@ -219,13 +235,6 @@ def digital_quantize_constraint(scenv,circ,block,loc,port,handle,annot=""):
         snr_expr = scop.SCMult(signal_expr,noise_expr)
         scenv.gte(snr_expr,scop.SCConst(min_snr), \
                 annot='jcom-digital-minsig')
-
-        if mrng.spread > 0.0:
-            hwrange = max(prop.values())-min(prop.values())
-            signal_ival_expr = scop.SCMult(pars['math_scale'],scop.SCConst(mrng.spread))
-            lhs = scop.SCMult(signal_ival_expr,scop.expo(scop.SCConst(hwrange),-1))
-            scenv.gte(signal_ival_expr,scop.SCConst(min_coverage), "lut-coverage-constraint")
-
 
 def max_sim_time_constraint(scenv,prob,circ):
     max_sim_time = _to_phys_time(circ,prob.max_time)

@@ -21,20 +21,11 @@ def dsprog(prog):
     params["P"] = "D%d" % (i-1) if i-1 >= 0 else None
     params["N"] = "D%d" % (i+1) if i+1 < N else None
 
-    if WITH_GAIN:
-      if params['P'] is None:
-        dPt = "2.0*(-{C}) + {one}*{N}"
-      elif params['N'] is None:
-        dPt = "{one}*{P} + 2.0*(-{C}) + {init_heat}"
-      else:
-        dPt = "{one}*{P} + 2.0*(-{C}) + {one}*{N}"
-
-    else:
-      if params['P'] is None:
+    if params['P'] is None:
         dPt = "(-{C}) + (-{C}) + {N}"
-      elif params['N'] is None:
+    elif params['N'] is None:
         dPt = "{P} + (-{C}) + (-{C}) + {init_heat}"
-      else:
+    else:
         dPt = "{P} + (-{C}) + (-{C}) + {N}"
 
     prog.decl_stvar("D%d" % i, dPt, "0.0", params)

@@ -102,6 +102,7 @@ class DigitalProperties(Properties):
         # for continuous
         self._bandwidth = (None,None,units.unknown)
         self._resolution = 1.0
+        self._coverage = 1.0
 
     def __repr__(self):
         clk = "Synch(kind=%s, rate=%s, bw=%s)" % \
@@ -120,6 +121,11 @@ class DigitalProperties(Properties):
         self._max_samples = max_samples
         return self
 
+    def set_coverage(self,res):
+        assert(res >= 0.0)
+        assert(res <= 1.0)
+        self._coverage = res
+
     def set_resolution(self,res):
         assert(res >= 1.0)
         self._resolution = res
@@ -129,6 +135,9 @@ class DigitalProperties(Properties):
         ub = max(self.values())
         return IRange(lb,ub)
 
+    @property
+    def coverage(self):
+        return self._coverage
 
     def value(self,value):
         diff = map(lambda x : (x,abs(x-value)),self._values)

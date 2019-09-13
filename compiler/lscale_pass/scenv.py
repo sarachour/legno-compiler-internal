@@ -254,18 +254,19 @@ class LScaleEnv:
 
 
   def lte(self,v1,v2,annot):
-      lscale_util.log_debug("%s <= %s {%s}" % (v1,v2,annot))
-      c1,_ = v1.factor_const()
-      c2,_ = v2.factor_const()
-      if c1 == 0 and c2 >= 0:
-        return
-      if c2 == 0 and c1 > 0:
-        self.fail("trivially false: %s <= %s" % (v1,v2))
+    #print("%s <= %s {%s}" % (v1,v2,annot))
+    lscale_util.log_debug("%s <= %s {%s}" % (v1,v2,annot))
+    c1,_ = v1.factor_const()
+    c2,_ = v2.factor_const()
+    if c1 == 0 and c2 >= 0:
+      return
+    if c2 == 0 and c1 > 0:
+      self.fail("trivially false: %s <= %s" % (v1,v2))
 
-      # TODO: equality
-      if self._interactive:
-        input()
-      self._ltes.append((v1,v2,annot))
+    # TODO: equality
+    if self._interactive:
+      input()
+    self._ltes.append((v1,v2,annot))
 
   def gte(self,v1,v2,annot):
       # TODO: equality

@@ -204,7 +204,8 @@ def scale(prog,adp,nslns, \
     if test_existence:
         if has_solution:
             yield None
-        else:
+
+        if not do_log:
             return
 
 

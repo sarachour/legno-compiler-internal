@@ -121,8 +121,10 @@ def unpack_model(name):
                 "model":DeltaModel.from_abbrev(args['model']),
                 'pct_mdpe':args['pct_mdpe'],
                 'pct_mape':args['pct_mape'],
+                'pct_mc':args['pct_mc'],
                 "mdpe": args['pct_mdpe']/100.0,
                 "mape": args['pct_mape']/100.0,
+                "mc": args['pct_mc']/100.0,
                 'bandwidth_khz': args['bandwidth_khz'] \
                 if 'bandwidth_khz' in args else None,
                 'bandwidth_hz': args['bandwidth_khz']*1000.0 \

@@ -34,7 +34,7 @@ def dsprog(prog):
   params['invK'] = 1.0/params['K']
   params['negNu'] = -params['nu']
   params['one'] = 0.999999
-  prog_util.build_oscillator(prog,params['K'],1.0,"dIPTG","IPTG")
+  prog_util.build_oscillator(prog,params['K'],1.0,"dummy","IPTG")
 
   prog.decl_lambda("umod","(1+abs(X)*{invK})^{negNu}",params)
   prog.decl_lambda("utf", "{a1}/(1+abs(X)^{beta})",params)

@@ -30,6 +30,7 @@ class GLProp(Enum):
   INBUF_SIZE = "in_buf"
   OUTBUF_SIZE = "out_buf"
   COEFF = "coeff"
+  DIGITAL_COVERAGE = "coverage"
 
 class HCDCSubset(Enum):
     STANDARD = "standard"
@@ -93,7 +94,7 @@ CTX.insert(GLProp.MAX_FREQ, max_freq_khz*units.khz)
 CTX.insert(GLProp.DIGITAL_SAMPLE, 3.0*units.us)
 CTX.insert(GLProp.INBUF_SIZE,1200)
 CTX.insert(GLProp.OUTBUF_SIZE,1e9)
-
+CTX.insert(GLProp.DIGITAL_COVERAGE , 1.0)
 
 #freq_khz = 20
 CTX.insert(GLProp.MAX_FREQ, adc_khz*units.khz, block='tile_dac')
@@ -101,8 +102,14 @@ CTX.insert(GLProp.COEFF, 2.0, block='tile_dac')
 
 CTX.insert(GLProp.MAX_FREQ, adc_khz*units.khz, block='tile_adc')
 CTX.insert(GLProp.COEFF, 0.5, block='tile_adc')
+CTX.insert(GLProp.DIGITAL_COVERAGE , 1.0, cm="*",sm="*", \
+           block='tile_adc',port="out")
+CTX.insert(GLProp.DIGITAL_COVERAGE , 0.1, cm="*",sm="*", \
+           block='tile_dac',port="in")
+CTX.insert(GLProp.DIGITAL_COVERAGE ,0.0, block='tile_dac')
+CTX.insert(GLProp.DIGITAL_COVERAGE ,0.0, block='tile_adc')
 
-CTX.insert(GLProp.MAX_FREQ, adc_khz*units.khz, block='tile_lut')
+CTX.insert(GLProp.MAX_FREQ, adc_khz*units.khz, block='lut')
 
 # specialized ext_chip_in
 CTX.insert(GLProp.COEFF, 2.0, block='ext_chip_analog_in')
@@ -120,6 +127,7 @@ DUE_range = 3.3/2.0
 CTX.insert(GLProp.DIGITAL_QUANTIZE, 4096, block='ext_chip_out')
 CTX.insert(GLProp.DIGITAL_SAMPLE, 1*units.ns, block='ext_chip_out')
 CTX.insert(GLProp.COEFF, 0.5*V2I_range, block='ext_chip_out')
+CTX.insert(GLProp.DIGITAL_COVERAGE, 0.0, block='ext_chip_out')
 CTX.insert(GLProp.DIGITAL_INTERVAL, (-DUE_range,DUE_range), block='ext_chip_out')
 
 CTX.freeze = True

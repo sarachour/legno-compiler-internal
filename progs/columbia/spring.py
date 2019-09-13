@@ -22,13 +22,15 @@ def dsprog(prog):
   params['k2_k3'] = -(params['k3'] + params['k2'])*0.999
 
   linear = True
-  fPA = 'force(PA)'
-  fPB = 'force(PB)'
+  fPA = 'force(sPA)'
+  fPB = 'force(sPB)'
   dVA = '{k2}*fPB + {k1_k2}*fPA+{cf}*VA'
   dVB = '{k2}*fPA + {k2_k3}*fPB+{cf}*VB'
   dPA = 'VA'
   dPB = 'VB'
   prog.decl_lambda("force","sgn(T)*sqrt(abs(T))");
+  prog.decl_var("sPA","{one}*PA",params)
+  prog.decl_var("sPB","{one}*PB",params)
   prog.decl_var("fPA",fPA,params)
   prog.decl_var("fPB",fPB,params)
   prog.decl_stvar("VA",dVA,"{VA0}",params)

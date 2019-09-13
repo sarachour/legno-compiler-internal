@@ -68,21 +68,21 @@ def exec_lscale_normal(timer,prog,adp,args):
 
 def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
     from compiler import lscale
-    def test_valid(mdpe,mape,mc):
-        print("mdpe=%f mape=%f mc=%f" % (mdpe,mape,mc))
+    first = True
+    def test_valid(mdpe,mape,mc,first=False):
+        print("mdpe=%f mape=%f mc=%f" % (mdpe,mape,1.0-mc))
         assert(mc <= 1.0)
         for obj in lscale.scale(prog, \
                                 adp,
                                 args.scale_circuits,
-                            model=util.DeltaModel(args.model),
+                                model=util.DeltaModel(args.model),
                                 max_freq_khz=args.max_freq,
                                 mdpe=mdpe,
                                 mape=mape,
                                 mc=1.0-mc,
-                                do_log=True,
+                                do_log=first,
                                 test_existence=True):
             return True
-
 
         return False
 
@@ -127,22 +127,22 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
 
 
     def joint_search(mdpe,mape,mc):
-        print("mdpe=%f mape=%f mc=%f" % (mdpe,mape,mc))
+        print("mdpe=%f mape=%f mc=%f" % (mdpe,mape,1.0-mc))
         if test_valid(mdpe,mape,mc):
             return mdpe,mape,mc
 
         dig,alog,cov = joint_search(mdpe+tolerance, \
                                 mape+tolerance, \
-                                mc-tolerance)
-        return dig,alog,cover
+                                mc+tolerance)
+        return dig,alog,cov
 
     max_pct = 1.0
-    succ = test_valid(max_pct,max_pct,1.0)
+    succ = test_valid(max_pct,max_pct,1.0,first=True)
     while not succ and max_pct <= 1e6:
         max_pct *= 2
         succ = test_valid(max_pct,max_pct,1.0)
 
-    defaults = {'mdpe':max_pct,'mape':max_pct,'mc':max_pct}
+    defaults = {'mdpe':max_pct,'mape':max_pct,'mc':1.0}
     if max_pct >= 1e6:
         return
 
@@ -170,7 +170,7 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
                                                      max_freq_khz=args.max_freq,
                                                      mdpe=dig_error+slack,
                                                      mape=analog_error+slack,
-                                                     mc=(1.0-coverage)+slack):
+                                                     mc=1.0-(coverage+slack)):
             timer.end()
             timer.start()
             yield idx,opt,model,scale_circ
