@@ -66,7 +66,8 @@ def execute(args):
         fargs = util.unpack_model(entry.model)
         pars = LScaleEnvParams(model=fargs['model'], \
                                mdpe=fargs['mdpe'], \
-                               mape=fargs['mape'],
+                               mape=fargs['mape'], \
+                               mc=fargs['mc'], \
                                max_freq_khz=fargs['bandwidth_khz'])
 
         execute_script(entry.grendel_script, \
