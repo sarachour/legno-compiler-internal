@@ -19,8 +19,10 @@ profile-minerr:
 	python3 -u grendel.py profile --no-oscilloscope --calib-obj min_error device-state/calibrate/min_error.grendel 
 	${NOTIFY}
 
-models:
+models-maxfit:
 	python3 model_builder.py infer --calib-obj max_fit ${VISUALIZE}
+
+models-minerr:
 	python3 model_builder.py infer --calib-obj min_error ${VISUALIZE}
 
 clean-models:

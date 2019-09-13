@@ -181,9 +181,10 @@ def fit_affine_model(model,dataset):
     return
 
   popt, pcov = scipy.optimize.curve_fit(func, expect, observe)
-  print(pcov)
+
   gain_mu,gain_std = popt[0], math.sqrt(pcov[0][0])
   bias_mu,bias_std = popt[1], math.sqrt(pcov[1][1])
+ 
   model.gain = gain_mu
   model.gain_uncertainty = gain_std
   model.bias = bias_mu
