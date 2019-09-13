@@ -88,6 +88,7 @@ elif args.subparser_name == "clear":
   for entry in entries:
     if (entry.program == args.prog or args.prog is None) and \
        (entry.obj == args.obj or args.obj is None):
+      print(entry)
       entry.delete()
 
 elif args.subparser_name == 'run':
