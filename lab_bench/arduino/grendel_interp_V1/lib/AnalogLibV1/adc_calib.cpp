@@ -8,13 +8,16 @@
 bool Fabric::Chip::Tile::Slice::ChipAdc::testValidity(Fabric::Chip::Tile::Slice::Dac * val_dac){
   Fabric* fab = parentSlice->parentTile->parentChip->parentFabric;
   const float VALID_TEST_POINTS[3] = {0,1,-1};
-  const float THRESH = 0.5;
+  const float STD_THRESH = 2.0;
+  const float ZERO_THRESH = 0.7;
   float mean,variance;
   for(int i = 0; i < 3; i += 1){
     val_dac->setConstant(VALID_TEST_POINTS[i]);
     util::meas_dist_adc(this,mean,variance);
-    if(variance > THRESH*THRESH ||
-       (VALID_TEST_POINTS[i] == 0.0 && fabs(mean-128) > THRESH)){
+    float std = sqrt(variance);
+    if(std >= STD_THRESH ||
+       (VALID_TEST_POINTS[i] == 0.0
+        && fabs(mean-128) >= ZERO_THRESH)){
       return false;
     }
   }
@@ -62,6 +65,7 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
   //backup
   adc_code_t codes_adc = m_codes;
   dac_code_t codes_dac = val_dac->m_codes;
+  const float EPS = 1e-4;
 
   cutil::calibrate_t calib;
   cutil::initialize(calib);
@@ -131,11 +135,27 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
                                         m_codes.lower,
                                         m_codes.upper,
                                         nmos,i2v_cal);
+
+              if(fabs(calib_table.loss) < EPS)
+                break;
             }
+            if(fabs(calib_table.loss) < EPS && calib_table.set)
+              break;
           }
+          if(fabs(calib_table.loss) < EPS && calib_table.set)
+            break;
         }
+        if(fabs(calib_table.loss) < EPS && calib_table.set)
+          break;
       }
+      if(fabs(calib_table.loss) < EPS && calib_table.set)
+        break;
     }
+    if(fabs(calib_table.loss) < EPS && calib_table.set)
+      break;
+  }
+  if(!calib_table.set){
+    error("could not calibrate adc..");
   }
   // find the actual best i2v_cal code.
   this->m_codes.lower_fs = calib_table.state[0];

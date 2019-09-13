@@ -84,8 +84,11 @@ elif args.subparser_name == "list":
 elif args.subparser_name == "clear":
   db = ExpDriverDB()
   print("==== deleted ====")
-  for entry in db.experiment_tbl.delete(args.bmark,args.obj):
-    print(entry)
+  entries = list(db.experiment_tbl.get_all())
+  for entry in entries:
+    if (entry.program == args.prog or args.prog is None) and \
+       (entry.obj == args.obj or args.obj is None):
+      entry.delete()
 
 elif args.subparser_name == 'run':
   import scripts.run_experiments as runchip

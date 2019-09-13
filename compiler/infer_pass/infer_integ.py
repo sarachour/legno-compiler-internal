@@ -79,8 +79,11 @@ def infer(obj):
                      .get_data_by_mode(obj['dataset'],3)
 
   tcs = []
+  # correcting systematic time measurement issues
+  correction = 1.0
   for tc_err,tc_val in zip(tc_errors,tcs_vals):
-    tcs.append((tc_err+tc_val)/tc_val)
+    tc=(tc_err+tc_val)/tc_val*correction
+    tcs.append(tc)
 
   # update appropriate model
   tcs_lim=remove_outliers(tcs)
