@@ -118,7 +118,8 @@ def simulate(args):
     adp = AnalogDeviceProg.read(board, args.adp)
     init_conds,derivs =  \
                         buildsim.build_simulation(board, \
-                                                  adp)
+                                                  adp,
+                                                  args.mode)
     V,T,Y = run_adp_simulation(board, \
                            adp, \
                            init_conds, \

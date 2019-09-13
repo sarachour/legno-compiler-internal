@@ -11,7 +11,7 @@ def dsprog(prog):
     'X0': -0.5,
     'one':0.9999
   }
-  dY = "(Y*{mu}*(1.0+(-X)*X) + {one}*(-X))"
+  dY = "({mu}*(Y*(1.0+(-X)*X)) + {one}*(-X))"
   dX = "Y"
   prog.decl_stvar("Y",dY,"{Y0}",params)
   prog.decl_stvar("X",dX,"{X0}",params)

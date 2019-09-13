@@ -3,14 +3,15 @@ import hwlib.model as model
 import hwlib.props as proplib
 import ops.op as oplib
 import ops.interval as intervallib
-
+import util.util as util
 
 def get_params(db,conc_circ, \
                block_name,loc,port, \
-               handle=None, \
-               mode='naive'):
+               mode, \
+               handle=None):
   block = conc_circ.board.block(block_name)
   config = conc_circ.config(block_name,loc)
+  mode = util.DeltaModel(mode)
   if not block.has_handle(config.comp_mode,port,handle):
     raise Exception("no handle %s in %s[%s].%s %s" % \
                     (handle,block_name,oc,port,config.comp_mode))
@@ -32,21 +33,25 @@ def get_params(db,conc_circ, \
       sample_rate = prop.sample_rate
 
 
-  gain = model.get_gain(db,conc_circ, \
-                        block_name, \
-                        loc, port, \
-                        handle, \
+  gain = model.get_gain(db,
+                        circ=conc_circ, \
+                        block_name=block_name, \
+                        loc=loc,
+                        port=port, \
+                        handle=handle, \
                         mode=mode)
   opsc_l,opsc_u = model.get_oprange_scale(db, \
-                                          conc_circ, \
-                                          block_name, \
-                                          loc, port, \
-                                          handle, \
+                                          circ=conc_circ, \
+                                          block_name=block_name, \
+                                          loc=loc,
+                                          port=port, \
+                                          handle=handle, \
                                           mode=mode)
   unc = model.get_variance(db, \
-                           conc_circ, \
-                           block_name, \
-                           loc, port, \
+                           circ=conc_circ, \
+                           block_name=block_name, \
+                           loc=loc,
+                           port=port, \
                            handle=handle,
                            mode=mode)
 
@@ -63,7 +68,7 @@ def get_params(db,conc_circ, \
   }
 
 def build_output(db,conc_circ,block_name,loc,port,expr,
-                 mode='naive'):
+                 mode):
   def phys_expr(expr,handle):
     pars = get_params(db,conc_circ,block_name,loc,port,\
                       handle=handle,
@@ -88,7 +93,7 @@ def build_output(db,conc_circ,block_name,loc,port,expr,
 
 
 def build_stub(db,conc_circ,block_name,loc,port,expr,
-                 mode='naive'):
+                 mode):
   config = conc_circ.config(block_name,loc)
   pars = get_params(db,conc_circ,block_name,loc,port,\
                     handle=':z',
@@ -102,7 +107,7 @@ def build_stub(db,conc_circ,block_name,loc,port,expr,
 
 
 def build_input(db,conc_circ,block_name,loc,port,expr,
-                 mode='naive'):
+                 mode):
   pars = get_params(db,conc_circ,block_name,loc,port,\
                     handle=None,
                     mode=mode)
@@ -111,7 +116,7 @@ def build_input(db,conc_circ,block_name,loc,port,expr,
 
 def build_expr(db,conc_circ, \
                block_name,loc,port, \
-               mode='naive',
+               mode, \
                stvars=[],
                depth=0):
   block = conc_circ.board.block(block_name)
@@ -171,7 +176,7 @@ def build_expr(db,conc_circ, \
                        in_expr, \
                        mode=mode)
 
-def build_diffeqs(conc_circ):
+def build_diffeqs(conc_circ,mode):
   db = ModelDB()
   stvars = []
   for loc,_ in  \
@@ -186,6 +191,7 @@ def build_diffeqs(conc_circ):
   for block,loc,port in stvars:
     init_cond,deriv = build_expr(db,conc_circ, \
                                  block,loc,port, \
+                                 mode=mode, \
                                  stvars=stvars)
     config = conc_circ.config(block,loc)
     label = config.label(port)
@@ -197,6 +203,7 @@ def build_diffeqs(conc_circ):
 
   return initials,derivs
 
-def build_simulation(board,conc_circ):
-  init_conds,derivs = build_diffeqs(conc_circ)
+def build_simulation(board,conc_circ,mode):
+  mode = util.DeltaModel(mode)
+  init_conds,derivs = build_diffeqs(conc_circ,mode)
   return init_conds,derivs

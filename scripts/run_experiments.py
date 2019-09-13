@@ -46,7 +46,7 @@ def execute(args):
     for entry in db.experiment_tbl.get_by_status(ExecutionStatus.PENDING):
         entry.synchronize()
 
-        if not args.prog is None and entry.prog != args.prog:
+        if not args.prog is None and entry.program != args.prog:
             continue
 
         if not args.subset is None and entry.subset != args.subset:

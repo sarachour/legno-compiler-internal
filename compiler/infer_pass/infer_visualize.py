@@ -16,9 +16,9 @@ def norm(v,vmin,vmax):
 
 def get_max_value(out):
   if any(map(lambda o: o > 3.0, out)):
-    return 3.0
+    return 10.0
   else:
-    return 0.4
+    return 1.0
 
 def heatmap1d(in0,out,value,labels):
   # strictly monotonic increasing

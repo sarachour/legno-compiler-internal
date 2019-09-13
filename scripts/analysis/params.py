@@ -1,7 +1,13 @@
 from enum import Enum
 from dslang.dsprog import DSProgDB
 
-def update_params(ad_prog, \
+def update_experiment_params(ad_prog,exper_entry):
+  dssim = DSProgDB.get_sim(exper_entry.program)
+  tc = ad_prog.board.time_constant*ad_prog.tau
+  runtime = dssim.sim_time/tc
+  exper_entry.runtime = runtime
+
+def update_output_params(ad_prog, \
                   output_entry):
   LOCS = []
   for block_name,loc,config in ad_prog.instances():
@@ -37,10 +43,7 @@ def update_params(ad_prog, \
 
 
 def analyze(entry,ad_prog):
-  params = None
+  update_experiment_params(ad_prog,entry)
   for output in list(entry.outputs()):
-    update_params(ad_prog, \
-                           output)
+    update_output_params(ad_prog, output)
 
-    entry.runtime = output.runtime
-    entry.bandwidth = output.transform.bandwidth

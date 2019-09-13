@@ -62,9 +62,10 @@ def exec_lscale_normal(timer,prog,adp,args):
                                                  do_log=True):
         timer.end()
         yield idx,opt,model,scale_circ
+        timer.start()
 
 
-def exec_lscale_search(timer,prog,adp,args,tolerance=0.002):
+def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
     from compiler import lscale
     def test_valid(mdpe,mape):
         print("mdpe=%f mape=%f" % (mdpe,mape))
@@ -144,15 +145,15 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.002):
     dig_error,analog_error = joint_search(dig_error,analog_error)
 
     timer.kill()
-    for scale in [1.1]:
+    for slack in [0.01]:
         timer.start()
         for idx,opt,model,scale_circ in lscale.scale(prog, \
                                                      adp,
                                                      args.scale_circuits,
                                                      model=util.DeltaModel(args.model),
                                                      max_freq_khz=args.max_freq,
-                                                     mdpe=dig_error*scale,
-                                                     mape=analog_error*scale):
+                                                     mdpe=dig_error+slack,
+                                                     mape=analog_error+slack):
             timer.end()
             timer.start()
             yield idx,opt,model,scale_circ

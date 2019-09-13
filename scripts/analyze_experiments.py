@@ -32,7 +32,7 @@ def execute_once(args,debug=False):
       continue
 
 
-    if not args.prog is None and not entry.prog == args.prog:
+    if not args.prog is None and not entry.program == args.prog:
       continue
 
     if not args.subset is None and not entry.subset == args.subset:
@@ -41,7 +41,7 @@ def execute_once(args,debug=False):
     if not args.model is None and entry.model != args.model:
       continue
 
-    if not args.obj is None and entry.objective_fun != args.obj:
+    if not args.obj is None and entry.obj != args.obj:
       continue
 
     board = None

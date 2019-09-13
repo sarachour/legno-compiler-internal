@@ -20,7 +20,7 @@ def scale_obs_data(output,tobs,yobs):
   exp_time_scale = transform.expd_time_scale
   exp_time_offset = transform.expd_time_offset
   val_scale = transform.legno_ampl_scale
-  trec = list(map(lambda t: (t-exp_time_offset)/(time_scale*exp_time_scale), \
+  trec = list(map(lambda t: (t-exp_time_offset)/(time_scale/exp_time_scale), \
                   tobs))
   yrec = list(map(lambda x: x/val_scale, yobs))
   tmin = 0
@@ -122,16 +122,17 @@ def fit(output,_tref,_yref,_tmeas,_ymeas):
   tmeas = np.array(_tmeas)
   ymeas = np.array(_ymeas)
 
+  slack = 0.02
   bounds = [
-    (0.99,1.01),
+    (1.0-slack,1.0+slack),
     (0.0,max(tmeas)*0.10)
   ]
-  n = 5
+  n = 10
   print("==== TRANSFORM ===")
   result = optimize.brute(compute_loss,bounds,Ns=n)
   print(result)
   xform = output.transform
-  xform.expd_time_scale = min(max(result[0],0.99),1.01)
+  xform.expd_time_scale = min(max(result[0],bounds[0][0]),bounds[0][1])
   xform.expd_time_offset = result[1]
   #xform.expd_time_scale = 1.0
   #xform.expd_time_offset = lag_finder(tref,yref,tmeas,ymeas)

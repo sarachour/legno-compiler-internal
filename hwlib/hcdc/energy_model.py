@@ -93,6 +93,9 @@ def freq_energy(circ,block,fmax):
 
 def compute_energy(circ,runtime,bandwidth):
   energy_figure = nominal_global_energy()
+  if not isinstance(runtime,float):
+    raise Exception("unexpected runtime value %f" % runtime)
+
   for block,loc,cfg in circ.instances():
     output = circ.board.block(block).outputs[0]
     nominal = nominal_block_energy(block,cfg.comp_mode)

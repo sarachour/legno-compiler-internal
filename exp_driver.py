@@ -8,7 +8,7 @@ subparsers = parser.add_subparsers(dest='subparser_name',
 
 scan_subp = subparsers.add_parser('scan', help='scan for new grendel scripts')
 list_subp = subparsers.add_parser('list', help='list database entries')
-list_subp.add_argument('--bmark', type=str,
+list_subp.add_argument('--prog', type=str,
                        help='prog to run.')
 list_subp.add_argument('--obj', type=str,
                        help='objective function to run.')
@@ -74,9 +74,9 @@ elif args.subparser_name == "list":
   db = ExpDriverDB()
   print("=== all entries ===")
   for entry in db.experiment_tbl.get_all():
-    if entry.bmark != args.bmark and not args.bmark is None:
+    if entry.program != args.prog and not args.prog is None:
       continue
-    if entry.objective_fun != args.obj and not args.obj is None:
+    if entry.obj != args.obj and not args.obj is None:
       continue
     print(entry)
 

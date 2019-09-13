@@ -430,7 +430,7 @@ class LutBlockState(BlockState):
 
 
   def from_cstruct(self,state):
-    self.source = ccmd_data.LUTSourceType(state.source)
+    self.source = spec_data.LUTSourceType(state.source)
 
 class DacBlockState(BlockState):
 

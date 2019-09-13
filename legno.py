@@ -76,7 +76,8 @@ sim_subp.add_argument('program', help='program to simulate.')
 sim_subp.add_argument('--adp',help='analog device program to simulate')
 sim_subp.add_argument('--reference',action="store_true", \
                       help='execute reference simulation')
-
+sim_subp.add_argument("--mode",default="naive-min_error",
+                      help='should the simulator use delta models / which ones')
 args = parser.parse_args()
 
 #from hwlib.hcdc.hcdcv2_4 import make_board

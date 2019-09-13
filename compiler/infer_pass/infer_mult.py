@@ -49,9 +49,12 @@ def infer(obj):
   cm = model_out.comp_mode
   #print("[WARN] EMPIRICALLY, WE OBSERVE MULTIPLIER SCALED DOWN BY 0.87")
   #model_out.gain *= 0.87
+  freq_gain = 1.0
   if cm == 'vga':
     sci,sco = scm
     scale = sco.coeff()/sci.coeff()
+
+    model_out.gain *= freq_gain
     model_in0.bias_uncertainty = model_out.bias_uncertainty/scale
     bnd = infer_util.normalize_bound(bnds['in0'],scm[0])
     model_in0.set_oprange_scale(*bnd)
@@ -60,6 +63,7 @@ def infer(obj):
   else:
     sci0,sci1,sco = scm
     scale0 = sco.coeff()/(sci0.coeff())
+    model_out.gain *= freq_gain
     model_in0.bias_uncertainty = model_out.bias_uncertainty/scale0
     bnd = infer_util.normalize_bound(bnds['in0'],scm[0])
     model_in0.set_oprange_scale(*bnd)
