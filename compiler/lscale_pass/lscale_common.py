@@ -92,8 +92,9 @@ def get_parameters(scenv,circ,block,loc,port,handle=None):
         'hw_bandwidth':hwbw,
         'hw_uncertainty': uncertainty,
         'mdpe': scenv.params.mdpe,
+        'mape': scenv.params.mape,
+        'mc': scenv.params.mc,
         'digital_resolution': resolution,
-        'mape': scenv.params.mape
     }
 
 def decl_scale_variables(scenv,circ):
@@ -157,19 +158,6 @@ def digital_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
                                       hwrng.lower,
                                       'jcom-digital-oprange-%s' % annot)
 
-    '''
-    hw_unc = pars['hw_uncertainty']
-    min_snr = pars['mape']
-    hw_unc_coeff,_ = hw_unc.factor_const()
-    if hw_unc_coeff > 0.0  \
-       and mrng.bound > 0.0 \
-       and scenv.params.enable_quality_constraint:
-        signal_expr = scop.SCMult(pars['math_scale'],scop.SCConst(mrng.bound))
-        noise_expr = scop.expo(hw_unc, -1.0)
-        snr_expr = scop.SCMult(signal_expr,noise_expr)
-        scenv.gte(snr_expr,scop.SCConst(min_snr), \
-                 annot='jcom-digital-minsig')
-    '''
 
 
 def analog_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
@@ -218,6 +206,7 @@ def digital_quantize_constraint(scenv,circ,block,loc,port,handle,annot=""):
     prop = pars['prop']
     mrng = pars['math_interval']
     min_snr = 1.0/pars['mdpe']
+    min_coverage = pars['mc']
     resolution = pars['digital_resolution']
     delta_h = np.mean(np.diff(prop.values()))
 
@@ -230,6 +219,13 @@ def digital_quantize_constraint(scenv,circ,block,loc,port,handle,annot=""):
         snr_expr = scop.SCMult(signal_expr,noise_expr)
         scenv.gte(snr_expr,scop.SCConst(min_snr), \
                 annot='jcom-digital-minsig')
+
+        if mrng.spread > 0.0:
+            hwrange = max(prop.values())-min(prop.values())
+            signal_ival_expr = scop.SCMult(pars['math_scale'],scop.SCConst(mrng.spread))
+            lhs = scop.SCMult(signal_ival_expr,scop.expo(scop.SCConst(hwrange),-1))
+            scenv.gte(signal_ival_expr,scop.SCConst(min_coverage), "lut-coverage-constraint")
+
 
 def max_sim_time_constraint(scenv,prob,circ):
     max_sim_time = _to_phys_time(circ,prob.max_time)

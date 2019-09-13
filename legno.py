@@ -41,14 +41,16 @@ lgraph_subp.add_argument('program', type=str,help='benchmark to compile')
 
 lscale_subp = subparsers.add_parser('lscale', \
                                    help='scale circuit parameters.')
-lscale_subp.add_argument('--model', default="physical",
+lscale_subp.add_argument('--model', default="naive-min_error",
                         help='use physical models to inform constraints.')
 lscale_subp.add_argument('--scale-circuits', type=int,default=5, \
                        help='number of scaled circuits to generate.')
+lscale_subp.add_argument('--mc', type=float, default=0.80, \
+                        help='minimum coverage for digital signals.')
 lscale_subp.add_argument('--mdpe', type=float, default=0.04, \
-                        help='do performance sweep.')
+                        help='maximum digital percent error.')
 lscale_subp.add_argument('--mape',type=float,default=0.04, \
-                        help='do performance sweep.')
+                        help='maximum analog percent error.')
 lscale_subp.add_argument('--search',action="store_true")
 lscale_subp.add_argument('program', type=str,help='benchmark to compile')
 
