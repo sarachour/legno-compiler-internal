@@ -15,7 +15,7 @@ class LScaleObjectiveFunctionManager():
             #boptlib.FastObjFunc,
             #boptlib.SlowObjFunc,
             boptlib.FastObsObjFunc,
-            boptlib.SlowObsObjFunc,
+            #boptlib.SlowObsObjFunc,
             #boptlib.NoScaleFunc
 
         ]
