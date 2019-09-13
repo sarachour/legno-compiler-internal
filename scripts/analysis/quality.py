@@ -136,7 +136,7 @@ def fit(output,_tref,_yref,_tmeas,_ymeas):
   xform.expd_time_offset = result[1]
   xform.expd_time_scale = 1.0
   #xform.expd_time_offset = lag_finder(tref,yref,tmeas,ymeas)
-  print("time-scale=%f" % (xform.expd_time_scale))
+  print("time-scale=%f (%f)" % (xform.expd_time_scale, result[0]))
   print("time-offset=%f" % (xform.expd_time_offset))
   print("========")
   # update database
