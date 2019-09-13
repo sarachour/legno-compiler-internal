@@ -59,6 +59,7 @@ def exec_lscale_normal(timer,prog,adp,args):
                                                  max_freq_khz=args.max_freq,
                                                  mdpe=args.mdpe/100.0,
                                                  mape=args.mape/100.0,
+                                                 mc=args.mc/100.0,
                                                  do_log=True):
         timer.end()
         yield idx,opt,model,scale_circ
@@ -67,40 +68,46 @@ def exec_lscale_normal(timer,prog,adp,args):
 
 def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
     from compiler import lscale
-    def test_valid(mdpe,mape):
-        print("mdpe=%f mape=%f" % (mdpe,mape))
-        for idx,opt,model,scale_circ in lscale.scale(prog, \
-                                                    adp,
-                                                    args.scale_circuits,
-                                                    model=util.DeltaModel(args.model),
-                                                    max_freq_khz=args.max_freq,
-                                                    mdpe=mdpe,
-                                                    mape=mape,
-                                                    do_log=True):
+    def test_valid(mdpe,mape,mc):
+        print("mdpe=%f mape=%f mc=%f" % (mdpe,mape,mc))
+        assert(mc <= 1.0)
+        for obj in lscale.scale(prog, \
+                                adp,
+                                args.scale_circuits,
+                            model=util.DeltaModel(args.model),
+                                max_freq_khz=args.max_freq,
+                                mdpe=mdpe,
+                                mape=mape,
+                                mc=1.0-mc,
+                                do_log=True,
+                                test_existence=True):
             return True
+
+
         return False
 
 
-
-    def recursive_grid_search(rng,analog=True,n=2,max_value=1.0,failures=[]):
-        vals = np.linspace(rng[0], \
-                               rng[1], n)
+    def recursive_grid_search(rng,name, \
+                              defaults, \
+                              n=2, \
+                              failures=[]):
+        vals = np.linspace(rng[0], rng[1], n)
         if abs(rng[0]-rng[1]) < tolerance:
             return None
 
         succs,fails = [],[]
-        for error in vals:
-            if error in failures:
-                fails.append(error)
+        for value in vals:
+            if value in failures:
+                fails.append(value)
                 continue;
-
-            is_valid = test_valid(mdpe=max_value,mape=error) if analog \
-                       else test_valid(mdpe=error,mape=max_value)
+            values = dict(defaults)
+            values[name] = value
+            is_valid = test_valid(**values)
             if is_valid:
-                succs.append(error)
+                succs.append(value)
                 break;
             else:
-                fails.append(error)
+                fails.append(value)
 
 
         if len(succs) > 0:
@@ -109,8 +116,8 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
             if best < rng[1] or worst > rng[0]:
                 best = recursive_grid_search( \
                                               [worst,best], \
-                                              analog=analog, \
-                                              max_value=max_value, \
+                                              name=name, \
+                                              defaults=defaults, \
                                               n=n,
                                               failures=failures+fails)
                 best = min(succs) if best is None else best
@@ -119,30 +126,39 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
             return None
 
 
-    def joint_search(dig_error,alog_error):
-        if test_valid(dig_error,alog_error):
-            return dig_error,alog_error
+    def joint_search(mdpe,mape,mc):
+        print("mdpe=%f mape=%f mc=%f" % (mdpe,mape,mc))
+        if test_valid(mdpe,mape,mc):
+            return mdpe,mape,mc
 
-        dig,alog = joint_search(dig_error+tolerance,alog_error+tolerance)
-        return dig,alog
+        dig,alog,cov = joint_search(mdpe+tolerance, \
+                                mape+tolerance, \
+                                mc-tolerance)
+        return dig,alog,cover
 
     max_pct = 1.0
-    succ = test_valid(max_pct,max_pct)
+    succ = test_valid(max_pct,max_pct,1.0)
     while not succ and max_pct <= 1e6:
         max_pct *= 2
-        succ = test_valid(max_pct,max_pct)
+        succ = test_valid(max_pct,max_pct,1.0)
 
+    defaults = {'mdpe':max_pct,'mape':max_pct,'mc':max_pct}
     if max_pct >= 1e6:
         return
 
-    dig_error= recursive_grid_search([0.01,max_pct], \
-                                     max_value=max_pct,
-                                     analog=False,n=3)
     analog_error= recursive_grid_search([0.01,max_pct], \
-                                        max_value=max_pct, \
-                                        analog=True,n=3)
+                                        defaults=defaults, \
+                                        name="mape",n=3)
 
-    dig_error,analog_error = joint_search(dig_error,analog_error)
+    dig_error= recursive_grid_search([0.01,max_pct], \
+                                     defaults=defaults,
+                                     name="mdpe",n=3)
+    coverage = recursive_grid_search([0.01,max_pct], \
+                                     defaults=defaults, \
+                                     name="mc",
+                                     n=3)
+
+    dig_error,analog_error,coverage = joint_search(dig_error,analog_error,coverage)
 
     timer.kill()
     for slack in [0.01]:
@@ -153,7 +169,8 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
                                                      model=util.DeltaModel(args.model),
                                                      max_freq_khz=args.max_freq,
                                                      mdpe=dig_error+slack,
-                                                     mape=analog_error+slack):
+                                                     mape=analog_error+slack,
+                                                     mc=(1.0-coverage)+slack):
             timer.end()
             timer.start()
             yield idx,opt,model,scale_circ

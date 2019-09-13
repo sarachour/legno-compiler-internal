@@ -15,6 +15,7 @@ import compiler.lscale_pass.lscale_util as lscale_util
 import compiler.lscale_pass.lscale_common as lscale_common
 import compiler.lscale_pass.scenv as scenvlib
 import compiler.lscale_pass.scenv_gpkit as scenv_gpkit
+import compiler.lscale_pass.scenv_linear as scenv_linear
 
 import compiler.lscale_pass.expr_visitor as exprvisitor
 import compiler.lscale_pass.lscale_util as lscale_util
@@ -98,13 +99,13 @@ def sc_build_lscale_env(scenv,prog,circ):
 def apply_result(scenv,circ,sln):
     new_circ = circ.copy()
     lut_updates = {}
-    for variable,value in sln['freevariables'].items():
+    for variable,value in sln.items():
         lscale_util.log_debug("%s = %s" % (variable,value))
-        print("%s = %s" % (variable,value))
-        if variable.name == scenv.tau():
+        #print("%s = %s" % (variable,value))
+        if variable == scenv.tau():
             new_circ.set_tau(value)
         else:
-            tag,(block_name,loc,port,handle)= scenv.get_lscale_var_info(variable.name)
+            tag,(block_name,loc,port,handle)= scenv.get_lscale_var_info(variable)
             if(tag == scenvlib.LScaleVarType.SCALE_VAR):
                 new_circ.config(block_name,loc) \
                         .set_scf(port,value,handle=handle)
@@ -120,24 +121,22 @@ def compute_scale(scenv,prog,infer_circ,objfun):
     assert(isinstance(infer_circ,AnalogDeviceProg))
     print("build environment")
     scenv = sc_build_lscale_env(scenv,prog,infer_circ)
-    jopt = LScaleObjectiveFunctionManager(scenv)
-    jopt.method = objfun.name()
+    scopt = LScaleObjectiveFunctionManager(scenv)
+    scopt.method = objfun.name()
 
     print("objective: %s" % objfun.name())
-    for gpvars,gpprob,thisobj in \
-        scenv_gpkit.build_gpkit_problem(infer_circ,scenv,jopt):
-        if gpprob is None:
-            print("<< could not build geometric problem>>")
+    for lprob,thisobj in \
+        scenv_linear.build_linear_problem(infer_circ,scenv,scopt):
+        if lprob is None:
+            print("<< could not linear geometric problem>>")
             continue
 
         print("solve")
-        sln = scenv_gpkit.solve_gpkit_problem(gpprob)
-        #jgpkit.validate_gpkit_problem(scenv,gpvars,sln)
+        sln = scenv_linear.solve_linear_problem(lprob)
         if sln == None:
             print("<< solution is none >>")
             continue
 
-        jopt.add_result(thisobj.tag(),sln)
         new_circ = apply_result(scenv,infer_circ,sln)
         yield thisobj,new_circ
 
@@ -154,8 +153,10 @@ def scale(prog,adp,nslns, \
           model, \
           mdpe, \
           mape, \
+          mc, \
           max_freq_khz=None, \
-          do_log=True):
+          do_log=True, \
+          test_existence=False):
     def gen_models(model):
         if model.uses_delta_model():
             return [
@@ -170,19 +171,25 @@ def scale(prog,adp,nslns, \
     prop_interval.compute_intervals(prog,adp)
     objs = LScaleObjectiveFunctionManager.basic_methods()
     n_missing = 0
+    has_solution = False
     for idx,infer_adp in enumerate(lscale_infer.infer_scale_config(prog, \
-                                                                    adp, \
-                                                                    nslns, \
-                                                                    model=model,
-                                                                    max_freq_khz=max_freq_khz, \
-                                                                    mdpe=mdpe,
-                                                                    mape=mape)):
+                                                                   adp, \
+                                                                   nslns, \
+                                                                   model=model,
+                                                                   max_freq_khz=max_freq_khz, \
+                                                                   mdpe=mdpe,
+                                                                   mape=mape,
+                                                                   mc=mc)):
+        if test_existence:
+            has_solution = True
+            break
         for obj in objs:
             for this_model in gen_models(model):
                 scenv = scenvlib.LScaleEnv(model=this_model, \
-                                        max_freq_khz=max_freq_khz, \
-                                        mdpe=mdpe, \
-                                           mape=mape)
+                                           max_freq_khz=max_freq_khz, \
+                                           mdpe=mdpe, \
+                                           mape=mape,
+                                           mc=mc)
 
                 if this_model.uses_delta_model() and \
                    len(hwmodel.ModelDB.MISSING) > n_missing:
@@ -194,13 +201,20 @@ def scale(prog,adp,nslns, \
                 for scaled_obj,scaled_adp in compute_scale(scenv,prog,infer_adp,obj):
                     yield idx,scaled_obj.tag(),scenv.params.tag(),scaled_adp
 
+    if test_existence:
+        if has_solution:
+            yield None
+        else:
+            return
+
 
     print("logging: %s" % do_log)
     if do_log:
         pars = scenvlib.LScaleEnvParams(model=model,
                                         max_freq_khz=max_freq_khz, \
                                         mdpe=mdpe,
-                                        mape=mape)
+                                        mape=mape,
+                                        mc=mc)
         report_missing_models(model,adp)
         lscale_physlog.save(pars.calib_obj)
         if not lscale_physlog.is_empty() and \

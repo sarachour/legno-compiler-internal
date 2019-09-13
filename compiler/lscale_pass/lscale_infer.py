@@ -319,11 +319,13 @@ def sc_build_lscale_env(prog,circ, \
                         model, \
                         mdpe, \
                         mape, \
+                        mc, \
                        max_freq_khz=None):
     scenv = scenvlib.LScaleInferEnv(model, \
                                     max_freq_khz=max_freq_khz, \
-                                    mdpe=mape,
-                                    mape=mape)
+                                    mdpe=mape, \
+                                    mape=mape, \
+                                    mc=mc)
     # declare scaling factors
     lscale_common.decl_scale_variables(scenv,circ)
     # build continuous model constraints
@@ -447,13 +449,15 @@ def infer_scale_config(prog,adp,nslns, \
                        model, \
                        mape, \
                        mdpe, \
+                       mc, \
                        max_freq_khz=None):
     assert(isinstance(adp,AnalogDeviceProg))
     scenv = sc_build_lscale_env(prog,adp,
                                 model=model, \
                                 max_freq_khz=max_freq_khz, \
                                 mape=mape, \
-                                mdpe=mdpe)
+                                mdpe=mdpe, \
+                                mc=mc)
     #solve_convex_first(prog,adp,jenv)
     count = 0
     for new_adp in concretize_result(scenv,adp,nslns):

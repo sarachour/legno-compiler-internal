@@ -28,9 +28,11 @@ class LScaleEnvParams:
                model,\
                mdpe, \
                mape, \
+               mc, \
                max_freq_khz=None):
     self.mdpe = mdpe
     self.mape = mape
+    self.mc = mc
 
     self.max_freq_hz = None
     if not max_freq_khz is None:
@@ -79,6 +81,7 @@ class LScaleEnvParams:
       model=self.model,
       mdpe=self.mdpe,
       mape=self.mape,
+      mc=self.mc,
       bandwidth_hz=self.max_freq_hz
     )
 
@@ -86,7 +89,8 @@ class LScaleEnv:
   def __init__(self, \
                model, \
                mdpe, \
-               mape,
+               mape, \
+               mc, \
                max_freq_khz=None):
     # scaling factor name to port
     self._to_lscale_var = {}
@@ -97,6 +101,7 @@ class LScaleEnv:
     self.params = LScaleEnvParams(model,
                                   mdpe=mdpe, \
                                   mape=mape, \
+                                  mc=mc, \
                                   max_freq_khz=max_freq_khz)
     self.model_db = hwmodel.ModelDB(self.params.calib_obj)
     self._eqs = []
@@ -271,11 +276,13 @@ class LScaleInferEnv(LScaleEnv):
     def __init__(self,model, \
                  mdpe, \
                  mape, \
+                 mc, \
                  max_freq_khz=None):
       LScaleEnv.__init__(self,model, \
-                        max_freq_khz=max_freq_khz, \
-                        mdpe=mdpe,
-                        mape=mape)
+                         max_freq_khz=max_freq_khz, \
+                         mdpe=mdpe,
+                         mape=mape,
+                         mc=mc)
       self._exactly_one = []
       self._implies = {}
       self._lts = []
