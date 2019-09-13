@@ -130,11 +130,11 @@ def fit(output,_tref,_yref,_tmeas,_ymeas):
   n = 10
   print("==== TRANSFORM ===")
   result = optimize.brute(compute_loss,bounds,Ns=n)
-  print(result)
+  #print(result)
   xform = output.transform
-  xform.expd_time_scale = min(max(result[0],bounds[0][0]),bounds[0][1])
+  #xform.expd_time_scale = min(max(result[0],bounds[0][0]),bounds[0][1])
   xform.expd_time_offset = result[1]
-  #xform.expd_time_scale = 1.0
+  xform.expd_time_scale = 1.0
   #xform.expd_time_offset = lag_finder(tref,yref,tmeas,ymeas)
   print("time-scale=%f" % (xform.expd_time_scale))
   print("time-offset=%f" % (xform.expd_time_offset))

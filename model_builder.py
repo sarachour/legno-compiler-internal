@@ -124,6 +124,8 @@ def infer(args,dump_db=True):
           for datum in obj:
             models = []
             for m in build_model(datum):
+              if m.gain != 1.0:
+                print(m)
               models.append(m)
               db.put(m)
 

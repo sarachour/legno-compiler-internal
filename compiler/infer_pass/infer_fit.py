@@ -184,7 +184,12 @@ def fit_affine_model(model,dataset):
 
   gain_mu,gain_std = popt[0], math.sqrt(pcov[0][0])
   bias_mu,bias_std = popt[1], math.sqrt(pcov[1][1])
- 
+
+  for o,e in zip(observe,expect):
+    print(o,e)
+
+  print(popt)
+  print(pcov)
   model.gain = gain_mu
   model.gain_uncertainty = gain_std
   model.bias = bias_mu
@@ -209,24 +214,15 @@ def fit_linear_model(model,dataset):
   popt, pcov = scipy.optimize.curve_fit(func, expect, observe)
   gain_mu,gain_std = popt[0], math.sqrt(pcov[0])
 
-
-  nom_errs = util.array_map(map(lambda i: error(expect[i], \
-                                                observe[i], \
-                                                1.0), range(n)))
-
-  errs = util.array_map(map(lambda i: error(expect[i], \
-                                                observe[i], \
-                                                gain_mu), range(n)))
-
-  print("nominal mu=%f std=%f" % (np.mean(nom_errs),np.std(nom_errs)))
-  print("fitted  mu=%f std=%f" % (np.mean(errs),np.std(errs)))
-  if 2.0*np.std(errs) > np.std(nom_errs):
-    return
+  errs = list(map(lambda i : error(expect[i], \
+                                   observe[i],
+                                   gain_mu), range(n)))
 
   model.gain = gain_mu
   model.gain_uncertainty = gain_std
   model.bias = np.mean(errs)
   model.bias_uncertainty = np.std(errs)
+  print(model)
 
 def infer_model(model,in0,in1,out,bias,noise, \
                 uncertainty_limit, \
@@ -238,7 +234,10 @@ def infer_model(model,in0,in1,out,bias,noise, \
   cnt =0
   max_prune = 0
   while True:
-    fit_affine_model(model,dataset)
+    #fit_affine_model(model,dataset)
+    fit_linear_model(model,dataset)
+    if adc == True:
+      input()
     model.noise = math.sqrt(np.mean(dataset.noise))
     if cnt < max_prune and dataset.n >= required_points:
       split_model(model, \
@@ -246,7 +245,6 @@ def infer_model(model,in0,in1,out,bias,noise, \
                   uncertainty_limit)
       cnt += 1
     else:
-      print(model)
       return dataset, {
         'in0': dataset.in0_bounds,
         'in1': dataset.in1_bounds
