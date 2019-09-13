@@ -13,8 +13,8 @@ class LScaleObjectiveFunctionManager():
             #boptlib.MaxSignalAndSpeedObjFunc,
             #boptlib.MinSignalObjFunc,
             #boptlib.FastObjFunc,
-            #boptlib.SlowObjFunc,
-            boptlib.FastObsObjFunc,
+            boptlib.SlowObjFunc,
+            #boptlib.FastObsObjFunc,
             #boptlib.SlowObsObjFunc,
             #boptlib.NoScaleFunc
 

@@ -36,8 +36,8 @@ def dsprog(prog):
   prog.decl_stvar("PA",dPA,"{PA0}",params)
   prog.decl_stvar("PB",dPB,"{PB0}",params)
 
-  #prog.emit("{one}*PA","PosA",params)
-  prog.emit("{one}*fPA","PosA",params)
+  prog.emit("{one}*PA","PosA",params)
+  #prog.emit("{one}*fPA","PosA",params)
   prog.interval("PA",-2.5,2.5)
   prog.interval("PB",-2.5,2.5)
   prog.interval("VA",-2.5,2.5)
