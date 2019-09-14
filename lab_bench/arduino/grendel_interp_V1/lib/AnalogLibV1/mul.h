@@ -26,6 +26,7 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
     profile_t measure(int mode,float in0, float in1);
 	private:
     profile_t measureVga(float in0,float gain);
+    profile_t measureOscVga(float gain);
 
     profile_t measureMult(float in0,float in1);
     float getLoss(calib_objective_t obj,

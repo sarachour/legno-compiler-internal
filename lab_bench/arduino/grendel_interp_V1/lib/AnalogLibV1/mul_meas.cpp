@@ -13,11 +13,23 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure(int mode,float in0val,f
       return measureMult(in0val,in1val);
     }
   }
+  else if(mode == 1){
+    if(this->m_codes.vga){
+      return measureOscVga(in1val);
+    }
+    else{
+      error("unimplemented");
+      return measureOscVga(in1val);
+    }
+  }
   else {
     error("unknown mode");
   }
 }
 
+profile_t Fabric::Chip::Tile::Slice::Multiplier::measureOscVga(float gain) {
+  error("unimplemented");
+}
 profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float normalized_in0val,float gain) {
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   Dac * ref_dac = parentSlice->parentTile->slices[next_slice].dac;

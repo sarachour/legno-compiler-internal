@@ -156,13 +156,13 @@ class Fabric::Chip::Tile::Slice::FunctionUnit {
 			error("setAnaIrefPmos not implemented");
 		};
 
-    Fabric* getFabric(){
+    Fabric* getFabric() const{
       return parentSlice->parentTile->parentChip->parentFabric;
     }
-    Fabric::Chip* getChip(){
+    Fabric::Chip* getChip() const{
       return parentSlice->parentTile->parentChip;
     }
-    Fabric::Chip::Tile* getTile(){
+    Fabric::Chip::Tile* getTile() const{
       return parentSlice->parentTile;
     }
     void updateFu();

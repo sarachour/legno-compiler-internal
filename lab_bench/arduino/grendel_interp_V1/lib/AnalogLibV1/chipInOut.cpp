@@ -26,6 +26,8 @@ inline float to_diff_voltage(int pos, int neg){
   */
   return scaled_value;
 }
+
+
 int measure_seq(Fabric* fab,
                 int ardAnaDiffChan,float* times, float* values, int& n){
   unsigned long codes[SAMPLES];
@@ -83,6 +85,32 @@ float measure_dist(int ardAnaDiffChan, float& variance,int n){
 
 
 
+float measure_max(Fabric* fab,int ardAnaDiffChan){
+  unsigned int pinmap[] = {7,6,5,4,3,2,1,0};
+  unsigned int pos[SAMPLES];
+  unsigned int neg[SAMPLES];
+  const unsigned int samples = SAMPLES;
+  fab->cfgCommit();
+  fab->execStart();
+  for(unsigned int index = 0; index < samples; index++){
+    pos[index] = analogRead(pinmap[ardAnaDiffChan+1]);
+    neg[index] = analogRead(pinmap[ardAnaDiffChan]);
+  }
+  fab->execStop();
+  const float thresh = 1.0;
+
+  float best_val = -1.0;
+  for(unsigned int index = 0; index < samples; index++){
+    float value = to_diff_voltage(pos[index],neg[index]);
+    if(fabs(value) <= thresh and fabs(value) > best_val){
+      best_val = value;
+      sprintf(FMTBUF,"MEAS %f best=%f",value,best_val);
+      print_info(FMTBUF);
+    }
+  }
+  return best_val;
+}
+
 float measure(int ardAnaDiffChan, int n){
   unsigned long adcPos = 0;
   unsigned long adcNeg = 0;
@@ -131,5 +159,11 @@ float Fabric::Chip::Tile::Slice::ChipOutput::fastAnalogAvg () const
 float Fabric::Chip::Tile::Slice::ChipOutput::analogAvg () const
 {
   return measure(ardAnaDiffChan,SAMPLES);
+}
+
+
+float Fabric::Chip::Tile::Slice::ChipOutput::analogMax () const
+{
+  return measure_max(this->getFabric(),ardAnaDiffChan);
 }
 #endif
