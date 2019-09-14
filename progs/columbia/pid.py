@@ -7,30 +7,27 @@ def dsname():
 
 def dsprog(prob):
   params = {
-    "target": 0.5,
-    "initial": 1.0,
+    "initial": 0.0,
     "one":0.99999
   }
 
-  ampl = 0.1
-  freq = 0.2
+  ampl = 0.5
+  freq = 0.1
+  prog_util.build_oscillator(prob,ampl,freq,"PERTURB","SIG")
+  PLANT = "CTRL+{one}*SIG"
+  ERROR = "PLANT+{one}*(-SIG)"
+  CONTROL = "0.8*(-ERR)+0.9*(-INTEG)"
+  INTEGRAL = "ERR+0.2*(-INTEG)"
 
-  params['negTarget'] = -params['target']
-  prog_util.build_oscillator(prob,ampl,freq,"Z0","Z1")
-  SIGNAL = "Z0+Z1"
-  PLANT = "{one}*CTRL+SIG"
-  ERROR = "PLANT+({negTarget})"
-  CONTROL = "0.8*(-ERR)+1.7*(-INTEG)"
-  INTEGRAL = "ERR+0.1*(-INTEG)"
-
-  prob.decl_var("SIG",SIGNAL,params)
+  #prob.decl_var("SIG",SIG,params)
   prob.decl_var("ERR",ERROR,params)
   prob.decl_var("CTRL",CONTROL,params)
   prob.decl_stvar("INTEG",INTEGRAL,"{initial}",params)
   prob.decl_stvar("PLANT",PLANT,"{initial}",params)
 
-  prob.emit("{one}*PLANT","Error",params)
-  for v in ['SIG','PLANT','CTRL','ERR','INTEG']:
+  prob.emit("{one}*PLANT","TrackedSig",params)
+  #prob.emit("{one}*ERROR","TrackingError",params)
+  for v in ['PLANT','CTRL','ERR','SIG','INTEG']:
     prob.interval(v,-1,1)
 
   print(prob)

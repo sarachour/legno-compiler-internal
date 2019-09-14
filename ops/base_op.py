@@ -126,6 +126,8 @@ class Op:
             return generic.Func.from_json(obj)
         elif op == OpType.MULT:
             return generic.Mult.from_json(obj)
+        elif op == OpType.ADD:
+            return generic.Add.from_json(obj)
         elif op == OpType.POW:
             return lambd.Pow.from_json(obj)
         elif op == OpType.SGN:
@@ -136,8 +138,6 @@ class Op:
             return lambd.Sin.from_json(obj)
         elif op == OpType.COS:
             return lambd.Cos.from_json(obj)
-        elif op == OpType.ADD:
-            return lambd.Add.from_json(obj)
         elif op == OpType.RANDFUN:
             return lambd.RandFun.from_json(obj)
 

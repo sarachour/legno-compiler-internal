@@ -12,7 +12,7 @@ def dsprog(prog):
     'one':0.9999
   }
   dY = "({mu}*(Y*(1.0+(-X)*X)) + {one}*(-X))"
-  dX = "Y"
+  dX = "{one}*Y"
   prog.decl_stvar("Y",dY,"{Y0}",params)
   prog.decl_stvar("X",dX,"{X0}",params)
   prog.emit("{one}*X","OSC",params)

@@ -41,7 +41,8 @@ def dsprog(prog):
   prog.decl_lambda("vtf", "{a2}/(1+abs(X)^{gamma})",params)
 
 
-  prog.decl_var("UMODIF", "U*umod(IPTG)")
+  prog.decl_var("FNUMOD", "umod(IPTG)")
+  prog.decl_var("UMODIF", "U*FNUMOD")
   prog.decl_var("UTF", "utf(V)")
   prog.decl_var("VTF", "vtf(UMODIF)")
 
@@ -57,6 +58,7 @@ def dsprog(prog):
   prog.interval("VTF",0,16.0)
   prog.interval("V",0,16.0)
   prog.interval("U",0,1.5)
+  print(prog)
   prog.check()
   return
 

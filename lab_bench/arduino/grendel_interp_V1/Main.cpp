@@ -74,10 +74,8 @@ void loop() {
         comm::response("flushed",0);
         break;
       default:
-        comm::print_header();
-        Serial.print(cmd.type);
-        Serial.println(" unknown");
-        comm::error("unknown command");
+        sprintf(FMTBUF,"unknown command: %d", cmd.type);
+        comm::error(FMTBUF);
         break;
     }
     comm::reset();

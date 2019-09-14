@@ -134,7 +134,7 @@ def fit(output,_tref,_yref,_tmeas,_ymeas):
   xform = output.transform
   #xform.expd_time_scale = min(max(result[0],bounds[0][0]),bounds[0][1])
   xform.expd_time_offset = result[1]
-  xform.expd_time_scale = result[0]
+  xform.expd_time_scale = 1.0
   #xform.expd_time_offset = lag_finder(tref,yref,tmeas,ymeas)
   print("time-scale=%f (%f)" % (xform.expd_time_scale, result[0]))
   print("time-offset=%f" % (xform.expd_time_offset))
@@ -153,6 +153,9 @@ def compute_quality(output,_trec,_yrec,_tref,_yref):
   plt.savefig("debug.png")
   plt.clf()
   n = len(tref)
+  if n == 0 or len(trec) == 0:
+    return None,[],[]
+
   yobs_flow = np.interp(tref, trec, yrec, left=0, right=0)
   errors = np.array(list(map(lambda i: compute_error(yobs_flow[i], \
                                                      yref[i]), range(n))))
@@ -200,6 +203,8 @@ def analyze(entry,recompute=False,no_reference=False):
       continue
 
     QUALITY,TERR,YERR = RESULT
+    if QUALITY is None:
+      continue
     #common.simple_plot(output,path_h,output.trial,'err',TERR,YERR)
     output.quality = QUALITY
     QUALITIES.append(QUALITY)

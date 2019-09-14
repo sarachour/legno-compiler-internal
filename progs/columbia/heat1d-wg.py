@@ -24,12 +24,13 @@ def dsprog(prog):
     if params['P'] is None:
         dPt = "2.0*(-{C}) + {one}*{N}"
     elif params['N'] is None:
-        dPt = "{one}*{P} + 2.0*(-{C}) + {init_heat}"
+        dPt = "{P} + 2.0*(-{C}) + {init_heat}"
     else:
-        dPt = "{one}*{P} + 2.0*(-{C}) + {one}*{N}"
+        dPt = "{P} + 2.0*(-{C}) + {one}*{N}"
 
     prog.decl_stvar("D%d" % i, dPt, "0.0", params)
-    prog.interval("D%d" % i, -params['init_heat'], \
+    prog.interval("D%d" % i, \
+                  -params['init_heat'], \
                   params['init_heat'])
 
   prog.emit("{one}*D%d" % I, "POINT",params)
