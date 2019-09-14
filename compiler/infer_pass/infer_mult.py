@@ -51,6 +51,7 @@ def infer(obj):
   #model_out.gain *= 0.87
   freq_gain = 1.0
   if cm == 'vga':
+    freq_gain = 0.875
     sci,sco = scm
     scale = sco.coeff()/sci.coeff()
 
@@ -61,6 +62,7 @@ def infer(obj):
     bnd = infer_util.normalize_bound(bnds['in1'],spec_enums.RangeType.MED)
     model_coeff.set_oprange_scale(*bnd)
   else:
+    freq_gain = 0.85
     sci0,sci1,sco = scm
     scale0 = sco.coeff()/(sci0.coeff())
     model_out.gain *= freq_gain

@@ -266,7 +266,6 @@ class DSProg:
     def execute(self,dssim):
         T,Y = self._execute(dssim)
         stvars,ics,derivs,fnvars,fns = self.build_ode_prob()
-
         def fn_func(t,values):
             vs = dict(zip(map(lambda v: "%s_" % v, stvars), \
                             values))
@@ -278,10 +277,19 @@ class DSProg:
                 vals[v] = vs['%s_' % v]
             return vals
 
-        Z =dict(map(lambda v: (v,[]), stvars+fnvars))
-        for t,y in zip(T,Y):
-            for var,value in fn_func(t,y).items():
-                Z[var].append(value)
+        if(len(stvars) == 0):
+            time = dssim.sim_time
+            T = np.linspace(0,time,1000)
+            Z =dict(map(lambda v: (v,[]), fnvars))
+            for t in T:
+                for var,value in fn_func(t,[]).items():
+                    Z[var].append(value)
+
+        else:
+            Z =dict(map(lambda v: (v,[]), stvars+fnvars))
+            for t,y in zip(T,Y):
+                for var,value in fn_func(t,y).items():
+                    Z[var].append(value)
 
 
         return T,Z

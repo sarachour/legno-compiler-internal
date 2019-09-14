@@ -11,9 +11,8 @@ def read_script(filename):
             elif line.strip() == "":
                 continue
 
+            print(line)
             if line.startswith("#"):
-                print(line)
-                print("<comment, skipping..>")
                 continue
 
             command_obj = cmd.parse(line)

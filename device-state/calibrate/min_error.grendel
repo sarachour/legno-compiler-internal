@@ -1,62 +1,48 @@
-use_mult 0 2 0 0 val 0.0 rng m m
-use_mult 0 2 0 0 val 0.0 rng h m
-use_mult 0 2 0 0 val 0.0 rng m h
-use_mult 0 2 0 1 val 0.0 rng m m
-use_mult 0 2 0 1 val 0.0 rng h m
-use_mult 0 2 0 1 val 0.0 rng m h
-use_mult 0 2 1 0 val 0.0 rng m m
-use_mult 0 2 1 0 val 0.0 rng h m
-use_mult 0 2 1 0 val 0.0 rng m h
-use_mult 0 2 1 1 val 0.0 rng m m
-use_mult 0 2 1 1 val 0.0 rng h m
-use_mult 0 2 1 1 val 0.0 rng m h
-use_mult 0 2 2 0 val 0.0 rng m m
-use_mult 0 2 2 0 val 0.0 rng h m
-use_mult 0 2 2 0 val 0.0 rng m h
-use_dac 0 2 0 src lut0 sgn + val 0.0 rng m
-use_dac 0 2 0 src lut0 sgn + val 0.0 rng h
-use_adc 0 2 0 rng m
-use_adc 0 2 0 rng h
-use_fanout 0 2 0 0  sgn - + + rng m two
-use_fanout 0 2 0 0  sgn - + + rng h two
-use_fanout 0 2 0 1  sgn + - + rng m two
-use_fanout 0 2 0 1  sgn + - + rng h two
-use_fanout 0 3 1 0  sgn + + + rng m two
-use_fanout 0 3 1 0  sgn + + + rng h two
-use_integ 0 2 0 sgn + val 0.0 rng m m debug
-use_integ 0 2 0 sgn + val 0.0 rng h h debug
-use_integ 0 2 0 sgn + val 0.0 rng h m debug
-use_integ 0 2 1 sgn + val 0.0 rng m m debug
-use_integ 0 2 1 sgn + val 0.0 rng h h debug
-use_integ 0 2 1 sgn + val 0.0 rng h m debug
-use_mult 1 3 0 0 val 0.0 rng m m
-use_mult 1 3 0 0 val 0.0 rng h m
-use_mult 1 3 0 0 val 0.0 rng m h
-use_mult 1 3 0 1 val 0.0 rng m m
-use_mult 1 3 0 1 val 0.0 rng h m
-use_mult 1 3 0 1 val 0.0 rng m h
-use_mult 1 3 1 0 val 0.0 rng m m
-use_mult 1 3 1 0 val 0.0 rng h m
-use_mult 1 3 1 0 val 0.0 rng m h
-use_mult 0 3 3 1 val 0.0 rng m m
-use_mult 0 3 3 1 val 0.0 rng h m
-use_mult 0 3 3 1 val 0.0 rng m h
-use_integ 1 3 0 sgn + val 0.0 rng m m debug
-use_integ 1 3 0 sgn + val 0.0 rng h h debug
-use_integ 1 3 0 sgn + val 0.0 rng h m debug
-use_fanout 0 3 1 1  sgn + + + rng m two
-use_fanout 0 3 1 1  sgn + + + rng h two
-use_fanout 1 3 0 0  sgn - + + rng m two
-use_fanout 1 3 0 0  sgn - + + rng h two
-use_dac 1 3 0 src mem sgn + val 0.0 rng m
-use_dac 1 3 0 src mem sgn + val 0.0 rng h
-use_mult 0 3 0 0 rng h h h
-use_mult 0 3 0 0 rng h m h
-use_mult 0 3 0 0 rng h m m
-use_mult 0 3 0 0 rng m h h
-use_mult 0 3 0 0 rng m h m
-use_mult 0 3 0 0 rng m m h
-use_fanout 0 3 0 1  sgn - + - rng m three
-use_fanout 0 3 0 1  sgn - + - rng h three
-use_fanout 0 3 0 0  sgn - + - rng m three
-use_fanout 0 3 0 0  sgn - + - rng h three
+use_fanout 1 3 0 0  sgn + - + rng m two
+use_fanout 1 3 0 0  sgn + - + rng h two
+use_fanout 0 3 1 0  sgn - + + rng m two
+use_fanout 0 3 1 0  sgn - + + rng h two
+use_integ 1 3 1 sgn + val 0.0 rng m m debug
+use_integ 1 3 1 sgn + val 0.0 rng h h debug
+use_integ 1 3 1 sgn + val 0.0 rng h m debug
+use_adc 1 3 0 rng m
+use_adc 1 3 0 rng h
+use_mult 0 0 0 0 val 0.0 rng m m
+use_mult 0 0 0 0 val 0.0 rng h m
+use_mult 0 0 0 0 val 0.0 rng m h
+use_mult 0 0 0 1 val 0.0 rng m m
+use_mult 0 0 0 1 val 0.0 rng h m
+use_mult 0 0 0 1 val 0.0 rng m h
+use_mult 0 0 1 0 val 0.0 rng m m
+use_mult 0 0 1 0 val 0.0 rng h m
+use_mult 0 0 1 0 val 0.0 rng m h
+use_mult 0 0 1 1 val 0.0 rng m m
+use_mult 0 0 1 1 val 0.0 rng h m
+use_mult 0 0 1 1 val 0.0 rng m h
+use_mult 0 0 2 0 rng m m m
+use_mult 0 0 2 0 rng h h h
+use_mult 0 0 2 0 rng h m h
+use_mult 0 0 2 0 rng h m m
+use_mult 0 0 2 0 rng m h h
+use_mult 0 0 2 0 rng m h m
+use_mult 0 0 2 0 rng m m h
+use_fanout 0 0 0 0  sgn + + + rng m two
+use_fanout 0 0 0 0  sgn + + + rng h two
+use_fanout 0 0 0 1  sgn + - + rng m two
+use_fanout 0 0 0 1  sgn + - + rng h two
+use_fanout 0 0 1 0  sgn + - + rng m two
+use_fanout 0 0 1 0  sgn + - + rng h two
+use_integ 0 0 0 sgn + val 0.0 rng m m debug
+use_integ 0 0 0 sgn + val 0.0 rng h h debug
+use_integ 0 0 0 sgn + val 0.0 rng h m debug
+use_integ 0 0 1 sgn + val 0.0 rng m m debug
+use_integ 0 0 1 sgn + val 0.0 rng h h debug
+use_integ 0 0 1 sgn + val 0.0 rng h m debug
+use_fanout 0 3 1 0  sgn - + + rng m three
+use_fanout 0 3 1 0  sgn - + + rng h three
+use_fanout 0 3 2 0  sgn + + - rng m three
+use_fanout 0 3 2 0  sgn + + - rng h three
+use_fanout 0 3 2 0  sgn - + + rng m two
+use_fanout 0 3 2 0  sgn - + + rng h two
+use_fanout 0 3 1 0  sgn - - + rng m two
+use_fanout 0 3 1 0  sgn - - + rng h two
