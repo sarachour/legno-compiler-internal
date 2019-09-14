@@ -1,6 +1,12 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+typedef enum {
+              MEAS_CHIP_OUTPUT,
+              MEAS_CHIP_OUTPUT_DIST,
+              MEAS_CHIP_OUTPUT_STEADY,
+              MEAS_ADC
+} meas_method_t;
 
 namespace binsearch {
   bool find_bias_and_nmos(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
