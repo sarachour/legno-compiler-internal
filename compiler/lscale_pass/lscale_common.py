@@ -163,7 +163,9 @@ def digital_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
                                       'jcom-digital-oprange-%s' % annot)
 
 
-    if mrng.spread > 0.0:
+    if mrng.spread > 0.0 \
+       and coverage > 0.0 \
+       and min_coverage > 0.0:
         lscale_util.lower_bound_constraint(scenv,
                                            ratio(scop.SCMult(hscale_upper,
                                                              scop.SCConst(abs(hwrng.upper)))),

@@ -7,21 +7,21 @@ def dsname():
 
 def dsprog(prob):
   params = {
-    "target": 0.2,
+    "target": 0.5,
     "initial": 1.0,
     "one":0.99999
   }
 
-  ampl = 1.0
+  ampl = 0.1
   freq = 0.2
 
   params['negTarget'] = -params['target']
   prog_util.build_oscillator(prob,ampl,freq,"Z0","Z1")
   SIGNAL = "Z0+Z1"
-  PLANT = "CTRL+0.1*SIG"
+  PLANT = "{one}*CTRL+SIG"
   ERROR = "PLANT+({negTarget})"
   CONTROL = "0.8*(-ERR)+1.7*(-INTEG)"
-  INTEGRAL = "ERR-0.1*INTEG"
+  INTEGRAL = "ERR+0.1*(-INTEG)"
 
   prob.decl_var("SIG",SIGNAL,params)
   prob.decl_var("ERR",ERROR,params)
@@ -29,7 +29,7 @@ def dsprog(prob):
   prob.decl_stvar("INTEG",INTEGRAL,"{initial}",params)
   prob.decl_stvar("PLANT",PLANT,"{initial}",params)
 
-  prob.emit("{one}*ERR","Error",params)
+  prob.emit("{one}*PLANT","Error",params)
   for v in ['SIG','PLANT','CTRL','ERR','INTEG']:
     prob.interval(v,-1,1)
 

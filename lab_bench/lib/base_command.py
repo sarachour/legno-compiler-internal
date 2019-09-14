@@ -346,6 +346,10 @@ class ArduinoCommand(Command):
 
                 elif resp.type == ArduinoResponseType.MESSAGE:
                     print("[msg] %s" % resp.message)
+                    if "ERROR:" in line:
+                        print("ERROR DETECTED..QUITTING...")
+                        ard.close()
+                        sys.exit(1)
 
                 elif resp.type == ArduinoResponseType.DONE:
                     print("<simulation finished>")

@@ -51,7 +51,9 @@ props_in = util.make_dig_props(enums.RangeType.MED, \
 props_in.set_resolution(glb.CTX.get(glb.GLProp.DIGITAL_RESOLUTION,
                                  "ext_chip_in",
                                  "*","*",None))
-
+props_in.set_coverage(glb.CTX.get(glb.GLProp.DIGITAL_COVERAGE, \
+                                  "ext_chip_in", \
+                                  "*","*","in"))
 # sample rate is 10 us
 props_in.set_clocked(glb.CTX.get(glb.GLProp.DIGITAL_SAMPLE, \
                              "ext_chip_in",
@@ -92,7 +94,9 @@ props_out = util.make_dig_props(enums.RangeType.MED, \
 props_out.set_resolution(glb.CTX.get(glb.GLProp.DIGITAL_RESOLUTION,
                                  "ext_chip_out",
                                  "*","*",None))
-
+props_out.set_coverage(glb.CTX.get(glb.GLProp.DIGITAL_COVERAGE, \
+                                  "ext_chip_out", \
+                                  "*","*","out"))
 #sample rate is 1 ns
 props_out.set_clocked(glb.CTX.get(glb.GLProp.DIGITAL_SAMPLE, \
                               "ext_chip_out",
