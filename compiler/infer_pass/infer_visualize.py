@@ -14,11 +14,14 @@ DO_PLOTS = False
 def norm(v,vmin,vmax):
   return (v-vmin)/(vmax-vmin)
 
+def get_min_value(out):
+  return 0.0
+
 def get_max_value(out):
   if any(map(lambda o: o > 3.0, out)):
     return 10.0
   else:
-    return 1.0
+    return 0.3
 
 def heatmap1d(in0,out,value,labels):
   # strictly monotonic increasing
@@ -26,7 +29,7 @@ def heatmap1d(in0,out,value,labels):
     return
 
   x,y,z = [],[],[]
-  vmin = 0
+  vmin = get_min_value(out)
   vmax = get_max_value(out)
   plt.clf()
   style = plt.get_cmap("magma")
@@ -70,7 +73,7 @@ def heatmap2d(in0,in1,out,value,labels):
     return
 
   x,y,z = [],[],[]
-  vmin = 0
+  vmin = get_min_value(out)
   vmax = get_max_value(out)
 
   style = plt.get_cmap("magma")
@@ -164,16 +167,22 @@ def plot_error(model,filename,dataset,use_delta_model=False):
     tag = ""
 
 
+  def compute_error(meas,pred):
+    if pred < 0:
+      return abs(pred-meas)
+    else:
+      return abs(meas-pred)
+
   title = "|Error| of %s %s" % (labels['out'],tag)
   #plt.title(title)
   in0 = util.array_map(map(lambda x: x*scales['in0'], dataset.in0))
   out,meas = dataset.out,dataset.meas
   pred = infer_util.apply_model(model,out)
   if use_delta_model:
-    err = util.array_map(map(lambda i: scales['out']*abs(meas[i]-pred[i]), \
+    err = util.array_map(map(lambda i: scales['out']*compute_error(meas[i],pred[i]), \
                                  range(dataset.n)))
   else:
-    err = util.array_map(map(lambda i: scales['out']*abs(meas[i]-out[i]), \
+    err = util.array_map(map(lambda i: scales['out']*compute_error(meas[i],out[i]), \
                                    range(dataset.n)))
 
   if is_1d:
