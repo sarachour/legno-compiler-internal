@@ -51,7 +51,7 @@ def infer(obj):
   #model_out.gain *= 0.87
   freq_gain = 1.0
   if cm == 'vga':
-    freq_gain = 0.95
+    #freq_gain = 0.95
     sci,sco = scm
     scale = sco.coeff()/sci.coeff()
 
