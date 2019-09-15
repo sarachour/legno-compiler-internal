@@ -173,23 +173,26 @@ def fit_affine_model(model,dataset):
     return abs(func(x,a,b)-xhat)
 
   min_pts = 10
-  observe,expect = dataset.meas,dataset.out
   n = dataset.n
+  observe,expect = dataset.meas,dataset.out
+  bias = observe-expect;
   if n < min_pts:
     print(model)
     input("not enough points: %d" % n)
     return
 
   popt, pcov = scipy.optimize.curve_fit(func, expect, observe)
+  slope,intercept,rval,pval,stderr = scipy.stats.linregress(observe,bias)
+  if abs(rval) < 0.95:
+    return
 
-  gain_mu,gain_std = popt[0], math.sqrt(pcov[0][0])
-  bias_mu,bias_std = popt[1], math.sqrt(pcov[1][1])
+  #gain_mu,gain_std = popt[0], math.sqrt(pcov[0][0])
+  #bias_mu,bias_std = popt[1], math.sqrt(pcov[1][1])
+  gain_mu = 1.0+slope
+  gain_std = 0.0
+  bias_mu = intercept
+  bias_std = stderr
 
-  for o,e in zip(observe,expect):
-    print(o,e)
-
-  print(popt)
-  print(pcov)
   model.gain = gain_mu
   model.gain_uncertainty = gain_std
   model.bias = bias_mu
@@ -234,8 +237,8 @@ def infer_model(model,in0,in1,out,bias,noise, \
   cnt =0
   max_prune = 0
   while True:
-    #fit_affine_model(model,dataset)
-    fit_linear_model(model,dataset)
+    fit_affine_model(model,dataset)
+    #fit_linear_model(model,dataset)
     model.noise = math.sqrt(np.mean(dataset.noise))
     if cnt < max_prune and dataset.n >= required_points:
       split_model(model, \

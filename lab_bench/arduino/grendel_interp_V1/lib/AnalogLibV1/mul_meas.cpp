@@ -19,45 +19,6 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure(int mode,float in0val,f
   }
 }
 
-profile_t Fabric::Chip::Tile::Slice::Multiplier::measureOscVga(float gain) {
-  cutil::calibrate_t calib;
-  cutil::initialize(calib);
-
-  const int nsamps = 25;
-  mult_code_t codes_mult = m_codes;
-  oscgen::osc_env_t osc_env = oscgen::make_env(this);
-  oscgen::backup(calib,osc_env);
-  cutil::buffer_mult_conns(calib,this);
-  cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
-  cutil::buffer_chipout_conns(calib,parentSlice->parentTile
-                              ->parentChip->tiles[3].slices[2].chipOutput);
-  cutil::break_conns(calib);
-  print_info("make osc");
-  oscgen::make_oscillator(osc_env);
-  print_info("osc0");
-  float nominal = oscgen::measure_oscillator_amplitude(osc_env,out0Id,nsamps);
-
-  Connection fan_to_vga = Connection(osc_env.fan->out1, this->in0);
-  Connection mult_to_tileout = Connection ( out0, parentSlice->tileOuts[3].in0 );
-  Connection tileout_to_chipout = Connection ( parentSlice->tileOuts[3].out0,
-                                               parentSlice->parentTile
-                                               ->parentChip->tiles[3].slices[2].chipOutput->in0 );
-
-
-  fan_to_vga.setConn();
-  mult_to_tileout.setConn();
-  tileout_to_chipout.setConn();
-  print_info("measure");
-  float value = util::meas_max_chip_out(this,nsamps);
-  fan_to_vga.brkConn();
-  mult_to_tileout.brkConn();
-  tileout_to_chipout.brkConn();
-
-  cutil::restore_conns(calib);
-  oscgen::restore(osc_env);
-  this->update(codes_mult);
-  error("incomplete: this builds an oscillator and measures the max value");
-}
 profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float normalized_in0val,float gain) {
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   Dac * ref_dac = parentSlice->parentTile->slices[next_slice].dac;
@@ -71,7 +32,6 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float normalized_in0
   dac_code_t codes_ref = ref_dac->m_codes;
 
   setGain(gain);
-  float target_gain = (m_codes.gain_code-128.0)/128.0;
   // backup connections
   cutil::buffer_mult_conns(calib,this);
   cutil::buffer_dac_conns(calib,ref_dac);
@@ -88,7 +48,6 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float normalized_in0
                                                parentSlice->parentTile
                                                ->parentChip->tiles[3].slices[2].chipOutput->in0 );
   Connection ref_to_tileout = Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0 );
-  bool use_ref = (m_codes.range[out0Id] == RANGE_HIGH);
 
   float in0val = util::range_to_coeff(this->m_codes.range[in0Id])*(normalized_in0val);
   float target_in0 = val1_dac->fastMakeValue(in0val);
@@ -103,27 +62,21 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float normalized_in0
   dac_to_in0.setConn();
   mult_to_tileout.setConn();
   tileout_to_chipout.setConn();
-  if(use_ref){
-    ref_to_tileout.setConn();
-  }
+  ref_to_tileout.setConn();
   float mean,variance;
+  float target_gain = (m_codes.gain_code-128.0)/128.0;
   bool meas_steady = false;
   if(calib.success){
-    if(use_ref){
-      calib.success &= cutil::measure_signal_robust(this,
-                                                    ref_dac,
-                                                    target_vga,
-                                                    meas_steady,
-                                                    mean,
-                                                    variance);
-    }
-    else{
-      util::meas_exec_dist_chip_out(this,mean,variance);
-    }
+    calib.success &= cutil::measure_signal_robust(this,
+                                                  ref_dac,
+                                                  target_vga,
+                                                  meas_steady,
+                                                  mean,
+                                                  variance);
   }
   float bias = (mean-target_vga);
-  sprintf(FMTBUF,"PARS ref=%s input=%f/%f gain=%f/%f target=%f meas=%f",
-          use_ref ? "ref" : "noref", in0val,target_in0,gain,target_gain,
+  sprintf(FMTBUF,"PARS input=%f/%f gain=%f/%f target=%f meas=%f",
+          in0val,target_in0,gain,target_gain,
           target_vga,mean);
   print_info(FMTBUF);
   const int mode = 0;
@@ -140,9 +93,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float normalized_in0
   dac_to_in0.brkConn();
   mult_to_tileout.brkConn();
   tileout_to_chipout.brkConn();
-  if(use_ref){
-    ref_to_tileout.brkConn();
-  }
+  ref_to_tileout.brkConn();
   cutil::restore_conns(calib);
   ref_dac->update(codes_ref);
   val1_dac->update(codes_val1);

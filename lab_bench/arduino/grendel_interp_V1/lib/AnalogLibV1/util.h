@@ -64,9 +64,6 @@ namespace util {
   float meas_fast_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu);
   float meas_max_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,int n);
 
-  void meas_exec_dist_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
-                          float& mean, float& variance);
-
   void meas_dist_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
                           float& mean, float& variance);
   void meas_steady_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,
