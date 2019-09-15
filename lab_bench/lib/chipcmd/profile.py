@@ -236,6 +236,7 @@ class ProfileCmd(Command):
 
     def execute_two_inputs(self,env,bootstrap=True):
         if bootstrap:
+
             for x0,x1 in [(0,0), \
                           (-1.0,0.0), \
                           (1.0,0.0), \

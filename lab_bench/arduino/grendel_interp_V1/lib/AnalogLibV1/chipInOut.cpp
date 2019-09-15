@@ -85,7 +85,7 @@ float measure_dist(int ardAnaDiffChan, float& variance,int n){
 
 
 
-float measure_max(Fabric* fab,int ardAnaDiffChan){
+float measure_max(Fabric* fab,int ardAnaDiffChan,int n){
   unsigned int pinmap[] = {7,6,5,4,3,2,1,0};
   unsigned int pos[SAMPLES];
   unsigned int neg[SAMPLES];
@@ -100,13 +100,16 @@ float measure_max(Fabric* fab,int ardAnaDiffChan){
   const float thresh = 1.0;
 
   float best_val = -1.0;
-  for(unsigned int index = 0; index < samples; index++){
+  if(n > samples){
+    error("n is larger than samples");
+  }
+  for(unsigned int index = 0; index < n; index++){
     float value = to_diff_voltage(pos[index],neg[index]);
     if(fabs(value) <= thresh and fabs(value) > best_val){
-      best_val = value;
-      sprintf(FMTBUF,"MEAS %f best=%f",value,best_val);
-      print_info(FMTBUF);
+      best_val = fabs(value);
     }
+    sprintf(FMTBUF,"MEAS %d %f best=%f",index,value,best_val);
+    print_info(FMTBUF);
   }
   return best_val;
 }
@@ -162,8 +165,8 @@ float Fabric::Chip::Tile::Slice::ChipOutput::analogAvg () const
 }
 
 
-float Fabric::Chip::Tile::Slice::ChipOutput::analogMax () const
+float Fabric::Chip::Tile::Slice::ChipOutput::analogMax (int n) const
 {
-  return measure_max(this->getFabric(),ardAnaDiffChan);
+  return measure_max(this->getFabric(),ardAnaDiffChan, n);
 }
 #endif

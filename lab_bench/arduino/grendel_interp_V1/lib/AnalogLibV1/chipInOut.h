@@ -48,7 +48,7 @@ class Fabric::Chip::Tile::Slice::ChipOutput : public Fabric::Chip::Tile::Slice::
 	float analogAvg () const;
 	float fastAnalogAvg () const;
 	int analogSeq(float* times, float* values, int n) const;
-	float analogMax() const;
+	float analogMax(int n) const;
 	void analogDist (float& mean, float& variance) const;
 
 
