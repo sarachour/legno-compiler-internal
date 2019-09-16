@@ -5,8 +5,6 @@ def dsname():
   return "bont"
 
 def dsprog(prog):
-  scf = 1.0
-  scf2 = 3.0
   # original set of parameters
   params = {
     'r_endo_kT': 0.141,
@@ -19,21 +17,10 @@ def dsprog(prog):
     'lyticB0': 0.0
   }
   # reparametrization
-  params = {
-    'r_endo_kT': 0.541,
-    'r_trans_kL': 0.541,
-    'r_bind_kB': 0.541,
-    'tenB0': 1.0,
-    'freeB0': 1.0,
-    'bndB0' : 0.0,
-    'transB0': 0.0,
-    'lyticB0': 0.0,
-    'one':0.99999
-  }
 
   dTenB = '{r_trans_kL}*(-transB)'
   prog.decl_stvar("tenB",dTenB,'{tenB0}',params)
-  prog.interval('tenB',-1,1)
+  prog.interval('tenB',-2,2)
 
   dFreeB = '{r_bind_kB}*(-freeB)'
   prog.decl_stvar('freeB',dFreeB,'{freeB0}',params)
