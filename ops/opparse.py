@@ -14,13 +14,13 @@ GRAMMAR = '''
     ?product: atom
         | product "*" atom  -> mul
         | product "/" atom  -> div
-    ?atoms: atom
-         | atoms "," atom -> lst
+    ?args: atom
+         | args "," atom -> lst
     ?atom: NUMBER           -> number
          | "-" atom         -> neg
          | atom "^" atom -> pow
          | NAME             -> var
-         | NAME "(" atoms ")"      -> func
+         | NAME "(" args ")"      -> func
          | "(" sum ")"
     %import common.CNAME -> NAME
     %import common.NUMBER
@@ -32,9 +32,10 @@ PARSER = lark.Lark(GRAMMAR)
 
 def report(clause,msg):
   if not clause:
-    raise Exception("when parsing <%s> : %s" % (node,msg))
+    raise Exception("when parsing : %s" % (msg))
 
 def function_to_dslang_ast(dsprog,name,arguments):
+  print(arguments)
   n = len(arguments)
   if dsprog.has_lambda(name):
     freevars,impl = dsprog.lambda_spec(name);
@@ -54,6 +55,12 @@ def function_to_dslang_ast(dsprog,name,arguments):
   elif name == "abs":
     report(n == 1, "expected 1 argument to abs function")
     return op.Abs(arguments[0])
+  elif name == "max":
+    report(n == 2, "expected 2 arguments to max function")
+    return op.Max(arguments[0],arguments[1])
+  elif name == "min":
+    report(n == 2, "expected 2 arguments to min function")
+    return op.Min(arguments[0],arguments[1])
 
   else:
     raise Exception("unknown built-in function <%s>" % name)
@@ -76,7 +83,9 @@ def lark_to_dslang_ast(dsprog,node):
     report(n > 0, "function name not specified");
     func_name = node.children[0]
     report(func_name.type == "NAME", "expected Token.NAME");
-    arguments = list(map(lambda ch: recurse(ch), node.children[1:]))
+    arguments = recurse(node.children[1])
+    if not isinstance(arguments,list):
+      arguments = [arguments]
     return function_to_dslang_ast(dsprog,func_name.value,arguments);
 
   if node.data == "number":
@@ -121,6 +130,15 @@ def lark_to_dslang_ast(dsprog,node):
     e1 = recurse(node.children[0])
     e2 = recurse(node.children[1])
     return op.Pow(e1,e2)
+
+
+  if node.data == "lst":
+    e1 = recurse(node.children[0])
+    e2 = recurse(node.children[1])
+    if not isinstance(e1,list):
+      e1 = [e1]
+    e1.append(e2)
+    return e1
 
   else:
     raise Exception("unknown operator: %s" % node.data);

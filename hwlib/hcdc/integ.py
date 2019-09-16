@@ -33,9 +33,8 @@ def is_standard(scale_mode):
 
 def is_extended(scale_mode):
   i,o = scale_mode
-  disabled = [
-    (enums.RangeType.MED,enums.RangeType.HIGH)
-  ]
+  disabled = []
+  disabled.append((enums.RangeType.MED,enums.RangeType.HIGH))
   for (ci,co) in disabled:
     if i == ci and o == co:
       return False

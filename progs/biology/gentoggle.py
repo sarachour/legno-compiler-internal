@@ -32,13 +32,12 @@ def dsprog(prog):
   params['one'] = 0.999999
   prog_util.build_oscillator(prog,params['K'],1.0,"dummy","IPTG")
 
-  prog.decl_lambda("umod","(1+abs(X)*{invK})^{negNu}",params)
-  prog.decl_lambda("utf", "{a1}/(1+abs(X)^{beta})",params)
-  prog.decl_lambda("vtf", "{a2}/(1+abs(X)^{gamma})",params)
+  prog.decl_lambda("umod","(1+max(X,0)*{invK})^{negNu}",params)
+  prog.decl_lambda("utf", "{a1}/(1+max(X,0)^{beta})",params)
+  prog.decl_lambda("vtf", "{a2}/(1+max(X,0)^{gamma})",params)
 
 
   prog.decl_var("FNUMOD", "umod(IPTG)",params)
-  prog.interval("FNUMOD",-1.0,1.0)
 
   prog.decl_var("UMODIF", "U*FNUMOD",params)
   prog.interval("UMODIF",-0.08,0.08)

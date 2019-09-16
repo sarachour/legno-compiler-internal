@@ -73,9 +73,8 @@ def is_extended_vga(mode):
   #return (i == enums.RangeType.LOW or \
   not_low = (i != enums.RangeType.LOW) and \
           (o != enums.RangeType.LOW)
-  disabled = [
-    (enums.RangeType.MED,enums.RangeType.HIGH)
-  ]
+  disabled = []
+  disabled.append((enums.RangeType.MED,enums.RangeType.HIGH))
   for ci,co in disabled:
     if i == ci and o == co:
       return False
@@ -91,13 +90,7 @@ def is_extended_mul(mode):
   not_low = i0 != enums.RangeType.LOW and \
                   i1 != enums.RangeType.LOW and \
                         o != enums.RangeType.LOW
-  not_ampl = not (i0 == enums.RangeType.MED and \
-                  i1 == enums.RangeType.MED) and \
-                  o == enums.RangeType.HIGH
-  not_hi = not (i0 == enums.RangeType.HIGH or \
-                i1 == enums.RangeType.HIGH) and \
-                  o == enums.RangeType.HIGH
-
+ 
 
   return not_low
   #return not_low

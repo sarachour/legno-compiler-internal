@@ -41,14 +41,17 @@ class ExprVisitor:
     elif expr.op == ops.OpType.COS:
       result = self.visit_cos(expr)
 
-    elif expr.op == ops.OpType.RANDFUN:
-      result = self.visit_randfun(expr)
-
     elif expr.op == ops.OpType.SIN:
       result = self.visit_sin(expr)
 
     elif expr.op == ops.OpType.ADD:
       result = self.visit_add(expr)
+
+    elif expr.op == ops.OpType.MIN:
+      result = self.visit_min(expr)
+
+    elif expr.op == ops.OpType.MAX:
+      result = self.visit_max(expr)
 
     elif expr.op == ops.OpType.POW:
       result = self.visit_pow(expr)
@@ -73,6 +76,12 @@ class ExprVisitor:
     raise NotImplementedError
 
   def visit_add(self,e):
+    raise NotImplementedError
+
+  def visit_min(self,m):
+    raise NotImplementedError
+
+  def visit_max(self,m):
     raise NotImplementedError
 
   def visit_mult(self,m):

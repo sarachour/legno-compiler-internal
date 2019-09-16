@@ -128,6 +128,17 @@ class Interval:
     def positive(self):
         return self.lower >= 0 and self.upper >= 0
 
+
+    def max(self,other):
+        new_lower = max(self.lower,other.lower)
+        new_upper = max(self.upper,other.upper)
+        return Interval.type_infer(new_lower,new_upper)
+
+    def min(self,other):
+        new_lower = min(self.lower,other.lower)
+        new_upper = min(self.upper,other.upper)
+        return Interval.type_infer(new_lower,new_upper)
+
     def sgn(self):
         if self.crosses_zero():
             return Interval.type_infer(-1,1)
@@ -159,6 +170,7 @@ class Interval:
         if self.unbounded():
             return self
         if self.contains_zero():
+            print(self)
             corners = [1.0/self.lower, 1.0/self.upper]
             return Interval.type_infer(min(corners), float('inf'))
         else:

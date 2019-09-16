@@ -166,17 +166,20 @@ def digital_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
     if mrng.spread > 0.0 \
        and coverage > 0.0 \
        and min_coverage > 0.0:
+        max_val = mrng.bound;
+        pct_upper = abs(mrng.upper)/mrng.bound;
+        pct_lower = abs(mrng.lower)/mrng.bound;
         lscale_util.lower_bound_constraint(scenv,
                                            ratio(scop.SCMult(hscale_upper,
                                                              scop.SCConst(abs(hwrng.upper)))),
                                            abs(mrng.upper),
-                                           min_coverage*coverage,
+                                           min_coverage*coverage*pct_upper,
                                            'jcom-coverage-%s' % annot)
         lscale_util.lower_bound_constraint(scenv,
                                            ratio(scop.SCMult(hscale_lower,
                                                              scop.SCConst(abs(hwrng.lower)))),
                                            abs(mrng.lower),
-                                           min_coverage*coverage,
+                                           min_coverage*coverage*pct_lower,
                                            'jcom-coverage-%s' % annot)
 
 def analog_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):

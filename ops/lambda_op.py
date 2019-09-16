@@ -24,6 +24,18 @@ def to_python(e):
         v = list(set(vs1+vs2))
         return v,"(%s)**(%s)" % (a1,a2)
 
+    elif e.op == OpType.MAX:
+        vs1,a1 = to_python(e.arg(0))
+        vs2,a2 = to_python(e.arg(1))
+        v = list(set(vs1+vs2))
+        return v,"max(%s,%s)" % (a1,a2)
+
+    elif e.op == OpType.MIN:
+        vs1,a1 = to_python(e.arg(0))
+        vs2,a2 = to_python(e.arg(1))
+        v = list(set(vs1+vs2))
+        return v,"min(%s,%s)" % (a1,a2)
+
     elif e.op == OpType.MULT:
         vs1,a1 = to_python(e.arg1)
         vs2,a2 = to_python(e.arg2)
@@ -44,16 +56,6 @@ def to_python(e):
     elif e.op == OpType.SGN:
         v,a = to_python(e.arg(0))
         return v,"math.copysign(1,%s)" % a
-
-    elif e.op == OpType.RANDFUN:
-        v,a = to_python(e.arg(0))
-        fmt = "np.interp([{expr}],np.linspace(-1,1,{n}),randlist({seed},{n}))[0]" \
-              .format(
-                  expr=a,
-                  n=e.n,
-                  seed=e.seed
-              )
-        return v,fmt
 
     elif e.op == OpType.SIN:
         v,a = to_python(e.arg(0))
@@ -124,15 +126,62 @@ class Func(Op):
         pars = " ".join(map(lambda p: str(p), self._vars))
         return "lambd(%s).(%s)" % (pars,self._expr)
 
+class Max(Op):
+
+    def __init__(self,arg0,arg1):
+        Op.__init__(self,OpType.MAX,[arg0,arg1])
+
+    def substitute(self,args):
+        return Max(self.arg(0).substitute(args),
+                   self.arg(1).substitute(args))
+
+    def compute(self,bindings):
+        a0 = self.arg(0).compute(bindings)
+        a1 = self.arg(1).compute(bindings)
+        return max(a0,a1)
+
+    def infer_interval(self,ivals):
+        ivalcoll1 = self.arg(0).infer_interval(ivals)
+        ivalcoll2 = self.arg(1).infer_interval(ivals)
+        ivalcoll1.update(ivalcoll1.interval.max(ivalcoll2.interval))
+        return ivalcoll1
+
+
+    def __repr__(self):
+        return "max(%s,%s)" % (self.arg(0), \
+                               self.arg(1))
+
+class Min(Op):
+
+    def __init__(self,arg0,arg1):
+        Op.__init__(self,OpType.MIN,[arg0,arg1])
+
+    def substitute(self,args):
+        return Min(self.arg(0).substitute(args),
+                   self.arg(1).substitute(args))
+
+    def compute(self,bindings):
+        a0 = self.arg(0).compute(bindings)
+        a1 = self.arg(1).compute(bindings)
+        return min(a0,a1)
+
+
+    def infer_interval(self,ivals):
+        ivalcoll1 = self.arg(0).infer_interval(ivals)
+        ivalcoll2 = self.arg(1).infer_interval(ivals)
+        ivalcoll1.update(ivalcoll1.interval.min(ivalcoll2.interval))
+        return ivalcoll1
+
+
+    def __repr__(self):
+        return "min(%s,%s)" % (self.arg(0), \
+                               self.arg(1))
+
 class Clamp(Op):
 
     def __init__(self,arg,ival):
         Op.__init__(self,OpType.CLAMP,[arg])
         self._interval = ival
-
-    @property
-    def arg1(self):
-        return self.arg(0)
 
     @property
     def interval(self):
@@ -145,19 +194,6 @@ class Clamp(Op):
     def __repr__(self):
         return "clamp(%s,%s)" % (self.arg(0), \
                               self._interval)
-
-class RandomVar(Op):
-    def __init__(self,variance):
-        Op.__init__(self,OpType.RANDOM_VAR,[])
-        self._variance = variance
-
-    @property
-    def variance(self):
-        return self._variance
-
-    def compute(self,bindings):
-        raise Exception("random variable")
-
 
 class Abs(Op):
 
@@ -182,44 +218,6 @@ class Abs(Op):
         return ivalcoll
 
 
-
-class RandFun(Op):
-
-    def __init__(self,arg,n=100,seed=None):
-        Op.__init__(self,OpType.RANDFUN,[arg])
-        self.n = n
-        if seed is None:
-            self.seed = random.randint(0,1000000)
-        else:
-            self.seed = seed
-
-    @staticmethod
-    def from_json(obj):
-        rf = RandFun(Op.from_json(obj['args'][0]), \
-                     obj['n'], \
-                     obj['seed'])
-        return rf
-
-    def substitute(self,assigns):
-        rf = RandFun(self.arg(0).substitute(assigns), \
-                     self.n,self.seed)
-        return rf
-
-    def compute(self,bindings):
-        raise NotImplementedError
-
-    def infer_interval(self,ivals):
-        ivalcoll = self.arg(0).infer_interval(ivals)
-        new_ival = interval.Interval(-1,1)
-        ivalcoll.update(new_ival)
-        return ivalcoll
-
-
-    def to_json(self):
-        obj = Op.to_json(self)
-        obj['n'] = self.n
-        obj['seed'] = self.seed
-        return obj
 
 class Sgn(Op):
 
@@ -302,37 +300,6 @@ class Cos(Op):
         ivalcoll = self.arg(0).infer_interval(ivals)
         ivalcoll.update(interval.Interval.type_infer(-1,1))
         return ivalcoll
-
-
-
-class UniformNoise(Op):
-
-    def __init__(self,bound,frequency=0.01,period=1.0,seed=5):
-        Op.__init__(self,OpType.UNIFNOISE,[])
-        self._bound = bound
-        self._frequency = frequency
-        self._period = period
-        self._n = int(self._period/self._frequency)
-        np.random.seed(seed)
-        self._buf = list(map(lambda i: \
-                             np.random.uniform(-self._bound,
-                                               self._bound), \
-                             range(0,self._n)))
-
-        pass
-
-    @property
-    def bound(self):
-        return self._bound
-
-    def compute(self,bindings):
-        # note: the closer to random noise it is, the harder
-        # it is to use a solver
-        t = bindings['t']
-        i = int((float(t)/self._frequency)) % self._n
-        value = self._buf[i]
-        return value
-
 
 
 

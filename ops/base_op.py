@@ -24,7 +24,8 @@ class OpType(Enum):
   LN= "ln"
   EXP= "exp"
   CLAMP="clamp"
-  RANDFUN="randfun"
+  MIN ="min"
+  MAX ="max"
 
 class Op:
 
