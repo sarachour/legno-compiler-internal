@@ -52,9 +52,9 @@ def lin_expr(linenv,expr):
 def build_linear_problem(circ,scenv,scopt):
   failed = scenv.failed()
   if failed:
-    jaunt_util.log_warn("==== FAIL ====")
+    lscale_util.log_warn("==== FAIL ====")
     for fail in scenv.failures():
-      jaunt_util.log_warn(fail)
+      lscale_util.log_warn(fail)
     return
 
   lp = LinProb()
