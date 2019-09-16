@@ -146,6 +146,12 @@ class Max(Op):
         ivalcoll1.update(ivalcoll1.interval.max(ivalcoll2.interval))
         return ivalcoll1
 
+    @staticmethod
+    def from_json(obj):
+        return Max( \
+                    Op.from_json(obj['args'][0]),
+                    Op.from_json(obj['args'][1]))
+
 
     def __repr__(self):
         return "max(%s,%s)" % (self.arg(0), \
@@ -171,6 +177,12 @@ class Min(Op):
         ivalcoll2 = self.arg(1).infer_interval(ivals)
         ivalcoll1.update(ivalcoll1.interval.min(ivalcoll2.interval))
         return ivalcoll1
+
+    @staticmethod
+    def from_json(obj):
+        return Min( \
+                    Op.from_json(obj['args'][0]),
+                    Op.from_json(obj['args'][1]))
 
 
     def __repr__(self):

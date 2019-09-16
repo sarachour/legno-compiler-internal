@@ -158,6 +158,19 @@ class SCFPropExprVisitor(ExprVisitor):
     new_expr = scop.expo(expr,0.5)
     return new_expr
 
+  def visit_max(self,expr):
+    expr1 = self.visit_expr(expr.arg(0))
+    expr2 = self.visit_expr(expr.arg(1))
+    self.scenv.eq(expr1,expr2,'expr-visit-max')
+    return expr1
+
+  def visit_min(self,expr):
+    expr1 = self.visit_expr(expr.arg(0))
+    expr2 = self.visit_expr(expr.arg(1))
+    self.scenv.eq(expr1,expr2,'expr-visit-min')
+    return expr1
+
+
   def visit_cos(self,expr):
     expr = self.visit_expr(expr.arg(0))
     self.scenv.eq(expr, scop.SCConst(1.0), 'expr-visit-cos')
