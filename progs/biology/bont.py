@@ -17,6 +17,18 @@ def dsprog(prog):
     'lyticB0': 0.0
   }
   # reparametrization
+  params = {
+    'r_endo_kT': 0.541,
+    'r_trans_kL': 0.1,
+    'r_bind_kB': 0.25,
+    'tenB0': 1.0,
+    'freeB0': 1.0,
+    'bndB0' : 0.0,
+    'transB0': 0.0,
+    'lyticB0': 0.0,
+    'one':0.999999
+  }
+  # reparametrization
 
   dTenB = '{r_trans_kL}*(-transB)'
   prog.decl_stvar("tenB",dTenB,'{tenB0}',params)
