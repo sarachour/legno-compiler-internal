@@ -35,6 +35,7 @@ class DSProgDB:
         prog,sim = DSProgDB.PROGRAMS[name]
         prob = DSProg(name)
         prog(prob)
+        prob.check()
         return prob
 
     @staticmethod

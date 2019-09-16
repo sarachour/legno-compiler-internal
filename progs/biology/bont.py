@@ -32,27 +32,27 @@ def dsprog(prog):
   }
 
   dTenB = '{r_trans_kL}*(-transB)'
-  prog.decl_stvar("tenb",dTenB,'{tenB0}',params)
-  prob.interval('tenB',-1,1)
+  prog.decl_stvar("tenB",dTenB,'{tenB0}',params)
+  prog.interval('tenB',-1,1)
 
   dFreeB = '{r_bind_kB}*(-freeB)'
-  prob.decl_stvar('freeB',dFreeB,'{freeB0}',params)
-  prob.interval('freeB',-1,1)
+  prog.decl_stvar('freeB',dFreeB,'{freeB0}',params)
+  prog.interval('freeB',-1,1)
 
   dBndB = '{r_bind_kB}*(-freeB) + {r_endo_kT}*(-bndB)'
-  prob.decl_stvar('bndB',dBndB, '{bndB0}',params)
-  prob.interval('bndB',-1,1)
+  prog.decl_stvar('bndB',dBndB, '{bndB0}',params)
+  prog.interval('bndB',-1,1)
 
   dTransB = '{r_endo_kT}*bndB + {r_trans_kL}*(-transB)'
-  prob.decl_stvar('transB',dTransB, '{transB0}',params)
-  prob.interval('transB',-1,1)
+  prog.decl_stvar('transB',dTransB, '{transB0}',params)
+  prog.interval('transB',-1,1)
 
   dLyticB = '{r_trans_kL}*transB'
-  prob.decl_stvar('lyticB',dLyricB,'{lyticB0}',params)
-  prob.interval('lyticB',-1,1)
+  prog.decl_stvar('lyticB',dLyticB,'{lyticB0}',params)
+  prog.interval('lyticB',-1,1)
 
-  prob.emit('{one}*transB','MTRANSB')
-
+  prog.emit('{one}*transB','MTRANSB',params)
+  prog.check()
 
 def dssim():
   exp = DSSim('t20')
