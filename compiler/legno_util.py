@@ -160,6 +160,7 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
 
     dig_error,analog_error,coverage = joint_search(dig_error,analog_error,coverage)
 
+    assert(coverage > 0.05)
     timer.kill()
     for slack in [0.05]:
         timer.start()
