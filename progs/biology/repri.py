@@ -87,7 +87,8 @@ def dsprog(prob):
     prob.decl_stvar(subparams["L"],expr,"{L0}",subparams)
     prob.interval(subparams["L"],0,subparams["L0"])
 
-  prob.decl_lambda("bind","({K}^{n})/({K}^{n}+P^{n})",params)
+  params["Kn"] = params["K"]**params["n"]
+  prob.decl_lambda("bind","({Kn})/({Kn}+P*P)",params)
   prob.decl_var("ALacL","bind(clp)",params)
   prob.decl_var("ATetR","bind(LacLp)",params)
   prob.decl_var("Aclp","bind(TetRp)",params)
