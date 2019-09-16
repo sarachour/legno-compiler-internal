@@ -19,9 +19,9 @@ def dsprog(prog):
   # reparametrization
   params = {
     'r_endo_kT': 0.541,
-    'r_trans_kL': 0.1,
-    'r_bind_kB': 0.25,
-    'tenB0': 1.0,
+    'r_trans_kL': 0.541,
+    'r_bind_kB': 0.541,
+    'tenB0': 0.0,
     'freeB0': 1.0,
     'bndB0' : 0.0,
     'transB0': 0.0,
@@ -32,23 +32,23 @@ def dsprog(prog):
 
   dTenB = '{r_trans_kL}*(-transB)'
   prog.decl_stvar("tenB",dTenB,'{tenB0}',params)
-  prog.interval('tenB',-2,2)
+  prog.interval('tenB',0,1)
 
   dFreeB = '{r_bind_kB}*(-freeB)'
   prog.decl_stvar('freeB',dFreeB,'{freeB0}',params)
-  prog.interval('freeB',-1,1)
+  prog.interval('freeB',0,1)
 
   dBndB = '{r_bind_kB}*(-freeB) + {r_endo_kT}*(-bndB)'
   prog.decl_stvar('bndB',dBndB, '{bndB0}',params)
-  prog.interval('bndB',-1,1)
+  prog.interval('bndB',0,1)
 
   dTransB = '{r_endo_kT}*bndB + {r_trans_kL}*(-transB)'
   prog.decl_stvar('transB',dTransB, '{transB0}',params)
-  prog.interval('transB',-1,1)
+  prog.interval('transB',0,1)
 
   dLyticB = '{r_trans_kL}*transB'
   prog.decl_stvar('lyticB',dLyticB,'{lyticB0}',params)
-  prog.interval('lyticB',-1,1)
+  prog.interval('lyticB',0,1)
 
   prog.emit('{one}*transB','MTRANSB',params)
   prog.check()
