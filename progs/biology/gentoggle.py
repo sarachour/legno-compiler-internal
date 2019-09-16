@@ -12,23 +12,19 @@ def dsprog(prog):
   params = {
     'a2': 15.6,
     'a1': 156.25,
-    'K' : 0.000029618,
+    #'K' : 0.000029618,
+    'K' : K,
     'nu': 2.0015,
     'beta': 2.5,
     'gamma': 1.0,
     'U0': 0.0,
     'V0': 0.0,
     'kdeg': 0.99999999,
-    'vtf_tr':15.6,
-    'vtf_kf':1.0,
-    'vtf_kd':1.0/K,
-    'utf_tr':13.32,
-    'utf_kf':1.0,
-    'utf_kd':1.0/K
+    'one':0.99999
   }
   #reparametrization
-  params['K'] *= 10.0;
-  params['a1'] = 13.32;
+  params['a1'] = 0.15;
+  params['a2'] = 1.56;
   params
   # derived parameters
   params['invK'] = 1.0/params['K']
@@ -41,10 +37,15 @@ def dsprog(prog):
   prog.decl_lambda("vtf", "{a2}/(1+abs(X)^{gamma})",params)
 
 
-  prog.decl_var("FNUMOD", "umod(IPTG)")
-  prog.decl_var("UMODIF", "U*FNUMOD")
-  prog.decl_var("UTF", "utf(V)")
-  prog.decl_var("VTF", "vtf(UMODIF)")
+  prog.decl_var("FNUMOD", "umod(IPTG)",params)
+  prog.interval("FNUMOD",-1.0,1.0)
+
+  prog.decl_var("UMODIF", "U*FNUMOD",params)
+  prog.interval("UMODIF",-0.08,0.08)
+  prog.decl_var("UTF", "utf((V))",params)
+  prog.interval("UTF",-0.2,0.2)
+  prog.decl_var("VTF", "vtf((UMODIF))",params)
+  prog.interval("VTF",-1.7,1.7)
 
   dV = "VTF + {kdeg}*(-V)"
   dU = "UTF + {kdeg}*(-U)"
@@ -53,12 +54,8 @@ def dsprog(prog):
   prog.decl_stvar("U",dU, "{U0}", params);
   prog.emit("{one}*UMODIF", "modU", params)
 
-  prog.interval("UMODIF",0,0.5)
-  prog.interval("UTF",0,16.0)
-  prog.interval("VTF",0,16.0)
-  prog.interval("V",0,16.0)
-  prog.interval("U",0,1.5)
-  print(prog)
+  prog.interval("V",-1.7,1.7)
+  prog.interval("U",-0.08,0.08)
   prog.check()
   return
 

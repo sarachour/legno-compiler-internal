@@ -83,19 +83,19 @@ def dsprog(prob):
     subparams['one'] = 0.9999999
     subparams['krL0'] = subparams['kr']*subparams['L0']
     #expr = "{kr}*(-{L}) + {kf}*{P}*({P}*(-{L}))"
-    expr = "{kr}*(-{L}) + {kf}*({one}*({P}*({one}*{P})))*(-{L})"
+    expr = "{krL0} + {kr}*(-{L}) + {kf}*({one}*({P}*({one}*{P})))*(-{L})"
     prob.decl_stvar(subparams["L"],expr,"{L0}",subparams)
     prob.interval(subparams["L"],0,subparams["L0"])
 
   params["Kn"] = params["K"]**params["n"]
-  prob.decl_lambda("bind","({Kn})/({Kn}+P*P)",params)
-  prob.decl_var("ALacL","bind(clp)",params)
-  prob.decl_var("ATetR","bind(LacLp)",params)
-  prob.decl_var("Aclp","bind(TetRp)",params)
+  #prob.decl_lambda("bind","({Kn})/({Kn}+P*P)",params)
+  #prob.decl_var("ALacL","bind(clp)",params)
+  #prob.decl_var("ATetR","bind(LacLp)",params)
+  #prob.decl_var("Aclp","bind(TetRp)",params)
 
-  #mkrxn(prot="clp",name="LacL")
-  #mkrxn(prot="LacLp",name="TetR")
-  #mkrxn(prot="TetRp",name="clp")
+  mkrxn(prot="clp",name="LacL")
+  mkrxn(prot="LacLp",name="TetR")
+  mkrxn(prot="TetRp",name="clp")
   act_bnd = params['gene_bnd']
   prob.interval("ALacL",0,act_bnd)
   prob.interval("ATetR",0,act_bnd)
