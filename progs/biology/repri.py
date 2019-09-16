@@ -94,7 +94,7 @@ def dsprog(prob):
   '''
 
   params["Kn"] = params["K"]**params["n"]
-  prob.decl_lambda("bind","({Kn})/({Kn}+P*P)",params)
+  prob.decl_lambda("bind","({Kn})/({Kn}+max(P,0)^2)",params)
   prob.decl_var("ALacL","bind(clp)",params)
   prob.decl_var("ATetR","bind(LacLp)",params)
   prob.decl_var("Aclp","bind(TetRp)",params)
