@@ -27,7 +27,7 @@ def dsprog(prob):
   }
 
   # reparametrization
-  K = 0.35
+  K = 0.70
   scale = 1.1
   params = {
     'LacLm0':0.5,
@@ -39,7 +39,7 @@ def dsprog(prob):
     'K':K,
     'n':2.0,
     'a_tr':0.99,
-    'kd_mrna' : 0.40,
+    'kd_mrna' : 0.20,
     'k_tl': 0.201029995664,
     'kd_prot': 0.30,
     'one': 0.9999999,
@@ -67,12 +67,34 @@ def dsprog(prob):
   prob.interval("clp",0,prot_bnd)
   prob.interval("TetRp",0,prot_bnd)
 
+  K = params['K']
+  n = params['n']
+
+  def mkrxn(prot,name):
+    subparams = {
+      'Kd': 1.0/(K**n),
+      'speed':4.0
+    }
+    subparams['kf'] = subparams['Kd']*subparams['speed']
+    subparams['kr'] = params['one']*subparams['speed']
+    subparams['L0'] = 1.0
+    subparams['L'] = "A%s" % name
+    subparams['P'] = prot
+    subparams['one'] = 0.9999999
+    subparams['krL0'] = subparams['kr']*subparams['L0']
+    #expr = "{kr}*(-{L}) + {kf}*{P}*({P}*(-{L}))"
+    expr = "{kr}*(-{L}) + {kf}*({one}*({P}*({one}*{P})))*(-{L})"
+    prob.decl_stvar(subparams["L"],expr,"{L0}",subparams)
+    prob.interval(subparams["L"],0,subparams["L0"])
 
   prob.decl_lambda("bind","({K}^{n})/({K}^{n}+P^{n})",params)
   prob.decl_var("ALacL","bind(clp)",params)
   prob.decl_var("ATetR","bind(LacLp)",params)
   prob.decl_var("Aclp","bind(TetRp)",params)
 
+  #mkrxn(prot="clp",name="LacL")
+  #mkrxn(prot="LacLp",name="TetR")
+  #mkrxn(prot="TetRp",name="clp")
   act_bnd = params['gene_bnd']
   prob.interval("ALacL",0,act_bnd)
   prob.interval("ATetR",0,act_bnd)
