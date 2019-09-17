@@ -11,30 +11,27 @@
 // ===== FULLSCALE =====
 #define ADC_FULLSCALE (1208.0)
 
-inline float to_diff_voltage(int pos, int neg){
-  float pos_mV = pos*ADC_CONVERSION;
-  float neg_mV = neg*ADC_CONVERSION;
-  float value = (pos_mV - neg_mV);
-  float scaled_value = value/ADC_FULLSCALE;
-
-  /*
-  sprintf(FMTBUF,"pos=%d/%f neg=%d/%f diff=%f/%f",
-          pos,pos_mV,
-          neg,neg_mV,
-          value,scaled_value);
-  print_info(FMTBUF);
-  */
+inline int from_diff_dma(int val){
+  // convert to a single-ended differential value
+  // with a resolution of 4096
+  int new_val = -2*(val-2048);
+  return new_val;
+}
+inline float to_diff_voltage(int val){
+  float val_mV = val*ADC_CONVERSION;
+  float scaled_value = val_mV/ADC_FULLSCALE;
   return scaled_value;
 }
 
 
-int measure_seq(Fabric* fab,
+int measure_seq_single(Fabric* fab,
                 int ardAnaDiffChan,float* times, float* values, int& n){
-  unsigned long codes[SAMPLES];
+  unsigned int pinmap[] = {7,6,5,4,3,2,1,0};
   unsigned int pos[SAMPLES];
   unsigned int neg[SAMPLES];
+  unsigned int codes[SAMPLES];
   const unsigned int samples = SAMPLES;
-  unsigned int pinmap[] = {7,6,5,4,3,2,1,0};
+  int i = 0;
   fab->cfgCommit();
   fab->execStart();
   for(unsigned int index = 0; index < SAMPLES; index++){
@@ -43,13 +40,38 @@ int measure_seq(Fabric* fab,
     codes[index] = micros();
   }
   fab->execStop();
-  unsigned int base_time = codes[0];
   const float thresh = 1.0;
   assert(n <= SAMPLES);
   int oob_idx = n;
   for(unsigned int index = 0; index < n; index++){
-    values[index] = to_diff_voltage(pos[index],neg[index]);
-    times[index] = (codes[index]-base_time)*1e-6;
+    values[index] = to_diff_voltage(pos[index] - neg[index]);
+    times[index] = ((float)(codes[index]-codes[0]))*1.0e-6;
+    if(index < oob_idx && fabs(values[index]) > thresh){
+      oob_idx = index;
+    }
+  }
+  return oob_idx;
+}
+int measure_seq_dma(Fabric* fab,
+                int ardAnaDiffChan,float* times, float* values, int& n){
+  unsigned int vals[SAMPLES];
+  unsigned int codes[SAMPLES];
+  const unsigned int samples = SAMPLES;
+  int i = 0;
+  fab->cfgCommit();
+  fab->execStart();
+  for(unsigned int index = 0; index < SAMPLES; index++){
+    while ((ADC->ADC_ISR & 0x1000000) == 0);
+    vals[index] = ADC->ADC_CDR[ardAnaDiffChan];
+    codes[index] = micros();
+  }
+  fab->execStop();
+  const float thresh = 1.0;
+  assert(n <= SAMPLES);
+  int oob_idx = n;
+  for(unsigned int index = 0; index < n; index++){
+    values[index] = to_diff_voltage(from_diff_dma(vals[index]));
+    times[index] = ((float)(codes[index]-codes[0]))*1.0e-6;
     if(index < oob_idx && fabs(values[index]) > thresh){
       oob_idx = index;
     }
@@ -57,11 +79,17 @@ int measure_seq(Fabric* fab,
   return oob_idx;
 }
 
-float measure_dist(int ardAnaDiffChan, float& variance,int n){
+float measure_dist_single(int ardAnaDiffChan, float& variance,int n){
   unsigned int pos[SAMPLES];
   unsigned int neg[SAMPLES];
   const unsigned int samples = n;
   unsigned int pinmap[] = {7,6,5,4,3,2,1,0};
+  //                      {n,p,n,p,n,p,n,p}
+  /*
+    A0 A1 A2 A3 A4 A5 A6 A7
+    P  N  P  N  P  N  P  N
+    7  6  5  4  3  2  1  0
+  */
   if(n > SAMPLES){
     error("measure_dist: not enough room in buffers to store values");
   }
@@ -72,52 +100,66 @@ float measure_dist(int ardAnaDiffChan, float& variance,int n){
 
   float values[SAMPLES];
   for(unsigned int index = 0; index < n; index++){
-    values[index] = to_diff_voltage(pos[index],neg[index]);
+    values[index] = to_diff_voltage(pos[index]-neg[index]);
+    //sprintf(FMTBUF,"dist val=%d",val[index]);
+    //print_info(FMTBUF);
   }
   float mean;
   util::distribution(values, SAMPLES, mean, variance);
 
+  /*
   sprintf(FMTBUF,"chan=%d mean=%f var=%f", ardAnaDiffChan,
-          mean,variance);
-  print_debug(FMTBUF);
+         mean,variance);
+  print_info(FMTBUF);
+  */
+  return mean;
+}
+
+float measure_dist_dma(int ardAnaDiffChan, float& variance,int n){
+  unsigned int vals[SAMPLES];
+  const unsigned int samples = n;
+  unsigned int pinmap[] = {7,6,5,4,3,2,1,0};
+  //                      {n,p,n,p,n,p,n,p}
+  /*
+    A0 A1 A2 A3 A4 A5 A6 A7
+    P  N  P  N  P  N  P  N
+    7  6  5  4  3  2  1  0
+  */
+  if(n > SAMPLES){
+    error("measure_dist: not enough room in buffers to store values");
+  }
+  for(unsigned int index = 0; index < n; index++){
+    while ((ADC->ADC_ISR & 0x1000000) == 0);
+    vals[index] = ADC->ADC_CDR[ardAnaDiffChan];
+
+  }
+
+  float values[SAMPLES];
+  for(unsigned int index = 0; index < n; index++){
+    values[index] = to_diff_voltage(from_diff_dma(vals[index]));
+    //sprintf(FMTBUF,"dist val=%d",val[index]);
+    //print_info(FMTBUF);
+  }
+  float mean;
+  util::distribution(values, SAMPLES, mean, variance);
+
+  /*
+  sprintf(FMTBUF,"chan=%d mean=%f var=%f", ardAnaDiffChan,
+         mean,variance);
+  print_info(FMTBUF);
+  */
   return mean;
 }
 
 
 
-float measure_max(Fabric* fab,int ardAnaDiffChan,int n){
-  unsigned int pinmap[] = {7,6,5,4,3,2,1,0};
-  unsigned int pos[SAMPLES];
-  unsigned int neg[SAMPLES];
-  const unsigned int samples = SAMPLES;
-  fab->cfgCommit();
-  fab->execStart();
-  for(unsigned int index = 0; index < samples; index++){
-    pos[index] = analogRead(pinmap[ardAnaDiffChan+1]);
-    neg[index] = analogRead(pinmap[ardAnaDiffChan]);
-  }
-  fab->execStop();
-  const float thresh = 1.0;
 
-  float best_val = -1.0;
-  if(n > samples){
-    error("n is larger than samples");
-  }
-  for(unsigned int index = 0; index < n; index++){
-    float value = to_diff_voltage(pos[index],neg[index]);
-    if(fabs(value) <= thresh and fabs(value) > best_val){
-      best_val = fabs(value);
-    }
-    sprintf(FMTBUF,"MEAS %d %f best=%f",index,value,best_val);
-    print_info(FMTBUF);
-  }
-  return best_val;
-}
-
-float measure(int ardAnaDiffChan, int n){
+float measure_single(int ardAnaDiffChan, int n){
   unsigned long adcPos = 0;
   unsigned long adcNeg = 0;
   unsigned int pinmap[] = {7,6,5,4,3,2,1,0};
+  float dummy;
+
   //                      {n,p,n,p,n,p,n,p}
   /*
     A0 A1 A2 A3 A4 A5 A6 A7
@@ -129,11 +171,38 @@ float measure(int ardAnaDiffChan, int n){
     adcPos += analogRead(pinmap[ardAnaDiffChan+1]);
     adcNeg += analogRead(pinmap[ardAnaDiffChan]);
   }
-  float pos = ((float)adcPos/(float)samples);
-  float neg = ((float)adcNeg/(float)samples);
-  float value = to_diff_voltage(pos,neg);
+  float pos = (((float)adcPos)/samples);
+  float neg = (((float)adcNeg)/samples);
+  float value = to_diff_voltage((int) (pos-neg));
   return value;
 }
+
+float measure_dma(int ardAnaDiffChan, int n){
+  unsigned long adcVal = 0;
+  unsigned int pinmap[] = {7,6,5,4,3,2,1,0};
+  float dummy;
+
+  //                      {n,p,n,p,n,p,n,p}
+  /*
+    A0 A1 A2 A3 A4 A5 A6 A7
+    P  N  P  N  P  N  P  N
+    7  6  5  4  3  2  1  0
+  */
+  const unsigned int samples = n;
+  for(unsigned int index = 0; index < samples; index++){
+    //adcPos += analogRead(pinmap[ardAnaDiffChan+1]);
+    //adcNeg += analogRead(pinmap[ardAnaDiffChan]);
+    while ((ADC->ADC_ISR & 0x1000000) == 0);
+    adcVal += ADC->ADC_CDR[ardAnaDiffChan];
+  }
+  float digval = (((float)adcVal)/samples);
+  //sprintf(FMTBUF,"meas val=%d",digval);
+  //print_info(FMTBUF);
+  float value = to_diff_voltage(from_diff_dma((int) (digval)));
+  return value;
+}
+
+
 int Fabric::Chip::Tile::Slice::ChipOutput::analogSeq(
                                                         float* times,
                                                         float* values,
@@ -141,32 +210,34 @@ int Fabric::Chip::Tile::Slice::ChipOutput::analogSeq(
                                                         ) const {
 
 
-  return measure_seq(this->getFabric(),ardAnaDiffChan,times,values,n);
+  return measure_seq_single(this->getFabric(),ardAnaDiffChan,times,values,n);
 }
+
 void Fabric::Chip::Tile::Slice::ChipOutput::analogDist (
                                                         float& mean,
                                                         float& variance
                                                         ) const {
 
 
-  mean = measure_dist(ardAnaDiffChan,variance,SAMPLES);
+  mean = measure_dist_single(ardAnaDiffChan,variance,SAMPLES);
 }
 
 
 /*Measure the reading of an ADC from multiple samples*/
 float Fabric::Chip::Tile::Slice::ChipOutput::fastAnalogAvg () const
 {
-  return measure(ardAnaDiffChan,10);
+  return measure_single(ardAnaDiffChan,100);
 }
 /*Measure the reading of an ADC from multiple samples*/
 float Fabric::Chip::Tile::Slice::ChipOutput::analogAvg () const
 {
-  return measure(ardAnaDiffChan,SAMPLES);
+  return measure_single(ardAnaDiffChan,SAMPLES);
 }
 
 
 float Fabric::Chip::Tile::Slice::ChipOutput::analogMax (int n) const
 {
-  return measure_max(this->getFabric(),ardAnaDiffChan, n);
+  error("unimplemented: analog max");
+  return 0.0;
 }
 #endif

@@ -30,7 +30,11 @@ def get_physics_params(scenv,circ,block,loc,port,handle=None):
                                           port,handle=handle, \
                                           mode=model)
 
+    model = hwmodel.get_model(scenv.model_db, \
+                                          circ,block.name,loc, \
+                                          port,handle=handle)
     return {
+        'model':model, 
         'gain':gain_sc,
         'uncertainty': uncertainty_sc,
         'oprange_lower': oprange_lower,

@@ -110,17 +110,18 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(open_loo
 
   float input = 0.0;
   if(target_tc > 1.5*NOMINAL_TIME_CONSTANT){
-    input = val_dac->fastMakeValue(0.015);
+    this->setInitial(0.0);
+    input = val_dac->fastMakeValue(0.02);
   }
   else {
-    input = val_dac->fastMakeValue(0.10);
+    this->setInitial(0.0);
+    input = val_dac->fastMakeValue(0.20);
   }
   float expected = val_dac->computeOutput(val_dac->m_codes);
   sprintf(FMTBUF,"open-loop input=%f expected=%f",input,expected);
   print_info(FMTBUF);
 
   // set the initial condition of the system
-  this->setInitial(0.0);
  // build open loop circuit
   Connection conn_out_to_tile = Connection (this->out0,parentSlice->tileOuts[3].in0);
   Connection conn_dac_to_in = Connection (val_dac->out0, this->in0);

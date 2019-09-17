@@ -32,14 +32,15 @@ void fast_calibrate_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac){
 void Fabric::Chip::Tile::Slice::Dac::fastMakeDacModel(){
 #define NPTS 5
   float values[NPTS] = {-10,-5,0,5,10};
+  float measurements[NPTS];
   float codes[NPTS];
   for(int i=0; i < NPTS; i += 1){
-    values[i] = this->fastMakeHighValue(values[i],0.2);
+    measurements[i] = this->fastMakeHighValue(values[i],0.2);
     codes[i] = this->m_codes.const_code;
-    sprintf(FMTBUF," v=%f c=%f", values[i],codes[i]);
+    sprintf(FMTBUF," v=%f m=%f c=%f", values[i],measurements[i],codes[i]);
     print_info(FMTBUF);
   }
-  util::linear_regression(codes,values,NPTS,
+  util::linear_regression(codes,measurements,NPTS,
                           this->dac_model.alpha,
                           this->dac_model.beta,
                           this->dac_model.rsq);

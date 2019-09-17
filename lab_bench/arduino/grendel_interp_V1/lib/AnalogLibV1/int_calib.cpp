@@ -175,12 +175,13 @@ time_constant_stats estimate_time_constant(float k_value,
                           nom_alpha,nom_beta,nom_Rsq);
   util::linear_regression(k_times,k_vals,n,
                           k_alpha,k_beta,k_Rsq);
-  float alpha_k = k_alpha - nom_alpha;
+  float alpha_k = k_alpha;
   stats.k = k_value;
-  stats.tc = alpha_k/k_value;
+  stats.tc = k_alpha/k_value;
+  stats.R2_k = k_Rsq;
+  // for bias measurements
   stats.eps = nom_alpha/stats.tc;
   stats.R2_eps = nom_Rsq;
-  stats.R2_k = k_Rsq;
   sprintf(FMTBUF,"  input-rate=%f",
           k_value);
   print_info(FMTBUF);

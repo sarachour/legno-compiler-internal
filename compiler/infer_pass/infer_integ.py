@@ -5,6 +5,8 @@ import compiler.infer_pass.infer_fit as infer_fit
 
 from hwlib.model import PortModel
 
+import matplotlib.pyplot as plt
+
 def remove_outliers(data):
   Q1 = np.percentile(data, 25)
   Q3 = np.percentile(data, 75)
@@ -88,6 +90,14 @@ def infer(obj):
   # update appropriate model
   tcs_lim=remove_outliers(tcs)
   mu,sigma = np.mean(tcs_lim),np.std(tcs_lim)
+
+  #print(model_out)
+  #bins = np.arange(0.85,1.05,0.01);
+  #plt.hist(tcs, normed=True, bins=bins)
+  #plt.savefig("tc.png")
+  #plt.clf()
+  #input()
+
   model_z.gain = mu;
   model_z.gain_uncertainty = sigma;
   model_z.bias = np.mean(ol_bias);

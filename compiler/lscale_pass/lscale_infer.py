@@ -86,6 +86,16 @@ class SCFInferExprVisitor(exprvisitor.SCFPropExprVisitor):
       return scop.SCMult(scop.SCConst(coeff_const), \
                        scop.SCVar(coeff_var))
 
+def sc_acceptable_model(model):
+    if model.block == "integrator" and model.port == "out":
+        if model.gain_uncertainty > 0.012:
+            print(model)
+            return False
+        else:
+            return True
+    else:
+        return True
+
 def sc_physics_model(scenv,scale_mode,circ,block_name,loc,port,handle):
         block = circ.board.block(block_name)
         config = circ.config(block.name,loc)
@@ -141,6 +151,7 @@ def sc_physics_model(scenv,scale_mode,circ,block_name,loc,port,handle):
         scenv.implies(modevar,jvar_phys_ops_upper, oprange_scale_upper)
         scenv.implies(modevar,jvar_unc, uncertainty)
         config.set_scale_mode(baseline)
+        return sc_acceptable_model(pars['model'])
 
 def sc_coalesce_connections(circ):
     backward_links = {}
@@ -266,12 +277,12 @@ def sc_decl_scale_model_variables(scenv,circ):
 
         valid_scms = []
         missing_scms = []
-        for port in block.inputs + block.outputs:
-            for handle in list(block.handles(config.comp_mode,port)) + [None]:
-                for scm in block.scale_modes(config.comp_mode):
-                    if not block.whitelist(config.comp_mode, scm):
-                        continue
-
+        for scm in block.scale_modes(config.comp_mode):
+            if not block.whitelist(config.comp_mode, scm):
+                continue
+            is_valid = True
+            for port in block.inputs + block.outputs:
+                for handle in list(block.handles(config.comp_mode,port)) + [None]:
                     if  not scenv.model_db.has(block.name,loc,port, \
                                                config.comp_mode, \
                                                scm,handle):
@@ -284,12 +295,13 @@ def sc_decl_scale_model_variables(scenv,circ):
                                      port,
                                      config.comp_mode,
                                      scm, handle))
+                            is_valid = False
                             continue
 
-                    valid_scms.append(scm)
-                    sc_physics_model(scenv,scm,circ,block_name, \
-                                     loc,port,handle=handle)
-
+                    is_valid &= sc_physics_model(scenv,scm,circ,block_name, \
+                                                loc,port,handle=handle)
+            if is_valid:
+                valid_scms.append(scm)
         modevars = []
         for scm in missing_scms:
                 scenv.model_db.log_missing_model(block.name, \
