@@ -148,7 +148,7 @@ def circ_use_mult_t():
         "in0_range" / cstruct.Int8ul,
         "in1_range" / cstruct.Int8ul,
         "out_range" / cstruct.Int8ul,
-        cstruct.Padding(1),
+        cstruct.Padding(3),
         "coeff" / cstruct.Float32l
     )
 
