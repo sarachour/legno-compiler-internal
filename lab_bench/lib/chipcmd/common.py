@@ -31,7 +31,7 @@ def build_circ_ctype(circ_data):
 
 def signed_float_to_byte(fvalue):
     assert(fvalue >= -1.0 and fvalue <= 1.0)
-    value = int(round((fvalue+1.0)/2.0*255))
+    value = min(int(round(fvalue*128.0) + 128),255)
     assert(value >= 0 and value <= 255)
     return value
 
