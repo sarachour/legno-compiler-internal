@@ -49,6 +49,7 @@ def blocks_with_default_models():
   return ['tile_in','tile_out', \
           'chip_in','chip_out', \
           'ext_chip_in','ext_chip_out',
+          'ext_chip_analog_in',
           'lut']
 
 def crossbars_populated(db,calib_obj):
@@ -73,6 +74,9 @@ def populate_default_models(board,db,calib_obj):
                           calib_obj=calib_obj, \
                           handle=None)
         db.put(model)
+        if blkname == 'ext_chip_analog_in':
+          print(model)
+          input()
 
 def write_models(models):
   if len(models) == 0:
@@ -138,7 +142,7 @@ def analyze(args):
   blacklist = ['tile_in','tile_out', \
                'chip_in','chip_out', \
                'ext_chip_in','ext_chip_out',
-               'ext_chip_analog_in']
+               'ext_analog_chip_in']
   for block,loc,cfg in circ.instances():
     comp_mode = cfg.comp_mode
     scale_mode = cfg.scale_mode

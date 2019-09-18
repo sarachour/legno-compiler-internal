@@ -3,10 +3,12 @@ from dslang.dssim import DSSim
 import progs.audio.audio_util as audio_util
 
 def dsname():
-  return "apass"
+  return "ascale"
 
 def dsprog(prog):
-  prog.emit("X","OUT");
+  #prog.decl_extvar("X",loc='E1');
+  prog.decl_var("Y", "0.5*X");
+  prog.emit("Y","OUT");
   audio_util.decl_audio_input(prog,"X");
 
 def dssim():
