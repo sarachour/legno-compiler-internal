@@ -137,7 +137,8 @@ def analyze(args):
   infer_visualize.CALIB_OBJ = util.CalibrateObjective(args.calib_obj)
   blacklist = ['tile_in','tile_out', \
                'chip_in','chip_out', \
-               'ext_chip_in','ext_chip_out']
+               'ext_chip_in','ext_chip_out',
+               'ext_chip_analog_in']
   for block,loc,cfg in circ.instances():
     comp_mode = cfg.comp_mode
     scale_mode = cfg.scale_mode
