@@ -9,13 +9,13 @@ import hwlib.hcdc.enums as enums
 
 
 # DUE DAC -> VTOI
-props_in = util.make_ana_props(enums.RangeType.HIGH,\
+props_in = util.make_ana_props(enums.RangeType.MED,\
                                 glb.CTX.get(glb.GLProp.VOLTAGE_INTERVAL,
                                         'ext_chip_analog_in', \
                                         "*","*",'in'))
 props_in.set_physical(True)
 
-props_out = util.make_ana_props(enums.RangeType.HIGH,\
+props_out = util.make_ana_props(enums.RangeType.MED,\
                                 glb.CTX.get(glb.GLProp.CURRENT_INTERVAL,
                                         'ext_chip_analog_in', \
                                         "*","*",'out'))

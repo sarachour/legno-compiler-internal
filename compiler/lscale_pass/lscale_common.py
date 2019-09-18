@@ -326,6 +326,7 @@ def digital_bandwidth_constraint(scenv,prob,circ,block,loc,port,handle,annot):
                          'jcom-digital-maxbw-%s' % annot
                 )
 
+
         # maximum runtime of 50 ms
         max_sim_time_constraint(scenv,prob,circ)
 

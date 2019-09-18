@@ -87,6 +87,9 @@ class SCFInferExprVisitor(exprvisitor.SCFPropExprVisitor):
                        scop.SCVar(coeff_var))
 
 def sc_acceptable_model(model):
+    if model is None:
+        return True
+
     if model.block == "integrator" and model.port == "out":
         if model.gain_uncertainty > 0.012:
             print(model)

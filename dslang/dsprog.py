@@ -146,6 +146,10 @@ class DSProg:
         self._bind(var,obj)
 
 
+    def decl_extvar(self,varname,loc):
+        self._bind(varname,op.ExtVar("EXT_%s" % varname, \
+                                     loc=loc))
+
     def emit(self,varexpr,obsvar,params={},loc='A0'):
         expr_conc = varexpr.format(**params)
         obj = opparse.parse(self,expr_conc)

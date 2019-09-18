@@ -52,7 +52,7 @@ class Integ(GenericOp2):
 
     def infer_interval(self,intervals={}):
       if not self.handle in intervals:
-        raise Exception("handle not in interval.")
+        raise Exception("handle not in interval: %s" % self.handle)
 
       ival = intervals[self.handle]
       istvar = interval.IntervalCollection(ival)
