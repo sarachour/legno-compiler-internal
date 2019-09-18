@@ -92,7 +92,8 @@ def find_routes(board,locs,conns,inst_assigns):
       sloc = board.position_string(inst_assigns[(sblk,sfragid)])
       dloc = board.position_string(inst_assigns[(dblk,dfragid)])
       n_routes = 0
-      for route in board.find_routes(sblk,sloc,sport,dblk,dloc,dport):
+      for route in board.find_routes(sblk,sloc,sport,dblk,dloc,dport, \
+                                     count=1000):
         double_use = list(filter(lambda place: place in in_use, route))
         if len(double_use) > 0:
           continue
@@ -116,7 +117,8 @@ def find_routes(board,locs,conns,inst_assigns):
       (sblk,sfragid),sport,(dblk,dfragid),dport= conn
       sloc = board.position_string(inst_assigns[(sblk,sfragid)])
       dloc = board.position_string(inst_assigns[(dblk,dfragid)])
-      for route in board.find_routes(sblk,sloc,sport,dblk,dloc,dport):
+      for route in board.find_routes(sblk,sloc,sport,dblk,dloc,dport,
+                                     count=1000):
         lengths[conn] = len(route)
         break
 

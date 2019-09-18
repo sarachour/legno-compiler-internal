@@ -271,6 +271,8 @@ class Board(Layer):
             for path in pathgen:
                 if len(all_routes) < count or count < 0:
                     all_routes.append(path)
+                else:
+                    break
 
         except nx.NetworkXNoPath as e:
             print("no path: %s[%s].%s->%s[%s].%s" % (sblk,skey,sport, \
