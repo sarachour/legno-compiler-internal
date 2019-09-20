@@ -45,6 +45,9 @@ namespace cutil {
     float pct_error = error/mag;
     float pct_deviate = fabs(gain_mean-1.0)/1.0;
     float loss = pct_error+deviation_weight*pct_deviate;
+    if(gain_mean > 0.99){
+      loss = 10.0;
+    }
     sprintf(FMTBUF,"gain=N(%f,%f) bias=%f mag=%f",gain_mean,gain_std,bias,mag);
     print_info(FMTBUF);
     sprintf(FMTBUF,"pct-error=%f pct-deviate=%f loss=%f",pct_error,pct_deviate,loss);

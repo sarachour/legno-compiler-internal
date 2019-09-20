@@ -2,7 +2,7 @@ from dslang.dsprog import DSProg
 from dslang.dssim import DSSim
 
 N = 4
-I = 2
+I = 3
 WITH_GAIN = False
 
 

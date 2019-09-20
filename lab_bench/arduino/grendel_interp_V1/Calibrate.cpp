@@ -8,10 +8,12 @@
 namespace calibrate {
   calib_objective_t get_objective_max_delta_fit(uint16_t blk){
     switch(blk){
-    case circ::block_type_t::TILE_ADC:
     case circ::block_type_t::FANOUT:
       return CALIB_FAST;
       break;
+    case circ::block_type_t::TILE_ADC:
+    case circ::block_type_t::TILE_DAC:
+    case circ::block_type_t::INTEG:
     case circ::block_type_t::MULT:
       return CALIB_MAXIMIZE_DELTA_FIT;
       break;
@@ -108,9 +110,6 @@ namespace calibrate {
     case circ::block_type_t::MULT:
       // TODO: indicate if input or output.
       mult = common::get_mult(fab,loc);
-      if(mult->m_codes.vga){
-        obj = CALIB_MINIMIZE_ERROR;
-      }
       mult->calibrate(obj);
       break;
 

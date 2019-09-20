@@ -70,7 +70,6 @@ def dsprog(prob):
   K = params['K']
   n = params['n']
 
-  '''
   def mkrxn(prot,name):
     subparams = {
       'Kd': 1.0/(K**n),
@@ -91,13 +90,14 @@ def dsprog(prob):
   mkrxn(prot="clp",name="LacL")
   mkrxn(prot="LacLp",name="TetR")
   mkrxn(prot="TetRp",name="clp")
-  '''
 
+  '''
   params["Kn"] = params["K"]**params["n"]
   prob.decl_lambda("bind","({Kn})/({Kn}+max(P,0)^2)",params)
   prob.decl_var("ALacL","bind(clp)",params)
   prob.decl_var("ATetR","bind(LacLp)",params)
   prob.decl_var("Aclp","bind(TetRp)",params)
+  '''
   act_bnd = params['gene_bnd']
   prob.interval("ALacL",0,act_bnd)
   prob.interval("ATetR",0,act_bnd)

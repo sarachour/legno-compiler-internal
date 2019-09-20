@@ -109,6 +109,7 @@ def cs2s_blockinst(board,node,outputs,stubs):
         config.set_comp_mode(valid_modes[0])
     else:
         print(scfs,coeffs,stubs)
+        input("=== no valid modes ===")
         input()
 
     return len(valid_modes) > 0

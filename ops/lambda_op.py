@@ -24,6 +24,9 @@ def to_python(e):
         v = list(set(vs1+vs2))
         return v,"(%s)**(%s)" % (a1,a2)
 
+    elif e.op == OpType.EXTVAR:
+        return [],"0.0"
+
     elif e.op == OpType.MAX:
         vs1,a1 = to_python(e.arg(0))
         vs2,a2 = to_python(e.arg(1))

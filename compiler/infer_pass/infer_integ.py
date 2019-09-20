@@ -98,6 +98,11 @@ def infer(obj):
   #plt.clf()
   #input()
 
+  if np.isnan(mu):
+    print(model_z)
+    input("time constant is nan");
+    return
+
   model_z.gain = mu;
   model_z.gain_uncertainty = sigma;
   model_z.bias = np.mean(ol_bias);

@@ -11,7 +11,8 @@ def dsprog(prog):
   K = 1.0
   params = {
     'a2': 15.6,
-    'a1': 156.25,
+    #'a1': 156.25,
+    'a1': 15.62,
     #'K' : 0.000029618,
     'K' : K,
     'nu': 2.0015,
@@ -23,39 +24,42 @@ def dsprog(prog):
     'one':0.99999
   }
   #reparametrization
-  params['a1'] = 0.15;
-  params['a2'] = 1.56;
-  params
   # derived parameters
   params['invK'] = 1.0/params['K']
   params['negNu'] = -params['nu']
   params['one'] = 0.999999
-  prog_util.build_oscillator(prog,params['K'],1.0,"dummy","IPTG")
+  params['halfK'] = K/2.0;
+  prog_util.build_oscillator(prog,params['halfK'],1.0,"dummy","AMPL")
 
-  prog.decl_lambda("umod","(1+max(X,0)*{invK})^{negNu}",params)
+  prog.decl_var("IPTG", "{halfK} + AMPL",params)
+  #prog.decl_lambda("umod","(1+max(X,0)*{invK})^{negNu}",params)
   prog.decl_lambda("utf", "{a1}/(1+max(X,0)^{beta})",params)
-  prog.decl_lambda("vtf", "{a2}/(1+max(X,0)^{gamma})",params)
+  #prog.decl_lambda("vtf", "{a2}/(1+max(X,0)^{gamma})",params)
+  prog.decl_lambda("umodvtf", "{a2}/(1+max(((1+max(X,0)*{invK})^{negNu}),0)^{gamma})",params)
 
 
-  prog.decl_var("FNUMOD", "umod(IPTG)",params)
+  #prog.decl_var("FNUMOD", "umod(IPTG)",params)
+  #prog.interval("FNUMOD",0,1.2)
+  #prog.decl_var("UMODIF", "U*({one}*FNUMOD)",params)
+  #prog.interval("UMODIF",0,0.40)
 
-  prog.decl_var("UMODIF", "U*FNUMOD",params)
-  prog.interval("UMODIF",-0.08,0.08)
-  prog.decl_var("UTF", "utf((V))",params)
-  prog.interval("UTF",-0.2,0.2)
-  prog.decl_var("VTF", "vtf((UMODIF))",params)
-  prog.interval("VTF",-1.7,1.7)
+  prog.decl_var("UTF", "utf(V)",params)
+  prog.interval("UTF",0.0,16.0)
+  #prog.decl_var("VTF", "vtf(FNUMOD)",params)
+  prog.decl_var("VTF", "umodvtf(IPTG)",params)
+  prog.interval("VTF",0.0,16.0)
 
-  dV = "VTF + {kdeg}*(-V)"
-  dU = "UTF + {kdeg}*(-U)"
+  dV = "{one}*VTF + {kdeg}*(-V)"
+  dU = "{one}*UTF + {kdeg}*(-U)"
 
+  # this is a dummy output so that we can flip the sign.
+  prog.decl_var("fU","U");
   prog.decl_stvar("V",dV, "{V0}", params);
   prog.decl_stvar("U",dU, "{U0}", params);
-  prog.emit("{one}*UMODIF", "modU", params)
+  prog.emit("{one}*V", "compV", params)
 
-  prog.interval("V",-1.7,1.7)
-  prog.interval("U",-0.08,0.08)
-  prog.check()
+  prog.interval("V",0,16.0)
+  prog.interval("U",0,1.2)
   return
 
 
