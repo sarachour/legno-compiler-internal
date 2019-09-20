@@ -100,32 +100,30 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
 }
 
 #define CALIB_NPTS 4
-const float TEST_POINTS[CALIB_NPTS] = {0,0.8,0.5,-0.8};
+const float TEST_POINTS[CALIB_NPTS] = {0,0.875,0.5,-0.875};
 
 float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(){
-  float gains[CALIB_NPTS];
-  float bias;
-  int m=0;
+  float expected[CALIB_NPTS];
+  float errors[CALIB_NPTS];
+  float max_std=0.0;
   for(int i=0; i < CALIB_NPTS; i += 1){
     float const_val = TEST_POINTS[i];
     this->setConstant(const_val);
     float target = Fabric::Chip::Tile::Slice::Dac::computeOutput(this->m_codes);
     float mean,variance;
     mean = this->fastMeasureValue(variance);
-    if(fabs(target) > 0.0){
-      gains[m] = mean/target;
-      m+=1;
-    }
-    else{
-      bias = mean;
-    }
+    errors[i] = mean-target;
+    expected[i] = target;
+    max_std = max(sqrt(variance),max_std);
   }
-  float gain_mean,gain_variance;
-  util::distribution(gains,m,
-                     gain_mean,
-                     gain_variance);
-  return cutil::compute_loss(bias,gain_mean,gain_variance,
-                             this->m_codes.range,0.3);
+  float gain_mean,bias,rsq,error;
+  util::linear_regression(expected,errors,CALIB_NPTS,
+                          gain_mean,bias,rsq,error);
+
+  return cutil::compute_loss(max(max(abs(bias),max_std),error),
+                             1.0+gain_mean,
+                             0.0,
+                             this->m_codes.range,0.0,1.0);
 
 }
 float Fabric::Chip::Tile::Slice::Dac::calibrateMinError(){

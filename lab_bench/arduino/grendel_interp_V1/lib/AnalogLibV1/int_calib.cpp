@@ -5,16 +5,17 @@
 
 #define CALIB_NPTS 5
 #define TOTAL_NPTS (CALIB_NPTS+1)
-const float TEST_POINTS[CALIB_NPTS] = {-0.9,0.9,0.5,-0.5};
+const float TEST_POINTS[CALIB_NPTS] = {-0.875,0.875,0.5,-0.5,0.0};
 
 
-void Fabric::Chip::Tile::Slice::Integrator::calibrateHelper(Dac* ref_dac,
+float Fabric::Chip::Tile::Slice::Integrator::calibrateHelper(Dac* ref_dac,
                      float* observations,
                      float * expected,
                      int & npts){
   Connection ref_to_tile = Connection ( ref_dac->out0,
                                         parentSlice->tileOuts[3].in0 );
   const bool measure_steady_state = false;
+  float max_std = 0.0;
   npts = 0;
 
   ref_to_tile.brkConn();
@@ -30,19 +31,21 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateHelper(Dac* ref_dac,
     this->setInitial(ic_val);
     this->update(this->m_codes);
     float target = Fabric::Chip::Tile::Slice::Integrator::computeInitCond(this->m_codes);
-    float mean,dummy;
+    float mean,variance;
     bool succ = cutil::measure_signal_robust(this,
                                              ref_dac,
                                              target,
                                              measure_steady_state,
                                              mean,
-                                             dummy);
+                                             variance);
     if(succ){
       observations[npts] = mean;
       expected[npts] = target;
+      max_std = max(sqrt(variance),max_std);
       npts += 1;
     }
   }
+  return max_std;
 }
 
 float Fabric::Chip::Tile::Slice::Integrator::getInitCondLoss(Fabric::Chip::Tile::Slice::Dac * ref_dac, calib_objective_t obj){
@@ -75,24 +78,19 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMinError(Fabric::C
 float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * ref_dac){
   float observed[TOTAL_NPTS];
   float expected[TOTAL_NPTS];
+  float errors[TOTAL_NPTS];
   int npts;
-  this->calibrateHelper(ref_dac,observed,expected,npts);
-  float gains[CALIB_NPTS];
-  int m = 0;
-  float bias = 0;
+  float max_std = this->calibrateHelper(ref_dac,observed,expected,npts);
   for(int i=0; i < npts; i += 1){
-    if(expected[i] == 0.0){
-      bias = fabs(observed[i]);
-    }
-    else{
-      gains[m] = observed[i]/expected[i];
-      m += 1;
-    }
+    errors[i] = observed[i] - expected[i];
   }
-  float gain_mean, gain_variance;
-  util::distribution(gains,m,gain_mean,gain_variance);
-  return cutil::compute_loss(bias,gain_mean,gain_variance,
-                             this->m_codes.range[out0Id],0.3);
+  float gain_variance,gain_mean,bias,rsq,error;
+  util::linear_regression(expected,errors,npts,
+                          gain_mean,bias,rsq,error);
+
+  return cutil::compute_loss(max(max(abs(bias),max_std),error),
+                             1.0+gain_mean,0.0,
+                             this->m_codes.range[out0Id],0.0, 1.0);
 }
 
 void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t obj,
@@ -148,10 +146,10 @@ time_constant_stats estimate_expo_time_constant(int n,
     float log_val = log(nom_vals[i]);
     nom_vals[i] = log_val;
   }
-  float nom_alpha,nom_beta,nom_Rsq;
+  float nom_alpha,nom_beta,nom_Rsq,nom_error;
 
   util::linear_regression(nom_times,nom_vals,n,
-                          nom_alpha,nom_beta,nom_Rsq);
+                          nom_alpha,nom_beta,nom_Rsq,nom_error);
   sprintf(FMTBUF,"  nominal alpha=%f beta=%f R2=%f",
           nom_alpha,nom_beta,nom_Rsq);
   print_info(FMTBUF);
@@ -171,10 +169,11 @@ time_constant_stats estimate_time_constant(float k_value,
   float k_alpha,k_beta,k_Rsq;
   time_constant_stats stats;
 
+  float error;
   util::linear_regression(nom_times,nom_vals,n,
-                          nom_alpha,nom_beta,nom_Rsq);
+                          nom_alpha,nom_beta,nom_Rsq,error);
   util::linear_regression(k_times,k_vals,n,
-                          k_alpha,k_beta,k_Rsq);
+                          k_alpha,k_beta,k_Rsq,error);
   float alpha_k = k_alpha;
   stats.k = k_value;
   stats.tc = k_alpha/k_value;

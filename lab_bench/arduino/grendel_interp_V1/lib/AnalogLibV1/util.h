@@ -49,7 +49,9 @@ namespace util {
   int find_minimum(float * values, int size);
   int find_maximum(float * values, int size);
   void linear_regression(float* times, float * values, int n,
-                         float& alpha, float& beta ,float& Rsquare);
+                         float& alpha, float& beta ,
+                         float& Rsquare,
+                         float& error);
 
   // utility for saving state
   void save_conns(Fabric::Chip::Tile::Slice::FunctionUnit* fu,

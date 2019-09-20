@@ -182,8 +182,12 @@ def fit_affine_model(model,dataset):
     return
 
   popt, pcov = scipy.optimize.curve_fit(func, expect, observe)
-  slope,intercept,rval,pval,stderr = scipy.stats.linregress(observe,bias)
+  slope,intercept,rval,pval,stderr = scipy.stats.linregress(expect,bias)
+
   if abs(rval) < 0.95:
+    print(" gain=%f" % slope);
+    print(" bias=%f" % intercept);
+    print("Skipping: rval=%f error=%f" % (rval,stderr))
     return
 
   #gain_mu,gain_std = popt[0], math.sqrt(pcov[0][0])

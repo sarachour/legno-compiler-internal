@@ -25,8 +25,8 @@ bool Fabric::Chip::Tile::Slice::ChipAdc::testValidity(Fabric::Chip::Tile::Slice:
 }
 
 
-#define CALIB_NPTS 3
-const float TEST_POINTS[CALIB_NPTS] = {0,0.5,-0.5};
+#define CALIB_NPTS 5
+const float TEST_POINTS[CALIB_NPTS] = {0,0.5,-0.5,0.875,-0.875};
 
 float Fabric::Chip::Tile::Slice::ChipAdc::calibrateFast(Fabric::Chip::Tile::Slice::Dac * val_dac){
 
@@ -55,8 +55,31 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMinError(Fabric::Chip::Tile::
   return loss_total/CALIB_NPTS;
 }
 float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMaxDeltaFit(Fabric::Chip::Tile::Slice::Dac * val_dac){
-  error("unimplemented: integ max_delta_fit");
-  return 0.0;
+  float mean,variance;
+  float highest_std = 0.0;
+  float errors[CALIB_NPTS];
+  float expected[CALIB_NPTS];
+  for(int i=0; i < CALIB_NPTS; i += 1){
+    float test_pt = TEST_POINTS[i]*util::range_to_coeff(this->m_codes.range);
+    float in_val = val_dac->fastMakeValue(test_pt);
+    float target =Fabric::Chip::Tile::Slice::ChipAdc::computeOutput(this->m_codes,
+                                                                    in_val);
+
+    util::meas_dist_adc(this,mean,variance);
+    expected[i] = TEST_POINTS[i];
+    errors[i] = ((mean-128.0)/128.0)-expected[i];
+    highest_std = max(sqrt(variance)/128.0,highest_std);
+  }
+  int m=0;
+  float gain_mean,bias,rsq,error;
+  util::linear_regression(expected,errors,CALIB_NPTS,
+                          gain_mean,bias,rsq,error);
+  // put no emphasis on deviation because parameter setting doesn't
+  // change it that much.
+  return cutil::compute_loss(max(max(abs(bias),highest_std),error),
+                             1.0+gain_mean,     \
+                             0.0,
+                             RANGE_MED, 0.0, 1.0);
 }
 
 void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {

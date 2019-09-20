@@ -87,7 +87,7 @@ def model():
   #prob.bind("VTF",VTF)
   prob.bind("VTF",op.Call([op.Var('umodif')], VTF_fun))
   prob.set_interval("VTF",0.0,params['vtf_tr'])
-  prob.set_bandwidth("VTF",1)
+  prob.set_bandwidth("VTF",16.0)
 
   V = parse_diffeq("VTF+{kdeg}*(-V)","U0",":v", params)
   prob.bind("V",V)

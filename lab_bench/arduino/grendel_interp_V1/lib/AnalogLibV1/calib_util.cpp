@@ -38,14 +38,14 @@ namespace cutil {
     va_end(valist);
   }
 
-  float compute_loss(float bias, float gain_mean, float gain_variance, range_t range, float deviation_weight){
+  float compute_loss(float bias, float gain_mean, float gain_variance, range_t range, float deviation_weight, float max_gain){
     float gain_std = sqrt(gain_variance);
     float mag = util::range_to_coeff(range);
     float error = max(fabs(bias), gain_std*mag);
     float pct_error = error/mag;
     float pct_deviate = fabs(gain_mean-1.0)/1.0;
     float loss = pct_error+deviation_weight*pct_deviate;
-    if(gain_mean > 0.99){
+    if(gain_mean > max_gain){
       loss = 10.0;
     }
     sprintf(FMTBUF,"gain=N(%f,%f) bias=%f mag=%f",gain_mean,gain_std,bias,mag);

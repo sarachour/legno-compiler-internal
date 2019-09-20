@@ -33,13 +33,13 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
                   Dac * val0_dac,
                   Dac * val1_dac,
                   Dac * ref_dac);
-    void calibrateHelperMult(Dac * val0_dac,
+    float calibrateHelperMult(Dac * val0_dac,
                              Dac * val1_dac,
                              Dac * ref_dac,
                              float* observations,
                              float* expected,
                              int& npts);
-    void calibrateHelperVga(Dac * val_dac,
+    float calibrateHelperVga(Dac * val_dac,
                             Dac * ref_dac,
                             float* observations,
                             float* expected,
