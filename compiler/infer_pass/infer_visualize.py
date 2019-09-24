@@ -19,9 +19,9 @@ def get_min_value(out):
 
 def get_max_value(out):
   if any(map(lambda o: o > 3.0, out)):
-    return 10.0
+    return 2.5
   else:
-    return 0.3
+    return 0.25
 
 def heatmap1d(in0,out,value,labels):
   # strictly monotonic increasing

@@ -90,14 +90,7 @@ def sc_acceptable_model(model):
     if model is None:
         return True
 
-    if model.block == "integrator" and model.port == "out":
-        if model.gain_uncertainty > 0.012:
-            print(model)
-            return False
-        else:
-            return True
-    else:
-        return True
+    return model.enabled
 
 def sc_physics_model(scenv,scale_mode,circ,block_name,loc,port,handle):
         block = circ.board.block(block_name)

@@ -74,9 +74,6 @@ def populate_default_models(board,db,calib_obj):
                           calib_obj=calib_obj, \
                           handle=None)
         db.put(model)
-        if blkname == 'ext_chip_analog_in':
-          print(model)
-          input()
 
 def write_models(models):
   if len(models) == 0:

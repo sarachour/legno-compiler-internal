@@ -91,16 +91,8 @@ def infer(obj):
   tcs_lim=remove_outliers(tcs)
   mu,sigma = np.mean(tcs_lim),np.std(tcs_lim)
 
-  #print(model_out)
-  #bins = np.arange(0.85,1.05,0.01);
-  #plt.hist(tcs, normed=True, bins=bins)
-  #plt.savefig("tc.png")
-  #plt.clf()
-  #input()
-
-  if np.isnan(mu):
-    print(model_z)
-    input("time constant is nan");
+  if np.isnan(mu) or sigma > 0.01:
+    model_z.enabled = False
     return
 
   model_z.gain = mu;

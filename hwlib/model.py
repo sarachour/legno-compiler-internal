@@ -13,6 +13,7 @@ class PortModel():
     self._block = block
     self._loc = loc
     self._handle = handle
+    self._enabled = False
     self._gain = 1.0
     self._noise = 0.0
     self._bias = 0.0
@@ -35,11 +36,22 @@ class PortModel():
 
   def set_model(self,other):
     self._gain = other._gain
+    self._unc_gain = other._unc_gain
+    self._disable = other._disable
     self._noise = other._noise
     self._bias = other._bias
     self._unc_bias = other._unc_bias
     l,u = self._opscale
     self._opscale = (l,u)
+
+  @property
+  def enabled(self):
+    return self._enabled
+
+  @enabled.setter
+  def enabled(self,v):
+    assert(isinstance(v,bool))
+    self._enabled = v
 
   @property
   def gain(self):
@@ -138,7 +150,7 @@ class PortModel():
     self._noise = v
 
   def __repr__(self):
-    r = "=== model ===\n"
+    r = "=== model [%s] ===\n" % ("ON" if self.enabled else "OFF")
     r += "ident: %s\n" % (self.identifier)
     r += "bias: mean=%f std=%f\n" % (self.bias,self.bias_uncertainty)
     r += "gain: mean=%f std=%f\n" % (self.gain,self.gain_uncertainty)
@@ -326,17 +338,32 @@ def get_model(db,circ,block_name,loc,port,handle=None):
       #       str(config.scale_mode)))
       return None
 
+def get_ideal_uncertainty(circ,block_name,loc,port,handle=None):
+  blacklist = ['tile_in','tile_out', \
+               'chip_in','chip_out', \
+               'ext_chip_out', \
+               'ext_chip_in'
+  ]
+  base_unc = 0.01
+  if block_name in blacklist:
+    return base_unc
+
+  cfg = circ.config(block_name,loc)
+  block = circ.board.block(block_name)
+  props = block.props(cfg.comp_mode,cfg.scale_mode,port,handle=handle)
+  rng= props.interval().spread
+  unc = rng/2.0*base_unc;
+  return unc
+
 def get_variance(db,circ,block_name,loc,port,mode,handle=None):
 
   if mode == util.DeltaModel.IDEAL:
     return 1e-12
 
   elif mode.uses_delta_model():
-    #unc_min = 1e-6
-    unc_min = 0.01
     model = get_model(db,circ,block_name,loc,port,handle=handle)
     if model is None or not mode.uses_uncertainty():
-      return unc_min
+      return get_ideal_uncertainty(circ,block_name,loc,port,handle=handle)
 
     unc = math.sqrt(model.noise + model.bias_uncertainty**2.0)
     physunc = unc+abs(model.bias)
@@ -346,7 +373,7 @@ def get_variance(db,circ,block_name,loc,port,mode,handle=None):
     return physunc
 
   else:
-    return 0.01
+    return get_ideal_uncertainty(circ,block_name,loc,port,handle=handle)
 
 def get_oprange_scale(db,circ,block_name,loc,port,mode,handle=None):
   assert(isinstance(mode,util.DeltaModel))

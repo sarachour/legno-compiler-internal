@@ -184,11 +184,11 @@ def fit_affine_model(model,dataset):
   popt, pcov = scipy.optimize.curve_fit(func, expect, observe)
   slope,intercept,rval,pval,stderr = scipy.stats.linregress(expect,bias)
 
-  if abs(rval) < 0.95:
+  if abs(rval) < 0.90:
     print(" gain=%f" % slope);
     print(" bias=%f" % intercept);
     print("Skipping: rval=%f error=%f" % (rval,stderr))
-    return
+    return True if stderr <= 0.01 else False
 
   #gain_mu,gain_std = popt[0], math.sqrt(pcov[0][0])
   #bias_mu,bias_std = popt[1], math.sqrt(pcov[1][1])
@@ -201,7 +201,7 @@ def fit_affine_model(model,dataset):
   model.gain_uncertainty = gain_std
   model.bias = bias_mu
   model.bias_uncertainty = bias_std
-
+  return True
 
 def fit_linear_model(model,dataset):
   def func(x,a):
@@ -241,8 +241,9 @@ def infer_model(model,in0,in1,out,bias,noise, \
   cnt =0
   max_prune = 0
   while True:
-    fit_affine_model(model,dataset)
+    success = fit_affine_model(model,dataset)
     #fit_linear_model(model,dataset)
+    model.enabled = success
     model.noise = math.sqrt(np.mean(dataset.noise))
     if cnt < max_prune and dataset.n >= required_points:
       split_model(model, \
