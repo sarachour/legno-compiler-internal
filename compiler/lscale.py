@@ -158,13 +158,16 @@ def scale(prog,adp,nslns, \
           do_log=True, \
           test_existence=False):
     def gen_models(model):
+        models = [model]
         if model.uses_delta_model():
-            return [
-                model,
-                model.naive_model()
-            ]
-        else:
-            return [model]
+            models.append(model.naive_model())
+
+            if model.calibrate_objective() == \
+               util.CalibrateObjective.MAX_FIT:
+                models.append(util.DeltaModel.DELTA_MINERR);
+                models.append(util.DeltaModel.NAIVE_MINERR);
+
+        return models
 
     assert(isinstance(model,util.DeltaModel))
     prop_interval.clear_intervals(adp)
@@ -184,6 +187,7 @@ def scale(prog,adp,nslns, \
             has_solution = True
             break
         for obj in objs:
+            skip = False
             for this_model in gen_models(model):
                 scenv = scenvlib.LScaleEnv(model=this_model, \
                                            max_freq_khz=max_freq_khz, \
@@ -191,14 +195,21 @@ def scale(prog,adp,nslns, \
                                            mape=mape,
                                            mc=mc)
 
+                if skip:
+                    continue
+
                 if this_model.uses_delta_model() and \
                    len(hwmodel.ModelDB.MISSING) > n_missing:
                     scenv.fail("missing models")
+                    skip = True
 
-                print("missing: %d -> %d" % (n_missing, len(hwmodel.ModelDB.MISSING)))
+                print("missing: %d -> %d" % \
+                      (n_missing, len(hwmodel.ModelDB.MISSING)))
                 n_missing = len(hwmodel.ModelDB.MISSING)
 
-                for scaled_obj,scaled_adp in compute_scale(scenv,prog,infer_adp,obj):
+                for scaled_obj,scaled_adp in compute_scale(scenv,prog, \
+                                                           infer_adp, \
+                                                           obj):
                     yield idx,scaled_obj.tag(),scenv.params.tag(),scaled_adp
 
     if test_existence:

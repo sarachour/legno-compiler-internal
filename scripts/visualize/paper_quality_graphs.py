@@ -1,4 +1,3 @@
-from bmark.bmarks.common import run_system
 
 from scripts.common import ExecutionStatus
 from scripts.expdriver_db import ExpDriverDB

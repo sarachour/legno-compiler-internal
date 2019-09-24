@@ -1,7 +1,7 @@
 import scripts.visualize.common as common
 import numpy as np
 import matplotlib.pyplot as plt
-import bmark.diffeqs as diffeq
+#import bmark.diffeqs as diffeq
 from enum import Enum
 import ops.op as op
 

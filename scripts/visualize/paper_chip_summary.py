@@ -1,5 +1,5 @@
-import chip.hcdc.hcdcv2_4 as hcdc
-import chip.hcdc.globals as glb
+import hwlib.hcdc.hcdcv2_4 as hcdc
+import hwlib.hcdc.globals as glb
 import scripts.visualize.common as common
 
 to_header = {

@@ -15,10 +15,9 @@ class Dataset:
   def __init__(self,key):
     self._key = key
     self._data = {}
-    self._fields = ['ident','circ_ident','bmark', \
-                    'objective_fun', 'model',\
-                    'subset',
-                    'jaunt_circ_file',
+    self._fields = ['adp','lgraph','lscale','program', \
+                    'obj', 'model', 'identifier', \
+                    'dssim','subset', \
                     'quality','runtime','energy']
     self._metafields = ['quality_variance','quality_time_ratio']
 

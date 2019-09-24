@@ -225,14 +225,14 @@ class ExperimentEntry:
     )
     return entry
 
-  '''
   @property
-  def adp_ident(self):
+  def identifier(self):
     return "%s::%s(%s,%s)" % (self.subset,
-                          self.prog,
+                          self.program,
                           self.lgraph,
                           self.lscale)
 
+  '''
   @property
   def ident(self):
     return "%s[%s,%s](%s,%s)" % (self.adp_ident, \

@@ -31,7 +31,7 @@ def dsprog(prog):
     prog.decl_stvar("D%d" % i, dPt, "0.0", params)
     prog.interval("D%d" % i, \
                   0, \
-                  params['init_heat'])
+                  params['init_heat']*2.0)
 
   prog.emit("{one}*D%d" % I, "POINT",params)
   prog.check()

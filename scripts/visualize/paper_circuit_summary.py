@@ -1,9 +1,8 @@
 import scripts.visualize.common as common
 import numpy as np
 import matplotlib.pyplot as plt
-from chip.conc import ConcCirc
+from hwlib.adp import AnalogDeviceProg
 from enum import Enum
-from chip.hcdc.hcdcv2_4 import make_board
 import util.util as util
 
 def count_components(circ):
@@ -162,24 +161,25 @@ def to_jaunt_table(circuits,models):
   table.write(common.get_path('circuit-jaunt.tbl'))
 
 def visualize(db):
-  data = common.get_data(db,series_type='circ_ident')
+  data = common.get_data(db,series_type='identifier')
   circuits = {}
   models = {}
   for ser in data.series():
-    fields = ['jaunt_circ_file','model','bmark','subset']
-    conc_circ_files,bmark_models,bmarks,subsets = data.get_data(ser, fields)
-    conc_circs = conc_circ_files
-    bmark = bmarks[0]
-    n = len(conc_circs)
+    fields = ['adp','model','program','subset']
+    lgraph_files,_models,progs,subsets = data.get_data(ser, fields)
+    prog = progs[0]
+    n = len(lgraph_files)
     valid_indices = list(filter(lambda i: subsets[i] == 'extended' and \
-                           "n" in bmark_models[i], \
+                           "n" in _models[i], \
                            range(n)))
     if len(valid_indices) == 0:
       continue
 
-    circuits[bmark] = list(map(lambda  i: ConcCirc.read(None,conc_circs[i]), \
+    circuits[prog] = list(map(lambda  i: AnalogDeviceProg.read(None, \
+                                                                lgraph_files[i]), \
                                valid_indices))
-    models[bmark] = bmark_models
+    models[prog] = _models
+    print(_models)
 
   to_arco_table(circuits)
   to_jaunt_table(circuits,models)
