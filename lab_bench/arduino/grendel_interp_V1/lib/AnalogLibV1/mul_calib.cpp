@@ -70,13 +70,17 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
     for(int j=0; j < CALIB_NPTS; j += 1){
       float in0 = TEST0_POINTS[i];
       float in1 = TEST1_VGA_POINTS[j];
+      sprintf(FMTBUF,"inp=(%f,%f)", in0,in1);
+      print_info(FMTBUF);
       val_dac->setConstant(in0);
       this->setGain(in1);
+      print_info("conf");
       float target_in0 = val_dac->fastMeasureValue(variance);
       float target_out = this->computeOutput(this->m_codes,
                                              target_in0,
                                              0.0);
 
+      print_info("meas-robust");
       bool succ = cutil::measure_signal_robust(this,
                                             ref_dac,
                                             target_out,
