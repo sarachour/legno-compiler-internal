@@ -59,7 +59,7 @@ class ExpDriverDB:
     return entry
 
   def scan(self):
-    for dirname, subdirlist, filelist in os.walk(CONFIG.OUTPUT_PATH):
+    for dirname, subdirlist, filelist in os.walk(CONFIG.LEGNO_PATH):
       for fname in filelist:
         if fname.endswith('.grendel'):
           fargs = paths.PathHandler.path_to_args(dirname)
