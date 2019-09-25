@@ -197,6 +197,8 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
   util::linear_regression(expected,errors,CALIB_NPTS,
                           gain_mean,bias,rsq,error);
 
+  sprintf(FMTBUF,"rsquare=%f error=%f" % (rsq,err));
+  print_info(FMTBUF);
   // put some emphasis on deviation because it is changed.
   return cutil::compute_loss(bias,highest_std,error,
                              1.0+gain_mean,
