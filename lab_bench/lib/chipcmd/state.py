@@ -283,6 +283,12 @@ class BlockState:
     if state != None:
       self.from_cstruct(state)
 
+  def from_key(self,key):
+    assert(isinstance(key,BlockState.Key))
+    assert(key.loc == self.loc)
+    assert(key.block == self.block)
+    assert(key.calib_obj == self.calib_obj)
+
   @property
   def descriptor(self):
     return self.key.descriptor
@@ -411,6 +417,7 @@ class LutBlockState(BlockState):
                              self.calib_obj)
 
   def from_key(self,key):
+    BlockState.from_key(self,key)
     assert(isinstance(key,LutBlockState.Key))
     self.source = key.source
 
@@ -465,11 +472,10 @@ class DacBlockState(BlockState):
 
 
   def from_key(self,key):
+    BlockState.from_key(self,key)
     assert(isinstance(key,DacBlockState.Key))
     assert(key.inv == self.inv)
     assert(key.rng == self.rng)
-    self.inv = key.inv
-    self.rng = key.rng
     self.source = key.source
     self.const_val = key.const_val
     self.const_code = key.const_code
@@ -489,10 +495,6 @@ class DacBlockState(BlockState):
       Y = [bias,math.sqrt(noise)]
       X = [target]
       yield GS,Z,X,Y
-
-  def update_value(self,value):
-    self.const_val = value
-
 
   def to_cstruct(self):
     return cstructs.state_t().build({
@@ -544,8 +546,7 @@ class MultBlockState(BlockState):
                               loc,calib_obj)
       assert(isinstance(vga,ccmd_data.BoolType))
       self.ranges = ranges
-      self.gain_val = float(gain_val) \
-                      if not gain_val is None else None
+      self.vga = vga
 
       if not gain_val is None:
         self.gain_val = gain_val
@@ -554,7 +555,6 @@ class MultBlockState(BlockState):
         self.gain_val = None
         self.gain_code = None
 
-      self.vga = vga
       self.ignore('gain_val')
       self.ignore('gain_code')
 
@@ -563,13 +563,12 @@ class MultBlockState(BlockState):
     BlockState.__init__(self,glb_enums.BlockType.MULT,loc,state,calib_obj)
 
   def from_key(self,key):
+    BlockState.from_key(self,key)
     assert(isinstance(key,MultBlockState.Key))
     assert(key.vga == self.vga)
     assert(key.ranges == self.ranges)
-    self.ranges = key.ranges
     self.gain_val = key.gain_val
     self.gain_code = key.gain_code
-    self.vga = key.vga
 
   def header(self):
     GH = keys(self.ranges,prefix='range-') + \
@@ -588,11 +587,6 @@ class MultBlockState(BlockState):
       Y = [bias,math.sqrt(noise)]
       X = [target,in0,in1]
       yield GS,Z,X,Y
-
-  def update_gain(self,value):
-    self.gain_val = value
-    self.gain_code = ccmd_common.signed_float_to_byte(value)
-
 
 
   def to_cstruct(self):
@@ -719,13 +713,12 @@ class IntegBlockState(BlockState):
     })
 
   def from_key(self,key):
+    BlockState.from_key(self,key)
     assert(isinstance(key,IntegBlockState.Key))
     assert(key.inv == self.inv)
     assert(key.ranges == self.ranges)
-    self.ranges = key.ranges
     self.ic_val = key.ic_val
     self.ic_code = key.ic_code
-    self.inv = key.inv
     self.exception = key.exception
     self.cal_enables = key.cal_enables
 
@@ -785,8 +778,6 @@ class FanoutBlockState(BlockState):
     assert(isinstance(key,FanoutBlockState.Key))
     assert(key.invs == self.invs)
     assert(key.rng == self.rng)
-    self.rng = key.rng
-    self.invs = key.invs
     self.third = key.third
 
   @property
@@ -887,7 +878,6 @@ class AdcBlockState(BlockState):
   def from_key(self,key):
     assert(isinstance(key,FanoutBlockState.Key))
     assert(key.rng == self.rng)
-    self.rng = key.rng
     self.test_en = key.test_en
     self.test_adc = key.test_adc
     self.test_i2v = key.test_i2v
