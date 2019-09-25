@@ -69,9 +69,11 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
   observations[npts] = util::meas_chip_out(this);
   expected[npts] = 0;
   npts += 1;
-  ref_to_tileout.setConn();
-  dac0_to_in0.setConn();
 
+  if(this->m_codes.ranges[out0Id] == RANGE_HIGH)
+    ref_to_tileout.setConn();
+
+  dac0_to_in0.setConn();
   for(int i=0; i < CALIB_NPTS; i += 1){
     for(int j=0; j < CALIB_NPTS; j += 1){
       float in0 = TEST0_POINTS[i];
@@ -82,12 +84,18 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
       float target_out = this->computeOutput(this->m_codes,
                                              target_in0,
                                              0.0);
-      bool succ = cutil::measure_signal_robust(this,
-                                               ref_dac,
-                                               target_out,
-                                               meas_steady,
-                                               mean,
-                                               variance);
+      bool succ = true;
+      if(this->m_codes.ranges[out0Id] == RANGE_HIGH){
+        succ = cutil::measure_signal_robust(this,
+                                            ref_dac,
+                                            target_out,
+                                            meas_steady,
+                                            mean,
+                                            variance);
+      }
+      else{
+        cutil::meas_dist_chip_out(this, mean, variance);
+      }
       if(succ){
         observations[npts] = mean;
         expected[npts] = target_out;
