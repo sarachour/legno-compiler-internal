@@ -63,15 +63,9 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
   Fabric::Chip::Connection ref_to_tileout =
     Fabric::Chip::Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0);
   Connection dac0_to_in0 = Connection (val_dac->out0, this->in0);
-  ref_to_tileout.brkConn();
-  dac0_to_in0.brkConn();
-  this->setGain(1.0);
-  observations[npts] = util::meas_chip_out(this);
-  expected[npts] = 0;
-  npts += 1;
+
   ref_to_tileout.setConn();
   dac0_to_in0.setConn();
-
   for(int i=0; i < CALIB_NPTS; i += 1){
     for(int j=0; j < CALIB_NPTS; j += 1){
       float in0 = TEST0_POINTS[i];
@@ -82,12 +76,13 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
       float target_out = this->computeOutput(this->m_codes,
                                              target_in0,
                                              0.0);
+
       bool succ = cutil::measure_signal_robust(this,
-                                               ref_dac,
-                                               target_out,
-                                               meas_steady,
-                                               mean,
-                                               variance);
+                                            ref_dac,
+                                            target_out,
+                                            meas_steady,
+                                            mean,
+                                            variance);
       sprintf(FMTBUF, "ideal=(%f,%f) inps=(%f,%f) out=%f meas=%f", 
               in0,in1,target_in0,in1, target_out, mean);
       print_info(FMTBUF);
@@ -301,8 +296,6 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   for(int nmos=0; nmos < MAX_NMOS; nmos += 1){
     for(int pmos=0; pmos < MAX_PMOS; pmos += 1){
       cutil::calib_table_t table_bias = cutil::make_calib_table();
-      cutil::calib_table_t table_in0 = cutil::make_calib_table();
-      cutil::calib_table_t table_in1 = cutil::make_calib_table();
       this->m_codes.nmos = nmos;
       this->m_codes.pmos = pmos;
       this->m_codes.gain_cal = 32;
@@ -317,11 +310,10 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
         target = computeOutput(this->m_codes, dac_out0, dac_out1);
       }
       else{
-        this->setGain(1.0);
-        target = computeOutput(this->m_codes, dac_out0, 1.0);
+        
       }
-      int stride = 8;
       ref_to_tileout.brkConn();
+      int stride = 8;
       for(int bias_out=0; bias_out < MAX_BIAS_CAL; bias_out += stride){
           for(int bias_in0=0; bias_in0 < MAX_BIAS_CAL; bias_in0 += stride){
             for(int bias_in1=0; bias_in1 < MAX_BIAS_CAL; bias_in1 += stride){
@@ -329,8 +321,22 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
               this->m_codes.port_cal[in1Id] = bias_in1;
               this->m_codes.port_cal[out0Id] = bias_out;
               this->update(this->m_codes);
-              float bias = util::meas_chip_out(this)-target;
-              cutil::update_calib_table(table_bias,fabs(bias),3,
+              float mean, variance;
+              float error = 0.0;
+              this->setGain(1.0);
+              target = computeOutput(this->m_codes, dac_out0, 0.0);
+              util::meas_dist_chip_out(this,
+                                               mean,
+                                               variance);
+              error += fabs(mean-target);
+              this->setGain(-1.0);
+              target = computeOutput(this->m_codes, dac_out0, 0.0);
+              util::meas_dist_chip_out(this,
+                                               mean,
+                                               variance);
+              error += fabs(mean-target);
+
+              cutil::update_calib_table(table_bias,error,3,
                                         bias_in0,
                                         bias_in1,
                                         bias_out);
@@ -349,6 +355,9 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
       print_info(FMTBUF);
       ref_to_tileout.setConn();
 
+      this->m_codes.port_cal[in0Id] = table_bias.state[0];
+      this->m_codes.port_cal[in1Id] = table_bias.state[1];
+      this->m_codes.port_cal[out0Id] = table_bias.state[2];
       for(int gain_cal=min_gain_code;
           gain_cal < min_gain_code+n_gain_codes;
           gain_cal+=16){
