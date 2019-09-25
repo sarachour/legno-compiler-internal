@@ -188,7 +188,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
     errors[i] = observed[i]-expected[i];
   }
   float gain_mean,rsq,bias,error;
-  util::linear_regression(expected,errors,TOTAL_NPTS,
+  util::linear_regression(expected,errors,npts,
                           gain_mean,bias,rsq,error);
 
   sprintf(FMTBUF,"rsquare=%f error=%f",rsq,error);
