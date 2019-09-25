@@ -47,7 +47,7 @@ class UseCommand(AnalogChipCommand):
             assert(isinstance(dbkey, state.BlockState.Key))
             if not env.state_db.has(dbkey):
                 for obj in env.state_db.get_all():
-                    print(dbkey.identifier,obj.descriptor)
+                    print(obj.identifier,obj.descriptor)
 
                 print("=====")
                 print(dbkey.identifier,dbkey.descriptor)
@@ -55,7 +55,7 @@ class UseCommand(AnalogChipCommand):
                 raise Exception("not calibrated")
 
             blockstate = env.state_db.get(dbkey)
-            blockstate.from_key(key)
+            blockstate.from_key(dbkey)
             assert(isinstance(blockstate, state.BlockState))
             # set the state
             loc = ccmd_data.CircLoc(self._loc.chip,

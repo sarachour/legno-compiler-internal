@@ -240,6 +240,7 @@ class BlockState:
       obj['loc'] = self.loc.to_json()
       obj['block'] = self.block.value
       obj['calib_obj'] = self.calib_obj.value
+      obj['_ignore'] = self._ignore
       return obj
 
     @property
@@ -255,6 +256,9 @@ class BlockState:
         ident = ""
         for key in keys:
           if key in self._ignore:
+            continue
+
+          if key == '_ignore':
             continue
 
           value = obj[key]
