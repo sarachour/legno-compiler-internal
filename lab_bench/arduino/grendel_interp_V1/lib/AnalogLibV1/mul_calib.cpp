@@ -70,17 +70,13 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
     for(int j=0; j < CALIB_NPTS; j += 1){
       float in0 = TEST0_POINTS[i];
       float in1 = TEST1_VGA_POINTS[j];
-      sprintf(FMTBUF,"inp=(%f,%f)", in0,in1);
-      print_info(FMTBUF);
       val_dac->setConstant(in0);
       this->setGain(in1);
-      print_info("conf");
       float target_in0 = val_dac->fastMeasureValue(variance);
       float target_out = this->computeOutput(this->m_codes,
                                              target_in0,
                                              0.0);
 
-      print_info("meas-robust");
       bool succ = cutil::measure_signal_robust(this,
                                             ref_dac,
                                             target_out,
@@ -265,11 +261,44 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   Fabric::Chip::Connection ref_to_tileout =
     Fabric::Chip::Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0);
 
-  val0_dac->setRange(util::range_to_dac_range(this->m_codes.range[in0Id]));
-  val1_dac->setRange(util::range_to_dac_range(this->m_codes.range[in1Id]));
+
+  float min_gain_code=32,n_gain_codes=1;
+  if(this->m_codes.vga){
+    min_gain_code=0;
+    n_gain_codes=MAX_GAIN_CAL;
+  }
+
   ref_dac->setRange(util::range_to_dac_range(this->m_codes.range[out0Id]));
-  fast_calibrate_dac(val0_dac);
-  fast_calibrate_dac(val1_dac);
+
+  float target_pos = 0.0;
+  float target_neg = 0.0;
+  float dummy,dac_out0,dac_out1;
+  if(this->m_codes.vga){
+    val0_dac->setRange(util::range_to_dac_range(this->m_codes.range[in0Id]));
+    fast_calibrate_dac(val0_dac);
+    val0_dac->setConstant(0.0);
+    dac_out0 = val0_dac->fastMeasureValue(dummy);
+    this->setGain(1.0);
+    target_pos = computeOutput(this->m_codes, dac_out0, 0.0);
+    this->setGain(-1.0);
+    target_neg = computeOutput(this->m_codes, dac_out0, 0.0);
+
+  }
+  else{
+    fast_calibrate_dac(val0_dac);
+    fast_calibrate_dac(val1_dac);
+    val0_dac->setRange(util::range_to_dac_range(this->m_codes.range[in0Id]));
+    val1_dac->setRange(util::range_to_dac_range(this->m_codes.range[in1Id]));
+    val0_dac->setConstant(0.0);
+    dac_out0 = val0_dac->fastMeasureValue(dummy);
+    val1_dac->setConstant(0.5);
+    dac_out1 = val1_dac->fastMeasureValue(dummy);
+    target_pos = computeOutput(this->m_codes, dac_out0, dac_out1);
+    val1_dac->setConstant(-0.5);
+    dac_out1 = val1_dac->fastMeasureValue(dummy);
+    target_neg = computeOutput(this->m_codes, dac_out0, dac_out1);
+  }
+
 
   mult_to_tileout.setConn();
   ref_to_tileout.setConn();
@@ -277,11 +306,6 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   dac0_to_in0.setConn();
   if(!this->m_codes.vga)
     dac1_to_in1.setConn();
-  float min_gain_code=32,n_gain_codes=1;
-  if(this->m_codes.vga){
-    min_gain_code=0;
-    n_gain_codes=MAX_GAIN_CAL;
-  }
 
   cutil::calib_table_t calib_table = cutil::make_calib_table();
   /*nmos, gain_cal, port_cal in0,in1,out*/
@@ -291,33 +315,9 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
       this->m_codes.nmos = nmos;
       this->m_codes.pmos = pmos;
       this->m_codes.gain_cal = 32;
-
-      float target_pos = 0.0;
-      float target_neg = 0.0;
-      float dummy,dac_out0,dac_out1;
-      if(this->m_codes.vga){
-        val0_dac->setConstant(0.0);
-        dac_out0 = val0_dac->fastMeasureValue(dummy);
-        this->setGain(1.0);
-        target_pos = computeOutput(this->m_codes, dac_out0, 0.0);
-        this->setGain(-1.0);
-        target_neg = computeOutput(this->m_codes, dac_out0, 0.0);
-
-      }
-      else{
-        val0_dac->setConstant(0.0);
-        dac_out0 = val0_dac->fastMeasureValue(dummy);
-        val1_dac->setConstant(0.5);
-        dac_out1 = val1_dac->fastMeasureValue(dummy);
-        target_pos = computeOutput(this->m_codes, dac_out0, dac_out1);
-        val1_dac->setConstant(-0.5);
-        dac_out1 = val1_dac->fastMeasureValue(dummy);
-        target_neg = computeOutput(this->m_codes, dac_out0, dac_out1);
-
-      }
       ref_to_tileout.brkConn();
-      int stride = 8;
 
+      int stride = 8;
       for(int bias_out=0; bias_out < MAX_BIAS_CAL; bias_out += stride){
         this->m_codes.port_cal[out0Id] = bias_out;
         for(int bias_in0=0; bias_in0 < MAX_BIAS_CAL; bias_in0 += stride){
