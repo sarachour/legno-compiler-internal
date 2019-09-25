@@ -27,10 +27,10 @@ namespace cutil {
   void update_calib_table(calib_table_t& table, float new_score, int n, ...);
 
 
-
-  float compute_loss(float bias, float gain_mean, float gain_variance,
-                     range_t out_range,
+  float compute_loss(float bias, float noise_std, float pred_err,
+                     float gain_mean, range_t range,
                      float deviation_weight, float max_gain);
+
   bool measure_signal_robust(Fabric::Chip::Tile::Slice::FunctionUnit * fu,
                              Fabric::Chip::Tile::Slice::Dac * ref_dac,
                              float target,

@@ -74,7 +74,7 @@ namespace util {
     float slope_denom=0.0;
     for(int i=0; i < n; i += 1){
       slope_numer += (times[i]-avg_time)*(values[i]-avg_value);
-      slope_denom += pow(times[i]-avg_time,2);
+      slope_denom += (times[i]-avg_time)*(times[i]-avg_time);
     }
     alpha = slope_numer/slope_denom;
     beta = avg_value - alpha*avg_time;

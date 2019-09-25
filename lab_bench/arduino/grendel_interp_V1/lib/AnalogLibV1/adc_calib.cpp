@@ -76,9 +76,8 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMaxDeltaFit(Fabric::Chip::Til
                           gain_mean,bias,rsq,error);
   // put no emphasis on deviation because parameter setting doesn't
   // change it that much.
-  return cutil::compute_loss(max(max(abs(bias),highest_std),error),
+  return cutil::compute_loss(bias,highest_std,error,
                              1.0+gain_mean,     \
-                             0.0,
                              RANGE_MED, 0.0, 1.0);
 }
 

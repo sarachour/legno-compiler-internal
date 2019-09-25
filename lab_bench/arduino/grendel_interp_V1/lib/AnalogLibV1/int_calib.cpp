@@ -88,8 +88,8 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * 
   util::linear_regression(expected,errors,npts,
                           gain_mean,bias,rsq,error);
 
-  return cutil::compute_loss(max(max(abs(bias),max_std),error),
-                             1.0+gain_mean,0.0,
+  return cutil::compute_loss(bias,max_std,error,
+                             1.0+gain_mean,
                              this->m_codes.range[out0Id],0.0, 1.0);
 }
 

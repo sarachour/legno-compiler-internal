@@ -38,17 +38,19 @@ namespace cutil {
     va_end(valist);
   }
 
-  float compute_loss(float bias, float gain_mean, float gain_variance, range_t range, float deviation_weight, float max_gain){
-    float gain_std = sqrt(gain_variance);
+  float compute_loss(float bias, float noise_std, float pred_err,
+                     float gain, range_t range,
+                     float deviation_weight, float max_gain){
     float mag = util::range_to_coeff(range);
-    float error = max(fabs(bias), gain_std*mag);
+    float error = max(max(fabs(bias),noise_std),pred_err);
+    float pct_deviate = fabs(gain-1.0)/1.0;
     float pct_error = error/mag;
-    float pct_deviate = fabs(gain_mean-1.0)/1.0;
     float loss = pct_error+deviation_weight*pct_deviate;
-    if(gain_mean > max_gain){
+    if(gain > max_gain){
       loss = 10.0;
     }
-    sprintf(FMTBUF,"gain=N(%f,%f) bias=%f mag=%f",gain_mean,gain_std,bias,mag);
+    sprintf(FMTBUF,"gain=%f bias=%f pred-err=%f noise=%f mag=%f",
+            gain,bias,pred_err,noise_std,mag);
     print_info(FMTBUF);
     sprintf(FMTBUF,"pct-error=%f pct-deviate=%f loss=%f",pct_error,pct_deviate,loss);
     print_info(FMTBUF);
