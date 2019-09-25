@@ -88,6 +88,9 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
                                                meas_steady,
                                                mean,
                                                variance);
+      sprintf(FMTBUF, "ideal=(%f,%f) inps=(%f,%f) out=%f meas=%f", 
+              in0,in1,target_in0,in1, target_out, mean);
+      print_info(FMTBUF);
       if(succ){
         observations[npts] = mean;
         expected[npts] = target_out;
@@ -303,9 +306,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
       this->m_codes.nmos = nmos;
       this->m_codes.pmos = pmos;
       this->m_codes.gain_cal = 32;
-      if(this->m_codes.vga)
-        this->setGain(1.0);
-
+      
       float target = 0.0;
       float dummy,dac_out0,dac_out1;
       val0_dac->setConstant(0.0);
@@ -316,7 +317,8 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
         target = computeOutput(this->m_codes, dac_out0, dac_out1);
       }
       else{
-        target = computeOutput(this->m_codes, dac_out0, 0.0);
+        this->setGain(1.0);
+        target = computeOutput(this->m_codes, dac_out0, 1.0);
       }
       int stride = 8;
       ref_to_tileout.brkConn();
@@ -327,7 +329,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
               this->m_codes.port_cal[in1Id] = bias_in1;
               this->m_codes.port_cal[out0Id] = bias_out;
               this->update(this->m_codes);
-              float bias = util::meas_chip_out(this);
+              float bias = util::meas_chip_out(this)-target;
               cutil::update_calib_table(table_bias,fabs(bias),3,
                                         bias_in0,
                                         bias_in1,
@@ -345,8 +347,8 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
               table_bias.state[0],table_bias.state[1],table_bias.state[2],
               table_bias.loss);
       print_info(FMTBUF);
-
       ref_to_tileout.setConn();
+
       for(int gain_cal=min_gain_code;
           gain_cal < min_gain_code+n_gain_codes;
           gain_cal+=16){
