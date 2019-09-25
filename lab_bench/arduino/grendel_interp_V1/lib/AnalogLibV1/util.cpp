@@ -88,7 +88,7 @@ namespace util {
       SSTOT += pow(values[i]-avg_value,2);
       error += fabs(pred - values[i]);
     }
-    error = error/n;
+    error = error/((float) n);
     Rsquare = 1.0 - SSRES/SSTOT;
   }
   int find_maximum(float* values, int n){

@@ -83,9 +83,6 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
                                             meas_steady,
                                             mean,
                                             variance);
-      sprintf(FMTBUF, "ideal=(%f,%f) inps=(%f,%f) out=%f meas=%f", 
-              in0,in1,target_in0,in1, target_out, mean);
-      print_info(FMTBUF);
       if(succ){
         observations[npts] = mean;
         expected[npts] = target_out;
@@ -112,14 +109,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperMult(Dac * val0_dac,
   Connection dac1_to_in1 = Connection (val1_dac->out0, this->in1);
 
   float max_std = 0.0;
-  npts = 0;
-  ref_to_tileout.brkConn();
-  dac0_to_in0.brkConn();
-  dac1_to_in1.brkConn();
-  observations[npts] = util::meas_chip_out(this);
-  expected[npts] = 0;
-  npts += 1;
-
+  
   ref_to_tileout.setConn();
   dac0_to_in0.setConn();
   dac1_to_in1.setConn();
@@ -167,7 +157,6 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
                             observed,
                             expected,
                             npts);
-  int m=0;
   for(int i=0; i < npts; i += 1){
     errors[i] = observed[i]-expected[i];
   }
@@ -194,10 +183,10 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
     errors[i] = observed[i]-expected[i];
   }
   float gain_mean,rsq,bias,error;
-  util::linear_regression(expected,errors,CALIB_NPTS,
+  util::linear_regression(expected,errors,TOTAL_NPTS,
                           gain_mean,bias,rsq,error);
 
-  sprintf(FMTBUF,"rsquare=%f error=%f" % (rsq,err));
+  sprintf(FMTBUF,"rsquare=%f error=%f",rsq,error);
   print_info(FMTBUF);
   // put some emphasis on deviation because it is changed.
   return cutil::compute_loss(bias,highest_std,error,
