@@ -86,9 +86,9 @@ namespace util {
       float pred = alpha*times[i]+beta;
       SSRES += pow(values[i]-pred,2);
       SSTOT += pow(values[i]-avg_value,2);
-      error = fabs(alpha*times[i]+beta - values[i]);
+      error += fabs(pred - values[i]);
     }
-    error /= n;
+    error = error/n;
     Rsquare = 1.0 - SSRES/SSTOT;
   }
   int find_maximum(float* values, int n){
