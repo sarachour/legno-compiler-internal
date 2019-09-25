@@ -114,6 +114,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperMult(Dac * val0_dac,
   dac0_to_in0.setConn();
   dac1_to_in1.setConn();
 
+  npts = 0;
   for(int i=0; i < CALIB_NPTS; i += 1){
     for(int j=0; j < CALIB_NPTS; j += 1){
       float in0 = TEST0_POINTS[i];
