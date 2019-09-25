@@ -45,10 +45,7 @@ class UseCommand(AnalogChipCommand):
         if self.calibrated:
             dbkey = self.to_key(calib_obj=env.calib_obj)
             assert(isinstance(dbkey, state.BlockState.Key))
-            if env.state_db.has(dbkey):
-                blockstate = env.state_db.get(dbkey)
-                self.update_state(blockstate)
-            else:
+            if not env.state_db.has(dbkey):
                 for obj in env.state_db.get_all():
                     print(dbkey.identifier,obj.descriptor)
 
@@ -56,6 +53,9 @@ class UseCommand(AnalogChipCommand):
                 print(dbkey.identifier,dbkey.descriptor)
                 input("not calibrated")
                 raise Exception("not calibrated")
+
+            blockstate = env.state_db.get(dbkey)
+            blockstate.from_key(key)
             assert(isinstance(blockstate, state.BlockState))
             # set the state
             loc = ccmd_data.CircLoc(self._loc.chip,
@@ -95,9 +95,6 @@ class UseLUTCmd(UseCommand):
             self.fail("dac has no index <%d>" % loc.index)
 
         self._source = source
-
-    def update_state(self,stateobj):
-        return
 
     @property
     def expr(self):
@@ -194,9 +191,6 @@ class UseADCCmd(UseCommand):
     @staticmethod
     def desc():
         return "use a constant adc block on the hdacv2 board"
-
-    def update_state(self,stateobj):
-        return
 
     @staticmethod
     def parse(args):
@@ -310,9 +304,6 @@ class UseDACCmd(UseCommand):
                                        calib_obj=calib_obj)
 
 
-    def update_state(self,state):
-        state.update_value(self._value)
-
     @staticmethod
     def _parse(args,cls):
         result = ccmd_common.parse_pattern_use_block(args,1,1,1,
@@ -404,9 +395,6 @@ class UseFanoutCmd(UseCommand):
     def desc():
         return "use a fanout block on the hdacv2 board"
 
-
-    def update_state(self,stateobj):
-        return
 
     def build_ctype(self):
         return ccmd_common.build_circ_ctype({
@@ -562,9 +550,6 @@ class UseIntegCmd(UseCommand):
                 }
             }
         })
-
-    def update_state(self,state):
-        state.update_init_cond(self._init_cond)
 
     def to_key(self,calib_obj):
         loc = ccmd_data.CircLoc(self.loc.chip,

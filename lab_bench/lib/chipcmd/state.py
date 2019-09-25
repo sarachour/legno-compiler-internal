@@ -410,6 +410,11 @@ class LutBlockState(BlockState):
                              self.source,
                              self.calib_obj)
 
+  def from_key(self,key):
+    assert(isinstance(key,LutBlockState.Key))
+    self.source = key.source
+
+
 
   def to_rows(self,obj):
     return map(lambda i: (), [])
@@ -438,7 +443,9 @@ class DacBlockState(BlockState):
       self.rng = rng
       self.source = source
       self.const_val = const_val
+      self.const_code = ccmd_common.signed_float_to_byte(const_val)
       self.ignore('const_val');
+      self.ignore('const_code');
       self.ignore('source');
 
 
@@ -456,6 +463,16 @@ class DacBlockState(BlockState):
                              self.calib_obj)
 
 
+
+  def from_key(self,key):
+    assert(isinstance(key,DacBlockState.Key))
+    assert(key.inv == self.inv)
+    assert(key.rng == self.rng)
+    self.inv = key.inv
+    self.rng = key.rng
+    self.source = key.source
+    self.const_val = key.const_val
+    self.const_code = key.const_code
 
   def header(self):
     GH = ['inv','rng','source','port']
@@ -475,7 +492,6 @@ class DacBlockState(BlockState):
 
   def update_value(self,value):
     self.const_val = value
-    self.const_code = ccmd_common.signed_float_to_byte(value)
 
 
   def to_cstruct(self):
@@ -530,12 +546,30 @@ class MultBlockState(BlockState):
       self.ranges = ranges
       self.gain_val = float(gain_val) \
                       if not gain_val is None else None
+
+      if not gain_val is None:
+        self.gain_val = gain_val
+        self.gain_code = ccmd_common.signed_float_to_byte(self.gain_val)
+      else:
+        self.gain_val = None
+        self.gain_code = None
+
       self.vga = vga
       self.ignore('gain_val')
+      self.ignore('gain_code')
 
   def __init__(self,loc,state,calib_obj):
     assert(isinstance(calib_obj,util.CalibrateObjective))
     BlockState.__init__(self,glb_enums.BlockType.MULT,loc,state,calib_obj)
+
+  def from_key(self,key):
+    assert(isinstance(key,MultBlockState.Key))
+    assert(key.vga == self.vga)
+    assert(key.ranges == self.ranges)
+    self.ranges = key.ranges
+    self.gain_val = key.gain_val
+    self.gain_code = key.gain_code
+    self.vga = key.vga
 
   def header(self):
     GH = keys(self.ranges,prefix='range-') + \
@@ -622,12 +656,14 @@ class IntegBlockState(BlockState):
                  ic_val=None,
                  calib_obj=util.CalibrateObjective.MIN_ERROR):
       BlockState.Key.__init__(self,glb_enums.BlockType.INTEG,loc,calib_obj)
-      self.exception = exception
       self.inv = inv
+      self.exception = exception
       self.cal_enables = cal_enables
       self.ranges = ranges
       self.ic_val = ic_val
+      self.ic_code = ccmd_common.signed_float_to_byte(ic_val)
       self.ignore('ic_val');
+      self.ignore('ic_code');
       self.ignore('exception');
       self.ignore('cal_enables');
 
@@ -682,9 +718,19 @@ class IntegBlockState(BlockState):
       }
     })
 
+  def from_key(self,key):
+    assert(isinstance(key,IntegBlockState.Key))
+    assert(key.inv == self.inv)
+    assert(key.ranges == self.ranges)
+    self.ranges = key.ranges
+    self.ic_val = key.ic_val
+    self.ic_code = key.ic_code
+    self.inv = key.inv
+    self.exception = key.exception
+    self.cal_enables = key.cal_enables
+
   def update_init_cond(self,value):
     self.ic_val = value
-    self.ic_code = ccmd_common.signed_float_to_byte(value)
 
   def from_cstruct(self,state):
     inid = glb_enums.PortName.IN0
@@ -731,14 +777,17 @@ class FanoutBlockState(BlockState):
       self.third = third
       self.ignore('third');
 
-    @property
-    def dynamic_codes(self):
-      return []
-
   def __init__(self,loc,state,calib_obj):
     BlockState.__init__(self,glb_enums.BlockType.FANOUT,loc, \
                         state,calib_obj)
 
+  def from_key(self,key):
+    assert(isinstance(key,FanoutBlockState.Key))
+    assert(key.invs == self.invs)
+    assert(key.rng == self.rng)
+    self.rng = key.rng
+    self.invs = key.invs
+    self.third = key.third
 
   @property
   def key(self):
@@ -834,10 +883,15 @@ class AdcBlockState(BlockState):
       self.ignore('test_rs');
       self.ignore('test_rsinc');
 
-    @property
-    def dynamic_codes(self):
-      return []
 
+  def from_key(self,key):
+    assert(isinstance(key,FanoutBlockState.Key))
+    assert(key.rng == self.rng)
+    self.rng = key.rng
+    self.test_en = key.test_en
+    self.test_adc = key.test_adc
+    self.test_i2v = key.test_i2v
+    self.test_rsinc = key.test_rsinc
 
   def __init__(self,loc,state,calib_obj):
     BlockState.__init__(self,glb_enums.BlockType.ADC,loc, \
