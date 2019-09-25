@@ -288,18 +288,29 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
       this->m_codes.nmos = nmos;
       this->m_codes.pmos = pmos;
       this->m_codes.gain_cal = 32;
-      
-      float target = 0.0;
+
+      float target_pos = 0.0;
+      float target_neg = 0.0;
       float dummy,dac_out0,dac_out1;
-      val0_dac->setConstant(0.0);
-      dac_out0 = val0_dac->fastMeasureValue(dummy);
-      if(!this->m_codes.vga){
-        val1_dac->setConstant(0.0);
-        dac_out1 = val1_dac->fastMeasureValue(dummy);
-        target = computeOutput(this->m_codes, dac_out0, dac_out1);
+      if(this->m_codes.vga){
+        val0_dac->setConstant(0.0);
+        dac_out0 = val0_dac->fastMeasureValue(dummy);
+        this->setGain(1.0);
+        target_pos = computeOutput(this->m_codes, dac_out0, 0.0);
+        this->setGain(-1.0);
+        target_neg = computeOutput(this->m_codes, dac_out0, 0.0);
+
       }
       else{
-        
+        val0_dac->setConstant(0.0);
+        dac_out0 = val0_dac->fastMeasureValue(dummy);
+        val1_dac->setConstant(0.5);
+        dac_out1 = val1_dac->fastMeasureValue(dummy);
+        target_pos = computeOutput(this->m_codes, dac_out0, dac_out1);
+        val1_dac->setConstant(-0.5);
+        dac_out1 = val1_dac->fastMeasureValue(dummy);
+        target_neg = computeOutput(this->m_codes, dac_out0, dac_out1);
+
       }
       ref_to_tileout.brkConn();
       int stride = 8;
@@ -310,35 +321,33 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
               this->m_codes.port_cal[in1Id] = bias_in1;
               this->m_codes.port_cal[out0Id] = bias_out;
               this->update(this->m_codes);
-              float mean, variance;
               float error = 0.0;
-              this->setGain(1.0);
-              target = computeOutput(this->m_codes, dac_out0, 0.0);
-              util::meas_dist_chip_out(this,
-                                               mean,
-                                               variance);
-              error += fabs(mean-target);
-              this->setGain(-1.0);
-              target = computeOutput(this->m_codes, dac_out0, 0.0);
-              util::meas_dist_chip_out(this,
-                                               mean,
-                                               variance);
-              error += fabs(mean-target);
-
+              if(this->m_codes.vga){
+                this->setGain(1.0);
+                error += fabs(util::meas_fast_chip_out(this) - target_pos);
+                this->setGain(-1.0);
+                error += fabs(util::meas_fast_chip_out(this) - target_neg);
+              }
+              else{
+                val1_dac->setConstant(0.5);
+                error += fabs(util::meas_fast_chip_out(this) - target_pos);
+                val1_dac->setConstant(-0.5);
+                error += fabs(util::meas_fast_chip_out(this) - target_neg);
+              }
               cutil::update_calib_table(table_bias,error,3,
                                         bias_in0,
                                         bias_in1,
                                         bias_out);
             }
           }
-          sprintf(FMTBUF,"find-zero targ=%f nmos=%d pmos=%d port_cal=(%d,%d,%d) loss=%f",
-                  target,nmos,pmos,
+          sprintf(FMTBUF,"find-zero targ=%f/%f nmos=%d pmos=%d port_cal=(%d,%d,%d) loss=%f",
+                  target_pos,target_neg,nmos,pmos,
                   table_bias.state[0],table_bias.state[1],table_bias.state[2],
                   table_bias.loss);
           print_info(FMTBUF);
       }
-      sprintf(FMTBUF,"BEST-ZERO targ=%f nmos=%d pmos=%d port_cal=(%d,%d,%d) loss=%f",
-              target,nmos,pmos,
+      sprintf(FMTBUF,"BEST-ZERO targ=%f/%f nmos=%d pmos=%d port_cal=(%d,%d,%d) loss=%f",
+              target_pos,target_neg,nmos,pmos,
               table_bias.state[0],table_bias.state[1],table_bias.state[2],
               table_bias.loss);
       print_info(FMTBUF);
