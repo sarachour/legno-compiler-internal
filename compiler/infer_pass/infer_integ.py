@@ -93,13 +93,13 @@ def infer(obj):
 
   if np.isnan(mu) or sigma > 0.01:
     model_z.enabled = False
-    return
 
-  model_z.gain = mu;
-  model_z.gain_uncertainty = sigma;
-  model_z.bias = np.mean(ol_bias);
-  model_z.bias_uncertainty = np.std(ol_bias);
-  print("mean=%f std=%f" % (mu,sigma))
+  if not np.isnan(mu):
+    model_z.gain = mu;
+    model_z.gain_uncertainty = sigma;
+    model_z.bias = np.mean(ol_bias);
+    model_z.bias_uncertainty = np.std(ol_bias);
+    print("mean=%f std=%f" % (mu,sigma))
   if infer_util.about_one(model_z0.gain):
     model_z0.gain = 1.0
 

@@ -35,9 +35,7 @@ def is_extended(scale_mode):
   i,o = scale_mode
   disabled = []
   # difficult to measure high values
-  disabled.append((enums.RangeType.MED,enums.RangeType.HIGH))
-  # some high-high modes are bad.
-  #disabled.append((enums.RangeType.HIGH,enums.RangeType.HIGH))
+  #disabled.append((enums.RangeType.MED,enums.RangeType.HIGH))
   for (ci,co) in disabled:
     if i == ci and o == co:
       return False

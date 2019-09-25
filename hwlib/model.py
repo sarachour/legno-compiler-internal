@@ -13,7 +13,7 @@ class PortModel():
     self._block = block
     self._loc = loc
     self._handle = handle
-    self._enabled = False
+    self._enabled = True
     self._gain = 1.0
     self._noise = 0.0
     self._bias = 0.0
@@ -36,6 +36,7 @@ class PortModel():
 
   def set_model(self,other):
     self._gain = other._gain
+    self._enabled = other._enabled
     self._unc_gain = other._unc_gain
     self._disable = other._disable
     self._noise = other._noise

@@ -113,31 +113,37 @@ def fit(output,_tref,_yref,_tmeas,_ymeas):
     rx = list(map(lambda i: c*meas_x[i]-d, inds))
     return rt,rx
 
-  def compute_loss(x):
-    return compute_error(tref,yref,tmeas,ymeas, \
-                         [x[0],x[1],1.0,0])
-  # apply transform to turn ref -> pred
   tref = np.array(_tref)
   yref = np.array(_yref)
   tmeas = np.array(_tmeas)
   ymeas = np.array(_ymeas)
-
-  slack = 0.02
+  time_slack = 0.02
+  val_slack = 0.02
   bounds = [
-    (1.0-slack,1.0+slack),
-    (0.0,max(tmeas)*0.10)
+    (1.0-time_slack,1.0+time_slack),
+    (0.0,max(tmeas)*0.25),
+    (1.0-val_slack,1.0+val_slack),
   ]
-  n = 10
+  def clamp(result,i):
+    return min(max(result[i],bounds[i][0]),bounds[i][1])
+
+  def compute_loss(x):
+    return compute_error(tref,yref,tmeas,ymeas, \
+                         [clamp(x,0),clamp(x,1),x[2],0])
+  # apply transform to turn ref -> pred
+  n = 15
   print("==== TRANSFORM ===")
   result = optimize.brute(compute_loss,bounds,Ns=n)
   #print(result)
   xform = output.transform
-  #xform.expd_time_scale = min(max(result[0],bounds[0][0]),bounds[0][1])
+  #xform.expd_time_scale = 1.0
+  xform.expd_time_scale = clamp(result,0)
+  xform.expd_value_scale = clamp(result,2)
   xform.expd_time_offset = result[1]
-  xform.expd_time_scale = 1.0
   #xform.expd_time_offset = lag_finder(tref,yref,tmeas,ymeas)
   print("time-scale=%f (%f)" % (xform.expd_time_scale, result[0]))
   print("time-offset=%f" % (xform.expd_time_offset))
+  print("value-scale=%f (%f)" % (xform.expd_value_scale, result[2]))
   print("========")
   # update database
   output.transform = xform

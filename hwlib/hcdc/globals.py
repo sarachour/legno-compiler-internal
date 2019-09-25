@@ -88,8 +88,7 @@ CTX.insert(GLProp.DIGITAL_RESOLUTION, 1)
 max_freq_khz = 200
 #max_freq_khz = 150.00
 #max_freq_khz = 40.00
-cap_freq_khz = 126.00
-adc_khz = 20.00
+adc_khz = 40.00
 CTX.insert(GLProp.MAX_FREQ, max_freq_khz*units.khz)
 CTX.insert(GLProp.DIGITAL_SAMPLE, 3.0*units.us)
 CTX.insert(GLProp.INBUF_SIZE,1200)
@@ -102,6 +101,9 @@ CTX.insert(GLProp.COEFF, 2.0, block='tile_dac')
 
 CTX.insert(GLProp.MAX_FREQ, adc_khz*units.khz, block='tile_adc')
 CTX.insert(GLProp.COEFF, 0.5, block='tile_adc')
+# leave padding around lookup table to prevent weird wraparound issues issues.
+CTX.insert(GLProp.DIGITAL_INTERVAL, (-0.95,0.95),block='lut',port="out")
+CTX.insert(GLProp.DIGITAL_INTERVAL, (-0.95,0.95),block='lut',port="in")
 CTX.insert(GLProp.DIGITAL_COVERAGE , 1.0, cm="*",sm="*", \
            block='lut',port="out")
 CTX.insert(GLProp.DIGITAL_COVERAGE , 1.0, cm="*",sm="*", \
@@ -131,4 +133,5 @@ CTX.insert(GLProp.DIGITAL_INTERVAL, (-DUE_range,DUE_range), \
 
 CTX.freeze = True
 
+cap_freq_khz = 126.00
 TIME_FREQUENCY = cap_freq_khz*units.khz

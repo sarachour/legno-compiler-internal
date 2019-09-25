@@ -189,7 +189,7 @@ def compile(board,prob,depth=3, \
                                                               mapping)
                 if not succ:
                     logger.info("=> FAILED TO CONNECT")
-                    input("[press any key to continue]")
+                    #input("[press any key to continue]")
                     continue
 
                 logger.info(">>> bind namespaces <<<")

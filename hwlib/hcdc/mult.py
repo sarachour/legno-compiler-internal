@@ -75,8 +75,8 @@ def is_extended_vga(mode):
           (o != enums.RangeType.LOW)
   disabled = []
   # produces bad config
-  disabled.append((enums.RangeType.HIGH,enums.RangeType.HIGH))
-  disabled.append((enums.RangeType.MED,enums.RangeType.HIGH))
+  #disabled.append((enums.RangeType.HIGH,enums.RangeType.HIGH))
+  #disabled.append((enums.RangeType.MED,enums.RangeType.HIGH))
   for ci,co in disabled:
     if i == ci and o == co:
       return False

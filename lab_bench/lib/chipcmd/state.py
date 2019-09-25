@@ -230,11 +230,10 @@ class BlockState:
       self.block = blk
       self.loc = loc
       self.calib_obj = calib_obj
+      self._ignore = []
 
-    @property
-    def dynamic_codes(self):
-      print(self.block)
-      raise NotImplementedError
+    def ignore(self,prop):
+      self._ignore.append(prop)
 
     def to_json(self):
       obj = dict(self.__dict__)
@@ -255,9 +254,10 @@ class BlockState:
         sorted(keys)
         ident = ""
         for key in keys:
-          value = obj[key]
-          if key in self.dynamic_codes:
+          if key in self._ignore:
             continue
+
+          value = obj[key]
 
           ident += "%s=" % key
           if isinstance(value,dict):
@@ -399,11 +399,7 @@ class LutBlockState(BlockState):
     def __init__(self,loc,source,calib_obj):
       BlockState.Key.__init__(self,glb_enums.BlockType.LUT,loc,calib_obj)
       self.source = source
-
-
-    @property
-    def dynamic_codes(self):
-      return []
+      self.ignore('source');
 
   def __init__(self,loc,state,calib_obj):
     BlockState.__init__(self,glb_enums.BlockType.LUT,loc,state,calib_obj)
@@ -442,11 +438,9 @@ class DacBlockState(BlockState):
       self.rng = rng
       self.source = source
       self.const_val = const_val
+      self.ignore('const_val');
+      self.ignore('source');
 
-
-    @property
-    def dynamic_codes(self):
-      return ["const_val"]
 
   def __init__(self,loc,state,calib_obj):
     BlockState.__init__(self,glb_enums.BlockType.DAC,loc, \
@@ -537,10 +531,7 @@ class MultBlockState(BlockState):
       self.gain_val = float(gain_val) \
                       if not gain_val is None else None
       self.vga = vga
-
-    @property
-    def dynamic_codes(self):
-      return ['gain_val']
+      self.ignore('gain_val')
 
   def __init__(self,loc,state,calib_obj):
     assert(isinstance(calib_obj,util.CalibrateObjective))
@@ -636,10 +627,9 @@ class IntegBlockState(BlockState):
       self.cal_enables = cal_enables
       self.ranges = ranges
       self.ic_val = ic_val
-
-    @property
-    def dynamic_codes(self):
-      return ['ic_val']
+      self.ignore('ic_val');
+      self.ignore('exception');
+      self.ignore('cal_enables');
 
   def __init__(self,loc,state,calib_obj):
     BlockState.__init__(self,glb_enums.BlockType.INTEG,loc, \
@@ -739,6 +729,7 @@ class FanoutBlockState(BlockState):
       self.invs = invs
       self.rng = rng
       self.third = third
+      self.ignore('third');
 
     @property
     def dynamic_codes(self):
@@ -837,6 +828,11 @@ class AdcBlockState(BlockState):
       self.test_rsinc = test_rsinc
       self.rng = rng
       self.calib_obj = calib_obj
+      self.ignore('test_en');
+      self.ignore('test_adc');
+      self.ignore('test_i2v');
+      self.ignore('test_rs');
+      self.ignore('test_rsinc');
 
     @property
     def dynamic_codes(self):
