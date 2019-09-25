@@ -191,8 +191,6 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
   util::linear_regression(expected,errors,npts,
                           gain_mean,bias,rsq,error);
 
-  sprintf(FMTBUF,"rsquare=%f error=%f",rsq,error);
-  print_info(FMTBUF);
   // put some emphasis on deviation because it is changed.
   return cutil::compute_loss(bias,highest_std,error,
                              1.0+gain_mean,
@@ -289,78 +287,66 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   /*nmos, gain_cal, port_cal in0,in1,out*/
   for(int nmos=0; nmos < MAX_NMOS; nmos += 1){
     for(int pmos=0; pmos < MAX_PMOS; pmos += 1){
-      cutil::calib_table_t table_bias = cutil::make_calib_table();
+      cutil::calib_table_t table_out = cutil::make_calib_table();
+      cutil::calib_table_t table_in0 = cutil::make_calib_table();
+      cutil::calib_table_t table_in1 = cutil::make_calib_table();
       this->m_codes.nmos = nmos;
       this->m_codes.pmos = pmos;
+      this->m_codes.port_cal[in0Id] = 32;
+      this->m_codes.port_cal[in1Id] = 32;
+      this->m_codes.port_cal[out0Id] = 32;
       this->m_codes.gain_cal = 32;
+      this->setGain(0.0);
+      this->setVga(true);
+      dac0_to_in0.brkConn();
+      dac1_to_in1.brkConn();
+      ref_to_tileout.brkConn();
+      for(int bias_out=0; bias_out < MAX_BIAS_CAL; bias_out+=1){
+        this->m_codes.port_cal[out0Id] = bias_out;
+        this->update(this->m_codes);
+        float bias = util::meas_chip_out(this);
+        cutil::update_calib_table(table_out,fabs(bias),1,bias_out);
+      }
 
-      float target_pos = 0.0;
-      float target_neg = 0.0;
-      float dummy,dac_out0,dac_out1;
-      if(this->m_codes.vga){
-        val0_dac->setConstant(0.0);
-        dac_out0 = val0_dac->fastMeasureValue(dummy);
+      this->m_codes.port_cal[out0Id] = table_out.state[0];
+      for(int bias_in0=0; bias_in0 < MAX_BIAS_CAL; bias_in0+=1){
+        this->m_codes.port_cal[in0Id] = bias_in0;
+        this->update(this->m_codes);
         this->setGain(1.0);
-        target_pos = computeOutput(this->m_codes, dac_out0, 0.0);
+        float error = fabs(util::meas_chip_out(this));
         this->setGain(-1.0);
-        target_neg = computeOutput(this->m_codes, dac_out0, 0.0);
-
+        error += fabs(util::meas_chip_out(this));
+        cutil::update_calib_table(table_in0,error,1,bias_in0);
+      }
+      this->m_codes.port_cal[in0Id] = table_in0.state[0];
+      if(!codes_mult.vga){
+        this->setVga(false);
+        for(int bias_in1=0; bias_in1 < MAX_BIAS_CAL; bias_in1+=1){
+          this->m_codes.port_cal[in1Id] = bias_in1;
+          this->update(this->m_codes);
+          float bias = util::meas_chip_out(this);
+          cutil::update_calib_table(table_in1,fabs(bias),1,bias_in1);
+        }
+        this->m_codes.port_cal[in1Id] = table_in1.state[0];
+        sprintf(FMTBUF,"nmos=%d pmos=%d port_cal=(%d,%d,%d) losses=(%f,%f,%f)",nmos,pmos,
+                table_out.state[0],table_in0.state[0],table_in1.state[0],
+                table_out.loss,table_in0.loss,table_in1.loss);
+        print_info(FMTBUF);
       }
       else{
-        val0_dac->setConstant(0.0);
-        dac_out0 = val0_dac->fastMeasureValue(dummy);
-        val1_dac->setConstant(0.5);
-        dac_out1 = val1_dac->fastMeasureValue(dummy);
-        target_pos = computeOutput(this->m_codes, dac_out0, dac_out1);
-        val1_dac->setConstant(-0.5);
-        dac_out1 = val1_dac->fastMeasureValue(dummy);
-        target_neg = computeOutput(this->m_codes, dac_out0, dac_out1);
-
+        this->m_codes.port_cal[in1Id] = 32;
+        sprintf(FMTBUF,"nmos=%d pmos=%d port_cal=(%d,%d,32) losses=(%f,%f)",nmos,pmos,
+                table_out.state[0],table_in0.state[0],table_out.loss,table_in0.loss);
+        print_info(FMTBUF);
       }
-      ref_to_tileout.brkConn();
-      int stride = 8;
-      for(int bias_out=0; bias_out < MAX_BIAS_CAL; bias_out += stride){
-          for(int bias_in0=0; bias_in0 < MAX_BIAS_CAL; bias_in0 += stride){
-            for(int bias_in1=0; bias_in1 < MAX_BIAS_CAL; bias_in1 += stride){
-              this->m_codes.port_cal[in0Id] = bias_in0;
-              this->m_codes.port_cal[in1Id] = bias_in1;
-              this->m_codes.port_cal[out0Id] = bias_out;
-              this->update(this->m_codes);
-              float error = 0.0;
-              if(this->m_codes.vga){
-                this->setGain(1.0);
-                error += fabs(util::meas_fast_chip_out(this) - target_pos);
-                this->setGain(-1.0);
-                error += fabs(util::meas_fast_chip_out(this) - target_neg);
-              }
-              else{
-                val1_dac->setConstant(0.5);
-                error += fabs(util::meas_fast_chip_out(this) - target_pos);
-                val1_dac->setConstant(-0.5);
-                error += fabs(util::meas_fast_chip_out(this) - target_neg);
-              }
-              cutil::update_calib_table(table_bias,error,3,
-                                        bias_in0,
-                                        bias_in1,
-                                        bias_out);
-            }
-          }
-          sprintf(FMTBUF,"find-zero targ=%f/%f nmos=%d pmos=%d port_cal=(%d,%d,%d) loss=%f",
-                  target_pos,target_neg,nmos,pmos,
-                  table_bias.state[0],table_bias.state[1],table_bias.state[2],
-                  table_bias.loss);
-          print_info(FMTBUF);
-      }
-      sprintf(FMTBUF,"BEST-ZERO targ=%f/%f nmos=%d pmos=%d port_cal=(%d,%d,%d) loss=%f",
-              target_pos,target_neg,nmos,pmos,
-              table_bias.state[0],table_bias.state[1],table_bias.state[2],
-              table_bias.loss);
-      print_info(FMTBUF);
+      this->m_codes.vga = codes_mult.vga;
+      dac0_to_in0.setConn();
+      dac1_to_in1.setConn();
       ref_to_tileout.setConn();
 
-      this->m_codes.port_cal[in0Id] = table_bias.state[0];
-      this->m_codes.port_cal[in1Id] = table_bias.state[1];
-      this->m_codes.port_cal[out0Id] = table_bias.state[2];
+      this->m_codes.port_cal[in0Id] = table_in0.state[0];
+      this->m_codes.port_cal[in1Id] = table_in1.state[1];
+      this->m_codes.port_cal[out0Id] = table_out.state[2];
       for(int gain_cal=min_gain_code;
           gain_cal < min_gain_code+n_gain_codes;
           gain_cal+=16){
