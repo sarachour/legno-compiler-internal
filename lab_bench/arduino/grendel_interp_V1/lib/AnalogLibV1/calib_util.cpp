@@ -85,7 +85,7 @@ namespace cutil {
                      -target);
 
     do {
-      ref_dac->setConstant(targ_dac_val);
+      ref_dac->setConstant(max(min(targ_dac_val,1.0),-1.0));
       if(steady){
         util::meas_steady_chip_out(fu,measurement,variance);
       }

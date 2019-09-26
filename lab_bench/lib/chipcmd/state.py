@@ -880,7 +880,7 @@ class AdcBlockState(BlockState):
 
 
   def from_key(self,key):
-    assert(isinstance(key,FanoutBlockState.Key))
+    assert(isinstance(key,AdcBlockState.Key))
     assert(key.rng == self.rng)
     self.test_en = key.test_en
     self.test_adc = key.test_adc
