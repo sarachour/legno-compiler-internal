@@ -236,6 +236,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::
                                                                          Dac* val0_dac,
                                                                          Dac* val1_dac,
                                                                          Dac* ref_dac,
+                                                                         int bounds[6],
                                                                          float pos,
                                                                          float target_pos,
                                                                          float neg,
@@ -244,9 +245,9 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::
   Fabric::Chip::Connection ref_to_tileout =
     Fabric::Chip::Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0);
   ref_to_tileout.brkConn();
-  for(int bias_out=0; bias_out < MAX_BIAS_CAL; bias_out += stride){
+  for(int bias_out=bounds[0]; bias_out < bounds[1]; bias_out += stride){
     this->m_codes.port_cal[out0Id] = bias_out;
-    for(int bias_in0=0; bias_in0 < MAX_BIAS_CAL; bias_in0 += stride){
+    for(int bias_in0=bounds[4]; bias_in0 < bounds[5]; bias_in0 += stride){
       this->m_codes.port_cal[in0Id] = bias_in0;
       if(this->m_codes.vga){
         this->m_codes.port_cal[in1Id] = 32;
@@ -262,7 +263,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::
                                   bias_out);
       }
       else{
-        for(int bias_in1=0; bias_in1 < MAX_BIAS_CAL; bias_in1 += stride){
+        for(int bias_in1=bounds[2]; bias_in1 < bounds[3]; bias_in1 += stride){
           this->m_codes.port_cal[in1Id] = bias_in1;
           this->update(this->m_codes);
           float error = 0.0;
@@ -336,6 +337,10 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   float target_pos = 0.0;
   float target_neg = 0.0;
   float dummy,dac_out0,dac_out1;
+  int bias_bounds[6];
+  bias_bounds[0] = bias_bounds[2] = bias_bounds[4] = 0;
+  bias_bounds[1] = bias_bounds[3] = bias_bounds[5] = MAX_BIAS_CAL;
+
   if(this->m_codes.vga){
     val0_dac->setRange(util::range_to_dac_range(this->m_codes.range[in0Id]));
     fast_calibrate_dac(val0_dac);
@@ -382,6 +387,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
                                          val0_dac,
                                          val1_dac,
                                          ref_dac,
+                                         bias_bounds,
                                          this->m_codes.vga ? 1.0 : 0.5,
                                          target_pos,
                                          this->m_codes.vga ? -1.0 : -0.5,
@@ -422,15 +428,31 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   this->m_codes.gain_cal = calib_table.state[5];
   // fine grain bias calculation
   cutil::calib_table_t table_bias = cutil::make_calib_table();
-  this->calibrateHelperFindBiasCodes(table_bias, 4,
+  int stride=4;
+  this->calibrateHelperFindBiasCodes(table_bias, stride,
                                      val0_dac,
                                      val1_dac,
                                      ref_dac,
+                                     bias_bounds,
                                      this->m_codes.vga ? 1.0 : 0.5,
                                      target_pos,
                                      this->m_codes.vga ? -1.0 : -0.5,
                                      target_neg);
-
+  bias_bounds[0] = max(table_bias.state[0]-4,0);
+  bias_bounds[1] = min(table_bias.state[0]+4,MAX_BIAS_CAL);
+  bias_bounds[3] = max(table_bias.state[1]-4,0);
+  bias_bounds[4] = min(table_bias.state[1]+4,MAX_BIAS_CAL);
+  bias_bounds[5] = max(table_bias.state[2]-4,0);
+  bias_bounds[6] = min(table_bias.state[2]+4,MAX_BIAS_CAL);
+  this->calibrateHelperFindBiasCodes(table_bias, 1,
+                                     val0_dac,
+                                     val1_dac,
+                                     ref_dac,
+                                     bias_bounds,
+                                     this->m_codes.vga ? 1.0 : 0.5,
+                                     target_pos,
+                                     this->m_codes.vga ? -1.0 : -0.5,
+                                     target_neg);
 
   this->m_codes.port_cal[in0Id] = table_bias.state[0];
   this->m_codes.port_cal[in1Id] = table_bias.state[1];

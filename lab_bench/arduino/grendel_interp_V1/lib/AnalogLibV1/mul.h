@@ -38,6 +38,7 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
                                       Dac * val0_dac,
                                       Dac * val1_dac,
                                       Dac * ref_dac,
+                                      int bounds[6],
                                       float pos,
                                       float target_pos,
                                       float neg,
