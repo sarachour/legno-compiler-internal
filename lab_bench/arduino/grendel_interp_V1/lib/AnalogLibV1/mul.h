@@ -33,6 +33,14 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
                   Dac * val0_dac,
                   Dac * val1_dac,
                   Dac * ref_dac);
+    void calibrateHelperFindBiasCodes(cutil::calib_table_t& tbl, int stride,
+                                      Dac * val0_dac,
+                                      Dac * val1_dac,
+                                      Dac * ref_dac,
+                                      float pos,
+                                      float target_pos,
+                                      float neg,
+                                      float target_neg);
     float calibrateHelperMult(Dac * val0_dac,
                              Dac * val1_dac,
                              Dac * ref_dac,
