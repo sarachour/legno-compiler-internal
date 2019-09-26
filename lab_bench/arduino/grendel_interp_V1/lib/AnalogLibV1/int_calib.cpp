@@ -90,7 +90,9 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * 
 
   return cutil::compute_loss(bias,max_std,error,
                              1.0+gain_mean,
-                             this->m_codes.range[out0Id],0.0, 1.0);
+                             this->m_codes.range[out0Id],
+                             0.05,
+                             1.0);
 }
 
 void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t obj,

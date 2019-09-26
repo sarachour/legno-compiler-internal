@@ -122,7 +122,7 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(){
 
   return cutil::compute_loss(bias,max_std,error,
                              1.0+gain_mean,
-                             this->m_codes.range,0.0,1.0);
+                             this->m_codes.range,0.05,1.0);
 
 }
 float Fabric::Chip::Tile::Slice::Dac::calibrateMinError(){
