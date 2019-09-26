@@ -85,6 +85,9 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
                                             meas_steady,
                                             mean,
                                             variance);
+      sprintf(FMTBUF,"in=(%f,%f) in-meas=(%f,%f) out=%f meas=%f error=%f",in0,in1,
+	target_in0,in1,target_out,mean,mean-target_out);
+      print_info(FMTBUF);
       if(succ){
         observations[npts] = mean;
         expected[npts] = target_out;
@@ -195,7 +198,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
   return cutil::compute_loss(ignore_bias ? 0.0 : bias,highest_std,error,
                              1.0+gain_mean,
                              this->m_codes.range[out0Id],
-                             0.0,
+                             0.002,
                              1.2);
 }
 float Fabric::Chip::Tile::Slice::Multiplier::calibrateMinErrorVga(Dac * val_dac,
