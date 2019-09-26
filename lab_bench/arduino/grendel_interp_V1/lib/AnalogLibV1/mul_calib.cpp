@@ -170,9 +170,10 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
 
   // put no emphasis on deviation, because it will not adhere to 1.0
   return cutil::compute_loss(ignore_bias ? 0.0 : bias,max_std,
-                             max_error,
+                             (max_error+avg_error)/2.0,
                              1.0 + gain_mean,
-                             this->m_codes.range[out0Id], 0.0, 2.0);
+                             this->m_codes.range[out0Id], 
+                             0.0, 2.0);
 }
 float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_dac,
                                                                      Dac * ref_dac,
@@ -194,10 +195,10 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
 
   // put some emphasis on deviation because it is changed.
   return cutil::compute_loss(ignore_bias ? 0.0 : bias,highest_std,
-                             max_error,
+                             (avg_error + max_error)/2.0,
                              1.0+gain_mean,
                              this->m_codes.range[out0Id],
-                             0.01,
+                             0.015,
                              1.2);
 }
 float Fabric::Chip::Tile::Slice::Multiplier::calibrateMinErrorVga(Dac * val_dac,
@@ -398,8 +399,8 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
       this->m_codes.port_cal[in0Id] = table_bias.state[0];
       this->m_codes.port_cal[in1Id] = table_bias.state[1];
       this->m_codes.port_cal[out0Id] = table_bias.state[2];
-      for(int gain_cal=min_gain_code;
-          gain_cal < min_gain_code+n_gain_codes;
+      for(int gain_cal=32;
+          gain_cal < 33;
           gain_cal+=16){
         this->m_codes.gain_cal = gain_cal;
         this->update(this->m_codes);
