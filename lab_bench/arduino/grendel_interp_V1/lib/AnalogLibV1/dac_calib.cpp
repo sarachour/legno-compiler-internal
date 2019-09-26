@@ -6,6 +6,9 @@
 #include "dac.h"
 #include "Arduino.h"
 
+#define CALIB_NPTS 7
+const float TEST_POINTS[CALIB_NPTS] = {0,0.875,0.5,-0.875,-0.5,0.25,-0.25};
+
 
 void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
 {
@@ -99,9 +102,6 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
   update(this->m_codes);
 }
 
-#define CALIB_NPTS 4
-const float TEST_POINTS[CALIB_NPTS] = {0,0.875,0.5,-0.875};
-
 float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(){
   float expected[CALIB_NPTS];
   float errors[CALIB_NPTS];
@@ -122,7 +122,7 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(){
 
   return cutil::compute_loss(bias,max_std,error,
                              1.0+gain_mean,
-                             this->m_codes.range,0.01,1.0);
+                             this->m_codes.range,0.03,1.0);
 
 }
 float Fabric::Chip::Tile::Slice::Dac::calibrateMinError(){

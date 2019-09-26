@@ -3,9 +3,9 @@
 #include "calib_util.h"
 #include "fu.h"
 
-#define CALIB_NPTS 5
+#define CALIB_NPTS 7
 #define TOTAL_NPTS (CALIB_NPTS+1)
-const float TEST_POINTS[CALIB_NPTS] = {-0.875,0.875,0.5,-0.5,0.0};
+const float TEST_POINTS[CALIB_NPTS] = {-0.875,0.875,0.5,-0.5,-0.25,0.25,0.0};
 
 
 float Fabric::Chip::Tile::Slice::Integrator::calibrateHelper(Dac* ref_dac,
@@ -91,7 +91,7 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * 
   return cutil::compute_loss(bias,max_std,error,
                              1.0+gain_mean,
                              this->m_codes.range[out0Id],
-                             0.01,
+                             0.003,
                              1.0);
 }
 
