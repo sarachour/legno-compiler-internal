@@ -14,23 +14,31 @@ DO_PLOTS = False
 def norm(v,vmin,vmax):
   return (v-vmin)/(vmax-vmin)
 
-def get_min_value(out):
+def get_min_value(out,use_delta_model):
   return 0.0
 
-def get_max_value(out):
-  if any(map(lambda o: o > 3.0, out)):
-    return 2.5
+def get_max_value(out,use_delta_model):
+  if any(map(lambda o: abs(o) > 3.0, out)):
+    return 2.5 if not use_delta_model else 0.5
   else:
-    return 0.25
+    return 0.25 if not use_delta_model else 0.05
 
-def heatmap1d(in0,out,value,labels):
+def xbound(pts):
+  if max(pts) > 3:
+    return -10,10
+  else:
+    return -1,1
+
+def heatmap1d(in0,out,value,labels,use_delta_model):
   # strictly monotonic increasing
   if len(in0) <= 3:
     return
 
   x,y,z = [],[],[]
-  vmin = get_min_value(out)
-  vmax = get_max_value(out)
+  vmin = get_min_value(out,use_delta_model)
+  vmax = get_max_value(out,use_delta_model)
+  xmin,xmax = xbound(in0)
+
   plt.clf()
   style = plt.get_cmap("magma")
   n = len(in0)
@@ -54,28 +62,30 @@ def heatmap1d(in0,out,value,labels):
                                       method="linear")
   fig = plt.gca()
   # should be 8x wider than tall
-  aspect = (max(in0)-min(in0))/8.0
+  aspect = (xmax-xmin)/8.0
   plt.imshow(grid_z.T,
               extent=(min(in0),max(in0),0,1.0), \
               aspect=aspect, \
               origin='lower', \
               norm=Normalize(vmin,vmax), \
               cmap=style)
+  plt.xlim(xmin,xmax)
   plt.ylim((0.0,1.0))
-  plt.axvline(linewidth=4, color='r')
-  plt.axis('off')
+  #plt.axvline(linewidth=4, color='r')
+  #plt.axis('off')
   #plt.xlabel(labels['in0'])
   #fig.axes.yaxis.set_ticklabels([])
-  #plt.colorbar(orientation='horizontal')
+  plt.colorbar(orientation='horizontal')
 
-def heatmap2d(in0,in1,out,value,labels):
+def heatmap2d(in0,in1,out,value,labels,use_delta_model):
   if len(in0) <= 3:
     return
 
   x,y,z = [],[],[]
-  vmin = get_min_value(out)
-  vmax = get_max_value(out)
-
+  vmin = get_min_value(out,use_delta_model)
+  vmax = get_max_value(out,use_delta_model)
+  xmin,xmax = xbound(in0)
+  ymin,ymax = xbound(in1)
   style = plt.get_cmap("magma")
   n = len(in0)
   xs = []
@@ -89,7 +99,7 @@ def heatmap2d(in0,in1,out,value,labels):
                                       values=value, \
                                       xi=(grid_x,grid_y),
                                       method="linear")
-  aspect = (max(in0)-min(in0))/(max(in1)-min(in1))
+  aspect = (xmax-xmin)/(ymax-ymin)
   plt.imshow(grid_z.T,
               extent=(min(in0),max(in0), \
                       min(in1),max(in1)), \
@@ -98,9 +108,14 @@ def heatmap2d(in0,in1,out,value,labels):
               norm=Normalize(vmin,vmax),
               cmap=style)
 
+  plt.xlim(xmin,xmax)
+  plt.ylim(ymin,ymax)
   plt.xlabel(labels['in0'])
   plt.ylabel(labels['in1'])
   plt.title(labels['out'])
+  #plt.xlabel(labels['in0'])
+  #fig.axes.yaxis.set_ticklabels([])
+  plt.colorbar(orientation='horizontal')
 
 '''
 def make_block_identifier(model):
@@ -186,10 +201,10 @@ def plot_error(model,filename,dataset,use_delta_model=False):
                                    range(dataset.n)))
 
   if is_1d:
-    heatmap1d(in0,out,err,labels)
+    heatmap1d(in0,out,err,labels,use_delta_model)
   else:
     in1 = util.array_map(map(lambda x: x*scales['in1'], dataset.in1))
-    heatmap2d(in0,in1,out,err,labels)
+    heatmap2d(in0,in1,out,err,labels,use_delta_model)
 
   save_figure(filename)
 

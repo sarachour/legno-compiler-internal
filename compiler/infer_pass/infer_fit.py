@@ -185,6 +185,8 @@ def fit_affine_model(model,dataset):
   slope,intercept,rval,pval,stderr = scipy.stats.linregress(expect,bias)
 
   if abs(rval) < 0.90:
+    print("==========")
+    print(model)
     print(" gain=%f" % slope);
     print(" bias=%f" % intercept);
     print("Skipping: rval=%f error=%f" % (rval,stderr))
