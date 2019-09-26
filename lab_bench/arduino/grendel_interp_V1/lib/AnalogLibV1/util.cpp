@@ -81,15 +81,19 @@ namespace util {
 
     float SSRES = 0.0;
     float SSTOT = 0.0;
-    error = 0.0;
+    float avg_error = 0.0;
+    float max_error = 0.0;
     for(int i=0; i < n; i += 1){
       float pred = alpha*times[i]+beta;
       SSRES += pow(values[i]-pred,2);
       SSTOT += pow(values[i]-avg_value,2);
-      error += fabs(pred - values[i]);
+      float this_error = fabs(pred-values[i]);
+      avg_error += this_error;
+      max_error = max(max_error,this_error);
     }
-    error = error/((float) n);
+    avg_error = avg_error/((float) n);
     Rsquare = 1.0 - SSRES/SSTOT;
+    error = max_error;
   }
   int find_maximum(float* values, int n){
     int best_index=0;
