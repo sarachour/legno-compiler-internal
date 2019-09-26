@@ -2,6 +2,7 @@ import compiler.infer_pass.infer_util as infer_util
 import util.util as util
 import compiler.infer_pass.infer_visualize as infer_vis
 from sklearn import svm
+from sklearn.metrics import r2_score
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -181,7 +182,6 @@ def fit_affine_model(model,dataset):
     input("not enough points: %d" % n)
     return
 
-  popt, pcov = scipy.optimize.curve_fit(func, expect, observe)
   slope,intercept,rval,pval,stderr = scipy.stats.linregress(expect,bias)
 
   if abs(rval) < 0.90:
@@ -205,6 +205,12 @@ def fit_affine_model(model,dataset):
   model.bias_uncertainty = bias_std
   return True
 
+def max_stderr(pts):
+  if max(abs(pts)) > 3.0:
+    return 0.08
+  else:
+    return 0.008
+
 def fit_linear_model(model,dataset):
   def func(x,a):
     return x*a
@@ -220,18 +226,36 @@ def fit_linear_model(model,dataset):
     input("not enough points: %d" % n)
     return
 
-  popt, pcov = scipy.optimize.curve_fit(func, expect, observe)
-  gain_mu,gain_std = popt[0], math.sqrt(pcov[0])
-
+  bias = observe-expect;
+  popt, pcov = scipy.optimize.curve_fit(func, expect, bias)
+  gain_mu = popt[0]
+  rsq = r2_score(bias, func(expect,gain_mu))
   errs = list(map(lambda i : error(expect[i], \
-                                   observe[i],
+                                   bias[i],
                                    gain_mu), range(n)))
+  print("r-squared=%f" % rsq)
+  stderr = np.std(errs)
+  if abs(rsq) < 0.90:
+    print("==========")
+    print(model)
+    print(" gain=%f" % gain_mu);
+    print("Skipping: rval=%f error=%f" % (rsq,stderr))
+    return True if stderr <= 0.01 else False
 
-  model.gain = gain_mu
-  model.gain_uncertainty = gain_std
-  model.bias = np.mean(errs)
-  model.bias_uncertainty = np.std(errs)
-  print(model)
+
+
+  model.gain = 1.0 + gain_mu
+  model.gain_uncertainty = 0.0
+  model.bias = 0.0
+  model.bias_uncertainty = max(abs(max(errs)),abs(min(errs)))
+
+  # only accept models with bias and variance
+  # below some threshold.
+  if np.std(errs) <= max_stderr(expect) and \
+    np.mean(errs) <= max_stderr(expect):
+    return True
+  else:
+    return False
 
 def infer_model(model,in0,in1,out,bias,noise, \
                 uncertainty_limit, \
@@ -243,8 +267,8 @@ def infer_model(model,in0,in1,out,bias,noise, \
   cnt =0
   max_prune = 0
   while True:
-    success = fit_affine_model(model,dataset)
-    #fit_linear_model(model,dataset)
+    #success = fit_affine_model(model,dataset)
+    success = fit_linear_model(model,dataset)
     model.enabled = success
     model.noise = math.sqrt(np.mean(dataset.noise))
     if cnt < max_prune and dataset.n >= required_points:
