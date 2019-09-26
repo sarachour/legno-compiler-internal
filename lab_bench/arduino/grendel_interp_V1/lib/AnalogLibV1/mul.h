@@ -32,7 +32,8 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
     float getLoss(calib_objective_t obj,
                   Dac * val0_dac,
                   Dac * val1_dac,
-                  Dac * ref_dac);
+                  Dac * ref_dac,
+                  bool ignore_bias);
     void calibrateHelperFindBiasCodes(cutil::calib_table_t& tbl, int stride,
                                       Dac * val0_dac,
                                       Dac * val1_dac,
@@ -42,16 +43,16 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
                                       float neg,
                                       float target_neg);
     float calibrateHelperMult(Dac * val0_dac,
-                             Dac * val1_dac,
+                              Dac * val1_dac,
+                              Dac * ref_dac,
+                              float* observations,
+                              float* expected,
+                              int& npts);
+    float calibrateHelperVga(Dac * val_dac,
                              Dac * ref_dac,
                              float* observations,
                              float* expected,
                              int& npts);
-    float calibrateHelperVga(Dac * val_dac,
-                            Dac * ref_dac,
-                            float* observations,
-                            float* expected,
-                            int& npts);
 
     float calibrateMinError(Dac * val0_dac,
                             Dac * val1_dac,
@@ -62,13 +63,16 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
                                 Dac * val1_dac,
                                 Dac * ref_dac);
     float calibrateMaxDeltaFit(Dac * val0_dac,
-                            Dac * val1_dac,
-                            Dac * ref_dac);
+                               Dac * val1_dac,
+                               Dac * ref_dac,
+                               bool ignore_bias);
     float calibrateMaxDeltaFitVga(Dac * val_dac,
-                               Dac * ref_dac);
+                                  Dac * ref_dac,
+                                  bool ignore_bias);
     float calibrateMaxDeltaFitMult(Dac * val0_dac,
                                 Dac * val1_dac,
-                                Dac * ref_dac);
+                                   Dac * ref_dac,
+                                   bool ignore_bias);
 		Multiplier (Slice * parentSlice, unit unitId);
 		~Multiplier () override {
 			delete out0;
