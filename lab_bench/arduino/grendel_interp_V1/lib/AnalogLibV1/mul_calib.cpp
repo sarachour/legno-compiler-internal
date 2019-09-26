@@ -6,9 +6,9 @@
 
 #define CALIB_NPTS 4
 #define TOTAL_NPTS (1 + CALIB_NPTS*CALIB_NPTS)
-const float TEST0_POINTS[CALIB_NPTS] = {-0.9,0.9,0.5,0.0};
-const float TEST1_MULT_POINTS[CALIB_NPTS] = {-0.9,0.9,0.5,0.0};
-const float TEST1_VGA_POINTS[CALIB_NPTS] = {-0.875,0.875,0.5,0.0};
+const float TEST0_POINTS[CALIB_NPTS] = {-0.75,0.75,0.5,0.0};
+const float TEST1_MULT_POINTS[CALIB_NPTS] = {-0.75,0.75,0.5,0.0};
+const float TEST1_VGA_POINTS[CALIB_NPTS] = {-0.75,0.75,0.5,0.0};
 
 float Fabric::Chip::Tile::Slice::Multiplier::getLoss(calib_objective_t obj,
                                                      Dac * val0_dac,
