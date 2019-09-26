@@ -13,14 +13,15 @@ const float TEST1_VGA_POINTS[CALIB_NPTS] = {-0.75,0.75,0.5,0.0};
 float Fabric::Chip::Tile::Slice::Multiplier::getLoss(calib_objective_t obj,
                                                      Dac * val0_dac,
                                                      Dac * val1_dac,
-                                                     Dac * ref_dac){
+                                                     Dac * ref_dac,
+                                                     bool ignore_bias){
   float loss;
   switch(obj){
   case CALIB_MINIMIZE_ERROR:
     loss = calibrateMinError(val0_dac,val1_dac,ref_dac);
     break;
   case CALIB_MAXIMIZE_DELTA_FIT:
-    loss = calibrateMaxDeltaFit(val0_dac,val1_dac,ref_dac);
+    loss = calibrateMaxDeltaFit(val0_dac,val1_dac,ref_dac,ignore_bias);
     break;
   default:
     error("mult calib : unimplemented");
@@ -28,13 +29,14 @@ float Fabric::Chip::Tile::Slice::Multiplier::getLoss(calib_objective_t obj,
   return loss;
 }
 float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFit(Dac * val0_dac,
-                                                               Dac * val1_dac,
-                                                               Dac * ref_dac){
+                                                                  Dac * val1_dac,
+                                                                  Dac * ref_dac,
+                                                                  bool ignore_bias){
   if(this->m_codes.vga){
-    return calibrateMaxDeltaFitVga(val0_dac, ref_dac);
+    return calibrateMaxDeltaFitVga(val0_dac, ref_dac,ignore_bias);
   }
   else{
-    return calibrateMaxDeltaFitMult(val0_dac, val1_dac, ref_dac);
+    return calibrateMaxDeltaFitMult(val0_dac, val1_dac, ref_dac,ignore_bias);
   }
 }
 
@@ -150,7 +152,8 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperMult(Dac * val0_dac,
 }
 float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0_dac,
                                                                       Dac * val1_dac,
-                                                                      Dac * ref_dac){
+                                                                      Dac * ref_dac,
+                                                                      bool ignore_bias){
   int npts;
   float observed[TOTAL_NPTS];
   float expected[TOTAL_NPTS];
@@ -169,12 +172,13 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
                           gain_mean,bias,rsq,error);
 
   // put no emphasis on deviation, because it will not adhere to 1.0
-  return cutil::compute_loss(bias,max_std,error,
+  return cutil::compute_loss(ignore_bias ? 0.0 : bias,max_std,error,
                              1.0 + gain_mean,
                              this->m_codes.range[out0Id], 0.0, 2.0);
 }
 float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_dac,
-                                                                  Dac * ref_dac){
+                                                                     Dac * ref_dac,
+                                                                     bool ignore_bias){
   int npts;
   float observed[TOTAL_NPTS];
   float expected[TOTAL_NPTS];
@@ -191,7 +195,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
                           gain_mean,bias,rsq,error);
 
   // put some emphasis on deviation because it is changed.
-  return cutil::compute_loss(bias,highest_std,error,
+  return cutil::compute_loss(ignore_bias ? 0.0 : bias,highest_std,error,
                              1.0+gain_mean,
                              this->m_codes.range[out0Id],
                              0.002,
@@ -394,7 +398,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
           gain_cal+=16){
         this->m_codes.gain_cal = gain_cal;
         this->update(this->m_codes);
-        float loss = getLoss(obj,val0_dac,val1_dac,ref_dac);
+        float loss = getLoss(obj,val0_dac,val1_dac,ref_dac,true);
         cutil::update_calib_table(calib_table,loss,6,
                                   nmos,
                                   pmos,
@@ -438,7 +442,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   for(int gain_cal=min_gain_code; gain_cal < min_gain_code+n_gain_codes; gain_cal+=1){
     this->m_codes.gain_cal = gain_cal;
     this->update(this->m_codes);
-    float loss = getLoss(obj,val0_dac,val1_dac,ref_dac);
+    float loss = getLoss(obj,val0_dac,val1_dac,ref_dac,false);
     cutil::update_calib_table(calib_table,loss,6,
                               this->m_codes.nmos,
                               this->m_codes.pmos,
