@@ -66,7 +66,7 @@ namespace util {
 
   void linear_regression(float* times, float * values, int n,
                          float& alpha, float& beta ,float& Rsquare,
-                         float& error){
+                         float& max_error,float& avg_error){
     float avg_time,avg_value,dummy;
     distribution(times,n,avg_time,dummy);
     distribution(values,n,avg_value,dummy);
@@ -81,8 +81,8 @@ namespace util {
 
     float SSRES = 0.0;
     float SSTOT = 0.0;
-    float avg_error = 0.0;
-    float max_error = 0.0;
+    avg_error = 0.0;
+    max_error = 0.0;
     for(int i=0; i < n; i += 1){
       float pred = alpha*times[i]+beta;
       SSRES += pow(values[i]-pred,2);
@@ -93,7 +93,6 @@ namespace util {
     }
     avg_error = avg_error/((float) n);
     Rsquare = 1.0 - SSRES/SSTOT;
-    error = max_error;
   }
   int find_maximum(float* values, int n){
     int best_index=0;

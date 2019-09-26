@@ -40,12 +40,12 @@ void Fabric::Chip::Tile::Slice::Dac::fastMakeDacModel(){
     sprintf(FMTBUF," v=%f m=%f c=%f", values[i],measurements[i],codes[i]);
     print_info(FMTBUF);
   }
-  float error;
+  float max_error,avg_error;
   util::linear_regression(codes,measurements,NPTS,
                           this->dac_model.alpha,
                           this->dac_model.beta,
                           this->dac_model.rsq,
-                          error);
+                          max_error,avg_error);
   sprintf(FMTBUF,"alpha=%f beta=%f rsq=%f", dac_model.alpha,
           dac_model.beta,
           dac_model.rsq);

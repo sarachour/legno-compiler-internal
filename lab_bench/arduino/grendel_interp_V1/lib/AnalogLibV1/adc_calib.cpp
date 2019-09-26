@@ -71,12 +71,12 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMaxDeltaFit(Fabric::Chip::Til
     highest_std = max(sqrt(variance)/128.0,highest_std);
   }
   int m=0;
-  float gain_mean,bias,rsq,error;
+  float gain_mean,bias,rsq,avg_error,max_error;
   util::linear_regression(expected,errors,CALIB_NPTS,
-                          gain_mean,bias,rsq,error);
+                          gain_mean,bias,rsq,max_error,avg_error);
   // put no emphasis on deviation because parameter setting doesn't
   // change it that much.
-  return cutil::compute_loss(bias,highest_std,error,
+  return cutil::compute_loss(bias,highest_std,avg_error,
                              1.0+gain_mean,     \
                              RANGE_MED, 0.0, 1.0);
 }

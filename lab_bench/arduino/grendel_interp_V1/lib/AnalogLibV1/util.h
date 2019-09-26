@@ -51,7 +51,8 @@ namespace util {
   void linear_regression(float* times, float * values, int n,
                          float& alpha, float& beta ,
                          float& Rsquare,
-                         float& error);
+                         float& max_error,
+                         float& avg_error);
 
   // utility for saving state
   void save_conns(Fabric::Chip::Tile::Slice::FunctionUnit* fu,

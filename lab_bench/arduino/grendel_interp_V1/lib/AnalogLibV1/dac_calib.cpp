@@ -116,11 +116,11 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(){
     expected[i] = target;
     max_std = max(sqrt(variance),max_std);
   }
-  float gain_mean,bias,rsq,error;
+  float gain_mean,bias,rsq,max_error,avg_error;
   util::linear_regression(expected,errors,CALIB_NPTS,
-                          gain_mean,bias,rsq,error);
+                          gain_mean,bias,rsq,max_error,avg_error);
 
-  return cutil::compute_loss(bias,max_std,error,
+  return cutil::compute_loss(bias,max_std,avg_error,
                              1.0+gain_mean,
                              this->m_codes.range,0.03,1.0);
 

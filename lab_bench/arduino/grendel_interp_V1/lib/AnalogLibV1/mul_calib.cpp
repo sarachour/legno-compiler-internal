@@ -164,12 +164,13 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
   for(int i=0; i < npts; i += 1){
     errors[i] = observed[i]-expected[i];
   }
-  float gain_mean,rsq,bias,error;
+  float gain_mean,rsq,bias,max_error,avg_error;
   util::linear_regression(expected,errors,npts,
-                          gain_mean,bias,rsq,error);
+                          gain_mean,bias,rsq,max_error,avg_error);
 
   // put no emphasis on deviation, because it will not adhere to 1.0
-  return cutil::compute_loss(ignore_bias ? 0.0 : bias,max_std,error,
+  return cutil::compute_loss(ignore_bias ? 0.0 : bias,max_std,
+                             max_error,
                              1.0 + gain_mean,
                              this->m_codes.range[out0Id], 0.0, 2.0);
 }
@@ -187,12 +188,13 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
   for(int i=0; i < npts; i += 1){
     errors[i] = observed[i]-expected[i];
   }
-  float gain_mean,rsq,bias,error;
+  float gain_mean,rsq,bias,max_error,avg_error;
   util::linear_regression(expected,errors,npts,
-                          gain_mean,bias,rsq,error);
+                          gain_mean,bias,rsq,max_error,avg_error);
 
   // put some emphasis on deviation because it is changed.
-  return cutil::compute_loss(ignore_bias ? 0.0 : bias,highest_std,error,
+  return cutil::compute_loss(ignore_bias ? 0.0 : bias,highest_std,
+                             max_error,
                              1.0+gain_mean,
                              this->m_codes.range[out0Id],
                              0.01,

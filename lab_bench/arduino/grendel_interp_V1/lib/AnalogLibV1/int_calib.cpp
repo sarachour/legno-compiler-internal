@@ -84,11 +84,12 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * 
   for(int i=0; i < npts; i += 1){
     errors[i] = observed[i] - expected[i];
   }
-  float gain_variance,gain_mean,bias,rsq,error;
+  float gain_variance,gain_mean,bias,rsq,max_error,avg_error;
   util::linear_regression(expected,errors,npts,
-                          gain_mean,bias,rsq,error);
+                          gain_mean,bias,rsq,
+                          max_error,avg_error);
 
-  return cutil::compute_loss(bias,max_std,error,
+  return cutil::compute_loss(bias,max_std,avg_error,
                              1.0+gain_mean,
                              this->m_codes.range[out0Id],
                              0.003,
@@ -148,10 +149,11 @@ time_constant_stats estimate_expo_time_constant(int n,
     float log_val = log(nom_vals[i]);
     nom_vals[i] = log_val;
   }
-  float nom_alpha,nom_beta,nom_Rsq,nom_error;
+  float nom_alpha,nom_beta,nom_Rsq,max_error,avg_error;
 
   util::linear_regression(nom_times,nom_vals,n,
-                          nom_alpha,nom_beta,nom_Rsq,nom_error);
+                          nom_alpha,nom_beta,nom_Rsq,
+                          max_error,avg_error);
   sprintf(FMTBUF,"  nominal alpha=%f beta=%f R2=%f",
           nom_alpha,nom_beta,nom_Rsq);
   print_info(FMTBUF);
@@ -171,11 +173,13 @@ time_constant_stats estimate_time_constant(float k_value,
   float k_alpha,k_beta,k_Rsq;
   time_constant_stats stats;
 
-  float error;
+  float max_error,avg_error;
   util::linear_regression(nom_times,nom_vals,n,
-                          nom_alpha,nom_beta,nom_Rsq,error);
+                          nom_alpha,nom_beta,nom_Rsq,
+                          max_error,avg_error);
   util::linear_regression(k_times,k_vals,n,
-                          k_alpha,k_beta,k_Rsq,error);
+                          k_alpha,k_beta,k_Rsq,
+                          max_error,avg_error);
   float alpha_k = k_alpha;
   stats.k = k_value;
   stats.tc = k_alpha/k_value;
