@@ -305,7 +305,12 @@ float find_minimum(int * p, float * v, int n, int & point){
   float xv = -B / (2*A);
   float yv = C - B*B / (4*A);
   point = xv;
+  for(int i=0; i < n; i+=1){
+    sprintf(FMTBUF,"%d\t%f", p[i],v[i]);
+    print_info(FMTBUF);
+  }
   sprintf(FMTBUF,"best=%d loss=%f",xv,yv);
+  print_info(FMTBUF);
   return yv;
 }
 void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
