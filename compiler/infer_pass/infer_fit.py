@@ -207,9 +207,9 @@ def fit_affine_model(model,dataset):
 
 def max_stderr(pts):
   if max(abs(pts)) > 3.0:
-    return 0.08
+    return 0.2
   else:
-    return 0.008
+    return 0.02
 
 def fit_linear_model(model,dataset):
   def func(x,a):
