@@ -94,6 +94,26 @@ namespace util {
     avg_error = avg_error/((float) n);
     Rsquare = 1.0 - SSRES/SSTOT;
   }
+ int find_int_maximum(int* values, int n){
+    int best_index=0;
+    assert(n >= 1);
+    for(int i=0; i < n; i+=1){
+      if(values[i] > values[best_index]){
+        best_index = i;
+      }
+    }
+    return best_index;
+  }
+  int find_int_minimum(int* values, int n){
+    int best_index=0;
+    assert(n >= 1);
+    for(int i=0; i < n; i+=1){
+      if(values[i] < values[best_index]){
+        best_index = i;
+      }
+    }
+    return best_index;
+  } 
   int find_maximum(float* values, int n){
     int best_index=0;
     assert(n >= 1);
