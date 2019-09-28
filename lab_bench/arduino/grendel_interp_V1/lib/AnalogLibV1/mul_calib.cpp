@@ -296,75 +296,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::
   ref_to_tileout.setConn();
 }
 
-float fit_linear(int * p, float * v, int n, int& point){
-  float alpha,beta;
-  int min_i = util::find_int_minimum(p,n);
-  int max_i = util::find_int_maximum(p,n);
-  alpha = (v[max_i]-v[min_i])/(p[max_i]-p[min_i]);
-  beta = v[max_i] - alpha*p[max_i];
-  sprintf(FMTBUF,"lin alpha=%f beta=%f",alpha,beta);
-  print_info(FMTBUF);
-  point = -1;
-  float loss = 0.0;
-  for(int i=0; i < MAX_GAIN_CAL; i += 1){
-    float pred = alpha*i + beta;
-    if(point < 0 || pred < loss){
-       point = i;
-       loss = pred; 
-    }
-  }
-  return loss;
-}
-float fit_poly(int * p, float * v, int n, int & point){
-  double denom = (p[0] - p[1]) * (p[0] - p[2]) * (p[1] - p[2]);
-  double A     = (p[2] * (v[1] - v[0]) + p[1] * (v[0] - v[2]) + p[0] * (v[2] - v[1])) / denom;
-  double B     = (p[2]*p[2] * (v[0] - v[1]) + p[1]*p[1] * (v[2] - v[0]) + p[0]*p[0] * (v[1] - v[2])) / denom;
-  double C     = (p[1] * p[2] * (p[1] - p[2]) * v[0] + p[2] * p[0] * (p[2] - p[0]) * v[1] + p[0] * p[1] * (p[0] - p[1]) * v[2]) / denom;
 
-  // vertex form: y = a(x-h) + k
-  // vertex is (h,k)
-  int min_i = util::find_int_minimum(p,n);
-  int max_i = util::find_int_maximum(p,n);
-  float h = -B / (2*A);
-  float k = C - B*B / (4*A);
-  sprintf(FMTBUF,"poly a=%f b=%f c=%f vert=(%f,%f)",A,B,C,h,k);
-  print_info(FMTBUF);
-  point = -1;
-  float loss = 0.0;
-  for(int i=0; i < MAX_GAIN_CAL; i += 1){
-    float pred = A*i*i + B*i + C;
-    if(point < 0 || pred < loss){
-       point = i;
-       loss = pred; 
-    }
-  }
-  return loss;
-}
-
-float find_minimum(int * p, float * v, int n, int & point){
-  int min_i = util::find_int_minimum(p,n);
-  int max_i = util::find_int_maximum(p,n);
- 
-  bool is_poly = false;
-  for(int i=0; i < n; i+= 1){
-    if(p[i] > p[min_i] && p[i] < p[max_i]){
-       is_poly |= v[i] < v[min_i] && v[i] < v[max_i];
-       is_poly |= v[i] > v[min_i] && v[i] > v[max_i];
-    }
-  }
-  for(int i=0; i < n; i+=1){
-    sprintf(FMTBUF,"%d\t%f", p[i],v[i]);
-    print_info(FMTBUF);
-  }
-  float loss;
-  if(is_poly)
-    loss = fit_poly(p,v,n,point);
-  else
-    loss = fit_linear(p,v,n,point);
-  sprintf(FMTBUF,"code=%d loss=%f",point,loss);
-  print_info(FMTBUF);
-  return loss;
-}
 
 void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   mult_code_t codes_self = m_codes;
@@ -479,13 +411,13 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
 	      int gain_points[3] = {0,32,63};
 	      float losses[3];
 	      for(int i=0; i < 3; i += 1){
-		this->m_codes.gain_cal = gain_points[i];
-		this->update(this->m_codes);
-		losses[i] = getLoss(obj,val0_dac,val1_dac,ref_dac,false);
-		sprintf(FMTBUF,"gain=%d loss=%f",gain_points[i],losses[i]);
+          this->m_codes.gain_cal = gain_points[i];
+          this->update(this->m_codes);
+          losses[i] = getLoss(obj,val0_dac,val1_dac,ref_dac,false);
+          sprintf(FMTBUF,"gain=%d loss=%f",gain_points[i],losses[i]);
 	      }
 	      int best_code;
-	      loss = find_minimum(gain_points,losses,3,best_code);
+	      loss = util::find_best_gain_cal(gain_points,losses,3,best_code);
 	      this->m_codes.gain_cal = best_code;
       }
       else{

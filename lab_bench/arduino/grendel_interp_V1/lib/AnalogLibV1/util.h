@@ -46,8 +46,7 @@ namespace util {
 
   // utilities for summarizing sequences o values
   void distribution(float * values, int size, float& mean, float& variance);
-  int find_int_minimum(int * values, int size);
-  int find_int_maximum(int * values, int size);
+  float find_best_gain_cal(int * p, float * v, int n, int & point);
   int find_minimum(float * values, int size);
   int find_maximum(float * values, int size);
   void linear_regression(float* times, float * values, int n,

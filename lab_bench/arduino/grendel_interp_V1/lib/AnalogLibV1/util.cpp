@@ -135,6 +135,75 @@ namespace util {
     return best_index;
   }
 
+  float find_best_gain_cal_linear(int * p, float * v, int n, int& point){
+    float alpha,beta;
+    int min_i = find_int_minimum(p,n);
+    int max_i = find_int_maximum(p,n);
+    alpha = (v[max_i]-v[min_i])/(p[max_i]-p[min_i]);
+    beta = v[max_i] - alpha*p[max_i];
+    sprintf(FMTBUF,"lin alpha=%f beta=%f",alpha,beta);
+    print_info(FMTBUF);
+    point = -1;
+    float loss = 0.0;
+    for(int i=0; i < MAX_GAIN_CAL; i += 1){
+      float pred = alpha*i + beta;
+      if(point < 0 || pred < loss){
+        point = i;
+        loss = pred; 
+      }
+    }
+    return loss;
+  }
+
+  float find_best_gain_cal_poly(int * p, float * v, int n, int & point){
+    double denom = (p[0] - p[1]) * (p[0] - p[2]) * (p[1] - p[2]);
+    double A     = (p[2] * (v[1] - v[0]) + p[1] * (v[0] - v[2]) + p[0] * (v[2] - v[1])) / denom;
+    double B     = (p[2]*p[2] * (v[0] - v[1]) + p[1]*p[1] * (v[2] - v[0]) + p[0]*p[0] * (v[1] - v[2])) / denom;
+    double C     = (p[1] * p[2] * (p[1] - p[2]) * v[0] + p[2] * p[0] * (p[2] - p[0]) * v[1] + p[0] * p[1] * (p[0] - p[1]) * v[2]) / denom;
+    // vertex form: y = a(x-h) + k
+    // vertex is (h,k)
+    int min_i = find_int_minimum(p,n);
+    int max_i = find_int_maximum(p,n);
+    float h = -B / (2*A);
+    float k = C - B*B / (4*A);
+    sprintf(FMTBUF,"poly a=%f b=%f c=%f vert=(%f,%f)",A,B,C,h,k);
+    print_info(FMTBUF);
+    point = -1;
+    float loss = 0.0;
+    for(int i=0; i < MAX_GAIN_CAL; i += 1){
+      float pred = A*i*i + B*i + C;
+      if(point < 0 || pred < loss){
+        point = i;
+        loss = pred; 
+      }
+    }
+    return loss;
+  }
+
+
+  float find_best_gain_cal(int * p, float * v, int n, int & point){
+    int min_i = find_int_minimum(p,n);
+    int max_i = find_int_maximum(p,n);
+    bool is_poly = false;
+    for(int i=0; i < n; i+= 1){
+      if(p[i] > p[min_i] && p[i] < p[max_i]){
+        is_poly |= v[i] < v[min_i] && v[i] < v[max_i];
+        is_poly |= v[i] > v[min_i] && v[i] > v[max_i];
+      }
+    }
+    for(int i=0; i < n; i+=1){
+      sprintf(FMTBUF,"%d\t%f", p[i],v[i]);
+      print_info(FMTBUF);
+    }
+    float loss;
+    if(is_poly)
+      loss = find_best_gain_cal_poly(p,v,n,point);
+    else
+      loss = find_best_gain_cal_linear(p,v,n,point);
+    sprintf(FMTBUF,"code=%d loss=%f",point,loss);
+    print_info(FMTBUF);
+    return loss;
+  }
   void meas_dist_adc(Fabric::Chip::Tile::Slice::ChipAdc* fu,
                       float& mean, float& variance){
     Fabric* fab = fu->getFabric();

@@ -118,15 +118,16 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t 
     this->m_codes.port_cal[in0Id] = closed_loop_calib_table[nmos].state[0];
     this->m_codes.port_cal[out0Id] = closed_loop_calib_table[nmos].state[1];
     this->m_codes.nmos = nmos;
-    for(int gain_cal=0; gain_cal < MAX_GAIN_CAL; gain_cal += 16){
-      this->m_codes.gain_cal = gain_cal;
-      update(this->m_codes);
-      //TODO
-      float loss = this->getInitCondLoss(ref_dac,obj);
-      sprintf(FMTBUF,"nmos=%d gain_cal=%d loss=%f",nmos,gain_cal,loss);
-      print_info(FMTBUF);
-      cutil::update_calib_table(calib_table[nmos],loss,1,gain_cal);
+    int gain_points[3] = {0,32,63};
+    float losses[3];
+    for(int i=0; i < 3; i += 1){
+      this->m_codes.gain_cal = gain_points[i];
+      this->update(this->m_codes);
+      losses[i] = this->getInitCondLoss(ref_dac,obj);
     }
+    int best_code;
+    float loss = util::find_best_gain_cal(gain_points,losses,3,best_code);
+    cutil::update_calib_table(calib_table[nmos],loss,1,best_code);
   }
   integ_to_tile.brkConn();
   ref_to_tile.brkConn();
