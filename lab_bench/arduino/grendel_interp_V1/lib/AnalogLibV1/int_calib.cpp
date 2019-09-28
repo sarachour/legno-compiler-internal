@@ -4,7 +4,7 @@
 #include "fu.h"
 
 #define CALIB_NPTS 7
-#define TOTAL_NPTS (CALIB_NPTS+1)
+#define TOTAL_NPTS CALIB_NPTS
 const float TEST_POINTS[CALIB_NPTS] = {-0.875,0.875,0.5,-0.5,-0.25,0.25,0.0};
 
 
@@ -17,15 +17,7 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateHelper(Dac* ref_dac,
   const bool measure_steady_state = false;
   float max_std = 0.0;
   npts = 0;
-
-  ref_to_tile.brkConn();
-  this->setInitial(0.0);
-  this->update(this->m_codes);
-  observations[npts] = util::meas_chip_out(this);
-  expected[npts] = 0;
-  npts += 1;
-  ref_to_tile.setConn();
-
+  
   for(int i=0; i < CALIB_NPTS; i += 1){
     float ic_val = TEST_POINTS[i];
     this->setInitial(ic_val);
@@ -93,7 +85,7 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateInitCondMaxDeltaFit(Dac * 
                              1.0+gain_mean,
                              this->m_codes.range[out0Id],
                              0.003,
-                             1.0);
+                             10.0);
 }
 
 void Fabric::Chip::Tile::Slice::Integrator::calibrateInitCond(calib_objective_t obj,

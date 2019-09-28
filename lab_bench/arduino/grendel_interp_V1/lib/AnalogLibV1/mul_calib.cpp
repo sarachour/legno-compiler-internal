@@ -170,7 +170,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
 
   // put no emphasis on deviation, because it will not adhere to 1.0
   return cutil::compute_loss(ignore_bias ? 0.0 : bias,max_std,
-                             (max_error+avg_error)/2.0,
+                             avg_error,
                              1.0 + gain_mean,
                              this->m_codes.range[out0Id], 
                              0.0, 10.0);
@@ -576,10 +576,11 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   val1_dac->update(codes_dac_val1);
   ref_dac->update(codes_dac_ref);
   this->update(codes_mult);
-	tileout_to_chipout.brkConn();
-	mult_to_tileout.brkConn();
-  cutil::restore_conns(calib);
+  tileout_to_chipout.brkConn();
+  mult_to_tileout.brkConn();
+  //cutil::restore_conns(calib);
 
+  print_info("set state");
   this->m_codes.nmos = calib_table.state[0];
   this->m_codes.pmos = calib_table.state[1];
   this->m_codes.port_cal[in0Id] = calib_table.state[2];
