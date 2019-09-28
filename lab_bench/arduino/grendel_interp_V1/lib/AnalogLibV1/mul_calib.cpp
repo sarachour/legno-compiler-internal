@@ -389,7 +389,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
     this->m_codes.pmos = 3;
     this->m_codes.gain_cal = 32;
     cutil::calib_table_t table_bias = cutil::make_calib_table();
-    this->calibrateHelperFindBiasCodes(table_bias, 8,
+    this->calibrateHelperFindBiasCodes(table_bias, this->m_codes.vga ? 8 : 4,
                                        val0_dac,
                                        val1_dac,
                                        ref_dac,
