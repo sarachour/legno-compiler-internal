@@ -28,10 +28,12 @@ class LScaleEnvParams:
                model,\
                mdpe, \
                mape, \
+               vmape, \
                mc, \
                max_freq_khz=None):
     self.mdpe = mdpe
     self.mape = mape
+    self.vmape = vmape
     self.mc = mc
 
     self.max_freq_hz = None
@@ -90,6 +92,7 @@ class LScaleEnv:
                model, \
                mdpe, \
                mape, \
+               vmape, \
                mc, \
                max_freq_khz=None):
     # scaling factor name to port
@@ -102,6 +105,7 @@ class LScaleEnv:
                                   mdpe=mdpe, \
                                   mape=mape, \
                                   mc=mc, \
+                                  vmape=vmape, \
                                   max_freq_khz=max_freq_khz)
     self.model_db = hwmodel.ModelDB(self.params.calib_obj)
     self._eqs = []
@@ -254,8 +258,8 @@ class LScaleEnv:
 
 
   def lte(self,v1,v2,annot):
-    #print("%s <= %s {%s}" % (v1,v2,annot))
     lscale_util.log_debug("%s <= %s {%s}" % (v1,v2,annot))
+
     c1,_ = v1.factor_const()
     c2,_ = v2.factor_const()
     if c1 == 0 and c2 >= 0:
@@ -277,12 +281,14 @@ class LScaleInferEnv(LScaleEnv):
     def __init__(self,model, \
                  mdpe, \
                  mape, \
+                 vmape, \
                  mc, \
                  max_freq_khz=None):
       LScaleEnv.__init__(self,model, \
                          max_freq_khz=max_freq_khz, \
                          mdpe=mdpe,
                          mape=mape,
+                         vmape=vmape,
                          mc=mc)
       self._exactly_one = []
       self._implies = {}

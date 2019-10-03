@@ -39,3 +39,13 @@ class DSSim:
     def set_sim_time(self,t):
         assert(t > 0)
         self._sim_time = t
+
+
+class DSInfo:
+
+    def __init__(self,name,desc,meas,units):
+        self.name = name
+        self.description = desc
+        self.observation = meas
+        self.units = units
+        self.nonlinear = False

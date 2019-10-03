@@ -68,8 +68,8 @@ class PortModel():
     return self._opscale
 
   def set_oprange_scale(self,a,b):
-    assert(a >= 0 and a <= 1.0)
-    assert(b >= 0 and b <= 1.0)
+    assert(a >= 0)
+    assert(b >= 0)
     self._opscale = (a,b)
 
   @property
@@ -354,6 +354,7 @@ def get_ideal_uncertainty(circ,block_name,loc,port,handle=None):
   props = block.props(cfg.comp_mode,cfg.scale_mode,port,handle=handle)
   rng= props.interval().spread
   unc = rng/2.0*base_unc;
+  #unc = base_unc
   return unc
 
 def get_variance(db,circ,block_name,loc,port,mode,handle=None):
@@ -384,10 +385,25 @@ def get_oprange_scale(db,circ,block_name,loc,port,mode,handle=None):
       return (1.0,1.0)
 
     l,u = model.oprange_scale
+    #print(l,u)
+    #input()
     return (l,u)
 
   else:
     return (1.0,1.0)
+
+
+def get_bias(db,circ,block_name,loc,port,mode,handle=None):
+  assert(isinstance(mode,util.DeltaModel))
+  if mode.uses_delta_model():
+    model = get_model(db,circ,block_name,loc,port,handle=handle)
+    if model is None:
+      return 0.0
+
+    return model.bias
+
+  else:
+    return 0.0
 
 
 def get_gain(db,circ,block_name,loc,port,mode,handle=None):

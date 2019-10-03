@@ -117,8 +117,9 @@ def fit(output,_tref,_yref,_tmeas,_ymeas):
   yref = np.array(_yref)
   tmeas = np.array(_tmeas)
   ymeas = np.array(_ymeas)
-  time_slack = 0.02
-  val_slack = 0.02
+  time_slack = 0.03
+  #time_slack = 0.02
+  val_slack = 0.01
   bounds = [
     (1.0-time_slack,1.0+time_slack),
     (0.0,max(tmeas)*0.25),

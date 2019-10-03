@@ -123,8 +123,7 @@ class SCFPropExprVisitor(ExprVisitor):
     if self.scenv.has_inject_var(block.name,loc,expr.name):
       injvar = self.scenv.get_inject_var(block.name,loc,expr.name)
       expr = scop.SCMult(scop.SCVar(scvar),scop.SCVar(injvar))
-      #self.scenv.eq(scop.SCVar(injvar), scop.SCConst(2.0), 'expr-visit-noscale-in')
-      #self.scenv.eq(expr, scop.SCConst(1.0), 'expr-visit-inj')
+      self.scenv.eq(expr, scop.SCConst(1.0), 'expr-visit-inj')
       return expr
     else:
       return scop.SCVar(scvar)

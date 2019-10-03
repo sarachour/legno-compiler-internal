@@ -5,6 +5,15 @@ import progs.prog_util as prog_util
 def dsname():
   return "repri"
 
+def dsinfo():
+  return DSInfo(dsname(), \
+                "rep",
+                "signal",
+                "signal")
+  info.nonlinear = True
+  return info
+
+
 def dsprog(prob):
   K = 20.0
   params = {

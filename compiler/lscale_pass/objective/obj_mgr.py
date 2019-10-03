@@ -9,9 +9,9 @@ class LScaleObjectiveFunctionManager():
     def basic_methods():
         return [
             #boptlib.FastObjFunc,
-            #boptlib.SlowObjFunc,
+            boptlib.StateVarObjFunc,
             #boptlib.FastObsObjFunc,
-            boptlib.SlowObsObjFunc,
+            #boptlib.SlowObsObjFunc,
 
         ]
 

@@ -45,8 +45,9 @@ def build_config(meta):
 def infer(obj):
   result = build_config(obj['metadata'])
   scm,max_unc,model_out,model_in0,model_in1,model_coeff = result
-  bnds = infer_fit.build_model(model_out,obj['dataset'],0,max_unc)
   cm = model_out.comp_mode
+  bnds = infer_fit.build_model(model_out,obj['dataset'],0,max_unc, \
+                               kind="vga" if cm == "vga" else "affine")
   #print("[WARN] EMPIRICALLY, WE OBSERVE MULTIPLIER SCALED DOWN BY 0.87")
   #model_out.gain *= 0.87
   freq_gain = 1.0
@@ -54,25 +55,18 @@ def infer(obj):
     #freq_gain = 0.95
     sci,sco = scm
     scale = sco.coeff()/sci.coeff()
-
+    model_coeff.bias = model_out.gain_offset
     model_out.gain *= freq_gain
-    model_in0.bias_uncertainty = model_out.bias_uncertainty/scale
-    bnd = infer_util.normalize_bound(bnds['in0'],scm[0])
-    model_in0.set_oprange_scale(*bnd)
-    bnd = infer_util.normalize_bound(bnds['in1'],spec_enums.RangeType.MED)
-    model_coeff.set_oprange_scale(*bnd)
   else:
     #freq_gain = 0.85
     sci0,sci1,sco = scm
-    scale0 = sco.coeff()/(sci0.coeff())
     model_out.gain *= freq_gain
-    model_in0.bias_uncertainty = model_out.bias_uncertainty/scale0
-    bnd = infer_util.normalize_bound(bnds['in0'],scm[0])
-    model_in0.set_oprange_scale(*bnd)
-    scale1 = sco.coeff()/(sci1.coeff())
-    model_in1.bias_uncertainty = model_out.bias_uncertainty/scale1
-    bnd = infer_util.normalize_bound(bnds['in1'],scm[1])
-    model_in1.set_oprange_scale(*bnd)
+
+  #upper = 2.0*sco.coeff()
+  #lower = -2.0*sco.coeff()
+  #sc_u = model_out.gain
+  #sc_l = model_out.gain
+  #model_out.set_oprange_scale(sc_u,sc_l)
 
   yield model_out
   yield model_in0

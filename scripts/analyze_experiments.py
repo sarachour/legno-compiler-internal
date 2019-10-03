@@ -69,6 +69,27 @@ def execute_once(args,debug=False):
 
   db.close()
 
+def rank(entry,debug=False):
+  board = None
+  if not entry.subset in BOARD_CACHE:
+        from hwlib.hcdc.hcdcv2_4 import make_board
+        board = make_board(entry.subset,load_conns=False)
+        BOARD_CACHE[entry.subset] = board
+
+  board = BOARD_CACHE[entry.subset]
+  ad_prog = AnalogDeviceProg.read(board,entry.adp)
+  for block_name,loc,config in ad_prog.instances():
+    if block_name == "integrator":
+      scf = config.scf("out")
+      ival = config.interval("out")
+      props = board.block(block_name).props(config.comp_mode, \
+                                            config.scale_mode,"out")
+
+      score = scf*ival.bound/props.interval().bound
+      print(scf,score)
+  input()
+
+
 def execute(args,debug=False):
   daemon = args.monitor
   if not daemon:

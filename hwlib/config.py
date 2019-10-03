@@ -18,6 +18,7 @@ class Config:
         self._labels = {}
         # scaling factors on ports
         self._scfs = {}
+        self._biases = {}
         # hardware interval
         self._op_ranges= {}
         # (scaled) math interval
@@ -25,7 +26,6 @@ class Config:
         # (scaled) bandwidth
         self._bandwidths = {}
         self._snrs = {}
-
         # physical model data
         self._meta = {}
 
@@ -60,21 +60,30 @@ class Config:
             expr = self.expr(port,inject=inject)
             yield port,expr
 
-    def expr(self,port,inject=True):
+    def expr(self,port,biases={},inject=True):
         naked_expr = self._exprs[port]
         if not inject:
             return naked_expr
 
         repl = {}
         for inj_port,value in self._injs.items():
-            repl[inj_port] = ops.Mult(ops.Const(value), \
-                                  ops.Var(inj_port))
+            bias = 0.0 if not port in biases else biases[port]
+
+            e = ops.Mult(ops.Const(value), \
+                         ops.Add(ops.Var(inj_port), \
+                                 ops.Const(bias)))
+
+            repl[inj_port] = e
 
         inj_out = self._injs['out']
-        return ops.Mult(
+        e = ops.Mult(
             ops.Const(inj_out),
             naked_expr.substitute(repl)
         )
+        if 'out' in biases:
+            e = ops.Add(ops.Const(biases['out']),e)
+
+        return e
 
     def has_expr(self,port):
         return port in self._exprs
@@ -135,6 +144,7 @@ class Config:
         get_port_handle_dict(cfg._intervals, obj, 'intervals', \
                              lambda v: Interval.from_json(v))
         get_port_dict(cfg._snrs, obj, 'snrs')
+        get_port_handle_dict(cfg._biases, obj, 'biases')
 
         get_port_handle_dict(cfg._op_ranges, obj, 'op-ranges', \
                              lambda v: Interval.from_json(v))
@@ -169,6 +179,7 @@ class Config:
                       lambda args: [args[0],args[1].value])
 
         set_port_handle_dict('scfs',self._scfs)
+        set_port_handle_dict('biases',self._biases)
         set_port_handle_dict('intervals',self._intervals, \
                              lambda value: value.to_json())
         set_port_dict('snrs',self._snrs)
@@ -187,6 +198,7 @@ class Config:
       cfg._comp_mode = self._comp_mode
       cfg._scale_mode = self._scale_mode
       cfg._dacs = dict(self._dacs)
+      cfg._biases = dict(self._biases)
       cfg._meta = dict(self._meta)
       cfg._labels = dict(self._labels)
       cfg._scfs = dict(self._scfs)
@@ -280,6 +292,11 @@ class Config:
     def set_interval(self,port,interval,handle=None):
       self._make(self._intervals,port)
       self._intervals[port][handle] = interval
+
+    def set_bias(self,port,bias,handle=None):
+      self._make(self._biases,port)
+      self._biases[port][handle] = bias
+
 
     def set_scf(self,port,scf,handle=None):
       self._make(self._scfs,port)
@@ -379,6 +396,13 @@ class Config:
 
       return intervals
 
+    def has_bias(self,port,handle=None):
+      if not port in self._biases or \
+         not handle in self._biases[port]:
+        return False
+      return True
+
+
     def has_scf(self,port,handle=None):
       if not port in self._scfs or \
          not handle in self._scfs[port]:
@@ -391,6 +415,14 @@ class Config:
         return None
 
       return self._scfs[port][handle]
+
+    def bias(self,port,handle=None):
+      if not port in self._biases or \
+         not handle in self._biases[port]:
+        return None
+
+      return self._biases[port][handle]
+
 
     def to_str(self,delim="\n"):
         s = ""
@@ -405,6 +437,12 @@ class Config:
         s += delim
         for l,(n,k) in self._labels.items():
             s += "%s:[lbl=%s,kind=%s]" % (l,n,k)
+            s += delim
+
+        s += delim
+        for p,scfs in self._biases.items():
+          for handle,scf in scfs.items():
+            s += "bias %s[%s]: %s" % (p,handle,scf)
             s += delim
 
         s += delim

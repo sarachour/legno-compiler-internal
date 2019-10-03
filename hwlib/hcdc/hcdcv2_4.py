@@ -20,7 +20,9 @@ BLACKLIST = []
 # find calibration codes that produce a steady state of zero for these guys,
 # given an input current of zero when in high-medium mode.
 # i tried doing a brute force search for calibration, to no avail.
-BLACKLIST += []
+BLACKLIST += [
+    ("multiplier","(HDACv2,0,3,1,1)")
+]
 
 def test_board(board):
     mult = board.block('multiplier')

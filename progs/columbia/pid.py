@@ -5,6 +5,12 @@ import progs.prog_util as prog_util
 def dsname():
   return "pid"
 
+def dsinfo():
+  return DSInfo(dsname(), \
+                "PI controller",
+                "velocity",
+                "m/s")
+
 def dsprog(prob):
   params = {
     "initial": 0.0,

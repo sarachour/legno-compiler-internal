@@ -4,6 +4,15 @@ from dslang.dssim import DSSim
 def dsname():
   return "lpend"
 
+def dsinfo():
+  info = DSInfo(dsname(), \
+                'linear pendulum simulation',
+                "position of mass",
+                "m")
+  info.nonlinear = False
+  return info
+
+
 def dsprog(prog):
   params = {
     "one":0.9999,

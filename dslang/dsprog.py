@@ -19,20 +19,30 @@ class DSProgDB:
     PROGRAMS = {}
 
     @staticmethod
-    def register(name,dsprog,dssim):
+    def register(name,dsprog,dssim,dsinfo):
         assert(not name in DSProgDB.PROGRAMS)
-        DSProgDB.PROGRAMS[name] = (dsprog,dssim)
+        DSProgDB.PROGRAMS[name] = (dsprog,dssim,dsinfo)
 
     @staticmethod
     def get_sim(name):
         DSProgDB.load()
-        prog,sim = DSProgDB.PROGRAMS[name]
+        prog,sim,info = DSProgDB.PROGRAMS[name]
         return sim()
+
+    @staticmethod
+    def has_prog(name):
+        return name in DSProgDB.PROGRAMS
+
+    @staticmethod
+    def get_info(name):
+        DSProgDB.load()
+        prog,sim,info = DSProgDB.PROGRAMS[name]
+        return info()
 
     @staticmethod
     def get_prog(name):
         DSProgDB.load()
-        prog,sim = DSProgDB.PROGRAMS[name]
+        prog,sim,info = DSProgDB.PROGRAMS[name]
         prob = DSProg(name)
         prog(prob)
         prob.check()

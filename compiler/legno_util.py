@@ -69,8 +69,8 @@ def exec_lscale_normal(timer,prog,adp,args):
 def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
     from compiler import lscale
     first = True
-    def test_valid(mdpe,mape,mc,first=False):
-        print("mdpe=%f mape=%f mc=%f" % (mdpe,mape,1.0-mc))
+    def test_valid(mdpe,mape,vmape,mc,first=False):
+        print("mdpe=%f mape=%f vmape=%f mc=%f" % (mdpe,mape,vmape,1.0-mc))
         assert(mc <= 1.0)
         for obj in lscale.scale(prog, \
                                 adp,
@@ -79,6 +79,7 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
                                 max_freq_khz=args.max_freq,
                                 mdpe=mdpe,
                                 mape=mape,
+                                vmape=vmape,
                                 mc=1.0-mc,
                                 do_log=first,
                                 test_existence=True):
@@ -126,43 +127,49 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
             return None
 
 
-    def joint_search(mdpe,mape,mc):
-        print("mdpe=%f mape=%f mc=%f" % (mdpe,mape,1.0-mc))
-        if test_valid(mdpe,mape,mc):
-            return mdpe,mape,mc
+    def joint_search(mdpe,mape,vmape,mc):
+        print("mdpe=%f mape=%f vmape=%f mc=%f" % (mdpe,mape,vmape,1.0-mc))
+        if test_valid(mdpe,mape,vmape,mc):
+            return mdpe,mape,vmape,mc
 
-        dig,alog,cov = joint_search(mdpe+tolerance, \
+        dig,alog,valog,cov = joint_search(mdpe+tolerance, \
                                 mape+tolerance, \
+                                vmape+tolerance, \
                                 mc+tolerance)
-        return dig,alog,cov
+        return dig,alog,valog,cov
 
     max_pct = 1.0
-    succ = test_valid(max_pct,max_pct,1.0,first=True)
+    succ = test_valid(max_pct,max_pct,max_pct,1.0,first=True)
     while not succ and max_pct <= 1e6:
         max_pct *= 2
-        succ = test_valid(max_pct,max_pct,1.0)
+        succ = test_valid(max_pct,max_pct,max_pct,1.0)
 
-    defaults = {'mdpe':max_pct,'mape':max_pct,'mc':1.0}
+    defaults = {'mdpe':max_pct,'mape':max_pct,'vmape':max_pct,'mc':1.0}
     if max_pct >= 1e6:
         return
 
-    analog_error= recursive_grid_search([0.01,max_pct], \
-                                        defaults=defaults, \
-                                        name="mape",n=3)
-
-    dig_error= recursive_grid_search([0.01,max_pct], \
-                                     defaults=defaults,
-                                     name="mdpe",n=3)
     coverage = recursive_grid_search([0.01,max_pct], \
                                      defaults=defaults, \
                                      name="mc",
                                      n=3)
+    var_analog_error= recursive_grid_search([0.01,max_pct], \
+                                        defaults=defaults, \
+                                        name="vmape",n=3)
+    analog_error= recursive_grid_search([0.01,max_pct], \
+                                        defaults=defaults, \
+                                        name="mape",n=3)
+    dig_error= recursive_grid_search([0.01,max_pct], \
+                                     defaults=defaults,
+                                     name="mdpe",n=3)
 
-    dig_error,analog_error,coverage = joint_search(dig_error,analog_error,coverage)
+    dig_error,analog_error,var_analog_error,coverage = joint_search(dig_error, \
+                                                                    analog_error, \
+                                                                    var_analog_error, \
+                                                                    coverage)
 
     assert(coverage < 0.95)
     timer.kill()
-    for slack in [0.02]:
+    for slack in [0.005]:
         timer.start()
         for idx,opt,model,scale_circ in lscale.scale(prog, \
                                                      adp,
@@ -171,6 +178,7 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
                                                      max_freq_khz=args.max_freq,
                                                      mdpe=dig_error+slack,
                                                      mape=analog_error+slack,
+                                                     vmape=var_analog_error,
                                                      mc=1.0-(coverage+slack)):
             timer.end()
             timer.start()

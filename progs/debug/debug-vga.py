@@ -4,6 +4,14 @@ from dslang.dssim import DSSim
 def dsname():
   return "dbgvga"
 
+def dsinfo():
+  return DSInfo(dsname(), \
+                "debug vga",
+                "signal",
+                "signal")
+  info.nonlinear = True
+  return info
+
 def dsprog(prob):
   params = {
     'P0': 1.0,

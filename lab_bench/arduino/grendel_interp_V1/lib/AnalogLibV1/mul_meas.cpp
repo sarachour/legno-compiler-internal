@@ -164,8 +164,8 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(float normalized_in
                                                   variance);
 
   }
-  sprintf(FMTBUF,"config in0=%f in1=%f output=%f meas=%f",
-          target_in0,target_in1,target_mult,mean);
+  sprintf(FMTBUF,"config inps=(%f,%f) in0=%f in1=%f output=%f meas=%f",
+          in0val,in1val,target_in0,target_in1,target_mult,mean);
   print_info(FMTBUF);
 
   float bias = mean-target_mult;

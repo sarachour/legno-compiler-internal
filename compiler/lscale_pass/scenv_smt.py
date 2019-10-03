@@ -26,7 +26,7 @@ def smt_expr(smtenv,expr):
     raise Exception("unsupported <%s>" % expr)
 
   elif expr.op == scop.SCOpType.CONST:
-    return smtop.SMTConst(math.log10(float(expr.value)))
+    return smtop.SMTConst(math.log(float(expr.value)))
 
   else:
     raise Exception("unsupported <%s>" % expr)
@@ -73,7 +73,7 @@ def build_smt_prob(circ,scenv,blacklist=[]):
     for boolvar,var,value in scenv.get_implies():
       smtboolvar = smtenv.get_smtvar(boolvar)
       smtvar = smtenv.get_smtvar(var)
-      smtval = math.log10(value)
+      smtval = math.log(value)
       impl = smtop.SMTImplies(
         smtop.SMTVar(smtboolvar),
         smtop.SMTEq(
@@ -97,16 +97,28 @@ def build_smt_prob(circ,scenv,blacklist=[]):
   return smtenv
 
 def solve_smt_prob(smtenv,nslns=1):
+  def xform(result):
+    xform_res = {}
+    for key,value in result.items():
+      if isinstance(value,bool):
+        xform_res[key] = value
+      else:
+        xform_res[key] = math.exp(value)
+    return xform_res
+
   z3ctx = smtenv.to_z3()
   z3ctx.solve()
   if z3ctx.sat():
-    yield z3ctx.model()
+    yield xform(z3ctx.model())
   else:
+    print("unsat")
     return
 
   for _ in range(0,nslns-1):
     z3ctx.next_solution()
     if z3ctx.sat():
-      yield z3ctx.model()
+      yield xform(z3ctx.model())
+
     else:
+      print("unsat")
       return

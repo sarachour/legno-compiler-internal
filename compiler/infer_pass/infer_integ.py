@@ -80,6 +80,10 @@ def infer(obj):
   ol_bias,ol_R2,_,_,ol_zero = infer_util \
                      .get_data_by_mode(obj['dataset'],3)
 
+  ic_bias,ic_nz,_,_,ic_vals = infer_util \
+                              .get_data_by_mode(obj['dataset'],0)
+
+
   tcs = []
   # correcting systematic time measurement issues
   correction = 1.0
@@ -90,7 +94,6 @@ def infer(obj):
   # update appropriate model
   tcs_lim=remove_outliers(tcs)
   mu,sigma = np.mean(tcs_lim),np.std(tcs_lim)
-
   if np.isnan(mu) or sigma > 0.01:
     model_z.enabled = False
 
@@ -100,11 +103,18 @@ def infer(obj):
     model_z.bias = np.mean(ol_bias);
     model_z.bias_uncertainty = np.std(ol_bias);
     print("mean=%f std=%f" % (mu,sigma))
+
+  #upper = 2.0*outsc.coeff()
+  #lower = -2.0*outsc.coeff()
+  #sc_u = (upper+model_z0.bias)/upper
+  #sc_l = (lower+model_z0.bias)/lower
+  #model_z0.set_oprange_scale(sc_u,sc_l)
+
+  if infer_util.about_one(model_z.gain) or True:
+    model_z.gain = 1.0
+
   if infer_util.about_one(model_z0.gain):
     model_z0.gain = 1.0
-
-  if infer_util.about_one(model_z.gain):
-    model_z.gain = 1.0
 
 
   yield model_in

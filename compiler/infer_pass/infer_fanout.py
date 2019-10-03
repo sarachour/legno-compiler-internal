@@ -71,6 +71,9 @@ def infer(obj):
   if infer_util.about_one(model_out2.gain):
     model_out2.gain = 1.0
 
+  model_out0.bias *= 2.0
+  model_out1.bias *= 2.0
+  model_out2.bias *= 2.0
   yield model_in
   yield model_out0
   yield model_out1

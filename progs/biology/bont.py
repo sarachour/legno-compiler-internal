@@ -4,6 +4,16 @@ from dslang.dssim import DSSim
 def dsname():
   return "bont"
 
+def dsinfo():
+  return DSInfo(dsname(), \
+                "bont",
+                "signal",
+                "signal")
+  info.nonlinear = True
+  return info
+
+
+
 def dsprog(prog):
   # original set of parameters
   params = {

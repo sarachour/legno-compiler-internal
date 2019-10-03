@@ -3,13 +3,14 @@ from scripts.common import ExecutionStatus
 from scripts.expdriver_db import ExpDriverDB
 import scripts.analysis.quality as quality_analysis
 
+from dslang.dsprog import DSProgDB
 import util.util as util
 import scripts.visualize.common as common
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import math
-
+'''
 YLABELS = {
   'micro-osc': 'amplitude',
   'micro-osc-with-gain': 'amplitude',
@@ -36,15 +37,17 @@ YLABELS = {
   'kalman-const':'state',
   'kalman-freq-small':'state'
 }
+'''
 
 def plot_preamble(entry,TREF,YREF):
  # compute reference using information from first element
   output = list(entry.outputs())[0]
   palette = sns.color_palette()
   ax = plt.subplot(1, 1, 1)
-  title = common.BenchmarkVisualization.benchmark(entry.bmark)
+  title = common.BenchmarkVisualization.benchmark(entry.program)
+  info = DSProgDB.get_info(entry.program)
   ax.set_xlabel('simulation time',fontsize=18)
-  ax.set_ylabel(YLABELS[entry.bmark],fontsize=18)
+  ax.set_ylabel(info.units,fontsize=18)
   ax.set_xticklabels([])
   ax.set_yticklabels([])
   ax.set_title(title,fontsize=20)
@@ -65,7 +68,7 @@ def plot_quality(identifier,experiments):
 
   print(identifier)
   def plot_waveform(out,alpha):
-    TMEAS,YMEAS = quality_analysis.read_meas_data(out.out_file)
+    TMEAS,YMEAS = quality_analysis.read_meas_data(out.waveform)
     print(out.transform)
     TREC,YREC = quality_analysis.scale_obs_data(out,TMEAS,YMEAS)
     print(min(TREC),max(TREC))
@@ -85,9 +88,9 @@ def plot_quality(identifier,experiments):
   # compute reference using information from first element
   entry = experiments[0]
   output = list(entry.outputs())[0]
-  TREF,YREF = quality_analysis.compute_ref(entry.bmark, \
-                                       entry.math_env, \
-                                       output.varname)
+  TREF,YREF = quality_analysis.compute_ref(entry.program, \
+                                           entry.dssim, \
+                                           output.variable)
   ax = plot_preamble(entry,TREF,YREF)
   n_execs = 0
   for exp in experiments:
@@ -126,9 +129,8 @@ def plot_quality(identifier,experiments):
   plt.clf()
 
 def to_identifier(exp):
-  mode,_,_,bw = util.unpack_tag(exp.model)
-  inds = "x".join(map(lambda i: str(i), exp.arco_indices))
-  key = "%s-%s-%s-%s" % (exp.bmark,exp.subset,inds,mode)
+  args = util.unpack_model(exp.model)
+  key = "%s-%s-%s-%s" % (exp.program,exp.subset,exp.lgraph,args['model'])
   return key
 
 def visualize(db):
