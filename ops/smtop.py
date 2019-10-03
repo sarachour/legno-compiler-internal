@@ -1,9 +1,15 @@
 from enum import Enum
 import z3
+import math
 
 class Z3Ctx:
-  def __init__(self,env):
-    self._solver = z3.Solver()
+  def __init__(self,env,optimize):
+    if optimize:
+      self._solver = z3.Optimize()
+    else:
+      self._solver = z3.Solver()
+
+    self._optimize = optimize
     self._z3vars = {}
     self._smtvars = {}
     self._smtenv = env
@@ -75,6 +81,25 @@ class Z3Ctx:
 
     return assigns
 
+  def optimize(self,z3expr,minimize=True):
+    rmap = {
+      'unsat': False,
+      'unknown': False,
+      'sat': True
+    }
+    assert(self._optimize)
+    h = self._solver.minimize(z3expr)
+    result = self._solver.check()
+    self._sat = rmap[str(result)]
+    if self.sat():
+      minval = self._solver.lower(h)
+      fltstr = minval.as_decimal(12).split('?')[0]
+      unboxed = float(str(fltstr))
+      m = self._solver.model()
+      self._model = m
+      return self.translate(m)
+
+
   def solve(self):
     rmap = {
       'unsat': False,
@@ -102,7 +127,6 @@ class Z3Ctx:
   def next_solution(self):
     assert(self._sat)
     self.negate_model(self._model)
-    return self.solve()
 
 class SMTEnv:
   class Type(Enum):
@@ -163,15 +187,17 @@ class SMTEnv:
   def cstr(self,c):
     self._cstrs.append(SMTAssert(c))
 
-  def to_z3(self):
-    ctx = Z3Ctx(self)
+  def to_z3(self,optimize=None):
+    ctx = Z3Ctx(self,optimize=not optimize is None)
     for decl in self._decls:
       decl.to_z3(ctx)
 
     for cstr in self._cstrs:
       cstr.to_z3(ctx)
 
-    return ctx
+    if not optimize is None:
+      z3opt = optimize.to_z3(ctx)
+    return ctx,z3opt
 
   def to_smtlib2(self):
     prog = ""

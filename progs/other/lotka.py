@@ -2,6 +2,12 @@ from dslang.dsprog import DSProg
 from dslang.dssim import DSSim
 
 
+def dsinfo():
+  return DSInfo(dsname(), \
+                "lotka-voltera system",
+                "population",
+                "thou")
+
 def dsname():
   return "lotka"
 
@@ -24,6 +30,7 @@ def dsprog(prog):
   prog.decl_stvar("FOX",dFox,"{fox_init}",params)
   prog.decl_var("FIGHT","(FOX*RABBIT)",params)
 
+  prog.emit("{one}*RABBIT","RabbitPop",params)
   rabbit_ival = 2.0
   fox_ival = 1.4
   prog.interval("RABBIT",0,rabbit_ival)

@@ -69,10 +69,12 @@ class Config:
         for inj_port,value in self._injs.items():
             bias = 0.0 if not port in biases else biases[port]
 
-            e = ops.Mult(ops.Const(value),ops.Var(inj_port))
+            var = ops.Var(inj_port)
             if port in biases:
-                e = ops.Add(e,ops.Const(biases[inj_port]))
+                var = ops.Add(var, \
+                              ops.Const(biases[port]))
 
+            e = ops.Mult(ops.Const(value),var)
             repl[inj_port] = e
 
         inj_out = self._injs['out']
@@ -83,7 +85,6 @@ class Config:
         if 'out' in biases:
             e = ops.Add(ops.Const(biases['out']),e)
 
-        print(e)
         return e
 
     def has_expr(self,port):

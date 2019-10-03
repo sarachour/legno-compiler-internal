@@ -17,13 +17,15 @@ def dsprog(prob):
     "one":0.99999
   }
 
-  ampl = 0.5
-  freq = 0.1
-  prog_util.build_oscillator(prob,ampl,freq,"PERTURB","SIG")
-  PLANT = "CTRL+{one}*SIG"
-  ERROR = "PLANT+{one}*(-SIG)"
-  CONTROL = "0.8*(-ERR)+0.9*(-INTEG)"
-  INTEGRAL = "ERR+0.2*(-INTEG)"
+  ampl = 1.0
+  freq = 0.5
+  prog_util.build_oscillator(prob,ampl,freq,"SIG","TARG")
+
+  #params['negTarget'] = -params['target']
+  PLANT = "CTRL+{one}"
+  ERROR = "PLANT+{one}*(-TARG)"
+  CONTROL = "2.0*(-ERR)+8.0*(-INTEG)"
+  INTEGRAL = "{one}*ERR+0.3*(-INTEG)"
 
   #prob.decl_var("SIG",SIG,params)
   prob.decl_var("ERR",ERROR,params)
@@ -32,9 +34,9 @@ def dsprog(prob):
   prob.decl_stvar("PLANT",PLANT,"{initial}",params)
 
   prob.emit("{one}*PLANT","TrackedSig",params)
-  #prob.emit("{one}*ERROR","TrackingError",params)
-  for v in ['PLANT','CTRL','ERR','SIG','INTEG']:
-    prob.interval(v,-1,1)
+  #prob.emit("{one}*ERR","TrackingError",params)
+  for v in ['PLANT','CTRL','ERR','INTEG']:
+    prob.interval(v,-2.0,2.0)
 
   print(prob)
   prob.check()

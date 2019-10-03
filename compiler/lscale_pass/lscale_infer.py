@@ -462,17 +462,25 @@ def apply_scale_factors(scenv,new_circ,result):
             else:
                 pass
 
-def concretize_result(scenv,circ,nslns):
+def concretize_result(scenv,circ,nslns,obj_fun=None):
     if scenv.failed():
         return
 
-    smtenv = scenvlib_smt.build_smt_prob(circ,scenv)
-    for result in scenvlib_smt.solve_smt_prob(smtenv,nslns=nslns):
+    smtenv = scenvlib_smt.build_smt_prob(circ,scenv, \
+                                         optimize=(not obj_fun is None))
+    if obj_fun is None:
+        generator = scenvlib_smt.solve_smt_prob(smtenv, \
+                                                nslns=nslns)
+    else:
+        obj_expr = list(obj_fun.make(circ,scenv))[0].objective()
+        generator = scenvlib_smt.optimize_smt_prob(smtenv, \
+                                                   obj_fun=obj_expr, \
+                                                   minimize=True, \
+                                                   nslns=nslns)
+    for result in generator:
         new_circ = circ.copy()
-
         apply_scale_modes(scenv,new_circ,result)
         apply_scale_factors(scenv,new_circ,result)
-
         yield new_circ
 
 
@@ -482,7 +490,8 @@ def infer_scale_config(prog,adp,nslns, \
                        vmape, \
                        mdpe, \
                        mc, \
-                       max_freq_khz=None):
+                       max_freq_khz=None,
+                       obj_fun=None):
     assert(isinstance(adp,AnalogDeviceProg))
     scenv = sc_build_lscale_env(prog,adp,
                                 model=model, \
@@ -492,7 +501,8 @@ def infer_scale_config(prog,adp,nslns, \
                                 mdpe=mdpe, \
                                 mc=mc)
     count = 0
-    for new_adp in concretize_result(scenv,adp,nslns):
+    for new_adp in concretize_result(scenv,adp,nslns, \
+                                     obj_fun=obj_fun):
         yield new_adp
         count += 1
 

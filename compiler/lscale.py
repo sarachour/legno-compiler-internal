@@ -27,146 +27,6 @@ from compiler.lscale_pass.objective.obj_mgr import LScaleObjectiveFunctionManage
 
 
 
-'''
-
-def sc_interval_constraint(scenv,circ,prob,block,loc,port,handle=None):
-    config = circ.config(block.name,loc)
-    prop = block.props(config.comp_mode,config.scale_mode,port,handle=handle)
-    annot = "%s.%s.%s" % (block.name,loc,port)
-    if isinstance(prop, props.AnalogProperties):
-        lscale_common.analog_op_range_constraint(scenv,circ,block,loc,port, handle,\
-                                                annot=annot)
-        lscale_common.analog_bandwidth_constraint(scenv,circ,block,loc,port,handle,\
-                                                 annot)
-
-    elif isinstance(prop, props.DigitalProperties):
-        lscale_common.digital_op_range_constraint(scenv,circ,block,loc,port,handle, \
-                                                 annot)
-        # phys,prop,scfvar,jop.JConst(1.0),mrng
-        lscale_common.digital_quantize_constraint(scenv,circ,block,loc,port,handle, \
-                                                 "")
-        lscale_common.digital_bandwidth_constraint(scenv,prob,circ,block,loc,port,handle,
-                                                  annot)
-    else:
-        raise Exception("unknown")
-
-
-# traverse dynamics, also including coefficient variable
-def sc_traverse_dynamics(scenv,circ,block,loc,out):
-    visitor = exprvisitor.SCFPropExprVisitor(scenv,circ,block,loc,out)
-    visitor.visit()
-
-
-def sc_port_used(scenv,block_name,loc,port,handle=None):
-    return scenv.in_use((block_name,loc,port,handle), \
-                       tag=scenvlib.LScaleVarType.SCALE_VAR)
-
-def sc_generate_problem(scenv,prob,circ):
-
-    for block_name,loc,config in circ.instances():
-        block = circ.board.block(block_name)
-        for out in block.outputs:
-            # ensure we can propagate the dynamics
-            sc_traverse_dynamics(scenv,circ,block,loc,out)
-
-        for port in block.outputs + block.inputs:
-            if sc_port_used(scenv,block_name,loc,port):
-                sc_interval_constraint(scenv,circ,prob,block,loc,port)
-
-            for handle in block.handles(config.comp_mode,port):
-                if sc_port_used(scenv,block_name,loc,port,handle=handle):
-                    sc_interval_constraint(scenv,circ,prob,block, \
-                                           loc,port,handle=handle)
-
-
-    if not scenv.uses_tau() or not scenv.time_scaling:
-        print("uses tau: %s" % scenv.uses_tau())
-        print("time scale: %s" % scenv.time_scaling)
-        scenv.eq(scop.SCVar(scenv.tau()), scop.SCConst(1.0),'tau_fixed')
-    else:
-        scenv.lte(scop.SCVar(scenv.tau()), scop.SCConst(1e6),'tau_min')
-        scenv.gte(scop.SCVar(scenv.tau()), scop.SCConst(1e-6),'tau_max')
-        lscale_common.max_sim_time_constraint(scenv,prob,circ)
-
-
-def sc_build_lscale_env(scenv,prog,circ):
-    # declare scaling factors
-    lscale_common.decl_scale_variables(scenv,circ)
-    # build continuous model constraints
-    sc_generate_problem(scenv,prog,circ)
-    return scenv
-
-def apply_bias(scenv,circ,block_name,loc,port,handle,scf):
-    if not handle is None:
-        return
-
-    props = circ.board.block(block_name).prop(port)
-    if props.analog():
-        return
-
-
-
-def apply_result(scenv,circ,sln):
-    new_circ = circ.copy()
-    lut_updates = {}
-    for variable,value in sln.items():
-        lscale_util.log_debug("%s = %s" % (variable,value))
-        print("%s = %s" % (variable,value))
-        if variable == scenv.tau():
-            new_circ.set_tau(value)
-        else:
-            tag,(block_name,loc,port,handle)= scenv.get_lscale_var_info(variable)
-            if(tag == scenvlib.LScaleVarType.SCALE_VAR):
-                model = scenv.params.model
-                bias = hwmodel.get_bias(scenv.model_db,circ,block_name,loc,port, \
-                                         model,handle=handle)
-                new_circ.config(block_name,loc) \
-                        .set_scf(port,value,handle=handle)
-                new_circ.config(block_name,loc) \
-                        .set_bias(port,-bias,handle=handle)
-
-            elif(tag == scenvlib.LScaleVarType.INJECT_VAR):
-                new_circ.config(block_name,loc) \
-                    .set_inj(port,value)
-            else:
-                raise Exception("unhandled: <%s>" % tag)
-
-    input()
-    return new_circ
-
-def compute_scale(scenv,prog,infer_circ,objfun):
-    assert(isinstance(infer_circ,AnalogDeviceProg))
-    print("build environment")
-    scenv = sc_build_lscale_env(scenv,prog,infer_circ)
-    scopt = LScaleObjectiveFunctionManager(scenv)
-    scopt.method = objfun.name()
-
-    print("objective: %s" % objfun.name())
-    smtprob = scenv_smt.build_smt_prob(infer_circ,scenv)
-    for sln in scenv_smt.solve_smt_prob(smtprob):
-        new_circ = apply_result(scenv,infer_circ,sln)
-        input()
-
-
-    print("no solution")
-    input()
-    for lprob,thisobj in \
-        scenv_linear.build_linear_problem(infer_circ,scenv,scopt):
-        if lprob is None:
-            print("<< could not linear geometric problem>>")
-            continue
-
-        print("solve")
-        #sln = scenv_linear.solve_linear_problem(lprob)
-        sln = scenv_gpkit.solve_gpkit_problem(lprob)
-        if sln == None:
-            print("<< solution is none >>")
-            continue
-
-        new_circ = apply_result(scenv,infer_circ,sln)
-        yield thisobj,new_circ
-
-'''
 def report_missing_models(model,circ):
     for block,loc,port,comp_mode,scale_mode in hwmodel.ModelDB.MISSING:
         lscale_physlog.log(circ,block,loc, \
@@ -199,27 +59,33 @@ def scale(prog,adp,nslns, \
     n_missing = 0
     has_solution = False
     for this_model in gen_models(model):
-        for idx,adp in enumerate(lscale_infer.infer_scale_config(prog, \
-                                                                 adp, \
-                                                                 nslns, \
-                                                                 model=this_model, \
-                                                                 max_freq_khz=max_freq_khz, \
-                                                                 mdpe=mdpe, \
-                                                                 mape=mape, \
-                                                                 vmape=vmape, \
-                                                                 mc=mc)):
+        for obj in objs:
+            for idx,adp in enumerate(lscale_infer.infer_scale_config(prog, \
+                                                                     adp, \
+                                                                     nslns, \
+                                                                     model=this_model, \
+                                                                     max_freq_khz=max_freq_khz, \
+                                                                     mdpe=mdpe, \
+                                                                     mape=mape, \
+                                                                     vmape=vmape, \
+                                                                     obj_fun=obj, \
+                                                                     mc=mc)):
+                if test_existence:
+                    has_solution = True
+                    break
+
+                #for this_model in gen_models(model):
+                scenv = scenvlib.LScaleEnv(model=this_model, \
+                                        max_freq_khz=max_freq_khz, \
+                                        mdpe=mdpe, \
+                                        mape=mape, \
+                                        vmape=vmape, \
+                                        mc=mc)
+                yield idx,obj.name(),scenv.params.tag(),adp
+
             if test_existence:
-                has_solution = True
                 break
 
-            #for this_model in gen_models(model):
-            scenv = scenvlib.LScaleEnv(model=this_model, \
-                                       max_freq_khz=max_freq_khz, \
-                                       mdpe=mdpe, \
-                                       mape=mape, \
-                                       vmape=vmape, \
-                                       mc=mc)
-            yield idx,"none",scenv.params.tag(),adp
 
         if test_existence:
             break

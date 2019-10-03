@@ -32,7 +32,7 @@ def smt_expr(smtenv,expr):
     raise Exception("unsupported <%s>" % expr)
 
 
-def build_smt_prob(circ,scenv,blacklist=[]):
+def build_smt_prob(circ,scenv,optimize=False,blacklist=[]):
   failed = scenv.failed()
   if failed:
     jaunt_util.log_warn("==== FAIL ====")
@@ -95,30 +95,34 @@ def build_smt_prob(circ,scenv,blacklist=[]):
     return
 
   return smtenv
+def recover_result(result):
+  xform_res = {}
+  for key,value in result.items():
+    if isinstance(value,bool):
+      xform_res[key] = value
+    else:
+      xform_res[key] = math.exp(value)
+  return xform_res
+
+def optimize_smt_prob(smtenv,obj_fun,nslns=1,minimize=True):
+  smt_obj = smt_expr(smtenv,obj_fun)
+  z3ctx,z3opt = smtenv.to_z3(smt_obj)
+  for _ in range(0,nslns):
+    z3ctx.optimize(z3opt,minimize=True)
+    if z3ctx.sat():
+      yield recover_result(z3ctx.model())
+    else:
+      return
+
+    z3ctx.next_solution()
 
 def solve_smt_prob(smtenv,nslns=1):
-  def xform(result):
-    xform_res = {}
-    for key,value in result.items():
-      if isinstance(value,bool):
-        xform_res[key] = value
-      else:
-        xform_res[key] = math.exp(value)
-    return xform_res
-
   z3ctx = smtenv.to_z3()
-  z3ctx.solve()
-  if z3ctx.sat():
-    yield xform(z3ctx.model())
-  else:
-    print("unsat")
-    return
-
-  for _ in range(0,nslns-1):
-    z3ctx.next_solution()
+  for _ in range(0,nslns):
+    z3ctx.solve()
     if z3ctx.sat():
-      yield xform(z3ctx.model())
-
+      yield recover_result(z3ctx.model())
     else:
-      print("unsat")
       return
+
+    z3ctx.next_solution()

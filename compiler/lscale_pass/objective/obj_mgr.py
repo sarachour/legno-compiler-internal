@@ -9,10 +9,9 @@ class LScaleObjectiveFunctionManager():
     def basic_methods():
         return [
             #boptlib.FastObjFunc,
-            boptlib.StateVarObjFunc,
+            #boptlib.StateVarObjFunc,
             #boptlib.FastObsObjFunc,
-            #boptlib.SlowObsObjFunc,
-
+            boptlib.SlowObsObjFunc
         ]
 
     def __init__(self,scenv):
@@ -32,7 +31,7 @@ class LScaleObjectiveFunctionManager():
         self._results[objective] = sln
 
 
-    def objective(self,circuit,varmap):
+    def objective(self,circuit):
         assert(not self.method is None)
         gen = None
         for obj in self.basic_methods():
