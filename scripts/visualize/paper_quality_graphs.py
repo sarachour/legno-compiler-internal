@@ -44,8 +44,8 @@ def plot_preamble(entry,TREF,YREF):
   output = list(entry.outputs())[0]
   palette = sns.color_palette()
   ax = plt.subplot(1, 1, 1)
-  title = common.BenchmarkVisualization.benchmark(entry.program)
   info = DSProgDB.get_info(entry.program)
+  title = info.name
   ax.set_xlabel('simulation time',fontsize=18)
   ax.set_ylabel(info.units,fontsize=18)
   ax.set_xticklabels([])
@@ -91,25 +91,15 @@ def plot_quality(identifier,experiments):
   TREF,YREF = quality_analysis.compute_ref(entry.program, \
                                            entry.dssim, \
                                            output.variable)
-  ax = plot_preamble(entry,TREF,YREF)
-  n_execs = 0
-  for exp in experiments:
-    for out in exp.outputs():
-      n_execs += 1
+
+  #ax = plot_preamble(entry,TREF,YREF)
+
+  qualities = list(map(lambda e: e.quality, experiments))
 
   outputs = []
-  # compute experimental results
   for exp in experiments:
     for out in exp.outputs():
       outputs.append(out)
-      # the subsequent runs have issues with the fit.
-      plot_waveform(out,0.6/n_execs+0.4)
-
-  plt.tight_layout()
-  filename = "paper-%s-all.pdf" % (identifier)
-  filepath = common.get_path(filename)
-  plt.savefig(filepath)
-  plt.clf()
 
   ax = plot_preamble(entry,TREF,YREF)
   valid_outputs = list(filter(lambda o: not o.quality is None, outputs))
@@ -122,6 +112,12 @@ def plot_quality(identifier,experiments):
     valid_outputs, \
     key=lambda o: o.quality)
   plot_waveform(best_output,1.0)
+
+  ax.plot(TREF,YREF,label='reference',
+          linestyle='--', \
+          linewidth=4, \
+          color='#EE5A24')
+
   plt.tight_layout()
   filename = "paper-%s-best.pdf" % (identifier)
   filepath = common.get_path(filename)
@@ -130,7 +126,7 @@ def plot_quality(identifier,experiments):
 
 def to_identifier(exp):
   args = util.unpack_model(exp.model)
-  key = "%s-%s-%s-%s" % (exp.program,exp.subset,exp.lgraph,args['model'])
+  key = "%s-%s-%s" % (exp.program,exp.subset,args['model'])
   return key
 
 def visualize(db):

@@ -47,7 +47,9 @@ def compute_ref(progname,dssimname,variable):
   if not (progname,dssimname,variable) in CACHE:
     prog = dsproglib.DSProgDB.get_prog(progname)
     dssim = dsproglib.DSProgDB.get_sim(progname)
-    assert(dssim.name == dssimname)
+    if not (dssim.name == dssimname):
+      raise Exception("not the same simulation: expected=%s given=%s" \
+                      % (dssim.name,dssimname))
     T,D = prog.execute(dssim)
     TREF,YREF = T,D[variable]
 
