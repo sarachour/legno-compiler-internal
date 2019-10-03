@@ -169,7 +169,7 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
 
     assert(coverage < 0.95)
     timer.kill()
-    for slack in [0.005]:
+    for slack in [0.02]:
         timer.start()
         for idx,opt,model,scale_circ in lscale.scale(prog, \
                                                      adp,

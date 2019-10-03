@@ -78,8 +78,8 @@ class DeltaModel(Enum):
 
 def model_format():
     cmd = [
-        "{model:w}d{pct_mdpe:f}a{pct_mape:f}c{pct_mc:f}", \
-        "{model:w}d{pct_mdpe:f}a{pct_mape:f}c{pct_mc:f}b{bandwidth_khz:f}k" \
+        "{model:w}d{pct_mdpe:f}a{pct_mape:f}v{pct_vmape:.2f}c{pct_mc:f}", \
+        "{model:w}d{pct_mdpe:f}a{pct_mape:f}v{pct_vmape:.2f}c{pct_mc:f}b{bandwidth_khz:f}k" \
     ]
     return cmd
 
@@ -89,25 +89,27 @@ def pack_parsed_model(args):
     mdpe = args['pct_mdpe']/100.0
     mape = args['pct_mape']/100.0
     mc = args['pct_mc']/100.0
+    vmape = args['pct_vmape']/100.0
     bandwidth_hz = None
     if 'bandwidth_khz' in args:
         bandwidth_hz = args['bandwidth_khz']*1000.0
 
-    return pack_model(model,mdpe,mape,mc,bandwidth_hz)
+    return pack_model(model,mdpe,mape,vmape,mc,bandwidth_hz)
 
-def pack_model(model,mdpe,mape,mc,bandwidth_hz=None):
+def pack_model(model,mdpe,mape,vmape,mc,bandwidth_hz=None):
     model_enum = DeltaModel(model)
     args = {
         'model': model_enum.abbrev(),
         'pct_mdpe': mdpe*100.0,
         'pct_mape': mape*100.0,
+        'pct_vmape': vmape*100.0,
         'pct_mc': mc*100.0
     }
     if bandwidth_hz is None:
-        cmd = "{model}d{pct_mdpe:.2f}a{pct_mape:.2f}c{pct_mc:.2f}"
+        cmd = "{model}d{pct_mdpe:.2f}a{pct_mape:.2f}v{pct_vmape:.2f}c{pct_mc:.2f}"
     else:
         args['bandwidth_khz'] = bandwidth_hz/1000.0
-        cmd = "{model}d{pct_mdpe:.2f}a{pct_mape:.2f}c{pct_mc:.2f}b{bandwidth_khz:.2f}k"
+        cmd = "{model}d{pct_mdpe:.2f}a{pct_mape:.2f}v{pct_vmape:.2f}c{pct_mc:.2f}b{bandwidth_khz:.2f}k"
 
     return cmd.format(**args)
 
@@ -121,9 +123,11 @@ def unpack_model(name):
                 "model":DeltaModel.from_abbrev(args['model']),
                 'pct_mdpe':args['pct_mdpe'],
                 'pct_mape':args['pct_mape'],
+                'pct_vmape':args['pct_vmape'],
                 'pct_mc':args['pct_mc'],
                 "mdpe": args['pct_mdpe']/100.0,
                 "mape": args['pct_mape']/100.0,
+                "vmape": args['pct_vmape']/100.0,
                 "mc": args['pct_mc']/100.0,
                 'bandwidth_khz': args['bandwidth_khz'] \
                 if 'bandwidth_khz' in args else None,

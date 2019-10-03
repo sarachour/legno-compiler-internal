@@ -221,6 +221,8 @@ def scale(prog,adp,nslns, \
                                        mc=mc)
             yield idx,"none",scenv.params.tag(),adp
 
+        if test_existence:
+            break
 
     if test_existence:
         if has_solution:

@@ -83,6 +83,7 @@ class LScaleEnvParams:
       model=self.model,
       mdpe=self.mdpe,
       mape=self.mape,
+      vmape=self.vmape,
       mc=self.mc,
       bandwidth_hz=self.max_freq_hz
     )

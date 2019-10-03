@@ -27,6 +27,17 @@ models-maxfit:
 models-minerr:
 	python3 model_builder.py infer --calib-obj min_error ${VISUALIZE}
 
+clean-executions:
+	rm -f outputs/experiments.db
+	rm -rf outputs/legno/*/*/grendel
+	rm -rf outputs/legno/*/*/lscale-adp
+	rm -rf outputs/legno/*/*/lscale-diag
+	rm -rf outputs/legno/*/*/out-waveform
+	rm -rf outputs/legno/*/*/plots
+	rm -rf outputs/legno/*/*/sim
+	rm -f outputs/legno/*/*/times/srcgen.txt
+	rm -f outputs/legno/*/*/times/lscale.txt
+
 clean-models:
 	rm -rf device-state/datasets
 	rm -rf device-state/models/*

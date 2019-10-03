@@ -80,7 +80,6 @@ def gen_use_lut(circ,block,locstr,config,source):
   adc_config = circ.config(sblk,sloc)
   adc_bias = adc_config.bias('out') if config.has_bias('out') else 0.0
   corr_adc = -adc_bias
-
   dests = list(circ.get_conns_by_src(block.name,locstr,'out'))
   assert(len(dests) == 1)
   dblk,dloc,dport = dests[0]
@@ -91,12 +90,17 @@ def gen_use_lut(circ,block,locstr,config,source):
   out_scf = dac_config.scf('out') if dac_config.has_scf('out') else 1.0
   in_scf = dac_config.scf('in') if dac_config.has_scf('in') else 1.0
   corr_dac = -in_scf/out_scf*dac_bias
+
   if ENABLE_BIAS:
     biases = {"in":corr_adc, "out":corr_dac}
   else:
     biases = {}
   # compute input bias
   variables,expr = op.to_python(config.expr('out',biases=biases,inject=True))
+  print(adc_bias,dac_bias)
+  print(biases)
+  print(expr)
+  input()
   yield UseLUTCmd(chip,tile,slce,source=source)
   yield WriteLUTCmd(chip,tile,slce,variables,expr)
 
