@@ -34,7 +34,7 @@ def get_physics_params(scenv,circ,block,loc,port,handle=None):
                                           circ,block.name,loc, \
                                           port,handle=handle)
     return {
-        'model':model, 
+        'model':model,
         'gain':gain_sc,
         'uncertainty': uncertainty_sc,
         'oprange_lower': oprange_lower,
@@ -99,6 +99,7 @@ def get_parameters(scenv,circ,block,loc,port,handle=None):
         'hw_uncertainty': uncertainty,
         'mdpe': scenv.params.mdpe,
         'mape': scenv.params.mape,
+        'vmape': scenv.params.vmape,
         'mc': scenv.params.mc,
         'digital_resolution': resolution,
     }
@@ -115,11 +116,17 @@ def decl_scale_variables(scenv,circ):
                 v = scenv.decl_scvar(block_name,loc,output,handle=handle)
             if block.name == "lut":
                 v=scenv.decl_inject_var(block_name,loc,output)
+                #if scenv.params.mc > 0:
+                #    scenv.lte(scop.SCVar(v),scop.SCConst(1.0/scenv.params.mc),'upper-limit');
+                #    scenv.gte(scop.SCVar(v),scop.SCConst(scenv.params.mc),'lower-limit');
 
         for inp in block.inputs:
             v=scenv.decl_scvar(block_name,loc,inp)
             if block.name == "lut":
                 v=scenv.decl_inject_var(block_name,loc,inp)
+                #if scenv.params.mc > 0:
+                #    scenv.lte(scop.SCVar(v),scop.SCConst(1.0/scenv.params.mc),'upper-limit');
+                #    scenv.gte(scop.SCVar(v),scop.SCConst(scenv.params.mc),'lower-limit');
 
         for output in block.outputs:
             for orig in block.copies(config.comp_mode,output):
@@ -167,9 +174,13 @@ def digital_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
                                       'jcom-digital-oprange-%s' % annot)
 
 
-    if mrng.spread > 0.0 \
-       and coverage > 0.0 \
-       and min_coverage > 0.0:
+    if mrng.spread > 0.0 and \
+       coverage > 0.0:
+        signal_expr = scop.SCMult(pars['math_scale'],scop.SCConst(mrng.bound))
+        scenv.lte(scop.SCConst(pars['mc']),signal_expr,\
+                 annot='jcom-dig-minmap')
+
+        '''
         max_val = mrng.bound;
         pct_upper = abs(mrng.upper)/mrng.bound;
         pct_lower = abs(mrng.lower)/mrng.bound;
@@ -179,12 +190,14 @@ def digital_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
                                            abs(mrng.upper),
                                            min_coverage*coverage*pct_upper,
                                            'jcom-coverage-%s' % annot)
+
         lscale_util.lower_bound_constraint(scenv,
                                            ratio(scop.SCMult(hscale_lower,
                                                              scop.SCConst(abs(hwrng.lower)))),
                                            abs(mrng.lower),
                                            min_coverage*coverage*pct_lower,
                                            'jcom-coverage-%s' % annot)
+        '''
 
 def analog_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
 
@@ -192,6 +205,7 @@ def analog_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
     mrng = pars['math_interval']
     hwrng = pars['hw_oprange_base']
     min_snr = 1.0/pars['mape']
+    stvar_min_snr = 1.0/pars['vmape']
     hw_unc = pars['hw_uncertainty']
     prop = pars['prop']
     assert(isinstance(prop, props.AnalogProperties))
@@ -225,6 +239,10 @@ def analog_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
         snr_expr = scop.SCMult(signal_expr,noise_expr)
         scenv.gte(snr_expr,scop.SCConst(min_snr), \
                  annot='jcom-analog-minsig')
+
+        if block.name == "integrator" and port == "out" and handle is None:
+            scenv.gte(snr_expr,scop.SCConst(stvar_min_snr), \
+                      annot='jcom-analog-minsig')
 
 
 def digital_quantize_constraint(scenv,circ,block,loc,port,handle,annot=""):

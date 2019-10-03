@@ -6,6 +6,15 @@ import progs.prog_util as prog_util
 def dsname():
   return "gentoggle"
 
+def dsinfo():
+  info = DSInfo(dsname(), \
+                'genetic toggle switch',
+                "concentration of V",
+                "conc")
+  info.nonlinear = True
+  return info
+
+
 
 def dsprog(prog):
   K = 1.0

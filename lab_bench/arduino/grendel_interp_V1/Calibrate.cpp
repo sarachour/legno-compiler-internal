@@ -11,9 +11,6 @@ namespace calibrate {
     case circ::block_type_t::FANOUT:
       return CALIB_FAST;
       break;
-    case circ::block_type_t::TILE_ADC:
-    case circ::block_type_t::TILE_DAC:
-    case circ::block_type_t::INTEG:
     case circ::block_type_t::MULT:
       return CALIB_MAXIMIZE_DELTA_FIT;
       break;

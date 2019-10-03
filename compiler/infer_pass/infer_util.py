@@ -20,6 +20,10 @@ def tightest_bounds(bnds):
                  else 1e6, bnds))
     return (lb,ub)
 
+def apply_model_vga(model,x0,x1,out,coeff):
+    result = coeff*(model.gain*x1+model.gain_offset)*(x0) + model.bias
+    return result
+
 def apply_model(model,xdata):
     x = xdata
     result = (model.gain)*(x) + model.bias

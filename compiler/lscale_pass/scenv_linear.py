@@ -6,7 +6,7 @@ import compiler.lscale_pass.scenv as scenvlib
 import ops.scop as scop
 import math
 
-
+'''
 class LinProb:
 
   def __init__(self):
@@ -43,7 +43,7 @@ def lin_expr(linenv,expr):
     raise Exception("unsupported <%s>" % expr)
 
   elif expr.op == scop.SCOpType.CONST:
-    return math.log10(float(expr.value))
+    return math.log(float(expr.value))
 
   else:
     raise Exception("unsupported <%s>" % expr)
@@ -83,7 +83,7 @@ def build_linear_problem(circ,scenv,scopt):
     yield lp,obj
 
 def solve_linear_problem(lp):
-    result = lp.prob.solve()
+    result = lp.prob.solve(pulp.solvers.PULP_CBC_CMD(fracGap = 1e-10))
     if not result:
       print("<<no solution>>")
       return None
@@ -94,8 +94,11 @@ def solve_linear_problem(lp):
       if logValue is None:
         continue
 
-      value = 10.0**logValue
+      value = math.exp(logValue)
       values[varname] = value
 
+    raise Exception("this does not agree with gpkit")
     return values
 
+
+'''

@@ -9,6 +9,14 @@ WITH_GAIN = False
 def dsname():
   return "heat1dwg"
 
+def dsinfo():
+  return DSInfo(dsname(), \
+                "heat1d",
+                "signal",
+                "signal")
+  info.nonlinear = True
+  return info
+
 
 def dsprog(prog):
   params = {

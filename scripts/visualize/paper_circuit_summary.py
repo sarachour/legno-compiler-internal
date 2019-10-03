@@ -87,7 +87,8 @@ def to_arco_table(circuits):
 
 def count_scaling_factors(circ,model):
   #conc_circ = ConcCirc.read(board,conc_circ)
-  model,dig_error,ana_error,bandwidth = util.unpack_tag(model)
+  pars = util.unpack_model(model)
+#model,dig_error,ana_error,bandwidth
   scvals = []
   injvals = []
   n_injvars = 0
@@ -108,9 +109,9 @@ def count_scaling_factors(circ,model):
   summary['injvars'] = n_injvars
   summary['injvals'] = len(set(injvals))
   summary['tau']=circ.tau
-  summary['digital_snr'] = dig_error
-  summary['analog_snr'] = ana_error
-  summary['bandwidth'] = bandwidth
+  summary['mdpe'] = pars['mdpe']
+  summary['mape'] = pars['mape']
+  summary['bandwidth'] = pars['bandwidth_khz']
   return summary
 
 
@@ -125,8 +126,8 @@ def to_jaunt_table(circuits,models):
                        desc, 'circjaunt','|c|ccc|ccccc|')
 
   fields = [
-    'digital snr',
-    'analog snr',
+    'mdpe',
+    'mape',
     'max freq',
     'time constant',
     'scale vars',
@@ -147,9 +148,9 @@ def to_jaunt_table(circuits,models):
     summary = average_scale_factor_count(circuits[bmark], \
                                          models[bmark])
     row = {}
-    row['digital snr'] = "%.3f" % summary['digital_snr']
-    row['analog snr'] = "%.3f" % summary['analog_snr']
-    row['max freq'] = "%dk" % int(summary['bandwidth']/1000)
+    row['mdpe'] = "%.3f" % summary['mdpe']
+    row['mape'] = "%.3f" % summary['mape']
+    row['max freq'] = "%dk" % int(summary['bandwidth'])
     row['time constant'] = "%.2f" % summary['tau']
     row['scale vars'] = "%d" % summary['scvars']
     row['unique scale values'] = "%d" % summary['scvals']

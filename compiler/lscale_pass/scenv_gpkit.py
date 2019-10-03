@@ -8,6 +8,7 @@ from gpkit import Variable,Model
 import util.config as CONFIG
 import signal
 
+'''
 def gpkit_expr(variables,expr):
     if expr.op == scop.SCOpType.VAR:
         return variables[expr.name]**float(expr.exponent)
@@ -111,7 +112,7 @@ def build_gpkit_problem(circ,scenv,jopt):
 
   for obj in jopt.objective(circ,variables):
       cstrs = list(gpkit_cstrs) + list(obj.constraints())
-      ofun = obj.objective()
+      ofun = gpkit_expr(variables,obj.objective())
       lscale_util.log_info(ofun)
       model = Model(ofun, cstrs)
       yield variables,model,obj
@@ -178,3 +179,5 @@ def solve_gpkit_problem(gpmodel,timeout=10):
 def debug_gpkit_problem(gpprob):
   jaunt_util.log_warn(">>> DEBUG <<<")
   result = gpprob.debug(solver=CONFIG.GPKIT_SOLVER)
+
+'''

@@ -29,5 +29,13 @@ def infer(obj):
                                0.02)
   bnd = infer_util.normalize_bound(bnds['in0'],scm[1])
   model_in.set_oprange_scale(*bnd)
+
+  upper = 2.0*scm[1].coeff()
+  lower = -2.0*scm[1].coeff()
+  sc_u = (upper+model_out.bias)/upper
+  sc_l = (lower+model_out.bias)/lower
+  model_out.set_oprange_scale(sc_u,sc_l)
+
+
   yield model_in
   yield model_out

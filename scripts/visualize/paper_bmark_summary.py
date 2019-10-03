@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 #import bmark.diffeqs as diffeq
 from enum import Enum
 import ops.op as op
-
+from dslang.dsprog import DSProgDB
+'''
 DESCRIPTIONS = {
   'micro-osc': 'differential equation representation of sin function',
   'pend': 'pendulum simulation.$\dagger$',
@@ -57,7 +58,9 @@ NONLINEAR = {
   'bont': True,
   'smmrxn': True
 }
-def visualize():
+'''
+
+def visualize(db):
   header = ['description', 'observation','time','diffeqs','funcs','nonlinear']
   desc = 'dynamical system benchmarks used in evaluation. $\dagger$ these benchmarks '
   table = common.Table('Benchmarks',desc, 'bmarksumm', '|c|lccccc|')
@@ -72,8 +75,13 @@ def visualize():
     if 'heat1d' in bmark:
       bmark_name = 'heat1d'
 
-    prog = diffeq.get_prog(bmark)
-    menv = diffeq.get_math_env(bmark)
+    if not DSProgDB.has_prog(bmark):
+      print("skipping %s... no info" % bmark)
+      continue
+
+    info = DSProgDB.get_info(bmark)
+    prog = DSProgDB.get_prog(bmark)
+    dssim = DSProgDB.get_sim(bmark)
     n_diffeqs = 0
     n_funcs = 0
     for v,bnd in prog.bindings():
@@ -83,11 +91,11 @@ def visualize():
         n_funcs += 1
 
     entry = {
-      'description': DESCRIPTIONS[bmark_name],
-      'observation': OBSERVATIONS[bmark_name],
+      'description': info.description,
+      'observation': info.observation,
       'diffeqs': n_diffeqs,
       'funcs': n_funcs,
-      'time': str(menv.sim_time) + " su",
+      'time': str(dssim.sim_time) + " su",
       'nonlinear': bool_to_field[NONLINEAR[bmark_name]]
     }
     table.data(bmark,entry)

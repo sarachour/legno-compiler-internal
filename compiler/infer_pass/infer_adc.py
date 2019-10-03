@@ -1,6 +1,7 @@
 import compiler.infer_pass.infer_util as infer_util
 import compiler.infer_pass.infer_visualize as infer_vis
 import compiler.infer_pass.infer_fit as infer_fit
+from scipy import stats
 
 from hwlib.model import PortModel
 
@@ -25,8 +26,21 @@ def build_config(meta):
 def infer(obj):
   scm,model_in,model_out = build_config(obj['metadata'])
 
-  bnds = infer_fit.build_model(model_out,obj['dataset'],0,0.04,adc=True)
-  bnd = infer_util.normalize_bound(bnds['in0'],scm)
-  model_in.set_oprange_scale(*bnd)
+  out_bias,out_nz,_,_,out_vals = infer_util \
+                              .get_data_by_mode(obj['dataset'],0)
+
+  dec_vals = (out_vals-128.0)/128.0
+  dec_bias = (out_bias)/128.0
+  slope,intercept,rval,pval,stderr = \
+                                     stats.linregress(dec_vals, \
+                                                      dec_vals+dec_bias)
+  model_out.bias = intercept
+  model_out.gain = slope
+  model_out.bias_uncertainty = stderr
+  upper = 1.0
+  lower = -1.0
+  sc_u = (upper+model_out.bias)/upper
+  sc_l = (lower+model_out.bias)/lower
+  model_out.set_oprange_scale(sc_u,sc_l)
   yield model_in
   yield model_out

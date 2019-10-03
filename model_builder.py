@@ -17,6 +17,7 @@ import compiler.infer_pass.infer_fanout as infer_fanout
 import compiler.infer_pass.infer_integ as infer_integ
 import compiler.infer_pass.infer_mult as infer_mult
 import compiler.infer_pass.infer_visualize as infer_visualize
+import compiler.infer_pass.infer_fit as infer_fit
 import compiler.infer_pass.infer_util as infer_util
 
 
@@ -174,6 +175,8 @@ infer_subp = subparsers.add_parser('infer', \
                                    help='scale circuit parameters.')
 infer_subp.add_argument('--populate-crossbars',action='store_true',
                     help='insert default models for connection blocks')
+infer_subp.add_argument('--disable',action='store_true',
+                    help='disable blocks')
 infer_subp.add_argument('--visualize',action='store_true',
                     help='emit visualizations for models')
 infer_subp.add_argument('--calib-obj',type=str,
@@ -194,6 +197,7 @@ if args.subparser_name == "list":
   list(args)
 
 if args.subparser_name == "infer":
+  infer_fit.DISABLE_BLOCKS = args.disable
   infer(args)
 
 elif args.subparser_name == "analyze":

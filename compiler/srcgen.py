@@ -47,12 +47,15 @@ class GrendelProg:
       for stmt in self._stmts:
         fh.write("%s\n" % stmt)
 
+ENABLE_BIAS = True
+
 def cast_enum(tup,type_tup):
   vs = []
   for vstr,T in zip(tup,type_tup):
     vs.append(T(vstr))
 
   return vs
+
 
 def gen_unpack_loc(circ,locstr):
   loc =circ.board.key_to_loc(locstr)
@@ -68,20 +71,38 @@ def gen_unpack_loc(circ,locstr):
 
 def gen_use_lut(circ,block,locstr,config,source):
   chip,tile,slce,_ =gen_unpack_loc(circ,locstr)
-  in_scf,in_ival = config.scf('in'),config.interval('in')
-  out_scf,out_ival = config.scf('out'),config.interval('out')
-  config.set_scf('in', in_scf*0.5)
-  config.set_scf('in', out_scf*2.0)
-  variables,expr = op.to_python(config.expr('out',inject=True))
-  config.set_scf('in', in_scf)
-  config.set_scf('in', out_scf)
+
+  sources = list(circ.get_conns_by_dest(block.name,locstr,'in'))
+  assert(len(sources) == 1)
+  sblk,sloc,sport = sources[0]
+  assert(sblk == 'tile_adc')
+  assert(is_same_tile(circ,sloc,locstr))
+  adc_config = circ.config(sblk,sloc)
+  adc_bias = adc_config.bias('out') if config.has_bias('out') else 0.0
+  corr_adc = -adc_bias
+
+  dests = list(circ.get_conns_by_src(block.name,locstr,'out'))
+  assert(len(dests) == 1)
+  dblk,dloc,dport = dests[0]
+  assert(dblk == 'tile_dac')
+  assert(is_same_tile(circ,sloc,locstr))
+  dac_config = circ.config(dblk,dloc)
+  dac_bias = dac_config.bias('out') if dac_config.has_bias('out') else 0.0
+  out_scf = dac_config.scf('out') if dac_config.has_scf('out') else 1.0
+  in_scf = dac_config.scf('in') if dac_config.has_scf('in') else 1.0
+  corr_dac = -in_scf/out_scf*dac_bias
+  if ENABLE_BIAS:
+    biases = {"in":corr_adc, "out":corr_dac}
+  else:
+    biases = {}
+  # compute input bias
+  variables,expr = op.to_python(config.expr('out',biases=biases,inject=True))
   yield UseLUTCmd(chip,tile,slce,source=source)
   yield WriteLUTCmd(chip,tile,slce,variables,expr)
 
 def nearest_value(value):
   if value == 0.0:
     return 0.0
-  delta = 1.0/256
   vals = np.array(list(map(lambda i: (i-128)/128.0, \
                            range(0,255))))
 
@@ -104,9 +125,16 @@ def gen_use_dac(circ,block,locstr,config,source):
   inv,rng = cast_enum(config.scale_mode,\
                       [SignType,RangeType])
 
+  bias = config.bias('out') if config.has_bias('out') else 0.0
+  out_scf = config.scf('out') if config.has_scf('out') else 1.0
   scf = config.scf('in') if config.has_scf('in') else 1.0
+  if ENABLE_BIAS:
+    corr = -scf/out_scf*bias
+  else:
+    corr = 0.0
+
   if not config.dac('in') is None:
-    value = config.dac('in')*scf
+    value = config.dac('in')*scf + corr
   else:
     value = 0.0
 
@@ -144,9 +172,17 @@ def gen_use_integrator(circ,block,locstr,config,debug=True):
                              [RangeType, \
                               RangeType])
 
+  bias = config.bias('out',handle=':z[0]') \
+                                   if config.has_bias('out',handle=':z[0]') else 0.0
+  out_scf = config.scf('out',handle=':z[0]') \
+                                      if config.has_scf('out',handle=':z[0]') else 1.0
   scf = config.scf('ic') if config.has_scf('ic') else 1.0
+  if ENABLE_BIAS:
+    corr = -bias*scf/out_scf
+  else:
+    corr = 0.0
   # correct for the 2x scaling factor, similar to lut
-  init_cond = config.dac('ic')*scf  \
+  init_cond = config.dac('ic')*scf + corr\
               if config.has_dac('ic') else 0.0
   init_cond = nearest_value(init_cond)
 
@@ -169,8 +205,13 @@ def gen_use_multiplier(circ,block,locstr,config):
     in0_rng,out_rng = cast_enum(config.scale_mode, \
                                 [RangeType,RangeType])
 
+    bias = config.bias('coeff') if config.has_bias('coeff') else 0.0
+    if ENABLE_BIAS:
+      corr = -bias
+    else:
+      corr = 0.0
     scf = config.scf('coeff') if config.has_scf('coeff') else 1.0
-    coeff = config.dac('coeff')*scf  \
+    coeff = config.dac('coeff')*scf + corr\
             if config.has_dac('coeff') else 0.0
     coeff = nearest_value(coeff)
     yield UseMultCmd(chip,

@@ -16,6 +16,7 @@ import compiler.lscale_pass.lscale_common as lscale_common
 import compiler.lscale_pass.scenv as scenvlib
 import compiler.lscale_pass.scenv_gpkit as scenv_gpkit
 import compiler.lscale_pass.scenv_linear as scenv_linear
+import compiler.lscale_pass.scenv_smt as scenv_smt
 
 import compiler.lscale_pass.expr_visitor as exprvisitor
 import compiler.lscale_pass.lscale_util as lscale_util
@@ -26,7 +27,7 @@ from compiler.lscale_pass.objective.obj_mgr import LScaleObjectiveFunctionManage
 
 
 
-
+'''
 
 def sc_interval_constraint(scenv,circ,prob,block,loc,port,handle=None):
     config = circ.config(block.name,loc)
@@ -95,26 +96,42 @@ def sc_build_lscale_env(scenv,prog,circ):
     sc_generate_problem(scenv,prog,circ)
     return scenv
 
+def apply_bias(scenv,circ,block_name,loc,port,handle,scf):
+    if not handle is None:
+        return
+
+    props = circ.board.block(block_name).prop(port)
+    if props.analog():
+        return
+
+
 
 def apply_result(scenv,circ,sln):
     new_circ = circ.copy()
     lut_updates = {}
     for variable,value in sln.items():
         lscale_util.log_debug("%s = %s" % (variable,value))
-        #print("%s = %s" % (variable,value))
+        print("%s = %s" % (variable,value))
         if variable == scenv.tau():
             new_circ.set_tau(value)
         else:
             tag,(block_name,loc,port,handle)= scenv.get_lscale_var_info(variable)
             if(tag == scenvlib.LScaleVarType.SCALE_VAR):
+                model = scenv.params.model
+                bias = hwmodel.get_bias(scenv.model_db,circ,block_name,loc,port, \
+                                         model,handle=handle)
                 new_circ.config(block_name,loc) \
                         .set_scf(port,value,handle=handle)
+                new_circ.config(block_name,loc) \
+                        .set_bias(port,-bias,handle=handle)
+
             elif(tag == scenvlib.LScaleVarType.INJECT_VAR):
                 new_circ.config(block_name,loc) \
                     .set_inj(port,value)
             else:
                 raise Exception("unhandled: <%s>" % tag)
 
+    input()
     return new_circ
 
 def compute_scale(scenv,prog,infer_circ,objfun):
@@ -125,6 +142,14 @@ def compute_scale(scenv,prog,infer_circ,objfun):
     scopt.method = objfun.name()
 
     print("objective: %s" % objfun.name())
+    smtprob = scenv_smt.build_smt_prob(infer_circ,scenv)
+    for sln in scenv_smt.solve_smt_prob(smtprob):
+        new_circ = apply_result(scenv,infer_circ,sln)
+        input()
+
+
+    print("no solution")
+    input()
     for lprob,thisobj in \
         scenv_linear.build_linear_problem(infer_circ,scenv,scopt):
         if lprob is None:
@@ -132,7 +157,8 @@ def compute_scale(scenv,prog,infer_circ,objfun):
             continue
 
         print("solve")
-        sln = scenv_linear.solve_linear_problem(lprob)
+        #sln = scenv_linear.solve_linear_problem(lprob)
+        sln = scenv_gpkit.solve_gpkit_problem(lprob)
         if sln == None:
             print("<< solution is none >>")
             continue
@@ -140,6 +166,7 @@ def compute_scale(scenv,prog,infer_circ,objfun):
         new_circ = apply_result(scenv,infer_circ,sln)
         yield thisobj,new_circ
 
+'''
 def report_missing_models(model,circ):
     for block,loc,port,comp_mode,scale_mode in hwmodel.ModelDB.MISSING:
         lscale_physlog.log(circ,block,loc, \
@@ -153,6 +180,7 @@ def scale(prog,adp,nslns, \
           model, \
           mdpe, \
           mape, \
+          vmape, \
           mc, \
           max_freq_khz=None, \
           do_log=True, \
@@ -162,11 +190,6 @@ def scale(prog,adp,nslns, \
         if model.uses_delta_model():
             models.append(model.naive_model())
 
-            if model.calibrate_objective() == \
-               util.CalibrateObjective.MAX_FIT:
-                models.append(util.DeltaModel.DELTA_MINERR);
-                models.append(util.DeltaModel.NAIVE_MINERR);
-
         return models
 
     assert(isinstance(model,util.DeltaModel))
@@ -175,42 +198,29 @@ def scale(prog,adp,nslns, \
     objs = LScaleObjectiveFunctionManager.basic_methods()
     n_missing = 0
     has_solution = False
-    for idx,infer_adp in enumerate(lscale_infer.infer_scale_config(prog, \
-                                                                   adp, \
-                                                                   nslns, \
-                                                                   model=model,
-                                                                   max_freq_khz=max_freq_khz, \
-                                                                   mdpe=mdpe,
-                                                                   mape=mape,
-                                                                   mc=mc)):
-        if test_existence:
-            has_solution = True
-            break
-        for obj in objs:
-            skip = False
-            for this_model in gen_models(model):
-                scenv = scenvlib.LScaleEnv(model=this_model, \
-                                           max_freq_khz=max_freq_khz, \
-                                           mdpe=mdpe, \
-                                           mape=mape,
-                                           mc=mc)
+    for this_model in gen_models(model):
+        for idx,adp in enumerate(lscale_infer.infer_scale_config(prog, \
+                                                                 adp, \
+                                                                 nslns, \
+                                                                 model=this_model, \
+                                                                 max_freq_khz=max_freq_khz, \
+                                                                 mdpe=mdpe, \
+                                                                 mape=mape, \
+                                                                 vmape=vmape, \
+                                                                 mc=mc)):
+            if test_existence:
+                has_solution = True
+                break
 
-                if skip:
-                    continue
+            #for this_model in gen_models(model):
+            scenv = scenvlib.LScaleEnv(model=this_model, \
+                                       max_freq_khz=max_freq_khz, \
+                                       mdpe=mdpe, \
+                                       mape=mape, \
+                                       vmape=vmape, \
+                                       mc=mc)
+            yield idx,"none",scenv.params.tag(),adp
 
-                if this_model.uses_delta_model() and \
-                   len(hwmodel.ModelDB.MISSING) > n_missing:
-                    scenv.fail("missing models")
-                    skip = True
-
-                print("missing: %d -> %d" % \
-                      (n_missing, len(hwmodel.ModelDB.MISSING)))
-                n_missing = len(hwmodel.ModelDB.MISSING)
-
-                for scaled_obj,scaled_adp in compute_scale(scenv,prog, \
-                                                           infer_adp, \
-                                                           obj):
-                    yield idx,scaled_obj.tag(),scenv.params.tag(),scaled_adp
 
     if test_existence:
         if has_solution:
@@ -226,6 +236,7 @@ def scale(prog,adp,nslns, \
                                         max_freq_khz=max_freq_khz, \
                                         mdpe=mdpe,
                                         mape=mape,
+                                        vmape=vmape,
                                         mc=mc)
         report_missing_models(model,adp)
         lscale_physlog.save(pars.calib_obj)

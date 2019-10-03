@@ -4,6 +4,14 @@ from dslang.dssim import DSSim
 def dsname():
   return "lspring"
 
+def dsinfo():
+  return DSInfo(dsname(), \
+                "linear two-mass spring system",
+                "mass 1",
+                "position")
+  info.nonlinear = False
+  return info
+
 def dsprog(prog):
   k = 0.5
   cf= 0.15

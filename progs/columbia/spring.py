@@ -4,6 +4,14 @@ from dslang.dssim import DSSim
 def dsname():
   return "spring"
 
+def dsinfo():
+  return DSInfo(dsname(), \
+                "two-mass spring system",
+                "mass 1",
+                "position")
+  info.nonlinear = True
+  return info
+
 def dsprog(prog):
   k = 0.5
   cf= 0.15
@@ -29,8 +37,6 @@ def dsprog(prog):
   dPA = 'VA'
   dPB = 'VB'
   prog.decl_lambda("force","sgn(T)*sqrt(abs(T))");
-  #prog.decl_var("sPA","{one}*PA",params)
-  #prog.decl_var("sPB","{one}*PB",params)
   prog.decl_var("fPA",fPA,params)
   prog.decl_var("fPB",fPB,params)
   prog.decl_stvar("VA",dVA,"{VA0}",params)

@@ -4,6 +4,14 @@ from dslang.dssim import DSSim
 def dsname():
   return "dbgmult"
 
+def dsinfo():
+  return DSInfo(dsname(), \
+                "debug mult",
+                "signal",
+                "signal")
+  info.nonlinear = True
+  return info
+
 def dsprog(prob):
   params = {
     'P0': 1.0,

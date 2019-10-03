@@ -14,10 +14,13 @@ def dynamic_load(filepath):
 
   if hasattr(module, "dssim") and \
      hasattr(module, "dsprog") and \
+     hasattr(module, "dsinfo") and \
      hasattr(module, "dsname"):
     DSProgDB.register(module.dsname(), \
-                            module.dsprog, \
-                            module.dssim)
+                      module.dsprog, \
+                      module.dssim, \
+                      module.dsinfo)
+
 
 root_dir = os.path.dirname(os.path.abspath(__file__))
 for root, dirs, files in os.walk(root_dir):

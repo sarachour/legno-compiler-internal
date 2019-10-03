@@ -17,26 +17,28 @@ def norm(v,vmin,vmax):
 def get_min_value(out,use_delta_model):
   return 0.0
 
-def get_max_value(out,use_delta_model):
-  if any(map(lambda o: abs(o) > 3.0, out)):
-    return 5.0 if not use_delta_model else 0.5
+def get_max_value(out,use_delta_model,adc=False):
+  if any(map(lambda o: abs(o) > 5.0, out)) and not adc:
+    return 20.0 if not use_delta_model else 2.0
   else:
-    return 0.5 if not use_delta_model else 0.05
+    return 2.0 if not use_delta_model else 0.2
 
 def xbound(pts):
-  if max(pts) > 3:
-    return -10,10
+  if max(pts) > 10.0:
+    return -20.0,20.0
+  elif max(pts) > 1.5:
+    return -2,2
   else:
     return -1,1
 
-def heatmap1d(in0,out,value,labels,use_delta_model):
+def heatmap1d(in0,out,value,labels,use_delta_model,adc=False):
   # strictly monotonic increasing
   if len(in0) <= 3:
     return
 
   x,y,z = [],[],[]
   vmin = get_min_value(out,use_delta_model)
-  vmax = get_max_value(out,use_delta_model)
+  vmax = get_max_value(out,use_delta_model,adc=adc)
   xmin,xmax = xbound(in0)
 
   plt.clf()
@@ -156,7 +158,7 @@ def get_plot_parameters(model):
   }
   SCALES = {
     'fanout': {'in0': 2.0,'out':2.0},
-    'tile_adc': {'in0': 2.0,'out':1/128.0},
+    'tile_adc': {'in0': 2.0,'out':1.0/128.0},
     'tile_dac': {'in0':1.0,'out':2.0},
     'multiplier.vga': {'in0':2.0,'in1':1.0,'out':2.0},
     'multiplier.mul': {'in0':2.0,'in1':2.0,'out':2.0},
@@ -171,7 +173,7 @@ def get_plot_parameters(model):
   labels = LABELS[key]
   return is_1d,scales,labels
 
-def plot_error(model,filename,dataset,use_delta_model=False):
+def plot_error(model,filename,dataset,use_delta_model=False,adc=False):
   if not DO_PLOTS:
     return
 
@@ -191,8 +193,16 @@ def plot_error(model,filename,dataset,use_delta_model=False):
   title = "|Error| of %s %s" % (labels['out'],tag)
   #plt.title(title)
   in0 = util.array_map(map(lambda x: x*scales['in0'], dataset.in0))
+  if hasattr(model,'gain_offset'):
+    inds = filter(lambda i: dataset.out[i] != 0.0, range(0,dataset.n))
+    coeff = np.mean(np.array(list(map(lambda i: dataset.out[i]/(dataset.in0[i]*dataset.in1[i]), inds))))
+
+    pred = infer_util.apply_model_vga(model,dataset.in0,dataset.in1, \
+                                      dataset.out,coeff)
+  else:
+    pred = infer_util.apply_model(model,dataset.out)
+
   out,meas = dataset.out,dataset.meas
-  pred = infer_util.apply_model(model,out)
   if use_delta_model:
     err = util.array_map(map(lambda i: scales['out']*compute_error(meas[i],pred[i]), \
                                  range(dataset.n)))
@@ -201,7 +211,7 @@ def plot_error(model,filename,dataset,use_delta_model=False):
                                    range(dataset.n)))
 
   if is_1d:
-    heatmap1d(in0,out,err,labels,use_delta_model)
+    heatmap1d(in0,out,err,labels,use_delta_model,adc=adc)
   else:
     in1 = util.array_map(map(lambda x: x*scales['in1'], dataset.in1))
     heatmap2d(in0,in1,out,err,labels,use_delta_model)

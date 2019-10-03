@@ -111,6 +111,17 @@ class MaxSignalAndStabilityObjFunc(optlib.LScaleObjectiveFunction):
 
 
 
+def state_var(circ,scobj):
+  ports = []
+  for block_name,loc,config in circ.instances():
+    if block_name == 'ext_chip_in':
+      continue
+    block = circ.board.block(block_name)
+    if block_name == "integrator":
+       for port in block.outputs:
+          scvar = scobj.scenv.get_scvar(block_name,loc,port,handle=None)
+          yield scvar
+
 def observed(circ,scobj):
   ports = []
   for block_name,loc,config in circ.instances():
@@ -164,5 +175,22 @@ class SlowObsObjFunc(optlib.LScaleObjectiveFunction):
     else:
       for obj in MaxSignalObjFunc.make(circ,jobj,variables):
         yield SlowObsObjFunc(obj.objective())
+
+
+
+class StateVarObjFunc(optlib.LScaleObjectiveFunction):
+
+  def __init__(self,obj):
+    optlib.LScaleObjectiveFunction.__init__(self,obj)
+
+  @staticmethod
+  def name():
+    return "stvar"
+
+  @staticmethod
+  def make(circ,jobj):
+    variables = list(observed(circ,jobj)) + list(state_var(circ,jobj))
+    for obj in MaxSignalObjFunc.make(circ,jobj,variables):
+      yield StateVarObjFunc(obj.objective())
 
 

@@ -71,6 +71,7 @@ if args.subparser_name == "scan":
   db.open()
 
 elif args.subparser_name == "list":
+  import scripts.analyze_experiments as analyze
   db = ExpDriverDB()
   print("=== all entries ===")
   for entry in db.experiment_tbl.get_all():
@@ -79,7 +80,7 @@ elif args.subparser_name == "list":
     if entry.obj != args.obj and not args.obj is None:
       continue
     print(entry)
-
+    analyze.rank(entry)
 
 elif args.subparser_name == "clear":
   db = ExpDriverDB()

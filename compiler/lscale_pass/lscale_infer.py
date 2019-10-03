@@ -1,12 +1,14 @@
 import gpkit
 import itertools
 
+import hwlib.model as hwmodel
 from hwlib.config import Labels
 from hwlib.adp import AnalogDeviceProg
 import hwlib.model as modelib
 import hwlib.block as blocklib
 import hwlib.props as props
 
+import math
 import compiler.lscale_pass.scenv as scenvlib
 import compiler.lscale_pass.scenv_gpkit as scenvlib_gpkit
 import compiler.lscale_pass.scenv_smt as scenvlib_smt
@@ -108,12 +110,10 @@ def sc_physics_model(scenv,scale_mode,circ,block_name,loc,port,handle):
                                           port,handle)
 
         gain = block.coeff(config.comp_mode,scale_mode,port,handle)
-        scenv.implies(modevar,jvar_gain, gain)
 
         props_sc = block.props(config.comp_mode,scale_mode,port,handle)
         props_bl = block.props(config.comp_mode,baseline,port,handle)
         scf = props_sc.interval().bound/props_bl.interval().bound
-        scenv.implies(modevar,jvar_ops, scf)
 
         jvar_phys_gain = scenv.decl_phys_gain_var(block_name, \
                                                 loc, \
@@ -139,13 +139,12 @@ def sc_physics_model(scenv,scale_mode,circ,block_name,loc,port,handle):
                                                loc, \
                                                port, \
                                                handle=handle)
-        uncertainty,gain = pars['uncertainty'],pars['gain']
-        oprange_scale_lower = pars['oprange_lower']
-        oprange_scale_upper = pars['oprange_upper']
-        scenv.implies(modevar,jvar_phys_gain, gain)
-        scenv.implies(modevar,jvar_phys_ops_lower, oprange_scale_lower)
-        scenv.implies(modevar,jvar_phys_ops_upper, oprange_scale_upper)
-        scenv.implies(modevar,jvar_unc, uncertainty)
+        scenv.implies(modevar,jvar_ops, scf)
+        scenv.implies(modevar,jvar_gain, gain)
+        scenv.implies(modevar,jvar_phys_gain, pars['gain'])
+        scenv.implies(modevar,jvar_phys_ops_lower, pars['oprange_lower'])
+        scenv.implies(modevar,jvar_phys_ops_upper, pars['oprange_upper'])
+        scenv.implies(modevar,jvar_unc, pars['uncertainty'])
         config.set_scale_mode(baseline)
         return sc_acceptable_model(pars['model'])
 
@@ -327,12 +326,14 @@ def sc_build_lscale_env(prog,circ, \
                         model, \
                         mdpe, \
                         mape, \
+                        vmape, \
                         mc, \
-                       max_freq_khz=None):
+                        max_freq_khz=None):
     scenv = scenvlib.LScaleInferEnv(model, \
                                     max_freq_khz=max_freq_khz, \
                                     mdpe=mape, \
                                     mape=mape, \
+                                    vmape=vmape, \
                                     mc=mc)
     # declare scaling factors
     lscale_common.decl_scale_variables(scenv,circ)
@@ -419,6 +420,47 @@ def sc_generate_problem(scenv,prob,circ):
         lscale_common.max_sim_time_constraint(scenv,prob,circ)
 
 
+def apply_scale_modes(scenv,new_circ,result):
+    for block_name,loc,config in new_circ.instances():
+        block = new_circ.board.block(block_name)
+        scale_mode = None
+        for scm in block.scale_modes(config.comp_mode):
+            if not scenv.has_mode_var(block_name,loc,scm):
+                continue
+
+            mode = scenv.get_mode_var(block_name,loc,scm)
+            if result[mode]:
+                assert(scale_mode is None)
+                scale_mode = scm
+
+        assert(not scale_mode is None)
+
+        config.set_scale_mode(scale_mode)
+        print("%s[%s] = %s" % (block_name,loc,scale_mode))
+        lscale_util.log_info("%s[%s] = %s" % (block_name,loc,scale_mode))
+
+def apply_scale_factors(scenv,new_circ,result):
+    for variable,value in result.items():
+        if variable == scenv.tau():
+            new_circ.set_tau(value)
+        else:
+            tag,meta = scenv.get_lscale_var_info(variable)
+            if(tag == scenvlib.LScaleVarType.SCALE_VAR):
+                (block_name,loc,port,handle) = meta
+                model = scenv.params.model
+                bias = hwmodel.get_bias(scenv.model_db,new_circ,block_name,loc,port, \
+                                        model,handle=handle)
+                new_circ.config(block_name,loc) \
+                        .set_scf(port,value,handle=handle)
+                new_circ.config(block_name,loc) \
+                        .set_bias(port,bias,handle=handle)
+
+            elif(tag == scenvlib.LScaleVarType.INJECT_VAR):
+                (block_name,loc,port,handle) = meta
+                new_circ.config(block_name,loc) \
+                    .set_inj(port,value)
+            else:
+                pass
 
 def concretize_result(scenv,circ,nslns):
     if scenv.failed():
@@ -427,35 +469,17 @@ def concretize_result(scenv,circ,nslns):
     smtenv = scenvlib_smt.build_smt_prob(circ,scenv)
     for result in scenvlib_smt.solve_smt_prob(smtenv,nslns=nslns):
         new_circ = circ.copy()
-        for key,value in result.items():
-            if isinstance(value,bool):
-                continue
 
-            lscale_util.log_info("%s=%s" % (key,value))
+        apply_scale_modes(scenv,new_circ,result)
+        apply_scale_factors(scenv,new_circ,result)
 
-        for block_name,loc,config in new_circ.instances():
-            block = circ.board.block(block_name)
-            scale_mode = None
-            for scm in block.scale_modes(config.comp_mode):
-                if not scenv.has_mode_var(block_name,loc,scm):
-                    continue
-
-                mode = scenv.get_mode_var(block_name,loc,scm)
-                if result[mode]:
-                    assert(scale_mode is None)
-                    scale_mode = scm
-
-            assert(not scale_mode is None)
-
-            config.set_scale_mode(scale_mode)
-            print("%s[%s] = %s" % (block_name,loc,scale_mode))
-            lscale_util.log_info("%s[%s] = %s" % (block_name,loc,scale_mode))
         yield new_circ
 
 
 def infer_scale_config(prog,adp,nslns, \
                        model, \
                        mape, \
+                       vmape, \
                        mdpe, \
                        mc, \
                        max_freq_khz=None):
@@ -464,9 +488,9 @@ def infer_scale_config(prog,adp,nslns, \
                                 model=model, \
                                 max_freq_khz=max_freq_khz, \
                                 mape=mape, \
+                                vmape=vmape, \
                                 mdpe=mdpe, \
                                 mc=mc)
-    #solve_convex_first(prog,adp,jenv)
     count = 0
     for new_adp in concretize_result(scenv,adp,nslns):
         yield new_adp

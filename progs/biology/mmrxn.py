@@ -6,6 +6,14 @@ import progs.prog_util as prog_util
 def dsname():
   return "mmrxn"
 
+def dsinfo():
+  return DSInfo(dsname(), \
+                "michaelis menten reaction",
+                "complex",
+                "conc")
+  info.nonlinear = True
+  return info
+
 
 def dsprog(prog):
   params = {

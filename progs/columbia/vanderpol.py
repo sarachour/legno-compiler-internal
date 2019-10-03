@@ -4,6 +4,14 @@ from dslang.dssim import DSSim
 def dsname():
   return "vanderpol"
 
+def dsinfo():
+  return DSInfo(dsname(), \
+                "vanderpol oscillator",
+                "signal",
+                "signal")
+  info.nonlinear = True
+  return info
+
 def dsprog(prog):
   params = {
     'mu': 0.2,

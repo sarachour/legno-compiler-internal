@@ -1,8 +1,17 @@
 from dslang.dsprog import DSProg
-from dslang.dssim import DSSim
+from dslang.dssim import DSSim, DSInfo
 
 def dsname():
   return "cosc"
+
+def dsinfo():
+  info = DSInfo(dsname(), \
+                'dampened oscillator simulation',
+                "oscillator amplitude",
+                "amplitude")
+  info.nonlinear = False
+  return info
+
 
 def dsprog(prog):
   params = {
@@ -24,3 +33,5 @@ def dssim():
   exp = DSSim('t20')
   exp.set_sim_time(20)
   return exp
+
+# 0 3 1 1, m m h -> scale is 1.0, not 10.0

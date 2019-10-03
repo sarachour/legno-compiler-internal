@@ -13,6 +13,8 @@ import sklearn.tree as tree
 from scipy import stats
 
 
+DISABLE_BLOCKS = True
+
 def remove_outliers(model,in0,in1,classes):
   def test(x,l,u):
     return x <= u and l <= x
@@ -165,6 +167,64 @@ class InferDataset:
   def in1_bounds(self):
     return self._in1_bnd
 
+MIN_RSQ = 0.95
+
+def fit_vga_model(model,dataset):
+  in0,in1,observe,expect= dataset.in0,dataset.in1,dataset.meas,dataset.out
+  n = dataset.n
+
+  inds = filter(lambda i: expect[i] != 0.0, range(0,n))
+  coeff = np.mean(np.array(list(map(lambda i: expect[i]/(in0[i]*in1[i]), \
+                                    inds))))
+
+  def func(xs,a,b,c):
+    x = xs[0]
+    y = xs[1]
+    return coeff*(x*a+b)*y + c
+
+  def error(x,xhat,a,b,c):
+    return func(x,a,b,c)-xhat
+
+  min_pts = 10
+  if n < min_pts:
+    print(model)
+    input("not enough points: %d" % n)
+    return
+
+  popt, pcov = scipy.optimize.curve_fit(func, [in1,in0], observe)
+  gain = popt[0]
+  gain_offset = popt[1]
+  bias = popt[2]
+  rsq = r2_score(observe, func([in1,in0],gain,gain_offset,bias))
+
+  errs = list(map(lambda i : error([in1[i],in0[i]], \
+                                   observe[i],
+                                   gain,gain_offset,bias), range(n)))
+  print("eqn: (%f*(gain+%f))*sig+%f" % (gain,gain_offset/gain,bias))
+  print("r-squared=%f" % rsq)
+  stderr = np.mean(np.abs(errs))
+  print("stderr=%f" % (stderr))
+  if abs(rsq) < MIN_RSQ:
+    print("==========")
+    print(model)
+    model.gain_offset = 0.0
+    print("Skipping: rval=%f error=%f" % (rsq,stderr))
+    return True if stderr <= 0.01 else False
+
+
+  model.gain = gain
+  model.bias = bias
+  model.gain_offset = (gain_offset/gain)
+  model.bias_uncertainty = max(np.abs(errs))
+
+  # only accept models with bias and variance
+  # below some threshold.
+  if np.std(errs) <= max_stderr(dataset.out) and \
+    np.mean(errs) <= max_stderr(dataset.out):
+    return True
+  else:
+    return False
+
 
 def fit_affine_model(model,dataset):
   def func(x,a,b):
@@ -176,25 +236,24 @@ def fit_affine_model(model,dataset):
   min_pts = 10
   n = dataset.n
   observe,expect = dataset.meas,dataset.out
-  bias = observe-expect;
   if n < min_pts:
     print(model)
     input("not enough points: %d" % n)
     return
 
-  slope,intercept,rval,pval,stderr = scipy.stats.linregress(expect,bias)
+  slope,intercept,rval,pval,stderr = scipy.stats.linregress(expect,observe)
 
-  if abs(rval) < 0.90:
+  if abs(rval) < MIN_RSQ:
     print("==========")
     print(model)
     print(" gain=%f" % slope);
     print(" bias=%f" % intercept);
     print("Skipping: rval=%f error=%f" % (rval,stderr))
-    return True if stderr <= 0.01 else False
+    return True if stderr <= 0.005 else False
 
   #gain_mu,gain_std = popt[0], math.sqrt(pcov[0][0])
   #bias_mu,bias_std = popt[1], math.sqrt(pcov[1][1])
-  gain_mu = 1.0+slope
+  gain_mu = slope
   gain_std = 0.0
   bias_mu = intercept
   bias_std = stderr
@@ -203,7 +262,14 @@ def fit_affine_model(model,dataset):
   model.gain_uncertainty = gain_std
   model.bias = bias_mu
   model.bias_uncertainty = bias_std
-  return True
+
+  # only accept models with bias and variance
+  # below some threshold.
+  if bias_mu <= max_stderr(expect) and \
+    bias_std <= max_stderr(expect):
+    return True
+  else:
+    return False
 
 def max_stderr(pts):
   if max(abs(pts)) > 3.0:
@@ -219,7 +285,6 @@ def fit_linear_model(model,dataset):
     return func(x,a)-xhat
 
   min_pts = 10
-  observe,expect = dataset.meas,dataset.out
   n = dataset.n
   if n < min_pts:
     print(model)
@@ -227,15 +292,15 @@ def fit_linear_model(model,dataset):
     return
 
   bias = observe-expect;
-  popt, pcov = scipy.optimize.curve_fit(func, expect, bias)
+  popt, pcov = scipy.optimize.curve_fit(func, expect, observe)
   gain_mu = popt[0]
   rsq = r2_score(bias, func(expect,gain_mu))
   errs = list(map(lambda i : error(expect[i], \
-                                   bias[i],
+                                   observe[i],
                                    gain_mu), range(n)))
   print("r-squared=%f" % rsq)
   stderr = np.std(errs)
-  if abs(rsq) < 0.90:
+  if abs(rsq) < MIN_RSQ:
     print("==========")
     print(model)
     print(" gain=%f" % gain_mu);
@@ -244,7 +309,7 @@ def fit_linear_model(model,dataset):
 
 
 
-  model.gain = 1.0 + gain_mu
+  model.gain = gain_mu
   model.gain_uncertainty = 0.0
   model.bias = 0.0
   model.bias_uncertainty = max(abs(max(errs)),abs(min(errs)))
@@ -260,16 +325,29 @@ def fit_linear_model(model,dataset):
 def infer_model(model,in0,in1,out,bias,noise, \
                 uncertainty_limit, \
                 adc=False,
-                required_points=20):
+                required_points=20,
+                kind="affine"):
 
 
   dataset = InferDataset(in0,in1,out,bias,noise)
   cnt =0
   max_prune = 0
+  print(kind)
   while True:
-    #success = fit_affine_model(model,dataset)
-    success = fit_linear_model(model,dataset)
-    model.enabled = success
+    if kind == "affine":
+      success = fit_affine_model(model,dataset)
+    elif kind == "vga":
+      success = fit_vga_model(model,dataset)
+    elif kind == "linear":
+      success = fit_linear_model(model,dataset)
+    else:
+      raise Exception("unknown")
+
+    if DISABLE_BLOCKS:
+      model.enabled = success
+    else:
+      model.enabled = True
+
     model.noise = math.sqrt(np.mean(dataset.noise))
     if cnt < max_prune and dataset.n >= required_points:
       split_model(model, \
@@ -277,25 +355,29 @@ def infer_model(model,in0,in1,out,bias,noise, \
                   uncertainty_limit)
       cnt += 1
     else:
+      l0,u0 = dataset.in0_bounds
+      l1,u1 = dataset.in1_bounds
       return dataset, {
         'in0': dataset.in0_bounds,
         'in1': dataset.in1_bounds
       }
 
-def build_model(model,dataset,mode,max_uncertainty,adc=False):
+def build_model(model,dataset,mode,max_uncertainty,adc=False,kind="affine"):
   bias,noise,in0,in1,out = infer_util \
                            .get_data_by_mode(dataset,mode)
   dataset,bnd= infer_model(model,in0,in1,out, \
-                           bias,noise,max_uncertainty,adc=adc)
+                           bias,noise,max_uncertainty,adc=adc,kind=kind)
 
   infer_vis.plot_error(model,\
-                      infer_vis.get_plot_name(model,'nodelta-error'), \
-                      dataset, \
-                      use_delta_model=False)
+                       infer_vis.get_plot_name(model,'nodelta-error'), \
+                       dataset, \
+                       use_delta_model=False,
+                       adc=adc)
   # none can be bnd
   infer_vis.plot_error(model, \
                        infer_vis.get_plot_name(model,'delta-error'), \
                        dataset, \
-                       use_delta_model=True)
+                       use_delta_model=True,
+                       adc=adc)
   plt.close('all')
   return bnd
