@@ -60,7 +60,7 @@ def plot_preamble(entry,TREF,YREF):
 
   ax.plot(TREF,YREF,label='reference',
           linestyle='-', \
-          linewidth=4, \
+          linewidth=3, \
           color='#EE5A24')
   return ax
 
@@ -75,8 +75,8 @@ def plot_quality(identifier,experiments):
     ax.plot(TREC,YREC,alpha=alpha,
             label='measured', \
             color='#5758BB', \
-            linewidth=4.0, \
-            linestyle='--')
+            linewidth=3.0, \
+            linestyle=':')
 
     if 'standard' in identifier:
       clb,cub = ax.get_ylim()
@@ -112,11 +112,6 @@ def plot_quality(identifier,experiments):
     valid_outputs, \
     key=lambda o: o.quality)
   plot_waveform(best_output,1.0)
-
-  ax.plot(TREF,YREF,label='reference',
-          linestyle='--', \
-          linewidth=4, \
-          color='#EE5A24')
 
   plt.tight_layout()
   filename = "paper-%s-best.pdf" % (identifier)

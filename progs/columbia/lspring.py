@@ -29,14 +29,10 @@ def dsprog(prog):
   params['k1_k2'] = -(params['k1'] + params['k2'])*0.999
   params['k2_k3'] = -(params['k3'] + params['k2'])*0.999
 
-  fPA = "PA"
-  fPB = "PB"
-  dVA = '{k2}*fPB + {k1_k2}*fPA+{cf}*VA'
-  dVB = '{k2}*fPA + {k2_k3}*fPB+{cf}*VB'
-  dPA = 'VA'
-  dPB = 'VB'
-  prog.decl_var("fPA",fPA,params)
-  prog.decl_var("fPB",fPB,params)
+  dVA = '{k2}*PB + {k1_k2}*PA+{cf}*VA'
+  dVB = '{k2}*PA + {k2_k3}*PB+{cf}*VB'
+  dPA = '{one}*VA'
+  dPB = '{one}*VB'
   prog.decl_stvar("VA",dVA,"{VA0}",params)
   prog.decl_stvar("VB",dVB,"{VB0}",params)
   prog.decl_stvar("PA",dPA,"{PA0}",params)

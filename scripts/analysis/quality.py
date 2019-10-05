@@ -213,6 +213,7 @@ def analyze(entry,recompute=False,no_reference=False):
 
     QUALITY,TERR,YERR = RESULT
     if QUALITY is None:
+      QUALITIES.append(-1)
       continue
     #common.simple_plot(output,path_h,output.trial,'err',TERR,YERR)
     output.quality = QUALITY

@@ -94,38 +94,6 @@ class BenchmarkVisualization:
                      'smmrxn',
                      'bont'
   ]
-  BENCHMARK_NAMES = {
-    'micro-osc': 'sin',
-    'micro-osc-with-gain': 'sinw',
-    'cosc': 'cosc',
-    'vanderpol': 'vander',
-    'closed-forced-vanderpol': 'chaotic-vander',
-    'pend': 'pendl',
-    'pend-nl': 'pend',
-    'lotka': 'lotka-volterra',
-    'spring': 'springl',
-    'kalman-const': 'kalman',
-    'spring-nl': 'spring',
-    'robot': 'pid',
-    'smmrxn': 'mmrxn',
-    'gentoggle': 'gentoggle',
-    'bont': 'bont',
-    'epor': 'epor',
-    'heat1d-g2': 'heat2-1',
-    'heat1d-g4': 'heat4-2',
-    'heat1d-g4-wg': 'heat4-2-gain',
-    'heat1d-g6': 'heat6-3',
-    'heat1d-g6-wg': 'heat6-3-gain',
-    'heat1d-g8': 'heat8-4',
-    'heat1d-g9': 'heat9-2',
-    'heat1d-g8-wg': 'heat8-4-gain',
-    'kalman-const': 'kalman',
-    'kalman-freq-small': 'kalman-freq',
-  }
-
-  @staticmethod
-  def benchmark(runname):
-    return BenchmarkVisualization.BENCHMARK_NAMES[runname]
 
   @staticmethod
   def benchmarks():

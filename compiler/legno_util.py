@@ -147,21 +147,19 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
     defaults = {'mdpe':max_pct,'mape':max_pct,'vmape':max_pct,'mc':1.0}
     if max_pct >= 1e6:
         return
-
-    coverage = recursive_grid_search([0.01,max_pct], \
-                                     defaults=defaults, \
-                                     name="mc",
-                                     n=3)
-    var_analog_error= recursive_grid_search([0.01,max_pct], \
-                                        defaults=defaults, \
-                                        name="vmape",n=3)
     analog_error= recursive_grid_search([0.01,max_pct], \
                                         defaults=defaults, \
                                         name="mape",n=3)
+    var_analog_error= recursive_grid_search([0.01,max_pct], \
+                                        defaults=defaults, \
+                                        name="vmape",n=3)
     dig_error= recursive_grid_search([0.01,max_pct], \
                                      defaults=defaults,
                                      name="mdpe",n=3)
-
+    coverage = recursive_grid_search([0.01,1.0], \
+                                     defaults=defaults, \
+                                     name="mc",
+                                     n=3)
     dig_error,analog_error,var_analog_error,coverage = joint_search(dig_error, \
                                                                     analog_error, \
                                                                     var_analog_error, \
@@ -176,7 +174,7 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
                                                      args.scale_circuits,
                                                      model=util.DeltaModel(args.model),
                                                      max_freq_khz=args.max_freq,
-                                                     mdpe=dig_error+slack,
+                                                     mdpe=dig_error,
                                                      mape=analog_error+slack,
                                                      vmape=var_analog_error,
                                                      mc=1.0-(coverage+slack)):

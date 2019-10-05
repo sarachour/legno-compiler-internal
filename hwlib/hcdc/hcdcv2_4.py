@@ -24,7 +24,7 @@ BLACKLIST += [
     ("multiplier","(HDACv2,0,3,1,1)")
 ]
 
-def test_board(board):
+def test_board(board,n_chips):
     mult = board.block('multiplier')
     assert(board.route_exists(mult.name,board.position_string([0,0,0,1]),'out',
                             mult.name,board.position_string([0,0,0,0]),'in0'))
@@ -32,10 +32,11 @@ def test_board(board):
                             mult.name,board.position_string([0,0,0,0]),'in0'))
     assert(board.route_exists(mult.name,board.position_string([0,1,1,1]),'out',
                             mult.name,board.position_string([0,0,0,0]),'in0'))
-    assert(board.route_exists(mult.name,board.position_string([1,1,1,1]),'out',
-                            mult.name,board.position_string([1,0,0,0]),'in0'))
-    assert(board.route_exists(mult.name,board.position_string([0,1,1,1]),'out',
-                              mult.name,board.position_string([1,0,0,0]),'in0'))
+    if n_chips > 1:
+        assert(board.route_exists(mult.name,board.position_string([1,1,1,1]),'out',
+                                mult.name,board.position_string([1,0,0,0]),'in0'))
+        assert(board.route_exists(mult.name,board.position_string([0,1,1,1]),'out',
+                                mult.name,board.position_string([1,0,0,0]),'in0'))
 
 
 def connect(hw,scope1,block1,scope2,block2,negs=[]):
@@ -86,6 +87,7 @@ def connect_adj_list(hw,block1,block2,adjlist):
 
 def make_board(subset=glb.HCDCSubset.UNRESTRICTED,load_conns=True):
     n_chips = 2
+    #no chip interconnects for now
     n_tiles = 4
     n_slices = 4
     is_extern_out = lambda tile_no,slice_no : tile_no == 3 \
@@ -191,9 +193,10 @@ def make_board(subset=glb.HCDCSubset.UNRESTRICTED,load_conns=True):
         ([1,3,1,0],[0,3,1,0],'+'),
     ]
     for loc1,loc2,sign in chip0_chip1 + chip1_chip0:
-        if sign == "-":
-            layer1 = hw.sublayer(loc1)
-            layer1.inst('conn_inv')
+        if n_chips > 1:
+            if sign == "-":
+                layer1 = hw.sublayer(loc1)
+                layer1.inst('conn_inv')
 
     hw.freeze_instances()
 
@@ -209,7 +212,9 @@ def make_board(subset=glb.HCDCSubset.UNRESTRICTED,load_conns=True):
 
             for block1 in [chip_out]:
                 for block2 in [chip_in]:
-                    connect_adj_list(hw,block1,block2,chip1_chip0 + chip0_chip1)
+                    if n_chips > 1:
+                        connect_adj_list(hw,block1,block2,chip1_chip0  \
+                                         + chip0_chip1)
 
     chip1_layer, chip2_layer = None, None
     for chip_no in range(0,n_chips):
@@ -259,7 +264,7 @@ def make_board(subset=glb.HCDCSubset.UNRESTRICTED,load_conns=True):
                     #FIXME: connect all to all
                     connect(hw,tile_layer,block1,tile_layer,block2)
 
-    test_board(hw)
+    test_board(hw,n_chips=n_chips)
     return hw
 
 #board = make_board()

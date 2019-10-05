@@ -1,5 +1,5 @@
 from dslang.dsprog import DSProg
-from dslang.dssim import DSSim
+from dslang.dssim import DSSim,DSInfo
 
 def dsname():
   return "spring"
@@ -29,13 +29,12 @@ def dsprog(prog):
   params['k1_k2'] = -(params['k1'] + params['k2'])*0.999
   params['k2_k3'] = -(params['k3'] + params['k2'])*0.999
 
-  linear = True
   fPA = 'force(PA)'
   fPB = 'force(PB)'
   dVA = '{k2}*fPB + {k1_k2}*fPA+{cf}*VA'
   dVB = '{k2}*fPA + {k2_k3}*fPB+{cf}*VB'
-  dPA = 'VA'
-  dPB = 'VB'
+  dPA = '{one}*VA'
+  dPB = '{one}*VB'
   prog.decl_lambda("force","sgn(T)*sqrt(abs(T))");
   prog.decl_var("fPA",fPA,params)
   prog.decl_var("fPB",fPB,params)
@@ -45,11 +44,12 @@ def dsprog(prog):
   prog.decl_stvar("PB",dPB,"{PB0}",params)
 
   prog.emit("{one}*PA","PosA",params)
-  #prog.emit("{one}*fPA","PosA",params)
-  prog.interval("PA",-2.5,2.5)
-  prog.interval("PB",-2.5,2.5)
-  prog.interval("VA",-2.5,2.5)
-  prog.interval("VB",-2.5,2.5)
+  prog.interval("fPA",-2.0,2.0)
+  prog.interval("fPB",-2.0,2.0)
+  prog.interval("PA",-2.0,2.0)
+  prog.interval("PB",-2.0,2.0)
+  prog.interval("VA",-2.0,2.0)
+  prog.interval("VB",-2.0,2.0)
   prog.check()
 
 def dssim():
