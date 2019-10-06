@@ -5,6 +5,7 @@ class DSSim:
         self._name = name
         self._sim_time = 1.0
         self._input_time = 1.0
+        self._hwenv = "osc"
         self._inputs = {}
 
     def input(self,name):
@@ -28,12 +29,21 @@ class DSSim:
         return self._input_time
 
     @property
+    def hardware_env(self):
+        return self._hwenv
+
+
+    @property
     def sim_time(self):
         return self._sim_time
 
     def set_input_time(self,t):
         assert(t > 0)
         self._input_time = t
+
+
+    def set_hardware_env(self,hwenv):
+        self._hwenv = hwenv
 
 
     def set_sim_time(self,t):
