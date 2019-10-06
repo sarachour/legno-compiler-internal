@@ -111,7 +111,6 @@ CTX.insert(GLProp.DIGITAL_INTERVAL, (-1.0*trim,0.98*trim),block='lut',port="in")
 CTX.insert(GLProp.MAX_FREQ, adc_khz*units.khz, block='lut')
 
 # specialized ext_chip_in
-CTX.insert(GLProp.COEFF, 2.0, block='ext_chip_analog_in')
 CTX.insert(GLProp.COEFF, 2.0, block='ext_chip_analog_in',cm="*",sm="*",port="out")
 
 # specialized ext_chip_in

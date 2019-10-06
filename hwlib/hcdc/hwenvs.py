@@ -3,9 +3,7 @@ from hwlib.units import mV
 
 def noosc():
   exp = HWEnv('noosc')
-  osc = exp.use_oscilloscope()
-  #osc.add_range(0,-1.5,2.5)
-  #osc.add_range(1,-1.5,2.5)
+  #osc = exp.use_oscilloscope()
 
   exp.add_dac(due_dac=0,handle='D0')
   exp.add_dac(due_dac=1,handle='D1')
