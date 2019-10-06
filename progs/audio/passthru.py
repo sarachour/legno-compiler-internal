@@ -18,9 +18,8 @@ def dsprog(prog):
   params = {
     'one':0.9999999
   }
-  #prog.emit("{one}*X","OUT",params);
-  prog.emit("X","OUT",params);
   audio_util.decl_audio_input(prog,"X");
+  prog.emit("X","OUT",params);
 
 def dssim():
   dssim = DSSim('trc');

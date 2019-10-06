@@ -3,11 +3,11 @@ from dslang.dssim import DSSim
 import progs.audio.audio_util as audio_util
 
 def dsname():
-  return "ascale"
+  return "azero"
 
 def dsinfo():
   return DSInfo(dsname(), \
-                "scale signal",
+                "zero signal",
                 "audio output",
                 "amplitude")
   info.nonlinear = False
@@ -16,7 +16,8 @@ def dsinfo():
 
 def dsprog(prog):
   audio_util.decl_audio_input(prog,"X");
-  prog.decl_var("Y", "0.5*X");
+  prog.decl_var("Y", "X+(-X)");
+  prog.interval("Y",-1,1)
   prog.emit("Y","OUT");
 
 def dssim():
