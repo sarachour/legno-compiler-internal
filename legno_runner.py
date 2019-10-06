@@ -54,8 +54,7 @@ parser = argparse.ArgumentParser(description='Legno experiment runner.')
 
 parser.add_argument('--config',
                     help='configuration file to use')
-parser.add_argument('--hwenv',default='osc',
-                    help='hardware environment')
+parser.add_argument('--hwenv',help='hardware environment')
 parser.add_argument('--lgraph',action='store_true',
                    help='use lgraph to generate circuits.')
 parser.add_argument('prog',
@@ -94,7 +93,11 @@ if succ and not args.srcgen:
 #  execute(graph_args,params,'graph.log')
 
 srcgen_args = \
-  "--subset {subset} srcgen  {hwenv} {prog} --recompute --trials 1"
+              "--subset {subset} srcgen {prog} --recompute --trials 1"
+
+if not args.hwenv is None:
+  srcgen_args += " --hwenv {hwenv}"
+
 succ = execute(srcgen_args,params,'srcgen.log')
 
 

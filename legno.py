@@ -63,8 +63,8 @@ graph_subp.add_argument('--circ', type=str, \
                         help='do performance sweep.')
 
 
-gren_subp = subparsers.add_parser('srcgen', help='generate grendel scriot.')
-gren_subp.add_argument('hw_env', type=str, \
+gren_subp = subparsers.add_parser('srcgen', help='generate grendel script.')
+gren_subp.add_argument('--hwenv', type=str, \
                         help='hardware environment')
 gren_subp.add_argument('--recompute', action='store_true',
                        help='recompute.')
