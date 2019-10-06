@@ -15,6 +15,7 @@ def dsinfo():
 def dsprog(prog):
   k = 0.5
   cf= 0.15
+
   params = {
     'k1': k,
     'k2': k,
@@ -31,9 +32,11 @@ def dsprog(prog):
 
   fPA = 'force(PA)'
   fPB = 'force(PB)'
-  dVA = '{k2}*fPB + {k1_k2}*fPA+{cf}*VA'
-  dVB = '{k2}*fPA + {k2_k3}*fPB+{cf}*VB'
-  dPA = '{one}*VA'
+  dVA = '{k2}*fPB+(-fPA)+{cf}*VA'
+  #dVA = '{k2}*fPB + {k1_k2}*fPA+{cf}*VA'
+  #dVB = '{k2}*fPA + {k2_k3}*fPB+{cf}*VB'
+  dVB = '{k2}*fPA+(-fPB)+{cf}*VB'
+  dPA = 'VA'
   dPB = '{one}*VB'
   prog.decl_lambda("force","sgn(T)*sqrt(abs(T))");
   prog.decl_var("fPA",fPA,params)
@@ -44,12 +47,10 @@ def dsprog(prog):
   prog.decl_stvar("PB",dPB,"{PB0}",params)
 
   prog.emit("{one}*PA","PosA",params)
-  prog.interval("fPA",-2.0,2.0)
-  prog.interval("fPB",-2.0,2.0)
-  prog.interval("PA",-2.0,2.0)
-  prog.interval("PB",-2.0,2.0)
-  prog.interval("VA",-2.0,2.0)
-  prog.interval("VB",-2.0,2.0)
+  prog.interval("PA",-2.5,2.5)
+  prog.interval("PB",-2.5,2.5)
+  prog.interval("VA",-2.5,2.5)
+  prog.interval("VB",-2.5,2.5)
   prog.check()
 
 def dssim():

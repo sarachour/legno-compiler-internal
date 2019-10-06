@@ -47,8 +47,8 @@ def scale(prog,adp,nslns, \
           test_existence=False):
     def gen_models(model):
         models = [model]
-        if model.uses_delta_model():
-            models.append(model.naive_model())
+        #if model.uses_delta_model():
+        #    models.append(model.naive_model())
 
         return models
 

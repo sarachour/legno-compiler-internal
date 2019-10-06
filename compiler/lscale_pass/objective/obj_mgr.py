@@ -10,8 +10,8 @@ class LScaleObjectiveFunctionManager():
         return [
             #boptlib.FastObjFunc,
             #boptlib.StateVarObjFunc,
-            #boptlib.FastObsObjFunc,
-            boptlib.SlowObsObjFunc
+            boptlib.FastObsObjFunc,
+            #boptlib.SlowObsObjFunc
         ]
 
     def __init__(self,scenv):

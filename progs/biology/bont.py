@@ -1,5 +1,5 @@
 from dslang.dsprog import DSProg
-from dslang.dssim import DSSim
+from dslang.dssim import DSSim,DSInfo
 
 def dsname():
   return "bont"
@@ -28,21 +28,20 @@ def dsprog(prog):
     'one':0.999999
   }
   # reparametrization
-  scale = 20.0
   params = {
-    'r_endo_kT': 0.141*scale*0.7,
-    'r_trans_kL': 0.013*scale,
-    'r_bind_kB': 0.058*scale,
-    'tenB0': 0.0,
-    'freeB0': 10.0,
+    'r_endo_kT': 0.541,
+    'r_trans_kL': 0.541,
+    'r_bind_kB': 0.541,
+    'tenB0': 1.0,
+    'freeB0': 1.0,
     'bndB0' : 0.0,
     'transB0': 0.0,
     'lyticB0': 0.0,
-    'one':0.999999
+    'one':0.99999
   }
   # reparametrization
 
-  base = 10.0
+  base = 1.0
   b = 1.0*base
   dTenB = '{r_trans_kL}*(-transB)'
   prog.decl_stvar("tenB",dTenB,'{tenB0}',params)
@@ -55,7 +54,7 @@ def dsprog(prog):
 
   #b = 0.3*base
   b = 1.0*base
-  dBndB = '{r_bind_kB}*(-freeB) + {r_endo_kT}*(-bndB)'
+  dBndB = '{r_bind_kB}*freeB + {r_endo_kT}*(-bndB)'
   prog.decl_stvar('bndB',dBndB, '{bndB0}',params)
   prog.interval('bndB',-b,b)
 

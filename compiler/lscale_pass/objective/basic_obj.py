@@ -35,11 +35,11 @@ class FastObjFunc(optlib.LScaleObjectiveFunction):
 
   @staticmethod
   def make(circ,scenv):
-    objective = 1.0/varmap[scenv.tau()]
+    objective = scop.expo(scop.SCVar(scenv.tau()),-1)
     if scenv.uses_tau():
         yield FastObjFunc(objective)
     else:
-        yield FastObjFunc(0)
+        yield FastObjFunc(scop.SCConst(0))
 
 
 class MaxSignalObjFunc(optlib.LScaleObjectiveFunction):

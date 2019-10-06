@@ -133,7 +133,7 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
             return mdpe,mape,vmape,mc
 
         dig,alog,valog,cov = joint_search(mdpe+tolerance, \
-                                mape+tolerance, \
+                                mape+tolerance*0.5, \
                                 vmape+tolerance, \
                                 mc+tolerance)
         return dig,alog,valog,cov
