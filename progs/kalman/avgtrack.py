@@ -1,5 +1,5 @@
 from dslang.dsprog import DSProg
-from dslang.dssim import DSSim
+from dslang.dssim import DSSim,DSInfo
 import progs.prog_util as prog_util
 
 def dsname():
@@ -15,7 +15,7 @@ def dsinfo():
 
 def dsprog(prog):
   params = {
-    'meas_noise':0.5,
+    'meas_noise':1.0,
     'proc_noise':0.9999,
     'one':0.9999
   }
@@ -26,25 +26,21 @@ def dsprog(prog):
   params['Rinv'] = 1.0/params['proc_noise']
   params['nRinv'] = -1.0/params['proc_noise']
   params['X0'] = 0.0
-  params['P0'] = 1.0
+  params['P0'] = 0.0
   params['Q'] = params['meas_noise']
 
-  #prog.decl_lambda("pos","max(X,0)");
-  #prog.decl_lambda("posq","max((X*X),0)");
-  E = "SIG+{one}*(-X)"
-  dX = "{Rinv}*P*E"
-  dP = "{Q}+{nRinv}*P*P"
+  #E = "SIG+{one}*(-X)"
+  E = "SIG+(-X)"
+  dX = "{one}*RP*E"
+  dP = "{Q}+(-RP)*P"
 
-  #dX = "{Rinv}*PP*E"
-  #dP = "{Q}+{Rinv}*PSQ"
 
-  #prog.decl_var("PSQ","-posq(P)",params)
-  #prog.decl_var("PP","pos(P)",params)
+  prog.decl_var("RP","{Rinv}*P",params)
   prog.decl_var("E",E,params)
   prog.decl_stvar("X",dX,"{X0}",params)
   prog.decl_stvar("P",dP,"{P0}",params)
   prog.emit("{one}*X","STATE",params)
-  prog.interval("X",0,1.0)
+  prog.interval("X",-1.0,1.0)
   prog.interval("P",0,1.0)
 
 def dssim():

@@ -209,5 +209,5 @@ def compile(board,prob,depth=3, \
                     index_str = "x".join(map(lambda i: str(i), indices))
                     yield index_str,conc_circ
                     conc_idx += 1
-
+                    break
 

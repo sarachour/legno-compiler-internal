@@ -232,7 +232,10 @@ def exec_srcgen(args):
                               load_conns=False)
     path_handler = paths.PathHandler(args.subset,args.program)
     dssim = DSProgDB.get_sim(args.program)
-    hwenv = hwenvs.get_hw_env(args.hw_env)
+    hwenv = hwenvs.get_hw_env(args.hwenv  \
+                              if not args.hwenv is None \
+                              else dssim.hardware_env)
+
     adp_dir = path_handler.lscale_adp_dir()
     timer = util.Timer('srcgen', path_handler)
     for dirname, subdirlist, filelist in os.walk(adp_dir):

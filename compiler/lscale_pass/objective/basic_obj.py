@@ -152,7 +152,7 @@ class FastObsObjFunc(optlib.LScaleObjectiveFunction):
       for oi in MaxSignalObjFunc.make(circ,scenv,variables):
         yield FastObsObjFunc(scop.SCMult(ot.objective(),oi.objective()))
     else:
-      for obj in MaxSignalObjFunc.make(circ,scenv,varmap,variables):
+      for obj in MaxSignalObjFunc.make(circ,scenv,variables):
         yield FastObsObjFunc(obj.objective())
 
 class SlowObsObjFunc(optlib.LScaleObjectiveFunction):

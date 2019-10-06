@@ -32,12 +32,10 @@ def dsprog(prog):
 
   fPA = 'force(PA)'
   fPB = 'force(PB)'
-  dVA = '{k2}*fPB+(-fPA)+{cf}*VA'
-  #dVA = '{k2}*fPB + {k1_k2}*fPA+{cf}*VA'
-  #dVB = '{k2}*fPA + {k2_k3}*fPB+{cf}*VB'
-  dVB = '{k2}*fPA+(-fPB)+{cf}*VB'
+  dVA = '{k2}*fPB + {k1_k2}*fPA+{cf}*VA'
+  dVB = '{k2}*fPA + {k2_k3}*fPB+{cf}*VB'
   dPA = 'VA'
-  dPB = '{one}*VB'
+  dPB = 'VB'
   prog.decl_lambda("force","sgn(T)*sqrt(abs(T))");
   prog.decl_var("fPA",fPA,params)
   prog.decl_var("fPB",fPB,params)

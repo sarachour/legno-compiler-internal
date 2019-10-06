@@ -19,9 +19,14 @@ def dsinfo():
 
 
 def dsprog(prog):
+  h = 1.0/N
+  tc = 1.0/(2*h)
+
+  nom = 0.9999999
   params = {
     'init_heat': 2.0,
-    'one':0.99999
+    'one':nom,
+    'tc':tc
   }
 
   for i in range(0,N):
@@ -30,21 +35,21 @@ def dsprog(prog):
     params["N"] = "D%d" % (i+1) if i+1 < N else None
 
     if params['P'] is None:
-        dPt = "2.0*(-{C}) + {one}*{N}"
+        dPt = "{tc}*((-{C})+(-{C})+{N})"
     elif params['N'] is None:
-        dPt = "{P} + 2.0*(-{C}) + {init_heat}"
+        dPt = "{tc}*({P} + (-{C}) + (-{C}) + {init_heat})"
     else:
-        dPt = "{P} + 2.0*(-{C}) + {one}*{N}"
+        dPt = "{tc}*({P} + (-{C}) + (-{C}) + {N})"
 
     prog.decl_stvar("D%d" % i, dPt, "0.0", params)
     prog.interval("D%d" % i, \
                   0, \
-                  params['init_heat']*2.0)
+                  params['init_heat'])
 
   prog.emit("{one}*D%d" % I, "POINT",params)
   prog.check()
 
 def dssim():
-  exp = DSSim('t200')
-  exp.set_sim_time(200)
+  exp = DSSim('t20')
+  exp.set_sim_time(20)
   return exp
