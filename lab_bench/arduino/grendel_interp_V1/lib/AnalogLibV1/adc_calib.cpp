@@ -140,16 +140,17 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
   cutil::calib_table_t calib_table = cutil::make_calib_table();
   unsigned char opts[] = {nA100,nA200,nA300,nA400};
   int signs[] = {-1,1};
-  for(unsigned char fs=0; fs < 4; fs += 1){
+  bool found_code = false;
+  for(unsigned char fs=0; fs < 4 && !found_code; fs += 1){
     m_codes.lower_fs = opts[fs];
     m_codes.upper_fs = opts[fs];
 
-    for(unsigned char spread=0; spread < 32; spread++){
+    for(unsigned char spread=0; spread < 32 && !found_code; spread+=1){
       sprintf(FMTBUF,"fs=%d spread=%d",
               fs, spread);
       print_info(FMTBUF);
-      for(unsigned char lsign=0; lsign < 2; lsign +=1){
-        for(unsigned char usign=0; usign < 2; usign +=1){
+      for(unsigned char lsign=0; lsign < 2 && !found_code; lsign +=1){
+        for(unsigned char usign=0; usign < 2 && !found_code; usign +=1){
           m_codes.lower = 31+spread*signs[lsign];
           m_codes.upper = 31+spread*signs[usign];
           m_codes.nmos = 0;
@@ -158,7 +159,7 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
             continue;
           }
 
-          for(int nmos=0; nmos < MAX_NMOS; nmos += 1){
+          for(int nmos=0; nmos < MAX_NMOS && !found_code; nmos += 1){
             float error;
             m_codes.nmos = nmos;
             update(m_codes);
@@ -168,16 +169,7 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
                                  this->m_codes.i2v_cal,
                                  error,
                                  MEAS_ADC);
-            sprintf(FMTBUF,"fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
-                    m_codes.lower_fs,
-                    m_codes.upper_fs,
-                    m_codes.lower,
-                    m_codes.upper,
-                    nmos,
-                    this->m_codes.i2v_cal,
-                    error);
-            print_info(FMTBUF);
-            if(error < 0.5){
+            if(error > 0.5){
               continue;
             }
             update(m_codes);
@@ -198,22 +190,14 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
                                       m_codes.upper,
                                       nmos,
                                       m_codes.i2v_cal);
-
-
-            if(fabs(calib_table.loss) < EPS && calib_table.set)
-              break;
-          }
-          if(fabs(calib_table.loss) < EPS && calib_table.set)
+            found_code = true;
             break;
+            //if(fabs(calib_table.loss) < EPS && calib_table.set)
+            // break;
+          }
         }
-        if(fabs(calib_table.loss) < EPS && calib_table.set)
-          break;
       }
-      if(fabs(calib_table.loss) < EPS && calib_table.set)
-        break;
     }
-    if(fabs(calib_table.loss) < EPS && calib_table.set)
-      break;
   }
   if(!calib_table.set){
     error("could not calibrate adc..");
