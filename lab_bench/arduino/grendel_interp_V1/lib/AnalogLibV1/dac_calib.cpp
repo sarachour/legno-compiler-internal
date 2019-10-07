@@ -8,6 +8,25 @@
 
 #define CALIB_NPTS 7
 const float TEST_POINTS[CALIB_NPTS] = {0,0.875,0.5,-0.875,-0.5,0.25,-0.25};
+float Fabric::Chip::Tile::Slice::Dac::getLoss(calib_objective_t obj){
+  float loss = 0;
+  switch(obj){
+  case CALIB_MINIMIZE_ERROR:
+    loss = calibrateMinError();
+    break;
+  case CALIB_MAXIMIZE_DELTA_FIT:
+    loss = calibrateMaxDeltaFit();
+    break;
+  case CALIB_FAST:
+    loss = calibrateFast();
+    break;
+  default:
+    error("unimplemented dac");
+    break;
+  }
+  return loss;
+}
+
 
 
 void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
@@ -36,24 +55,10 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
   cutil::calib_table_t calib_table = cutil::make_calib_table();
   for(int nmos=0; nmos < MAX_NMOS; nmos += 1){
     this->m_codes.nmos = nmos;
-    for(int gain_cal=0; gain_cal < MAX_GAIN_CAL; gain_cal += 16){
+    for(int gain_cal=0; gain_cal < MAX_GAIN_CAL; gain_cal += 4){
       this->m_codes.gain_cal=gain_cal;
       //compute loss for combo
-      float loss = 0;
-      switch(obj){
-      case CALIB_MINIMIZE_ERROR:
-        loss = calibrateMinError();
-        break;
-      case CALIB_MAXIMIZE_DELTA_FIT:
-        loss = calibrateMaxDeltaFit();
-        break;
-      case CALIB_FAST:
-        loss = calibrateFast();
-        break;
-      default:
-        error("unimplemented dac");
-        break;
-      }
+      float loss = getLoss(obj);
       cutil::update_calib_table(calib_table,loss,2,nmos,gain_cal);
       sprintf(FMTBUF,"nmos=%d\tgain_cal=%d\tloss=%f",nmos,gain_cal,loss);
       print_info(FMTBUF);
@@ -63,21 +68,7 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
   for(int gain_cal=0; gain_cal < MAX_GAIN_CAL; gain_cal += 1){
     this->m_codes.gain_cal=gain_cal;
     //compute loss for combo
-    float loss = 0;
-    switch(obj){
-    case CALIB_MINIMIZE_ERROR:
-      loss = calibrateMinError();
-      break;
-    case CALIB_MAXIMIZE_DELTA_FIT:
-      loss = calibrateMaxDeltaFit();
-      break;
-    case CALIB_FAST:
-      loss = calibrateFast();
-      break;
-    default:
-      error("unimplemented dac");
-      break;
-    }
+    float loss = getLoss(obj);
     cutil::update_calib_table(calib_table,loss,2,
                               this->m_codes.nmos,
                               gain_cal);

@@ -21,7 +21,8 @@ BLACKLIST = []
 # given an input current of zero when in high-medium mode.
 # i tried doing a brute force search for calibration, to no avail.
 BLACKLIST += [
-    ("multiplier","(HDACv2,0,3,1,1)")
+    ("multiplier","(HDACv2,0,3,1,1)"),
+    ("adc","(HDACv2,0,0,0,0)")
 ]
 
 def test_board(board,n_chips):
