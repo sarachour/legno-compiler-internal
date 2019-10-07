@@ -36,7 +36,7 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
   cutil::calib_table_t calib_table = cutil::make_calib_table();
   for(int nmos=0; nmos < MAX_NMOS; nmos += 1){
     this->m_codes.nmos = nmos;
-    for(int gain_cal=0; gain_cal < MAX_GAIN_CAL; gain_cal += 16){
+    for(int gain_cal=0; gain_cal < MAX_GAIN_CAL; gain_cal += 4){
       this->m_codes.gain_cal=gain_cal;
       //compute loss for combo
       float loss = 0;
