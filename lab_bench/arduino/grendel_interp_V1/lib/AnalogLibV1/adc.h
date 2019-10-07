@@ -52,7 +52,7 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
     float calibrateMinError(Fabric::Chip::Tile::Slice::Dac * val_dac);
     float calibrateMaxDeltaFit(Fabric::Chip::Tile::Slice::Dac * val_dac);
     float calibrateFast(Fabric::Chip::Tile::Slice::Dac * val_dac);
-
+    float getLoss(calib_objective_t obj, Fabric::Chip::Tile::Slice::Dac * val_dac);
 		ChipAdc (Slice * parentSlice);
 		~ChipAdc () override { delete in0; };
     void setTestParams (

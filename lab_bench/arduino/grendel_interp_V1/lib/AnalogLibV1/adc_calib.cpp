@@ -5,19 +5,37 @@
 #include "profile.h"
 
 
+bool helper_check_steady(Fabric * fab,
+                         Fabric::Chip::Tile::Slice::ChipAdc* adc,
+                         Fabric::Chip::Tile::Slice::Dac* dac,
+                         float value
+                         ){
+  dac_code_t codes_dac = dac->m_codes;
+  dac->setConstant(value);
+  dac->update(dac->m_codes);
+  bool success=true;
+  // get the adc code at that value
+	unsigned char adcPrev = adc->getData();
+	for (unsigned char rep=0; success&&(rep<16); rep++){
+    // determine if adc code is the same value as the previous value.
+		success &= adcPrev==adc->getData();
+  }
+  dac->update(codes_dac);
+	return success;
+}
+
+
 bool Fabric::Chip::Tile::Slice::ChipAdc::testValidity(Fabric::Chip::Tile::Slice::Dac * val_dac){
   Fabric* fab = parentSlice->parentTile->parentChip->parentFabric;
   const float VALID_TEST_POINTS[3] = {0,1,-1};
-  const float STD_THRESH = 2.0;
-  const float ZERO_THRESH = 0.7;
   float mean,variance;
+  bool succ = true;
   for(int i = 0; i < 3; i += 1){
-    val_dac->setConstant(VALID_TEST_POINTS[i]);
-    util::meas_dist_adc(this,mean,variance);
-    float std = sqrt(variance);
-    if(std >= STD_THRESH ||
-       (VALID_TEST_POINTS[i] == 0.0
-        && fabs(mean-128) >= ZERO_THRESH)){
+    succ &= helper_check_steady(fab,
+                             this,
+                             val_dac,
+                             VALID_TEST_POINTS[i]);
+    if(!succ){
       return false;
     }
   }
@@ -81,6 +99,25 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMaxDeltaFit(Fabric::Chip::Til
                              RANGE_MED, 0.0, 1.0);
 }
 
+float Fabric::Chip::Tile::Slice::ChipAdc::getLoss(calib_objective_t obj,
+                                                  Dac * val_dac){
+  float loss=0.0;
+  switch(obj){
+  case CALIB_MINIMIZE_ERROR:
+    loss = calibrateMinError(val_dac);
+    break;
+  case CALIB_MAXIMIZE_DELTA_FIT:
+    loss = calibrateMaxDeltaFit(val_dac);
+    break;
+  case CALIB_FAST:
+    loss = calibrateFast(val_dac);
+    break;
+  default:
+    error("unimplemented adc");
+    break;
+  }
+  return loss;
+}
 void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
 
   Fabric::Chip::Tile::Slice::Dac * val_dac = parentSlice->dac;
@@ -117,50 +154,42 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
           m_codes.upper = 31+spread*signs[usign];
           m_codes.nmos = 0;
           update(m_codes);
+          if(!testValidity(val_dac)){
+            continue;
+          }
+
           for(int nmos=0; nmos < MAX_NMOS; nmos += 1){
+            float error;
             m_codes.nmos = nmos;
             update(m_codes);
-            if(!testValidity(val_dac)){
+            val_dac->setConstant(0.0);
+            binsearch::find_bias(this,
+                                 128.0,
+                                 this->m_codes.i2v_cal,
+                                 error,
+                                 MEAS_ADC);
+            if(error < 0.5){
               continue;
             }
-            for(int i2v_cal=0; i2v_cal < MAX_GAIN_CAL; i2v_cal += 16){
-              m_codes.i2v_cal = i2v_cal;
-              update(m_codes);
-              float loss;
-              switch(obj){
-              case CALIB_MINIMIZE_ERROR:
-                loss = calibrateMinError(val_dac);
-                break;
-              case CALIB_MAXIMIZE_DELTA_FIT:
-                loss = calibrateMaxDeltaFit(val_dac);
-                break;
-              case CALIB_FAST:
-                loss = calibrateFast(val_dac);
-                break;
-              default:
-                error("unimplemented adc");
-                break;
-              }
-              // TODO
-              sprintf(FMTBUF,"fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
-                      m_codes.lower_fs,
-                      m_codes.upper_fs,
-                      m_codes.lower,
-                      m_codes.upper,
-                      nmos,
-                      i2v_cal,
-                      loss);
-              print_info(FMTBUF);
-              cutil::update_calib_table(calib_table,loss,6,
-                                        m_codes.lower_fs,
-                                        m_codes.upper_fs,
-                                        m_codes.lower,
-                                        m_codes.upper,
-                                        nmos,i2v_cal);
+            update(m_codes);
+            float loss = getLoss(obj,val_dac);
+            sprintf(FMTBUF,"fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
+                    m_codes.lower_fs,
+                    m_codes.upper_fs,
+                    m_codes.lower,
+                    m_codes.upper,
+                    nmos,
+                    this->m_codes.i2v_cal,
+                    loss);
+            print_info(FMTBUF);
+            cutil::update_calib_table(calib_table,loss,6,
+                                      m_codes.lower_fs,
+                                      m_codes.upper_fs,
+                                      m_codes.lower,
+                                      m_codes.upper,
+                                      nmos,this->m_codes.i2v_cal);
 
-              if(fabs(calib_table.loss) < EPS)
-                break;
-            }
+
             if(fabs(calib_table.loss) < EPS && calib_table.set)
               break;
           }
@@ -185,31 +214,6 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
   this->m_codes.lower = calib_table.state[2];
   this->m_codes.upper = calib_table.state[3];
   this->m_codes.nmos = calib_table.state[4];
-  for(int i2v_cal=0; i2v_cal < MAX_GAIN_CAL; i2v_cal += 1){
-    this->m_codes.i2v_cal = i2v_cal;
-    update(m_codes);
-    float loss;
-    switch(obj){
-    case CALIB_MINIMIZE_ERROR:
-      loss = calibrateMinError(val_dac);
-      break;
-    case CALIB_MAXIMIZE_DELTA_FIT:
-      loss = calibrateMaxDeltaFit(val_dac);
-      break;
-    case CALIB_FAST:
-      loss = calibrateFast(val_dac);
-      break;
-    default:
-      error("unimplemented adc");
-      break;
-    }
-    cutil::update_calib_table(calib_table,loss,6,
-                              m_codes.lower_fs,
-                              m_codes.upper_fs,
-                              m_codes.lower,
-                              m_codes.upper,
-                              m_codes.nmos,i2v_cal);
-  }
 
   conn0.brkConn();
   val_dac->update(codes_dac);
