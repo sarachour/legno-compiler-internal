@@ -187,7 +187,8 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
                                       m_codes.upper_fs,
                                       m_codes.lower,
                                       m_codes.upper,
-                                      nmos,this->m_codes.i2v_cal);
+                                      nmos,
+                                      m_codes.i2v_cal);
 
 
             if(fabs(calib_table.loss) < EPS && calib_table.set)
@@ -208,13 +209,6 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
   if(!calib_table.set){
     error("could not calibrate adc..");
   }
-  // find the actual best i2v_cal code.
-  this->m_codes.lower_fs = calib_table.state[0];
-  this->m_codes.upper_fs = calib_table.state[1];
-  this->m_codes.lower = calib_table.state[2];
-  this->m_codes.upper = calib_table.state[3];
-  this->m_codes.nmos = calib_table.state[4];
-
   conn0.brkConn();
   val_dac->update(codes_dac);
   this->update(codes_adc);
@@ -225,6 +219,7 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
   this->m_codes.upper = calib_table.state[3];
   this->m_codes.nmos = calib_table.state[4];
   this->m_codes.i2v_cal = calib_table.state[5];
+  update(this);
 
   sprintf(FMTBUF,"BEST fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
           m_codes.lower_fs,
