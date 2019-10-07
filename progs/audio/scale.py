@@ -23,4 +23,5 @@ def dssim():
   dssim = DSSim('trc');
   dssim.set_sim_time(audio_util \
                      .wall_clock_time(0.1));
+  dssim.set_hardware_env("audio")
   return dssim;

@@ -68,6 +68,7 @@ def execute(args):
                                mdpe=fargs['mdpe'], \
                                mape=fargs['mape'], \
                                mc=fargs['mc'], \
+                               vmape=fargs['vmape'], \
                                max_freq_khz=fargs['bandwidth_khz'])
 
         execute_script(entry.grendel_script, \

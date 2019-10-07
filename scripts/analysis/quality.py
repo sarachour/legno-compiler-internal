@@ -60,6 +60,7 @@ def compute_ref(progname,dssimname,variable):
 
 def read_meas_data(filename):
   with open(filename,'r') as fh:
+    print(filename)
     obj = util.decompress_json(fh.read())
     T,V = obj['times'], obj['values']
     T_REFLOW = np.array(T) - min(T)
@@ -119,20 +120,19 @@ def fit(output,_tref,_yref,_tmeas,_ymeas):
   yref = np.array(_yref)
   tmeas = np.array(_tmeas)
   ymeas = np.array(_ymeas)
-  time_slack = 0.03
+  time_slack = 0.05
   #time_slack = 0.02
-  val_slack = 0.01
   bounds = [
     (1.0-time_slack,1.0+time_slack),
-    (0.0,max(tmeas)*0.25),
-    (1.0-val_slack,1.0+val_slack),
+    #(0.0,max(tmeas)*0.25)
+    (0.0,max(tmeas)*0.1)
   ]
   def clamp(result,i):
     return min(max(result[i],bounds[i][0]),bounds[i][1])
 
   def compute_loss(x):
     return compute_error(tref,yref,tmeas,ymeas, \
-                         [clamp(x,0),clamp(x,1),x[2],0])
+                         [clamp(x,0),clamp(x,1),1.0,0])
   # apply transform to turn ref -> pred
   n = 15
   print("==== TRANSFORM ===")
@@ -141,12 +141,12 @@ def fit(output,_tref,_yref,_tmeas,_ymeas):
   xform = output.transform
   #xform.expd_time_scale = 1.0
   xform.expd_time_scale = clamp(result,0)
-  xform.expd_value_scale = clamp(result,2)
+  xform.expd_value_scale = 1.0
   xform.expd_time_offset = result[1]
   #xform.expd_time_offset = lag_finder(tref,yref,tmeas,ymeas)
   print("time-scale=%f (%f)" % (xform.expd_time_scale, result[0]))
   print("time-offset=%f" % (xform.expd_time_offset))
-  print("value-scale=%f (%f)" % (xform.expd_value_scale, result[2]))
+  print("value-scale=%f (%f)" % (xform.expd_value_scale, 1.0))
   print("========")
   # update database
   output.transform = xform
@@ -185,7 +185,9 @@ def analyze(entry,recompute=False,no_reference=False):
     TMEAS,YMEAS = read_meas_data(output.waveform)
     common.simple_plot(output,path_h,output.trial,'meas',TMEAS,YMEAS)
     if no_reference:
-      QUALITIES.append(-1)
+      TFIT,YFIT = scale_obs_data(output,TMEAS,YMEAS)
+      common.simple_plot(output,path_h,output.trial,'rec',TFIT,YFIT)
+      QUALITIES.append(0)
       continue
 
     #if not output.quality is None:

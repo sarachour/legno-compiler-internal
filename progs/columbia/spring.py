@@ -20,20 +20,20 @@ def dsprog(prog):
     'k1': k,
     'k2': k,
     'k3': k,
-    'cf': -cf,
+    'cf': cf,
     'PA0': 2.0,
     'VA0': 0,
     'PB0': -1.0,
     'VB0': 0,
-    'one':0.9999
+    'one':0.99999
   }
-  params['k1_k2'] = -(params['k1'] + params['k2'])*0.999
-  params['k2_k3'] = -(params['k3'] + params['k2'])*0.999
+  params['k1_k2'] = (params['k1'] + params['k2'])*0.99999
+  params['k2_k3'] = (params['k3'] + params['k2'])*0.99999
 
   fPA = 'force(PA)'
   fPB = 'force(PB)'
-  dVA = '{k2}*fPB + {k1_k2}*fPA+{cf}*VA'
-  dVB = '{k2}*fPA + {k2_k3}*fPB+{cf}*VB'
+  dVA = '{k2}*fPB + {k1_k2}*(-fPA)+{cf}*(-VA)'
+  dVB = '{k2}*fPA + {k2_k3}*(-fPB)+{cf}*(-VB)'
   dPA = 'VA'
   dPB = 'VB'
   prog.decl_lambda("force","sgn(T)*sqrt(abs(T))");

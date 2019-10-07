@@ -23,6 +23,7 @@ def dsprog(prog):
     "k2":-0.8
   }
   dVel = "{k1}*(angvel) + {k2}*sin(ang)";
+  #dAng = "{one}*angvel"
   dAng = "{one}*angvel"
   prog.decl_lambda("sin","sin(T)");
   prog.decl_stvar("angvel",dVel,"{angvel0}",params);

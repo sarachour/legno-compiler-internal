@@ -116,17 +116,11 @@ def decl_scale_variables(scenv,circ):
                 v = scenv.decl_scvar(block_name,loc,output,handle=handle)
             if block.name == "lut":
                 v=scenv.decl_inject_var(block_name,loc,output)
-                #if scenv.params.mc > 0:
-                #    scenv.lte(scop.SCVar(v),scop.SCConst(1.0/scenv.params.mc),'upper-limit');
-                #    scenv.gte(scop.SCVar(v),scop.SCConst(scenv.params.mc),'lower-limit');
 
         for inp in block.inputs:
             v=scenv.decl_scvar(block_name,loc,inp)
             if block.name == "lut":
                 v=scenv.decl_inject_var(block_name,loc,inp)
-                #if scenv.params.mc > 0:
-                #    scenv.lte(scop.SCVar(v),scop.SCConst(1.0/scenv.params.mc),'upper-limit');
-                #    scenv.gte(scop.SCVar(v),scop.SCConst(scenv.params.mc),'lower-limit');
 
         for output in block.outputs:
             for orig in block.copies(config.comp_mode,output):
@@ -180,24 +174,6 @@ def digital_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
         scenv.lte(scop.SCConst(pars['mc']),signal_expr,\
                  annot='jcom-dig-minmap')
 
-        '''
-        max_val = mrng.bound;
-        pct_upper = abs(mrng.upper)/mrng.bound;
-        pct_lower = abs(mrng.lower)/mrng.bound;
-        lscale_util.lower_bound_constraint(scenv,
-                                           ratio(scop.SCMult(hscale_upper,
-                                                             scop.SCConst(abs(hwrng.upper)))),
-                                           abs(mrng.upper),
-                                           min_coverage*coverage*pct_upper,
-                                           'jcom-coverage-%s' % annot)
-
-        lscale_util.lower_bound_constraint(scenv,
-                                           ratio(scop.SCMult(hscale_lower,
-                                                             scop.SCConst(abs(hwrng.lower)))),
-                                           abs(mrng.lower),
-                                           min_coverage*coverage*pct_lower,
-                                           'jcom-coverage-%s' % annot)
-        '''
 
 def analog_op_range_constraint(scenv,circ,block,loc,port,handle,annot=""):
 

@@ -169,6 +169,15 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
                                  this->m_codes.i2v_cal,
                                  error,
                                  MEAS_ADC);
+            sprintf(FMTBUF,"fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
+                    m_codes.lower_fs,
+                    m_codes.upper_fs,
+                    m_codes.lower,
+                    m_codes.upper,
+                    nmos,
+                    this->m_codes.i2v_cal,
+                    error);
+            print_info(FMTBUF);
             if(error > 0.5){
               continue;
             }

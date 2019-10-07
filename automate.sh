@@ -1,2 +1,2 @@
-make calibrate-minerr
-make profile-minerr
+make calibrate-maxfit
+make profile-maxfit
