@@ -48,7 +48,8 @@ class PropIntervalVisitor(Visitor):
     for block_name,loc,config in adp.instances():
         block = adp.board.block(block_name)
         if not block_name == 'integrator' and \
-           not block_name == 'ext_chip_in':
+           not block_name == 'ext_chip_in' and \
+           not block_name == 'ext_chip_analog_in':
           continue
 
         for port in block.outputs + block.inputs:
@@ -117,6 +118,7 @@ class PropIntervalVisitor(Visitor):
     try:
       intervals = expr.infer_interval(config.intervals())
       config.set_interval(port,intervals.interval)
+      #print("ival out %s[%s].%s => %s" % (block_name,loc,port,intervals.interval))
       self.visit(block_name,loc,port)
       return
     except Exception as e:
@@ -128,6 +130,7 @@ class PropIntervalVisitor(Visitor):
 
     intervals = expr.infer_interval(config.intervals())
     config.set_interval(port,intervals.interval)
+    #print("ival out %s[%s].%s => %s" % (block_name,loc,port,intervals.interval))
     for handle,interval in intervals.bindings():
       config.set_interval(port, \
                           interval, \

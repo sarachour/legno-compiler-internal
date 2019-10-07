@@ -174,7 +174,7 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
                                                      args.scale_circuits,
                                                      model=util.DeltaModel(args.model),
                                                      max_freq_khz=args.max_freq,
-                                                     mdpe=dig_error,
+                                                     mdpe=dig_error+slack,
                                                      mape=analog_error+slack,
                                                      vmape=var_analog_error,
                                                      mc=1.0-(coverage+slack)):
