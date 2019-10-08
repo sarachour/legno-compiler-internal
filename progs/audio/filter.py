@@ -31,6 +31,7 @@ def dsprog(prog):
   filter_util.model_to_diffeqs(prog,model,1.0)
   prog.emit("{one}*%s" % out,"OUT",params);
   print(prog)
+  input()
 
 def dssim():
   dssim = DSSim('trc');

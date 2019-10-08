@@ -37,7 +37,7 @@ def model_to_diffeqs(prob,model,ampl,threshold=1e-3):
     for c,v in terms:
       var = ("(-%s)" if c < 0 else "(%s)") % v
       if abs(c) >= threshold:
-        expr.append("%f*%s" % (abs(c),var))
+        expr.append("%f*%s" % (abs(c*0.9999),var))
       #else:
       #  print("skip: %f*%s" % (abs(c),var))
     strexpr = "+".join(expr)
