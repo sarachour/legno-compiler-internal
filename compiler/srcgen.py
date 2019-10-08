@@ -95,6 +95,8 @@ def gen_use_lut(circ,block,locstr,config,source):
     biases = {"in":corr_adc, "out":corr_dac}
   else:
     biases = {}
+
+  print(biases)
   # compute input bias
   variables,expr = op.to_python(config.expr('out',biases=biases,inject=True))
   yield UseLUTCmd(chip,tile,slce,source=source)

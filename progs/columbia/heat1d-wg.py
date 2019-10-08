@@ -26,8 +26,10 @@ def dsprog(prog):
   params = {
     'init_heat': 2.0,
     'one':nom,
-    'tc':tc
+    'tc':tc*0.9999999
   }
+
+  params['tc2'] = 2.0*tc
 
   for i in range(0,N):
     params["C"] = "D%d" % i
@@ -35,11 +37,11 @@ def dsprog(prog):
     params["N"] = "D%d" % (i+1) if i+1 < N else None
 
     if params['P'] is None:
-        dPt = "{tc}*((-{C})+(-{C})+{N})"
+        dPt = "{tc2}*(-{C})+{tc}*{N}"
     elif params['N'] is None:
-        dPt = "{tc}*({P} + (-{C}) + (-{C}) + {init_heat})"
+        dPt = "{tc}*{P} + {tc2}*(-{C}) + {init_heat}"
     else:
-        dPt = "{tc}*({P} + (-{C}) + (-{C}) + {N})"
+        dPt = "{tc}*{P} + {tc2}*(-{C}) + {tc}*{N}"
 
     prog.decl_stvar("D%d" % i, dPt, "0.0", params)
     prog.interval("D%d" % i, \

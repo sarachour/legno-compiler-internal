@@ -1,5 +1,5 @@
 from dslang.dsprog import DSProg
-from dslang.dssim import DSSim
+from dslang.dssim import DSSim, DSInfo
 import progs.audio.audio_util as audio_util
 
 def dsname():

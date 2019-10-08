@@ -34,7 +34,7 @@ def infer(obj):
   lower = -2.0*scm[1].coeff()
   sc_u = (upper+model_out.bias)/upper
   sc_l = (lower+model_out.bias)/lower
-  model_out.set_oprange_scale(sc_u,sc_l)
+  model_out.set_oprange_scale(min(sc_u,sc_l),min(sc_u,sc_l))
 
 
   yield model_in

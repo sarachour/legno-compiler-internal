@@ -4,7 +4,7 @@ import progs.prog_util as prog_util
 
 
 def dsname():
-  return "mmrxn"
+  return "smmrxn"
 
 def dsinfo():
   return DSInfo(dsname(), \
@@ -20,14 +20,14 @@ def dsprog(prog):
     'E0': 0.8,
     'S0': 0.5,
     'ES0': 0.0,
-    'kf': 0.999,
-    'kr': 0.5,
+    'kf': 0.9999,
+    'kr': 0.3,
     'one': 0.9999
   }
 
   dES = "{kf}*(E*S) + {kr}*(-ES)"
-  prog.decl_var("E", "{E0} + {one}*(-ES)", params);
-  prog.decl_var("S", "{S0} + {one}*(-ES)", params);
+  prog.decl_var("E", "{E0} + (-ES)", params);
+  prog.decl_var("S", "{S0} + (-ES)", params);
   prog.decl_stvar("ES", dES, "{ES0}", params)
   prog.emit("{one}*ES", "COMPLEX",params)
   max_ES = min(params['E0'],params['S0'])
@@ -39,6 +39,6 @@ def dsprog(prog):
 
 
 def dssim():
-  exp = DSSim('t5')
-  exp.set_sim_time(5)
+  exp = DSSim('t20')
+  exp.set_sim_time(20)
   return exp
