@@ -19,7 +19,7 @@ def dsprog(prog):
   audio_util.decl_audio_input(prog,"X");
   prog.decl_var("Y", "0.5*X");
 
-  E = "Y-X*Z"
+  E = "Y-{one}*X*Z"
   prog.decl_stvar("Z",E,"1.0",params)
   prog.interval("Z",-2.0,2.0)
   prog.emit("{one}*Z","OUT",params);
