@@ -1,5 +1,5 @@
-import progs.audio.audio_util as audio_util
-import progs.audio.filter_util as filter_util
+import progs.sensor.sensor_util as sensor_util
+import progs.sensor.filter_util as filter_util
 from dslang.dssim import DSSim
 from dslang.dsprog import DSProg
 
@@ -9,7 +9,7 @@ def dsname():
 def dsinfo():
   return DSInfo(dsname(), \
                 "filter",
-                "audio output",
+                "sensor output",
                 "amplitude")
   info.nonlinear = False
   return info
@@ -19,7 +19,7 @@ def dsprog(prog):
   params = {
     "one": 0.99999
   }
-  audio_util.decl_audio_input(prog,"X");
+  sensor_util.decl__input(prog,"X");
   cutoff_freq = 20000
   degree = 1
   out,model = filter_util.lpf(invar="X", \
@@ -35,7 +35,7 @@ def dsprog(prog):
 
 def dssim():
   dssim = DSSim('trc');
-  dssim.set_sim_time(audio_util \
+  dssim.set_sim_time(sensor_util \
                      .wall_clock_time(0.1));
-  dssim.set_hardware_env("audio")
+  dssim.set_hardware_env("sensor")
   return dssim;

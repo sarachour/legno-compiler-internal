@@ -412,8 +412,17 @@ def sc_generate_problem(scenv,prob,circ):
 
 
 
-    if not scenv.uses_tau() or not scenv.time_scaling:
+    tmin,tmax = prob.time_constant()
+    if not tmax is None:
+        scenv.lte(scop.SCVar(scenv.tau()), scop.SCConst(tmax),'tau-max')
+
+    if not tmin is None:
+        scenv.gte(scop.SCVar(scenv.tau()), scop.SCConst(tmin),'tau-min')
+
+    if not scenv.uses_tau():
+        input("continue")
         scenv.eq(scop.SCVar(scenv.tau()), scop.SCConst(1.0),'tau-fixed')
+        pass
     else:
         scenv.lte(scop.SCVar(scenv.tau()), scop.SCConst(1e10),'tau-min')
         scenv.gte(scop.SCVar(scenv.tau()), scop.SCConst(1e-10),'tau-max')
