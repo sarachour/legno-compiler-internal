@@ -2,7 +2,7 @@ from enum import Enum
 from sympy import exp, Symbol, symbols
 import math
 from sympy import poly
-import progs.audio.audio_util as audio_util
+import progs.sensor.sensor_util as sensor_util
 
 class FilterMethod(Enum):
     BASIC = "basic"
@@ -56,7 +56,7 @@ def butter(extvar,fvar,freq_cutoff,degree=1):
     (s**2+0.5176*s+1)*(s**2+1.4142*s+1)*(s**2+1.9319*s+1),
     (s+1)*(s**2+0.4450*s+1)*(s**2+1.2470*s+1)*(s**2+1.8019*s+1)
   ]
-  wc = audio_util.hwclock_frequency(freq_cutoff)/(2.0*math.pi)
+  wc = sensor_util.hwclock_frequency(freq_cutoff)/(2.0*math.pi)
   expr = degs[degree-1].subs(s,s/wc)
   G0 = 1.0
   return xfer_fun_to_model(extvar,fvar,0.9999,expr)
@@ -74,7 +74,7 @@ def cheby(extvar,fvar,freq_cutoff,degree=1):
     0.0895*(s**2+0.1553*s+1.0230)*(s**2+0.4243*s+0.5900) \
     *(s**2+0.5796*s+0.1570)
   ]
-  wc = audio_util.hwclock_frequency(freq_cutoff)/(2.0*math.pi)
+  wc = sensor_util.hwclock_frequency(freq_cutoff)/(2.0*math.pi)
   expr = degs[degree-1].subs(s,s/wc)
   G0 = 1.0
   return xfer_fun_to_model(extvar,fvar,0.9999,expr)
@@ -84,7 +84,7 @@ def simple(extvar,fvar,freq_cutoff):
   degs = [(s+1),
           (s+1)*(s**2+s+1)
   ]
-  wc = audio_util.hwclock_frequency(freq_cutoff)/(2.0*math.pi)
+  wc = sensor_util.hwclock_frequency(freq_cutoff)/(2.0*math.pi)
   expr = degs[0].subs(s,s/wc)
   G0 = 1.0
   return xfer_fun_to_model(extvar,fvar,1.0,expr)

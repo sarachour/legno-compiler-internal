@@ -1,6 +1,6 @@
 from dslang.dsprog import DSProg
 from dslang.dssim import DSSim, DSInfo
-import progs.audio.audio_util as audio_util
+import progs.sensor.sensor_util as sensor_util
 
 def dsname():
   return "apass"
@@ -8,7 +8,7 @@ def dsname():
 def dsinfo():
   return DSInfo(dsname(), \
                 "passthru",
-                "audio output",
+                "sensor output",
                 "amplitude")
   info.nonlinear = False
   return info
@@ -18,12 +18,11 @@ def dsprog(prog):
   params = {
     'one':0.9999999
   }
-  audio_util.decl_audio_input(prog,"X");
+  sensor_util.decl_sensor_input(prog,"X");
   prog.emit("X","OUT",params);
 
 def dssim():
   dssim = DSSim('trc');
-  dssim.set_sim_time(audio_util \
-                     .wall_clock_time(0.1));
-  dssim.set_hardware_env("audio")
+  dssim.set_sim_time(sensor_util \
+                     .siggen_time('sin'));
   return dssim;

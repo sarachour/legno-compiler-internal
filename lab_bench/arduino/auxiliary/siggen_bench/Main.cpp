@@ -122,6 +122,15 @@ void generate_signal(){
   Serial.println(FMTBUF);
 }
 
+float get_time(){
+  int total_samples = 0;
+  for(int i=0; i < MAXSEQ; i += 1){
+    int seqno = SEQ[i];
+    total_samples += N[seqno];
+  }
+  float time = 1.0/FREQ*total_samples*1000.0;
+  return time;
+}
 void set_signal(int type){
   set_zero();
   switch(type){
@@ -166,6 +175,9 @@ void set_signal(int type){
   default:
     error("unsupported signal");
   }
+  float time_ms = get_time();
+  sprintf(FMTBUF, "signal_time=%f ms",time_ms);
+  Serial.println(FMTBUF);
 }
 void setup()
 {
@@ -198,5 +210,4 @@ void loop()
     Serial.println(incomingByte);
     set_signal(incomingByte);
   }
-  generate_signal();
 }

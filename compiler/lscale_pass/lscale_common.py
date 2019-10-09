@@ -256,10 +256,6 @@ def analog_bandwidth_constraint(scenv,circ,block,loc,port,handle,annot):
     hwbw = pars['hw_bandwidth']
     prop = pars['prop']
 
-    if isinstance(prop,props.AnalogProperties) and prop.is_physical:
-        scenv.eq(tau,scop.SCConst(1.0),'jcom-physical-bw')
-        scenv.set_time_scaling(False)
-
     if not scenv.params.enable_bandwidth_constraint:
         return
 

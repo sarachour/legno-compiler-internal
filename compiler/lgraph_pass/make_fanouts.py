@@ -10,7 +10,6 @@ def copy_signal(board,node,output,n_copies,label,max_fanouts):
         #assert(not isinstance(node,acirc.AJoin))
         sources ={0:[(node,output)]}
         yield sources,node
-        return
 
     fanout = board.block("fanout")
     fanout_modes={}

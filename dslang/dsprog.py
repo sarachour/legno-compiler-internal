@@ -74,6 +74,7 @@ class DSProg:
         self._lambdas = {}
         self._intervals = {}
         self._variables = []
+        self._time_constant_range = (None,None);
         self.max_time = 100.0
 
         self.__order = None
@@ -82,6 +83,11 @@ class DSProg:
         self.__handles = 0
 
 
+    def speed(self,tmin,tmax):
+        self._time_constant_range = (tmin,tmax)
+
+    def time_constant(self):
+        return self._time_constant_range
 
     def _compute_order(self):
         self.__order = []
