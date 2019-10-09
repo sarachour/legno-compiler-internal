@@ -15,10 +15,13 @@ def dsinfo():
 
 
 def dsprog(prog):
+  params = {
+    "one":0.99999
+  }
   audio_util.decl_audio_input(prog,"X");
-  prog.decl_var("Y", "X+(-X)");
+  prog.decl_var("Y", "{one}*X+{one}*(-X)",params);
   prog.interval("Y",-1,1)
-  prog.emit("Y","OUT");
+  prog.emit("Y","OUT",params);
 
 def dssim():
   dssim = DSSim('trc');

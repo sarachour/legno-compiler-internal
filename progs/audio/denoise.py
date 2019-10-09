@@ -19,7 +19,8 @@ def dsprog(prog):
   params = {
     'meas_noise':1.0,
     'proc_noise':0.9999,
-    'one':0.9999
+    'one':0.9999,
+    'tc':0.1
   }
   audio_util.decl_audio_input(prog,"SIG");
   params['Rinv'] = 1.0/params['proc_noise']
@@ -28,9 +29,9 @@ def dsprog(prog):
   params['P0'] = 0.0
   params['Q'] = params['meas_noise']
 
-  E = "SIG+(-X)"
-  dX = "{one}*RP*E"
-  dP = "{Q}+(-RP)*P"
+  E = "SIG+{one}*(-X)"
+  dX = "{tc}*RP*E"
+  dP = "{tc}*(-RP)*P"
   prog.decl_var("RP","{Rinv}*P",params)
   prog.decl_var("E",E,params)
   prog.decl_stvar("X",dX,"{X0}",params)
