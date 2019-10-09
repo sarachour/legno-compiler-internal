@@ -31,7 +31,7 @@ def dsprog(prog):
 
   E = "SIG+{one}*(-X)"
   dX = "{tc}*RP*E"
-  dP = "{tc}*(-RP)*P"
+  dP = "{Q}+{tc}*(-RP)*P"
   prog.decl_var("RP","{Rinv}*P",params)
   prog.decl_var("E",E,params)
   prog.decl_stvar("X",dX,"{X0}",params)

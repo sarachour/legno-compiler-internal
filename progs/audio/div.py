@@ -15,13 +15,13 @@ def dsinfo():
 
 
 def dsprog(prog):
-  params = {"one":0.999999,"coeff":0.5}
+  params = {"one":0.9999,"coeff":0.5}
   audio_util.decl_audio_input(prog,"X");
-  prog.decl_var("Y", "0.5*X");
+  prog.decl_var("Y", "{coeff}*X",params);
 
-  E = "Y-{one}*X*Z"
-  prog.decl_stvar("Z",E,"1.0",params)
-  prog.interval("Z",-2.0,2.0)
+  E = "Y+{one}*X*(-Z)"
+  prog.decl_stvar("Z",E,"0.0",params)
+  prog.interval("Z",0.0,4.0)
   prog.emit("{one}*Z","OUT",params);
 
 def dssim():
