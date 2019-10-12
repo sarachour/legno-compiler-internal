@@ -41,6 +41,7 @@ def compile_compute_fragments(board,prob,n_xforms):
     xform_map = {}
     rules = get_rules(board)
     for var,expr in prob.bindings():
+        print("-> Fragment %s = %s" % (var,expr))
         abs_expr = lgraphlib_aop.make_abstract(expr)
         frag_node_map[var] = []
         frag_output_map[var] = []
@@ -141,6 +142,7 @@ def compile(board,prob,depth=3, \
             max_fanout_circs=1, \
             max_conc_circs=1):
 
+    print("---- Assembling Fragments -----")
     xform_map,frag_node_map,frag_output_map = \
             compile_compute_fragments(board,prob,n_xforms=depth)
 

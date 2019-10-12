@@ -427,9 +427,12 @@ def get_ext_adcs_in_use(board,conc_circ,dssim):
 
   return info
 
-def to_hw_time(circ,time):
-  scaled_time = time/circ.tau
-  hw_time = scaled_time/(circ.board.time_constant)
+def to_hw_time(circ,time,realtime=False):
+  if realtime:
+    hw_time = time
+  else:
+    scaled_time = time/circ.tau
+    hw_time = scaled_time/(circ.board.time_constant)
   return hw_time
 
 def to_volt_ranges(board,conc_circ,mathenv,hwenv):
@@ -464,8 +467,10 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
   adcs_in_use = get_ext_adcs_in_use(board,conc_circ,mathenv)
   # compute times
   scaled_tc_hz = board.time_constant*conc_circ.tau
-  scaled_sim_time = to_hw_time(conc_circ,mathenv.sim_time)
-  scaled_input_time = to_hw_time(conc_circ,mathenv.input_time)
+  scaled_sim_time = to_hw_time(conc_circ,mathenv.sim_time, \
+                               realtime=mathenv.real_time)
+  scaled_input_time = to_hw_time(conc_circ,mathenv.input_time, \
+                                 realtime=mathenv.real_time)
   osc_slack = 1.3
   gren.add(parse('micro_reset'))
   # initialize oscilloscope
