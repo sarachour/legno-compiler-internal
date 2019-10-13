@@ -114,10 +114,14 @@ class DSProg:
             progress = False
             for var in fns:
                 variables = self._bindings[var].vars()
-                if util.values_in_list(variables,self.__order):
+                if util.values_in_list(variables,self.__order) and \
+                   not var in self.__order:
                     self.__order.append(var)
                     progress = True
-            assert(progress)
+
+            print(fns)
+            print(self.__order)
+            assert(progress or util.values_in_list(fns,self.__order))
 
 
     def build_ode_prob(self):

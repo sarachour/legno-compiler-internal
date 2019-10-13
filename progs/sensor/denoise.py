@@ -37,7 +37,7 @@ def dsprog(prog):
   prog.interval("X",-1.0,1.0)
   prog.interval("P",0,1.0)
   tc = sensor_util.siggen_time_constant('sin');
-  prog.speed(0.8*tc,None)
+  prog.speed(0.95*tc,tc*1.05)
   prog.emit("{one}*X","STATE",params)
 
 
@@ -45,4 +45,5 @@ def dssim():
   dssim = DSSim('trc');
   dssim.set_sim_time(sensor_util \
                      .siggen_time('sin'));
+  dssim.real_time = True
   return dssim;

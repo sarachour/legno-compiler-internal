@@ -18,7 +18,7 @@ long duration;
 
 #define KHZ 1000.0
 #define MAXBUF 200
-#define MAXSEQ 50
+#define MAXSEQ 30
 #define SEQTYPES 4
 #define FORMS
 
@@ -35,6 +35,8 @@ const float FREQ = 263184.21;
 int N[SEQTYPES];
 unsigned short DATA[SEQTYPES][MAXBUF];
 unsigned char SEQ[MAXSEQ];
+#define NANOMS 4
+int ANOMS[NANOMS] = {15,16,17,18};
 int M;
 char FMTBUF[256];
 
@@ -51,7 +53,12 @@ float to_dac_val(float value){
   return val;
 }
 
-float clock(int seqno, float ampl, float freq_hz, float duty_cycle){
+void set_anomalies(int seqno){
+  for(int i=0; i < NANOMS; i += 1){
+    SEQ[ANOMS[i]] = seqno;
+  }
+}
+void clock(int seqno, float ampl, float freq_hz, float duty_cycle){
   float period = 1.0/freq_hz;
   int samples = period*FREQ + 1;
   int one_samples = duty_cycle*samples;
@@ -67,10 +74,16 @@ float clock(int seqno, float ampl, float freq_hz, float duty_cycle){
     DATA[seqno][j] = to_dac_val(0.0);
     j += 1;
   }
+  DATA[seqno][j] = to_dac_val(0.25*ampl); j++;
+  DATA[seqno][j] = to_dac_val(0.50*ampl); j++;
+  DATA[seqno][j] = to_dac_val(0.75*ampl); j++;
   for(int i=0; i < one_samples; i+= 1){
     DATA[seqno][j] = to_dac_val(ampl);
     j += 1;
   }
+  DATA[seqno][j] = to_dac_val(0.75*ampl); j++;
+  DATA[seqno][j] = to_dac_val(0.50*ampl); j++;
+  DATA[seqno][j] = to_dac_val(0.25*ampl); j++;
   while(j < samples){
     DATA[seqno][j] = to_dac_val(0.0);
     j += 1;
@@ -78,8 +91,8 @@ float clock(int seqno, float ampl, float freq_hz, float duty_cycle){
   N[seqno] = samples;
 }
 
-float sin_wave(int seqno, float ampl, float freq_hz){
-  float period = 2.0*PI/freq_hz;
+void noisy_wave(int seqno, float ampl, float freq_hz, float mean){
+  float period = 1.0/freq_hz;
   int samples = period*FREQ+1;
   float omega = freq_hz/FREQ;
   sprintf(FMTBUF, "period=%e samples=%d", period, samples);
@@ -88,7 +101,27 @@ float sin_wave(int seqno, float ampl, float freq_hz){
     error("too many samples");
   }
   for(int i=0; i < samples; i += 1){
-    float value = ampl*sin(omega*i);
+    float randval = (((float) random(256))-128.0)/128.0;
+    float value = mean + randval*ampl;
+    DATA[seqno][i] = to_dac_val(value);
+    sprintf(FMTBUF,"value=%f code=%d",value,DATA[seqno][i]);
+  }
+  N[seqno] = samples;
+}
+
+
+void sin_wave(int seqno, float ampl, float freq_hz, float bias){
+  float period = 1.0/freq_hz;
+  int samples = period*FREQ+1;
+  sprintf(FMTBUF, "period=%e samples=%d", period, samples);
+  Serial.println(FMTBUF);
+  if(samples > MAXBUF){
+    error("too many samples");
+  }
+  float omega = (2.0*PI)/samples;
+  for(int i=0; i < samples; i += 1){
+    // sin in radians
+    float value = ampl*sin(omega*i)+bias;
     DATA[seqno][i] = to_dac_val(value);
     sprintf(FMTBUF,"value=%f code=%d",value,DATA[seqno][i]);
   }
@@ -137,40 +170,36 @@ void set_signal(int type){
   case 'z':
     break;
   case 'a':
-    sin_wave(0,0.5,40*KHZ);
-    sin_wave(1,1.0,40*KHZ);
-    SEQ[3] = 1;
-    SEQ[13] = 1;
-    SEQ[46] = 1;
-    SEQ[42] = 1;
+    sin_wave(0,0.1,40*KHZ,0.0);
+    sin_wave(1,1.0,40*KHZ,0.0);
+    set_anomalies(1);
     break;
   case 's':
-    sin_wave(0,0.5,40*KHZ);
+    sin_wave(0,0.5,40*KHZ,0.0);
     break;
   case 'h':
-    clock(0,1.0,40*KHZ,0.3);
-    break;
-  case 'f':
-    sin_wave(0,1.0,40*KHZ);
-    sin_wave(1,1.0,35*KHZ);
-    sin_wave(2,1.0,60*KHZ);
-    SEQ[7] = 1;
-    SEQ[8] = 1;
-    SEQ[9] = 1;
-    SEQ[10] = 2;
-    SEQ[30] = 2;
-    SEQ[32] = 2;
+    clock(0,1.0,2.5*KHZ,0.4);
     break;
   case 'i':
-    clock(0,1.0,40*KHZ,0.3);
-    clock(1,1.0,20*KHZ,0.3);
-    SEQ[7] = 1;
-    SEQ[37] = 1;
-    SEQ[38] = 1;
-    SEQ[32] = 1;
-    SEQ[40] = 1;
-    SEQ[42] = 1;
-    SEQ[48] = 1;
+    clock(0,1.0,2.5*KHZ,0.4);
+    clock(1,1.0,3.5*KHZ,0.8);
+    set_anomalies(1);
+    break;
+  case 'b':
+    // 6.08 KHZ
+    sin_wave(0,0.5,40*KHZ,-0.5);
+    sin_wave(1,0.5,40*KHZ,0.5);
+    set_anomalies(1);
+    break;
+  case 'k':
+    noisy_wave(0,0.2,40*KHZ,-0.8);
+    noisy_wave(1,0.2,40*KHZ,0.8);
+    set_anomalies(1);
+    break;
+  case 'f':
+    sin_wave(0,1.0,40*KHZ,0.0);
+    sin_wave(1,1.0,4*KHZ,0.0);
+    set_anomalies(1);
     break;
   default:
     error("unsupported signal");
@@ -184,12 +213,6 @@ void setup()
    Serial.begin(115200);
    analogWriteResolution(12);
    set_zero();
-   sin_wave(0,0.5,40*KHZ);
-   sin_wave(1,1.0,40*KHZ);
-   SEQ[3] = 1;
-   SEQ[13] = 1;
-   SEQ[46] = 1;
-   SEQ[42] = 1;
    pinMode(TRIGGER_PIN, INPUT);
    attachInterrupt(digitalPinToInterrupt(TRIGGER_PIN),
                    generate_signal,

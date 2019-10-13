@@ -62,10 +62,9 @@ def execute_once(args,debug=False):
 
     if entry.quality is None or args.recompute_quality:
       ad_prog = AnalogDeviceProg.read(None,entry.adp)
+
       quality.analyze(entry, \
-                      recompute=args.recompute_quality,
-                      no_reference=(entry.hwenv == 'audio') \
-      )
+                      recompute=args.recompute_quality)
 
   db.close()
 

@@ -31,34 +31,26 @@ def state_machine(z,t):
 
 def dsprog(prog):
   params = {
-    "charge":0.4,
-    "deg":0.1,
-    "tcharge":0.1,
-    "tdeg": 0.05,
-    "SANE0":1.0,
+    "charge":0.6,
+    "deg":0.8,
     "one":0.99999
   }
 
-  dX = "{charge}*U*U - {deg}*X"
-  dTHRESH = "{tcharge}*X - {tdeg}*THRESH"
-  dSANE = "THRESH+(-X)"
+  IN = "{one}*U"
+  dX = "{charge}*IN*IN + {deg}*(-X)"
+  #ERROR = "X+{thresh}"
   sensor_util.decl_external_input(prog,"U");
+  prog.decl_var("IN",IN,params)
   prog.decl_stvar("X",dX,"0.0",params)
-  prog.decl_stvar("THRESH",dTHRESH,"0.0",params)
-  #prog.decl_stvar("SANE",dSANE,"1.0",params)
-  '''
-  TODO: debug threshold, end goal is to have sane trigger work.
-  '''
-  prog.interval("X",0.0,5.0)
-  prog.interval("THRESH",0.0,5.0)
-  #prog.interval("SANE",0.0,2.0)
-  prog.emit("{one}*THRESH","DETECTOR",params);
+  prog.interval("X",-1.0,1.0)
+  prog.emit("{one}*X","DETECTOR",params);
   tau = sensor_util.siggen_time_constant('anomaly-ampl')
-  prog.speed(tau*0.50,tau*1.25)
+  prog.speed(tau*0.95,tau*1.05)
 
 
 def dssim():
   dssim = DSSim('trc');
   dssim.set_sim_time(sensor_util \
                      .siggen_time('anomaly-ampl'));
+  dssim.real_time = True
   return dssim;

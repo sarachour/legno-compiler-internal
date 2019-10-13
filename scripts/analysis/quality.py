@@ -13,15 +13,19 @@ import scripts.analysis.common as common
 import dslang.dsprog as dsproglib
 CACHE = {}
 
-def scale_obs_data(output,tobs,yobs):
+def scale_obs_data(output,tobs,yobs,scale_time=True):
   transform = output.transform
   time_scale = 1.0/(transform.legno_time_scale \
                     *transform.time_constant)
   exp_time_scale = transform.expd_time_scale
   exp_time_offset = transform.expd_time_offset
   val_scale = transform.legno_ampl_scale
-  trec = list(map(lambda t: (t-exp_time_offset)/(time_scale/exp_time_scale), \
-                  tobs))
+  if scale_time:
+    trec = list(map(lambda t: (t-exp_time_offset)/(time_scale/exp_time_scale), \
+                    tobs))
+  else:
+    trec = list(tobs)
+
   yrec = list(map(lambda x: x/val_scale, yobs))
   tmin = 0
   tmax = output.runtime/time_scale
@@ -173,11 +177,13 @@ def compute_quality(output,_trec,_yrec,_tref,_yref):
   print("SCORE: %s" % score)
   return score,tref,errors
 
-def analyze(entry,recompute=False,no_reference=False):
+def analyze(entry,recompute=False):
   path_h = paths.PathHandler(entry.subset,entry.program)
   QUALITIES = []
   VARS = set(map(lambda o: o.variable, entry.outputs()))
   MODEL = None
+  dssim = dsproglib.DSProgDB.get_sim(entry.program)
+  no_reference = (dssim.real_time)
   for output in entry.outputs():
     variable = output.variable
     trial = output.trial
@@ -185,7 +191,7 @@ def analyze(entry,recompute=False,no_reference=False):
     TMEAS,YMEAS = read_meas_data(output.waveform)
     common.simple_plot(output,path_h,output.trial,'meas',TMEAS,YMEAS)
     if no_reference:
-      TFIT,YFIT = scale_obs_data(output,TMEAS,YMEAS)
+      TFIT,YFIT = scale_obs_data(output,TMEAS,YMEAS,scale_time=False)
       common.simple_plot(output,path_h,output.trial,'rec',TFIT,YFIT)
       QUALITIES.append(0)
       continue

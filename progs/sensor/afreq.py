@@ -24,7 +24,7 @@ def dsname():
 
 def dsinfo():
   return DSInfo(dsname(), \
-                "bias anomaly detector",
+                "frequency anomaly detector",
                 "sensor output",
                 "amplitude")
 
@@ -34,34 +34,33 @@ def dsinfo():
 
 def dsprog(prog):
   params = {
-    "charge":0.4,
+    "charge":0.35,
     "deg":0.8,
+    "deltc":0.15,
     "one":0.99999,
+    "two":1.99999,
     "X0": 0.0,
     "Q0": 0.0,
-    "THRESH0": 0.5
+    "D0":1.0
   }
   E = "{one}*X - {one}*U"
   dX = "{one}*U - {deg}*X"
-  dQ = "{one}*E*E - {deg}*Q"
-
-  #dTHRESH = "0.05*Q - 0.04*SANE"
+  dQ = "{two}*E*E + {deg}*(-Q)"
   sensor_util.decl_external_input(prog,"U");
+  prog.decl_stvar("X", dX,"{X0}",params)
   prog.decl_var("E", E, params)
-  prog.decl_stvar("X", dX, "{X0}",params)
   prog.decl_stvar("Q", dQ, "{Q0}",params)
   prog.emit("{one}*Q","DETECTOR",params);
-  prog.interval("X",0.0,1.0)
-  prog.interval("Q",0.0,1.0)
+  prog.interval("X",-2.0,2.0)
+  prog.interval("Q",-2.0,2.0)
 
   tau = sensor_util.siggen_time_constant('anomaly-freq')
-  prog.speed(tau*0.50,tau*1.25)
+  prog.speed(tau*0.95,tau*1.05)
 
 
 def dssim():
   dssim = DSSim('trc');
-  prog.interval("X",0.0,1.0)
-  prog.interval("THRESH",0.0,1.0)
   dssim.set_sim_time(sensor_util \
                      .siggen_time('anomaly-freq'));
+  dssim.real_time = True
   return dssim;

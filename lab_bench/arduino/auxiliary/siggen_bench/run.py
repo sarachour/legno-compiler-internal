@@ -40,7 +40,7 @@ class ArduinoDue:
             self._comm = None
             return
 
-        startup_time = 2.0
+        startup_time = 0.2
         n_divs = 100
         delta = startup_time/n_divs
         for _ in tqdm(np.linspace(0,startup_time,n_divs)):
@@ -103,6 +103,7 @@ class ArduinoDue:
 sig2code = {
   "zero": 'z',
   "sin": 's',
+  "kal-bias": 'k',
   "anom-ampl": 'a',
   "anom-freq": 'f',
   "anom-bias": 'b',
