@@ -4,7 +4,48 @@ import sqlite3
 import json
 import binascii
 import math
+import scipy
+import numpy as np
+import matplotlib.pyplot as plt
 
+
+class PortModelError():
+
+  def __init__(self):
+    self._max = 0.0
+    self._average = 0.0
+
+  def copy():
+    pe = PortModelError()
+
+  @property
+  def maximum(self):
+    return self._max
+
+  @property
+  def average(self):
+    return self._average
+
+
+  def from_data(self,errors,values):
+    n = len(errors)
+    ival = max(map(lambda v: abs(v), values))
+    pct_errors = list(map(lambda i : abs(errors[i])/ival,range(n)))
+    self._average = np.mean(pct_errors)
+    self._max = max(pct_errors)
+
+  def to_json(self):
+    return self.__dict__
+
+  @staticmethod
+  def from_json(obj):
+    pe = PortModelError()
+    pe.__dict__ = obj
+    return pe
+
+  def __repr__(self):
+    return "{max=%f,avg=%f}" % (self.maximum, \
+                                self.average)
 
 class PortModel():
 
@@ -17,8 +58,8 @@ class PortModel():
     self._gain = 1.0
     self._noise = 0.0
     self._bias = 0.0
-    self._unc_bias = 0.0
-    self._unc_gain= 0.0
+    self._bias_uncertainty = PortModelError()
+    self._gain_uncertainty = PortModelError()
     # the actual lower bound is [ospos*pos, osneg*neg]
     self._opscale = (1.0,1.0)
     self._comp_mode = util.normalize_mode(comp_mode)
@@ -32,16 +73,25 @@ class PortModel():
     m._comp_mode = util.normalize_mode(m._comp_mode)
     m._scale_mode = util.normalize_mode(m._scale_mode)
     m._calib_obj = util.CalibrateObjective(m._calib_obj)
+    m._bias_uncertainty = PortModelError.from_json(obj['_bias_uncertainty'])
+    m._gain_uncertainty = PortModelError.from_json(obj['_gain_uncertainty'])
     return m
+
+  def to_json(self):
+    jsn = dict(self.__dict__)
+    jsn['_calib_obj'] = jsn['_calib_obj'].value
+    jsn['_bias_uncertainty'] = jsn['_bias_uncertainty'].to_json()
+    jsn['_gain_uncertainty'] = jsn['_gain_uncertainty'].to_json()
+    return jsn
 
   def set_model(self,other):
     self._gain = other._gain
     self._enabled = other._enabled
-    self._unc_gain = other._unc_gain
+    self._gain_uncertainty = other.gain_uncertainty.copy()
+    self._bias_uncertainty = other.bias_uncertainty.copy()
     self._disable = other._disable
     self._noise = other._noise
     self._bias = other._bias
-    self._unc_bias = other._unc_bias
     l,u = self._opscale
     self._opscale = (l,u)
 
@@ -80,10 +130,6 @@ class PortModel():
                                    self.handle)
     return ident
 
-  def to_json(self):
-    jsn = dict(self.__dict__)
-    jsn['_calib_obj'] = jsn['_calib_obj'].value
-    return jsn
 
   @property
   def comp_mode(self):
@@ -96,6 +142,16 @@ class PortModel():
   @property
   def scale_mode(self):
     return self._scale_mode
+
+  @property
+  def bias_uncertainty(self):
+    return self._bias_uncertainty
+
+
+  @property
+  def gain_uncertainty(self):
+    return self._gain_uncertainty
+
 
   @property
   def handle(self):
@@ -122,23 +178,6 @@ class PortModel():
   def bias(self,v):
     self._bias = v
 
-  @property
-  def gain_uncertainty(self):
-    return self._unc_gain
-
-  @gain_uncertainty.setter
-  def gain_uncertainty(self,v):
-    assert(v >= 0.0)
-    self._unc_gain = v
-
-  @property
-  def bias_uncertainty(self):
-    return self._unc_bias
-
-  @bias_uncertainty.setter
-  def bias_uncertainty(self,v):
-    assert(v >= 0.0)
-    self._unc_bias = v
 
   @property
   def noise(self):
@@ -153,8 +192,8 @@ class PortModel():
   def __repr__(self):
     r = "=== model [%s] ===\n" % ("ON" if self.enabled else "OFF")
     r += "ident: %s\n" % (self.identifier)
-    r += "bias: mean=%f std=%f\n" % (self.bias,self.bias_uncertainty)
-    r += "gain: mean=%f std=%f\n" % (self.gain,self.gain_uncertainty)
+    r += "bias: mean=%f std=%s\n" % (self.bias,self.bias_uncertainty)
+    r += "gain: mean=%f std=%s\n" % (self.gain,self.gain_uncertainty)
     r += "noise: std=%f\n" % (self.noise)
     l,u = self._opscale
     r += ("scale=(%fx,%fx)\n" % (l,u))
@@ -199,8 +238,10 @@ class ModelDB:
 
   def get_all(self):
     cmd = '''
-    SELECT * from models
-    '''
+    SELECT * from models WHERE calib_obj = "{calib_obj}"
+    '''.format(
+      calib_obj=self.calib_obj.value \
+    )
     for values in self._curs.execute(cmd):
       data = dict(zip(self.keys,values))
       yield self._process(data)
@@ -211,6 +252,27 @@ class ModelDB:
 
     model = PortModel.from_json(obj)
     return model
+
+
+  def get_by_calibrate_objective(self):
+    model = PortModel(block,loc,"",comp_mode,scale_mode,None)
+    cmd = '''
+    SELECT * from models WHERE
+    calib_obj = "{calib_obj}"
+    AND block = "{block}"
+    AND loc = "{loc}"
+    AND comp_mode = "{comp_mode}"
+    AND scale_mode = "{scale_mode}"
+    '''.format(
+      calib_obj=self.calib_obj.value,
+      block=model.block,
+      loc=str(model.loc),
+      comp_mode=str(model.comp_mode),
+      scale_mode=str(model.scale_mode),
+    )
+    for values in self._curs.execute(cmd):
+      data = dict(zip(self.keys,values))
+      yield self._process(data)
 
 
   def get_by_block(self,block,loc,comp_mode,scale_mode):
@@ -367,7 +429,7 @@ def get_variance(db,circ,block_name,loc,port,mode,handle=None):
     if model is None or not mode.uses_uncertainty():
       return get_ideal_uncertainty(circ,block_name,loc,port,handle=handle)
 
-    unc = math.sqrt(model.noise + model.bias_uncertainty**2.0)
+    unc = math.sqrt(model.noise + model.bias_uncertainty.maximum**2.0)
     physunc = unc+abs(model.bias)
     if physunc == 0.0:
       return 1e-12

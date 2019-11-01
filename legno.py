@@ -76,6 +76,8 @@ gren_subp.add_argument('program', type=str,help='benchmark to compile')
 sim_subp = subparsers.add_parser('simulate', help='simulate circuit.')
 sim_subp.add_argument('program', help='program to simulate.')
 sim_subp.add_argument('--adp',help='analog device program to simulate')
+sim_subp.add_argument('--runtime',action="store_true", \
+        help='only measure runtime performance')
 sim_subp.add_argument('--reference',action="store_true", \
                       help='execute reference simulation')
 sim_subp.add_argument("--mode",default="naive-min_error",

@@ -3,6 +3,7 @@ import numpy as np
 from enum import Enum
 import seaborn as sns
 import util.util as util
+from dslang.dsprog import DSProgDB
 
 def get_path(filename):
   path = "PAPER/%s" % filename
@@ -82,18 +83,17 @@ def get_data(db,series_type='bmarks',executed_only=True):
   return data
 
 class BenchmarkVisualization:
-  BENCHMARK_ORDER = ['cosc',
-                     'pend-nl',
-                     'spring-nl',
+  BENCHMARK_ORDER = ['cos',
+                     'cosc',
+                     'pend',
+                     'spring',
                      'vanderpol',
-                     'robot',
-                     'heat1d-g4',
-                     'closed-forced-vanderpol',
-                     'kalman-const',
+                     'pid',
+                     'forced',
+                     'kalconst',
                      'gentoggle',
                      'smmrxn',
-                     'bont'
-  ]
+                     'bont']
 
   @staticmethod
   def benchmarks():
@@ -129,6 +129,7 @@ class Table(BenchmarkVisualization):
   class LineType(Enum):
     HRULE = "hrule"
     HEADER = "header"
+    RAW = "raw"
     DATA = "data"
 
   def __init__(self,name,description, \
@@ -152,9 +153,13 @@ class Table(BenchmarkVisualization):
   def header(self):
     self.lines.append((Table.LineType.HEADER,None))
 
+  def raw(self,data):
+    self.lines.append((Table.LineType.RAW,data))
+
   def data(self,bmark,fields):
     if self._benchmarks:
-      paper_bmark = Table.BENCHMARK_NAMES[bmark]
+      info = DSProgDB.get_info(bmark)
+      paper_bmark = info.name
       assert(not 'benchmark' in fields)
       fields['benchmark'] = paper_bmark
     self.lines.append((Table.LineType.DATA,fields))
@@ -188,6 +193,9 @@ class Table(BenchmarkVisualization):
       elif typ == Table.LineType.HEADER:
         headerstr = ",".join(hdr)
         q(headerstr)
+      elif typ == Table.LineType.RAW:
+        rawstr = ",".join(line)
+        q(rawstr)
       elif typ == Table.LineType.DATA:
         els = []
         for h in hdr:

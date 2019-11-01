@@ -19,9 +19,9 @@ def get_min_value(out,use_delta_model):
 
 def get_max_value(out,use_delta_model,adc=False):
   if any(map(lambda o: abs(o) > 5.0, out)) and not adc:
-    return 20.0 if not use_delta_model else 2.0
+    return 20.0*0.5
   else:
-    return 2.0 if not use_delta_model else 0.2
+    return 2.0*0.5
 
 def xbound(pts):
   if max(pts) > 10.0:

@@ -5,60 +5,7 @@ import matplotlib.pyplot as plt
 from enum import Enum
 import ops.op as op
 from dslang.dsprog import DSProgDB
-'''
-DESCRIPTIONS = {
-  'micro-osc': 'differential equation representation of sin function',
-  'pend': 'pendulum simulation.$\dagger$',
-  'pend-nl': 'pendulum simulation.$\dagger$',
-  'spring': 'simulation of box-spring system.$\dagger$',
-  'spring-nl': 'simulation of box-spring system.$\dagger$',
-  'vanderpol': 'stiff vanderpol oscillator',
-  'cosc': 'dampened spring physics simulation',
-  'heat1d': 'movement of heat through lattice',
-  'robot': 'PID control system',
-  'gentoggle': 'genetic toggle switch',
-  'kalman-const': 'kalman filter',
-  'smmrxn': 'michaelis menten reaction',
-  'bont': 'botulism neurotoxin model (reparametrized)',
-  'repri': 'reprissilator (reparametrized)',
-  'gentoggle': 'genetic toggle switch',
-  'closed-forced-vanderpol':'chaotic vanderpol oscillator'
 
-}
-OBSERVATIONS = {
-  'micro-osc': '',
-  'pend-nl': 'position of pendulum',
-  'spring': 'position of block 1',
-  'spring-nl': 'position of block 1',
-  'vanderpol': '',
-  'closed-forced-vanderpol': '',
-  'cosc': '',
-  'robot': 'velocity of left wheel',
-  'repri': 'chemical compounds',
-  'heat1d': 'heat at point',
-  'gentoggle': 'concentration of protein',
-  'repri': 'concentration of protein',
-  'bont': 'concentration of protein',
-  'smmrxn': 'concentration of protein',
-  'kalman-const': 'state estimation'
-}
-NONLINEAR = {
-  'micro-osc': False,
-  'pend': True,
-  'pend-nl': True,
-  'robot': False,
-  'heat1d': False,
-  'spring': True,
-  'spring-nl': True,
-  'vanderpol': True,
-  'closed-forced-vanderpol': True,
-  'gentoggle': True,
-  'kalman-const': True,
-  'cosc': False,
-  'bont': True,
-  'smmrxn': True
-}
-'''
 
 def visualize(db):
   header = ['description', 'observation','time','diffeqs','funcs','nonlinear']
@@ -89,14 +36,14 @@ def visualize(db):
         n_diffeqs += 1
       else:
         n_funcs += 1
-
+    print(info)
     entry = {
       'description': info.description,
       'observation': info.observation,
       'diffeqs': n_diffeqs,
       'funcs': n_funcs,
       'time': str(dssim.sim_time) + " su",
-      'nonlinear': bool_to_field[NONLINEAR[bmark_name]]
+      'nonlinear': bool_to_field[info.nonlinear]
     }
     table.data(bmark,entry)
   table.horiz_rule()

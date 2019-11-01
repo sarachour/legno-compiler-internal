@@ -3,12 +3,12 @@ import hwlib.hcdc.globals as glb
 import scripts.visualize.common as common
 
 to_header = {
-  'tile_out': 'tile_out',
-  'tile_in': 'tile_in',
-  'chip _in': 'chip_in',
-  'chip_out': 'chip_out',
-  'ext_chip_out': 'board_out',
-  'ext_chip_in': 'board_in',
+  'tile_out': 'tile\_out',
+  'tile_in': 'tile\_in',
+  'chip _in': 'chip\_in',
+  'chip_out': 'chip\_out',
+  'ext_chip_out': 'board\_out',
+  'ext_chip_in': 'board\_in',
   'tile_dac':'dac',
   'tile_adc':'adc',
   'lut':'lut',
@@ -34,7 +34,8 @@ to_type = {
 to_expr = {
   ('multiplier','vga'): "$d_0 \cdot x_0$",
   ('multiplier','mul'): "$x_1 \cdot x_0$",
-  ('integrator',None): "$z_0 = \int x_0 \wedge z_0(0) = d_0$",
+  ('integrator',None): "$z_0 = \int x_0$",
+  ('integrator2',None): "$z_0(0) = d_0$",
   ('fanout',None): "$z_i = x_0$",
   ('lut',None): "$z_0 = f(d_0)$"
 }
@@ -60,6 +61,9 @@ def build_block_profile(block):
         for port in block.outputs + block.inputs:
           for handle in list(block.handles(comp_mode,port)) \
               + [None]:
+
+            if not handle is None:
+              continue
 
             if port in block.outputs:
               coeffs.append(block.coeff(comp_mode, \
@@ -170,13 +174,36 @@ def build_block_summary(profile):
             'compute mode', \
             'function', \
             'scale modes', \
-            'current limit', \
+            'operating bound', \
             'gain'
   ]
 
   table.set_fields(fields)
   table.horiz_rule()
-  table.header()
+  cat = ['', \
+         '', \
+         '', \
+         '', \
+         '', \
+         'compute', \
+         '', \
+         'scale', \
+         'operating', \
+         ''
+  ]
+  table.raw(cat);
+  cat = ['block', \
+         'type', \
+         'count', \
+         'inputs', \
+         'outputs', \
+         'mode', \
+         'function', \
+         'modes', \
+         'bound', \
+         'gain'
+  ]
+  table.raw(cat);
   table.horiz_rule()
   for block in profile['blocks']:
     prof = profile['blocks'][block]
@@ -200,19 +227,17 @@ def build_block_summary(profile):
         row['scale modes'] = data['scale_modes']
 
         if data['oprange_min'] == data['oprange_max']:
-          row['current limit'] = "%.1f $\mu A$" % (data['oprange_min'])
+          row['operating bound'] = "%.1f" % (data['oprange_min'])
         else:
-          row['current limit'] = "%.1f $\mu A$-%.1f $\mu A$" \
+          row['operating bound'] = "%.1f-%.1f" \
                                  % (data['oprange_min'], \
                                     data['oprange_max'])
-      if data['coeff_min'] == data['coeff_max']:
-        row['gain'] = "%.1f x" % data['coeff_min']
-      else:
-        row['gain'] = "%.1f x-%.1f x" \
-                      % (data['coeff_min'], \
-                         data['coeff_max'])
-
-        print(row)
+        if data['coeff_min'] == data['coeff_max']:
+          row['gain'] = "%.1f x" % data['coeff_min']
+        else:
+          row['gain'] = "%.1f-%.1f x" \
+                        % (data['coeff_min'], \
+                           data['coeff_max'])
         table.data(None,row)
 
     else:
@@ -226,16 +251,23 @@ def build_block_summary(profile):
         row['function'] = '$z_0 = x_0$'
 
       row['scale modes'] = data['scale_modes']
-      row['current limit'] = "%.1f $\mu A$-%.1f $\mu A$" \
-                              % (data['oprange_min'], \
-                                data['oprange_max'])
+      if data['oprange_min'] == data['oprange_max']:
+          row['operating bound'] = "%.1f" % (data['oprange_min'])
+      else:
+        row['operating bound'] = "%.1f-%.1f" \
+                               % (data['oprange_min'], \
+                                  data['oprange_max'])
       if data['coeff_min'] == data['coeff_max']:
         row['gain'] = "%.1f x" % data['coeff_min']
       else:
-        row['gain'] = "%.1f x -%.1f x" \
+        row['gain'] = "%.1f -%.1f x" \
                       % (data['coeff_min'], \
                          data['coeff_max'])
       table.data(None,row)
+      if block == "integrator":
+        row = dict(map(lambda f: (f,""),fields))
+        row['function'] =to_expr[('integrator2',None)]
+        table.data(None,row)
 
   table.horiz_rule()
   table.write(common.get_path('hwblocks.tbl'))

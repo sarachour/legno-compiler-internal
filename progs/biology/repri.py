@@ -1,5 +1,5 @@
 from dslang.dsprog import DSProg
-from dslang.dssim import DSSim
+from dslang.dssim import DSSim, DSInfo
 import progs.prog_util as prog_util
 
 def dsname():
@@ -37,7 +37,8 @@ def dsprog(prob):
 
   # reparametrization
   K = 0.70
-  scale = 1.1
+  #scale = 1.1
+  scale = 5.1
   params = {
     'LacLm0':0.5,
     'clm0':0.25,
@@ -96,17 +97,15 @@ def dsprog(prob):
     prob.decl_stvar(subparams["L"],expr,"{L0}",subparams)
     prob.interval(subparams["L"],0,subparams["L0"])
 
-  mkrxn(prot="clp",name="LacL")
-  mkrxn(prot="LacLp",name="TetR")
-  mkrxn(prot="TetRp",name="clp")
+  #mkrxn(prot="clp",name="LacL")
+  #mkrxn(prot="LacLp",name="TetR")
+  #mkrxn(prot="TetRp",name="clp")
 
-  '''
   params["Kn"] = params["K"]**params["n"]
   prob.decl_lambda("bind","({Kn})/({Kn}+max(P,0)^2)",params)
   prob.decl_var("ALacL","bind(clp)",params)
   prob.decl_var("ATetR","bind(LacLp)",params)
   prob.decl_var("Aclp","bind(TetRp)",params)
-  '''
   act_bnd = params['gene_bnd']
   prob.interval("ALacL",0,act_bnd)
   prob.interval("ATetR",0,act_bnd)

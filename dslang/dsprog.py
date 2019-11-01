@@ -8,6 +8,8 @@ import util.util as util
 import ops.op as op
 import ops.opparse as opparse
 from ops.interval import Interval
+import os
+import subprocess
 
 def _evaluate(expr,vmap):
     vmap['math'] = math
@@ -31,6 +33,7 @@ class DSProgDB:
 
     @staticmethod
     def has_prog(name):
+        DSProgDB.load()
         return name in DSProgDB.PROGRAMS
 
     @staticmethod
@@ -287,6 +290,71 @@ class DSProg:
 
         return T,Y
 
+
+    def execute_and_profile(self, dssim):
+        stvars,ics,derivs,fnvars,fns = self.build_ode_prob()
+        stmts = []
+        lhs_var = {}
+        rhs_var = {}
+        upd_var = {}
+        order = []
+        for idx,v in enumerate(stvars):
+            upd_var["s%d" % idx] = "v[%d]" % idx
+            lhs_var[v] = 'v[%d]' % idx;
+            rhs_var["%s_" % v] = 's%d' % idx;
+            order.append("%s_" % v)
+
+        for idx,v in enumerate(fnvars):
+            lhs_var[v] = 'v%d' % idx;
+            rhs_var["%s_" % v] = 'v%d' % idx
+            order.append("%s_" % v)
+
+        order = sorted(order, key=lambda k: -len(k))
+        def enq(stmt):
+            stmts.append(stmt)
+
+        for local,arr in upd_var.items():
+            enq("%s=%s" % (local,arr))
+
+        for var,expr in fns.items():
+            for match in order:
+                expr = expr.replace(match,rhs_var[match]);
+            enq("%s=%s" % (lhs_var[var],expr))
+
+        for var,expr in derivs.items():
+            for match in order:
+                expr = expr.replace(match,rhs_var[match]);
+            enq("%s=%s" % (lhs_var[var],expr))
+
+        enq("return v")
+
+        func = ""
+        func += "from numba import jit\n"
+        func += "import sys\n"
+        func += "import math\n"
+        func += "import time\n"
+        func += "import numpy as np\n"
+        func += "from scipy.integrate import ode, odeint\n"
+        func += "def func(v,t):\n"
+        for st in stmts:
+            func += "   %s\n" % st
+
+        func += "t = np.linspace(0,%f,%d)\n"  \
+                     % (dssim.sim_time,1000)
+        func += "v = [0]*%d\n" % len(stvars)
+        for var,prog_var in lhs_var.items():
+            if var in stvars:
+                func += "%s = %s;\n" % (prog_var,ics[var])
+        func += "t1=time.time()\n"
+        func += "R = odeint(func, v, t)\n";
+        func += "t2=time.time()\n"
+        func += "print(t2-t1)\n"
+        with open('sim.py','w') as fh:
+            fh.write(func)
+
+        cmd = "python3 sim.py"
+        result = subprocess.check_output(cmd, shell=True);
+        return float(result)
 
     def execute(self,dssim):
         T,Y = self._execute(dssim)

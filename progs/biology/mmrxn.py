@@ -7,7 +7,7 @@ def dsname():
   return "smmrxn"
 
 def dsinfo():
-  return DSInfo(dsname(), \
+  info = DSInfo(dsname(), \
                 "michaelis menten reaction",
                 "complex",
                 "conc")

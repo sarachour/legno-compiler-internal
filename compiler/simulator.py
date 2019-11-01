@@ -88,8 +88,6 @@ def run_adp_simulation(board, \
 
 def plot_reference_simulation(path_handler,prob,dssim):
     T,Z = prob.execute(dssim)
-
-
     for series_name,values in Z.items():
         print("%s: %d" % (series_name,len(values)))
 
@@ -110,7 +108,10 @@ def simulate(args):
 
   if args.reference:
     ref_prog = DSProgDB.get_prog(args.program)
-    plot_reference_simulation(path_handler, ref_prog,dssim)
+    if args.runtime:
+      result = ref_prog.execute_and_profile(dssim)
+    else:
+      plot_reference_simulation(path_handler, ref_prog,dssim)
 
   if args.adp:
     board = make_board(HCDCSubset(args.subset), \

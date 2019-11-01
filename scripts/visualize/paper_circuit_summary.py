@@ -37,7 +37,7 @@ def average_comp_count(circs):
   agg['total'] /= n
   return agg
 
-def to_arco_table(circuits):
+def to_lgraph_table(circuits):
   to_header = {
     'tile_out': 'crossbar',
     'tile_in': 'crossbar',
@@ -55,7 +55,7 @@ def to_arco_table(circuits):
   }
   desc = 'analog chip configuration statistics'
   table = common.Table('Circuit Configurations', \
-                       desc, 'circarco','|c|c|ccccccc|c|')
+                       desc, 'circ-lgraph','|c|c|ccccccc|c|')
   fields = ['blocks','integrator','multiplier', \
                     'fanout','adc','dac','lut', \
                     'crossbar','connections']
@@ -83,7 +83,7 @@ def to_arco_table(circuits):
     table.data(bmark,row)
 
   table.horiz_rule()
-  table.write(common.get_path('circuit-arco.tbl'))
+  table.write(common.get_path('circuit-lgraph.tbl'))
 
 def count_scaling_factors(circ,model):
   #conc_circ = ConcCirc.read(board,conc_circ)
@@ -120,10 +120,10 @@ def average_scale_factor_count(circs,models):
     summary = count_scaling_factors(c,m)
     return summary
 
-def to_jaunt_table(circuits,models):
-  desc = "statistics for \jaunt compilation pass"
+def to_lscale_table(circuits,models):
+  desc = "statistics for \lscale compilation pass"
   table = common.Table('Circuit Configurations', \
-                       desc, 'circjaunt','|c|ccc|ccccc|')
+                       desc, 'circ-lscale','|c|ccc|ccccc|')
 
   fields = [
     'mdpe',
@@ -131,14 +131,21 @@ def to_jaunt_table(circuits,models):
     'max freq',
     'time constant',
     'scale vars',
-    'unique scale values',
-    'injected vars',
-    'unique injection values'
+    'unique scale vars',
+    'free vars',
+    'unique free vars'
 
   ]
   table.set_fields(fields)
   table.horiz_rule()
-  table.header()
+  cat = ['','','','','', \
+         '\multicolumn{2}{c}{scale vars}', \
+         '\multicolumn{2}{c}{free vars}']
+  table.raw(cat);
+  cat = ['benchmarks','mdpe','mape','max freq', \
+         'time constant', 'total','unique', \
+         'total','unique']
+  table.raw(cat);
   table.horiz_rule()
 
   for bmark in table.benchmarks():
@@ -148,18 +155,18 @@ def to_jaunt_table(circuits,models):
     summary = average_scale_factor_count(circuits[bmark], \
                                          models[bmark])
     row = {}
-    row['mdpe'] = "%.3f" % summary['mdpe']
-    row['mape'] = "%.3f" % summary['mape']
+    row['mdpe'] = "%.1f" % (summary['mdpe']*100.0)
+    row['mape'] = "%.1f" % (summary['mape']*100.0)
     row['max freq'] = "%dk" % int(summary['bandwidth'])
     row['time constant'] = "%.2f" % summary['tau']
     row['scale vars'] = "%d" % summary['scvars']
-    row['unique scale values'] = "%d" % summary['scvals']
-    row['injected vars'] = "%d" % summary['injvars']
-    row['unique injection values'] = "%d" % summary['injvals']
+    row['unique scale vars'] = "%d" % summary['scvals']
+    row['free vars'] = "%d" % summary['injvars']
+    row['unique free vars'] = "%d" % summary['injvals']
     table.data(bmark,row)
 
   table.horiz_rule()
-  table.write(common.get_path('circuit-jaunt.tbl'))
+  table.write(common.get_path('circuit-lscale.tbl'))
 
 def visualize(db):
   data = common.get_data(db,series_type='identifier')
@@ -180,7 +187,6 @@ def visualize(db):
                                                                 lgraph_files[i]), \
                                valid_indices))
     models[prog] = _models
-    print(_models)
 
-  to_arco_table(circuits)
-  to_jaunt_table(circuits,models)
+  to_lgraph_table(circuits)
+  to_lscale_table(circuits,models)

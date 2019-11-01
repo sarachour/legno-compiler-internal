@@ -5,11 +5,11 @@ def dsname():
   return "bont"
 
 def dsinfo():
-  return DSInfo(dsname(), \
+  info = DSInfo(dsname(), \
                 "bont",
                 "signal",
                 "signal")
-  info.nonlinear = True
+  info.nonlinear = False
   return info
 
 

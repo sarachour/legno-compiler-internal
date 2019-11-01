@@ -5,7 +5,7 @@ def dsname():
   return "vanderpol"
 
 def dsinfo():
-  return DSInfo(dsname(), \
+  info = DSInfo(dsname(), \
                 "vanderpol oscillator",
                 "signal",
                 "signal")

@@ -71,3 +71,10 @@ class DSInfo:
         self.observation = meas
         self.units = units
         self.nonlinear = False
+
+    def __repr__(self):
+        s = "%s\n" % self.name
+        s += "%s\n" % self.description
+        s += "obs=%s %s\n" % (self.observation,self.units)
+        s += "nonlinear=%s\n" % (self.nonlinear)
+        return s

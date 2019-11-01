@@ -5,6 +5,7 @@ import scripts.visualize.paper_circuit_summary as paper_circuit_summary
 import scripts.visualize.paper_chip_summary as paper_chip_summary
 import scripts.visualize.paper_compile_time as paper_compile_time
 import scripts.visualize.paper_quality_graphs as paper_quality_graphs
+import scripts.visualize.paper_delta_summary as paper_delta_summary
 import matplotlib.pyplot as plt
 import numpy as np
 import math
@@ -21,11 +22,16 @@ def execute(args):
     'paper-circuit-summary': paper_circuit_summary.visualize,
     'paper-compile-time': paper_compile_time.visualize,
     'paper-quality-graphs': paper_quality_graphs.visualize,
+    'paper-delta-summary': paper_delta_summary.visualize,
 
   }
   if name in opts:
-    db = ExpDriverDB()
-    opts[name](db)
+    try:
+      db = ExpDriverDB()
+      opts[name](db)
+    except Exception as e:
+      opts[name](None)
+
   else:
     for opt in opts.keys():
       print(": %s" % opt)

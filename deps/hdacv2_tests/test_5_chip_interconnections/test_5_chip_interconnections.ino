@@ -25,7 +25,10 @@ void setup() {
   // weave back and forth
   Fabric::Chip::Connection conn00 ( fabric->chips[0].tiles[0].slices[0].dac->out0, fabric->chips[0].tiles[0].slices[0].tileOuts[0].in0 );
 
+  // tile 0.0.0.0 -> 0.0.0.0
+  // 0.0.0 -> 1.1.3
   Fabric::Chip::Connection conn01 ( fabric->chips[0].tiles[0].slices[0].tileOuts[0].out0, fabric->chips[0].tiles[0].slices[0].chipOutput->in0 );
+  // 1.0.0 -> 0.1.3
   Fabric::Chip::Connection conn02 ( fabric->chips[1].tiles[1].slices[3].chipInput->out0, fabric->chips[1].tiles[0].slices[0].chipOutput->in0 );
   Fabric::Chip::Connection conn03 ( fabric->chips[0].tiles[1].slices[3].chipInput->out0, fabric->chips[0].tiles[0].slices[1].chipOutput->in0 );
   Fabric::Chip::Connection conn04 ( fabric->chips[1].tiles[1].slices[2].chipInput->out0, fabric->chips[1].tiles[0].slices[1].chipOutput->in0 );

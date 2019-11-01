@@ -55,11 +55,6 @@ def infer(obj):
   #                                   bnds2['in0']])
   #bnds = infer_util.normalize_bound(bnds,chipcmd.RangeType.MED)
   #model_in.set_oprange_scale(*bnds)
-  model_in.uncertainty_bias = max( \
-                                   model_out0.bias_uncertainty, \
-                                   model_out1.bias_uncertainty, \
-                                   model_out2.bias_uncertainty, \
-  )
 
 
   if infer_util.about_one(model_out0.gain):

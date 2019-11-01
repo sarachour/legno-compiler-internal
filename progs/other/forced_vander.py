@@ -6,7 +6,7 @@ def dsname():
   return "forced"
 
 def dsinfo():
-  return DSInfo(dsname(), \
+  info = DSInfo(dsname(), \
                 "forced vanderpol oscillator",
                 "signal",
                 "signal")

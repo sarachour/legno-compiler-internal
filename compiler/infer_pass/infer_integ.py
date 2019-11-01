@@ -99,16 +99,11 @@ def infer(obj):
 
   if not np.isnan(mu):
     model_z.gain = mu;
-    model_z.gain_uncertainty = sigma;
+    model_z.gain_uncertainty.from_data(tcs_lim,tcs);
     model_z.bias = np.mean(ol_bias);
-    model_z.bias_uncertainty = np.std(ol_bias);
+    model_z.bias_uncertainty.from_data(ol_bias,ol_zero);
     print("mean=%f std=%f" % (mu,sigma))
 
-  #upper = 2.0*outsc.coeff()
-  #lower = -2.0*outsc.coeff()
-  #sc_u = (upper+model_z0.bias)/upper
-  #sc_l = (lower+model_z0.bias)/lower
-  #model_z0.set_oprange_scale(sc_u,sc_l)
 
   if infer_util.about_one(model_z.gain) or True:
     model_z.gain = 1.0

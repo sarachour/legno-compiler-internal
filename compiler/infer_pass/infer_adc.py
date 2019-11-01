@@ -2,6 +2,7 @@ import compiler.infer_pass.infer_util as infer_util
 import compiler.infer_pass.infer_visualize as infer_vis
 import compiler.infer_pass.infer_fit as infer_fit
 from scipy import stats
+import numpy as np
 
 from hwlib.model import PortModel
 
@@ -31,12 +32,17 @@ def infer(obj):
 
   dec_vals = (out_vals-128.0)/128.0
   dec_bias = (out_bias)/128.0
+  n = len(dec_vals)
   slope,intercept,rval,pval,stderr = \
                                      stats.linregress(dec_vals, \
                                                       dec_vals+dec_bias)
+  pred = np.array(list(map(lambda v: slope*v+intercept,dec_vals)))
+  errors = list(map(lambda i: dec_vals[i] + dec_bias[i] - pred[i], \
+                   range(0,n)))
+
   model_out.bias = intercept
   model_out.gain = slope
-  model_out.bias_uncertainty = stderr
+  model_out.bias_uncertainty.from_data(errors,pred)
   upper = 1.0
   lower = -1.0
   sc_u = (upper+model_out.bias)/upper

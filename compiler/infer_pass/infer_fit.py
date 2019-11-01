@@ -169,6 +169,15 @@ class InferDataset:
 
 MIN_RSQ = 0.95
 
+def denormalize_values(model,data):
+  if model.block == "multiplier" or \
+     model.block == "integrator" or \
+     model.block == "tile_dac" or \
+     model.block == "fanout":
+    return list(map(lambda d: 2.0*d, data))
+  else:
+    return data
+
 def fit_vga_model(model,dataset):
   in0,in1,observe,expect= dataset.in0,dataset.in1,dataset.meas,dataset.out
   n = dataset.n
@@ -182,9 +191,6 @@ def fit_vga_model(model,dataset):
     y = xs[1]
     return coeff*(x*a+b)*y + c
 
-  def error(x,xhat,a,b,c):
-    return func(x,a,b,c)-xhat
-
   min_pts = 10
   if n < min_pts:
     print(model)
@@ -197,9 +203,10 @@ def fit_vga_model(model,dataset):
   bias = popt[2]
   rsq = r2_score(observe, func([in1,in0],gain,gain_offset,bias))
 
-  errs = list(map(lambda i : error([in1[i],in0[i]], \
-                                   observe[i],
-                                   gain,gain_offset,bias), range(n)))
+  pred = list(map(lambda i: func([in1[i],in0[i]], \
+                                 gain,gain_offset,bias), \
+                  range(n)))
+  errs = list(map(lambda i : observe[i]-pred[i], range(n)))
   print("eqn: (%f*(gain+%f))*sig+%f" % (gain,gain_offset/gain,bias))
   print("r-squared=%f" % rsq)
   stderr = np.mean(np.abs(errs))
@@ -215,7 +222,8 @@ def fit_vga_model(model,dataset):
   model.gain = gain
   model.bias = bias
   model.gain_offset = (gain_offset/gain)
-  model.bias_uncertainty = max(np.abs(errs))
+  model.bias_uncertainty.from_data(errs, \
+                                   denormalize_values(model,pred))
 
   # only accept models with bias and variance
   # below some threshold.
@@ -242,6 +250,10 @@ def fit_affine_model(model,dataset):
     return
 
   slope,intercept,rval,pval,stderr = scipy.stats.linregress(expect,observe)
+  pred = np.array(list(map(lambda e: slope*e+intercept, \
+                           expect)))
+  errors = np.array(list(map(lambda i: observe[i] - pred[i], \
+                             range(0,n))))
 
   if abs(rval) < MIN_RSQ:
     print("==========")
@@ -251,22 +263,14 @@ def fit_affine_model(model,dataset):
     print("Skipping: rval=%f error=%f" % (rval,stderr))
     return True if stderr <= 0.005 else False
 
-  #gain_mu,gain_std = popt[0], math.sqrt(pcov[0][0])
-  #bias_mu,bias_std = popt[1], math.sqrt(pcov[1][1])
-  gain_mu = slope
-  gain_std = 0.0
-  bias_mu = intercept
-  bias_std = stderr
-
-  model.gain = gain_mu
-  model.gain_uncertainty = gain_std
-  model.bias = bias_mu
-  model.bias_uncertainty = bias_std
-
+  model.gain = slope
+  model.bias = intercept
+  model.bias_uncertainty.from_data(errors, \
+                                   denormalize_values(model,pred))
   # only accept models with bias and variance
   # below some threshold.
-  if bias_mu <= max_stderr(expect) and \
-    bias_std <= max_stderr(expect):
+  if intercept <= max_stderr(expect) and \
+    model.bias_uncertainty.average <= max_stderr(expect):
     return True
   else:
     return False
@@ -310,9 +314,11 @@ def fit_linear_model(model,dataset):
 
 
   model.gain = gain_mu
-  model.gain_uncertainty = 0.0
+  model.gain_uncertainty.maximum = 0.0
+  model.gain_uncertainty.average = 0.0
   model.bias = 0.0
-  model.bias_uncertainty = max(abs(max(errs)),abs(min(errs)))
+  model.bias_uncertainty.maximum = max(abs(max(errs)),abs(min(errs)))
+  model.bias_uncertainty.average = np.mean(abs(errs))
 
   # only accept models with bias and variance
   # below some threshold.

@@ -5,7 +5,7 @@ def dsname():
   return "spring"
 
 def dsinfo():
-  return DSInfo(dsname(), \
+  info = DSInfo(dsname(), \
                 "two-mass spring system",
                 "mass 1",
                 "position")
