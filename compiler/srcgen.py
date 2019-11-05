@@ -473,9 +473,9 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
                                  realtime=mathenv.real_time)
   osc_slack = 1.3
   gren.add(parse('micro_reset'))
+  gren.add(parse('micro_use_osc'))
   # initialize oscilloscope
-  if hwenv.use_oscilloscope:
-    gren.add(parse('micro_use_osc'))
+  if not hwenv.oscilloscope is None:
     for chan,lb,ub in to_volt_ranges(board, \
                                      conc_circ, \
                                      mathenv, \
@@ -505,7 +505,8 @@ def preamble(gren,board,conc_circ,mathenv,hwenv):
 
 
 def execconfig(path_handler,gren,board,conc_circ,dssim,hwenv,filename,trialno):
-  if hwenv.use_oscilloscope and len(hwenv.oscilloscope.outputs()) > 0:
+  if not hwenv.oscilloscope is None \
+     and len(hwenv.oscilloscope.outputs()) > 0:
     gren.add(parse('osc_setup_trigger'))
 
   if hwenv.manual:
@@ -529,9 +530,9 @@ def execconfig(path_handler,gren,board,conc_circ,dssim,hwenv,filename,trialno):
                                                    info['label'],
                                                    trialno)
     if not out_no is None:
-      raise Exception("unimplemented: no command for reading data from microcontroller adcs")
+      print("[warn]: no command for reading data from microcontroller adcs")
 
-    elif hwenv.use_oscilloscope:
+    elif not hwenv.oscilloscope is None:
       pin_mode = hwenv.oscilloscope.output(handle)
       if isinstance(pin_mode,DiffPinMode):
           gren.add(parse('osc_get_values differential %d %d %s %s' % \

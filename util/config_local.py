@@ -15,17 +15,20 @@ def mkdir_if_dne(dirname):
   if not os.path.exists(dirname):
     os.makedirs(dirname)
 
-OUTPUT_PATH="outputs"
-mkdir_if_dne(OUTPUT_PATH)
 #GPKIT_SOLVER="mosek_cli"
 GPKIT_SOLVER="cvxopt"
-EXPERIMENT_DB="outputs/experiments.db"
+
+# derive output directories
+OUTPUT_PATH="outputs"
+mkdir_if_dne(OUTPUT_PATH)
+EXPERIMENT_DB="%s/experiments.db" % OUTPUT_PATH
 
 OSC_IP="128.30.71.225"
 ARDUINO_FILE_DESC=get_arduino_path()
 
 DEVSTATE_PATH="device-state"
 mkdir_if_dne(DEVSTATE_PATH)
+# derive device state directories
 CALIBRATE_DIR="%s/calibrate" % DEVSTATE_PATH
 mkdir_if_dne(CALIBRATE_DIR)
 STATE_DB="%s/state.db" % DEVSTATE_PATH

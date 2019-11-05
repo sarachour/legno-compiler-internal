@@ -5,7 +5,6 @@ construct==2.9.45
 cvxopt==1.2.3
 cycler==0.10.0
 decorator==4.4.0
-gpkit==0.9.0.1
 kiwisolver==1.1.0
 matplotlib>=3.0.0
 mpmath==1.1.0

@@ -110,6 +110,7 @@ def simulate(args):
     ref_prog = DSProgDB.get_prog(args.program)
     if args.runtime:
       result = ref_prog.execute_and_profile(dssim)
+      print("runtime: %e seconds" % result)
     else:
       plot_reference_simulation(path_handler, ref_prog,dssim)
 
