@@ -1,0 +1,177 @@
+\chapter{Installation}
+
+The \legno compiler has been tested on OSX and Linux systems. It is a
+command-line utility -- all commands in this document should be executed using the command line. 
+
+\section{Setting up the Compilation Environment}
+\subsection{Mac OS}
+
+
+In order to install the dependencies for the \legno compiler, the \tx{brew} package manager (https://brew.sh/). Brew is installed using the following command:
+
+\begin{snippet}
+  /usr/bin/ruby -e \
+  "\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+\end{snippet}
+
+ Once brew is installed, it may be accessed using the command \tx{brew}. Next,
+ we should install the required dependences. 
+
+\begin{snippet}
+  brew install python3-pip python3 git
+\end{snippet}
+
+
+\subsection{Linux}
+
+First, install the required dependencies
+
+\begin{snippet}
+sudo apt-get install -y python3-pip libatlas-base-dev git
+\end{snippet}
+
+\section{Setting up the Compilation Toolchain}
+
+First, we need to download the compilation toolchain and make sure we have selected the \tx{master} branch:
+
+\begin{snippet}
+  git clone git@github.com:sendyne/legno-compiler.git
+  git checkout master
+\end{snippet}
+
+This should create a \tx{legno-compiler} directory; inside this directory is the
+legno compiler toolchain. The compilation toolchain contains four major components:
+
+\begin{itemize}
+\item\textbf{Compiler} (\tx{legno.py} and \tx{legno_runner.py}): The compiler.
+  It reads dynamical system programs (in the \tx{prog} directory) and generates
+  grendel scripts. These scripts can be executed by the runtime.  
+\item\textbf{Runtime} (\tx{grendel.py}): The runtime. It executes grendel
+  scripts on the analog device by dispatching commands to the microcontroller.
+\item\textbf{Firmware} (\tx{lab_bench} directory): The firmware. This must be
+  written to the microcontroller in order for the grendel runtime to work.
+\item\textbf{Analyzer} (\tx{exp_driver.py}): This tool analyzes the outputs
+  produced by the analog chip. It computes the energy, power, quality (with
+  respect to a reference simulation) and runtime of each program.
+\end{itemize}
+
+\subsection{Setting up the Compiler}
+The compiler is a pure python program, so almost all of the dependences can be
+installed using the python package manager, pip. Execute the following command
+from the root directory of the \tx{legno-compiler} project to execute all the required packages:
+
+\begin{snippet}
+  pip3 install -r packages-legno.list
+\end{snippet}
+
+\section{Setting up the HCDCv2 Device}
+These steps are only necessary if you wish to execute the generated programs on
+the HCDCv2 device. To write the device firmware to the SA100ASY development board, you must install the Arduino IDE. To install the Arduino IDE, follow the following link:
+
+\begin{snippet}
+https://www.arduino.cc/en/Main/Software
+\end{snippet}
+
+After installing the Arduino IDE, navigate to \tx{Tools/Board} in the menu, and select the \tx{Board Manager}
+option. After doing so, search for \tx{Due} and install the \tx{Arduino Sam Boards (32 bits ARM-Cortex M3} package.
+We installed 1.6.12.
+
+You also want to install the \tx{DueTimer} package. This can be done by navigating to the 
+\tx{Sketch/Include Library/Manage Libraries} option in the Arduino IDE and searching for the \tx{DueTimer} package.
+We installed 1.4.7.
+
+\subsection{Installing Arduino-Make}
+The firmware is built using a Makefile that extends a specialized set Arduino
+Makefiles. The Arduino makefiles are provided in the \tx{arduino-mk} package.
+
+\noindent\textbf{Linux Command}: The following installs the arduino makefiles on linux.
+\begin{snippet}
+sudo apt-get install -y  android-mk
+\end{snippet}
+
+\noindent\textbf{OSX Command}: The following installs the arduino makefiles on OSX:
+
+\begin{snippet}
+brew tap sudar/arduino-mk
+brew install --HEAD arduino-mk
+\end{snippet}
+
+\subsection{Installing the Grendel Runtime Dependences}
+
+
+The firmware communicates with a runtime which is also written in python.
+Execute the following command from the root directory of the \tx{legno-compiler}
+project to install all the required packages.
+
+\begin{snippet}
+  pip3 install -r packages-grendel.list
+\end{snippet}
+
+\subsection{Writing Firmware to the HCDCv2 Device}
+After following these steps, it should be possible to flash the HCDCv2 firmware to the analog device. Navigate
+to the following directory:
+\begin{snippet}
+lab_bench/arduino/grendel_interp_V1
+\end{snippet}
+
+To build the firmware, type `make`. This should complete without incident. After the make command completes 
+successfully type `make upload` to flash the firmware to the device. Please ensure the device is programmed via USB,
+and that the USB cable is plugged into the programming port of the device. This is the port closest to the DC power port. 
+
+If you get an error along the lines of `import failed, serial not found`, this is likely because \tx{arduino-mk} is using 
+a different version of python than the rest of the project. To mitigate this, install pyserial for \tx{python2}:
+
+\begin{snippet}
+pip install pyserial
+\end{snippet}
+
+
+\subsection{Setting up the Sigilent 1020XE Oscilloscope}\label{setup-osc}
+
+This toolchain works with the Sigilent 1020XE Oscilloscope. Any part of the
+toolchain that requires the oscilloscope be set up will be annotated 
+an \tx{[OSC]} tag. To use the oscilloscope, make the following connections:
+
+\begin{enumerate}
+  \item Connect the first channel to pin XXX (positive channel of
+    chip[0,3,2])
+  \item Connect the second channel to pin XXX (negative channel of chip
+    [0,3,2]).
+  \item Connect the EXT lead to pin 25 of the Arduino. The Arduino triggers the
+    oscilloscope to record data.
+\end{enumerate}
+
+Connect the oscilloscope to an Ethernet port. Write down the IP address
+of the oscilloscope (XXX->XXX) and make sure you can access it from your
+computer. You can use the following command to test the oscilloscope is
+reachable:
+\begin{snippet}
+
+\end{snippet}
+
+
+\section{Configuring the Legno Toolchain}
+
+The \legno toolchain must first be configured before it can be used. First, copy
+the reference configuration:
+
+\begin{snippet}
+cp util/config_local.py util/config.py
+\end{snippet}
+
+Next, replace the following fields:
+
+\begin{enumerate}
+\item \tx{OSC_IP}: populate this field with the IP address of the oscilloscope.
+  If you are not using an oscilloscope, you can use the default IP address.
+\item\tx{DEVSTATE_PATH}: set this field to the directory where all the device
+  data (calibration information, analog block models, etc) should be stored. We
+  recommend leaving this field unchanged.
+\item\tx{OUTPUT_PATH}: set this field to the directory where all the compiler
+  outputs should be stored. We recommend leaving this field unchanged.
+\end{enumerate}
+
+The remaining fields are automatically populated from these three fields. We
+don't recommend directly setting any of these. The \tx{ARDUINO_FILE_DESC} field
+is automatically populated by looking for the proper file descriptor in the
+\tx{/dev/} directory. 
