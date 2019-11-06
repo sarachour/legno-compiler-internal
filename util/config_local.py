@@ -22,6 +22,7 @@ GPKIT_SOLVER="cvxopt"
 OUTPUT_PATH="outputs"
 mkdir_if_dne(OUTPUT_PATH)
 EXPERIMENT_DB="%s/experiments.db" % OUTPUT_PATH
+LEGNO_PATH="%s/legno" % OUTPUT_PATH
 
 OSC_IP="128.30.71.225"
 ARDUINO_FILE_DESC=get_arduino_path()

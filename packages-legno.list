@@ -11,6 +11,7 @@ mpmath==1.1.0
 networkx==2.3
 numpy
 scipy
+gpkit
 parse==1.12.0
 Pint==0.9
 PuLP==1.6.10
