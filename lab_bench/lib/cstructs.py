@@ -1,6 +1,6 @@
 from lab_bench.lib.enums import BlockType,ExpCmdType,CircCmdType,CmdType
+from hwlib.hcdc import enums as specdata
 import lab_bench.lib.chipcmd.data as chipdata
-import hwlib.hcdc.enums as specdata
 import construct as cstruct
 
 def lut_source_t():
