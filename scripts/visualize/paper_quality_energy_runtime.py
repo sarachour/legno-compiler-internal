@@ -14,7 +14,8 @@ def visualize(db):
   header = [
           'runtime', \
           'power', \
-          'energy' \
+          'energy', \
+          '% rmse' \
   ]
   table.set_fields(header)
   table.horiz_rule();
@@ -24,15 +25,17 @@ def visualize(db):
     if data.has_series(ser):
       fields = ['runtime','energy','quality','quality_variance','model']
       result = data.get_data(ser,fields)
-      print(result)
       runtime,energy,quality,quality_variance,model = result
+      idx = np.argmin(quality)
+
       row = {}
-      pars = util.unpack_model(model[0])
-      row['runtime'] = "%.2f ms" % (runtime[0]*1e3)
-      row['power'] = "%.2f $\mu$W" % (energy[0]*1e6)
-      row['energy'] = "%.2f $\mu$J" % (energy[0]*runtime[0]*1e6)
-      #row['ssqe'] = "%.4f $\pm$ %.4f" \
-      #                 % (quality[0],quality_variance[0])
+      pars = util.unpack_model(model[idx])
+      row['runtime'] = "%.2f ms" % (runtime[idx]*1e3)
+      row['power'] = "%.2f $\mu$W" % (energy[idx]*1e6)
+      row['energy'] = "%.2f $\mu$J" % (energy[idx]*runtime[idx]*1e6)
+      row['% rmse'] = "%.2f" % quality[idx]
+      #row['% rmse'] = "%.4f $\pm$ %.4f" \
+      #                 % (np.mean(quality),np.std(quality))
       #row['minimum digital snr'] = "%f" % dig_error
       #row['minimum analog snr'] = "%f" % ana_error
       row['bandwidth'] = "%dkhz" % int(pars['bandwidth_khz'])

@@ -76,11 +76,22 @@ def make_prediction(t_meas,x_meas,model):
     x_pred = c*x_meas - d
     return t_pred,x_pred
 
-def compute_error(ref_t,ref_x,meas_t,meas_x,model):
-  pred_t,pred_x = make_prediction(meas_t,meas_x,model)
+def compute_pct_nrmsd(ref_t,ref_x,pred_t,pred_x,debug=False):
   pred_x_reflow = np.interp(ref_t, pred_t, pred_x, left=0, right=0)
-  error = np.sum((pred_x_reflow-ref_x)**2)/len(ref_t)
-  return error
+  # root mean squared error
+  MSE = np.sum((pred_x_reflow-ref_x)**2)/len(ref_t)
+  RMSD = math.sqrt(MSE)
+  # root mean squared error relative to full scale
+  FS = float(max(ref_x) - min(ref_x))
+  NRMSD = RMSD/FS
+  PCT_NRMSD = NRMSD*100.0
+  if debug:
+    print("MSE=%e" % MSE)
+    print("RMSD=%e" % RMSD)
+    print("FS=%e" % FS)
+    print("NRMSD=%f" % NRMSD)
+    print("PCT_NRMSD=%f" % PCT_NRMSD)
+  return PCT_NRMSD
 
 
 def lag_finder(t1,y1,t2,y2):
@@ -135,8 +146,10 @@ def fit(output,_tref,_yref,_tmeas,_ymeas):
     return min(max(result[i],bounds[i][0]),bounds[i][1])
 
   def compute_loss(x):
-    return compute_error(tref,yref,tmeas,ymeas, \
-                         [clamp(x,0),clamp(x,1),1.0,0])
+    model = [clamp(x,0),clamp(x,1),1.0,0]
+    pred_t,pred_x = make_prediction(tmeas,ymeas,model)
+    err = compute_pct_nrmsd(tref,yref,pred_t,pred_x)
+    return err
   # apply transform to turn ref -> pred
   n = 15
   print("==== TRANSFORM ===")
@@ -156,11 +169,11 @@ def fit(output,_tref,_yref,_tmeas,_ymeas):
   output.transform = xform
 
 def compute_quality(output,_trec,_yrec,_tref,_yref):
-  def compute_error(ypred,yobs):
-    return (ypred-yobs)**2
-
   tref,yref= np.array(_tref), np.array(_yref)
   trec,yrec= np.array(_trec), np.array(_yrec)
+  pct_nrmsd = compute_pct_nrmsd(tref,yref,trec,yrec, \
+                                debug=True)
+
   plt.plot(trec,yrec)
   plt.plot(tref,yref)
   plt.savefig("debug.png")
@@ -170,12 +183,10 @@ def compute_quality(output,_trec,_yrec,_tref,_yref):
     return None,[],[]
 
   yobs_flow = np.interp(tref, trec, yrec, left=0, right=0)
-  errors = np.array(list(map(lambda i: compute_error(yobs_flow[i], \
-                                                     yref[i]), range(n))))
+  errors = np.array(list(map(lambda i: (yobs_flow[i]-yref[i])**2, range(n))))
 
-  score = sum(errors)
-  print("SCORE: %s" % score)
-  return score,tref,errors
+  print("pct nrmsd: %s %%" % pct_nrmsd)
+  return pct_nrmsd,tref,errors
 
 def analyze(entry,recompute=False):
   path_h = paths.PathHandler(entry.subset,entry.program)

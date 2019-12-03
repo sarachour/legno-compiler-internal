@@ -48,7 +48,8 @@ class Dataset:
       self._data[key] = {}
 
     for field in self._fields + self._metafields:
-      self._data[key][field] = []
+      if not field in self._data[key]:
+        self._data[key][field] = []
 
     for field in self._fields:
       value = getattr(entry,field)
@@ -75,7 +76,8 @@ def get_data(db,series_type='bmarks',executed_only=True):
 
   for entry in db.experiment_tbl.get_all():
     if executed_only and \
-       (entry.quality is None or entry.runtime is None):
+       (entry.quality is None  \
+        or entry.runtime is None):
       continue
 
     data.add(entry)
