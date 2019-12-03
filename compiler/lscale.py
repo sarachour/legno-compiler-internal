@@ -98,8 +98,8 @@ def scale(prog,adp,nslns, \
             return
 
 
-    print("logging: %s" % do_log)
     if do_log:
+        print("logging missing models: %s" % do_log)
         pars = scenvlib.LScaleEnvParams(model=model,
                                         max_freq_khz=max_freq_khz, \
                                         mdpe=mdpe,

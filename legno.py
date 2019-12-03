@@ -43,6 +43,8 @@ lscale_subp = subparsers.add_parser('lscale', \
                                    help='scale circuit parameters.')
 lscale_subp.add_argument('--model', default="naive-min_error",
                         help='use physical models to inform constraints.')
+lscale_subp.add_argument('--ignore-missing', action="store_true", \
+                         help='ignore missing delta models')
 lscale_subp.add_argument('--scale-circuits', type=int,default=5, \
                        help='number of scaled circuits to generate.')
 lscale_subp.add_argument('--mc', type=float, default=0.80, \

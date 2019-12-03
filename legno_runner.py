@@ -61,7 +61,8 @@ parser.add_argument('prog',
                    help='benchmark to run.')
 parser.add_argument("--srcgen",action="store_true", \
                     help="only generate source")
-
+parser.add_argument("--ignore-missing", action="store_true", \
+                   help="ignore missing delta models")
 
 
 args = parser.parse_args()
@@ -84,6 +85,8 @@ lscale_args = \
              "--scale-circuits {n-lscale} --search "
 if not params['max-freq'] is None:
   lscale_args += " --max-freq %f" % params['max-freq']
+if args.ignore_missing:
+  lscale_args += " --ignore-missing"
 
 if succ and not args.srcgen:
   succ = execute(lscale_args,params,'lscale.log')

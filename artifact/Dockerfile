@@ -14,6 +14,7 @@ RUN git checkout artifact
 RUN pip3 install -r packages-legno.list
 RUN pip3 install -r packages-grendel.list
 ADD state.db device-state/state.db
+ADD run_all.py .
 RUN cp util/config_local.py util/config.py
-#RUN make models-maxfit
-#RUN make models-minerr
+RUN make models-maxfit
+RUN make models-minerr

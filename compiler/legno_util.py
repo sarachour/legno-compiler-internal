@@ -60,7 +60,7 @@ def exec_lscale_normal(timer,prog,adp,args):
                                                  mdpe=args.mdpe/100.0,
                                                  mape=args.mape/100.0,
                                                  mc=args.mc/100.0,
-                                                 do_log=True):
+                                                 do_log=not args.ignore_missing):
         timer.end()
         yield idx,opt,model,scale_circ
         timer.start()
@@ -68,8 +68,7 @@ def exec_lscale_normal(timer,prog,adp,args):
 
 def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
     from compiler import lscale
-    first = True
-    def test_valid(mdpe,mape,vmape,mc,first=False):
+    def test_valid(mdpe,mape,vmape,mc,do_log=False):
         print("mdpe=%f mape=%f vmape=%f mc=%f" % (mdpe,mape,vmape,1.0-mc))
         assert(mc <= 1.0)
         for obj in lscale.scale(prog, \
@@ -81,7 +80,7 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
                                 mape=mape,
                                 vmape=vmape,
                                 mc=1.0-mc,
-                                do_log=first,
+                                do_log=do_log,
                                 test_existence=True):
             return True
 
@@ -139,7 +138,8 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
         return dig,alog,valog,cov
 
     max_pct = 1.0
-    succ = test_valid(max_pct,max_pct,max_pct,1.0,first=True)
+    succ = test_valid(max_pct,max_pct,max_pct,1.0, \
+                      do_log=not args.ignore_missing)
     while not succ and max_pct <= 1e6:
         max_pct *= 2
         succ = test_valid(max_pct,max_pct,max_pct,1.0)
@@ -177,7 +177,8 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
                                                      mdpe=dig_error+slack,
                                                      mape=analog_error+slack,
                                                      vmape=var_analog_error,
-                                                     mc=1.0-(coverage+slack)):
+                                                     mc=1.0-(coverage+slack),
+                                                     do_log=not args.ignore_missing):
             timer.end()
             timer.start()
             yield idx,opt,model,scale_circ
