@@ -1,1 +1,1 @@
-docker build --no-cache -t aec .
+docker build -t aec .
