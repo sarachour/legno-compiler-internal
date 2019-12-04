@@ -1,3 +1,5 @@
+import scripts.visualize.paper_energy_runtime  \
+  as paper_energy_runtime
 import scripts.visualize.paper_quality_energy_runtime  \
   as paper_quality_energy_runtime
 import scripts.visualize.paper_bmark_summary as paper_bmark_summary
@@ -17,6 +19,8 @@ def execute(args):
   opts = {
     'paper-quality-energy-runtime': \
     paper_quality_energy_runtime.visualize,
+    'paper-energy-runtime': \
+    paper_energy_runtime.visualize,
     'paper-chip-summary': paper_chip_summary.visualize,
     'paper-benchmark-summary': paper_bmark_summary.visualize,
     'paper-circuit-summary': paper_circuit_summary.visualize,
