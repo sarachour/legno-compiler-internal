@@ -95,7 +95,8 @@ class BenchmarkVisualization:
                      'kalconst',
                      'gentoggle',
                      'smmrxn',
-                     'bont']
+                     'bont', 
+                     'heat1d']
 
   @staticmethod
   def benchmarks():
