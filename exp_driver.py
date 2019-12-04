@@ -22,36 +22,38 @@ del_subp.add_argument('--obj', type=str,
 
 run_subp = subparsers.add_parser('run', help='run any pending grendel scripts')
 run_subp.add_argument('--calibrate', action="store_true",
-                       help='calibrate.')
+                       help='calibrate any uncalibrated blocks')
 run_subp.add_argument('--email', type=str,
                        help='email address.')
 run_subp.add_argument('--native', action='store_true',
                        help='use ttyACM0.')
 run_subp.add_argument('--prog', type=str,
-                       help='prog to run.')
+                       help='only run experiments generated from a specific program')
 run_subp.add_argument('--subset', type=str,
-                       help='prog to run.')
+                       help='only run experiments that use a specific feature subset on the device.')
 run_subp.add_argument('--model', type=str,
-                       help='model to run.')
+                       help='only run experiments with a specific set of scaling parameters.')
 run_subp.add_argument('--obj', type=str,
-                       help='objective function to run.')
+                       help='only run experiments generated with a specific scaling objective function.')
 
 
 analyze_subp = subparsers.add_parser('analyze', help='run any pending grendel scripts')
 analyze_subp.add_argument('--recompute-params', action='store_true',
-                       help='.')
+                       help='recompute the energy and time statistics')
 analyze_subp.add_argument('--recompute-quality', action='store_true',
-                       help='.')
+                       help='recompute the quality statistics')
 analyze_subp.add_argument('--monitor', action='store_true',
-                       help='.')
+                       help='run in daemon mode')
+analyze_subp.add_argument('--include-pending', action='store_true',
+                       help='perform a partial analysis on experiments that have not been executed')
 analyze_subp.add_argument('--prog', type=str,
-                       help='.')
+                       help='only analyze experiments generated from a specific program')
 analyze_subp.add_argument('--subset', type=str,
-                       help='.')
+                       help='only analyze experiments that use a particular subset of device features')
 analyze_subp.add_argument('--model', type=str,
-                       help='model to run.')
+                       help='only analyze experiments with a specific set of scaling parameters (tag)')
 analyze_subp.add_argument('--obj', type=str,
-                       help='objective function to run.')
+                       help='only analyze experiments with a specific objective function')
 
 
 

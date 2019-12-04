@@ -169,7 +169,7 @@ def to_lscale_table(circuits,models):
   table.write(common.get_path('circuit-lscale.tbl'))
 
 def visualize(db):
-  data = common.get_data(db,series_type='identifier')
+  data = common.get_data(db,series_type='identifier',executed_only=False)
   circuits = {}
   models = {}
   for ser in data.series():

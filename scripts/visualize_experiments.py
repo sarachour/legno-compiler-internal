@@ -2,6 +2,8 @@ import scripts.visualize.paper_energy_runtime  \
   as paper_energy_runtime
 import scripts.visualize.paper_quality_energy_runtime  \
   as paper_quality_energy_runtime
+import scripts.visualize.paper_energy_runtime  \
+  as paper_energy_runtime
 import scripts.visualize.paper_bmark_summary as paper_bmark_summary
 import scripts.visualize.paper_circuit_summary as paper_circuit_summary
 import scripts.visualize.paper_chip_summary as paper_chip_summary
@@ -17,6 +19,8 @@ from scripts.expdriver_db import ExpDriverDB
 def execute(args):
   name = args.type
   opts = {
+    'paper-energy-runtime': \
+    paper_energy_runtime.visualize,
     'paper-quality-energy-runtime': \
     paper_quality_energy_runtime.visualize,
     'paper-energy-runtime': \
@@ -34,6 +38,7 @@ def execute(args):
       db = ExpDriverDB()
       opts[name](db)
     except Exception as e:
+      print("could not load database.")
       opts[name](None)
 
   else:

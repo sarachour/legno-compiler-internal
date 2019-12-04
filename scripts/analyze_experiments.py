@@ -20,11 +20,13 @@ BOARD_CACHE = {}
 
 def execute_once(args,debug=False):
   db = ExpDriverDB()
-  entries = list(db.experiment_tbl \
-                 .get_by_status(ExecutionStatus.PENDING))
-
+  
 
   entries = list(db.experiment_tbl.get_by_status(ExecutionStatus.RAN))
+  if args.include_pending:
+    entries += list(db.experiment_tbl \
+                 .get_by_status(ExecutionStatus.PENDING))
+
   for entry in tqdm.tqdm(entries):
     if not entry.runtime is None \
       and (not entry.quality is None and not args.recompute_quality)\
@@ -59,8 +61,9 @@ def execute_once(args,debug=False):
       ad_prog = AnalogDeviceProg.read(board,entry.adp)
       params.analyze(entry,ad_prog)
       energy.analyze(entry,ad_prog)
-
-    if entry.quality is None or args.recompute_quality:
+    
+    if entry.status != ExecutionStatus.PENDING and \
+            (entry.quality is None or args.recompute_quality):
       ad_prog = AnalogDeviceProg.read(None,entry.adp)
 
       quality.analyze(entry, \
