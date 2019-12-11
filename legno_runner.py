@@ -9,8 +9,9 @@ def read_config(cfgfile):
     'n-lgraph': 1,
     'n-lscale': 1,
     'max-freq':None,
-    'subset': 'unrestricted',
-    'model': 'physical'
+    'subset': 'extended',
+    'ignore-models':"",
+    'model': 'delta_maxfit'
   }
   if cfgfile is None:
     return dict(defaults)
@@ -87,6 +88,11 @@ if not params['max-freq'] is None:
   lscale_args += " --max-freq %f" % params['max-freq']
 if args.ignore_missing:
   lscale_args += " --ignore-missing"
+
+if len(params["ignore-models"]) > 0:
+  blocks = params["ignore-models"].split(" ")
+  for block in blocks:
+    lscale_args += " --ignore-model %s" % block
 
 if succ and not args.srcgen:
   succ = execute(lscale_args,params,'lscale.log')

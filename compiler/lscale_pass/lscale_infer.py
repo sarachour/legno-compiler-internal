@@ -328,6 +328,7 @@ def sc_build_lscale_env(prog,circ, \
                         mape, \
                         vmape, \
                         mc, \
+                        ignore_models=[],
                         max_freq_khz=None):
     scenv = scenvlib.LScaleInferEnv(model, \
                                     max_freq_khz=max_freq_khz, \
@@ -335,6 +336,9 @@ def sc_build_lscale_env(prog,circ, \
                                     mape=mape, \
                                     vmape=vmape, \
                                     mc=mc)
+    for block in ignore_models:
+        scenv.model_db.add_ignore(block)
+
     # declare scaling factors
     lscale_common.decl_scale_variables(scenv,circ)
     # build continuous model constraints
@@ -500,15 +504,18 @@ def infer_scale_config(prog,adp,nslns, \
                        mdpe, \
                        mc, \
                        max_freq_khz=None,
+                       ignore_models=[],
                        obj_fun=None):
     assert(isinstance(adp,AnalogDeviceProg))
     scenv = sc_build_lscale_env(prog,adp,
                                 model=model, \
                                 max_freq_khz=max_freq_khz, \
+                                ignore_models=ignore_models,
                                 mape=mape, \
                                 vmape=vmape, \
                                 mdpe=mdpe, \
                                 mc=mc)
+
     count = 0
     for new_adp in concretize_result(scenv,adp,nslns, \
                                      obj_fun=obj_fun):

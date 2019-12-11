@@ -42,6 +42,7 @@ def scale(prog,adp,nslns, \
           mape, \
           vmape, \
           mc, \
+          ignore_models=[], \
           max_freq_khz=None, \
           do_log=True, \
           test_existence=False):
@@ -65,6 +66,7 @@ def scale(prog,adp,nslns, \
                                                                      nslns, \
                                                                      model=this_model, \
                                                                      max_freq_khz=max_freq_khz, \
+                                                                     ignore_models=ignore_models, \
                                                                      mdpe=mdpe, \
                                                                      mape=mape, \
                                                                      vmape=vmape, \
@@ -76,11 +78,11 @@ def scale(prog,adp,nslns, \
 
                 #for this_model in gen_models(model):
                 scenv = scenvlib.LScaleEnv(model=this_model, \
-                                        max_freq_khz=max_freq_khz, \
-                                        mdpe=mdpe, \
-                                        mape=mape, \
-                                        vmape=vmape, \
-                                        mc=mc)
+                                           max_freq_khz=max_freq_khz, \
+                                           mdpe=mdpe, \
+                                           mape=mape, \
+                                           vmape=vmape, \
+                                           mc=mc)
                 yield idx,obj.name(),scenv.params.tag(),adp
 
             if test_existence:

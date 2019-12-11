@@ -11,8 +11,8 @@ def make_dsname(N,I):
   return "heatN%dX%d" % (N,I)
 
 def make_dsinfo(N,I):
-  return DSInfo(make_dsname(), \
-                "heat1d",
+  return DSInfo(make_dsname(N,I), \
+                "heat.%d.%d" % (N,I),
                 "signal",
                 "signal")
   info.nonlinear = False

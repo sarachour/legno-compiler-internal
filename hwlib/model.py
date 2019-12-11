@@ -207,6 +207,7 @@ class ModelDB:
     self._conn = sqlite3.connect(CFG.MODEL_DB)
     self._curs = self._conn.cursor()
     self.calib_obj = calib_obj
+    self._ignore = []
     cmd = '''
     CREATE TABLE IF NOT EXISTS models (
     calib_obj text NOT NULL,
@@ -231,6 +232,12 @@ class ModelDB:
                  'handle',
                  'model']
 
+
+  def add_ignore(self,block):
+    self._ignore.append(block)
+
+  def ignore(self,block):
+    return block in self._ignore
 
   @staticmethod
   def log_missing_model(block_name,loc,port,comp_mode,scale_mode):
@@ -443,7 +450,7 @@ def get_oprange_scale(db,circ,block_name,loc,port,mode,handle=None):
   assert(isinstance(mode,util.DeltaModel))
   if mode.uses_delta_model():
     model = get_model(db,circ,block_name,loc,port,handle=handle)
-    if model is None:
+    if model is None or db.ignore(block_name):
       return (1.0,1.0)
 
     l,u = model.oprange_scale
@@ -459,7 +466,7 @@ def get_bias(db,circ,block_name,loc,port,mode,handle=None):
   assert(isinstance(mode,util.DeltaModel))
   if mode.uses_delta_model():
     model = get_model(db,circ,block_name,loc,port,handle=handle)
-    if model is None:
+    if model is None  or db.ignore(block_name):
       return 0.0
 
     return model.bias
@@ -472,7 +479,7 @@ def get_gain(db,circ,block_name,loc,port,mode,handle=None):
   assert(isinstance(mode,util.DeltaModel))
   if mode.uses_delta_model():
     model = get_model(db,circ,block_name,loc,port,handle=handle)
-    if model is None:
+    if model is None or db.ignore(block_name):
       return 1.0
 
     return model.gain

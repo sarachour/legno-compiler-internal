@@ -96,7 +96,7 @@ class BenchmarkVisualization:
                      'gentoggle',
                      'smmrxn',
                      'bont', 
-                     'heat1d']
+                     'heatN4X2']
 
   @staticmethod
   def benchmarks():
