@@ -9,7 +9,8 @@ benchmarks = ["cos", \
         "gentoggle", \
         "pid", \
         "kalconst", \
-        "smmrxn"]
+        "smmrxn", \
+        "heatN4X2"]
 
 modes = ["default_maxfit_naive", \
         "default_minerr_naive", \
@@ -26,7 +27,7 @@ heat_modes = [
 
 for bmark in benchmarks:
     this_mode = modes if not "heat" in bmark else heat_modes
-    for idx,mode in enumerate(modes):
+    for idx,mode in enumerate(this_mode):
         flag = ""
         if idx == 0:
             flag="--lgraph"

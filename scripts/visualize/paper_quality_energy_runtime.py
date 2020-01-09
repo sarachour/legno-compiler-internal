@@ -9,7 +9,7 @@ def visualize(db):
   data = common.get_data(db,series_type='program')
   desc = "performance, energy and quality for HDACv2 Board"
   table = common.Table("Results", desc, "tbl:performance", \
-                       layout = "|c|c|cc|")
+                       layout = "|c|c|ccc|")
   table.two_column = False
   header = [
           'runtime', \
