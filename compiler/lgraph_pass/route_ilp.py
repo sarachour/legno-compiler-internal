@@ -406,9 +406,11 @@ def route(board,prob,node_map):
   tiles = get_sublayers(chips)
 
 
+  # build partition tree of tiles
   part_tree = partition_tree.build_partition_tree(board,locs,conns)
   groups = partition_tree.greedy_partition(part_tree,tiles)
   print("=== first map tiles ===")
+  # break up into greedily partitioned tiles.
   tile_env,tile_assigns = hierarchical_route(board,locs,conns,
                                              tiles,
                                              assigns={},
@@ -419,7 +421,9 @@ def route(board,prob,node_map):
   while not success and not tile_assigns is None:
     success = True
     print("=== route chips ===")
+    # convert greedy tile partitions to chip partitions
     chip_assigns = tile_assigns_to_chip_assigns(tile_assigns)
+    # try routing with the computed chip assignments
     _,result = hierarchical_route(board,locs,conns,
                                   chips,
                                   chip_assigns,
@@ -427,6 +431,7 @@ def route(board,prob,node_map):
     success &= (not result is None)
 
     if not success:
+      # get the next combination of chip assignments
       tile_env,tile_assigns = next_solution(tile_env, \
                                             tile_assigns)
 

@@ -3,30 +3,45 @@ import hwlib.hcdc.globals as glb
 import scripts.visualize.common as common
 
 to_header = {
-  'tile_out': 'tile\_out',
-  'tile_in': 'tile\_in',
-  'chip _in': 'chip\_in',
-  'chip_out': 'chip\_out',
-  'ext_chip_out': 'board\_out',
-  'ext_chip_in': 'board\_in',
+  'tile_out': 'tout',
+  'tile_in': 'tin',
+  'chip_in': 'vin',
+  'chip_out': 'vout',
+  'ext_chip_out': 'cout',
+  'ext_chip_in': 'cin',
   'tile_dac':'dac',
   'tile_adc':'adc',
   'lut':'lut',
-  'fanout': 'fanout',
-  'multiplier': 'multiplier',
-  'integrator': 'integrator',
+  'fanout': 'fan',
+  'multiplier': 'mul',
+  'integrator': 'int',
+}
+to_desc = {
+  'tile_out': 'inter-tile output',
+  'tile_in' : 'inter-tile input',
+  'chip_in': 'inter-chip input',
+  'chip_out': 'inter-chip output',
+  'ext_chip_out': 'external chip output',
+  'ext_chip_in': 'external chip input',
+  'tile_dac': 'digital-to-analog converter',
+  'tile_adc': 'analog to digital converter',
+  'lut': 'programmable user-defined function',
+  'fanout': 'current copier',
+  'multiplier': 'current multiplier/scaling block',
+  'integrator': 'current integrator'
 }
 to_type = {
-  'tile_out': 'routing',
-  'tile_in': 'routing',
-  'chip_out': 'routing',
-  'chip_in': 'routing',
-  'ext_chip_out': 'routing',
-  'ext_chip_in': 'routing',
+  'tile_out': 'route',
+  'tile_in': 'route',
+  'chip_out': 'route',
+  'chip_in': 'route',
+  'chip_out': 'compute',
+  'ext_chip_in': 'compute',
+  'ext_chip_out': 'compute',
   'tile_dac':'compute',
   'tile_adc':'compute',
   'lut':'compute',
-  'fanout': 'copier',
+  'fanout': 'copy',
   'multiplier': 'compute',
   'integrator': 'compute',
   'conns': 'connections',
@@ -48,6 +63,7 @@ def count(iterator):
 
 def build_block_profile(block):
   n_comp_modes = len(block.comp_modes)
+  n_modes = 0
   scale_modes = {}
   subset = glb.HCDCSubset('extended')
   block.subset(subset)
@@ -58,6 +74,7 @@ def build_block_profile(block):
     for scm in block.scale_modes(comp_mode):
       if block.whitelist(comp_mode,scm):
         n_scale_modes += 1
+        n_modes += 1;
         for port in block.outputs + block.inputs:
           for handle in list(block.handles(comp_mode,port)) \
               + [None]:
@@ -86,22 +103,42 @@ def build_block_profile(block):
 
   inputs_analog = count(filter(lambda i: block.props(cm,sm,i).analog(), \
                       block.inputs))
-  inputs_dig= count(filter(lambda i: not block.props(cm,sm,i).analog(), \
-                      block.inputs))
+  inputs_dig_const = count(filter(lambda i: not block.props(cm,sm,i).analog() and \
+                                  block.props(cm,sm,i).is_constant, \
+                                  block.inputs))
+
+  inputs_dig_dyn = count(filter(lambda i: not block.props(cm,sm,i).analog() and \
+                                  not block.props(cm,sm,i).is_constant, \
+                                  block.inputs))
+
+  inputs_dig_expr = 1 if block.name == 'lut' else 0
+
 
   outputs_analog = count(filter(lambda o: block.props(cm,sm,o).analog(), \
                       block.outputs))
   outputs_dig= count(filter(lambda o: not block.props(cm,sm,o).analog(), \
                       block.outputs))
 
+  # FIXME
+  if block.name == 'tile_dac':
+    inputs_dig_const = 1
+    n_modes *= 2
+  if block.name == 'ext_chip_out':
+    outputs_dig = 0
+    outputs_analog = 1
+
+
   return {
-    'comp_modes': n_comp_modes,
+    'modes': n_modes,
+    'comp_modes':n_comp_modes,
     'scale_modes':scale_modes,
     'type':to_type[block.name] if block.name in to_type else None,
-    'digital_inputs':inputs_analog,
-    'analog_inputs':inputs_dig,
-    'digital_outputs':outputs_analog,
-    'analog_outputs':outputs_dig
+    'data_const':inputs_dig_const,
+    'data_expr':inputs_dig_expr,
+    'digital_inputs':inputs_dig_dyn,
+    'digital_outputs':outputs_dig,
+    'analog_inputs':inputs_analog,
+    'analog_outputs':outputs_analog
   }
 
 def build_circ_profile(board):
@@ -163,47 +200,44 @@ def build_board_summary(profile):
 def build_block_summary(profile):
   desc = "summaries of computational blocks available on device"
   table = common.Table('HDACv2 Board Block Summaries', \
-                       desc, 'hwblocks','|ccc|cccc|ccc|ccc|ccc|',
+                       desc, 'hwblocks','|ccc|cc|cc|cc|cc|',
                        benchmarks=False)
   table.two_column = True
   fields = ['block', \
             'type', \
             'count', \
-            'inputs', \
-            'outputs', \
-            'compute mode', \
-            'function', \
-            'scale modes', \
-            'operating bound', \
-            'gain'
+            'analog_in', \
+            'analog_out', \
+            'digital_in', \
+            'digital_out', \
+            'data_const', \
+            'data_expr', \
+            'modes', \
+            'desc'
   ]
 
+  cat= ['','','',
+        '\multicolumn{2}{c|}{analog}',
+        '\multicolumn{2}{c|}{digital}',
+        '\multicolumn{2}{c|}{data}',
+        '',''
+  ]
   table.set_fields(fields)
   table.horiz_rule()
-  cat = ['', \
-         '', \
-         '', \
-         '', \
-         '', \
-         'compute', \
-         '', \
-         'scale', \
-         'operating', \
-         ''
+  hdr = ['block', \
+            'type', \
+            'count', \
+            'in', \
+            'out', \
+            'in', \
+            'out', \
+            'const', \
+            'expr', \
+            'modes', \
+            'desc'
   ]
   table.raw(cat);
-  cat = ['block', \
-         'type', \
-         'count', \
-         'inputs', \
-         'outputs', \
-         'mode', \
-         'function', \
-         'modes', \
-         'bound', \
-         'gain'
-  ]
-  table.raw(cat);
+  table.raw(hdr);
   table.horiz_rule()
   for block in profile['blocks']:
     prof = profile['blocks'][block]
@@ -215,10 +249,16 @@ def build_block_summary(profile):
     row['block'] = "%s" % to_header[block]
     row['type'] = "%s" % prof['type']
     row['count'] = "%d" % prof['count']
-    row['inputs'] = "%d / %d" % (prof['analog_inputs'], \
-                                 prof['digital_inputs'])
-    row['outputs'] = "%d / %d" % (prof['analog_outputs'], \
-                                  prof['digital_outputs'])
+    row['analog_in'] = prof['analog_inputs']
+    row['analog_out'] = prof['analog_outputs']
+    row['digital_in'] = prof['digital_inputs']
+    row['digital_out'] = prof['digital_outputs']
+    row['data_const'] = prof['data_const']
+    row['data_expr'] = prof['data_expr']
+    row['modes'] = prof['modes']
+    row['desc'] = to_desc[block]
+    table.data(None,row)
+    '''
     if block == 'multiplier':
       for comp_mode,data in prof['scale_modes'].items():
         row = dict(row)
@@ -268,6 +308,7 @@ def build_block_summary(profile):
         row = dict(map(lambda f: (f,""),fields))
         row['function'] =to_expr[('integrator2',None)]
         table.data(None,row)
+    '''
 
   table.horiz_rule()
   table.write(common.get_path('hwblocks.tbl'))

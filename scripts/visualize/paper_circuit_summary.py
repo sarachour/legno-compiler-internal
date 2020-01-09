@@ -39,26 +39,27 @@ def average_comp_count(circs):
 
 def to_lgraph_table(circuits):
   to_header = {
-    'tile_out': 'crossbar',
-    'tile_in': 'crossbar',
-    'chip_out': 'crossbar',
-    'chip_in': 'crossbar',
-    'ext_chip_out': 'crossbar',
-    'ext_chip_in': 'crossbar',
+    'tile_out': 'route',
+    'tile_in': 'route',
+    'chip_out': 'route',
+    'chip_in': 'route',
+    'ext_chip_out': 'cout',
+    'ext_chip_in': 'cin',
     'tile_dac':'dac',
     'tile_adc':'adc',
     'lut':'lut',
-    'fanout': 'fanout',
-    'multiplier': 'multiplier',
-    'integrator': 'integrator',
+    'fanout': 'fan',
+    'multiplier': 'mul',
+    'integrator': 'int',
     'conns': 'connections'
   }
   desc = 'analog chip configuration statistics'
   table = common.Table('Circuit Configurations', \
                        desc, 'circ-lgraph','|c|c|ccccccc|c|')
-  fields = ['blocks','integrator','multiplier', \
-                    'fanout','adc','dac','lut', \
-                    'crossbar','connections']
+  fields = ['blocks','int','mul', \
+                    'fan','adc','dac','lut', \
+                    'cout', 'cin', \
+                    'route','connections']
   table.set_fields(fields)
   table.horiz_rule()
   table.header()

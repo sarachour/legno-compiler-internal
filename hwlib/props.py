@@ -189,7 +189,7 @@ class DigitalProperties(Properties):
 
     @property
     def is_constant(self):
-        return self._is_constant
+        return self._kind == DigitalProperties.ClockType.CONSTANT
 
     def check(self):
         assert(not self._values is None)
